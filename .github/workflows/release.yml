@@ -1,0 +1,141 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  changelog:
+    name: Generate Changelog
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Generate release notes
+        uses: orhun/git-cliff-action@v4
+        with:
+          config: cliff.toml
+          args: --latest --strip header
+        env:
+          OUTPUT: release_notes.md
+          GITHUB_REPO: ${{ github.repository }}
+
+      - name: Generate full changelog
+        uses: orhun/git-cliff-action@v4
+        with:
+          config: cliff.toml
+          args: --verbose
+        env:
+          OUTPUT: CHANGELOG.md
+          GITHUB_REPO: ${{ github.repository }}
+
+      - name: Commit CHANGELOG.md
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add CHANGELOG.md
+          git commit -m "docs: update CHANGELOG.md for ${GITHUB_REF_NAME}" || echo "No changes to commit"
+          BRANCH=$(git branch -r --contains "${GITHUB_REF_NAME}" | grep -v HEAD | head -1 | sed 's|origin/||' | xargs)
+          if [ -n "$BRANCH" ]; then
+            git push origin HEAD:"$BRANCH"
+          else
+            git push origin HEAD:main
+          fi
+
+      - name: Upload release notes
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-notes
+          path: release_notes.md
+
+  build:
+    name: Build macOS DMG
+    runs-on: macos-15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install xcodegen
+        run: brew install xcodegen
+
+      - name: Generate Xcode project
+        run: xcodegen generate
+
+      - name: Build macOS app
+        run: |
+          xcodebuild \
+            -project GlavenGame.xcodeproj \
+            -scheme GlavenGame \
+            -configuration Release \
+            -derivedDataPath build \
+            -destination 'platform=macOS' \
+            CODE_SIGN_IDENTITY="-" \
+            ONLY_ACTIVE_ARCH=NO \
+            build
+
+      - name: Package DMG
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+          APP_PATH="build/Build/Products/Release/Glaven.app"
+
+          if [ ! -d "$APP_PATH" ]; then
+            echo "ERROR: Glaven.app not found at $APP_PATH"
+            find build -name "*.app" -type d
+            exit 1
+          fi
+
+          mkdir -p dmg_staging
+          cp -R "$APP_PATH" dmg_staging/
+          ln -s /Applications dmg_staging/Applications
+
+          hdiutil create \
+            -volname "Glaven" \
+            -srcfolder dmg_staging \
+            -ov \
+            -format UDZO \
+            "Glaven-${TAG}.dmg"
+
+      - name: Upload DMG
+        uses: actions/upload-artifact@v4
+        with:
+          name: dmg
+          path: Glaven-*.dmg
+
+  release:
+    name: Create GitHub Release
+    needs: [changelog, build]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download release notes
+        uses: actions/download-artifact@v4
+        with:
+          name: release-notes
+
+      - name: Download DMG
+        uses: actions/download-artifact@v4
+        with:
+          name: dmg
+
+      - name: Create release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+          PRERELEASE=""
+          if echo "$TAG" | grep -qE '(-beta|-rc|-alpha)'; then
+            PRERELEASE="--prerelease"
+          fi
+
+          gh release create "$TAG" \
+            Glaven-*.dmg \
+            --title "Glaven $TAG" \
+            --notes-file release_notes.md \
+            $PRERELEASE

@@ -1,0 +1,20 @@
+# Build
+.build/
+DerivedData/
+
+# Xcode
+*.xcodeproj/xcuserdata/
+*.xcworkspace/xcuserdata/
+xcuserdata/
+
+# SPM
+.swiftpm/
+
+# macOS
+.DS_Store
+
+# Xcode generated project (regenerated via xcodegen)
+GlavenGame.xcodeproj/
+
+# Claude
+CLAUDE.md

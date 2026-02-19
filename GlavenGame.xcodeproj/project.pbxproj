@@ -1,0 +1,1415 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		000550603398D6EC31B12E45 /* CampaignLogEntry.swift in Sources */ = {isa = PBXBuildFile; fileRef = FBAB6F2FABE873245AC4CCA2 /* CampaignLogEntry.swift */; };
+		0189C8521C2CE8D61A03028B /* EditionDataStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = F8B5E90FCBB673FE26E9699E /* EditionDataStore.swift */; };
+		02EC4A22B06CA1C1138D5CEB /* ActionModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 59E565958F3C44D1E550A407 /* ActionModel.swift */; };
+		0385D2502165BEC876DC27BD /* ScenarioRulesManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0C19CA805C2464F3FAC37E07 /* ScenarioRulesManager.swift */; };
+		03A389CA770501F9BD252F73 /* ActionType.swift in Sources */ = {isa = PBXBuildFile; fileRef = 01D2EFBD8378EDAFC3F215CF /* ActionType.swift */; };
+		0417E8BE5AF938F0EB4F01DB /* CharacterData.swift in Sources */ = {isa = PBXBuildFile; fileRef = B68078059B320305C837EE03 /* CharacterData.swift */; };
+		0462B9A53BB62EF54189348C /* SummonView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 823696473CDB48C445E1EA56 /* SummonView.swift */; };
+		073D04E1650408AD4E345CD3 /* LootDeck.swift in Sources */ = {isa = PBXBuildFile; fileRef = 42FD5AE1094742574DC0C0B9 /* LootDeck.swift */; };
+		075D139C0B3F1851901A35A7 /* GameCharacter.swift in Sources */ = {isa = PBXBuildFile; fileRef = CB48D739CDC747D7E15DB194 /* GameCharacter.swift */; };
+		0904FDA347035E9094304892 /* RandomScenarioSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A1E8BD30619BCC05B982C5E /* RandomScenarioSheet.swift */; };
+		0919DBA057F7F5E67358F0DB /* ElementState.swift in Sources */ = {isa = PBXBuildFile; fileRef = C27216A8BF9D29A97C3B588D /* ElementState.swift */; };
+		09CA0023236EE4715652F858 /* TreasuresToolSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7EBC365D268B4E38F018A1A1 /* TreasuresToolSheet.swift */; };
+		0EACFB0AB8BDFFCC7F591795 /* PieceID.swift in Sources */ = {isa = PBXBuildFile; fileRef = 33CE037572CCD1CC45F5F131 /* PieceID.swift */; };
+		0ED8F49AA66E6EFF394D74FB /* RoomRevealSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = C71E84426D2ABC0169A5F5B5 /* RoomRevealSheet.swift */; };
+		15D2951A77CC1C086296F86D /* ScenarioMarkerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7050B86E677EE171AD0A3573 /* ScenarioMarkerView.swift */; };
+		1CAA59210BA9710EE520B253 /* ScenarioSetupView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1A7ABCB8A94A25F4373E580 /* ScenarioSetupView.swift */; };
+		1CC69FD5D69AB9E38536A39E /* EntityValueFunction.swift in Sources */ = {isa = PBXBuildFile; fileRef = EFAF7312A61CA28A484AE10E /* EntityValueFunction.swift */; };
+		1E105B509AA9841848BDC003 /* Enhancement.swift in Sources */ = {isa = PBXBuildFile; fileRef = EBE9E8D46F66914CB111FEC5 /* Enhancement.swift */; };
+		2030EFD6151939DC6F7AFEED /* CardFlipView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E8D071F764DE7E9AEA23ABA4 /* CardFlipView.swift */; };
+		21D859808D778CE5791AA2DB /* HeaderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 52913A04AE6B4D7BDB9D8416 /* HeaderView.swift */; };
+		21FA5E07EC8A712DE13F6A66 /* EntityCondition.swift in Sources */ = {isa = PBXBuildFile; fileRef = 96B5B3B671FF141F5F296A83 /* EntityCondition.swift */; };
+		24867CD051F861D7479B3148 /* BoardCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06273638779D4902224E1602 /* BoardCoordinator.swift */; };
+		24FC35AAE4A705D3AF613024 /* RoundButtonView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D904BC0B3126218EAF6115AE /* RoundButtonView.swift */; };
+		264672DD5FA11BF550313E8D /* CardSelectionPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4C2B76831C29EEA9CE98F5A8 /* CardSelectionPanel.swift */; };
+		27BECA66EE2165B380748F33 /* AttackModifierValueType.swift in Sources */ = {isa = PBXBuildFile; fileRef = EBA2DD6BC94018062A83C98A /* AttackModifierValueType.swift */; };
+		28505E5DDFB320A07D8C5C9E /* GameSetupView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD2078C38F909FF5A2F71A7B /* GameSetupView.swift */; };
+		295E3CA5EBFC6DCBD0A3E8BB /* FigureType.swift in Sources */ = {isa = PBXBuildFile; fileRef = FC8D6BF7B24F45BABD529CA7 /* FigureType.swift */; };
+		29AAA0498618366B61CE6DBA /* EnhancementSlotType.swift in Sources */ = {isa = PBXBuildFile; fileRef = 555D2D675B4FF87CD4AB2430 /* EnhancementSlotType.swift */; };
+		29E366091BF30CC9A2AC85F9 /* ScenarioMapBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5ACBCD4EE9EF90BEC9F2752 /* ScenarioMapBuilder.swift */; };
+		2A06E26B553A030414E30208 /* IntOrString.swift in Sources */ = {isa = PBXBuildFile; fileRef = 68C151233315A41E7A116BF5 /* IntOrString.swift */; };
+		2B48DDA61518A823F10A6611 /* Scenario.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1EA85C028A0AFE294D1CD52 /* Scenario.swift */; };
+		2C71220B18F6E20D48AF65A8 /* GameManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1F3360FC927B90953116E2 /* GameManager.swift */; };
+		2F566A6470A02867165748EC /* Sounds in Resources */ = {isa = PBXBuildFile; fileRef = 5BECAAE9C51B69F316A57166 /* Sounds */; };
+		2F5F780EA637CDD97D941E26 /* EditionEditorSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = C75AAD9571D2AFCF48AB0DA9 /* EditionEditorSheet.swift */; };
+		2F807259DA42BCE506285C72 /* HexGridView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6BB5848795BA4ADF8305822D /* HexGridView.swift */; };
+		310D2CC3F25CF06B8BC2B77C /* ScenarioChartSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 99F03C82524246E2BEF40702 /* ScenarioChartSheet.swift */; };
+		348B45E0F8996A22336E276D /* ActionValueType.swift in Sources */ = {isa = PBXBuildFile; fileRef = C03684D92E27E6D64CDEF9C0 /* ActionValueType.swift */; };
+		34E52CCA39FF59F3296B5135 /* BoardSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = 33A6C1188659B67AC3B2FFC8 /* BoardSnapshot.swift */; };
+		3526967A1B1504E38CA78A61 /* MoveResourcesSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04E1CC18C7B4198FA2F7B0C6 /* MoveResourcesSheet.swift */; };
+		35327ED25730D37C83C265A3 /* Loot.swift in Sources */ = {isa = PBXBuildFile; fileRef = 83845896587772B83CB3E6B8 /* Loot.swift */; };
+		36769205F2999D17E959C581 /* MainMenuView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4840A613B6DC796BF25638E0 /* MainMenuView.swift */; };
+		3763EEB34ECABDBEA5739822 /* ScenarioConclusionSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = E0A5A39A4A7174364A7FEFEF /* ScenarioConclusionSheet.swift */; };
+		37CECBAD1AD6E0510AB08DDE /* ScenarioStatsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 269E644840BF690712FCF429 /* ScenarioStatsView.swift */; };
+		3CA51576B5FF4BF353869396 /* CharacterSheetView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 48C2C89D891BD98C87B15AC7 /* CharacterSheetView.swift */; };
+		3D70D4B36FC1C27F8205C998 /* BundleHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = 52347FEF6FA67664FBF7BF1A /* BundleHelper.swift */; };
+		3E053A9B5CC8CEDB30255A1C /* StandeePickerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 89BFBD0BF33F1C6C51403AC2 /* StandeePickerView.swift */; };
+		3E28D23AFCD7CAC2E98470E4 /* LevelManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DD7C9704EEC9D2DBAB09937 /* LevelManager.swift */; };
+		3E34698497F6AB2DBE5CBA84 /* GameSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = 972ABF0E93841851FFA1C998 /* GameSnapshot.swift */; };
+		3E40FB81D920E1696BBBF110 /* FontLoader.swift in Sources */ = {isa = PBXBuildFile; fileRef = F4B2AAB322CBC33EEE910FBB /* FontLoader.swift */; };
+		3E4E5CEA405BD2D43F7D1F26 /* MonsterType.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD73A01447A2167AF7A93D4D /* MonsterType.swift */; };
+		3E98EAEF5EC4BBC1C9A488CA /* EditionInfo.swift in Sources */ = {isa = PBXBuildFile; fileRef = 524F8A9CD2904FC63166A232 /* EditionInfo.swift */; };
+		3EB5A309C4C479EFF33646F6 /* ConditionType.swift in Sources */ = {isa = PBXBuildFile; fileRef = D5883A3D9378A826BF8AA541 /* ConditionType.swift */; };
+		3F3056CF40C9CDCC92CD35F4 /* LevelDisplayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2F55692096B1C438FC27495E /* LevelDisplayView.swift */; };
+		3FBCF26F0423909E5CEE6891 /* DecksViewerSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = DAB7109B2A99838DA4616059 /* DecksViewerSheet.swift */; };
+		4120712738BDF3001B571449 /* ConditionsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F504B60F3ECB989CA47A55AE /* ConditionsView.swift */; };
+		4270F50EFBD54ADD461ECF50 /* AttackModifier.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3E998CE7344F97D1E3E79A74 /* AttackModifier.swift */; };
+		43170E8E4353FA170EAEF8D5 /* EnhancementsManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3477ACD63A2C3231A799AB39 /* EnhancementsManager.swift */; };
+		46B94503244BB10D9E14A9F0 /* TreasureRewardParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = 773EDD0EFA56B12B34CB32AB /* TreasureRewardParser.swift */; };
+		46C7E8752AD96F15E7F9AF89 /* Condition.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC4BEBEF0D48AC6F54D3F19F /* Condition.swift */; };
+		48BC7EC9071DEE0C42DED128 /* ElementModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8255DC95DDC21DBA25280177 /* ElementModel.swift */; };
+		48EF2D85E0A4E375FFF1EAD2 /* AttackModifierEffectType.swift in Sources */ = {isa = PBXBuildFile; fileRef = D509FC90D805FC2585C9C743 /* AttackModifierEffectType.swift */; };
+		4A04E1172772853B9D0415D3 /* AboutSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = BD400435469819EE1EB795D9 /* AboutSheet.swift */; };
+		4B2BA4139D0D27B42EE7818E /* RoundManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 794BBAB32F951E4614E23099 /* RoundManager.swift */; };
+		4D06962FD66D7469C2E754CD /* GlavenGame.swift in Sources */ = {isa = PBXBuildFile; fileRef = B600B1213ADD3BA7A385CA3F /* GlavenGame.swift */; };
+		4D5A2B0C1435C8DC0EE6A6B7 /* CharacterEditorSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E42AAC4476BD282FFB171A7 /* CharacterEditorSheet.swift */; };
+		4D8A855BF0C689D5ED706822 /* TileGrids.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6AA0FE435E44248DE2AE31A8 /* TileGrids.swift */; };
+		4DB872F6360BA26177F0CD27 /* BattleGoalData.swift in Sources */ = {isa = PBXBuildFile; fileRef = B336093B187D6833D7EF5868 /* BattleGoalData.swift */; };
+		4F40225C0F9D5F6D5493EAB0 /* SaveSlotsSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 422B96003824AE1E41CF473C /* SaveSlotsSheet.swift */; };
+		4F5770DEF0EF49285E1A983E /* RandomMonsterCardSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = E586DBAB0A81F185665CA7C7 /* RandomMonsterCardSheet.swift */; };
+		4F5DF3D8EB08B61CF06FBBF0 /* AddObjectiveSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5BC05461B308F8C28F386368 /* AddObjectiveSheet.swift */; };
+		51FAA98A4315A08DCD4AAF88 /* GameBoardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2DCD6E622ADAFAA13D8D936F /* GameBoardView.swift */; };
+		52B180966383A6C7FF8C8A45 /* PartyTreasuresSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2EBB792CA3175EA209873B2E /* PartyTreasuresSheet.swift */; };
+		52E0ADA8BFFF3AAD6661D81C /* ScenarioHeaderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 62B50F3E4F848C40ED27A3A6 /* ScenarioHeaderView.swift */; };
+		536F0F1A04CE1A7B9631044C /* InitiativeToolSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACD0296E9F2F457629B8CC13 /* InitiativeToolSheet.swift */; };
+		55B0274BFF5C9D9F6695BF55 /* AttackModifierDeckView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9AACECDE0618EDE4BA3C17E /* AttackModifierDeckView.swift */; };
+		56F7F45058EC84B733850E68 /* Images in Resources */ = {isa = PBXBuildFile; fileRef = 61963BCD4E4EB2BCD3E9201C /* Images */; };
+		58612AEA8A8D852B5EEA2FEA /* PieceSpriteNode.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD9B9D4203B3CFD7D307E4EE /* PieceSpriteNode.swift */; };
+		58B78A9C18B111E273D6FB08 /* SpriteKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D179B38E24E3F8EE01027D33 /* SpriteKit.framework */; };
+		5936AD0A4AD401DF4B97D987 /* EntityConditionState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 82F3F558C6B05ACE0A4DFB1F /* EntityConditionState.swift */; };
+		593ED53896934CF7F83863D3 /* BoardScene.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1E5BE6C620EBFDD27F7F98C0 /* BoardScene.swift */; };
+		5A48315CA6C348A033846121 /* HandManagementSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE7A5D242A634ED5AAB5C0BA /* HandManagementSheet.swift */; };
+		5BBB61E7EDF1269CF6D4BA28 /* PersonalQuestView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F6788E5A9839E00B97E24EDB /* PersonalQuestView.swift */; };
+		5D7C86C8790EF56EC97B4BDE /* ScenarioRulesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2B1EE90F304F9FD4FAFABF4 /* ScenarioRulesView.swift */; };
+		5F89475755C4F71171E0D9DD /* MonsterTurnController.swift in Sources */ = {isa = PBXBuildFile; fileRef = CEBB2CD9E70D5ABFA126923B /* MonsterTurnController.swift */; };
+		613E1571F485E87A36D138D1 /* SoundPlayer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 192975CBA7A72969B78836A7 /* SoundPlayer.swift */; };
+		61F752E27CA1EDB71977C98F /* FooterView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 169F364E5167294B011ACEFA /* FooterView.swift */; };
+		64856107C663B7B362B7DDAF /* PerkSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35C054964C875669475982EF /* PerkSheet.swift */; };
+		6645399904C7D8DEC468F308 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2E660BE81DE1921DF78A167 /* ContentView.swift */; };
+		67DADD29FA79AA30D290637C /* LineOfSight.swift in Sources */ = {isa = PBXBuildFile; fileRef = C6F0345B431E777E05BD49D6 /* LineOfSight.swift */; };
+		680EA88127D4C30C0BF8D50D /* CharacterDetailSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = 044E76ECD856E2EDE10BDBFC /* CharacterDetailSection.swift */; };
+		68A97D3FCA889DFB1E742B97 /* ItemShopSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = CFAA9E252523C44A71593CDF /* ItemShopSheet.swift */; };
+		68B34A2D170B539CB4F7D79A /* SummonState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 81C28FB339301A6F83C1744B /* SummonState.swift */; };
+		6A2C001DDB53BA14D5172D8E /* ObjectiveManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DC0AE3639F6C6E004323D24 /* ObjectiveManager.swift */; };
+		6B22D256C8B69DB1C2458D59 /* LootDeckToolSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = B7798A528E121E03660CD19D /* LootDeckToolSheet.swift */; };
+		6DB6AB6ED57EBE6DBFCC2A33 /* UIScale.swift in Sources */ = {isa = PBXBuildFile; fileRef = 75C223FE093334EB47476FA0 /* UIScale.swift */; };
+		6E9F82F34C78A1EDC9C1598B /* RetirementSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = D8061256B05214AFDCC77E42 /* RetirementSheet.swift */; };
+		6EF73C7D66CDA54CEB66DEAD /* HealthBarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 41199D358483FF3FC45E220B /* HealthBarView.swift */; };
+		7040C212B735B223FAD5C9A3 /* AttackModifierToolSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8D6EF0D247FFAB61CF85325F /* AttackModifierToolSheet.swift */; };
+		70ED7EF93BBAB2D679DBC654 /* AddSummonSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E87241399CFC4024A082E20 /* AddSummonSheet.swift */; };
+		71D683915BE726182F015D44 /* RandomItemSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2F1FBB1AD51894B397BF3857 /* RandomItemSheet.swift */; };
+		725EB803E644190074A0CB60 /* BattleGoalSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 711FE580594A6A4BA30EF999 /* BattleGoalSheet.swift */; };
+		7341D050CFF3F51B1A40A8D0 /* ElementBoardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8255E1A8F1CC6DC84CBFD242 /* ElementBoardView.swift */; };
+		7565ABBD5A2540499AF54879 /* ScenarioMapSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = F3712E3EBCEBABF1F36B1927 /* ScenarioMapSheet.swift */; };
+		75DF0BB6FC95C99A2DB187DC /* CombatResolver.swift in Sources */ = {isa = PBXBuildFile; fileRef = D43BC428DB53E9EC54ECA21C /* CombatResolver.swift */; };
+		7BC432AB3D70A08BFC5E87E7 /* WorldMapView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C9ECD4B608FAFAC66D31A536 /* WorldMapView.swift */; };
+		7E0A4C8A93D25AE344CB0A4D /* EntityManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9E6A2CFAF5C759FC39E1C802 /* EntityManager.swift */; };
+		7E73D0A139DFBE1715DA1F44 /* PlayerTurnController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A2BBA0188C2D10D81CAC68B /* PlayerTurnController.swift */; };
+		7E83CFF586BC1BDCB1ADFF2A /* AttackModifierManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69054202832ECCDDB26C8B2B /* AttackModifierManager.swift */; };
+		7EA3413FBD0C440E5CE281B6 /* DebugSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 301F1DCE616E216C56604344 /* DebugSheet.swift */; };
+		800B52D79643E5CB76B64F29 /* Fonts in Resources */ = {isa = PBXBuildFile; fileRef = 5D581F71B3F53FBB364E1E22 /* Fonts */; };
+		82234109FFEE89D34817A5C7 /* ScenarioMapDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4901D882DBB4A4409384EE90 /* ScenarioMapDetailView.swift */; };
+		828A6DFBE3E8960CA00A142F /* AttackModifierDeckDialog.swift in Sources */ = {isa = PBXBuildFile; fileRef = 843CD4A48C04247D50F3C39A /* AttackModifierDeckDialog.swift */; };
+		82BD2069DBF2BD8ABEBDC1B0 /* GlavenTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6911D16FDC2CF2B049586221 /* GlavenTheme.swift */; };
+		8333BC2726EC938DC20B41A3 /* EntityMenuView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C82D7D3F3E55EB3B59588102 /* EntityMenuView.swift */; };
+		8463F26B53EAE2D33496C4CA /* InteractiveActionsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5C4706EED3DEA7BFB9DAD13C /* InteractiveActionsView.swift */; };
+		8556401DE6DDEC3B29A94C2E /* GamePhase.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E3252016F044D305E5F9AD4 /* GamePhase.swift */; };
+		86BD53B5B7FFD63C9EEFEAC2 /* CharacterFullView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31D7B310F39F77DCBBDF4AC6 /* CharacterFullView.swift */; };
+		892B9BF7411972FD0C1157E4 /* ScenarioMaps in Resources */ = {isa = PBXBuildFile; fileRef = C4B5DE1CCC42A105EA251124 /* ScenarioMaps */; };
+		89492582E533D3195D22F02C /* ItemBrowserSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50767A7BE617A46073BD3099 /* ItemBrowserSheet.swift */; };
+		8A8AE9C25AFA67C4AFF49C9B /* AttackModifierCardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 42374DD85E631755D52BD747 /* AttackModifierCardView.swift */; };
+		8CB0FFF5B997D068B2D99954 /* AppPhase.swift in Sources */ = {isa = PBXBuildFile; fileRef = D9682A31C9693AB6DADDC9F6 /* AppPhase.swift */; };
+		8D0C7E06BB091C8839D6723A /* AttackModifierSelectSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9768805A47D8A289C8196C81 /* AttackModifierSelectSheet.swift */; };
+		8D637BC2C5EC03235144944A /* ScenarioMapStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0449386EC7763E37AF9AB2A4 /* ScenarioMapStore.swift */; };
+		8EE54DF20EAC7C6985AD80B1 /* SummonColor.swift in Sources */ = {isa = PBXBuildFile; fileRef = FBE537F6F81289C6EEB5CDAD /* SummonColor.swift */; };
+		916FFE7F8E38E482DBC83A94 /* BoardBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8631B220635598C0A14D982C /* BoardBuilder.swift */; };
+		93A57D1AE8095C6238BBB1D3 /* RemoteEditionData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 640F58EE8E704179EBE9CF1B /* RemoteEditionData.swift */; };
+		94C095768371C283CC23B948 /* GameSummon.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0429C07F7DA0462F801132A /* GameSummon.swift */; };
+		957B7E99DE00F7CD8641736F /* LootDeckView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A61C3B64DFD88B472B3864F /* LootDeckView.swift */; };
+		967A0144509F8F48CCF36F4B /* CharacterView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F17A8B9072E36DC8A7F4D9F0 /* CharacterView.swift */; };
+		96F6AD9C57E22A6ABF4609D7 /* WelcomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 851B045DDF55EA0BAE7BC954 /* WelcomeView.swift */; };
+		972557E3BC18B52A485C5487 /* MonsterView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6618A23E3A76170B0AC51F61 /* MonsterView.swift */; };
+		9846574892AF024EE04B3927 /* KeyboardShortcutsSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 07ECCB9BD8C25458C3B2EB53 /* KeyboardShortcutsSheet.swift */; };
+		9B0C1F1811587190DFECF3B7 /* BoardState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 93501E1A8B09C90B3224D4E6 /* BoardState.swift */; };
+		9BBD35DFA813946BF409C447 /* VGBScenarioData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46C86055EE9207207274F6C6 /* VGBScenarioData.swift */; };
+		9BF3482C20F2CC41F462F7AC /* CharacterClass.swift in Sources */ = {isa = PBXBuildFile; fileRef = DAF0FC6C2F01CFD4173515AC /* CharacterClass.swift */; };
+		9DB6D601D46BFC77F4E2F90D /* ActionHistorySheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F8289B98BDEB6A290C5EA08 /* ActionHistorySheet.swift */; };
+		9E4A518A086C85001C78A09B /* MonsterData.swift in Sources */ = {isa = PBXBuildFile; fileRef = FBB6CC6422C046711137938C /* MonsterData.swift */; };
+		9F4D69204E0728BBCBE1D5A0 /* SummonDataModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A1B2D12EE16E139A1784E2B /* SummonDataModel.swift */; };
+		A1B075227BCCF196AB2770BC /* FullscreenCardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 14A76C61DCD182FB32D64AC1 /* FullscreenCardView.swift */; };
+		A2F0171C14292FA97E954CDA /* AbilityCardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 14ABB7C34DDD57BF9162EA76 /* AbilityCardView.swift */; };
+		A640E78853965C39A26632DA /* ScenarioManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = E76A7095C8D371EF8B0F04D2 /* ScenarioManager.swift */; };
+		A73BC3A80E80682370D626C6 /* SupportedLocale.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1ACB336DBBEBE992BE2288A /* SupportedLocale.swift */; };
+		A7D194D704F818DCACAB3CCD /* PerkType.swift in Sources */ = {isa = PBXBuildFile; fileRef = BA81DDD9366A51A3A52F3C1B /* PerkType.swift */; };
+		A899906EA9EAABA88896FE70 /* InitiativeInputView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F805D55AFA13C6542B5A3261 /* InitiativeInputView.swift */; };
+		A94208E729AD7FE4457676B9 /* MonsterEditorSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = A84E6B64709515FDF720A62E /* MonsterEditorSheet.swift */; };
+		A9667995FD7E67375AA587E3 /* MonsterManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = F32D8ED53532637A9DB0B648 /* MonsterManager.swift */; };
+		A9717720E43E11FBB3CD0D59 /* SummonAI.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4476120A6229F3C2DAD4CF5C /* SummonAI.swift */; };
+		A9C41AC74B9185EF20659AE0 /* SettingsModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA8BD6F44CA703162D48586C /* SettingsModel.swift */; };
+		ABF77D86E73182CD257DCEC8 /* CharacterManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A945DF49A79FBC6C6FE4B3C /* CharacterManager.swift */; };
+		AD628E167EA038B4F5134691 /* PerkModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 58FD5F7A5D954BE508CF69F0 /* PerkModel.swift */; };
+		ADFC789951F452BCB2FBCA67 /* NumberPickerSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = FC6052E53C0E7221AF076DF1 /* NumberPickerSheet.swift */; };
+		AE36609C9943107272FEE51A /* ActionsManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A30E472AAD62BB67AE83169C /* ActionsManager.swift */; };
+		AF3F2201E31B145FBC2FF948 /* AttackModifierDeck.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D21E983F2C6A9DB30620F8A /* AttackModifierDeck.swift */; };
+		B189530ED1928A8B077B6949 /* ItemDetailSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5F921AE521FD17686B09BE95 /* ItemDetailSheet.swift */; };
+		B693C957C8B55DF15A1B6B1C /* LootCardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4CC400C04C45823B038513D4 /* LootCardView.swift */; };
+		B6DB78CBDC0541217E3000B2 /* LogoView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BCA279443E59250573E9D370 /* LogoView.swift */; };
+		B71FFD4185C4AD3708AEE550 /* ActionEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A0AEB962D1B4A44FBDD0D36 /* ActionEditorView.swift */; };
+		B975922FF4C543F56ABDB18A /* PartySheetView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADC60986430A5DFFAA4EEAC9 /* PartySheetView.swift */; };
+		B99BB3F32DDC19B592DC5DF1 /* MonsterAbilitySheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = D03F121DA5C0D73D10ACA65D /* MonsterAbilitySheet.swift */; };
+		BA1FC5F02BBBDDBA6ECDE2B3 /* ItemData.swift in Sources */ = {isa = PBXBuildFile; fileRef = C567728A83844732D31F3F5F /* ItemData.swift */; };
+		BD44DF004014D2CDCC712270 /* RandomMonsterCardsToolSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 801070F455D526484677E5B2 /* RandomMonsterCardsToolSheet.swift */; };
+		BE9CAB89C2BFB6443300A60C /* MonsterAbilityView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2128F7307DB50A597FD504DB /* MonsterAbilityView.swift */; };
+		BECDE7A9C337E991508726F4 /* GameState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 927D27803802AD81536EA860 /* GameState.swift */; };
+		C0E9C5B5B98F723E70B5A5BB /* HexCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = 11CBAC9F034879BB91B54D73 /* HexCell.swift */; };
+		C20C2F095EEAA5871F1BFBF9 /* CharacterItemsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB1B617FED39015D1033829C /* CharacterItemsView.swift */; };
+		C2B13B3624B6F7A6EBA5D808 /* ScenarioRule.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2A76D126F0BA77D9B298FE07 /* ScenarioRule.swift */; };
+		C3941B681AC4B7D13D8E2526 /* HexMath.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10C608B0B9CEFDBCA152D834 /* HexMath.swift */; };
+		C3E777BF9C09D52587AB7B2A /* ItemManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 015914F204A6A1A5CD04676F /* ItemManager.swift */; };
+		C48F34F6664799A0111E1C46 /* FigureProtocol.swift in Sources */ = {isa = PBXBuildFile; fileRef = DFC1E01834BD13B87726B39E /* FigureProtocol.swift */; };
+		C4B13C1F7E443D08F6CDB37E /* LootManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6B4DA2419C815421AF728C58 /* LootManager.swift */; };
+		C52021D67688A4B393246402 /* ScenarioStatsManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8DC43DEE8B38C661B7401300 /* ScenarioStatsManager.swift */; };
+		C52908C35A1F17E2655A08FB /* TimerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EDC143FDF77FBA3DB287A62E /* TimerView.swift */; };
+		C649244AA1729CC191971BD6 /* Pathfinder.swift in Sources */ = {isa = PBXBuildFile; fileRef = D8D120B1CEE8FA85B7939897 /* Pathfinder.swift */; };
+		C7467AA4D366288E22593174 /* ObjectiveContainerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 489BD5310CDB34BB081591D8 /* ObjectiveContainerView.swift */; };
+		C7914CE29166A711DD59D56B /* EntityProtocol.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4A36D7C42F715C8F0B91A909 /* EntityProtocol.swift */; };
+		C7A71268D4ED515FDA566884 /* PreferencesSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = B90AB17781FA04ADADF656EB /* PreferencesSheet.swift */; };
+		C8BEF4631B318047240E63F6 /* SavedGameModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = B881C2715E0BC0457CC00B37 /* SavedGameModel.swift */; };
+		CC34ABA4C68311665619E8E3 /* ScenarioData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A52E7B1A950562EF505A524 /* ScenarioData.swift */; };
+		CDD4F85BC9EA33EA6415855E /* GameMonster.swift in Sources */ = {isa = PBXBuildFile; fileRef = AE4FE04C5C22C618D1AB2170 /* GameMonster.swift */; };
+		CE2F33E4166D8E902FF97C90 /* AttackModifierType.swift in Sources */ = {isa = PBXBuildFile; fileRef = A61085FE2C898425387309FD /* AttackModifierType.swift */; };
+		CEB52ADC67373B8B77A407CD /* ImageLoader.swift in Sources */ = {isa = PBXBuildFile; fileRef = E27EBD6725F30431BE4E7FA3 /* ImageLoader.swift */; };
+		CF2FDBA6BAD0B1C947FEAB87 /* AbilityModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = CF8DD0E2645A4142BBD870E7 /* AbilityModel.swift */; };
+		CF488AC45A2FBA66D8D34D5A /* GameObjectiveContainer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5C3F8355E887FAF9952D826E /* GameObjectiveContainer.swift */; };
+		CFB8201374A8A759A8C032A9 /* ConditionName.swift in Sources */ = {isa = PBXBuildFile; fileRef = C124CDA0F843E56DFEB9254F /* ConditionName.swift */; };
+		D18A8958FB513FD0A1A027F7 /* MonsterStatModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = B84551835BADF4DA5F602FA6 /* MonsterStatModel.swift */; };
+		D4E7121201A9D615F5FC0D37 /* DeckData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1BFD0B71E6987E420B5CBA91 /* DeckData.swift */; };
+		D6FC3C4BEE20DFD5C76C7308 /* DeckEditorSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 381A91AFE63021B058D87DF0 /* DeckEditorSheet.swift */; };
+		DBCECD3BAD657A5840A2F80A /* EditionData in Resources */ = {isa = PBXBuildFile; fileRef = 6837034E843BAFF4AB496C8A /* EditionData */; };
+		DC76BF79136B777FBBE43EED /* BoardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 972A40BE4DE4A8FA037B3C54 /* BoardView.swift */; };
+		DCA52BAE9A3FFEBFDF0B09A1 /* LootApplySheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = DE6924302112D3289A7BD212 /* LootApplySheet.swift */; };
+		DD322F609614BE62080CCF73 /* TreasureLootSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = F392142C72301A9031A7BCDB /* TreasureLootSheet.swift */; };
+		DFC9D0F4426EF99D1676F45D /* ScenarioSelectionSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = C13507E0E83D6C7F041CC9EA /* ScenarioSelectionSheet.swift */; };
+		E01C9ECF3DF99F10CE9CA044 /* SnapshotConversions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0DDDFB389ED2AF2B57163276 /* SnapshotConversions.swift */; };
+		E19F2D8A9AF73489894C30F3 /* SettingsManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 61565EFB4C520E3836D050C4 /* SettingsManager.swift */; };
+		E64FC53CA3E919734FCCDBF9 /* ElementView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9972ED9B698C56E59CD11765 /* ElementView.swift */; };
+		E6C7F5CFC3EF0AE5E5353ACA /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 889E9E03A546F9863470E6EB /* Assets.xcassets */; };
+		E6E25B46F9DD8E50E5312036 /* MonsterAI.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8C9B002AD05945036550A91 /* MonsterAI.swift */; };
+		EA1E225C5D5505E47DB137D2 /* StandeeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8FCE30544909B82F328FB715 /* StandeeView.swift */; };
+		EA239D8884EBEB95DD674EA6 /* AddMonsterSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 880CE3020A2D75F0D0F81B01 /* AddMonsterSheet.swift */; };
+		EDCEEF6D8D554CC027BD3467 /* MonsterStatsSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = EAE86DAD4E6E4F72291C7DEC /* MonsterStatsSheet.swift */; };
+		EEA4E83E55E0054C52800227 /* CardImages in Resources */ = {isa = PBXBuildFile; fileRef = 59BB047B07D1F118633A3DAF /* CardImages */; };
+		EF65B14C5A82C7BD01A94907 /* PersonalQuestData.swift in Sources */ = {isa = PBXBuildFile; fileRef = DA5E6D17711BE40800C3537F /* PersonalQuestData.swift */; };
+		EF911B315A3F4940D9A3010E /* EnhancementSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = B51600241E3FA2BFF4794581 /* EnhancementSheet.swift */; };
+		F1559BA8DB41D38287C1201B /* PartyStatisticsSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 731574AB55168285AE451F48 /* PartyStatisticsSheet.swift */; };
+		F17A476C81A0AF631F04BA09 /* AttackModifierEffect.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0FC6F5BE3E5D03329D3B8837 /* AttackModifierEffect.swift */; };
+		F182555B5F77F1B49251EEFE /* CharacterStatModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 78DCD8429185EF58A68330B4 /* CharacterStatModel.swift */; };
+		F2423600BC981360B0C9093B /* LootType.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E0C1D4AA6F0D3063582A41E /* LootType.swift */; };
+		F281285B9F8642504EBF952F /* ElementType.swift in Sources */ = {isa = PBXBuildFile; fileRef = DCC5DD17CCF9E224A30CC1B4 /* ElementType.swift */; };
+		F358195F53B1C931B0DF9DDE /* AddCharacterSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0574A66B4DC4532439B5BD52 /* AddCharacterSheet.swift */; };
+		F5A44407247D607BCAE13211 /* HexCoord.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6B783381A55497EC0CE02DFD /* HexCoord.swift */; };
+		F64F8FAF99B4F1F1C41AF2B9 /* SummonTurnController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E6E7163EA81B6FEA0C1F76D /* SummonTurnController.swift */; };
+		F8EF92F34C6388C428209DFF /* AbilityCardsSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0EA8798471A1F92D1345582E /* AbilityCardsSheet.swift */; };
+		FF3BE9A379F14D0429881C64 /* LootDeckSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 47B5D11910EE81B42CCBF0C3 /* LootDeckSheet.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		015914F204A6A1A5CD04676F /* ItemManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ItemManager.swift; sourceTree = "<group>"; };
+		01D2EFBD8378EDAFC3F215CF /* ActionType.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActionType.swift; sourceTree = "<group>"; };
+		0449386EC7763E37AF9AB2A4 /* ScenarioMapStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScenarioMapStore.swift; sourceTree = "<group>"; };
+		044E76ECD856E2EDE10BDBFC /* CharacterDetailSection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CharacterDetailSection.swift; sourceTree = "<group>"; };
+		04E1CC18C7B4198FA2F7B0C6 /* MoveResourcesSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MoveResourcesSheet.swift; sourceTree = "<group>"; };
+		0574A66B4DC4532439B5BD52 /* AddCharacterSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddCharacterSheet.swift; sourceTree = "<group>"; };
+		06273638779D4902224E1602 /* BoardCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BoardCoordinator.swift; sourceTree = "<group>"; };
+		07ECCB9BD8C25458C3B2EB53 /* KeyboardShortcutsSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyboardShortcutsSheet.swift; sourceTree = "<group>"; };
+		0A0AEB962D1B4A44FBDD0D36 /* ActionEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActionEditorView.swift; sourceTree = "<group>"; };
+		0A1B2D12EE16E139A1784E2B /* SummonDataModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SummonDataModel.swift; sourceTree = "<group>"; };
+		0A945DF49A79FBC6C6FE4B3C /* CharacterManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CharacterManager.swift; sourceTree = "<group>"; };
+		0C19CA805C2464F3FAC37E07 /* ScenarioRulesManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScenarioRulesManager.swift; sourceTree = "<group>"; };
+		0DDDFB389ED2AF2B57163276 /* SnapshotConversions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SnapshotConversions.swift; sourceTree = "<group>"; };
+		0EA8798471A1F92D1345582E /* AbilityCardsSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AbilityCardsSheet.swift; sourceTree = "<group>"; };
+		0FC6F5BE3E5D03329D3B8837 /* AttackModifierEffect.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AttackModifierEffect.swift; sourceTree = "<group>"; };
+		10C608B0B9CEFDBCA152D834 /* HexMath.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HexMath.swift; sourceTree = "<group>"; };
+		11CBAC9F034879BB91B54D73 /* HexCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HexCell.swift; sourceTree = "<group>"; };
+		14A76C61DCD182FB32D64AC1 /* FullscreenCardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FullscreenCardView.swift; sourceTree = "<group>"; };
+		14ABB7C34DDD57BF9162EA76 /* AbilityCardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AbilityCardView.swift; sourceTree = "<group>"; };
+		169F364E5167294B011ACEFA /* FooterView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FooterView.swift; sourceTree = "<group>"; };
+		192975CBA7A72969B78836A7 /* SoundPlayer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SoundPlayer.swift; sourceTree = "<group>"; };
+		1BFD0B71E6987E420B5CBA91 /* DeckData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeckData.swift; sourceTree = "<group>"; };
+		1E5BE6C620EBFDD27F7F98C0 /* BoardScene.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BoardScene.swift; sourceTree = "<group>"; };
+		2128F7307DB50A597FD504DB /* MonsterAbilityView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MonsterAbilityView.swift; sourceTree = "<group>"; };
+		269E644840BF690712FCF429 /* ScenarioStatsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScenarioStatsView.swift; sourceTree = "<group>"; };
+		2A76D126F0BA77D9B298FE07 /* ScenarioRule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScenarioRule.swift; sourceTree = "<group>"; };
+		2DCD6E622ADAFAA13D8D936F /* GameBoardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameBoardView.swift; sourceTree = "<group>"; };
+		2EBB792CA3175EA209873B2E /* PartyTreasuresSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PartyTreasuresSheet.swift; sourceTree = "<group>"; };
+		2F1FBB1AD51894B397BF3857 /* RandomItemSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RandomItemSheet.swift; sourceTree = "<group>"; };
+		2F55692096B1C438FC27495E /* LevelDisplayView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LevelDisplayView.swift; sourceTree = "<group>"; };
+		301F1DCE616E216C56604344 /* DebugSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DebugSheet.swift; sourceTree = "<group>"; };
+		31D7B310F39F77DCBBDF4AC6 /* CharacterFullView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CharacterFullView.swift; sourceTree = "<group>"; };
+		33A6C1188659B67AC3B2FFC8 /* BoardSnapshot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BoardSnapshot.swift; sourceTree = "<group>"; };
+		33CE037572CCD1CC45F5F131 /* PieceID.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PieceID.swift; sourceTree = "<group>"; };
+		3477ACD63A2C3231A799AB39 /* EnhancementsManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EnhancementsManager.swift; sourceTree = "<group>"; };
+		35C054964C875669475982EF /* PerkSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PerkSheet.swift; sourceTree = "<group>"; };
+		381A91AFE63021B058D87DF0 /* DeckEditorSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeckEditorSheet.swift; sourceTree = "<group>"; };
+		3A61C3B64DFD88B472B3864F /* LootDeckView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LootDeckView.swift; sourceTree = "<group>"; };
+		3D21E983F2C6A9DB30620F8A /* AttackModifierDeck.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AttackModifierDeck.swift; sourceTree = "<group>"; };
+		3E998CE7344F97D1E3E79A74 /* AttackModifier.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AttackModifier.swift; sourceTree = "<group>"; };
+		41199D358483FF3FC45E220B /* HealthBarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthBarView.swift; sourceTree = "<group>"; };
+		422B96003824AE1E41CF473C /* SaveSlotsSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SaveSlotsSheet.swift; sourceTree = "<group>"; };
+		42374DD85E631755D52BD747 /* AttackModifierCardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AttackModifierCardView.swift; sourceTree = "<group>"; };
+		42FD5AE1094742574DC0C0B9 /* LootDeck.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LootDeck.swift; sourceTree = "<group>"; };
+		4476120A6229F3C2DAD4CF5C /* SummonAI.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SummonAI.swift; sourceTree = "<group>"; };
+		46C86055EE9207207274F6C6 /* VGBScenarioData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VGBScenarioData.swift; sourceTree = "<group>"; };
+		47B5D11910EE81B42CCBF0C3 /* LootDeckSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LootDeckSheet.swift; sourceTree = "<group>"; };
+		4840A613B6DC796BF25638E0 /* MainMenuView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainMenuView.swift; sourceTree = "<group>"; };
+		489BD5310CDB34BB081591D8 /* ObjectiveContainerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ObjectiveContainerView.swift; sourceTree = "<group>"; };
+		48C2C89D891BD98C87B15AC7 /* CharacterSheetView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CharacterSheetView.swift; sourceTree = "<group>"; };
+		4901D882DBB4A4409384EE90 /* ScenarioMapDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScenarioMapDetailView.swift; sourceTree = "<group>"; };
+		4A36D7C42F715C8F0B91A909 /* EntityProtocol.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EntityProtocol.swift; sourceTree = "<group>"; };
+		4C2B76831C29EEA9CE98F5A8 /* CardSelectionPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CardSelectionPanel.swift; sourceTree = "<group>"; };
+		4CC400C04C45823B038513D4 /* LootCardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LootCardView.swift; sourceTree = "<group>"; };
+		50767A7BE617A46073BD3099 /* ItemBrowserSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ItemBrowserSheet.swift; sourceTree = "<group>"; };
+		52347FEF6FA67664FBF7BF1A /* BundleHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BundleHelper.swift; sourceTree = "<group>"; };
+		524F8A9CD2904FC63166A232 /* EditionInfo.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EditionInfo.swift; sourceTree = "<group>"; };
+		52913A04AE6B4D7BDB9D8416 /* HeaderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HeaderView.swift; sourceTree = "<group>"; };
+		555D2D675B4FF87CD4AB2430 /* EnhancementSlotType.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EnhancementSlotType.swift; sourceTree = "<group>"; };
+		58FD5F7A5D954BE508CF69F0 /* PerkModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PerkModel.swift; sourceTree = "<group>"; };
+		59BB047B07D1F118633A3DAF /* CardImages */ = {isa = PBXFileReference; lastKnownFileType = folder; name = CardImages; path = GlavenGame/Resources/CardImages; sourceTree = SOURCE_ROOT; };
+		59E565958F3C44D1E550A407 /* ActionModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActionModel.swift; sourceTree = "<group>"; };
+		5BC05461B308F8C28F386368 /* AddObjectiveSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddObjectiveSheet.swift; sourceTree = "<group>"; };
+		5BECAAE9C51B69F316A57166 /* Sounds */ = {isa = PBXFileReference; lastKnownFileType = folder; name = Sounds; path = GlavenGame/Resources/Sounds; sourceTree = SOURCE_ROOT; };
+		5C3F8355E887FAF9952D826E /* GameObjectiveContainer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameObjectiveContainer.swift; sourceTree = "<group>"; };
+		5C4706EED3DEA7BFB9DAD13C /* InteractiveActionsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InteractiveActionsView.swift; sourceTree = "<group>"; };
+		5D581F71B3F53FBB364E1E22 /* Fonts */ = {isa = PBXFileReference; lastKnownFileType = folder; name = Fonts; path = GlavenGame/Resources/Fonts; sourceTree = SOURCE_ROOT; };
+		5E3252016F044D305E5F9AD4 /* GamePhase.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GamePhase.swift; sourceTree = "<group>"; };
+		5E6E7163EA81B6FEA0C1F76D /* SummonTurnController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SummonTurnController.swift; sourceTree = "<group>"; };
+		5E87241399CFC4024A082E20 /* AddSummonSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddSummonSheet.swift; sourceTree = "<group>"; };
+		5F921AE521FD17686B09BE95 /* ItemDetailSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ItemDetailSheet.swift; sourceTree = "<group>"; };
+		61565EFB4C520E3836D050C4 /* SettingsManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsManager.swift; sourceTree = "<group>"; };
+		61963BCD4E4EB2BCD3E9201C /* Images */ = {isa = PBXFileReference; lastKnownFileType = folder; name = Images; path = GlavenGame/Resources/Images; sourceTree = SOURCE_ROOT; };
+		62B50F3E4F848C40ED27A3A6 /* ScenarioHeaderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScenarioHeaderView.swift; sourceTree = "<group>"; };
+		640F58EE8E704179EBE9CF1B /* RemoteEditionData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RemoteEditionData.swift; sourceTree = "<group>"; };
+		6618A23E3A76170B0AC51F61 /* MonsterView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MonsterView.swift; sourceTree = "<group>"; };
+		6837034E843BAFF4AB496C8A /* EditionData */ = {isa = PBXFileReference; lastKnownFileType = folder; name = EditionData; path = GlavenGame/Resources/EditionData; sourceTree = SOURCE_ROOT; };
+		68C151233315A41E7A116BF5 /* IntOrString.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IntOrString.swift; sourceTree = "<group>"; };
+		69054202832ECCDDB26C8B2B /* AttackModifierManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AttackModifierManager.swift; sourceTree = "<group>"; };
+		6911D16FDC2CF2B049586221 /* GlavenTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GlavenTheme.swift; sourceTree = "<group>"; };
+		6AA0FE435E44248DE2AE31A8 /* TileGrids.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TileGrids.swift; sourceTree = "<group>"; };
+		6B4DA2419C815421AF728C58 /* LootManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LootManager.swift; sourceTree = "<group>"; };
+		6B783381A55497EC0CE02DFD /* HexCoord.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HexCoord.swift; sourceTree = "<group>"; };
+		6BB5848795BA4ADF8305822D /* HexGridView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HexGridView.swift; sourceTree = "<group>"; };
+		6DC0AE3639F6C6E004323D24 /* ObjectiveManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ObjectiveManager.swift; sourceTree = "<group>"; };
+		6DD7C9704EEC9D2DBAB09937 /* LevelManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LevelManager.swift; sourceTree = "<group>"; };
+		6F8289B98BDEB6A290C5EA08 /* ActionHistorySheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActionHistorySheet.swift; sourceTree = "<group>"; };
+		7050B86E677EE171AD0A3573 /* ScenarioMarkerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScenarioMarkerView.swift; sourceTree = "<group>"; };
+		711FE580594A6A4BA30EF999 /* BattleGoalSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BattleGoalSheet.swift; sourceTree = "<group>"; };
+		731574AB55168285AE451F48 /* PartyStatisticsSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PartyStatisticsSheet.swift; sourceTree = "<group>"; };
+		75C223FE093334EB47476FA0 /* UIScale.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UIScale.swift; sourceTree = "<group>"; };
+		773EDD0EFA56B12B34CB32AB /* TreasureRewardParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TreasureRewardParser.swift; sourceTree = "<group>"; };
+		78DCD8429185EF58A68330B4 /* CharacterStatModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CharacterStatModel.swift; sourceTree = "<group>"; };
+		794BBAB32F951E4614E23099 /* RoundManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RoundManager.swift; sourceTree = "<group>"; };
+		7E0C1D4AA6F0D3063582A41E /* LootType.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LootType.swift; sourceTree = "<group>"; };
+		7E42AAC4476BD282FFB171A7 /* CharacterEditorSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CharacterEditorSheet.swift; sourceTree = "<group>"; };
+		7EBC365D268B4E38F018A1A1 /* TreasuresToolSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TreasuresToolSheet.swift; sourceTree = "<group>"; };
+		801070F455D526484677E5B2 /* RandomMonsterCardsToolSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RandomMonsterCardsToolSheet.swift; sourceTree = "<group>"; };
+		81C28FB339301A6F83C1744B /* SummonState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SummonState.swift; sourceTree = "<group>"; };
+		823696473CDB48C445E1EA56 /* SummonView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SummonView.swift; sourceTree = "<group>"; };
+		8255DC95DDC21DBA25280177 /* ElementModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ElementModel.swift; sourceTree = "<group>"; };
+		8255E1A8F1CC6DC84CBFD242 /* ElementBoardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ElementBoardView.swift; sourceTree = "<group>"; };
+		82F3F558C6B05ACE0A4DFB1F /* EntityConditionState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EntityConditionState.swift; sourceTree = "<group>"; };
+		83845896587772B83CB3E6B8 /* Loot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Loot.swift; sourceTree = "<group>"; };
+		843CD4A48C04247D50F3C39A /* AttackModifierDeckDialog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AttackModifierDeckDialog.swift; sourceTree = "<group>"; };
+		851B045DDF55EA0BAE7BC954 /* WelcomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WelcomeView.swift; sourceTree = "<group>"; };
+		8631B220635598C0A14D982C /* BoardBuilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BoardBuilder.swift; sourceTree = "<group>"; };
+		880CE3020A2D75F0D0F81B01 /* AddMonsterSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddMonsterSheet.swift; sourceTree = "<group>"; };
+		889E9E03A546F9863470E6EB /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		89BFBD0BF33F1C6C51403AC2 /* StandeePickerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StandeePickerView.swift; sourceTree = "<group>"; };
+		8A1F3360FC927B90953116E2 /* GameManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameManager.swift; sourceTree = "<group>"; };
+		8A2BBA0188C2D10D81CAC68B /* PlayerTurnController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerTurnController.swift; sourceTree = "<group>"; };
+		8D6EF0D247FFAB61CF85325F /* AttackModifierToolSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AttackModifierToolSheet.swift; sourceTree = "<group>"; };
+		8DC43DEE8B38C661B7401300 /* ScenarioStatsManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScenarioStatsManager.swift; sourceTree = "<group>"; };
+		8FCE30544909B82F328FB715 /* StandeeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StandeeView.swift; sourceTree = "<group>"; };
+		927D27803802AD81536EA860 /* GameState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameState.swift; sourceTree = "<group>"; };
+		93501E1A8B09C90B3224D4E6 /* BoardState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BoardState.swift; sourceTree = "<group>"; };
+		96B5B3B671FF141F5F296A83 /* EntityCondition.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EntityCondition.swift; sourceTree = "<group>"; };
+		972A40BE4DE4A8FA037B3C54 /* BoardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BoardView.swift; sourceTree = "<group>"; };
+		972ABF0E93841851FFA1C998 /* GameSnapshot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameSnapshot.swift; sourceTree = "<group>"; };
+		9768805A47D8A289C8196C81 /* AttackModifierSelectSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AttackModifierSelectSheet.swift; sourceTree = "<group>"; };
+		9972ED9B698C56E59CD11765 /* ElementView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ElementView.swift; sourceTree = "<group>"; };
+		99F03C82524246E2BEF40702 /* ScenarioChartSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScenarioChartSheet.swift; sourceTree = "<group>"; };
+		9A1E8BD30619BCC05B982C5E /* RandomScenarioSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RandomScenarioSheet.swift; sourceTree = "<group>"; };
+		9A52E7B1A950562EF505A524 /* ScenarioData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScenarioData.swift; sourceTree = "<group>"; };
+		9B20A66E6858A80A48AE4288 /* GlavenGame.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = GlavenGame.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		9E6A2CFAF5C759FC39E1C802 /* EntityManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EntityManager.swift; sourceTree = "<group>"; };
+		A1A7ABCB8A94A25F4373E580 /* ScenarioSetupView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScenarioSetupView.swift; sourceTree = "<group>"; };
+		A2B1EE90F304F9FD4FAFABF4 /* ScenarioRulesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScenarioRulesView.swift; sourceTree = "<group>"; };
+		A30E472AAD62BB67AE83169C /* ActionsManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActionsManager.swift; sourceTree = "<group>"; };
+		A61085FE2C898425387309FD /* AttackModifierType.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AttackModifierType.swift; sourceTree = "<group>"; };
+		A84E6B64709515FDF720A62E /* MonsterEditorSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MonsterEditorSheet.swift; sourceTree = "<group>"; };
+		A9AACECDE0618EDE4BA3C17E /* AttackModifierDeckView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AttackModifierDeckView.swift; sourceTree = "<group>"; };
+		AB1B617FED39015D1033829C /* CharacterItemsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CharacterItemsView.swift; sourceTree = "<group>"; };
+		AC4BEBEF0D48AC6F54D3F19F /* Condition.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Condition.swift; sourceTree = "<group>"; };
+		ACD0296E9F2F457629B8CC13 /* InitiativeToolSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InitiativeToolSheet.swift; sourceTree = "<group>"; };
+		AD2078C38F909FF5A2F71A7B /* GameSetupView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameSetupView.swift; sourceTree = "<group>"; };
+		ADC60986430A5DFFAA4EEAC9 /* PartySheetView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PartySheetView.swift; sourceTree = "<group>"; };
+		AE4FE04C5C22C618D1AB2170 /* GameMonster.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameMonster.swift; sourceTree = "<group>"; };
+		B1ACB336DBBEBE992BE2288A /* SupportedLocale.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SupportedLocale.swift; sourceTree = "<group>"; };
+		B2E660BE81DE1921DF78A167 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		B336093B187D6833D7EF5868 /* BattleGoalData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BattleGoalData.swift; sourceTree = "<group>"; };
+		B51600241E3FA2BFF4794581 /* EnhancementSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EnhancementSheet.swift; sourceTree = "<group>"; };
+		B600B1213ADD3BA7A385CA3F /* GlavenGame.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GlavenGame.swift; sourceTree = "<group>"; };
+		B68078059B320305C837EE03 /* CharacterData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CharacterData.swift; sourceTree = "<group>"; };
+		B7798A528E121E03660CD19D /* LootDeckToolSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LootDeckToolSheet.swift; sourceTree = "<group>"; };
+		B84551835BADF4DA5F602FA6 /* MonsterStatModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MonsterStatModel.swift; sourceTree = "<group>"; };
+		B881C2715E0BC0457CC00B37 /* SavedGameModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SavedGameModel.swift; sourceTree = "<group>"; };
+		B90AB17781FA04ADADF656EB /* PreferencesSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreferencesSheet.swift; sourceTree = "<group>"; };
+		BA81DDD9366A51A3A52F3C1B /* PerkType.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PerkType.swift; sourceTree = "<group>"; };
+		BCA279443E59250573E9D370 /* LogoView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LogoView.swift; sourceTree = "<group>"; };
+		BD400435469819EE1EB795D9 /* AboutSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AboutSheet.swift; sourceTree = "<group>"; };
+		C03684D92E27E6D64CDEF9C0 /* ActionValueType.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActionValueType.swift; sourceTree = "<group>"; };
+		C0429C07F7DA0462F801132A /* GameSummon.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameSummon.swift; sourceTree = "<group>"; };
+		C124CDA0F843E56DFEB9254F /* ConditionName.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConditionName.swift; sourceTree = "<group>"; };
+		C13507E0E83D6C7F041CC9EA /* ScenarioSelectionSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScenarioSelectionSheet.swift; sourceTree = "<group>"; };
+		C27216A8BF9D29A97C3B588D /* ElementState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ElementState.swift; sourceTree = "<group>"; };
+		C4B5DE1CCC42A105EA251124 /* ScenarioMaps */ = {isa = PBXFileReference; lastKnownFileType = folder; name = ScenarioMaps; path = GlavenGame/Resources/ScenarioMaps; sourceTree = SOURCE_ROOT; };
+		C567728A83844732D31F3F5F /* ItemData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ItemData.swift; sourceTree = "<group>"; };
+		C5ACBCD4EE9EF90BEC9F2752 /* ScenarioMapBuilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScenarioMapBuilder.swift; sourceTree = "<group>"; };
+		C6F0345B431E777E05BD49D6 /* LineOfSight.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LineOfSight.swift; sourceTree = "<group>"; };
+		C71E84426D2ABC0169A5F5B5 /* RoomRevealSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RoomRevealSheet.swift; sourceTree = "<group>"; };
+		C75AAD9571D2AFCF48AB0DA9 /* EditionEditorSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EditionEditorSheet.swift; sourceTree = "<group>"; };
+		C82D7D3F3E55EB3B59588102 /* EntityMenuView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EntityMenuView.swift; sourceTree = "<group>"; };
+		C8C9B002AD05945036550A91 /* MonsterAI.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MonsterAI.swift; sourceTree = "<group>"; };
+		C9ECD4B608FAFAC66D31A536 /* WorldMapView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorldMapView.swift; sourceTree = "<group>"; };
+		CB48D739CDC747D7E15DB194 /* GameCharacter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameCharacter.swift; sourceTree = "<group>"; };
+		CEBB2CD9E70D5ABFA126923B /* MonsterTurnController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MonsterTurnController.swift; sourceTree = "<group>"; };
+		CF8DD0E2645A4142BBD870E7 /* AbilityModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AbilityModel.swift; sourceTree = "<group>"; };
+		CFAA9E252523C44A71593CDF /* ItemShopSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ItemShopSheet.swift; sourceTree = "<group>"; };
+		D03F121DA5C0D73D10ACA65D /* MonsterAbilitySheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MonsterAbilitySheet.swift; sourceTree = "<group>"; };
+		D179B38E24E3F8EE01027D33 /* SpriteKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SpriteKit.framework; path = System/Library/Frameworks/SpriteKit.framework; sourceTree = SDKROOT; };
+		D1EA85C028A0AFE294D1CD52 /* Scenario.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Scenario.swift; sourceTree = "<group>"; };
+		D43BC428DB53E9EC54ECA21C /* CombatResolver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CombatResolver.swift; sourceTree = "<group>"; };
+		D509FC90D805FC2585C9C743 /* AttackModifierEffectType.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AttackModifierEffectType.swift; sourceTree = "<group>"; };
+		D5883A3D9378A826BF8AA541 /* ConditionType.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConditionType.swift; sourceTree = "<group>"; };
+		D8061256B05214AFDCC77E42 /* RetirementSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RetirementSheet.swift; sourceTree = "<group>"; };
+		D8D120B1CEE8FA85B7939897 /* Pathfinder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Pathfinder.swift; sourceTree = "<group>"; };
+		D904BC0B3126218EAF6115AE /* RoundButtonView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RoundButtonView.swift; sourceTree = "<group>"; };
+		D9682A31C9693AB6DADDC9F6 /* AppPhase.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppPhase.swift; sourceTree = "<group>"; };
+		DA5E6D17711BE40800C3537F /* PersonalQuestData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PersonalQuestData.swift; sourceTree = "<group>"; };
+		DAB7109B2A99838DA4616059 /* DecksViewerSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DecksViewerSheet.swift; sourceTree = "<group>"; };
+		DAF0FC6C2F01CFD4173515AC /* CharacterClass.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CharacterClass.swift; sourceTree = "<group>"; };
+		DCC5DD17CCF9E224A30CC1B4 /* ElementType.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ElementType.swift; sourceTree = "<group>"; };
+		DD73A01447A2167AF7A93D4D /* MonsterType.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MonsterType.swift; sourceTree = "<group>"; };
+		DD9B9D4203B3CFD7D307E4EE /* PieceSpriteNode.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PieceSpriteNode.swift; sourceTree = "<group>"; };
+		DE6924302112D3289A7BD212 /* LootApplySheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LootApplySheet.swift; sourceTree = "<group>"; };
+		DFC1E01834BD13B87726B39E /* FigureProtocol.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FigureProtocol.swift; sourceTree = "<group>"; };
+		E0A5A39A4A7174364A7FEFEF /* ScenarioConclusionSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScenarioConclusionSheet.swift; sourceTree = "<group>"; };
+		E27EBD6725F30431BE4E7FA3 /* ImageLoader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageLoader.swift; sourceTree = "<group>"; };
+		E586DBAB0A81F185665CA7C7 /* RandomMonsterCardSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RandomMonsterCardSheet.swift; sourceTree = "<group>"; };
+		E76A7095C8D371EF8B0F04D2 /* ScenarioManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScenarioManager.swift; sourceTree = "<group>"; };
+		E8D071F764DE7E9AEA23ABA4 /* CardFlipView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CardFlipView.swift; sourceTree = "<group>"; };
+		EAE86DAD4E6E4F72291C7DEC /* MonsterStatsSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MonsterStatsSheet.swift; sourceTree = "<group>"; };
+		EBA2DD6BC94018062A83C98A /* AttackModifierValueType.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AttackModifierValueType.swift; sourceTree = "<group>"; };
+		EBE9E8D46F66914CB111FEC5 /* Enhancement.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Enhancement.swift; sourceTree = "<group>"; };
+		EDC143FDF77FBA3DB287A62E /* TimerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TimerView.swift; sourceTree = "<group>"; };
+		EE7A5D242A634ED5AAB5C0BA /* HandManagementSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HandManagementSheet.swift; sourceTree = "<group>"; };
+		EFAF7312A61CA28A484AE10E /* EntityValueFunction.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EntityValueFunction.swift; sourceTree = "<group>"; };
+		F17A8B9072E36DC8A7F4D9F0 /* CharacterView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CharacterView.swift; sourceTree = "<group>"; };
+		F32D8ED53532637A9DB0B648 /* MonsterManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MonsterManager.swift; sourceTree = "<group>"; };
+		F3712E3EBCEBABF1F36B1927 /* ScenarioMapSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScenarioMapSheet.swift; sourceTree = "<group>"; };
+		F392142C72301A9031A7BCDB /* TreasureLootSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TreasureLootSheet.swift; sourceTree = "<group>"; };
+		F4B2AAB322CBC33EEE910FBB /* FontLoader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FontLoader.swift; sourceTree = "<group>"; };
+		F504B60F3ECB989CA47A55AE /* ConditionsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConditionsView.swift; sourceTree = "<group>"; };
+		F6788E5A9839E00B97E24EDB /* PersonalQuestView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PersonalQuestView.swift; sourceTree = "<group>"; };
+		F805D55AFA13C6542B5A3261 /* InitiativeInputView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InitiativeInputView.swift; sourceTree = "<group>"; };
+		F8B5E90FCBB673FE26E9699E /* EditionDataStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EditionDataStore.swift; sourceTree = "<group>"; };
+		FA8BD6F44CA703162D48586C /* SettingsModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsModel.swift; sourceTree = "<group>"; };
+		FBAB6F2FABE873245AC4CCA2 /* CampaignLogEntry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CampaignLogEntry.swift; sourceTree = "<group>"; };
+		FBB6CC6422C046711137938C /* MonsterData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MonsterData.swift; sourceTree = "<group>"; };
+		FBE537F6F81289C6EEB5CDAD /* SummonColor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SummonColor.swift; sourceTree = "<group>"; };
+		FC6052E53C0E7221AF076DF1 /* NumberPickerSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NumberPickerSheet.swift; sourceTree = "<group>"; };
+		FC8D6BF7B24F45BABD529CA7 /* FigureType.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FigureType.swift; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		2457CD23ABABB2AC0DEFB55B /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				58B78A9C18B111E273D6FB08 /* SpriteKit.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		1342548B78DD9C498F581744 /* Footer */ = {
+			isa = PBXGroup;
+			children = (
+				42374DD85E631755D52BD747 /* AttackModifierCardView.swift */,
+				843CD4A48C04247D50F3C39A /* AttackModifierDeckDialog.swift */,
+				A9AACECDE0618EDE4BA3C17E /* AttackModifierDeckView.swift */,
+				169F364E5167294B011ACEFA /* FooterView.swift */,
+				2F55692096B1C438FC27495E /* LevelDisplayView.swift */,
+				DE6924302112D3289A7BD212 /* LootApplySheet.swift */,
+				4CC400C04C45823B038513D4 /* LootCardView.swift */,
+				3A61C3B64DFD88B472B3864F /* LootDeckView.swift */,
+				D904BC0B3126218EAF6115AE /* RoundButtonView.swift */,
+				EDC143FDF77FBA3DB287A62E /* TimerView.swift */,
+			);
+			path = Footer;
+			sourceTree = "<group>";
+		};
+		13BAA7578E964E6D72063A05 /* Shared */ = {
+			isa = PBXGroup;
+			children = (
+				F504B60F3ECB989CA47A55AE /* ConditionsView.swift */,
+				C82D7D3F3E55EB3B59588102 /* EntityMenuView.swift */,
+				41199D358483FF3FC45E220B /* HealthBarView.swift */,
+				489BD5310CDB34BB081591D8 /* ObjectiveContainerView.swift */,
+			);
+			path = Shared;
+			sourceTree = "<group>";
+		};
+		144CE0676BBCE12AEFB2FAF9 = {
+			isa = PBXGroup;
+			children = (
+				59BB047B07D1F118633A3DAF /* CardImages */,
+				6837034E843BAFF4AB496C8A /* EditionData */,
+				5D581F71B3F53FBB364E1E22 /* Fonts */,
+				61963BCD4E4EB2BCD3E9201C /* Images */,
+				C4B5DE1CCC42A105EA251124 /* ScenarioMaps */,
+				5BECAAE9C51B69F316A57166 /* Sounds */,
+				964F43B777B8DE5656449842 /* GlavenGame */,
+				1CF0208DDB9A6E58E67E94A1 /* Frameworks */,
+				69C68D59E371D38DD2000B43 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		1BAEAF33F0FAFDE5D2D2D999 /* Character */ = {
+			isa = PBXGroup;
+			children = (
+				0EA8798471A1F92D1345582E /* AbilityCardsSheet.swift */,
+				5E87241399CFC4024A082E20 /* AddSummonSheet.swift */,
+				711FE580594A6A4BA30EF999 /* BattleGoalSheet.swift */,
+				044E76ECD856E2EDE10BDBFC /* CharacterDetailSection.swift */,
+				31D7B310F39F77DCBBDF4AC6 /* CharacterFullView.swift */,
+				48C2C89D891BD98C87B15AC7 /* CharacterSheetView.swift */,
+				F17A8B9072E36DC8A7F4D9F0 /* CharacterView.swift */,
+				B51600241E3FA2BFF4794581 /* EnhancementSheet.swift */,
+				EE7A5D242A634ED5AAB5C0BA /* HandManagementSheet.swift */,
+				F805D55AFA13C6542B5A3261 /* InitiativeInputView.swift */,
+				35C054964C875669475982EF /* PerkSheet.swift */,
+				F6788E5A9839E00B97E24EDB /* PersonalQuestView.swift */,
+				D8061256B05214AFDCC77E42 /* RetirementSheet.swift */,
+				823696473CDB48C445E1EA56 /* SummonView.swift */,
+			);
+			path = Character;
+			sourceTree = "<group>";
+		};
+		1CF0208DDB9A6E58E67E94A1 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				D179B38E24E3F8EE01027D33 /* SpriteKit.framework */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
+		1D84E4FEBC94B8E7FA1D2A5D /* Previews */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			path = Previews;
+			sourceTree = "<group>";
+		};
+		227A3064E6D684967F7C3C60 /* Dialogs */ = {
+			isa = PBXGroup;
+			children = (
+				BD400435469819EE1EB795D9 /* AboutSheet.swift */,
+				6F8289B98BDEB6A290C5EA08 /* ActionHistorySheet.swift */,
+				0574A66B4DC4532439B5BD52 /* AddCharacterSheet.swift */,
+				880CE3020A2D75F0D0F81B01 /* AddMonsterSheet.swift */,
+				5BC05461B308F8C28F386368 /* AddObjectiveSheet.swift */,
+				9768805A47D8A289C8196C81 /* AttackModifierSelectSheet.swift */,
+				301F1DCE616E216C56604344 /* DebugSheet.swift */,
+				14A76C61DCD182FB32D64AC1 /* FullscreenCardView.swift */,
+				07ECCB9BD8C25458C3B2EB53 /* KeyboardShortcutsSheet.swift */,
+				47B5D11910EE81B42CCBF0C3 /* LootDeckSheet.swift */,
+				04E1CC18C7B4198FA2F7B0C6 /* MoveResourcesSheet.swift */,
+				FC6052E53C0E7221AF076DF1 /* NumberPickerSheet.swift */,
+				E586DBAB0A81F185665CA7C7 /* RandomMonsterCardSheet.swift */,
+				422B96003824AE1E41CF473C /* SaveSlotsSheet.swift */,
+			);
+			path = Dialogs;
+			sourceTree = "<group>";
+		};
+		22ECA3A7C3DF537E94F746A9 /* Enums */ = {
+			isa = PBXGroup;
+			children = (
+				01D2EFBD8378EDAFC3F215CF /* ActionType.swift */,
+				C03684D92E27E6D64CDEF9C0 /* ActionValueType.swift */,
+				D9682A31C9693AB6DADDC9F6 /* AppPhase.swift */,
+				D509FC90D805FC2585C9C743 /* AttackModifierEffectType.swift */,
+				A61085FE2C898425387309FD /* AttackModifierType.swift */,
+				EBA2DD6BC94018062A83C98A /* AttackModifierValueType.swift */,
+				DAF0FC6C2F01CFD4173515AC /* CharacterClass.swift */,
+				C124CDA0F843E56DFEB9254F /* ConditionName.swift */,
+				D5883A3D9378A826BF8AA541 /* ConditionType.swift */,
+				C27216A8BF9D29A97C3B588D /* ElementState.swift */,
+				DCC5DD17CCF9E224A30CC1B4 /* ElementType.swift */,
+				555D2D675B4FF87CD4AB2430 /* EnhancementSlotType.swift */,
+				82F3F558C6B05ACE0A4DFB1F /* EntityConditionState.swift */,
+				FC8D6BF7B24F45BABD529CA7 /* FigureType.swift */,
+				5E3252016F044D305E5F9AD4 /* GamePhase.swift */,
+				7E0C1D4AA6F0D3063582A41E /* LootType.swift */,
+				DD73A01447A2167AF7A93D4D /* MonsterType.swift */,
+				BA81DDD9366A51A3A52F3C1B /* PerkType.swift */,
+				FBE537F6F81289C6EEB5CDAD /* SummonColor.swift */,
+				81C28FB339301A6F83C1744B /* SummonState.swift */,
+				B1ACB336DBBEBE992BE2288A /* SupportedLocale.swift */,
+			);
+			path = Enums;
+			sourceTree = "<group>";
+		};
+		2C227AE6F13718DB3A33256D /* Persistence */ = {
+			isa = PBXGroup;
+			children = (
+				B881C2715E0BC0457CC00B37 /* SavedGameModel.swift */,
+				FA8BD6F44CA703162D48586C /* SettingsModel.swift */,
+			);
+			path = Persistence;
+			sourceTree = "<group>";
+		};
+		36A77BA3A7D9FB3E6FA67F86 /* EditionData */ = {
+			isa = PBXGroup;
+			children = (
+				B336093B187D6833D7EF5868 /* BattleGoalData.swift */,
+				B68078059B320305C837EE03 /* CharacterData.swift */,
+				1BFD0B71E6987E420B5CBA91 /* DeckData.swift */,
+				F8B5E90FCBB673FE26E9699E /* EditionDataStore.swift */,
+				524F8A9CD2904FC63166A232 /* EditionInfo.swift */,
+				C567728A83844732D31F3F5F /* ItemData.swift */,
+				FBB6CC6422C046711137938C /* MonsterData.swift */,
+				DA5E6D17711BE40800C3537F /* PersonalQuestData.swift */,
+				640F58EE8E704179EBE9CF1B /* RemoteEditionData.swift */,
+				9A52E7B1A950562EF505A524 /* ScenarioData.swift */,
+				2A76D126F0BA77D9B298FE07 /* ScenarioRule.swift */,
+			);
+			path = EditionData;
+			sourceTree = "<group>";
+		};
+		4236EB75BB1FC9AD2760A009 /* WorldMap */ = {
+			isa = PBXGroup;
+			children = (
+				4901D882DBB4A4409384EE90 /* ScenarioMapDetailView.swift */,
+				7050B86E677EE171AD0A3573 /* ScenarioMarkerView.swift */,
+				C9ECD4B608FAFAC66D31A536 /* WorldMapView.swift */,
+			);
+			path = WorldMap;
+			sourceTree = "<group>";
+		};
+		45867543A9804613CA71D357 /* Utilities */ = {
+			isa = PBXGroup;
+			children = (
+				52347FEF6FA67664FBF7BF1A /* BundleHelper.swift */,
+				EFAF7312A61CA28A484AE10E /* EntityValueFunction.swift */,
+				F4B2AAB322CBC33EEE910FBB /* FontLoader.swift */,
+				6911D16FDC2CF2B049586221 /* GlavenTheme.swift */,
+				10C608B0B9CEFDBCA152D834 /* HexMath.swift */,
+				E27EBD6725F30431BE4E7FA3 /* ImageLoader.swift */,
+				192975CBA7A72969B78836A7 /* SoundPlayer.swift */,
+				773EDD0EFA56B12B34CB32AB /* TreasureRewardParser.swift */,
+				75C223FE093334EB47476FA0 /* UIScale.swift */,
+			);
+			path = Utilities;
+			sourceTree = "<group>";
+		};
+		63AB4E822ACEB9ECA0736936 /* Protocols */ = {
+			isa = PBXGroup;
+			children = (
+				4A36D7C42F715C8F0B91A909 /* EntityProtocol.swift */,
+				DFC1E01834BD13B87726B39E /* FigureProtocol.swift */,
+			);
+			path = Protocols;
+			sourceTree = "<group>";
+		};
+		64A0D40F873AFB63942E5D4D /* Views */ = {
+			isa = PBXGroup;
+			children = (
+				2DCD6E622ADAFAA13D8D936F /* GameBoardView.swift */,
+				AD2078C38F909FF5A2F71A7B /* GameSetupView.swift */,
+				4840A613B6DC796BF25638E0 /* MainMenuView.swift */,
+				851B045DDF55EA0BAE7BC954 /* WelcomeView.swift */,
+				227A3064E6D684967F7C3C60 /* Dialogs */,
+				C641B4FBC49E70B2D7FE83EA /* Editors */,
+				FFE5F7E058CB9F9443DB1BC5 /* Figures */,
+				1342548B78DD9C498F581744 /* Footer */,
+				6E5C7CC41AE5066FC6C0DFBD /* Header */,
+				DBC6DF2FAC07BAFBADE1EB47 /* Items */,
+				99DF1ABCA8FF5C4053FD2315 /* Party */,
+				EB4C41004BA52146C20A178C /* Scenario */,
+				E0439E1E8B989D683832C64B /* Settings */,
+				84D79D37BA72FAEC40A2B914 /* Shared */,
+				A6F8C9C2827C0623EDEB3B30 /* Tools */,
+				4236EB75BB1FC9AD2760A009 /* WorldMap */,
+			);
+			path = Views;
+			sourceTree = "<group>";
+		};
+		69C68D59E371D38DD2000B43 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				9B20A66E6858A80A48AE4288 /* GlavenGame.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		6E5C7CC41AE5066FC6C0DFBD /* Header */ = {
+			isa = PBXGroup;
+			children = (
+				8255E1A8F1CC6DC84CBFD242 /* ElementBoardView.swift */,
+				9972ED9B698C56E59CD11765 /* ElementView.swift */,
+				52913A04AE6B4D7BDB9D8416 /* HeaderView.swift */,
+			);
+			path = Header;
+			sourceTree = "<group>";
+		};
+		80A83C696E30154845A3E481 /* Monster */ = {
+			isa = PBXGroup;
+			children = (
+				5C4706EED3DEA7BFB9DAD13C /* InteractiveActionsView.swift */,
+				D03F121DA5C0D73D10ACA65D /* MonsterAbilitySheet.swift */,
+				2128F7307DB50A597FD504DB /* MonsterAbilityView.swift */,
+				EAE86DAD4E6E4F72291C7DEC /* MonsterStatsSheet.swift */,
+				6618A23E3A76170B0AC51F61 /* MonsterView.swift */,
+				89BFBD0BF33F1C6C51403AC2 /* StandeePickerView.swift */,
+				8FCE30544909B82F328FB715 /* StandeeView.swift */,
+			);
+			path = Monster;
+			sourceTree = "<group>";
+		};
+		82BB44B459593491B8A03E0A /* Snapshots */ = {
+			isa = PBXGroup;
+			children = (
+				972ABF0E93841851FFA1C998 /* GameSnapshot.swift */,
+				0DDDFB389ED2AF2B57163276 /* SnapshotConversions.swift */,
+			);
+			path = Snapshots;
+			sourceTree = "<group>";
+		};
+		84D79D37BA72FAEC40A2B914 /* Shared */ = {
+			isa = PBXGroup;
+			children = (
+				E8D071F764DE7E9AEA23ABA4 /* CardFlipView.swift */,
+				6BB5848795BA4ADF8305822D /* HexGridView.swift */,
+				BCA279443E59250573E9D370 /* LogoView.swift */,
+			);
+			path = Shared;
+			sourceTree = "<group>";
+		};
+		87CB9AB1F821566DCFE8075D /* Models */ = {
+			isa = PBXGroup;
+			children = (
+				CB48D739CDC747D7E15DB194 /* GameCharacter.swift */,
+				AE4FE04C5C22C618D1AB2170 /* GameMonster.swift */,
+				5C3F8355E887FAF9952D826E /* GameObjectiveContainer.swift */,
+				927D27803802AD81536EA860 /* GameState.swift */,
+				C0429C07F7DA0462F801132A /* GameSummon.swift */,
+				D1EA85C028A0AFE294D1CD52 /* Scenario.swift */,
+				36A77BA3A7D9FB3E6FA67F86 /* EditionData */,
+				22ECA3A7C3DF537E94F746A9 /* Enums */,
+				2C227AE6F13718DB3A33256D /* Persistence */,
+				63AB4E822ACEB9ECA0736936 /* Protocols */,
+				ECB1AA9F153522DA7746BD09 /* ScenarioMap */,
+				82BB44B459593491B8A03E0A /* Snapshots */,
+				8AF307F7044E41A6C5CDDBDD /* Structs */,
+			);
+			path = Models;
+			sourceTree = "<group>";
+		};
+		8AF307F7044E41A6C5CDDBDD /* Structs */ = {
+			isa = PBXGroup;
+			children = (
+				CF8DD0E2645A4142BBD870E7 /* AbilityModel.swift */,
+				59E565958F3C44D1E550A407 /* ActionModel.swift */,
+				3E998CE7344F97D1E3E79A74 /* AttackModifier.swift */,
+				3D21E983F2C6A9DB30620F8A /* AttackModifierDeck.swift */,
+				0FC6F5BE3E5D03329D3B8837 /* AttackModifierEffect.swift */,
+				FBAB6F2FABE873245AC4CCA2 /* CampaignLogEntry.swift */,
+				78DCD8429185EF58A68330B4 /* CharacterStatModel.swift */,
+				AC4BEBEF0D48AC6F54D3F19F /* Condition.swift */,
+				8255DC95DDC21DBA25280177 /* ElementModel.swift */,
+				EBE9E8D46F66914CB111FEC5 /* Enhancement.swift */,
+				96B5B3B671FF141F5F296A83 /* EntityCondition.swift */,
+				68C151233315A41E7A116BF5 /* IntOrString.swift */,
+				83845896587772B83CB3E6B8 /* Loot.swift */,
+				42FD5AE1094742574DC0C0B9 /* LootDeck.swift */,
+				B84551835BADF4DA5F602FA6 /* MonsterStatModel.swift */,
+				58FD5F7A5D954BE508CF69F0 /* PerkModel.swift */,
+				0A1B2D12EE16E139A1784E2B /* SummonDataModel.swift */,
+			);
+			path = Structs;
+			sourceTree = "<group>";
+		};
+		95ED271686CF9F591B2DE100 /* Engine */ = {
+			isa = PBXGroup;
+			children = (
+				8631B220635598C0A14D982C /* BoardBuilder.swift */,
+				33A6C1188659B67AC3B2FFC8 /* BoardSnapshot.swift */,
+				93501E1A8B09C90B3224D4E6 /* BoardState.swift */,
+				D43BC428DB53E9EC54ECA21C /* CombatResolver.swift */,
+				11CBAC9F034879BB91B54D73 /* HexCell.swift */,
+				6B783381A55497EC0CE02DFD /* HexCoord.swift */,
+				C6F0345B431E777E05BD49D6 /* LineOfSight.swift */,
+				C8C9B002AD05945036550A91 /* MonsterAI.swift */,
+				D8D120B1CEE8FA85B7939897 /* Pathfinder.swift */,
+				33CE037572CCD1CC45F5F131 /* PieceID.swift */,
+				4476120A6229F3C2DAD4CF5C /* SummonAI.swift */,
+			);
+			path = Engine;
+			sourceTree = "<group>";
+		};
+		964F43B777B8DE5656449842 /* GlavenGame */ = {
+			isa = PBXGroup;
+			children = (
+				889E9E03A546F9863470E6EB /* Assets.xcassets */,
+				B2E660BE81DE1921DF78A167 /* ContentView.swift */,
+				B600B1213ADD3BA7A385CA3F /* GlavenGame.swift */,
+				BFA3176D704649056EE95821 /* Board */,
+				95ED271686CF9F591B2DE100 /* Engine */,
+				F6072024E09B50F62660F09A /* Managers */,
+				87CB9AB1F821566DCFE8075D /* Models */,
+				1D84E4FEBC94B8E7FA1D2A5D /* Previews */,
+				45867543A9804613CA71D357 /* Utilities */,
+				64A0D40F873AFB63942E5D4D /* Views */,
+			);
+			path = GlavenGame;
+			sourceTree = "<group>";
+		};
+		99DF1ABCA8FF5C4053FD2315 /* Party */ = {
+			isa = PBXGroup;
+			children = (
+				ADC60986430A5DFFAA4EEAC9 /* PartySheetView.swift */,
+				731574AB55168285AE451F48 /* PartyStatisticsSheet.swift */,
+				2EBB792CA3175EA209873B2E /* PartyTreasuresSheet.swift */,
+			);
+			path = Party;
+			sourceTree = "<group>";
+		};
+		A6F8C9C2827C0623EDEB3B30 /* Tools */ = {
+			isa = PBXGroup;
+			children = (
+				8D6EF0D247FFAB61CF85325F /* AttackModifierToolSheet.swift */,
+				DAB7109B2A99838DA4616059 /* DecksViewerSheet.swift */,
+				ACD0296E9F2F457629B8CC13 /* InitiativeToolSheet.swift */,
+				B7798A528E121E03660CD19D /* LootDeckToolSheet.swift */,
+				801070F455D526484677E5B2 /* RandomMonsterCardsToolSheet.swift */,
+				7EBC365D268B4E38F018A1A1 /* TreasuresToolSheet.swift */,
+			);
+			path = Tools;
+			sourceTree = "<group>";
+		};
+		BFA3176D704649056EE95821 /* Board */ = {
+			isa = PBXGroup;
+			children = (
+				14ABB7C34DDD57BF9162EA76 /* AbilityCardView.swift */,
+				06273638779D4902224E1602 /* BoardCoordinator.swift */,
+				1E5BE6C620EBFDD27F7F98C0 /* BoardScene.swift */,
+				972A40BE4DE4A8FA037B3C54 /* BoardView.swift */,
+				4C2B76831C29EEA9CE98F5A8 /* CardSelectionPanel.swift */,
+				CEBB2CD9E70D5ABFA126923B /* MonsterTurnController.swift */,
+				DD9B9D4203B3CFD7D307E4EE /* PieceSpriteNode.swift */,
+				8A2BBA0188C2D10D81CAC68B /* PlayerTurnController.swift */,
+				5E6E7163EA81B6FEA0C1F76D /* SummonTurnController.swift */,
+			);
+			path = Board;
+			sourceTree = "<group>";
+		};
+		C641B4FBC49E70B2D7FE83EA /* Editors */ = {
+			isa = PBXGroup;
+			children = (
+				0A0AEB962D1B4A44FBDD0D36 /* ActionEditorView.swift */,
+				7E42AAC4476BD282FFB171A7 /* CharacterEditorSheet.swift */,
+				381A91AFE63021B058D87DF0 /* DeckEditorSheet.swift */,
+				C75AAD9571D2AFCF48AB0DA9 /* EditionEditorSheet.swift */,
+				A84E6B64709515FDF720A62E /* MonsterEditorSheet.swift */,
+			);
+			path = Editors;
+			sourceTree = "<group>";
+		};
+		DBC6DF2FAC07BAFBADE1EB47 /* Items */ = {
+			isa = PBXGroup;
+			children = (
+				AB1B617FED39015D1033829C /* CharacterItemsView.swift */,
+				50767A7BE617A46073BD3099 /* ItemBrowserSheet.swift */,
+				5F921AE521FD17686B09BE95 /* ItemDetailSheet.swift */,
+				CFAA9E252523C44A71593CDF /* ItemShopSheet.swift */,
+				2F1FBB1AD51894B397BF3857 /* RandomItemSheet.swift */,
+			);
+			path = Items;
+			sourceTree = "<group>";
+		};
+		E0439E1E8B989D683832C64B /* Settings */ = {
+			isa = PBXGroup;
+			children = (
+				B90AB17781FA04ADADF656EB /* PreferencesSheet.swift */,
+			);
+			path = Settings;
+			sourceTree = "<group>";
+		};
+		EB4C41004BA52146C20A178C /* Scenario */ = {
+			isa = PBXGroup;
+			children = (
+				9A1E8BD30619BCC05B982C5E /* RandomScenarioSheet.swift */,
+				C71E84426D2ABC0169A5F5B5 /* RoomRevealSheet.swift */,
+				99F03C82524246E2BEF40702 /* ScenarioChartSheet.swift */,
+				E0A5A39A4A7174364A7FEFEF /* ScenarioConclusionSheet.swift */,
+				62B50F3E4F848C40ED27A3A6 /* ScenarioHeaderView.swift */,
+				F3712E3EBCEBABF1F36B1927 /* ScenarioMapSheet.swift */,
+				A2B1EE90F304F9FD4FAFABF4 /* ScenarioRulesView.swift */,
+				C13507E0E83D6C7F041CC9EA /* ScenarioSelectionSheet.swift */,
+				A1A7ABCB8A94A25F4373E580 /* ScenarioSetupView.swift */,
+				269E644840BF690712FCF429 /* ScenarioStatsView.swift */,
+				F392142C72301A9031A7BCDB /* TreasureLootSheet.swift */,
+			);
+			path = Scenario;
+			sourceTree = "<group>";
+		};
+		ECB1AA9F153522DA7746BD09 /* ScenarioMap */ = {
+			isa = PBXGroup;
+			children = (
+				C5ACBCD4EE9EF90BEC9F2752 /* ScenarioMapBuilder.swift */,
+				6AA0FE435E44248DE2AE31A8 /* TileGrids.swift */,
+				46C86055EE9207207274F6C6 /* VGBScenarioData.swift */,
+			);
+			path = ScenarioMap;
+			sourceTree = "<group>";
+		};
+		F6072024E09B50F62660F09A /* Managers */ = {
+			isa = PBXGroup;
+			children = (
+				A30E472AAD62BB67AE83169C /* ActionsManager.swift */,
+				69054202832ECCDDB26C8B2B /* AttackModifierManager.swift */,
+				0A945DF49A79FBC6C6FE4B3C /* CharacterManager.swift */,
+				3477ACD63A2C3231A799AB39 /* EnhancementsManager.swift */,
+				9E6A2CFAF5C759FC39E1C802 /* EntityManager.swift */,
+				8A1F3360FC927B90953116E2 /* GameManager.swift */,
+				015914F204A6A1A5CD04676F /* ItemManager.swift */,
+				6DD7C9704EEC9D2DBAB09937 /* LevelManager.swift */,
+				6B4DA2419C815421AF728C58 /* LootManager.swift */,
+				F32D8ED53532637A9DB0B648 /* MonsterManager.swift */,
+				6DC0AE3639F6C6E004323D24 /* ObjectiveManager.swift */,
+				794BBAB32F951E4614E23099 /* RoundManager.swift */,
+				E76A7095C8D371EF8B0F04D2 /* ScenarioManager.swift */,
+				0449386EC7763E37AF9AB2A4 /* ScenarioMapStore.swift */,
+				0C19CA805C2464F3FAC37E07 /* ScenarioRulesManager.swift */,
+				8DC43DEE8B38C661B7401300 /* ScenarioStatsManager.swift */,
+				61565EFB4C520E3836D050C4 /* SettingsManager.swift */,
+			);
+			path = Managers;
+			sourceTree = "<group>";
+		};
+		FFE5F7E058CB9F9443DB1BC5 /* Figures */ = {
+			isa = PBXGroup;
+			children = (
+				1BAEAF33F0FAFDE5D2D2D999 /* Character */,
+				80A83C696E30154845A3E481 /* Monster */,
+				13BAA7578E964E6D72063A05 /* Shared */,
+			);
+			path = Figures;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		E6093EF1FA438F14913D3DDF /* GlavenGame */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 14BFD9E7530DB193EE563E27 /* Build configuration list for PBXNativeTarget "GlavenGame" */;
+			buildPhases = (
+				B6DD30B34362D577328D8E8C /* Sources */,
+				86B0C2F5B2F9FF2EDFC3D60F /* Resources */,
+				2457CD23ABABB2AC0DEFB55B /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = GlavenGame;
+			packageProductDependencies = (
+			);
+			productName = GlavenGame;
+			productReference = 9B20A66E6858A80A48AE4288 /* GlavenGame.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		49D49DAA3E8E0982EC776A88 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1600;
+			};
+			buildConfigurationList = ECB87F9B69F3D03673221F77 /* Build configuration list for PBXProject "GlavenGame" */;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+			);
+			mainGroup = 144CE0676BBCE12AEFB2FAF9;
+			minimizedProjectReferenceProxies = 1;
+			preferredProjectObjectVersion = 77;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				E6093EF1FA438F14913D3DDF /* GlavenGame */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		86B0C2F5B2F9FF2EDFC3D60F /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				E6C7F5CFC3EF0AE5E5353ACA /* Assets.xcassets in Resources */,
+				EEA4E83E55E0054C52800227 /* CardImages in Resources */,
+				DBCECD3BAD657A5840A2F80A /* EditionData in Resources */,
+				800B52D79643E5CB76B64F29 /* Fonts in Resources */,
+				56F7F45058EC84B733850E68 /* Images in Resources */,
+				892B9BF7411972FD0C1157E4 /* ScenarioMaps in Resources */,
+				2F566A6470A02867165748EC /* Sounds in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		B6DD30B34362D577328D8E8C /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A2F0171C14292FA97E954CDA /* AbilityCardView.swift in Sources */,
+				F8EF92F34C6388C428209DFF /* AbilityCardsSheet.swift in Sources */,
+				CF2FDBA6BAD0B1C947FEAB87 /* AbilityModel.swift in Sources */,
+				4A04E1172772853B9D0415D3 /* AboutSheet.swift in Sources */,
+				B71FFD4185C4AD3708AEE550 /* ActionEditorView.swift in Sources */,
+				9DB6D601D46BFC77F4E2F90D /* ActionHistorySheet.swift in Sources */,
+				02EC4A22B06CA1C1138D5CEB /* ActionModel.swift in Sources */,
+				03A389CA770501F9BD252F73 /* ActionType.swift in Sources */,
+				348B45E0F8996A22336E276D /* ActionValueType.swift in Sources */,
+				AE36609C9943107272FEE51A /* ActionsManager.swift in Sources */,
+				F358195F53B1C931B0DF9DDE /* AddCharacterSheet.swift in Sources */,
+				EA239D8884EBEB95DD674EA6 /* AddMonsterSheet.swift in Sources */,
+				4F5DF3D8EB08B61CF06FBBF0 /* AddObjectiveSheet.swift in Sources */,
+				70ED7EF93BBAB2D679DBC654 /* AddSummonSheet.swift in Sources */,
+				8CB0FFF5B997D068B2D99954 /* AppPhase.swift in Sources */,
+				4270F50EFBD54ADD461ECF50 /* AttackModifier.swift in Sources */,
+				8A8AE9C25AFA67C4AFF49C9B /* AttackModifierCardView.swift in Sources */,
+				AF3F2201E31B145FBC2FF948 /* AttackModifierDeck.swift in Sources */,
+				828A6DFBE3E8960CA00A142F /* AttackModifierDeckDialog.swift in Sources */,
+				55B0274BFF5C9D9F6695BF55 /* AttackModifierDeckView.swift in Sources */,
+				F17A476C81A0AF631F04BA09 /* AttackModifierEffect.swift in Sources */,
+				48EF2D85E0A4E375FFF1EAD2 /* AttackModifierEffectType.swift in Sources */,
+				7E83CFF586BC1BDCB1ADFF2A /* AttackModifierManager.swift in Sources */,
+				8D0C7E06BB091C8839D6723A /* AttackModifierSelectSheet.swift in Sources */,
+				7040C212B735B223FAD5C9A3 /* AttackModifierToolSheet.swift in Sources */,
+				CE2F33E4166D8E902FF97C90 /* AttackModifierType.swift in Sources */,
+				27BECA66EE2165B380748F33 /* AttackModifierValueType.swift in Sources */,
+				4DB872F6360BA26177F0CD27 /* BattleGoalData.swift in Sources */,
+				725EB803E644190074A0CB60 /* BattleGoalSheet.swift in Sources */,
+				916FFE7F8E38E482DBC83A94 /* BoardBuilder.swift in Sources */,
+				24867CD051F861D7479B3148 /* BoardCoordinator.swift in Sources */,
+				593ED53896934CF7F83863D3 /* BoardScene.swift in Sources */,
+				34E52CCA39FF59F3296B5135 /* BoardSnapshot.swift in Sources */,
+				9B0C1F1811587190DFECF3B7 /* BoardState.swift in Sources */,
+				DC76BF79136B777FBBE43EED /* BoardView.swift in Sources */,
+				3D70D4B36FC1C27F8205C998 /* BundleHelper.swift in Sources */,
+				000550603398D6EC31B12E45 /* CampaignLogEntry.swift in Sources */,
+				2030EFD6151939DC6F7AFEED /* CardFlipView.swift in Sources */,
+				264672DD5FA11BF550313E8D /* CardSelectionPanel.swift in Sources */,
+				9BF3482C20F2CC41F462F7AC /* CharacterClass.swift in Sources */,
+				0417E8BE5AF938F0EB4F01DB /* CharacterData.swift in Sources */,
+				680EA88127D4C30C0BF8D50D /* CharacterDetailSection.swift in Sources */,
+				4D5A2B0C1435C8DC0EE6A6B7 /* CharacterEditorSheet.swift in Sources */,
+				86BD53B5B7FFD63C9EEFEAC2 /* CharacterFullView.swift in Sources */,
+				C20C2F095EEAA5871F1BFBF9 /* CharacterItemsView.swift in Sources */,
+				ABF77D86E73182CD257DCEC8 /* CharacterManager.swift in Sources */,
+				3CA51576B5FF4BF353869396 /* CharacterSheetView.swift in Sources */,
+				F182555B5F77F1B49251EEFE /* CharacterStatModel.swift in Sources */,
+				967A0144509F8F48CCF36F4B /* CharacterView.swift in Sources */,
+				75DF0BB6FC95C99A2DB187DC /* CombatResolver.swift in Sources */,
+				46C7E8752AD96F15E7F9AF89 /* Condition.swift in Sources */,
+				CFB8201374A8A759A8C032A9 /* ConditionName.swift in Sources */,
+				3EB5A309C4C479EFF33646F6 /* ConditionType.swift in Sources */,
+				4120712738BDF3001B571449 /* ConditionsView.swift in Sources */,
+				6645399904C7D8DEC468F308 /* ContentView.swift in Sources */,
+				7EA3413FBD0C440E5CE281B6 /* DebugSheet.swift in Sources */,
+				D4E7121201A9D615F5FC0D37 /* DeckData.swift in Sources */,
+				D6FC3C4BEE20DFD5C76C7308 /* DeckEditorSheet.swift in Sources */,
+				3FBCF26F0423909E5CEE6891 /* DecksViewerSheet.swift in Sources */,
+				0189C8521C2CE8D61A03028B /* EditionDataStore.swift in Sources */,
+				2F5F780EA637CDD97D941E26 /* EditionEditorSheet.swift in Sources */,
+				3E98EAEF5EC4BBC1C9A488CA /* EditionInfo.swift in Sources */,
+				7341D050CFF3F51B1A40A8D0 /* ElementBoardView.swift in Sources */,
+				48BC7EC9071DEE0C42DED128 /* ElementModel.swift in Sources */,
+				0919DBA057F7F5E67358F0DB /* ElementState.swift in Sources */,
+				F281285B9F8642504EBF952F /* ElementType.swift in Sources */,
+				E64FC53CA3E919734FCCDBF9 /* ElementView.swift in Sources */,
+				1E105B509AA9841848BDC003 /* Enhancement.swift in Sources */,
+				EF911B315A3F4940D9A3010E /* EnhancementSheet.swift in Sources */,
+				29AAA0498618366B61CE6DBA /* EnhancementSlotType.swift in Sources */,
+				43170E8E4353FA170EAEF8D5 /* EnhancementsManager.swift in Sources */,
+				21FA5E07EC8A712DE13F6A66 /* EntityCondition.swift in Sources */,
+				5936AD0A4AD401DF4B97D987 /* EntityConditionState.swift in Sources */,
+				7E0A4C8A93D25AE344CB0A4D /* EntityManager.swift in Sources */,
+				8333BC2726EC938DC20B41A3 /* EntityMenuView.swift in Sources */,
+				C7914CE29166A711DD59D56B /* EntityProtocol.swift in Sources */,
+				1CC69FD5D69AB9E38536A39E /* EntityValueFunction.swift in Sources */,
+				C48F34F6664799A0111E1C46 /* FigureProtocol.swift in Sources */,
+				295E3CA5EBFC6DCBD0A3E8BB /* FigureType.swift in Sources */,
+				3E40FB81D920E1696BBBF110 /* FontLoader.swift in Sources */,
+				61F752E27CA1EDB71977C98F /* FooterView.swift in Sources */,
+				A1B075227BCCF196AB2770BC /* FullscreenCardView.swift in Sources */,
+				51FAA98A4315A08DCD4AAF88 /* GameBoardView.swift in Sources */,
+				075D139C0B3F1851901A35A7 /* GameCharacter.swift in Sources */,
+				2C71220B18F6E20D48AF65A8 /* GameManager.swift in Sources */,
+				CDD4F85BC9EA33EA6415855E /* GameMonster.swift in Sources */,
+				CF488AC45A2FBA66D8D34D5A /* GameObjectiveContainer.swift in Sources */,
+				8556401DE6DDEC3B29A94C2E /* GamePhase.swift in Sources */,
+				28505E5DDFB320A07D8C5C9E /* GameSetupView.swift in Sources */,
+				3E34698497F6AB2DBE5CBA84 /* GameSnapshot.swift in Sources */,
+				BECDE7A9C337E991508726F4 /* GameState.swift in Sources */,
+				94C095768371C283CC23B948 /* GameSummon.swift in Sources */,
+				4D06962FD66D7469C2E754CD /* GlavenGame.swift in Sources */,
+				82BD2069DBF2BD8ABEBDC1B0 /* GlavenTheme.swift in Sources */,
+				5A48315CA6C348A033846121 /* HandManagementSheet.swift in Sources */,
+				21D859808D778CE5791AA2DB /* HeaderView.swift in Sources */,
+				6EF73C7D66CDA54CEB66DEAD /* HealthBarView.swift in Sources */,
+				C0E9C5B5B98F723E70B5A5BB /* HexCell.swift in Sources */,
+				F5A44407247D607BCAE13211 /* HexCoord.swift in Sources */,
+				2F807259DA42BCE506285C72 /* HexGridView.swift in Sources */,
+				C3941B681AC4B7D13D8E2526 /* HexMath.swift in Sources */,
+				CEB52ADC67373B8B77A407CD /* ImageLoader.swift in Sources */,
+				A899906EA9EAABA88896FE70 /* InitiativeInputView.swift in Sources */,
+				536F0F1A04CE1A7B9631044C /* InitiativeToolSheet.swift in Sources */,
+				2A06E26B553A030414E30208 /* IntOrString.swift in Sources */,
+				8463F26B53EAE2D33496C4CA /* InteractiveActionsView.swift in Sources */,
+				89492582E533D3195D22F02C /* ItemBrowserSheet.swift in Sources */,
+				BA1FC5F02BBBDDBA6ECDE2B3 /* ItemData.swift in Sources */,
+				B189530ED1928A8B077B6949 /* ItemDetailSheet.swift in Sources */,
+				C3E777BF9C09D52587AB7B2A /* ItemManager.swift in Sources */,
+				68A97D3FCA889DFB1E742B97 /* ItemShopSheet.swift in Sources */,
+				9846574892AF024EE04B3927 /* KeyboardShortcutsSheet.swift in Sources */,
+				3F3056CF40C9CDCC92CD35F4 /* LevelDisplayView.swift in Sources */,
+				3E28D23AFCD7CAC2E98470E4 /* LevelManager.swift in Sources */,
+				67DADD29FA79AA30D290637C /* LineOfSight.swift in Sources */,
+				B6DB78CBDC0541217E3000B2 /* LogoView.swift in Sources */,
+				35327ED25730D37C83C265A3 /* Loot.swift in Sources */,
+				DCA52BAE9A3FFEBFDF0B09A1 /* LootApplySheet.swift in Sources */,
+				B693C957C8B55DF15A1B6B1C /* LootCardView.swift in Sources */,
+				073D04E1650408AD4E345CD3 /* LootDeck.swift in Sources */,
+				FF3BE9A379F14D0429881C64 /* LootDeckSheet.swift in Sources */,
+				6B22D256C8B69DB1C2458D59 /* LootDeckToolSheet.swift in Sources */,
+				957B7E99DE00F7CD8641736F /* LootDeckView.swift in Sources */,
+				C4B13C1F7E443D08F6CDB37E /* LootManager.swift in Sources */,
+				F2423600BC981360B0C9093B /* LootType.swift in Sources */,
+				36769205F2999D17E959C581 /* MainMenuView.swift in Sources */,
+				E6E25B46F9DD8E50E5312036 /* MonsterAI.swift in Sources */,
+				B99BB3F32DDC19B592DC5DF1 /* MonsterAbilitySheet.swift in Sources */,
+				BE9CAB89C2BFB6443300A60C /* MonsterAbilityView.swift in Sources */,
+				9E4A518A086C85001C78A09B /* MonsterData.swift in Sources */,
+				A94208E729AD7FE4457676B9 /* MonsterEditorSheet.swift in Sources */,
+				A9667995FD7E67375AA587E3 /* MonsterManager.swift in Sources */,
+				D18A8958FB513FD0A1A027F7 /* MonsterStatModel.swift in Sources */,
+				EDCEEF6D8D554CC027BD3467 /* MonsterStatsSheet.swift in Sources */,
+				5F89475755C4F71171E0D9DD /* MonsterTurnController.swift in Sources */,
+				3E4E5CEA405BD2D43F7D1F26 /* MonsterType.swift in Sources */,
+				972557E3BC18B52A485C5487 /* MonsterView.swift in Sources */,
+				3526967A1B1504E38CA78A61 /* MoveResourcesSheet.swift in Sources */,
+				ADFC789951F452BCB2FBCA67 /* NumberPickerSheet.swift in Sources */,
+				C7467AA4D366288E22593174 /* ObjectiveContainerView.swift in Sources */,
+				6A2C001DDB53BA14D5172D8E /* ObjectiveManager.swift in Sources */,
+				B975922FF4C543F56ABDB18A /* PartySheetView.swift in Sources */,
+				F1559BA8DB41D38287C1201B /* PartyStatisticsSheet.swift in Sources */,
+				52B180966383A6C7FF8C8A45 /* PartyTreasuresSheet.swift in Sources */,
+				C649244AA1729CC191971BD6 /* Pathfinder.swift in Sources */,
+				AD628E167EA038B4F5134691 /* PerkModel.swift in Sources */,
+				64856107C663B7B362B7DDAF /* PerkSheet.swift in Sources */,
+				A7D194D704F818DCACAB3CCD /* PerkType.swift in Sources */,
+				EF65B14C5A82C7BD01A94907 /* PersonalQuestData.swift in Sources */,
+				5BBB61E7EDF1269CF6D4BA28 /* PersonalQuestView.swift in Sources */,
+				0EACFB0AB8BDFFCC7F591795 /* PieceID.swift in Sources */,
+				58612AEA8A8D852B5EEA2FEA /* PieceSpriteNode.swift in Sources */,
+				7E73D0A139DFBE1715DA1F44 /* PlayerTurnController.swift in Sources */,
+				C7A71268D4ED515FDA566884 /* PreferencesSheet.swift in Sources */,
+				71D683915BE726182F015D44 /* RandomItemSheet.swift in Sources */,
+				4F5770DEF0EF49285E1A983E /* RandomMonsterCardSheet.swift in Sources */,
+				BD44DF004014D2CDCC712270 /* RandomMonsterCardsToolSheet.swift in Sources */,
+				0904FDA347035E9094304892 /* RandomScenarioSheet.swift in Sources */,
+				93A57D1AE8095C6238BBB1D3 /* RemoteEditionData.swift in Sources */,
+				6E9F82F34C78A1EDC9C1598B /* RetirementSheet.swift in Sources */,
+				0ED8F49AA66E6EFF394D74FB /* RoomRevealSheet.swift in Sources */,
+				24FC35AAE4A705D3AF613024 /* RoundButtonView.swift in Sources */,
+				4B2BA4139D0D27B42EE7818E /* RoundManager.swift in Sources */,
+				4F40225C0F9D5F6D5493EAB0 /* SaveSlotsSheet.swift in Sources */,
+				C8BEF4631B318047240E63F6 /* SavedGameModel.swift in Sources */,
+				2B48DDA61518A823F10A6611 /* Scenario.swift in Sources */,
+				310D2CC3F25CF06B8BC2B77C /* ScenarioChartSheet.swift in Sources */,
+				3763EEB34ECABDBEA5739822 /* ScenarioConclusionSheet.swift in Sources */,
+				CC34ABA4C68311665619E8E3 /* ScenarioData.swift in Sources */,
+				52E0ADA8BFFF3AAD6661D81C /* ScenarioHeaderView.swift in Sources */,
+				A640E78853965C39A26632DA /* ScenarioManager.swift in Sources */,
+				29E366091BF30CC9A2AC85F9 /* ScenarioMapBuilder.swift in Sources */,
+				82234109FFEE89D34817A5C7 /* ScenarioMapDetailView.swift in Sources */,
+				7565ABBD5A2540499AF54879 /* ScenarioMapSheet.swift in Sources */,
+				8D637BC2C5EC03235144944A /* ScenarioMapStore.swift in Sources */,
+				15D2951A77CC1C086296F86D /* ScenarioMarkerView.swift in Sources */,
+				C2B13B3624B6F7A6EBA5D808 /* ScenarioRule.swift in Sources */,
+				0385D2502165BEC876DC27BD /* ScenarioRulesManager.swift in Sources */,
+				5D7C86C8790EF56EC97B4BDE /* ScenarioRulesView.swift in Sources */,
+				DFC9D0F4426EF99D1676F45D /* ScenarioSelectionSheet.swift in Sources */,
+				1CAA59210BA9710EE520B253 /* ScenarioSetupView.swift in Sources */,
+				C52021D67688A4B393246402 /* ScenarioStatsManager.swift in Sources */,
+				37CECBAD1AD6E0510AB08DDE /* ScenarioStatsView.swift in Sources */,
+				E19F2D8A9AF73489894C30F3 /* SettingsManager.swift in Sources */,
+				A9C41AC74B9185EF20659AE0 /* SettingsModel.swift in Sources */,
+				E01C9ECF3DF99F10CE9CA044 /* SnapshotConversions.swift in Sources */,
+				613E1571F485E87A36D138D1 /* SoundPlayer.swift in Sources */,
+				3E053A9B5CC8CEDB30255A1C /* StandeePickerView.swift in Sources */,
+				EA1E225C5D5505E47DB137D2 /* StandeeView.swift in Sources */,
+				A9717720E43E11FBB3CD0D59 /* SummonAI.swift in Sources */,
+				8EE54DF20EAC7C6985AD80B1 /* SummonColor.swift in Sources */,
+				9F4D69204E0728BBCBE1D5A0 /* SummonDataModel.swift in Sources */,
+				68B34A2D170B539CB4F7D79A /* SummonState.swift in Sources */,
+				F64F8FAF99B4F1F1C41AF2B9 /* SummonTurnController.swift in Sources */,
+				0462B9A53BB62EF54189348C /* SummonView.swift in Sources */,
+				A73BC3A80E80682370D626C6 /* SupportedLocale.swift in Sources */,
+				4D8A855BF0C689D5ED706822 /* TileGrids.swift in Sources */,
+				C52908C35A1F17E2655A08FB /* TimerView.swift in Sources */,
+				DD322F609614BE62080CCF73 /* TreasureLootSheet.swift in Sources */,
+				46B94503244BB10D9E14A9F0 /* TreasureRewardParser.swift in Sources */,
+				09CA0023236EE4715652F858 /* TreasuresToolSheet.swift in Sources */,
+				6DB6AB6ED57EBE6DBFCC2A33 /* UIScale.swift in Sources */,
+				9BBD35DFA813946BF409C447 /* VGBScenarioData.swift in Sources */,
+				96F6AD9C57E22A6ABF4609D7 /* WelcomeView.swift in Sources */,
+				7BC432AB3D70A08BFC5E87E7 /* WorldMapView.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		35947A46AB75E1BA89B0B592 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_IDENTITY = "-";
+				CURRENT_PROJECT_VERSION = 1;
+				INFOPLIST_KEY_CFBundleDisplayName = GlavenGame;
+				INFOPLIST_KEY_UIRequiresFullScreen = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.glaven.GlavenGame;
+				PRODUCT_NAME = GlavenGame;
+				SDKROOT = auto;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = YES;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		CAD5B46765521A363C2FC236 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = auto;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.10;
+			};
+			name = Debug;
+		};
+		E3D7B816082118DB5726A0CD /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_IDENTITY = "-";
+				CURRENT_PROJECT_VERSION = 1;
+				INFOPLIST_KEY_CFBundleDisplayName = GlavenGame;
+				INFOPLIST_KEY_UIRequiresFullScreen = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.glaven.GlavenGame;
+				PRODUCT_NAME = GlavenGame;
+				SDKROOT = auto;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		E763F5EC164ADD2E70373F91 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = auto;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.10;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		14BFD9E7530DB193EE563E27 /* Build configuration list for PBXNativeTarget "GlavenGame" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				35947A46AB75E1BA89B0B592 /* Debug */,
+				E3D7B816082118DB5726A0CD /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		ECB87F9B69F3D03673221F77 /* Build configuration list for PBXProject "GlavenGame" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				CAD5B46765521A363C2FC236 /* Debug */,
+				E763F5EC164ADD2E70373F91 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 49D49DAA3E8E0982EC776A88 /* Project object */;
+}

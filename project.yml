@@ -1,0 +1,64 @@
+name: GlavenGame
+options:
+  bundleIdPrefix: com.glaven
+  deploymentTarget:
+    macOS: "14.0"
+    iOS: "17.0"
+  xcodeVersion: "16.0"
+  generateEmptyDirectories: true
+
+settings:
+  base:
+    SWIFT_VERSION: "5.10"
+    GENERATE_INFOPLIST_FILE: true
+
+targets:
+  GlavenGame:
+    type: application
+    supportedDestinations: [macOS, iOS]
+    sources:
+      - path: GlavenGame
+        excludes:
+          - "Previews/**"
+          - "Resources/**"
+          - "Data/**"
+      - path: GlavenGame/Resources/EditionData
+        buildPhase: resources
+        type: folder
+      - path: GlavenGame/Resources/Images
+        buildPhase: resources
+        type: folder
+      - path: GlavenGame/Resources/Sounds
+        buildPhase: resources
+        type: folder
+      - path: GlavenGame/Resources/Fonts
+        buildPhase: resources
+        type: folder
+      - path: GlavenGame/Resources/ScenarioMaps
+        buildPhase: resources
+        type: folder
+      - path: GlavenGame/Resources/CardImages
+        buildPhase: resources
+        type: folder
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.glaven.GlavenGame
+        PRODUCT_NAME: GlavenGame
+        MARKETING_VERSION: "1.0"
+        CURRENT_PROJECT_VERSION: "1"
+        INFOPLIST_KEY_CFBundleDisplayName: GlavenGame
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        SWIFT_EMIT_LOC_STRINGS: true
+        CODE_SIGN_IDENTITY: "-"
+        # iPad only (not iPhone), landscape only
+        TARGETED_DEVICE_FAMILY: "1,2"
+        INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad: "UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight"
+        INFOPLIST_KEY_UIRequiresFullScreen: true
+      configs:
+        debug:
+          SWIFT_OPTIMIZATION_LEVEL: "-Onone"
+          SWIFT_ACTIVE_COMPILATION_CONDITIONS: DEBUG
+        release:
+          SWIFT_OPTIMIZATION_LEVEL: "-O"
+    dependencies:
+      - sdk: SpriteKit.framework

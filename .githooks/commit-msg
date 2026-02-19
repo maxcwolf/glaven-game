@@ -1,0 +1,39 @@
+#!/usr/bin/env bash
+#
+# Conventional Commits — commit-msg hook
+# Validates only the subject line (first line). Body is unrestricted.
+#
+# Setup: git config core.hooksPath .githooks
+#
+
+if [ -z "$1" ] || [ ! -f "$1" ]; then
+  echo "Usage: commit-msg <message-file>"
+  exit 1
+fi
+
+subject=$(head -1 "$1")
+
+# Allow merge commits
+if echo "$subject" | grep -qE '^Merge '; then
+  exit 0
+fi
+
+# Conventional commit pattern: type(optional-scope): description
+pattern='^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)(\([a-zA-Z0-9_-]+\))?!?: .+'
+
+if ! echo "$subject" | grep -qE "$pattern"; then
+  echo ""
+  echo "ERROR: Commit message does not follow Conventional Commits."
+  echo ""
+  echo "  Subject: $subject"
+  echo ""
+  echo "  Expected format: <type>(<scope>): <description>"
+  echo ""
+  echo "  Types: feat fix docs style refactor perf test build ci chore revert"
+  echo "  Examples:"
+  echo "    feat: add party sheet view"
+  echo "    fix(ui): correct condition icon rendering"
+  echo "    feat!: redesign save system"
+  echo ""
+  exit 1
+fi
