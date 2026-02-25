@@ -46,6 +46,10 @@ final class GameCharacter: Figure, Entity {
 
     // Items: stored as "edition-id" keys
     var items: [String] = []
+    /// Items that have been spent this scenario (flipped down; refreshed on long rest).
+    var spentItems: Set<String> = []
+    /// Items that have been consumed this scenario (removed until scenario end).
+    var consumedItems: Set<String> = []
 
     // Character sheet
     var notes: String = ""

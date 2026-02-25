@@ -142,7 +142,9 @@ extension GameCharacter {
             discardedCards: discardedCards,
             lostCards: lostCards,
             resources: resources,
-            enhancements: enhancements
+            enhancements: enhancements,
+            spentItems: spentItems.isEmpty ? nil : Array(spentItems),
+            consumedItems: consumedItems.isEmpty ? nil : Array(consumedItems)
         )
     }
 }
@@ -191,6 +193,8 @@ extension CharacterSnapshot {
         c.lostCards = lostCards
         c.resources = resources
         c.enhancements = enhancements
+        c.spentItems = Set(spentItems ?? [])
+        c.consumedItems = Set(consumedItems ?? [])
         return c
     }
 }

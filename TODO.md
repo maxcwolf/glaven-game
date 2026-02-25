@@ -239,7 +239,7 @@ Rules audit against the official Gloomhaven rulebook (133 GH scenarios). Organiz
 - [x] **`statEffects` rules** — `StatEffectRule`/`StatEffectData` models match actual JSON; `ScenarioRulesManager.applyScenarioStatEffects()` renames monsters, overrides decks, scales HP (Hx2/HxC formulas), adds immunities/stat actions; `MonsterManager.applyScenarioStatEffect()` applies to existing entities and persists for future spawns; snapshot serialization updated for backward compat
 - [x] **Hazardous terrain** — `checkForHazard()` deals `levelManager.terrain()` damage on enter (movement, push/pull) and at start-of-turn for both characters and monsters; flying figures immune; terrain persists
 - [x] **Push/Pull (monster attacks)** — attack sub-action push/pull (`pendingPush`/`pendingPull` on `MonsterTurnResult`) now executes via `BoardCoordinator.performPushPull()` (async, auto-executes or prompts player for direction); player-turn push/pull already worked
-- [ ] **Item use during turns** — items tracked/owned but can't be activated, spent, or refreshed during play
+- [x] **Item use during turns** — `spentItems`/`consumedItems` on `GameCharacter`; tapping items in `CharacterItemsView` toggles state; long rest clears spent; scenario end clears both; undo/redo safe
 - [ ] **AoE spatial patterns** — multi-target works by proximity but hex-shaped AoE (line, cone, burst) not evaluated
 - [ ] **Loot/coin pickup** — no end-of-turn auto-loot, no loot-action board collection; `lootTokens` board state exists but never triggers
 
@@ -272,6 +272,6 @@ Rules audit against the official Gloomhaven rulebook (133 GH scenarios). Organiz
 8. ~~Push/Pull forced movement~~ ✅ (monster attack sub-actions; top-level push on boss cards TBD)
 9. ~~Rolling modifiers in monster turns~~ ✅ (already worked via drawChain())
 10. ~~Hazardous terrain~~ ✅
-11. Item activation during turns
+11. ~~Item activation during turns~~ ✅
 12. Loot/coin pickup
 13. AoE spatial patterns

@@ -102,6 +102,8 @@ final class ScenarioManager {
             character.retaliate = []
             character.retaliatePersistent = []
             character.summons.removeAll()
+            character.spentItems.removeAll()
+            character.consumedItems.removeAll()
         }
 
         // Clear scenario state

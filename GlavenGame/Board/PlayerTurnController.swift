@@ -577,8 +577,9 @@ final class PlayerTurnController {
             character.lostCards.append(lostCard)
         }
 
-        // Refresh spent items
+        // Refresh spent items (consumed items remain until scenario end)
         character.longRest = true
+        character.spentItems.removeAll()
 
         coordinator.log("\(characterID): Long Rest — Heal 2, lose card, refresh items", category: .rest)
     }
