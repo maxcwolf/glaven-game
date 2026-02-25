@@ -104,6 +104,13 @@ final class MonsterTurnController {
             return
         }
 
+        // Start-of-turn hazardous terrain damage (if monster begins on a hazard)
+        if let currentPos = coordinator.boardState.piecePositions[result.entityID] {
+            coordinator.checkForHazard(pieceID: result.entityID, at: currentPos,
+                                        flying: monster.monsterData?.flying ?? false)
+            if entity.dead || entity.health <= 0 { return }
+        }
+
         // Movement
         if result.movementPath.count > 1 {
             let path = result.movementPath
@@ -119,14 +126,12 @@ final class MonsterTurnController {
                 }
             }
 
-            // Check if monster stepped on a trap
-            coordinator.checkForTrap(
-                pieceID: result.entityID,
-                at: path.last!,
-                flying: monster.monsterData?.flying ?? false
-            )
+            let isFlying = monster.monsterData?.flying ?? false
+            // Check if monster stepped on a trap or hazardous terrain
+            coordinator.checkForTrap(pieceID: result.entityID, at: path.last!, flying: isFlying)
+            coordinator.checkForHazard(pieceID: result.entityID, at: path.last!, flying: isFlying)
 
-            // If monster died from trap, skip the rest of this turn
+            // If monster died from trap/hazard, skip the rest of this turn
             if entity.dead || entity.health <= 0 { return }
         }
 

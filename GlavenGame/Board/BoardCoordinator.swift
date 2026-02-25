@@ -830,6 +830,13 @@ final class BoardCoordinator {
     /// Create the PlayerTurnController after summon turns complete.
     private func beginPlayerTurnAfterSummons(character: GameCharacter) {
         guard let gameManager = gameManager else { return }
+
+        // Start-of-turn hazardous terrain damage (if character begins their turn on a hazard)
+        let charPieceID = PieceID.character(character.id)
+        if let startPos = boardState.piecePositions[charPieceID] {
+            checkForHazard(pieceID: charPieceID, at: startPos, flying: false)
+        }
+
         let ptc = PlayerTurnController(
             characterID: character.id,
             coordinator: self,
@@ -965,8 +972,9 @@ final class BoardCoordinator {
             self?.interactionMode = .idle
             self?.log("\(pieceID): Moved to (\(target.col), \(target.row))", category: .move)
 
-            // Check if character stepped on a trap
+            // Check if character stepped on a trap or hazardous terrain
             self?.checkForTrap(pieceID: pieceID, at: target, flying: false)
+            self?.checkForHazard(pieceID: pieceID, at: target, flying: false)
 
             // Check if character stepped on a closed door
             self?.checkForDoorReveal(from: target)
@@ -1338,9 +1346,10 @@ final class BoardCoordinator {
                 // More steps remaining — recurse
                 self.beginPushPull(target: target, attackerPos: attackerPos, remainingSteps: stepsLeft, isPush: isPush)
             } else {
-                // All steps done — check for traps at final position, then finish
+                // All steps done — check for traps/hazards at final position, then finish
                 self.log("  \(target): \(label) to (\(destination.col), \(destination.row))", category: .move)
                 self.checkForTrap(pieceID: target, at: destination, flying: false)
+                self.checkForHazard(pieceID: target, at: destination, flying: false)
                 self.interactionMode = .idle
                 self.completePushPullAction()
             }
@@ -1440,6 +1449,19 @@ final class BoardCoordinator {
     /// Check if a piece landed on a trap and trigger it.
     /// Flying figures are immune to traps. Jumping figures trigger traps on the destination only
     /// (handled by the caller — intermediate hexes are skipped by Pathfinder).
+    /// Check if a piece is on hazardous terrain and apply damage. Hazards persist (not removed).
+    func checkForHazard(pieceID: PieceID, at coord: HexCoord, flying: Bool) {
+        guard !flying else { return }
+        guard let cell = boardState.cells[coord], cell.isHazard else { return }
+        guard let gameManager = gameManager else { return }
+
+        let damage = gameManager.levelManager.terrain()
+        applyTrapDamage(damage, to: pieceID, gameManager: gameManager)
+        boardScene?.pieceDamage(id: pieceID, amount: damage)
+        log("\(pieceID): Hazardous terrain — \(damage) damage", category: .damage)
+        checkTrapDeath(pieceID: pieceID, gameManager: gameManager)
+    }
+
     func checkForTrap(pieceID: PieceID, at coord: HexCoord, flying: Bool) {
         guard !flying else { return }
         guard let cell = boardState.cells[coord], cell.isTrap else { return }
