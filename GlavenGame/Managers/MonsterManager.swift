@@ -39,7 +39,12 @@ final class MonsterManager {
         let standeeNumber = number ?? nextStandeeNumber(for: monster, type: resolvedType)
         // Prevent duplicate numbers
         guard !monster.entities.contains(where: { !$0.dead && $0.number == standeeNumber }) else { return }
-        let hp = evaluateEntityValue(stat.health ?? .int(0), level: monster.level, characterCount: game.activeCharacters.count)
+        let charCount = game.activeCharacters.count
+        var hp = evaluateEntityValue(stat.health ?? .int(0), level: monster.level, characterCount: charCount)
+        // Apply scenario stat-effect health override
+        if let healthExpr = monster.statEffectHealthExpr {
+            hp = evaluateStatEffectHealth(healthExpr, baseHealth: hp, level: monster.level, charCount: charCount)
+        }
         let entity = GameMonsterEntity(
             number: standeeNumber,
             type: resolvedType,
@@ -49,6 +54,10 @@ final class MonsterManager {
         )
         if let immunities = stat.immunities {
             entity.immunities = immunities
+        }
+        // Apply scenario stat-effect immunities
+        for immunity in monster.additionalImmunities where !entity.immunities.contains(immunity) {
+            entity.immunities.append(immunity)
         }
         monster.entities.append(entity)
     }
@@ -81,7 +90,7 @@ final class MonsterManager {
     }
 
     func abilities(for monster: GameMonster) -> [AbilityModel] {
-        let deckName = monster.monsterData?.deck ?? monster.name
+        let deckName = monster.deckOverride ?? monster.monsterData?.deck ?? monster.name
         return editionStore.abilities(forDeck: deckName, edition: monster.edition)
     }
 
@@ -122,7 +131,7 @@ final class MonsterManager {
         monster.ability = -1
     }
 
-    /// Apply stat effects (shield, retaliate) from drawn ability card and base stats to all alive entities
+    /// Apply stat effects (shield, retaliate) from drawn ability card, base stats, and scenario overrides to all alive entities
     func applyStatEffects(for monster: GameMonster) {
         guard let ability = currentAbility(for: monster) else { return }
         let allActions = (ability.actions ?? []) + (ability.bottomActions ?? [])
@@ -135,11 +144,81 @@ final class MonsterManager {
                 }
             }
 
+            // Apply scenario stat-effect actions (e.g. poison added by scenario rule)
+            for action in monster.additionalStatActions {
+                applyStatAction(action, to: entity, persistent: true)
+            }
+
             // Apply ability card actions (round-based effects)
             for action in allActions {
                 applyStatAction(action, to: entity, persistent: ability.persistent == true)
             }
         }
+    }
+
+    /// Apply a scenario-rule stat effect to a monster (display name, deck, health, actions, immunities).
+    func applyScenarioStatEffect(_ effect: StatEffectData, to monster: GameMonster, charCount: Int) {
+        // 1. Name override → display name + ability deck if one exists under that name
+        if let name = effect.name {
+            monster.displayName = name
+            if effect.deck == nil {
+                let altAbilities = editionStore.abilities(forDeck: name, edition: monster.edition)
+                if !altAbilities.isEmpty {
+                    monster.deckOverride = name
+                    monster.abilities = Array(0..<altAbilities.count).shuffled()
+                    monster.ability = -1
+                }
+            }
+        }
+
+        // 2. Explicit deck override
+        if let deck = effect.deck {
+            monster.deckOverride = deck
+            let deckAbilities = editionStore.abilities(forDeck: deck, edition: monster.edition)
+            if !deckAbilities.isEmpty {
+                monster.abilities = Array(0..<deckAbilities.count).shuffled()
+                monster.ability = -1
+            }
+        }
+
+        // 3. Additional stat actions (replace so re-applying is idempotent)
+        if let actions = effect.actions {
+            monster.additionalStatActions = actions
+        }
+
+        // 4. Additional immunities (replace so re-applying is idempotent)
+        if let immunities = effect.immunities {
+            monster.additionalImmunities = immunities
+            for entity in monster.aliveEntities {
+                for immunity in immunities where !entity.immunities.contains(immunity) {
+                    entity.immunities.append(immunity)
+                }
+            }
+        }
+
+        // 5. Health formula override — apply to existing entities idempotently
+        if let healthExpr = effect.health {
+            monster.statEffectHealthExpr = healthExpr
+            monster.statEffectHealthAbsolute = effect.absolute ?? false
+            let resolvedCharCount = max(2, charCount)
+            for entity in monster.aliveEntities {
+                guard let stat = monster.stat(for: entity.type) else { continue }
+                let statBaseHP = evaluateEntityValue(stat.health ?? .int(0), level: monster.level,
+                                                      characterCount: resolvedCharCount)
+                let targetMax = evaluateStatEffectHealth(healthExpr, baseHealth: statBaseHP,
+                                                          level: monster.level, charCount: resolvedCharCount)
+                guard entity.maxHealth != targetMax else { continue }
+                let ratio = entity.maxHealth > 0 ? Double(entity.health) / Double(entity.maxHealth) : 1.0
+                entity.maxHealth = targetMax
+                entity.health = max(1, Int((Double(targetMax) * ratio).rounded()))
+            }
+        }
+    }
+
+    private func evaluateStatEffectHealth(_ expr: String, baseHealth: Int, level: Int, charCount: Int) -> Int {
+        // Substitute H = base health value, then evaluate using the standard expression evaluator.
+        let withH = expr.replacingOccurrences(of: "H", with: "\(baseHealth)")
+        return max(1, evaluateEntityValue(.string(withH), level: level, characterCount: charCount))
     }
 
     private func applyStatAction(_ action: ActionModel, to entity: GameMonsterEntity, persistent: Bool) {

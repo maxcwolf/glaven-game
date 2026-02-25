@@ -203,7 +203,12 @@ extension GameMonster {
             name: name, edition: edition, level: level, off: off, active: active,
             ability: ability, abilities: abilities,
             entities: entities.map { $0.toSnapshot() },
-            isAlly: isAlly, isAllied: isAllied, tags: tags, drawExtra: drawExtra
+            isAlly: isAlly, isAllied: isAllied, tags: tags, drawExtra: drawExtra,
+            displayName: displayName, deckOverride: deckOverride,
+            additionalStatActions: additionalStatActions.isEmpty ? nil : additionalStatActions,
+            additionalImmunities: additionalImmunities.isEmpty ? nil : additionalImmunities,
+            statEffectHealthExpr: statEffectHealthExpr,
+            statEffectHealthAbsolute: statEffectHealthAbsolute ? true : nil
         )
     }
 }
@@ -221,6 +226,12 @@ extension MonsterSnapshot {
         m.isAllied = isAllied
         m.tags = tags
         m.drawExtra = drawExtra
+        m.displayName = displayName
+        m.deckOverride = deckOverride
+        m.additionalStatActions = additionalStatActions ?? []
+        m.additionalImmunities = additionalImmunities ?? []
+        m.statEffectHealthExpr = statEffectHealthExpr
+        m.statEffectHealthAbsolute = statEffectHealthAbsolute ?? false
         return m
     }
 }

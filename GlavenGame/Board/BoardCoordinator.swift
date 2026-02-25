@@ -191,6 +191,9 @@ final class BoardCoordinator {
     /// Non-nil when an attack is waiting for the player to draw modifier card(s).
     var pendingModifierDraw: PendingModifierDraw?
 
+    /// Non-nil when a monster push/pull is in progress and the async caller is suspended.
+    private var pendingPushPullContinuation: CheckedContinuation<Void, Never>?
+
     /// Called from the draw overlay UI when the player confirms their drawn cards.
     func completeModifierDraw(selectedCards: [AttackModifier]) {
         let cont = pendingModifierDraw?.continuation
@@ -1275,7 +1278,7 @@ final class BoardCoordinator {
               let targetPos = boardState.piecePositions[target] else {
             // Done — restore idle and advance turn
             interactionMode = .idle
-            activePlayerTurn?.advanceAfterAsyncAction()
+            completePushPullAction()
             return
         }
 
@@ -1296,7 +1299,7 @@ final class BoardCoordinator {
             let label = isPush ? "Push" : "Pull"
             log("  \(target): No room to \(label) further", category: .move)
             interactionMode = .idle
-            activePlayerTurn?.advanceAfterAsyncAction()
+            completePushPullAction()
             return
         }
 
@@ -1339,8 +1342,28 @@ final class BoardCoordinator {
                 self.log("  \(target): \(label) to (\(destination.col), \(destination.row))", category: .move)
                 self.checkForTrap(pieceID: target, at: destination, flying: false)
                 self.interactionMode = .idle
-                self.activePlayerTurn?.advanceAfterAsyncAction()
+                self.completePushPullAction()
             }
+        }
+    }
+
+    /// Resume the active player turn OR the pending monster-turn push/pull continuation.
+    private func completePushPullAction() {
+        if let cont = pendingPushPullContinuation {
+            pendingPushPullContinuation = nil
+            cont.resume()
+        } else {
+            activePlayerTurn?.advanceAfterAsyncAction()
+        }
+    }
+
+    /// Asynchronously execute a push/pull for a monster turn. Suspends until the push/pull is fully
+    /// resolved (either auto-executed or after the player selects the direction).
+    func performPushPull(target: PieceID, attackerPos: HexCoord, steps: Int, isPush: Bool) async {
+        guard steps > 0, boardState.piecePositions[target] != nil else { return }
+        await withCheckedContinuation { [weak self] continuation in
+            self?.pendingPushPullContinuation = continuation
+            self?.beginPushPull(target: target, attackerPos: attackerPos, remainingSteps: steps, isPush: isPush)
         }
     }
 

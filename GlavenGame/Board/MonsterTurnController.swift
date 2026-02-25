@@ -230,6 +230,17 @@ final class MonsterTurnController {
                     if coordinator.scenarioResult != nil { return }
                 }
 
+                // Push/Pull: if target survived, apply from attack sub-actions
+                if !killed {
+                    guard let attackerPos = coordinator.boardState.piecePositions[result.entityID] else { break }
+                    if result.pendingPush > 0 {
+                        await coordinator.performPushPull(target: target, attackerPos: attackerPos, steps: result.pendingPush, isPush: true)
+                    }
+                    if result.pendingPull > 0 {
+                        await coordinator.performPushPull(target: target, attackerPos: attackerPos, steps: result.pendingPull, isPush: false)
+                    }
+                }
+
                 // Apply conditions to target
                 for condition in attackResult.appliedConditions {
                     switch target {

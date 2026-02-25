@@ -310,6 +310,13 @@ struct MonsterSnapshot: Codable {
     var isAllied: Bool
     var tags: [String]
     var drawExtra: Bool
+    // Scenario stat-effect overrides (optional for backward compatibility with saved games)
+    var displayName: String?
+    var deckOverride: String?
+    var additionalStatActions: [ActionModel]?
+    var additionalImmunities: [ConditionName]?
+    var statEffectHealthExpr: String?
+    var statEffectHealthAbsolute: Bool?
 }
 
 // MARK: - Monster Entity Snapshot

@@ -236,16 +236,16 @@ Rules audit against the official Gloomhaven rulebook (133 GH scenarios). Organiz
 - [x] **`permanentCondition` figure effect** — applies un-removable condition to entities (solo #14 hound→invisible)
 - [x] **`dormant`/`activate` figure effects** — toggle `entity.off` for deferred-spawn monsters (#3 Corrupted Laboratory)
 - [x] **Objective entity death** — `EntityManager.changeHealth` now sets `dead = true` on `GameObjectiveEntity` at 0 HP
-- [ ] **`statEffects` rules** — 10 scenarios use mid-scenario monster stat overrides (rename deck, scale HP, add abilities, add immunities); parsed but not applied
+- [x] **`statEffects` rules** — `StatEffectRule`/`StatEffectData` models match actual JSON; `ScenarioRulesManager.applyScenarioStatEffects()` renames monsters, overrides decks, scales HP (Hx2/HxC formulas), adds immunities/stat actions; `MonsterManager.applyScenarioStatEffect()` applies to existing entities and persists for future spawns; snapshot serialization updated for backward compat
 - [ ] **Hazardous terrain** — data exists on hexes but entering/passing does not deal damage
-- [ ] **Push/Pull** — action types exist, `CombatResolver` returns push/pull steps, but no forced movement is executed
+- [x] **Push/Pull (monster attacks)** — attack sub-action push/pull (`pendingPush`/`pendingPull` on `MonsterTurnResult`) now executes via `BoardCoordinator.performPushPull()` (async, auto-executes or prompts player for direction); player-turn push/pull already worked
 - [ ] **Item use during turns** — items tracked/owned but can't be activated, spent, or refreshed during play
 - [ ] **AoE spatial patterns** — multi-target works by proximity but hex-shaped AoE (line, cone, burst) not evaluated
 - [ ] **Loot/coin pickup** — no end-of-turn auto-loot, no loot-action board collection; `lootTokens` board state exists but never triggers
 
 ### Moderate — affects some scenarios or character builds
 
-- [ ] **Rolling modifiers in monster turns** — `rolling: true` field on cards exists but monster combat path does not chain-draw until a non-rolling card appears (interactive player draw handles this correctly)
+- [x] **Rolling modifiers in monster turns** — already handled: `AttackModifierDrawOverlay.drawChain()` auto-chains rolling cards for both player and monster draws
 - [ ] **Teleport** — treated as normal movement; should bypass all terrain and obstacles
 - [ ] **Jump movement in player UI** — pathfinding correctly treats intermediate hexes as passable, but no visual distinction in player turn UI
 - [ ] **Treasure rewards** — treasures can be marked looted but no actual gold/items distributed from `treasures.json` lookup
@@ -268,9 +268,9 @@ Rules audit against the official Gloomhaven rulebook (133 GH scenarios). Organiz
 4. ~~Scenario finish conditions~~ ✅
 5. ~~Figure triggers (dead/present/killed)~~ ✅
 6. ~~rooms-reveal, amAdd, dormant/activate, permanentCondition~~ ✅
-7. `statEffects` rules (10 scenarios, complex: rename deck, scale HP, add actions/immunities)
-8. Push/Pull forced movement
-9. Rolling modifiers in monster turns
+7. ~~`statEffects` rules~~ ✅
+8. ~~Push/Pull forced movement~~ ✅ (monster attack sub-actions; top-level push on boss cards TBD)
+9. ~~Rolling modifiers in monster turns~~ ✅ (already worked via drawChain())
 10. Hazardous terrain
 11. Item activation during turns
 12. Loot/coin pickup

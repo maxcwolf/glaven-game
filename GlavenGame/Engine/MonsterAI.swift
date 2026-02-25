@@ -21,6 +21,10 @@ struct MonsterTurnResult {
     let abilityActions: [ActionModel]
     /// The initiative of the ability card drawn.
     let initiative: Int
+    /// Push steps from attack sub-actions (applied to each attack target after damage).
+    let pendingPush: Int
+    /// Pull steps from attack sub-actions (applied to each attack target after damage).
+    let pendingPull: Int
 }
 
 /// Implements Gloomhaven's monster AI focus/movement algorithm.
@@ -50,7 +54,8 @@ enum MonsterAI {
                 entityID: pieceID, monsterName: monster.name, standeeNumber: standee,
                 movementPath: [], attackTargets: [], attackFromHex: nil,
                 focusTarget: nil, stunned: true, disarmed: false,
-                abilityActions: [], initiative: ability.initiative
+                abilityActions: [], initiative: ability.initiative,
+                pendingPush: 0, pendingPull: 0
             )
         }
 
@@ -63,7 +68,7 @@ enum MonsterAI {
         let baseRange = stat?.range?.intValue ?? 0
 
         // Parse ability card modifiers
-        let (moveModifier, attackModifier, rangeModifier, extraActions) = parseAbilityCard(ability)
+        let (moveModifier, attackModifier, rangeModifier, pushSteps, pullSteps, extraActions) = parseAbilityCard(ability)
 
         let totalMove = max(0, baseMove + moveModifier)
         let totalAttack = baseAttack + attackModifier
@@ -77,7 +82,8 @@ enum MonsterAI {
                 entityID: pieceID, monsterName: monster.name, standeeNumber: standee,
                 movementPath: [], attackTargets: [], attackFromHex: nil,
                 focusTarget: nil, stunned: false, disarmed: isDisarmed,
-                abilityActions: extraActions, initiative: ability.initiative
+                abilityActions: extraActions, initiative: ability.initiative,
+                pendingPush: 0, pendingPull: 0
             )
         }
 
@@ -104,7 +110,8 @@ enum MonsterAI {
                 entityID: pieceID, monsterName: monster.name, standeeNumber: standee,
                 movementPath: [], attackTargets: [], attackFromHex: nil,
                 focusTarget: nil, stunned: false, disarmed: isDisarmed,
-                abilityActions: extraActions, initiative: ability.initiative
+                abilityActions: extraActions, initiative: ability.initiative,
+                pendingPush: 0, pendingPull: 0
             )
         }
 
@@ -113,7 +120,8 @@ enum MonsterAI {
                 entityID: pieceID, monsterName: monster.name, standeeNumber: standee,
                 movementPath: [], attackTargets: [], attackFromHex: nil,
                 focusTarget: focus, stunned: false, disarmed: isDisarmed,
-                abilityActions: extraActions, initiative: ability.initiative
+                abilityActions: extraActions, initiative: ability.initiative,
+                pendingPush: 0, pendingPull: 0
             )
         }
 
@@ -173,7 +181,8 @@ enum MonsterAI {
             movementPath: movePath, attackTargets: attackTargets,
             attackFromHex: !attackTargets.isEmpty ? finalPos : nil,
             focusTarget: focus, stunned: false, disarmed: isDisarmed,
-            abilityActions: extraActions, initiative: ability.initiative
+            abilityActions: extraActions, initiative: ability.initiative,
+            pendingPush: pushSteps, pendingPull: pullSteps
         )
     }
 
@@ -454,11 +463,13 @@ enum MonsterAI {
         }
     }
 
-    /// Parse an ability card for move/attack/range modifiers and extra actions.
-    private static func parseAbilityCard(_ ability: AbilityModel) -> (move: Int, attack: Int, range: Int, extra: [ActionModel]) {
+    /// Parse an ability card for move/attack/range modifiers, push/pull steps, and extra actions.
+    private static func parseAbilityCard(_ ability: AbilityModel) -> (move: Int, attack: Int, range: Int, push: Int, pull: Int, extra: [ActionModel]) {
         var moveModifier = 0
         var attackModifier = 0
         var rangeModifier = 0
+        var pushSteps = 0
+        var pullSteps = 0
         var extraActions: [ActionModel] = []
 
         for action in ability.actions ?? [] {
@@ -471,10 +482,18 @@ enum MonsterAI {
                 if let val = action.value?.intValue {
                     attackModifier += applyValueType(val, action.valueType)
                 }
-                // Check subActions for range modifier
+                // Check subActions for range/push/pull modifiers
                 for sub in action.subActions ?? [] {
-                    if sub.type == .range, let val = sub.value?.intValue {
-                        rangeModifier += applyValueType(val, sub.valueType)
+                    switch sub.type {
+                    case .range:
+                        if let val = sub.value?.intValue {
+                            rangeModifier += applyValueType(val, sub.valueType)
+                        }
+                    case .push:
+                        if let val = sub.value?.intValue { pushSteps += val }
+                    case .pull:
+                        if let val = sub.value?.intValue { pullSteps += val }
+                    default: break
                     }
                 }
             case .range:
@@ -486,7 +505,7 @@ enum MonsterAI {
             }
         }
 
-        return (moveModifier, attackModifier, rangeModifier, extraActions)
+        return (moveModifier, attackModifier, rangeModifier, pushSteps, pullSteps, extraActions)
     }
 
     /// Apply a value type modifier.

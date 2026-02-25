@@ -192,9 +192,38 @@ struct RandomDungeonRule: Codable, Hashable {
 
 // MARK: - Stat Effect Rule
 
+/// Top-level entry in the `statEffects` array of a `ScenarioRule`.
 struct StatEffectRule: Codable, Hashable {
-    var name: String?               // monster name
-    var type: String?               // "normal", "elite", "boss"
-    var stat: String?               // stat to modify: "health", "attack", "movement", "range"
-    var value: IntOrString?
+    /// Which monsters/figures to target (uses the same identifier shape as figure rules).
+    var identifier: ScenarioFigureRuleIdentifier?
+    /// Optional condition that must hold for this effect to be applied (e.g. "Altar present").
+    var reference: StatEffectReference?
+    /// The actual stat modifications to apply.
+    var statEffect: StatEffectData?
+    var note: String?
+}
+
+/// Condition that gates a `StatEffectRule` (mirrors `ScenarioFigureRule` trigger semantics).
+struct StatEffectReference: Codable, Hashable {
+    var identifier: ScenarioFigureRuleIdentifier?
+    var type: String?   // "present", "dead", "killed"
+}
+
+/// The modifications to apply to matching monsters when a `StatEffectRule` fires.
+struct StatEffectData: Codable, Hashable {
+    /// Rename the monster (display name + ability deck, if a deck with this name exists).
+    var name: String?
+    /// Override the ability deck (independent of name rename).
+    var deck: String?
+    /// Health formula override, e.g. "Hx2", "HxC", "[Hx2]". H = base stat HP.
+    var health: String?
+    var movement: String?
+    var attack: String?
+    var range: String?
+    /// When true the health value is treated as absolute (not re-scaled relative to current HP).
+    var absolute: Bool?
+    /// Additional stat actions to add (e.g. poison condition, shield, custom text).
+    var actions: [ActionModel]?
+    /// Additional immunities to add to all entities.
+    var immunities: [ConditionName]?
 }

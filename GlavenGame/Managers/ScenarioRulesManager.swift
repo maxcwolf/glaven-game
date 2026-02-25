@@ -177,10 +177,48 @@ final class ScenarioRulesManager {
             }
         }
 
+        // Apply scenario stat effects (monster renames, health overrides, immunities, actions)
+        if let statEffects = rule.statEffects, !statEffects.isEmpty {
+            applyScenarioStatEffects(statEffects, edition: edition, playerCount: playerCount)
+        }
+
         // Finish condition — signal win or loss via the scenario object.
         // BoardCoordinator.checkVictoryDefeat() reads this on each call.
         if let finish = rule.finish, finish == "won" || finish == "lost" {
             scenario.pendingFinish = finish
+        }
+    }
+
+    // MARK: - Private: Stat Effects
+
+    private func applyScenarioStatEffects(_ effects: [StatEffectRule], edition: String, playerCount: Int) {
+        for effect in effects {
+            guard let identifier = effect.identifier,
+                  let statEffect = effect.statEffect else { continue }
+
+            // Check reference condition (e.g. "Altar present")
+            if let reference = effect.reference {
+                guard checkStatEffectReference(reference, edition: edition) else { continue }
+            }
+
+            let targetEdition = identifier.edition ?? edition
+            let namePattern = identifier.name ?? ".*"
+
+            for monster in game.monsters {
+                let editionMatches = identifier.edition == nil || monster.edition == targetEdition
+                guard editionMatches, matchesName(monster.name, pattern: namePattern) else { continue }
+                monsterManager.applyScenarioStatEffect(statEffect, to: monster, charCount: playerCount)
+            }
+        }
+    }
+
+    private func checkStatEffectReference(_ reference: StatEffectReference, edition: String) -> Bool {
+        guard let identifier = reference.identifier, let type = reference.type else { return true }
+        let targets = findTargets(identifier: identifier, edition: edition)
+        switch type {
+        case "present": return !targets.isEmpty
+        case "dead":    return targets.isEmpty
+        default:        return true
         }
     }
 

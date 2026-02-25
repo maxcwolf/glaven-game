@@ -24,6 +24,14 @@ final class GameMonster: Figure {
     // Reference to static data
     var monsterData: MonsterData?
 
+    // Scenario stat-effect overrides (set by ScenarioRulesManager)
+    var displayName: String?                        // display/UI name override
+    var deckOverride: String?                       // ability deck name override
+    var additionalStatActions: [ActionModel] = []   // extra persistent stat actions
+    var additionalImmunities: [ConditionName] = []  // extra immunities for all entities
+    var statEffectHealthExpr: String?               // health formula for new entities (e.g. "Hx2")
+    var statEffectHealthAbsolute: Bool = false      // whether health formula is absolute
+
     var effectiveInitiative: Double {
         guard ability >= 0, monsterData != nil else { return 100 }
         // Look up ability deck to get initiative from the drawn card
