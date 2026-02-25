@@ -33,6 +33,8 @@ final class EntityManager {
         if entity.health <= 0 {
             if let monsterEntity = entity as? GameMonsterEntity {
                 monsterEntity.dead = true
+            } else if let objectiveEntity = entity as? GameObjectiveEntity {
+                objectiveEntity.dead = true
             } else if let summon = entity as? GameSummon {
                 summon.dead = true
             } else if let character = entity as? GameCharacter {
@@ -41,7 +43,7 @@ final class EntityManager {
         }
     }
 
-    func addCondition(_ conditionName: ConditionName, to entity: any Entity, value: Int = 0) {
+    func addCondition(_ conditionName: ConditionName, to entity: any Entity, value: Int = 0, permanent: Bool = false) {
         onBeforeMutate?()
         // Check immunity
         if entity.immunities.contains(conditionName) { return }
@@ -53,10 +55,12 @@ final class EntityManager {
             if types.contains(.stack) || types.contains(.stackable) {
                 entity.entityConditions[idx].value += max(1, value)
             }
+            if permanent { entity.entityConditions[idx].permanent = true }
             return
         }
 
-        let condition = EntityCondition(name: conditionName, value: value)
+        var condition = EntityCondition(name: conditionName, value: value)
+        condition.permanent = permanent
         entity.entityConditions.append(condition)
 
         // Record stats

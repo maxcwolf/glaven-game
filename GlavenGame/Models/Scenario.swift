@@ -8,6 +8,10 @@ final class Scenario {
     var isCustom: Bool = false
     var appliedRules: Set<String> = []
     var disabledRules: Set<Int> = []
+    /// Cumulative kill counts by monster name, incremented by BoardCoordinator on entity death.
+    var killCounts: [String: Int] = [:]
+    /// Set by ScenarioRulesManager when a finish rule fires; checked in BoardCoordinator.checkVictoryDefeat().
+    var pendingFinish: String? = nil
 
     init(data: ScenarioData, isCustom: Bool = false) {
         self.data = data

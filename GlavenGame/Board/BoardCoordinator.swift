@@ -864,8 +864,23 @@ final class BoardCoordinator {
     func checkVictoryDefeat() {
         guard let gameManager = gameManager, scenarioResult == nil else { return }
 
-        // Victory: all monsters dead across all revealed rooms
-        // (We check if all monster groups have no alive entities and all rooms are revealed)
+        // Check scenario rule-triggered finish conditions first (escort loss, kill count win, timed scenarios, etc.)
+        if let finish = gameManager.game.scenario?.pendingFinish {
+            if finish == "won" {
+                scenarioResult = .victory
+                boardPhase = .scenarioEnd
+                interactionMode = .idle
+                log("VICTORY! Scenario win condition met.", category: .round)
+            } else if finish == "lost" {
+                scenarioResult = .defeat
+                boardPhase = .scenarioEnd
+                interactionMode = .idle
+                log("DEFEAT! Scenario loss condition triggered.", category: .death)
+            }
+            return
+        }
+
+        // Victory: all monsters dead and all rooms revealed
         let allMonstersDead = gameManager.game.monsters.allSatisfy { monster in
             monster.off || monster.aliveEntities.isEmpty
         }
@@ -880,8 +895,6 @@ final class BoardCoordinator {
         }
 
         // Defeat: all non-absent characters are exhausted.
-        // Must use characters (not activeCharacters) because activeCharacters
-        // already filters OUT exhausted ones — so it would be empty when all are dead.
         let allChars = gameManager.game.characters.filter { !$0.absent }
         if !allChars.isEmpty && allChars.allSatisfy({ $0.exhausted }) {
             scenarioResult = .defeat
@@ -889,6 +902,11 @@ final class BoardCoordinator {
             interactionMode = .idle
             log("DEFEAT! All characters exhausted.", category: .death)
         }
+    }
+
+    /// Increment the kill count for a monster name in the current scenario.
+    private func recordMonsterKill(name: String) {
+        gameManager?.game.scenario?.killCounts[name, default: 0] += 1
     }
 
     /// Apply scenario result and clean up.
@@ -1201,7 +1219,10 @@ final class BoardCoordinator {
                let monster = gameManager.game.monsters.first(where: { $0.name == name }),
                let entity = monster.entities.first(where: { $0.number == standee }) {
                 entity.dead = true
+                recordMonsterKill(name: name)
             }
+            // Re-evaluate scenario rules so figure-based triggers (killed count, etc.) fire immediately.
+            gameManager.scenarioRulesManager.evaluateRules()
             checkVictoryDefeat()
             boardScene?.clearHighlights()
             interactionMode = .idle
@@ -1493,10 +1514,12 @@ final class BoardCoordinator {
                let entity = monster.entities.first(where: { $0.number == standee }),
                entity.health <= 0 {
                 entity.dead = true
+                recordMonsterKill(name: name)
                 log("\(pieceID): Killed by trap!", category: .death)
                 dropLoot(for: pieceID)
                 boardState.removePiece(pieceID)
                 boardScene?.removePieceSprite(id: pieceID)
+                gameManager.scenarioRulesManager.evaluateRules()
                 checkVictoryDefeat()
             }
         case .summon(let summonID):

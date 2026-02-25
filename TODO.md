@@ -222,43 +222,56 @@ Tracking features needed for parity with [Gloomhaven Secretariat](https://github
 
 ## Missing Gloomhaven Rules
 
-Rules audit against the official Gloomhaven rulebook. Organized by gameplay impact.
+Rules audit against the official Gloomhaven rulebook (133 GH scenarios). Organized by gameplay impact.
 
-### Critical (core gameplay gaps)
+### Critical — scenarios unplayable without these
 
-- [x] **Traps don't trigger** — Data exists, pathfinding avoids them, but damage is now applied when a figure enters a trap hex. Trap is removed after triggering. Flying figures immune.
-- [ ] **Hazardous terrain** — Data defined on hexes but no damage dealt when entered/passed through
-- [ ] **Push/Pull** — Action types exist but no forced movement is executed
-- [x] **Short rest** — Offered at end of round: recover discards minus one random, optional re-pick for 1 HP
-- [ ] **Item use during turns** — Items are tracked/owned but can't be activated, consumed, spent, or refreshed during gameplay
-- [ ] **AoE patterns** — No hex-based area-of-effect targeting — multi-target works but not spatial AoE shapes
-- [ ] **Loot/coin pickup** — No end-of-turn auto-loot, no loot actions that actually collect coins from the board
+- [x] **Traps trigger on enter** — damage applied, trap removed, flying immune
+- [x] **Short rest** — recover discards minus one random, optional re-pick for 1 HP
+- [x] **Difficulty selector** — Story/Easy/Normal/Hard/Very Hard with floor() level formula
+- [x] **Scenario finish conditions** — `finish: "won"/"lost"` enforced via `Scenario.pendingFinish`; checked after every kill and at round end
+- [x] **Figure trigger types** — `dead`/`present`/`killed` in `ScenarioFigureRule` evaluated in `shouldTrigger()` (affects ~30 scenarios: escort-loss #56, kill-count win #10, timed victory #27, etc.)
+- [x] **`rooms` reveal effect** — rules with a `rooms: [Int]` array now open those rooms immediately (affects #33, #53, #74, #79, #90, #92 + several solo scenarios)
+- [x] **`amAdd` figure effect** — adds curse/minus1/bless etc. to all character AM decks at scenario start (20 scenarios: #2, #6, #14, #19, #23, #25, #26, #29, #31 …)
+- [x] **`permanentCondition` figure effect** — applies un-removable condition to entities (solo #14 hound→invisible)
+- [x] **`dormant`/`activate` figure effects** — toggle `entity.off` for deferred-spawn monsters (#3 Corrupted Laboratory)
+- [x] **Objective entity death** — `EntityManager.changeHealth` now sets `dead = true` on `GameObjectiveEntity` at 0 HP
+- [ ] **`statEffects` rules** — 10 scenarios use mid-scenario monster stat overrides (rename deck, scale HP, add abilities, add immunities); parsed but not applied
+- [ ] **Hazardous terrain** — data exists on hexes but entering/passing does not deal damage
+- [ ] **Push/Pull** — action types exist, `CombatResolver` returns push/pull steps, but no forced movement is executed
+- [ ] **Item use during turns** — items tracked/owned but can't be activated, spent, or refreshed during play
+- [ ] **AoE spatial patterns** — multi-target works by proximity but hex-shaped AoE (line, cone, burst) not evaluated
+- [ ] **Loot/coin pickup** — no end-of-turn auto-loot, no loot-action board collection; `lootTokens` board state exists but never triggers
 
-### Moderate (affects some scenarios/builds)
+### Moderate — affects some scenarios or character builds
 
-- [ ] **Rolling modifiers** — Field exists on cards but not applied in combat resolution (should keep drawing until non-rolling)
-- [ ] **Teleport** — Treated identically to normal movement — should bypass all terrain/obstacles
-- [ ] **Jump movement distinction** — Intermediate hexes handled in pathfinding but not in player turn UI (same visual as normal move)
-- [ ] **Treasure rewards** — Treasures can be marked looted but no actual reward (gold/items) is given
-- [ ] **Scenario finish conditions** — `finish: "won"/"lost"` parsed but custom conditions not enforced
-- [ ] **City/Road events** — Not implemented
-- [ ] **Battle goals** — Data structure exists but not evaluated during play
+- [ ] **Rolling modifiers in monster turns** — `rolling: true` field on cards exists but monster combat path does not chain-draw until a non-rolling card appears (interactive player draw handles this correctly)
+- [ ] **Teleport** — treated as normal movement; should bypass all terrain and obstacles
+- [ ] **Jump movement in player UI** — pathfinding correctly treats intermediate hexes as passable, but no visual distinction in player turn UI
+- [ ] **Treasure rewards** — treasures can be marked looted but no actual gold/items distributed from `treasures.json` lookup
+- [ ] **City/Road events** — not implemented
+- [ ] **Battle goals** — `selectedBattleGoal` tracked per character but completion condition never evaluated
 
-### Minor (advanced/Frosthaven conditions)
+### Minor — advanced/Frosthaven-only conditions
 
-- [ ] **Brittle** — Defined, no mechanics (should double damage from next source)
-- [ ] **Ward** — Defined, no mechanics (should halve damage)
-- [ ] **Bane** — Defined, no mechanics (should add -10 to next attack modifier)
-- [ ] **Impair** — Defined, no mechanics
-- [ ] **Chill** — Defined, no mechanics (should reduce movement)
-- [ ] **Rupture/Infect/Plague** — Defined, no mechanics
-- [ ] **Icy terrain** — Not implemented
+- [ ] **Brittle** — no mechanics (should double damage from next source)
+- [ ] **Ward** — no mechanics (should halve damage from next source)
+- [ ] **Bane** — no mechanics (should add −10 curse to that figure's modifier deck)
+- [ ] **Chill** — no mechanics (should reduce movement by 2)
+- [ ] **Impair / Rupture / Infect / Plague / Enfeeble** — defined, no effect logic
 
-### Recommended Priority Order
+### Priority order
 
 1. ~~Trap triggering~~ ✅
 2. ~~Short rest~~ ✅
-3. Push/Pull
-4. Item activation
-5. Loot/coin pickup
-6. AoE patterns
+3. ~~Difficulty selector~~ ✅
+4. ~~Scenario finish conditions~~ ✅
+5. ~~Figure triggers (dead/present/killed)~~ ✅
+6. ~~rooms-reveal, amAdd, dormant/activate, permanentCondition~~ ✅
+7. `statEffects` rules (10 scenarios, complex: rename deck, scale HP, add actions/immunities)
+8. Push/Pull forced movement
+9. Rolling modifiers in monster turns
+10. Hazardous terrain
+11. Item activation during turns
+12. Loot/coin pickup
+13. AoE spatial patterns

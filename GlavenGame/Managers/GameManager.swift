@@ -108,6 +108,16 @@ final class GameManager {
             self?.scenarioStatsManager.advanceRound()
         }
 
+        // Wire room-reveal effect from scenario rules back into ScenarioManager
+        rulesManager.onOpenRooms = { [weak self] roomNumbers in
+            guard let self = self, let scenario = self.game.scenario else { return }
+            for num in roomNumbers {
+                if let room = scenario.data.rooms?.first(where: { $0.roomNumber == num }) {
+                    self.scenarioManager.openRoom(room)
+                }
+            }
+        }
+
         // Wire undo state capture into all sub-managers
         let beforeMutate: () -> Void = { [weak self] in self?.pushUndoState() }
         charMgr.onBeforeMutate = beforeMutate
