@@ -14,9 +14,9 @@ final class LevelManager {
 
         let totalLevels = chars.map(\.level).reduce(0, +)
         let avgLevel = Double(totalLevels) / Double(chars.count)
-        var level = Int(ceil(avgLevel / 2.0))
+        var level = Int(floor(avgLevel / 2.0))
 
-        level += game.levelAdjustment
+        level += game.difficulty.rawValue
 
         if game.ge5Player && chars.count >= 5 {
             level += chars.count - 4

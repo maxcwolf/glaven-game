@@ -1,0 +1,1974 @@
+{
+  "name": "mindthief",
+  "edition": "gh",
+  "character": true,
+  "abilities": [
+    {
+      "name": "Submissive Affliction",
+      "cardId": 146,
+      "level": 1,
+      "initiative": 48,
+      "actions": [
+        {
+          "type": "attack",
+          "value": 2,
+          "enhancementTypes": [
+            "diamond"
+          ],
+          "subActions": [
+            {
+              "type": "custom",
+              "value": "%data.custom.gh.mindthief.abilities.146.1%",
+              "small": true
+            }
+          ]
+        },
+        {
+          "type": "card",
+          "value": "experience:1"
+        }
+      ],
+      "bottomActions": [
+        {
+          "type": "custom",
+          "value": "%data.custom.gh.mindthief.abilities.146.2%",
+          "small": true,
+          "subActions": [
+            {
+              "type": "attack",
+              "value": 2,
+              "subActions": [
+                {
+                  "type": "range",
+                  "value": 0,
+                  "valueType": "plus",
+                  "small": true
+                }
+              ]
+            },
+            {
+              "type": "custom",
+              "value": "%data.custom.gh.mindthief.abilities.146.3%",
+              "small": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Info the Night",
+      "cardId": 147,
+      "level": 1,
+      "initiative": 14,
+      "actions": [
+        {
+          "type": "loot",
+          "value": 1
+        },
+        {
+          "type": "element",
+          "value": "dark"
+        }
+      ],
+      "bottomActions": [
+        {
+          "type": "condition",
+          "value": "invisible",
+          "subActions": [
+            {
+              "type": "specialTarget",
+              "value": "self",
+              "small": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Fearsome Blade",
+      "cardId": 148,
+      "level": 1,
+      "initiative": 27,
+      "actions": [
+        {
+          "type": "attack",
+          "value": 2,
+          "enhancementTypes": [
+            "diamond"
+          ],
+          "subActions": [
+            {
+              "type": "push",
+              "value": 3,
+              "small": true,
+              "enhancementTypes": [
+                "diamond"
+              ]
+            }
+          ]
+        },
+        {
+          "type": "card",
+          "value": "experience:1"
+        }
+      ],
+      "bottomLost": true,
+      "bottomActions": [
+        {
+          "type": "move",
+          "value": 4
+        },
+        {
+          "type": "attack",
+          "value": 2,
+          "enhancementTypes": [
+            "diamond",
+            "diamond"
+          ]
+        },
+        {
+          "type": "card",
+          "value": "experience:2"
+        }
+      ]
+    },
+    {
+      "name": "Feedback Loop",
+      "cardId": 149,
+      "level": 1,
+      "initiative": 79,
+      "actions": [
+        {
+          "type": "box",
+          "value": "%data.custom.gh.mindthief.augment%",
+          "small": true,
+          "subActions": [
+            {
+              "type": "grid",
+              "value": 3,
+              "subActions": [
+                {
+                  "type": "custom",
+                  "value": "%data.custom.gh.mindthief.abilities.149.1%"
+                },
+                {
+                  "type": "custom",
+                  "value": "%data.custom.gh.mindthief.abilities.149.2%"
+                },
+                {
+                  "type": "card",
+                  "value": "round"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "concatenation",
+          "subActions": [
+            {
+              "type": "attack",
+              "value": 1,
+              "enhancementTypes": [
+                "diamond"
+              ]
+            },
+            {
+              "type": "card",
+              "value": "experience:1"
+            }
+          ]
+        },
+        {
+          "type": "grid",
+          "subActions": [
+            {
+              "type": "card",
+              "value": "persistent"
+            },
+            {
+              "type": "custom",
+              "value": "%data.custom.gh.mindthief.abilities.149.3%",
+              "small": true
+            }
+          ]
+        }
+      ],
+      "bottomActions": [
+        {
+          "type": "move",
+          "value": 4,
+          "enhancementTypes": [
+            "circle"
+          ],
+          "subActions": [
+            {
+              "type": "jump",
+              "value": "",
+              "small": true
+            },
+            {
+              "type": "custom",
+              "value": "%data.custom.gh.mindthief.abilities.149.4%",
+              "small": true
+            },
+            {
+              "type": "condition",
+              "value": "muddle"
+            },
+            {
+              "type": "specialTarget",
+              "value": "enemiesMovedThrough",
+              "small": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Gnawing Horde",
+      "cardId": 150,
+      "level": 1,
+      "initiative": 82,
+      "lost": true,
+      "actions": [
+        {
+          "type": "summon",
+          "value": "summonData",
+          "valueObject": {
+            "name": "rat-swarm",
+            "health": 6,
+            "attack": 2,
+            "movement": 1,
+            "enhancements": [
+              "heal",
+              "attack",
+              "move"
+            ],
+            "action": {
+              "type": "condition",
+              "value": "poison"
+            }
+          },
+          "small": true
+        },
+        {
+          "type": "concatenation",
+          "subActions": [
+            {
+              "type": "card",
+              "value": "experience:2"
+            },
+            {
+              "type": "card",
+              "value": "persistent"
+            }
+          ]
+        }
+      ],
+      "bottomActions": [
+        {
+          "type": "move",
+          "value": 4,
+          "enhancementTypes": [
+            "circle"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "The Mind's Weakness",
+      "cardId": 151,
+      "level": 1,
+      "initiative": 75,
+      "actions": [
+        {
+          "type": "box",
+          "value": "%data.custom.gh.mindthief.augment%",
+          "small": true,
+          "subActions": [
+            {
+              "type": "grid",
+              "value": 2,
+              "subActions": [
+                {
+                  "type": "custom",
+                  "value": "%data.custom.gh.mindthief.abilities.151.1%"
+                },
+                {
+                  "type": "custom",
+                  "value": "%data.custom.gh.mindthief.abilities.151.2%"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "concatenation",
+          "subActions": [
+            {
+              "type": "attack",
+              "value": 1,
+              "enhancementTypes": [
+                "diamond"
+              ]
+            },
+            {
+              "type": "card",
+              "value": "experience:1"
+            }
+          ]
+        },
+        {
+          "type": "grid",
+          "subActions": [
+            {
+              "type": "card",
+              "value": "persistent"
+            },
+            {
+              "type": "custom",
+              "value": "%data.custom.gh.mindthief.abilities.151.3%",
+              "small": true
+            }
+          ]
+        }
+      ],
+      "bottomActions": [
+        {
+          "type": "attack",
+          "value": 1,
+          "enhancementTypes": [
+            "diamond"
+          ],
+          "subActions": [
+            {
+              "type": "condition",
+              "value": "wound",
+              "small": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Parasitic Influence",
+      "cardId": 152,
+      "level": 1,
+      "initiative": 71,
+      "actions": [
+        {
+          "type": "box",
+          "value": "%data.custom.gh.mindthief.augment%",
+          "small": true,
+          "subActions": [
+            {
+              "type": "grid",
+              "value": 2,
+              "subActions": [
+                {
+                  "type": "custom",
+                  "value": "%data.custom.gh.mindthief.abilities.152.1%"
+                },
+                {
+                  "type": "heal",
+                  "value": 2,
+                  "subActions": [
+                    {
+                      "type": "specialTarget",
+                      "value": "self",
+                      "small": true
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "concatenation",
+          "subActions": [
+            {
+              "type": "attack",
+              "value": 1,
+              "enhancementTypes": [
+                "diamond"
+              ]
+            },
+            {
+              "type": "card",
+              "value": "experience:1"
+            }
+          ]
+        },
+        {
+          "type": "grid",
+          "subActions": [
+            {
+              "type": "card",
+              "value": "persistent"
+            },
+            {
+              "type": "custom",
+              "value": "%data.custom.gh.mindthief.abilities.152.2%",
+              "small": true
+            }
+          ]
+        }
+      ],
+      "bottomActions": [
+        {
+          "type": "custom",
+          "value": "%data.custom.gh.mindthief.abilities.152.3%",
+          "small": true,
+          "subActions": [
+            {
+              "type": "move",
+              "value": 1
+            },
+            {
+              "type": "custom",
+              "value": "%data.custom.gh.mindthief.abilities.152.4%",
+              "small": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Scurry",
+      "cardId": 153,
+      "level": 1,
+      "initiative": 20,
+      "actions": [
+        {
+          "type": "move",
+          "value": 3,
+          "enhancementTypes": [
+            "circle"
+          ]
+        },
+        {
+          "type": "attack",
+          "value": 1,
+          "enhancementTypes": [
+            "diamond"
+          ]
+        }
+      ],
+      "bottomLost": true,
+      "bottomActions": [
+        {
+          "type": "loot",
+          "value": 2
+        },
+        {
+          "type": "card",
+          "value": "experience:1"
+        }
+      ]
+    },
+    {
+      "name": "Perverse Edge",
+      "cardId": 154,
+      "level": 1,
+      "initiative": 8,
+      "lost": true,
+      "actions": [
+        {
+          "type": "attack",
+          "value": 3,
+          "enhancementTypes": [
+            "diamond"
+          ],
+          "subActions": [
+            {
+              "type": "custom",
+              "value": "%data.custom.gh.mindthief.abilities.154.1%",
+              "small": true
+            }
+          ]
+        }
+      ],
+      "bottomActions": [
+        {
+          "type": "attack",
+          "value": 1,
+          "enhancementTypes": [
+            "diamond"
+          ],
+          "subActions": [
+            {
+              "type": "range",
+              "value": 2,
+              "small": true,
+              "enhancementTypes": [
+                "square"
+              ]
+            },
+            {
+              "type": "condition",
+              "value": "stun",
+              "small": true
+            }
+          ]
+        },
+        {
+          "type": "concatenation",
+          "subActions": [
+            {
+              "type": "element",
+              "value": "ice"
+            },
+            {
+              "type": "card",
+              "value": "experience:1"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Empathetic Assault",
+      "cardId": 155,
+      "level": 1,
+      "initiative": 11,
+      "lost": true,
+      "actions": [
+        {
+          "type": "attack",
+          "value": 4,
+          "enhancementTypes": [
+            "diamond",
+            "diamond"
+          ],
+          "subActions": [
+            {
+              "type": "range",
+              "value": 5,
+              "small": true
+            },
+            {
+              "type": "condition",
+              "value": "disarm",
+              "small": true
+            }
+          ]
+        },
+        {
+          "type": "concatenation",
+          "subActions": [
+            {
+              "type": "element",
+              "value": "ice"
+            },
+            {
+              "type": "card",
+              "value": "experience:2"
+            }
+          ]
+        }
+      ],
+      "bottomActions": [
+        {
+          "type": "move",
+          "value": 2,
+          "enhancementTypes": [
+            "circle"
+          ]
+        },
+        {
+          "type": "heal",
+          "value": 2,
+          "enhancementTypes": [
+            "diamond_plus"
+          ],
+          "subActions": [
+            {
+              "type": "specialTarget",
+              "value": "self",
+              "small": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Withering Claw",
+      "cardId": 156,
+      "level": 1,
+      "initiative": 77,
+      "actions": [
+        {
+          "type": "box",
+          "value": "%data.custom.gh.mindthief.augment%",
+          "small": true,
+          "subActions": [
+            {
+              "type": "grid",
+              "value": 2,
+              "subActions": [
+                {
+                  "type": "custom",
+                  "value": "%data.custom.gh.mindthief.abilities.156.1%"
+                },
+                {
+                  "type": "concatenation",
+                  "value": "and",
+                  "subActions": [
+                    {
+                      "type": "condition",
+                      "value": "muddle"
+                    },
+                    {
+                      "type": "condition",
+                      "value": "poison"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "concatenation",
+          "subActions": [
+            {
+              "type": "attack",
+              "value": 1,
+              "enhancementTypes": [
+                "diamond"
+              ]
+            },
+            {
+              "type": "card",
+              "value": "experience:1"
+            }
+          ]
+        },
+        {
+          "type": "grid",
+          "subActions": [
+            {
+              "type": "card",
+              "value": "persistent"
+            },
+            {
+              "type": "custom",
+              "value": "%data.custom.gh.mindthief.abilities.156.2%",
+              "small": true
+            }
+          ]
+        }
+      ],
+      "bottomActions": [
+        {
+          "type": "condition",
+          "value": "immobilize",
+          "subActions": [
+            {
+              "type": "specialTarget",
+              "value": "enemyAdjacent",
+              "small": true
+            }
+          ]
+        },
+        {
+          "type": "move",
+          "value": 3
+        }
+      ]
+    },
+    {
+      "name": "Possession",
+      "cardId": 157,
+      "level": "X",
+      "initiative": 51,
+      "lost": true,
+      "actions": [
+        {
+          "type": "custom",
+          "value": "%data.custom.gh.mindthief.abilities.157.1%",
+          "small": true,
+          "subActions": [
+            {
+              "type": "attack",
+              "value": 6
+            }
+          ]
+        },
+        {
+          "type": "card",
+          "value": "experience:2"
+        }
+      ],
+      "bottomActions": [
+        {
+          "type": "custom",
+          "value": "%data.custom.gh.mindthief.abilities.157.2%",
+          "small": true,
+          "subActions": [
+            {
+              "type": "move",
+              "value": 4
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Frigid Apparition",
+      "cardId": 158,
+      "level": "X",
+      "initiative": 29,
+      "actions": [
+        {
+          "type": "attack",
+          "value": 3,
+          "enhancementTypes": [
+            "diamond"
+          ],
+          "subActions": [
+            {
+              "type": "element",
+              "value": "ice",
+              "valueType": "minus",
+              "subActions": [
+                {
+                  "type": "concatenation",
+                  "value": ",",
+                  "subActions": [
+                    {
+                      "type": "condition",
+                      "value": "stun",
+                      "small": true
+                    },
+                    {
+                      "type": "card",
+                      "value": "experience:1",
+                      "small": true
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "bottomLost": true,
+      "bottomActions": [
+        {
+          "type": "move",
+          "value": 4,
+          "enhancementTypes": [
+            "circle"
+          ]
+        },
+        {
+          "type": "condition",
+          "value": "stun",
+          "subActions": [
+            {
+              "type": "specialTarget",
+              "value": "enemyAdjacent",
+              "small": true
+            }
+          ]
+        },
+        {
+          "type": "card",
+          "value": "experience:1"
+        }
+      ]
+    },
+    {
+      "name": "Wretched Creature",
+      "cardId": 159,
+      "level": 2,
+      "initiative": 84,
+      "lost": true,
+      "actions": [
+        {
+          "type": "summon",
+          "value": "summonData",
+          "valueObject": {
+            "name": "monstrous-rat",
+            "health": "4",
+            "attack": "3",
+            "movement": "3",
+            "count": 1,
+            "enhancements": [
+              "heal",
+              "attack",
+              "move"
+            ]
+          },
+          "small": true
+        },
+        {
+          "type": "concatenation",
+          "subActions": [
+            {
+              "type": "card",
+              "value": "experience:2"
+            },
+            {
+              "type": "card",
+              "value": "persistent"
+            }
+          ]
+        }
+      ],
+      "bottomActions": [
+        {
+          "type": "move",
+          "value": 3,
+          "enhancementTypes": [
+            "circle"
+          ]
+        },
+        {
+          "type": "element",
+          "value": "dark",
+          "valueType": "minus",
+          "subActions": [
+            {
+              "type": "condition",
+              "value": "curse",
+              "small": true
+            },
+            {
+              "type": "specialTarget",
+              "value": "enemyAdjacent",
+              "small": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Hostile Takeover",
+      "cardId": 160,
+      "level": 2,
+      "initiative": 9,
+      "actions": [
+        {
+          "type": "attack",
+          "value": 2,
+          "enhancementTypes": [
+            "diamond"
+          ],
+          "subActions": [
+            {
+              "type": "range",
+              "value": 4,
+              "small": true,
+              "enhancementTypes": [
+                "square"
+              ]
+            },
+            {
+              "type": "condition",
+              "value": "immobilize",
+              "small": true
+            }
+          ]
+        },
+        {
+          "type": "concatenation",
+          "subActions": [
+            {
+              "type": "element",
+              "value": "ice"
+            },
+            {
+              "type": "card",
+              "value": "experience:1"
+            }
+          ]
+        }
+      ],
+      "bottomLost": true,
+      "bottomActions": [
+        {
+          "type": "custom",
+          "value": "%data.custom.gh.mindthief.abilities.160.1%",
+          "small": true
+        },
+        {
+          "type": "custom",
+          "value": "%data.custom.gh.mindthief.abilities.160.2%",
+          "small": true
+        },
+        {
+          "type": "concatenation",
+          "subActions": [
+            {
+              "type": "card",
+              "value": "experience:2"
+            },
+            {
+              "type": "card",
+              "value": "round"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Brain Leech",
+      "cardId": 161,
+      "level": 3,
+      "initiative": 16,
+      "lost": true,
+      "actions": [
+        {
+          "type": "attack",
+          "value": 4,
+          "enhancementTypes": [
+            "diamond"
+          ],
+          "subActions": [
+            {
+              "type": "range",
+              "value": 4,
+              "small": true
+            }
+          ]
+        },
+        {
+          "type": "heal",
+          "value": 4,
+          "enhancementTypes": [
+            "diamond_plus"
+          ],
+          "subActions": [
+            {
+              "type": "specialTarget",
+              "value": "self",
+              "small": true
+            }
+          ]
+        },
+        {
+          "type": "concatenation",
+          "subActions": [
+            {
+              "type": "element",
+              "value": "dark"
+            },
+            {
+              "type": "card",
+              "value": "experience:2"
+            }
+          ]
+        }
+      ],
+      "bottomActions": [
+        {
+          "type": "attack",
+          "value": 1,
+          "enhancementTypes": [
+            "diamond"
+          ]
+        },
+        {
+          "type": "condition",
+          "value": "strengthen",
+          "subActions": [
+            {
+              "type": "specialTarget",
+              "value": "self",
+              "small": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Silent Scream",
+      "cardId": 162,
+      "level": 3,
+      "initiative": 73,
+      "actions": [
+        {
+          "type": "box",
+          "value": "%data.custom.gh.mindthief.augment%",
+          "small": true,
+          "subActions": [
+            {
+              "type": "grid",
+              "value": 2,
+              "subActions": [
+                {
+                  "type": "custom",
+                  "value": "%data.custom.gh.mindthief.abilities.162.1%"
+                },
+                {
+                  "type": "heal",
+                  "value": 2,
+                  "subActions": [
+                    {
+                      "type": "range",
+                      "value": 2
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "concatenation",
+          "subActions": [
+            {
+              "type": "attack",
+              "value": 2,
+              "enhancementTypes": [
+                "diamond"
+              ]
+            },
+            {
+              "type": "card",
+              "value": "experience:1"
+            }
+          ]
+        },
+        {
+          "type": "grid",
+          "subActions": [
+            {
+              "type": "card",
+              "value": "persistent"
+            },
+            {
+              "type": "custom",
+              "value": "%data.custom.gh.mindthief.abilities.162.2%",
+              "small": true
+            }
+          ]
+        }
+      ],
+      "bottomActions": [
+        {
+          "type": "move",
+          "value": 3,
+          "enhancementTypes": [
+            "circle"
+          ]
+        },
+        {
+          "type": "push",
+          "value": 2,
+          "enhancementTypes": [
+            "diamond"
+          ],
+          "subActions": [
+            {
+              "type": "specialTarget",
+              "value": "enemiesAdjacent",
+              "small": true
+            },
+            {
+              "type": "element",
+              "value": "ice",
+              "valueType": "minus",
+              "subActions": [
+                {
+                  "type": "concatenation",
+                  "value": ",",
+                  "subActions": [
+                    {
+                      "type": "push",
+                      "value": 1,
+                      "valueType": "add",
+                      "small": true
+                    },
+                    {
+                      "type": "card",
+                      "value": "experience:1"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Pilfer",
+      "cardId": 163,
+      "level": 4,
+      "initiative": 68,
+      "actions": [
+        {
+          "type": "loot",
+          "value": 1,
+          "subActions": [
+            {
+              "type": "custom",
+              "value": "%data.custom.gh.mindthief.abilities.163.1%",
+              "small": true
+            }
+          ]
+        }
+      ],
+      "bottomLost": true,
+      "bottomActions": [
+        {
+          "type": "attack",
+          "value": 2,
+          "enhancementTypes": [
+            "diamond"
+          ]
+        },
+        {
+          "type": "move",
+          "value": 3,
+          "enhancementTypes": [
+            "circle"
+          ]
+        },
+        {
+          "type": "attack",
+          "value": 2,
+          "enhancementTypes": [
+            "diamond"
+          ]
+        },
+        {
+          "type": "card",
+          "value": "experience:2"
+        }
+      ]
+    },
+    {
+      "name": "Cranium Overload",
+      "cardId": 164,
+      "level": 4,
+      "initiative": 5,
+      "lost": true,
+      "actions": [
+        {
+          "type": "custom",
+          "value": "%data.custom.gh.mindthief.abilities.164.1%",
+          "small": true
+        },
+        {
+          "type": "attack",
+          "value": 2,
+          "enhancementTypes": [
+            "diamond",
+            "diamond"
+          ],
+          "subActions": [
+            {
+              "type": "custom",
+              "value": "%data.custom.gh.mindthief.abilities.164.2%",
+              "small": true
+            },
+            {
+              "type": "custom",
+              "value": "%data.custom.gh.mindthief.abilities.164.3%",
+              "small": true
+            }
+          ]
+        }
+      ],
+      "bottomActions": [
+        {
+          "type": "move",
+          "value": 5,
+          "enhancementTypes": [
+            "circle"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Mass Hysteria",
+      "cardId": 165,
+      "level": 5,
+      "initiative": 12,
+      "actions": [
+        {
+          "type": "attack",
+          "value": 1,
+          "subActions": [
+            {
+              "type": "range",
+              "value": 4,
+              "small": true
+            },
+            {
+              "type": "target",
+              "value": 4,
+              "small": true,
+              "enhancementTypes": [
+                "diamond"
+              ]
+            },
+            {
+              "type": "condition",
+              "value": "muddle",
+              "small": true
+            }
+          ]
+        },
+        {
+          "type": "concatenation",
+          "subActions": [
+            {
+              "type": "element",
+              "value": "ice"
+            },
+            {
+              "type": "card",
+              "value": "experience:1"
+            }
+          ]
+        }
+      ],
+      "bottomLost": true,
+      "bottomActions": [
+        {
+          "type": "custom",
+          "value": "%data.custom.gh.mindthief.abilities.165.1%",
+          "small": true
+        },
+        {
+          "type": "custom",
+          "value": "%data.custom.gh.mindthief.abilities.165.2%",
+          "small": true
+        },
+        {
+          "type": "card",
+          "value": "persistent"
+        }
+      ]
+    },
+    {
+      "name": "Frozen Mind",
+      "cardId": 166,
+      "level": 5,
+      "initiative": 81,
+      "actions": [
+        {
+          "type": "box",
+          "value": "%data.custom.gh.mindthief.augment%",
+          "small": true,
+          "subActions": [
+            {
+              "type": "grid",
+              "value": 2,
+              "subActions": [
+                {
+                  "type": "custom",
+                  "value": "%data.custom.gh.mindthief.abilities.166.1%"
+                },
+                {
+                  "type": "element",
+                  "value": "ice",
+                  "valueType": "minus",
+                  "subActions": [
+                    {
+                      "type": "condition",
+                      "value": "stun"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "concatenation",
+          "subActions": [
+            {
+              "type": "attack",
+              "value": 2,
+              "enhancementTypes": [
+                "diamond"
+              ]
+            },
+            {
+              "type": "card",
+              "value": "experience:2"
+            }
+          ]
+        },
+        {
+          "type": "grid",
+          "subActions": [
+            {
+              "type": "card",
+              "value": "persistent"
+            },
+            {
+              "type": "custom",
+              "value": "%data.custom.gh.mindthief.abilities.166.2%",
+              "small": true
+            }
+          ]
+        }
+      ],
+      "bottomActions": [
+        {
+          "type": "custom",
+          "value": "%data.custom.gh.mindthief.abilities.166.3%",
+          "small": true,
+          "subActions": [
+            {
+              "type": "move",
+              "value": 2
+            },
+            {
+              "type": "custom",
+              "value": "%data.custom.gh.mindthief.abilities.166.4%",
+              "small": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Corrupting Embrace",
+      "cardId": 167,
+      "level": 6,
+      "initiative": 39,
+      "actions": [
+        {
+          "type": "attack",
+          "value": 1,
+          "enhancementTypes": [
+            "diamond"
+          ],
+          "subActions": [
+            {
+              "type": "condition",
+              "value": "poison",
+              "small": true
+            }
+          ]
+        },
+        {
+          "type": "attack",
+          "value": 1,
+          "enhancementTypes": [
+            "diamond"
+          ],
+          "subActions": [
+            {
+              "type": "condition",
+              "value": "muddle",
+              "small": true
+            }
+          ]
+        }
+      ],
+      "bottomActions": [
+        {
+          "type": "move",
+          "value": 4,
+          "enhancementTypes": [
+            "circle"
+          ],
+          "subActions": [
+            {
+              "type": "jump",
+              "value": "",
+              "small": true
+            }
+          ]
+        },
+        {
+          "type": "condition",
+          "value": "poison",
+          "subActions": [
+            {
+              "type": "specialTarget",
+              "value": "enemiesMovedThrough",
+              "small": true
+            }
+          ]
+        },
+        {
+          "type": "element",
+          "value": "dark"
+        }
+      ]
+    },
+    {
+      "name": "Dark Frenzy",
+      "cardId": 168,
+      "level": 6,
+      "initiative": 10,
+      "actions": [
+        {
+          "type": "attack",
+          "value": 2,
+          "enhancementTypes": [
+            "diamond"
+          ],
+          "subActions": [
+            {
+              "type": "element",
+              "value": "ice",
+              "valueType": "minus",
+              "subActions": [
+                {
+                  "type": "concatenation",
+                  "value": ",",
+                  "subActions": [
+                    {
+                      "type": "attack",
+                      "value": 2,
+                      "valueType": "add",
+                      "small": true
+                    },
+                    {
+                      "type": "card",
+                      "value": "experience:1"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "element",
+              "value": "dark",
+              "valueType": "minus",
+              "subActions": [
+                {
+                  "type": "concatenation",
+                  "value": ",",
+                  "subActions": [
+                    {
+                      "type": "attack",
+                      "value": 2,
+                      "valueType": "add",
+                      "small": true
+                    },
+                    {
+                      "type": "card",
+                      "value": "experience:1"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "bottomActions": [
+        {
+          "type": "move",
+          "value": 3,
+          "enhancementTypes": [
+            "circle"
+          ]
+        },
+        {
+          "type": "attack",
+          "value": 3,
+          "enhancementTypes": [
+            "diamond"
+          ],
+          "subActions": [
+            {
+              "type": "range",
+              "value": 3,
+              "small": true
+            }
+          ]
+        },
+        {
+          "type": "concatenation",
+          "subActions": [
+            {
+              "type": "element",
+              "value": "ice"
+            },
+            {
+              "type": "card",
+              "value": "experience:1"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Vicious Blood",
+      "cardId": 169,
+      "level": 7,
+      "initiative": 83,
+      "actions": [
+        {
+          "type": "box",
+          "value": "%data.custom.gh.mindthief.augment%",
+          "small": true,
+          "subActions": [
+            {
+              "type": "grid",
+              "value": 3,
+              "subActions": [
+                {
+                  "type": "custom",
+                  "value": "%data.custom.gh.mindthief.abilities.169.1%"
+                },
+                {
+                  "type": "custom",
+                  "value": "%data.custom.gh.mindthief.abilities.169.2%",
+                  "subActions": [
+                    {
+                      "type": "retaliate",
+                      "value": 2
+                    }
+                  ]
+                },
+                {
+                  "type": "card",
+                  "value": "round"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "concatenation",
+          "subActions": [
+            {
+              "type": "attack",
+              "value": 2,
+              "enhancementTypes": [
+                "diamond"
+              ]
+            },
+            {
+              "type": "card",
+              "value": "experience:1"
+            }
+          ]
+        },
+        {
+          "type": "grid",
+          "subActions": [
+            {
+              "type": "card",
+              "value": "persistent"
+            },
+            {
+              "type": "custom",
+              "value": "%data.custom.gh.mindthief.abilities.169.3%",
+              "small": true
+            }
+          ]
+        }
+      ],
+      "bottomActions": [
+        {
+          "type": "move",
+          "value": 2,
+          "enhancementTypes": [
+            "circle"
+          ]
+        },
+        {
+          "type": "attack",
+          "value": 2,
+          "enhancementTypes": [
+            "diamond"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Psychic Projection",
+      "cardId": 170,
+      "level": 7,
+      "initiative": 92,
+      "actions": [
+        {
+          "type": "heal",
+          "value": 5,
+          "enhancementTypes": [
+            "diamond_plus"
+          ],
+          "subActions": [
+            {
+              "type": "specialTarget",
+              "value": "self",
+              "small": true
+            }
+          ]
+        },
+        {
+          "type": "concatenation",
+          "subActions": [
+            {
+              "type": "shield",
+              "value": 1,
+              "enhancementTypes": [
+                "diamond_plus"
+              ],
+              "subActions": [
+                {
+                  "type": "specialTarget",
+                  "value": "self",
+                  "small": true
+                }
+              ]
+            },
+            {
+              "type": "card",
+              "value": "round"
+            }
+          ]
+        },
+        {
+          "type": "condition",
+          "value": "stun",
+          "subActions": [
+            {
+              "type": "specialTarget",
+              "value": "self",
+              "small": true
+            }
+          ]
+        }
+      ],
+      "bottomLost": true,
+      "bottomActions": [
+        {
+          "type": "custom",
+          "value": "%data.custom.gh.mindthief.abilities.170.1%",
+          "small": true
+        },
+        {
+          "type": "card",
+          "value": "round"
+        }
+      ]
+    },
+    {
+      "name": "Shared Nightmare",
+      "cardId": 171,
+      "level": 8,
+      "initiative": 7,
+      "actions": [
+        {
+          "type": "attack",
+          "value": 3,
+          "enhancementTypes": [
+            "diamond"
+          ],
+          "subActions": [
+            {
+              "type": "range",
+              "value": 4,
+              "small": true
+            },
+            {
+              "type": "target",
+              "value": 2,
+              "small": true,
+              "enhancementTypes": [
+                "diamond"
+              ]
+            },
+            {
+              "type": "element",
+              "value": "dark",
+              "valueType": "minus",
+              "subActions": [
+                {
+                  "type": "concatenation",
+                  "value": ",",
+                  "small": true,
+                  "subActions": [
+                    {
+                      "type": "condition",
+                      "value": "poison"
+                    },
+                    {
+                      "type": "condition",
+                      "value": "curse"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "concatenation",
+          "subActions": [
+            {
+              "type": "element",
+              "value": "ice"
+            },
+            {
+              "type": "card",
+              "value": "experience:1"
+            }
+          ]
+        }
+      ],
+      "bottomActions": [
+        {
+          "type": "move",
+          "value": 5,
+          "enhancementTypes": [
+            "circle"
+          ]
+        },
+        {
+          "type": "element",
+          "value": "ice",
+          "valueType": "minus",
+          "subActions": [
+            {
+              "type": "concatenation",
+              "value": "",
+              "subActions": [
+                {
+                  "type": "shield",
+                  "value": 1,
+                  "small": true,
+                  "subActions": [
+                    {
+                      "type": "specialTarget",
+                      "value": "self",
+                      "small": true
+                    }
+                  ]
+                },
+                {
+                  "type": "card",
+                  "value": "experience:1"
+                },
+                {
+                  "type": "card",
+                  "value": "round"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Domination",
+      "cardId": 172,
+      "level": 8,
+      "initiative": 13,
+      "actions": [
+        {
+          "type": "custom",
+          "value": "%data.custom.gh.mindthief.abilities.172.1%",
+          "small": true,
+          "subActions": [
+            {
+              "type": "attack",
+              "value": 4
+            },
+            {
+              "type": "custom",
+              "value": "%data.custom.gh.mindthief.abilities.172.2%",
+              "small": true
+            }
+          ]
+        },
+        {
+          "type": "card",
+          "value": "experience:1"
+        }
+      ],
+      "bottomLost": true,
+      "bottomActions": [
+        {
+          "type": "custom",
+          "value": "%data.custom.gh.mindthief.abilities.172.3%",
+          "small": true
+        },
+        {
+          "type": "concatenation",
+          "value": "",
+          "subActions": [
+            {
+              "type": "card",
+              "value": "experience:2"
+            },
+            {
+              "type": "card",
+              "value": "round"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Many as One",
+      "cardId": 173,
+      "level": 9,
+      "initiative": 91,
+      "lost": true,
+      "actions": [
+        {
+          "type": "summon",
+          "value": "summonData",
+          "valueObject": {
+            "name": "rat-king",
+            "health": "9",
+            "attack": "X",
+            "movement": "2",
+            "count": 1,
+            "enhancements": [
+              "heal",
+              "move"
+            ],
+            "action": {
+              "type": "custom",
+              "value": "%data.custom.gh.mindthief.abilities.173.1%"
+            }
+          },
+          "small": true
+        },
+        {
+          "type": "concatenation",
+          "value": "",
+          "subActions": [
+            {
+              "type": "card",
+              "value": "experience:2"
+            },
+            {
+              "type": "card",
+              "value": "persistent"
+            }
+          ]
+        }
+      ],
+      "bottomLost": true,
+      "bottomActions": [
+        {
+          "type": "custom",
+          "value": "%data.custom.gh.mindthief.abilities.173.2%",
+          "small": true
+        },
+        {
+          "type": "concatenation",
+          "value": "",
+          "subActions": [
+            {
+              "type": "card",
+              "value": "experience:2"
+            },
+            {
+              "type": "card",
+              "value": "round"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Phantasmal Killer",
+      "cardId": 174,
+      "level": 9,
+      "initiative": 67,
+      "actions": [
+        {
+          "type": "box",
+          "value": "%data.custom.gh.mindthief.augment%",
+          "small": true,
+          "subActions": [
+            {
+              "type": "grid",
+              "value": 2,
+              "subActions": [
+                {
+                  "type": "custom",
+                  "value": "%data.custom.gh.mindthief.abilities.174.1%"
+                },
+                {
+                  "type": "element",
+                  "value": "dark",
+                  "valueType": "minus",
+                  "subActions": [
+                    {
+                      "type": "custom",
+                      "value": "%data.custom.gh.mindthief.abilities.174.2%",
+                      "small": true
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "concatenation",
+          "value": "",
+          "subActions": [
+            {
+              "type": "attack",
+              "value": 2,
+              "enhancementTypes": [
+                "diamond"
+              ]
+            },
+            {
+              "type": "card",
+              "value": "experience:1"
+            }
+          ]
+        },
+        {
+          "type": "grid",
+          "subActions": [
+            {
+              "type": "card",
+              "value": "persistent"
+            },
+            {
+              "type": "custom",
+              "value": "%data.custom.gh.mindthief.abilities.174.3%",
+              "small": true
+            }
+          ]
+        }
+      ],
+      "bottomActions": [
+        {
+          "type": "move",
+          "value": 2,
+          "enhancementTypes": [
+            "circle"
+          ]
+        },
+        {
+          "type": "loot",
+          "value": 1
+        },
+        {
+          "type": "condition",
+          "value": "invisible",
+          "subActions": [
+            {
+              "type": "specialTarget",
+              "value": "self",
+              "small": true
+            }
+          ]
+        },
+        {
+          "type": "element",
+          "value": "dark"
+        }
+      ]
+    }
+  ],
+  "cardId": 150
+}

@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+   version="1.1"
+   id="svg2"
+   width="100"
+   height="100"
+   viewBox="0 0 100 100"
+   sodipodi:docname="mp-anaphi.svg"
+   inkscape:version="1.2.2 (b0a8486541, 2022-12-01)"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <sodipodi:namedview
+     id="namedview245"
+     pagecolor="#ffffff"
+     bordercolor="#000000"
+     borderopacity="0.25"
+     inkscape:showpageshadow="2"
+     inkscape:pageopacity="0.0"
+     inkscape:pagecheckerboard="0"
+     inkscape:deskcolor="#d1d1d1"
+     showgrid="false"
+     inkscape:zoom="7.9292929"
+     inkscape:cx="48.55414"
+     inkscape:cy="49.626115"
+     inkscape:window-width="1854"
+     inkscape:window-height="1011"
+     inkscape:window-x="0"
+     inkscape:window-y="0"
+     inkscape:window-maximized="1"
+     inkscape:current-layer="g8" />
+  <defs
+     id="defs6">
+    <filter
+       id="colorize"
+       x="-0.1"
+       y="-0.10000001"
+       width="1.2"
+       height="1.2">
+      <feColorMatrix
+         type="saturate"
+         values="0"
+         result="gray"
+         id="feColorMatrix236" />
+      <feColorMatrix
+         in="gray"
+         type="matrix"
+         values="0 0 0 0 0.7215686274509804 0 0 0 0 0.23921568627450981 0 0 0 0 0.7294117647058823 0 0 0 1 0"
+         id="feColorMatrix238" />
+    </filter>
+  </defs>
+  <g
+     id="g8"
+     filter="url(#colorize)">
+    <path
+       style="fill:#000000;stroke-width:0.906512"
+       d="m 40.851787,92.07196 c 0,-0.385911 2.651547,-3.448184 5.892327,-6.805049 3.24078,-3.356865 5.892327,-6.50307 5.892327,-6.991566 0,-0.488497 -2.651547,-2.615727 -5.892327,-4.727178 -3.24078,-2.111451 -5.892327,-4.199017 -5.892327,-4.639036 0,-0.440019 2.345599,-0.815029 5.212443,-0.833354 5.210801,-0.03331 17.016356,-1.950048 17.986595,-2.920288 C 64.875104,64.331212 55.625631,62.786668 46.290858,62.189803 28.631489,61.060664 15.468426,57.554219 11.910837,53.031478 10.43473,51.154912 10.215454,48.974547 10.096631,34.99191 L 9.9614717,19.086903 12.499975,16.5484 c 5.540465,-5.540465 19.434068,-8.5317784 39.68321,-8.5438541 14.041462,-0.00837 21.631869,1.4209848 28.301098,5.3294131 5.861133,3.434853 6.599609,5.611606 6.599609,19.453199 V 44.69387 L 82.871717,40.986166 C 78.081212,36.769394 71.508968,34.399577 59.895747,32.7015 51.401902,31.459536 34.231701,32.025668 28.613877,33.73292 l -3.626048,1.101953 2.719536,0.759176 c 1.495744,0.417548 7.002804,1.192468 12.23791,1.722045 26.970881,2.728339 33.44976,4.362324 38.043877,9.594735 l 2.749157,3.131116 -0.05116,13.792763 c -0.06516,17.566438 -0.631251,19.345717 -7.20093,22.633446 -2.742198,1.372304 -7.841327,3.072045 -11.331398,3.777201 -7.990643,1.614479 -21.303029,2.755935 -21.303029,1.826605 z"
+       id="path802" />
+  </g>
+</svg>

@@ -74,6 +74,8 @@ final class PlayerTurnController {
 
         let action = actions[currentActionIndex]
         let isAsync = action.type == .attack || action.type == .summon || action.type == .push || action.type == .pull
+            || (action.type == .condition && conditionNeedsTargetSelection(action))
+            || (action.type == .heal && healNeedsTargetSelection(action))
         executeAction(action, coordinator: coordinator)
         // Attack and summon actions are async (player must select a target/hex),
         // so don't advance the index yet — it's advanced in advanceAfterAsyncAction().
@@ -226,13 +228,41 @@ final class PlayerTurnController {
 
         case .heal:
             let healValue = action.value?.intValue ?? 0
-            coordinator.log("\(characterID): Heal \(healValue)", category: .heal)
-            if let character = gameManager?.game.characters.first(where: { $0.id == characterID }) {
-                gameManager?.entityManager.changeHealth(character, amount: healValue)
+            var range = 0
+            for sub in action.subActions ?? [] {
+                if sub.type == .range, let r = sub.value?.intValue { range = r }
+            }
+            if range > 0 {
+                // Ranged heal: player selects an ally (or self) within range
+                coordinator.log("\(characterID): Heal \(healValue), Range \(range) — select target", category: .heal)
+                coordinator.beginHealAction(pieceID: pieceID, healValue: healValue, range: range)
+            } else {
+                // Self-heal (no range)
+                coordinator.log("\(characterID): Heal \(healValue)", category: .heal)
+                if let character = gameManager?.game.characters.first(where: { $0.id == characterID }) {
+                    gameManager?.entityManager.changeHealth(character, amount: healValue)
+                }
             }
 
         case .condition:
-            if let condName = action.value?.stringValue, let cond = ConditionName(rawValue: condName) {
+            guard let condName = action.value?.stringValue,
+                  let cond = ConditionName(rawValue: condName) else { break }
+            let spec = conditionTargetSpec(action)
+            switch spec {
+            case .singleEnemy(let range):
+                // Async: player selects one enemy in range
+                coordinator.beginConditionAction(pieceID: pieceID, condition: cond, range: range)
+                coordinator.log("\(characterID): \(cond.rawValue) — select target", category: .condition)
+            case .allEnemies(let range):
+                coordinator.applyConditionToAllEnemies(from: pieceID, condition: cond, range: range ?? 1)
+                coordinator.log("\(characterID): \(cond.rawValue) → all enemies (range \(range ?? 1))", category: .condition)
+            case .allAllies(let range):
+                coordinator.applyConditionToAllAllies(from: pieceID, condition: cond, range: range ?? 999)
+                coordinator.log("\(characterID): \(cond.rawValue) → all allies", category: .condition)
+            case .selfAndAllAllies(let range):
+                applyConditionToSelf(cond, coordinator: coordinator)
+                coordinator.applyConditionToAllAllies(from: pieceID, condition: cond, range: range ?? 999)
+            case .`self`:
                 applyConditionToSelf(cond, coordinator: coordinator)
             }
 
@@ -266,6 +296,7 @@ final class PlayerTurnController {
         case .loot:
             let lootRange = action.value?.intValue ?? 1
             coordinator.log("\(characterID): Loot \(lootRange)", category: .loot)
+            coordinator.collectLootInRange(pieceID: pieceID, range: lootRange)
 
         case .summon:
             executeSummon(action, coordinator: coordinator)
@@ -356,11 +387,82 @@ final class PlayerTurnController {
                     coordinator.log("\(characterID): +\(xpValue) XP", category: .info)
                 }
             } else if sub.type == .condition {
+                // Sub-conditions within non-attack actions that target self only
+                // (attack sub-conditions are handled via pendingConditions → CombatResolver)
                 if let condName = sub.value?.stringValue, let cond = ConditionName(rawValue: condName) {
-                    applyConditionToSelf(cond, coordinator: coordinator)
+                    let parentIsSelfTargeted = sub.subActions == nil ||
+                        sub.subActions?.contains(where: { $0.type == .specialTarget }) == false
+                    if parentIsSelfTargeted {
+                        applyConditionToSelf(cond, coordinator: coordinator)
+                    }
                 }
             }
         }
+    }
+
+    // MARK: - Condition Target Helpers
+
+    /// How a standalone condition action should be targeted.
+    private enum ConditionTarget {
+        case `self`
+        case singleEnemy(range: Int)
+        case allEnemies(range: Int?)
+        case allAllies(range: Int?)
+        case selfAndAllAllies(range: Int?)
+    }
+
+    /// Parse the `specialTarget` subaction to determine how a condition should be targeted.
+    private func conditionTargetSpec(_ action: ActionModel) -> ConditionTarget {
+        guard let specValue = action.subActions?
+            .first(where: { $0.type == .specialTarget })?.value?.stringValue else {
+            return .self
+        }
+        let lower = specValue.lowercased()
+
+        // Parse embedded range: "enemiesRange:3" → range 3
+        func embeddedRange(_ prefix: String) -> Int? {
+            guard lower.hasPrefix(prefix) else { return nil }
+            let suffix = lower.dropFirst(prefix.count)
+            return Int(suffix.trimmingCharacters(in: .init(charactersIn: ":")))
+        }
+
+        switch lower {
+        case "self":
+            return .self
+        case "enemyadjacent":
+            return .singleEnemy(range: 1)
+        case "enemiesadjacent", "enemiesmoved through", "enemiesmoved":
+            return .allEnemies(range: 1)
+        case "enemies":
+            return .allEnemies(range: nil)
+        case "allyadjacent":
+            return .allAllies(range: 1)  // treat as all adjacent allies for now
+        case "alliesadjacent", "alliesadjacentaffect":
+            return .allAllies(range: 1)
+        case "alliesaffect":
+            return .allAllies(range: nil)
+        case "selfalliesaffect", "selfalliesadjacentaffect":
+            return .selfAndAllAllies(range: lower.contains("adjacent") ? 1 : nil)
+        default:
+            // "enemiesRange:N", "alliesRangeAffect:N"
+            if let r = embeddedRange("enemiesrange:") { return .allEnemies(range: r) }
+            if let r = embeddedRange("alliesrangeaffect:") { return .allAllies(range: r) }
+            // Fallback: if it mentions "enemy" → single enemy; "allies" → allies; else self
+            if lower.contains("enemy") || lower.contains("enemies") { return .singleEnemy(range: 1) }
+            if lower.contains("allie") || lower.contains("ally") { return .allAllies(range: 1) }
+            return .self
+        }
+    }
+
+    /// Returns true if this condition action requires the player to select a target (async).
+    private func conditionNeedsTargetSelection(_ action: ActionModel) -> Bool {
+        if case .singleEnemy = conditionTargetSpec(action) { return true }
+        return false
+    }
+
+    /// Returns true if this heal action has a range subaction (requiring interactive target selection).
+    private func healNeedsTargetSelection(_ action: ActionModel) -> Bool {
+        return action.subActions?.contains(where: { $0.type == .range }) ?? false
     }
 
     /// Apply a condition to the acting character.

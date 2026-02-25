@@ -1,0 +1,1952 @@
+{
+  "name": "cragheart",
+  "edition": "gh",
+  "character": true,
+  "abilities": [
+    {
+      "name": "Opposing Strike",
+      "cardId": 116,
+      "level": 1,
+      "initiative": 46,
+      "actions": [
+        {
+          "type": "attack",
+          "value": 3,
+          "enhancementTypes": [
+            "diamond",
+            "diamond"
+          ],
+          "subActions": [
+            {
+              "type": "area",
+              "value": "(1,1,active)|(1,2,target)|(2,0,target)"
+            },
+            {
+              "type": "card",
+              "value": "experience:1"
+            }
+          ]
+        }
+      ],
+      "bottomActions": [
+        {
+          "type": "custom",
+          "value": "%data.custom.gh.cragheart.abilities.116.1%",
+          "small": true
+        },
+        {
+          "type": "concatenation",
+          "value": "",
+          "subActions": [
+            {
+              "type": "card",
+              "value": "persistent"
+            },
+            {
+              "type": "card",
+              "value": "slot"
+            },
+            {
+              "type": "card",
+              "value": "slotXp:1"
+            },
+            {
+              "type": "card",
+              "value": "slot"
+            },
+            {
+              "type": "card",
+              "value": "slotXp:1"
+            },
+            {
+              "type": "card",
+              "value": "slot"
+            },
+            {
+              "type": "card",
+              "value": "slotXp:1"
+            },
+            {
+              "type": "card",
+              "value": "lost"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Crushing Grasp",
+      "cardId": 117,
+      "level": 1,
+      "initiative": 35,
+      "actions": [
+        {
+          "type": "attack",
+          "value": 3,
+          "enhancementTypes": [
+            "diamond"
+          ],
+          "subActions": [
+            {
+              "type": "condition",
+              "value": "immobilize",
+              "small": true
+            },
+            {
+              "type": "element",
+              "value": "earth"
+            }
+          ]
+        }
+      ],
+      "bottomActions": [
+        {
+          "type": "loot",
+          "value": 1
+        }
+      ]
+    },
+    {
+      "name": "Avalanche",
+      "cardId": 118,
+      "level": 1,
+      "initiative": 75,
+      "lost": true,
+      "actions": [
+        {
+          "type": "attack",
+          "value": 4,
+          "enhancementTypes": [
+            "diamond"
+          ],
+          "subActions": [
+            {
+              "type": "area",
+              "value": "(0,0,enhance)|(0,1,active)|(1,0,target)|(1,1,target)",
+              "enhancementTypes": [
+                "hex"
+              ]
+            },
+            {
+              "type": "element",
+              "value": "earth",
+              "valueType": "minus",
+              "subActions": [
+                {
+                  "type": "concatenation",
+                  "value": ",",
+                  "subActions": [
+                    {
+                      "type": "attack",
+                      "value": 1,
+                      "valueType": "add",
+                      "small": true
+                    },
+                    {
+                      "type": "card",
+                      "value": "experience:1",
+                      "small": true
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "card",
+              "value": "experience:1"
+            }
+          ]
+        }
+      ],
+      "bottomActions": [
+        {
+          "type": "custom",
+          "value": "%data.custom.gh.cragheart.abilities.118.1%",
+          "small": true
+        },
+        {
+          "type": "element",
+          "value": "earth"
+        }
+      ]
+    },
+    {
+      "name": "Rumbling Advance",
+      "cardId": 119,
+      "level": 1,
+      "initiative": 29,
+      "actions": [
+        {
+          "type": "heal",
+          "value": 4,
+          "enhancementTypes": [
+            "diamond_plus"
+          ],
+          "subActions": [
+            {
+              "type": "range",
+              "value": 2,
+              "small": true,
+              "enhancementTypes": [
+                "square"
+              ]
+            }
+          ]
+        },
+        {
+          "type": "element",
+          "value": "earth"
+        }
+      ],
+      "bottomActions": [
+        {
+          "type": "move",
+          "value": 2,
+          "enhancementTypes": [
+            "circle"
+          ],
+          "subActions": [
+            {
+              "type": "custom",
+              "value": "%data.custom.gh.cragheart.abilities.119.1%",
+              "small": true
+            }
+          ]
+        },
+        {
+          "type": "element",
+          "value": "earth"
+        }
+      ]
+    },
+    {
+      "name": "Massive Boulder",
+      "cardId": 120,
+      "level": 1,
+      "initiative": 87,
+      "actions": [
+        {
+          "type": "attack",
+          "value": 3,
+          "enhancementTypes": [
+            "diamond"
+          ],
+          "subActions": [
+            {
+              "type": "range",
+              "value": 3,
+              "small": true,
+              "enhancementTypes": [
+                "square"
+              ]
+            },
+            {
+              "type": "custom",
+              "value": "%data.custom.gh.cragheart.abilities.120.1%",
+              "small": true
+            }
+          ]
+        },
+        {
+          "type": "element",
+          "value": "earth"
+        }
+      ],
+      "bottomActions": [
+        {
+          "type": "move",
+          "value": 4,
+          "enhancementTypes": [
+            "circle"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Backup Ammunition",
+      "cardId": 121,
+      "level": 1,
+      "initiative": 77,
+      "actions": [
+        {
+          "type": "custom",
+          "value": "%data.custom.gh.cragheart.abilities.121.1%",
+          "small": true
+        },
+        {
+          "type": "concatenation",
+          "value": "",
+          "subActions": [
+            {
+              "type": "concatenationSpacer",
+              "value": 2
+            },
+            {
+              "type": "card",
+              "value": "persistent"
+            },
+            {
+              "type": "card",
+              "value": "slotXp:1"
+            },
+            {
+              "type": "card",
+              "value": "slotXp:1"
+            },
+            {
+              "type": "concatenationSpacer",
+              "value": 2
+            },
+            {
+              "type": "concatenationSpacer",
+              "value": 1
+            },
+            {
+              "type": "card",
+              "value": "slotXp:1"
+            },
+            {
+              "type": "card",
+              "value": "slotXp:1"
+            },
+            {
+              "type": "card",
+              "value": "lost"
+            }
+          ]
+        }
+      ],
+      "bottomActions": [
+        {
+          "type": "move",
+          "value": 3,
+          "enhancementTypes": [
+            "circle"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Rock Tunnel",
+      "cardId": 122,
+      "level": 1,
+      "initiative": 41,
+      "actions": [
+        {
+          "type": "custom",
+          "value": "%data.custom.gh.cragheart.abilities.122.1%",
+          "small": true,
+          "subActions": [
+            {
+              "type": "card",
+              "value": "experience:1"
+            }
+          ]
+        }
+      ],
+      "bottomLost": true,
+      "bottomActions": [
+        {
+          "type": "move",
+          "value": 5,
+          "enhancementTypes": [
+            "circle"
+          ],
+          "subActions": [
+            {
+              "type": "jump",
+              "value": "",
+              "small": true
+            }
+          ]
+        },
+        {
+          "type": "condition",
+          "value": "immobilize",
+          "subActions": [
+            {
+              "type": "custom",
+              "value": "%data.custom.gh.cragheart.abilities.122.2%",
+              "small": true
+            }
+          ]
+        },
+        {
+          "type": "card",
+          "value": "experience:1"
+        }
+      ]
+    },
+    {
+      "name": "Unstable Upheaval",
+      "cardId": 123,
+      "level": 1,
+      "initiative": 13,
+      "lost": true,
+      "actions": [
+        {
+          "type": "attack",
+          "value": 3,
+          "enhancementTypes": [
+            "diamond"
+          ],
+          "subActions": [
+            {
+              "type": "specialTarget",
+              "value": "enemiesAdjacent",
+              "small": true
+            },
+            {
+              "type": "element",
+              "value": "earth",
+              "valueType": "minus",
+              "subActions": [
+                {
+                  "type": "custom",
+                  "value": "%data.custom.gh.cragheart.abilities.123.1%",
+                  "small": true
+                },
+                {
+                  "type": "custom",
+                  "value": "%data.custom.gh.cragheart.abilities.123.2%",
+                  "small": true
+                }
+              ]
+            },
+            {
+              "type": "custom",
+              "value": "%data.custom.gh.cragheart.abilities.123.3%",
+              "small": true
+            },
+            {
+              "type": "card",
+              "value": "experience:1"
+            }
+          ]
+        }
+      ],
+      "bottomLost": true,
+      "bottomActions": [
+        {
+          "type": "custom",
+          "value": "%data.custom.gh.cragheart.abilities.123.4%",
+          "small": true,
+          "subActions": [
+            {
+              "type": "shield",
+              "value": 2,
+              "subActions": [
+                {
+                  "type": "custom",
+                  "value": "%data.custom.gh.cragheart.abilities.123.5%",
+                  "small": true
+                }
+              ]
+            },
+            {
+              "type": "concatenation",
+              "value": "",
+              "subActions": [
+                {
+                  "type": "card",
+                  "value": "experience:2"
+                },
+                {
+                  "type": "card",
+                  "value": "round"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Crater",
+      "cardId": 124,
+      "level": 1,
+      "initiative": 61,
+      "actions": [
+        {
+          "type": "attack",
+          "value": 3,
+          "enhancementTypes": [
+            "diamond"
+          ],
+          "subActions": [
+            {
+              "type": "range",
+              "value": 3,
+              "small": true,
+              "enhancementTypes": [
+                "square"
+              ]
+            },
+            {
+              "type": "element",
+              "value": "earth",
+              "valueType": "minus",
+              "subActions": [
+                {
+                  "type": "custom",
+                  "value": "%data.custom.gh.cragheart.abilities.124.1%",
+                  "small": true
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "bottomLost": true,
+      "bottomActions": [
+        {
+          "type": "custom",
+          "value": "%data.custom.gh.cragheart.abilities.124.2%",
+          "small": true,
+          "subActions": [
+            {
+              "type": "concatenation",
+              "value": 0,
+              "subActions": [
+                {
+                  "type": "move",
+                  "value": 4,
+                  "enhancementTypes": [
+                    "circle"
+                  ],
+                  "subActions": [
+                    {
+                      "type": "jump",
+                      "value": "",
+                      "small": true
+                    }
+                  ]
+                },
+                {
+                  "type": "card",
+                  "value": "experience:1"
+                }
+              ]
+            },
+            {
+              "type": "custom",
+              "value": "%data.custom.gh.cragheart.abilities.124.2%",
+              "small": true,
+              "subActions": [
+                {
+                  "type": "element",
+                  "value": "earth",
+                  "valueType": "minus",
+                  "subActions": [
+                    {
+                      "type": "custom",
+                      "value": "%data.custom.gh.cragheart.abilities.124.3%",
+                      "small": true
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Dirt Tornado",
+      "cardId": 125,
+      "level": 1,
+      "initiative": 82,
+      "actions": [
+        {
+          "type": "attack",
+          "value": 1,
+          "enhancementTypes": [
+            "diamond"
+          ],
+          "subActions": [
+            {
+              "type": "area",
+              "value": "(0,1,target)|(1,0,target)|(1,1,target)|(1,2,target)|(2,0,target)|(2,1,target)|(2,2,target)"
+            },
+            {
+              "type": "range",
+              "value": 2,
+              "small": true
+            },
+            {
+              "type": "element",
+              "value": "earth",
+              "valueType": "minus",
+              "subActions": [
+                {
+                  "type": "custom",
+                  "value": "%data.custom.gh.cragheart.abilities.125.1%",
+                  "small": true
+                }
+              ]
+            },
+            {
+              "type": "custom",
+              "value": "%data.custom.gh.cragheart.abilities.125.2%",
+              "small": true
+            }
+          ]
+        }
+      ],
+      "bottomActions": [
+        {
+          "type": "move",
+          "value": 3,
+          "enhancementTypes": [
+            "circle"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Earthen Clod",
+      "cardId": 126,
+      "level": 1,
+      "initiative": 38,
+      "actions": [
+        {
+          "type": "attack",
+          "value": 2,
+          "enhancementTypes": [
+            "diamond"
+          ],
+          "subActions": [
+            {
+              "type": "range",
+              "value": 5,
+              "small": true
+            },
+            {
+              "type": "element",
+              "value": "earth",
+              "valueType": "minus",
+              "subActions": [
+                {
+                  "type": "custom",
+                  "value": "%data.custom.gh.cragheart.abilities.126.1%",
+                  "small": true
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "bottomActions": [
+        {
+          "type": "heal",
+          "value": 2,
+          "enhancementTypes": [
+            "diamond_plus"
+          ],
+          "subActions": [
+            {
+              "type": "range",
+              "value": 3,
+              "small": true,
+              "enhancementTypes": [
+                "square"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Heaving Swing",
+      "cardId": 127,
+      "level": "X",
+      "initiative": 57,
+      "actions": [
+        {
+          "type": "attack",
+          "value": 3,
+          "enhancementTypes": [
+            "diamond"
+          ],
+          "subActions": [
+            {
+              "type": "push",
+              "value": "1",
+              "small": true,
+              "enhancementTypes": [
+                "diamond"
+              ]
+            },
+            {
+              "type": "custom",
+              "value": "%data.custom.gh.cragheart.abilities.127.1%",
+              "small": true
+            }
+          ]
+        }
+      ],
+      "bottomActions": [
+        {
+          "type": "custom",
+          "value": "%data.custom.gh.cragheart.abilities.127.2%",
+          "small": true
+        },
+        {
+          "type": "card",
+          "value": "round"
+        }
+      ]
+    },
+    {
+      "name": "Forceful Storm",
+      "cardId": 128,
+      "level": "X",
+      "initiative": 53,
+      "lost": true,
+      "actions": [
+        {
+          "type": "attack",
+          "value": 3,
+          "enhancementTypes": [
+            "diamond"
+          ],
+          "subActions": [
+            {
+              "type": "area",
+              "value": "(0,0,enhance)|(0,1,target)|(1,0,target)|(1,1,target)",
+              "enhancementTypes": [
+                "hex"
+              ]
+            },
+            {
+              "type": "range",
+              "value": 3,
+              "small": true
+            },
+            {
+              "type": "condition",
+              "value": "disarm",
+              "small": true
+            },
+            {
+              "type": "custom",
+              "value": "%data.custom.gh.cragheart.abilities.128.1%",
+              "small": true
+            },
+            {
+              "type": "custom",
+              "value": "%data.custom.gh.cragheart.abilities.128.2%",
+              "small": true
+            },
+            {
+              "type": "element",
+              "value": "air"
+            }
+          ]
+        }
+      ],
+      "bottomActions": [
+        {
+          "type": "custom",
+          "value": "%data.custom.gh.cragheart.abilities.128.3%",
+          "small": true
+        },
+        {
+          "type": "card",
+          "value": "round"
+        }
+      ]
+    },
+    {
+      "name": "Nature's Lift",
+      "cardId": 129,
+      "level": "X",
+      "initiative": 64,
+      "actions": [
+        {
+          "type": "heal",
+          "value": 2,
+          "enhancementTypes": [
+            "diamond_plus"
+          ],
+          "subActions": [
+            {
+              "type": "range",
+              "value": 3,
+              "small": true,
+              "enhancementTypes": [
+                "square"
+              ]
+            },
+            {
+              "type": "target",
+              "value": 2,
+              "small": true,
+              "enhancementTypes": [
+                "circle"
+              ]
+            }
+          ]
+        }
+      ],
+      "bottomActions": [
+        {
+          "type": "custom",
+          "value": "%data.custom.gh.cragheart.abilities.129.1%",
+          "small": true
+        },
+        {
+          "type": "concatenation",
+          "value": "",
+          "subActions": [
+            {
+              "type": "card",
+              "value": "persistent"
+            },
+            {
+              "type": "card",
+              "value": "slot"
+            },
+            {
+              "type": "card",
+              "value": "slotXp:1"
+            },
+            {
+              "type": "card",
+              "value": "slot"
+            },
+            {
+              "type": "card",
+              "value": "slotXp:1"
+            },
+            {
+              "type": "card",
+              "value": "slot"
+            },
+            {
+              "type": "card",
+              "value": "slotXp:1"
+            },
+            {
+              "type": "card",
+              "value": "lost"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Explosive Punch",
+      "cardId": 130,
+      "level": 2,
+      "initiative": 28,
+      "lost": true,
+      "actions": [
+        {
+          "type": "custom",
+          "value": "%data.custom.gh.cragheart.abilities.130.1%",
+          "small": true,
+          "subActions": [
+            {
+              "type": "attack",
+              "value": 4,
+              "enhancementTypes": [
+                "diamond"
+              ],
+              "subActions": [
+                {
+                  "type": "custom",
+                  "value": "%data.custom.gh.cragheart.abilities.130.2%",
+                  "small": true,
+                  "subActions": [
+                    {
+                      "type": "concatenation",
+                      "value": "",
+                      "subActions": [
+                        {
+                          "type": "element",
+                          "value": "earth"
+                        },
+                        {
+                          "type": "card",
+                          "value": "experience:2"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "bottomActions": [
+        {
+          "type": "move",
+          "value": 4,
+          "enhancementTypes": [
+            "circle"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Sentient Growth",
+      "cardId": 131,
+      "level": 2,
+      "initiative": 78,
+      "actions": [
+        {
+          "type": "attack",
+          "value": 2,
+          "enhancementTypes": [
+            "diamond"
+          ],
+          "subActions": [
+            {
+              "type": "area",
+              "value": "(0,0,enhance)|(0,1,target)|(1,0,target)|(1,1,target)",
+              "enhancementTypes": [
+                "hex"
+              ]
+            },
+            {
+              "type": "range",
+              "value": 3,
+              "small": true,
+              "subActions": [
+                {
+                  "type": "heal",
+                  "value": 2,
+                  "enhancementTypes": [
+                    "diamond_plus"
+                  ],
+                  "subActions": [
+                    {
+                      "type": "custom",
+                      "value": "%data.custom.gh.cragheart.abilities.131.1%",
+                      "small": true
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "bottomActions": [
+        {
+          "type": "move",
+          "value": 2
+        },
+        {
+          "type": "heal",
+          "value": 1,
+          "enhancementTypes": [
+            "diamond_plus"
+          ],
+          "subActions": [
+            {
+              "type": "specialTarget",
+              "value": "alliesAdjacentAffect",
+              "small": true
+            }
+          ]
+        },
+        {
+          "type": "attack",
+          "value": 1,
+          "enhancementTypes": [
+            "diamond"
+          ],
+          "subActions": [
+            {
+              "type": "specialTarget",
+              "value": "enemiesAdjacent",
+              "small": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Clear the Way",
+      "cardId": 132,
+      "level": 3,
+      "initiative": 43,
+      "actions": [
+        {
+          "type": "custom",
+          "value": "%data.custom.gh.cragheart.abilities.132.1%",
+          "small": true,
+          "subActions": [
+            {
+              "type": "concatenation",
+              "value": 0,
+              "subActions": [
+                {
+                  "type": "attack",
+                  "value": 2,
+                  "enhancementTypes": [
+                    "diamond"
+                  ],
+                  "subActions": [
+                    {
+                      "type": "custom",
+                      "value": "%data.custom.gh.cragheart.abilities.132.2%",
+                      "small": true
+                    },
+                    {
+                      "type": "custom",
+                      "value": "%data.custom.gh.cragheart.abilities.132.3%",
+                      "small": true
+                    }
+                  ]
+                },
+                {
+                  "type": "card",
+                  "value": "experience:1"
+                }
+              ]
+            },
+            {
+              "type": "element",
+              "value": "earth",
+              "valueType": "minus",
+              "subActions": [
+                {
+                  "type": "concatenation",
+                  "value": ",",
+                  "subActions": [
+                    {
+                      "type": "attack",
+                      "value": 1,
+                      "valueType": "add",
+                      "small": true
+                    },
+                    {
+                      "type": "card",
+                      "value": "experience:1",
+                      "small": true
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "bottomLost": true,
+      "bottomActions": [
+        {
+          "type": "move",
+          "value": 5,
+          "enhancementTypes": [
+            "circle",
+            "circle"
+          ],
+          "subActions": [
+            {
+              "type": "jump",
+              "value": "",
+              "small": true,
+              "subActions": [
+                {
+                  "type": "custom",
+                  "value": "%data.custom.gh.cragheart.abilities.132.4%",
+                  "small": true,
+                  "subActions": [
+                    {
+                      "type": "card",
+                      "value": "experience:2"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Blunt Force",
+      "cardId": 133,
+      "level": 3,
+      "initiative": 21,
+      "lost": true,
+      "actions": [
+        {
+          "type": "attack",
+          "value": 4,
+          "enhancementTypes": [
+            "diamond",
+            "diamond"
+          ],
+          "subActions": [
+            {
+              "type": "element",
+              "value": "earth",
+              "valueType": "minus",
+              "subActions": [
+                {
+                  "type": "concatenation",
+                  "value": ",",
+                  "subActions": [
+                    {
+                      "type": "attack",
+                      "value": 4,
+                      "valueType": "add",
+                      "small": true
+                    },
+                    {
+                      "type": "card",
+                      "value": "experience:2",
+                      "small": true
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "card",
+              "value": "experience:1"
+            }
+          ]
+        }
+      ],
+      "bottomActions": [
+        {
+          "type": "move",
+          "value": 2,
+          "enhancementTypes": [
+            "circle"
+          ]
+        },
+        {
+          "type": "retaliate",
+          "value": 1,
+          "enhancementTypes": [
+            "diamond_plus"
+          ],
+          "subActions": [
+            {
+              "type": "specialTarget",
+              "value": "self",
+              "small": true
+            }
+          ]
+        },
+        {
+          "type": "concatenation",
+          "value": "",
+          "subActions": [
+            {
+              "type": "card",
+              "value": "experience:1"
+            },
+            {
+              "type": "card",
+              "value": "round"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Rock Slide",
+      "cardId": 134,
+      "level": 4,
+      "initiative": 87,
+      "actions": [
+        {
+          "type": "custom",
+          "value": "%data.custom.gh.cragheart.abilities.134.1%",
+          "small": true,
+          "subActions": [
+            {
+              "type": "custom",
+              "value": "%data.custom.gh.cragheart.abilities.134.2%",
+              "small": true,
+              "subActions": [
+                {
+                  "type": "concatenation",
+                  "value": "",
+                  "subActions": [
+                    {
+                      "type": "element",
+                      "value": "earth"
+                    },
+                    {
+                      "type": "card",
+                      "value": "experience:1"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "bottomActions": [
+        {
+          "type": "move",
+          "value": 6,
+          "subActions": [
+            {
+              "type": "custom",
+              "value": "%data.custom.gh.cragheart.abilities.134.3%",
+              "small": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Kinetic Assault",
+      "cardId": 135,
+      "level": 4,
+      "initiative": 19,
+      "actions": [
+        {
+          "type": "move",
+          "value": 1,
+          "enhancementTypes": [
+            "circle"
+          ]
+        },
+        {
+          "type": "attack",
+          "value": 4,
+          "enhancementTypes": [
+            "diamond"
+          ]
+        }
+      ],
+      "bottomLost": true,
+      "bottomActions": [
+        {
+          "type": "retaliate",
+          "value": 3,
+          "enhancementTypes": [
+            "diamond_plus"
+          ],
+          "subActions": [
+            {
+              "type": "range",
+              "value": 3,
+              "small": true,
+              "enhancementTypes": [
+                "square"
+              ],
+              "subActions": [
+                {
+                  "type": "concatenation",
+                  "value": "",
+                  "subActions": [
+                    {
+                      "type": "card",
+                      "value": "experience:2"
+                    },
+                    {
+                      "type": "card",
+                      "value": "round"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Petrify",
+      "cardId": 136,
+      "level": 5,
+      "initiative": 47,
+      "lost": true,
+      "actions": [
+        {
+          "type": "custom",
+          "value": "%data.custom.gh.cragheart.abilities.136.1%",
+          "small": true,
+          "subActions": [
+            {
+              "type": "custom",
+              "value": "%data.custom.gh.cragheart.abilities.136.2%",
+              "small": true,
+              "subActions": [
+                {
+                  "type": "concatenation",
+                  "value": "",
+                  "subActions": [
+                    {
+                      "type": "element",
+                      "value": "earth"
+                    },
+                    {
+                      "type": "card",
+                      "value": "experience:2"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "bottomActions": [
+        {
+          "type": "move",
+          "value": 3,
+          "enhancementTypes": [
+            "circle"
+          ]
+        },
+        {
+          "type": "condition",
+          "value": "immobilize",
+          "subActions": [
+            {
+              "type": "specialTarget",
+              "value": "enemiesAdjacent",
+              "small": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Stone Pummel",
+      "cardId": 137,
+      "level": 5,
+      "initiative": 32,
+      "actions": [
+        {
+          "type": "attack",
+          "value": 3,
+          "enhancementTypes": [
+            "diamond"
+          ],
+          "subActions": [
+            {
+              "type": "area",
+              "value": "(0,1,target)|(0,2,enhance)|(1,1,active)|(1,2,target)|(2,0,target)|(2,1,target)|(3,0,enhance)",
+              "enhancementTypes": [
+                "hex",
+                "hex"
+              ]
+            },
+            {
+              "type": "condition",
+              "value": "muddle",
+              "small": true
+            },
+            {
+              "type": "card",
+              "value": "experience:1"
+            }
+          ]
+        }
+      ],
+      "bottomActions": [
+        {
+          "type": "custom",
+          "value": "%data.custom.gh.cragheart.abilities.137.1%",
+          "small": true
+        },
+        {
+          "type": "concatenation",
+          "value": "",
+          "subActions": [
+            {
+              "type": "concatenationSpacer",
+              "value": 2
+            },
+            {
+              "type": "card",
+              "value": "persistent"
+            },
+            {
+              "type": "card",
+              "value": "slotXp:1"
+            },
+            {
+              "type": "card",
+              "value": "slotXp:1"
+            },
+            {
+              "type": "concatenationSpacer",
+              "value": 2
+            },
+            {
+              "type": "concatenationSpacer",
+              "value": 1
+            },
+            {
+              "type": "card",
+              "value": "slotXp:1"
+            },
+            {
+              "type": "card",
+              "value": "slotXp:1"
+            },
+            {
+              "type": "card",
+              "value": "lost"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Dig Pit",
+      "cardId": 138,
+      "level": 6,
+      "initiative": 78,
+      "actions": [
+        {
+          "type": "custom",
+          "value": "%data.custom.gh.cragheart.abilities.138.1%",
+          "small": true
+        },
+        {
+          "type": "condition",
+          "value": "muddle",
+          "subActions": [
+            {
+              "type": "specialTarget",
+              "value": "enemiesAdjacent",
+              "small": true
+            }
+          ]
+        }
+      ],
+      "bottomActions": [
+        {
+          "type": "move",
+          "value": 2,
+          "enhancementTypes": [
+            "circle"
+          ]
+        },
+        {
+          "type": "condition",
+          "value": "invisible",
+          "subActions": [
+            {
+              "type": "specialTarget",
+              "value": "self",
+              "small": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Cataclysm",
+      "cardId": 139,
+      "level": 6,
+      "initiative": 26,
+      "lost": true,
+      "actions": [
+        {
+          "type": "attack",
+          "value": 4,
+          "enhancementTypes": [
+            "diamond"
+          ],
+          "subActions": [
+            {
+              "type": "area",
+              "value": "(0,1,active)|(1,0,target)|(1,1,target)|(1,2,target)|(2,0,target)|(2,1,target)|(2,2,target)"
+            },
+            {
+              "type": "element",
+              "value": "earth",
+              "valueType": "minus",
+              "subActions": [
+                {
+                  "type": "concatenation",
+                  "value": ",",
+                  "subActions": [
+                    {
+                      "type": "attack",
+                      "value": 2,
+                      "valueType": "add",
+                      "small": true
+                    },
+                    {
+                      "type": "card",
+                      "value": "experience:2",
+                      "small": true
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "custom",
+              "value": "%data.custom.gh.cragheart.abilities.139.1%",
+              "small": true
+            }
+          ]
+        }
+      ],
+      "bottomActions": [
+        {
+          "type": "move",
+          "value": 3,
+          "enhancementTypes": [
+            "circle"
+          ],
+          "subActions": [
+            {
+              "type": "element",
+              "value": "earth",
+              "valueType": "minus",
+              "subActions": [
+                {
+                  "type": "move",
+                  "value": 3,
+                  "valueType": "add",
+                  "small": true
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Meteor",
+      "cardId": 140,
+      "level": 7,
+      "initiative": 23,
+      "lost": true,
+      "actions": [
+        {
+          "type": "custom",
+          "value": "%data.custom.gh.cragheart.abilities.140.1%",
+          "small": true
+        },
+        {
+          "type": "attack",
+          "value": 4,
+          "enhancementTypes": [
+            "diamond"
+          ],
+          "subActions": [
+            {
+              "type": "condition",
+              "value": "immobilize",
+              "small": true
+            },
+            {
+              "type": "custom",
+              "value": "%data.custom.gh.cragheart.abilities.140.2%",
+              "small": true
+            }
+          ]
+        },
+        {
+          "type": "concatenation",
+          "value": "",
+          "subActions": [
+            {
+              "type": "element",
+              "value": "earth"
+            },
+            {
+              "type": "card",
+              "value": "experience:2"
+            }
+          ]
+        }
+      ],
+      "bottomActions": [
+        {
+          "type": "move",
+          "value": 4,
+          "enhancementTypes": [
+            "circle"
+          ],
+          "subActions": [
+            {
+              "type": "jump",
+              "value": "",
+              "small": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Brutal Momentum",
+      "cardId": 141,
+      "level": 7,
+      "initiative": 52,
+      "actions": [
+        {
+          "type": "attack",
+          "value": 3,
+          "enhancementTypes": [
+            "diamond"
+          ],
+          "subActions": [
+            {
+              "type": "push",
+              "value": 2,
+              "small": true,
+              "enhancementTypes": [
+                "diamond"
+              ],
+              "subActions": [
+                {
+                  "type": "custom",
+                  "value": "%data.custom.gh.cragheart.abilities.141.1%",
+                  "small": true
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "bottomActions": [
+        {
+          "type": "custom",
+          "value": "%data.custom.gh.cragheart.abilities.141.2%",
+          "small": true,
+          "subActions": [
+            {
+              "type": "element",
+              "value": "earth",
+              "valueType": "minus",
+              "subActions": [
+                {
+                  "type": "custom",
+                  "value": "%data.custom.gh.cragheart.abilities.141.3%",
+                  "small": true
+                }
+              ]
+            },
+            {
+              "type": "card",
+              "value": "round"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Rocky End",
+      "cardId": 142,
+      "level": 8,
+      "initiative": 37,
+      "lost": true,
+      "actions": [
+        {
+          "type": "custom",
+          "value": "%data.custom.gh.cragheart.abilities.142.1%",
+          "small": true,
+          "subActions": [
+            {
+              "type": "element",
+              "value": "earth",
+              "valueType": "minus",
+              "subActions": [
+                {
+                  "type": "concatenation",
+                  "value": ",",
+                  "small": true,
+                  "subActions": [
+                    {
+                      "type": "range",
+                      "value": 1,
+                      "valueType": "add"
+                    },
+                    {
+                      "type": "card",
+                      "value": "experience:1"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "concatenation",
+          "value": "",
+          "subActions": [
+            {
+              "type": "attack",
+              "value": "X",
+              "subActions": [
+                {
+                  "type": "custom",
+                  "value": "%data.custom.gh.cragheart.abilities.142.2%",
+                  "small": true
+                },
+                {
+                  "type": "custom",
+                  "value": "%data.custom.gh.cragheart.abilities.142.3%",
+                  "small": true
+                },
+                {
+                  "type": "custom",
+                  "value": "%data.custom.gh.cragheart.abilities.142.4%",
+                  "small": true
+                }
+              ]
+            },
+            {
+              "type": "card",
+              "value": "experience:2"
+            }
+          ]
+        }
+      ],
+      "bottomActions": [
+        {
+          "type": "move",
+          "value": 6,
+          "subActions": [
+            {
+              "type": "custom",
+              "value": "%data.custom.gh.cragheart.abilities.142.5%",
+              "small": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Lumbering Bash",
+      "cardId": 143,
+      "level": 8,
+      "initiative": 85,
+      "actions": [
+        {
+          "type": "move",
+          "value": 2,
+          "enhancementTypes": [
+            "circle"
+          ]
+        },
+        {
+          "type": "attack",
+          "value": 5,
+          "enhancementTypes": [
+            "diamond"
+          ]
+        },
+        {
+          "type": "concatenation",
+          "value": "",
+          "subActions": [
+            {
+              "type": "element",
+              "value": "earth"
+            },
+            {
+              "type": "card",
+              "value": "experience:1"
+            }
+          ]
+        }
+      ],
+      "bottomActions": [
+        {
+          "type": "custom",
+          "value": "%data.custom.gh.cragheart.abilities.143.1%",
+          "small": true
+        },
+        {
+          "type": "concatenation",
+          "value": "",
+          "subActions": [
+            {
+              "type": "card",
+              "value": "persistent"
+            },
+            {
+              "type": "card",
+              "value": "slotXp:1"
+            },
+            {
+              "type": "card",
+              "value": "slot"
+            },
+            {
+              "type": "card",
+              "value": "slotXp:1"
+            },
+            {
+              "type": "concatenationSpacer",
+              "value": 1
+            },
+            {
+              "type": "concatenationSpacer",
+              "value": 3
+            },
+            {
+              "type": "card",
+              "value": "slot"
+            },
+            {
+              "type": "card",
+              "value": "slotXp:1"
+            },
+            {
+              "type": "concatenationSpacer",
+              "value": 1
+            },
+            {
+              "type": "card",
+              "value": "lost"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Blind Destruction",
+      "cardId": 144,
+      "level": 9,
+      "initiative": 74,
+      "actions": [
+        {
+          "type": "attack",
+          "value": 4,
+          "subActions": [
+            {
+              "type": "range",
+              "value": 4,
+              "small": true,
+              "enhancementTypes": [
+                "square"
+              ],
+              "subActions": [
+                {
+                  "type": "custom",
+                  "value": "%data.custom.gh.cragheart.abilities.144.1%",
+                  "small": true
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "bottomActions": [
+        {
+          "type": "move",
+          "value": 4,
+          "enhancementTypes": [
+            "circle"
+          ],
+          "subActions": [
+            {
+              "type": "custom",
+              "value": "%data.custom.gh.cragheart.abilities.144.2%",
+              "small": true
+            },
+            {
+              "type": "element",
+              "value": "earth"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Pulverize",
+      "cardId": 145,
+      "level": 9,
+      "initiative": 31,
+      "lost": true,
+      "actions": [
+        {
+          "type": "attack",
+          "value": 3,
+          "enhancementTypes": [
+            "diamond"
+          ],
+          "subActions": [
+            {
+              "type": "push",
+              "value": 2,
+              "enhancementTypes": [
+                "diamond"
+              ]
+            },
+            {
+              "type": "specialTarget",
+              "value": "enemiesAdjacent",
+              "small": true,
+              "subActions": [
+                {
+                  "type": "custom",
+                  "value": "%data.custom.gh.cragheart.abilities.145.1%",
+                  "small": true
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "bottomLost": true,
+      "bottomActions": [
+        {
+          "type": "attack",
+          "value": 2,
+          "enhancementTypes": [
+            "diamond"
+          ],
+          "subActions": [
+            {
+              "type": "specialTarget",
+              "value": "enemiesAdjacent",
+              "small": true
+            }
+          ]
+        },
+        {
+          "type": "concatenation",
+          "value": "",
+          "subActions": [
+            {
+              "type": "move",
+              "value": 5,
+              "subActions": [
+                {
+                  "type": "jump",
+                  "value": "",
+                  "small": true
+                }
+              ]
+            },
+            {
+              "type": "card",
+              "value": "experience:2"
+            }
+          ]
+        },
+        {
+          "type": "attack",
+          "value": 3,
+          "enhancementTypes": [
+            "diamond"
+          ],
+          "subActions": [
+            {
+              "type": "specialTarget",
+              "value": "enemiesAdjacent",
+              "small": true
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

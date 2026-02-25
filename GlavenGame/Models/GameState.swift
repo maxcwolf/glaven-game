@@ -10,6 +10,7 @@ final class GameState {
     var level: Int = 1
     var levelCalculation: Bool = true
     var levelAdjustment: Int = 0
+    var difficulty: DifficultyMode = .normal
     var bonusAdjustment: Int = 0
     var ge5Player: Bool = true
     var playerCount: Int = -1

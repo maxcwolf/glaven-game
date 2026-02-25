@@ -42,6 +42,9 @@ final class BoardState {
     /// Monster standees that are elite (for visual distinction).
     var eliteStandees: Set<PieceID> = []
 
+    /// Loot tokens on the board (dropped when monsters die). Value = token count at that hex.
+    var lootTokens: [HexCoord: Int] = [:]
+
     // MARK: - Derived
 
     /// Reverse lookup: which piece is at a given coordinate.
@@ -109,6 +112,19 @@ final class BoardState {
         cells[coord]?.overlayImageName = nil
         cells[coord]?.overlaySubType = nil
         cells[coord]?.trapDamage = nil
+    }
+
+    /// Place loot tokens at a hex (monsters drop these when killed).
+    func placeLoot(at coord: HexCoord, count: Int = 1) {
+        lootTokens[coord, default: 0] += count
+    }
+
+    /// Remove and return the number of loot tokens at a hex (characters pick these up).
+    @discardableResult
+    func takeLoot(at coord: HexCoord) -> Int {
+        guard let count = lootTokens[coord], count > 0 else { return 0 }
+        lootTokens.removeValue(forKey: coord)
+        return count
     }
 
     /// Remove a treasure overlay from a cell (after it's looted).

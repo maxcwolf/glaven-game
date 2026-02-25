@@ -1,0 +1,1302 @@
+{
+  "ability": {
+    "A Moment's Peace": "片刻安寧",
+    "Accelerated End": "加速終結",
+    "Aid from the Ether": "乙太援助",
+    "Airborne Toxin": "劇毒煙霧",
+    "Amputate": "截肢",
+    "Ancient Ward": "遠古守護",
+    "Angel of Death": "死亡天使",
+    "Angelic Ascension": "天使之躍",
+    "Armor of the Night": "暗夜鎧甲",
+    "Auto Turret": "自動炮台",
+    "Avalanche": "山崩",
+    "Backstab": "背刺",
+    "Backup Ammunition": "備用彈藥",
+    "Bag of Holding": "次元袋",
+    "Balanced Measure": "均衡之道",
+    "Baneful Hex": "惡毒妖術",
+    "Battlefield Medicine": "戰地醫療",
+    "Beacon of Light": "烽火聖光",
+    "Bedside Manner": "無微不治",
+    "Bentleman s Anger": "紳士之怒",
+    "Biting Gnats": "刺骨飛蟲",
+    "Biting Wind": "刺骨之風",
+    "Black Arrot": "黑暗之箭",
+    "Black Fire": "黑焰",
+    "Black Hole": "黑洞",
+    "Black Knives": "漆黑之刃",
+    "Black Tides": "黑潮",
+    "Bladed Boomerang": "利刃迴旋鏢",
+    "Blind Destruction": "無差別破壞",
+    "Blistering Vortex": "歷疹旋風",
+    "Blood Hunger": "嗜血",
+    "Blood Pact": "血之契約",
+    "Blood Transfusion": "輸血",
+    "Bloody Saw": "染血鋼鋸",
+    "Blunt Force": "無華之力",
+    "Boiling Arc": "熾熱光弧",
+    "Bonded Might": "連結之力",
+    "Bone Breaker": "碎骨者",
+    "Booming Proclamation": "洪亮宣言",
+    "Booster Shot": "強化注射",
+    "Borrowed Essence": "借用精華",
+    "Bounce Back": "重振旗鼓",
+    "Brain Leech": "榨取腦隨",
+    "Break the Chains": "衝破枷鎖",
+    "Bright Aegis": "光明聖盾",
+    "Brilliant Flash": "光輝閃耀",
+    "Brilliant Prayer": "光明祈禱",
+    "Brisly Trauma": "恐怖創傷",
+    "Brutal Momentum": "殘暴衝擊",
+    "Brute Force": "殘暴之力",
+    "Burial": "送葬",
+    "Burning Flash": "灼熱閃光",
+    "Burning Hatred": "怒火焚身",
+    "Burning Oil": "灼熱之油",
+    "Calastrophic Bomb": "毀滅炸彈",
+    "Call to Action": "行動呼喚",
+    "Camouflage": "偽裝",
+    "Captivating Performance": "魅人表演",
+    "Careless Charge": "魯莽衝鋒",
+    "Cataclysm": "天崩地裂",
+    "Cauterize": "灼燒",
+    "Cautious Advance": "謹慎前行",
+    "Chain Lightning": "閃電鏈",
+    "Change Tempo": "變奏曲",
+    "Chimeric Formula": "嵌合方程式",
+    "Chromatic Explosion": "多彩爆發",
+    "Claws of the Night": "暗夜利爪",
+    "Cleansing Force": "淨化之力",
+    "Clear the Way": "清障擊",
+    "Cleaving Axe": "斬擊斧",
+    "Cloak of Shade": "暗影披風",
+    "Cloom Darts": "幽暗鏢",
+    "Cold Fire": "冷焰",
+    "Cold Front": "冰鋒術",
+    "Commanding Presence": "統御之力",
+    "Concealed Dominance": "深藏不露",
+    "Concentrated Rage": "聚集怒氣",
+    "Conjured Hid": "援助祈求",
+    "Continual Supply": "持續補給",
+    "Convert the Flock": "斗轉星移",
+    "Corrupting Embrace": "腐壞擁抱",
+    "Crackling Air": "空氣裂擊",
+    "Cranium Overload": "顱腦超載",
+    "Crank Bow": "彎柄神弓",
+    "Crashing Wade": "衝擊波",
+    "Crater": "落石重擊",
+    "Creeping Curse": "蔓延詛咒",
+    "Crippling Bow": "致殘弓",
+    "Crippling Chorus": "致殘大合唱",
+    "Crippling Noose": "致殘套索",
+    "Crippling Offensive": "殘暴攻勢",
+    "Crippling Poison": "致殘毒劑",
+    "Crushing Grasp": "粉碎之握",
+    "Crushing Hammer": "碎骨錘",
+    "Crystallizing Blast": "冰晶爆破",
+    "Cull the Weak": "剔除弱者",
+    "Curative Aerosol": "治癒氣霧劑",
+    "Curative Mixture": "治療混合物",
+    "Dancing Shadows": "影之舞",
+    "Dangerous Contraption": "危險奇兵",
+    "Dark Cloud": "黑雲蔽日",
+    "Dark Frenzy": "暗黑狂暴",
+    "Darkened Skies": "遮天蔽日",
+    "Daybreak": "破曉",
+    "Dazing Wound": "眩暈之傷",
+    "Dazzling Charge": "眩目衝刺",
+    "Defensive Ditty": "防禦小調",
+    "Defensive Stance": "防禦姿態",
+    "Defensive Tactics": "防禦戰術",
+    "Defiance of Death": "無視死亡",
+    "Detonation": "爆炸",
+    "Devastating Hack": "毀滅劈砍",
+    "Devil Horns": "魔鬼犄角",
+    "Dig Pit": "造坑術",
+    "Dirt Tornado": "塵土旋風",
+    "Disappearing Wounds": "擾平傷口",
+    "Disintegration Beam": "裂變射線",
+    "Disorienting Dirge": "迷幻輓歌",
+    "Disorienting Flash": "迷亂閃光彈",
+    "Disorienting Roar": "驚魂咆哮",
+    "Divided Mind": "多重思維",
+    "Divine Intervention": "神聖干涉",
+    "Do No Harm": "不再傷天害理",
+    "Domination": "支配",
+    "Doomed Breeze": "厄運微風",
+    "Duelist's Advance": "鬥者前衝",
+    "Earthen Clod": "淤泥球",
+    "Earthen Spikes": "大地尖刺",
+    "Earthen Steed": "大地之馭",
+    "Echoing Aria": "回音獨唱曲",
+    "Elemental Aegis": "元素聖盾",
+    "Elemental Aid": "元素助力",
+    "Empathetic Assault": "精神突襲",
+    "Empowering Command": "授權號令",
+    "Empowering Void": "虛空賦權",
+    "Encompassing Shadow": "暗影環繞",
+    "Endless Spikes": "無盡尖刺",
+    "Energizing Strike": "激揚打擊",
+    "Energizing Tonic": "能量補品",
+    "Enervating Wound": "衰弱之劍",
+    "Engulfed in Flames": "熊熊烈火",
+    "Engulfing Radiance": "沐浴光芒",
+    "Enhancement Field": "強化力場",
+    "Epidemic": "傳染病",
+    "Eternal Equilibrium": "永世平衡",
+    "Ethereal Manifestation": "超凡靈體",
+    "Ethereal Vines": "無形蔓藤",
+    "Euthanize": "安樂死",
+    "Explosive Punch": "爆裂重拳",
+    "Expose": "揭破",
+    "Eye for an Eye": "以眼還眼",
+    "Eye of the Hurricane": "颶風之眼",
+    "Eyes of the Night": "暗夜之眸",
+    "Face Your End": "難逃一死",
+    "Fatal Advance": "致命進擊",
+    "Fatal Fury": "致命狂暴",
+    "Fearsome Blade": "恐懼利刃",
+    "Feedback Loop": "反饋迴路",
+    "Felling": "鷹擊長空",
+    "Feral Instincts": "野性本能",
+    "Fetid Flurry": "惡臭颶風",
+    "Final Fight": "背水一戰",
+    "Fire Orbs": "火球術",
+    "First Aid": "急救",
+    "Flame Strike": "烈焰衝擊",
+    "Flamethrower": "火焰噴射器",
+    "Flanking Strike": "側翼突襲",
+    "Flashing Burst": "閃光爆發",
+    "Flight of Flame": "火焰升騰",
+    "Flintlock": "烈焰燧槍",
+    "Flurry of Axes": "狂斧",
+    "Flurry of Blades": "疾風劍刃",
+    "Focused Aggression": "聚焦侵襲",
+    "Foot Snare": "絆足陷阱",
+    "Forceful Storm": "強力風暴",
+    "Forceful Swipe": "強勁揮擊",
+    "Forged Ferocity": "締造狂暴",
+    "Forked Beam": "叉狀射線",
+    "Formless Power": "無形之力",
+    "Fortified Position": "加固陣地",
+    "Foul Wind": "腐壞之風",
+    "Freezing Nova": "冰霜新星",
+    "Frenzied Onslaught": "狂攻猛擊",
+    "Fresh Kill": "新鮮獵物",
+    "Frightening Curse": "恐怖詛咒",
+    "Frigid Apparition": "冷冽幽影",
+    "Frigid Torrent": "極寒颶風",
+    "From the Brink": "絕地求生",
+    "Frost Armor": "冰霜護甲",
+    "Frozen Mind": "思維凍結",
+    "Frozen Night": "冰封之夜",
+    "Furious Aid": "大力援助",
+    "Gas Canister": "氣體罐",
+    "Gathering Doom": "集結災厄",
+    "Giant Club": "巨型木棒",
+    "Glass Hammer": "琉璃重錘",
+    "Glorious Bolt": "光輝弩箭",
+    "Gnawing Horde": "啃咬族群",
+    "Grab and Go": "搶了就跑",
+    "Grasping Vermin": "蟲群束縛",
+    "Grasping the Void": "掌握虛空",
+    "Gravel Vortex": "砂石漩渦",
+    "Grim Bargain": "陰冷契約",
+    "Grim Sustenance": "維持冷酷",
+    "Growing Rage": "怒氣沖天",
+    "Gruesome Advantage": "恐怖優勢",
+    "Hammer Blow": "重錘強擊",
+    "Hamstring": "斷筋",
+    "Hand of the Surgeon": "醫師之手",
+    "Hardened Spikes": "尖刺護體",
+    "Harmless Contraption": "無害奇兵",
+    "Harsh Stimulants": "烈性興奮劑",
+    "Hastened Step": "疾風步",
+    "Heaving Swing": "高舉拋擊",
+    "Hidden Daggers": "暗裡藏刀",
+    "Hold Back the Pain": "延緩痛楚",
+    "Holy Strike": "神聖打擊",
+    "Hook Gun": "鉤爪槍",
+    "Hook and Chain": "鉤鏈爪",
+    "Horned Majesty": "角之威嚴",
+    "Hostile Takeover": "敵意接管",
+    "Howling Bolts": "呼嘯弩箭",
+    "Ice Spikes": "尖銳冰刺",
+    "Icy Blast": "冰爆術",
+    "Illuminate the Target": "光之指引",
+    "Immortality": "不滅之軀",
+    "Immovable Phalanx": "不動方陣",
+    "Impaling Eruption": "尖刺爆發",
+    "Impaling Spear": "穿刺槍",
+    "Impending End": "絕命追擊",
+    "Inescapable Fate": "天命難違",
+    "Inexorable Momentum": "勢不可擋",
+    "Infernal Vortex": "煉獄火漩",
+    "Inferno": "地獄火",
+    "Info the Night": "夜行",
+    "Ink Bomb": "油墨炸彈",
+    "Inspiring Anthem": "啟迪讚歌",
+    "Inspiring Sanctity": "神聖激勵",
+    "Interplanar Mastery": "位面掌控",
+    "Intervening Apparitions": "附體幽魂",
+    "Iron Bulwark": "鋼鐵壁壘",
+    "Jaws of Death": "死亡顎擊",
+    "Jet Propulsion": "噴氣式推進器",
+    "Juggernaut": "堅不可摧",
+    "Kinetic Assault": "動能強襲",
+    "King of the Hill": "山丘之王",
+    "Large Medical Pack": "大型醫療包",
+    "Lash Out": "痛擊",
+    "Lava Eruption": "熔岩噴發",
+    "Lay on Hands": "聖療之手",
+    "Lead to Slaughter": "引向死亡",
+    "Leaping Cleave": "跳劈",
+    "Leathery E": "堅韌之翼",
+    "Lethal Injection": "致死注射",
+    "Living Mountain": "活化山脈",
+    "Living Night": "活化黑夜",
+    "Living Torch": "活體火炬",
+    "Long Con": "瞞天過海",
+    "Lumbering Bash": "緩步重毆",
+    "Lurking Ruin": "致命潛伏",
+    "Malleable Evocation": "韌性塑能",
+    "Mana Bolt": "魔法箭",
+    "Many as One": "萬眾一體",
+    "Marching Beat": "行軍節拍",
+    "Mass Extinction": "萬物滅絕",
+    "Mass Hysteria": "多重狂亂",
+    "Massive Boulder": "巨石衝擊",
+    "Master Physician": "醫療專家",
+    "Maul": "撕咬",
+    "Medical Pack": "醫療包",
+    "Melody and Harmony": "弦外之音",
+    "Meteor": "隕石墜擊",
+    "Micro Bots": "微型機器人",
+    "Mighty Bond": "強力連結",
+    "Mobile Response": "快步反制",
+    "Mobilizing Axiom": "激勵真言",
+    "Mobilizing Measure": "鼓動步調",
+    "Multi Pronged Assault": "多重打擊",
+    "Murderous Contraption": "兇殘奇兵",
+    "Natural Remedy": "自然之癒",
+    "Nature's Hunger": "自然之渴",
+    "Nature's Lift": "自然的饋贈",
+    "Negative Energy": "負向能量",
+    "Net Shooter": "捕網發射器",
+    "Nightfall": "夜幕低垂",
+    "Nightmare Serenade": "夢魘小夜曲",
+    "Nightmarish Affliction": "夢魘折磨",
+    "Nimble Knife": "靈巧小刀",
+    "Noxious Vials": "毒氣瓶",
+    "Numb the Pain": "麻痺痛苦",
+    "Obsidian Shards": "黑曜碎片",
+    "Oozing Manifestation": "塑靈淤泥",
+    "Open Wound": "撕裂傷口",
+    "Opposing Strike": "雙向攻勢",
+    "Otherworldly Rage": "超然狂怒",
+    "Oversized Pack": "超大號背包",
+    "Overwhelming Assault": "壓制強襲",
+    "Pain's End": "苦痛終結",
+    "Paralyzing Bite": "麻痹螫咬",
+    "Parasitic Influence": "寄生支配",
+    "Patch Fur": "修復毛皮",
+    "Path of Glory": "榮耀之路",
+    "Perverse Edge": "乖張之刃",
+    "Petrify": "石化術",
+    "Phantasmal Killer": "幻影殺手",
+    "Pilfer": "偷竊",
+    "Portable Ballista": "便攜弩炮",
+    "Possession": "附身",
+    "Potent Potables": "烈性飲品",
+    "Power Ballad": "激昂戰歌",
+    "Practical Plans": "可行之計",
+    "Pragmatic Reinforcement": "實效增援",
+    "Precaution": "預防措施",
+    "Predator and Prey": "獵手與獵物",
+    "Prep for Surgery": "手術準備",
+    "Prepare for the Kill": "獵殺準備",
+    "Prescription": "特效藥",
+    "Press the Attack": "壓制一擊",
+    "Prevention Is Key": "防患未然",
+    "Primal Blessing": "原始庇佑",
+    "Primal Duality": "對立之源",
+    "Proficiency": "熟能生巧",
+    "Protective Blessing": "守護祝福",
+    "Provoke Terror": "激發恐懼",
+    "Provoking Roar": "激怒咆哮",
+    "Proximity Mine": "感應地雷",
+    "Psychic Projection": "心靈投射",
+    "Pull the Strings": "提線木偶",
+    "Pulverize": "碾碎",
+    "Punch Through": "穿透打擊",
+    "Pure Augmentation": "純淨擴增",
+    "Purifying Aura": "淨化光環",
+    "Quick Hands": "迅捷之手",
+    "Quiet Frenzy": "寂靜狂怒",
+    "Quietus": "處決",
+    "Quiver of Arrows": "箭筒",
+    "Race to the Grade": "死期將至",
+    "Rain of Arrows": "箭雨",
+    "Rampage": "橫衝直撞",
+    "Raw Enhancement": "原力強化",
+    "Reckless Offensive": "魯莽攻勢",
+    "Reforge": "重鑄",
+    "Refreshment": "興奮劑",
+    "Regenerative Tissue": "組織再生",
+    "Reinforced Steel": "鋼鐵後援",
+    "Reinvigorating Elixir": "振奮靈藥",
+    "Relentless Ally": "不屈盟友",
+    "Relentless Offensive": "凌厲攻勢",
+    "Research the Cure": "解藥研究",
+    "Reserved Energy": "儲備能量",
+    "Resolute Stand": "屹立不倒",
+    "Restock": "補給",
+    "Restorative Mist": "滋養噴霧",
+    "Reviving Ether": "乙太復甦",
+    "Reviving Shock": "復甦衝擊",
+    "Ride the Wind": "馭風術",
+    "Righteous Strength": "公正之力",
+    "Rising Momentum": "乘勝追擊",
+    "Rock Slide": "土石流",
+    "Rock Tunnel": "岩之坑道",
+    "Rocky End": "碎石擊",
+    "Rot Maggots": "腐化蛆蟲",
+    "Rumbling Advance": "轟鳴進擊",
+    "Sacrifice": "安享獻祭",
+    "Sap Life": "汲取生命",
+    "Scales of Justice": "正義天秤",
+    "Scattered Terror": "恐懼四濺",
+    "Scroll of Annihilation": "煙滅卷軸",
+    "Scroll of Blizzards": "暴雪卷軸",
+    "Scroll of Judgment": "審判卷軸",
+    "Scroll of Lightning": "雷光卷軸",
+    "Scroll of Recall": "召回卷軸",
+    "Scurry": "疾跑",
+    "Seeing Red": "火冒三丈",
+    "Selfish Retribution": "自食惡果",
+    "Sentient Growth": "感知增長",
+    "Shadow Puppets": "暗影魁儡",
+    "Shaping the Ether": "銳化乙太",
+    "Shared Nightmare": "夢魘共鳴",
+    "Sharpening Kit": "打磨工具",
+    "Shield Bash": "盾擊",
+    "Shiny Distraction": "分神閃光",
+    "Side Pouch": "便攜工具包",
+    "Silent Force": "寂靜之力",
+    "Silent Scream": "無聲尖叫",
+    "Simulacrum": "鏡像術",
+    "Singing Arrow": "歌唱箭矢",
+    "Single Out": "逐個擊破",
+    "Singular Focus": "集中注意力",
+    "Sinister Opportunity": "陰險契機",
+    "Skewer": "穿刺",
+    "Skirmishing Maneuver": "見機行事",
+    "Smoke": "迷蹤步",
+    "Smoke Bomb": "煙霧彈",
+    "Soaring Ally": "翱翔盟友",
+    "Solid Bot": "強弓",
+    "Song of Speed": "極速之歌",
+    "Soothing Lullaby": "舒緩搖籃曲",
+    "Soulfire": "靈魂烈火",
+    "Spare Dagger": "備用匕首",
+    "Special Mixture": "特殊混合物",
+    "Spiked Armor": "尖刺護甲",
+    "Spirit Swap": "靈魂交換",
+    "Spirit of Doom": "詛咒之靈",
+    "Spirit of the Night": "暗夜之靈",
+    "Spread the Plague": "散播瘟疫",
+    "Spreading Scourge": "災禍蔓延",
+    "Spring the Trap": "彈射陷阱",
+    "Staff of Visions": "幻影權杖",
+    "Stamina Booster": "精力增強劑",
+    "Stick to the Shadows": "如影隨形",
+    "Stiletto Storm": "劍刃風暴",
+    "Stinging Cloud": "螫人蟲雲",
+    "Stoking Hail": "雪漫冰雹",
+    "Stone Fists": "岩石重拳",
+    "Stone Pummel": "巨石連擊",
+    "Stone Sigil": "岩石印記",
+    "Storm Sigil": "風暴印記",
+    "Storm of": "翼族風暴",
+    "Strength in Numbers": "團結之力",
+    "Strengthen in Agony": "苦痛之力",
+    "Stun Shot": "暈眩砲彈",
+    "Submissive Affliction": "宰割之痛",
+    "Succumb for the Gift": "死於恩賜",
+    "Supportive Chant": "鼓舞聖歌",
+    "Surgeon's Satchel": "醫師行囊",
+    "Swallowed by Fear": "深陷恐慌",
+    "Sweeping Blow": "橫掃",
+    "Swift Bow": "迅捷之弓",
+    "Swift Trickery": "詭計多端",
+    "Syringe": "注射器",
+    "Tactical Order": "戰術指令",
+    "Teamwork": "團隊合作",
+    "Tear the Fabric": "撕裂構造",
+    "Terror Blade": "恐怖利刃",
+    "The Hunt Begins": "狩獵開始",
+    "The Maw of Madness": "瘋狂吞噬",
+    "The Mind's Weakness": "弱化心智",
+    "Thief's Knack": "盜賊伎倆",
+    "Throw Voice": "投聲術",
+    "Throwing Knives": "飛刀",
+    "Tinkerer's Tools": "匠人工具",
+    "Toxic Bolt": "浸毒強弩",
+    "Trample": "踐踏",
+    "Tranquil Trill": "沉穩顫音",
+    "Tremulant Cyclone": "震顫龍卷",
+    "Triage": "分類診斷",
+    "Tribal Sigil": "部族印記",
+    "Trickster's Reversal": "逆轉欺詐",
+    "Tuning the Outcome": "適時調音",
+    "Twin Restoration": "雙重修復",
+    "Tyrannical Force": "暴虐之力",
+    "Unbridled Power": "放縱蠻力",
+    "Under the Skin": "透膚蝕骨",
+    "Unending Chant": "無盡吟頌",
+    "Unending Dominance": "無盡支配",
+    "Unseen bread": "無形恐懼",
+    "Unstable Upheaval": "地動山搖",
+    "Unstoppable Beast": "剛烈獸性",
+    "Unstoppable Chard": "無敵衝鋒",
+    "Unstoppable Destruction": "無堅不摧",
+    "Unwavering Hand": "堅定之手",
+    "Unwavering Mandate": "堅守指令",
+    "Vaccine": "疫苗",
+    "Vengeance": "復仇",
+    "Vengeful Barrage": "復仇風暴",
+    "Venom Shiv": "淬毒小刀",
+    "Venomous Ally": "劇毒盟友",
+    "Vicious": "兇殘盟友",
+    "Vicious Blood": "殘忍之血",
+    "Vile Pestilence": "邪惡疫病",
+    "Virulent Strain": "劇毒菌株",
+    "Visage of the Inevitable": "在劫難逃",
+    "Vital Charge": "生命充能",
+    "Vital Strike": "要害打擊",
+    "Voice of the Night": "暗夜之聲",
+    "Volatile Concoction": "烈性化合物",
+    "Volatile Consumption": "波動耗能",
+    "Volatile Flame": "無常烈焰",
+    "Wall of Doom": "末日障壁",
+    "Warding Dagger": "防身匕首",
+    "Warding Strength": "守護之力",
+    "Watch It Burn": "冷眼觀火",
+    "Weapon of Purity": "聖潔武器",
+    "Whirlwind": "旋風斬",
+    "Wild Animation": "野性之靈",
+    "Wild Command": "荒野指令",
+    "Winged Congregation": "集聚成翼",
+    "Wings of the Night": "黑夜之翼",
+    "Winter s Edge": "凜冬將至",
+    "Wistful Wounding": "傷之渴求",
+    "Withering Claw": "凋零爪擊",
+    "Wretched Creature": "卑劣生物",
+    "Wretched Swarm": "凌厲蟲群",
+    "Zephyr Wings": "和風之翼"
+  },
+  "battleGoals": {
+    "458": {
+      "": "細水長流",
+      "text": "當場景結束時在你手中和棄牌區共有 5 張或更多的技能卡。"
+    },
+    "459": {
+      "": "遊手好閒",
+      "text": "在場景中只有獲得 7 點或者更少的經驗值。"
+    },
+    "460": {
+      "": "勞苦功高",
+      "text": "在場景中獲得 13 點或更多的經驗值。"
+    },
+    "461": {
+      "": "狂熱者",
+      "text": "當場景結束時，你手中和棄牌區一共只有 3 張或更少的技能卡。"
+    },
+    "462": {
+      "": "受虐狂",
+      "text": "當場景結束時你的當前生命值必須小於或等於 2 點。"
+    },
+    "463": {
+      "": "注重治療",
+      "text": "當場景結束時，你的當前生命值必須和最大生命值相等。"
+    },
+    "464": {
+      "": "中和者",
+      "text": "在場景中，讓一個陷阱在你或者你的召喚物的行動回合中被觸發或被解除。"
+    },
+    "465": {
+      "": "掠奪者",
+      "text": "在場景中拾取了一個寶箱。"
+    },
+    "466": {
+      "": "保護者",
+      "text": "在場景中確保你的盟友都沒有變為筋疲力盡。"
+    },
+    "467": {
+      "": "探險家",
+      "text": "在場景中，在你的行動回合中通過開啟一扇門的方式來揭示一個房間。"
+    },
+    "468": {
+      "": "視錢如命",
+      "text": "在場景中拾取了 5 個或者更多的金幣指示物。"
+    },
+    "469": {
+      "": "貧困戶",
+      "text": "在場景中沒有拾取任何金幣指示物或是寶箱指示物。"
+    },
+    "470": {
+      "": "和平主義",
+      "text": "在場景中殺死 3 個或者更少的怪物。"
+    },
+    "471": {
+      "": "施虐狂",
+      "text": "在場景中殺死 5 個或者更多的怪物。"
+    },
+    "472": {
+      "": "王牌獵手",
+      "text": "在場景中殺死一個或是更多的精英級別的怪物。"
+    },
+    "473": {
+      "": "專業人士",
+      "text": "在場景中你使用已裝備的道具次數達到或者超過你的等級 +2 次。"
+    },
+    "474": {
+      "": "挑釁者",
+      "text": "在場景中的每個回合開始時保持場景地圖上有 1 個或者更多的怪物存活。"
+    },
+    "475": {
+      "": "精力充沛",
+      "text": "在場景中以高於所需值 4 點或者更多的傷害來殺死一個怪物。"
+    },
+    "476": {
+      "": "純粹主義",
+      "text": "你在場景中不使用任何道具。"
+    },
+    "477": {
+      "": "揭幕者",
+      "text": "在場景中成為首個殺死怪物的人。"
+    },
+    "478": {
+      "": "命硬",
+      "text": "在場景中確保你的當前生命值從未低於最大生命值的一半(向上取整)。"
+    },
+    "479": {
+      "": "劊子手",
+      "text": "在場景中單憑一次攻擊殺死一個沒有遭受過傷害的怪物。"
+    },
+    "480": {
+      "": "掉隊者",
+      "text": "在場景中休息只進行長休(充分休息)。"
+    },
+    "481": {
+      "": "勇進者",
+      "text": "在場景中休息只進行短休(歇息)。"
+    }
+  },
+  "character": {
+    "gh": {
+      "brute": "蠻子",
+      "cragheart": "裂心人",
+      "mindthief": "亂心賊",
+      "scoundrel": "兇徒",
+      "spellweaver": "織魔師",
+      "tinkerer": "修補機匠"
+    }
+  },
+  "custom": {
+    "gh": {
+      "ancient-artillery": {
+        "1": "所有相鄰的敵人承受 %game.damage:2%。"
+      },
+      "archer": {
+        "1": "在與自己相鄰且距離敵人最近的空格內製造一個 %game.damage:3%的陷阱。"
+      },
+      "bandit-commander": {
+        "1": "移動到下一道門並打開房間"
+      },
+      "brute": {
+        "abilities": {
+          "12": {
+            "1": "X 是這個回合中，到目前為止你移動時所經過的空格數目。",
+            "2": "X 是這個回合中，到目前為止你所造成的 %game.damage% 數值。"
+          },
+          "13": {
+            "1": "這回合中你的所有攻擊額外添加 +1 %game.action.attack% 。"
+          },
+          "14": {
+            "1": "立即殺死一個相鄰普通級別的敵人。"
+          },
+          "15": {
+            "1": "在接下來三次對你造成的 %game.damage% 中，改為不承受任何 %game.damage%。"
+          },
+          "16": {
+            "1": "若你這次移動的路徑是一條直線，則可以執行",
+            "2": "X 是這個行動你移動時所經過的格子數。"
+          },
+          "2": {
+            "1": "這回合你的每次反擊都能讓你獲得 %game.card.experience:1% 。"
+          },
+          "20": {
+            "1": "每個成為目標的敵人能讓你獲得 %game.card.experience:1% 。"
+          },
+          "22": {
+            "1": "立即殺死一個相鄰，且處於 %game.condition.stun% 狀態的普通級別敵人。",
+            "2": "這回合中你的所有攻擊額外添加 +1 %game.action.attack% 。"
+          },
+          "23": {
+            "1": "你可以將所有 %game.action.move% 能力視為數值相等的 %game.action.attack% 能力。"
+          },
+          "26": {
+            "1": "本回合內若你的攻擊目標處於 %game.condition.disarm%、%game.condition.immobilize% 或 %game.condition.stun% 狀態，則你對其所有的攻擊額外 +3 %game.action.attack%。"
+          },
+          "28": {
+            "1": "每個成為目標的敵人能讓你獲得 %game.card.experience:1% 。"
+          },
+          "29": {
+            "1": "立即殺死一個相鄰的普通或精英級別的敵人。"
+          },
+          "4": {
+            "1": "這回合內的所有敵人以你相鄰的盟友作為攻擊目標，則將其攻擊目標改為你，並忽視該攻擊距離的限制。"
+          },
+          "7": {
+            "1": "在接下來六次以你為攻擊目標所造成的 %game.damage% 中，會獲得 %game.action.shield:1%。"
+          }
+        }
+      },
+      "captain-of-the-guard": {
+        "1": "本回合內，所有盟友的所有攻擊附加 +1 %game.action.attack%"
+      },
+      "cragheart": {
+        "abilities": {
+          "116": {
+            "1": "對於接下來六次以你為目標的近戰攻擊，你能獲得 %game.action.retaliate:2%。"
+          },
+          "118": {
+            "1": "在你相鄰空置的空格上創造兩個單格的障礙物。"
+          },
+          "119": {
+            "1": "所有相鄰的盟友和敵人承受 1 傷害。"
+          },
+          "120": {
+            "1": "所有與此攻擊目標相鄰的盟友和敵人遭受 1 傷害。"
+          },
+          "121": {
+            "1": "在你接下來的四個遠距離攻擊行動，獲得增加目標的效果。"
+          },
+          "122": {
+            "1": "摧毀一個相鄰的障礙物。",
+            "2": "指定所有移動時經過的敵人"
+          },
+          "123": {
+            "1": "指定範圍改為離自身兩格",
+            "2": "以內的所有敵人，%game.card.experience:1%",
+            "3": "所有相鄰的盟友遭受 2 傷害",
+            "4": "所有盟友遭受 1 傷害",
+            "5": "影響所有盟友"
+          },
+          "124": {
+            "2": "所有相鄰的盟友和敵人承受 1 傷害。",
+            "3": "更改為 2 點傷害， %game.card.experience:1%"
+          },
+          "125": {
+            "2": "目標區域內的所有盟友和敵人都會陷入 %game.condition.muddle% 狀態。"
+          },
+          "127": {
+            "1": "你可以將攻擊標推至有障礙物的格子中。若這麼做，該障礙物會被摧毀，且攻擊目標遭受 2 傷害，並讓你獲得 %game.card.experience:1%。",
+            "2": "這回合內以的所有遠距離攻擊額外 +1 %game.action.attack% 。"
+          },
+          "128": {
+            "1": "每當指定一個目標，獲得 %game.card.experience:1%",
+            "2": "目標為被指定的敵人。",
+            "3": "這回合中你的所有近戰攻擊額外 +2 %game.action.attack% 。"
+          },
+          "129": {
+            "1": "在你接下來的六個遠距攻擊行動，若%game.element.air%處於強烈或弱化，%game.element.consume.air%來額外 +2 %game.action.range%。"
+          },
+          "130": {
+            "1": "摧毀一個相鄰的障礙物。",
+            "2": "指定所有與這個被摧毀障礙物相鄰的敵人"
+          },
+          "131": {
+            "1": "影響目標區域內的所有盟友"
+          },
+          "132": {
+            "1": "將一個相鄰的單格障礙物移動到 %game.action.range:4% 以內的另外一個空的格子上。",
+            "2": "指定與目標物相鄰的敵人",
+            "3": "上述目標物為被移動的障礙物",
+            "4": "你這次移動所經過的所有障礙物會被摧毀，以及解除所有經過的陷阱。"
+          },
+          "134": {
+            "3": "這次移動的路徑必須為一條直線。"
+          },
+          "136": {
+            "1": "立即殺死 %game.action.range:4% 以內的一個普通級別的敵人。",
+            "2": "在剛被殺死的敵人所在的格子上創造一個單格的障礙物。"
+          },
+          "140": {
+            "2": "指定所有與此障礙物相鄰的敵人。"
+          }
+        }
+      },
+      "dark-rider": {
+        "1": "X = 移動過的格子數"
+      },
+      "elder-drake": {
+        "1": "飛向下一個岩石棲點"
+      },
+      "flowChartGroup": {
+        "atop-mountains": "山峰之巔",
+        "city-events": "城市事件",
+        "demon-and-rift": "惡魔與裂隙",
+        "dragons": "龍族",
+        "intro": "引導",
+        "personal-quests": "個人任務",
+        "random-scenarios": "隨機劇本",
+        "rebellion-rises": "叛亂興起",
+        "road-events": "道路事件",
+        "sealed": "密封",
+        "sewers": "下水道",
+        "the-merchant": "商人",
+        "through-jungles": "穿越叢林",
+        "under-oceans": "大洋之下",
+        "voice": "神秘之聲"
+      },
+      "giant-viper": {
+        "1": "若目標與任何 %data.monster.giant-viper% 的盟友相鄰，增加 +2 %game.action.attack%。"
+      },
+      "merciless-overseer": {
+        "1": "所有斥候再次行動",
+        "2": "V = 場上斥候的數量"
+      },
+      "mindthief": {
+        "abilities": {
+          "149": {
+            "1": "在你近戰攻擊時：",
+            "3": "當另一張 %data.custom.gh.mindthief.augment% 被使用，棄掉此卡。"
+          },
+          "151": {
+            "1": "在你近戰攻擊時：",
+            "3": "當另一張 %data.custom.gh.mindthief.augment% 被使用，棄掉此卡。"
+          },
+          "152": {
+            "1": "在你近戰攻擊時：",
+            "2": "當另一張 %data.custom.gh.mindthief.augment% 被使用，棄掉此卡。",
+            "4": "這行動由你來控制。"
+          },
+          "156": {
+            "1": "在你近戰攻擊時：",
+            "2": "當另一張 %data.custom.gh.mindthief.augment% 被使用，棄掉此卡。"
+          },
+          "157": {
+            "1": "一名相鄰盟友可以執行",
+            "2": "一名距離 %game.action.range:3% 內的盟友可以執行"
+          },
+          "162": {
+            "1": "在你近戰攻擊時：",
+            "2": "當另一張 %data.custom.gh.mindthief.augment% 被使用，棄掉此卡。"
+          },
+          "166": {
+            "1": "在你近戰攻擊時：",
+            "2": "當另一張 %data.custom.gh.mindthief.augment% 被使用，棄掉此卡。"
+          },
+          "169": {
+            "1": "在你近戰攻擊時：",
+            "2": "獲得",
+            "3": "當另一張 %data.custom.gh.mindthief.augment% 被使用，棄掉此卡。"
+          },
+          "174": {
+            "1": "在你近戰攻擊時：",
+            "3": "當另一張 %data.custom.gh.mindthief.augment% 被使用，棄掉此卡。"
+          }
+        },
+        "augment": "增強 %game.characterIconColoredBg.mindthief%",
+        "augments": "增強 %game.characterIconColoredBg.mindthief%"
+      },
+      "prime-demon": {
+        "1": "王座移動"
+      },
+      "scoundrel": {
+        "abilities": {
+          "111": {
+            "1": "解除一個相鄰的陷阱。"
+          },
+          "92": {
+            "1": "解除一個相鄰的陷阱。"
+          },
+          "97": {
+            "3": "強制一個相鄰的敵人執行"
+          }
+        }
+      },
+      "spellweaver": {
+        "abilities": {
+          "61": {
+            "1": "每個成為目標的敵人能讓你獲得 %game.card.experience:1% 。"
+          },
+          "62": {
+            "2": "每個成為目標的敵人能讓你獲得 %game.card.experience:1% 。"
+          }
+        }
+      },
+      "the-betrayer": {
+        "1": "心靈控制"
+      },
+      "tinkerer": {
+        "abilities": {
+          "34": {
+            "1": "每個成為目標的敵人能讓你獲得 %game.card.experience:1% 。"
+          },
+          "35": {
+            "1": "每個成為目標的敵人能讓你獲得 %game.card.experience:1% 。"
+          },
+          "47": {
+            "1": "解除一個相鄰的陷阱。"
+          },
+          "51": {
+            "2": "每個成為目標的敵人能讓你獲得 %game.card.experience:1% 。"
+          },
+          "58": {
+            "1": "承受 2 點傷害"
+          }
+        }
+      },
+      "winged-horror": {
+        "1": "孵化蛋",
+        "2": "%game.action.summon% [C] 蛋"
+      }
+    }
+  },
+  "deck": {
+    "archer": "弓箭手",
+    "boss": "頭目",
+    "guard": "守衛",
+    "imp": "小妖",
+    "scout": "哨兵",
+    "shaman": "薩滿"
+  },
+  "edition": {
+    "gh": "幽港迷城"
+  },
+  "globalAchievements": {
+    "ancient-technology": "遠古科技",
+    "annihilation-of-order": "秩序覆滅",
+    "artifact-cleansed": "神器：淨化",
+    "artifact-lost": "神器：遺失",
+    "artifact-recovered": "神器：找回",
+    "city-rule-demonic": "城市統治：惡魔",
+    "city-rule-economic": "城市統治：商人",
+    "city-rule-militaristic": "城市統治：軍方",
+    "end-of-corruption": "終結腐化之源",
+    "end-of-gloom": "\"黯\"之終結",
+    "end-of-the-invasion": "入侵結束",
+    "the-dead-invade": "亡靈入侵",
+    "the-drake-aided": "協助上古亞龍",
+    "the-drake-slain": "擊殺上古亞龍",
+    "the-edge-of-darkness": "黑暗的邊緣",
+    "the-merchant-flees": "商人逃竄",
+    "the-power-of-enhancement": "附魔之力",
+    "the-rift-neutralized": "中和空間裂縫",
+    "the-voice-freed": "神秘之聲釋放",
+    "the-voice-silenced": "神秘之聲沉寂",
+    "water-breathing": "擁有水息珠"
+  },
+  "monster": {
+    "ancient-artillery": "遠古砲台",
+    "arcane-golem": "奧術魔像",
+    "bandit-archer": "強盜弓箭手",
+    "bandit-commander": "強盜指揮官",
+    "bandit-guard": "強盜衛兵",
+    "black-imp": "黑暗小妖",
+    "bloated-regent": "攝政王行屍",
+    "captain-of-the-guard": "衛兵隊長",
+    "cave-bear": "洞穴熊",
+    "city-archer": "城鎮弓箭手",
+    "city-guard": "城鎮衛兵",
+    "cultist": "邪教徒",
+    "dark-rider": "黑暗騎士",
+    "deep-terror": "深恐者",
+    "earth-demon": "大地惡魔",
+    "elder-drake": "上古亞龍",
+    "flame-demon": "火焰惡魔",
+    "forest-imp": "森林小惡魔",
+    "frost-demon": "冰霜惡魔",
+    "giant-ooze": "巨型軟泥怪",
+    "giant-viper": "巨型蝰蛇",
+    "harrower-infester": "巢靈族寄生者",
+    "hound": "獵犬",
+    "hungry-soul": "飢渴之靈",
+    "infiltrator": "奸細",
+    "inox-archer": "羚牛族弓箭手",
+    "inox-bodyguard": "羚牛族保鑣",
+    "inox-guard": "羚牛族衛兵",
+    "inox-shaman": "羚牛族薩滿",
+    "jekserah": "婕克瑟拉",
+    "living-bones": "骷髏",
+    "lurker": "伏擊者",
+    "lurker-king": "伏擊者之王",
+    "merciless-overseer": "無情監工",
+    "night-demon": "暗夜惡魔",
+    "ooze": "軟泥怪",
+    "prime-demon": "惡魔主宰",
+    "prime-lieutenant": "惡魔主宰的副官",
+    "rending-drake": "撕裂亞龍",
+    "savvas-icestorm": "原生族冰風魔人",
+    "savvas-lavaflow": "原生族熔岩魔",
+    "siege-cannon": "攻城炮",
+    "spitting-drake": "噴吐亞龍",
+    "sun-demon": "旭日惡魔",
+    "the-betrayer": "背叛者",
+    "the-colorless": "蒼白者",
+    "the-gloom": "黯",
+    "the-harvester": "靈魂收割者",
+    "the-sightless-eye": "漠視之眼",
+    "vermling-shaman": "腐鼠薩滿",
+    "winged-horror": "翼魔"
+  },
+  "objective": {
+    "Altar": "祭壇",
+    "Bone Pile": "骨堆",
+    "Captive Orchid": "花晶族俘虜",
+    "Door": "門",
+    "Fish": "魚",
+    "Grave": "墓穴",
+    "Hail": "黑爾",
+    "Orchid": "紫晶族",
+    "Redthorn": "猩紅荊棘",
+    "Rock Column": "岩石柱",
+    "The Crystal": "水晶",
+    "Totem": "圖騰",
+    "Tree": "樹木",
+    "Villager": "村民",
+    "Vocal Cord": "和弦",
+    "Water Pump": "水泵",
+    "zephyr": "和風之靈"
+  },
+  "partyAchievements": {
+    "a-demons-errand": "惡魔的差事",
+    "a-map-to-treasure": "獲得寶藏圖",
+    "across-the-divide": "翻閱峻岭",
+    "an-invitation": "\"黯\"的邀請",
+    "bad-business": "一筆糟糕的生意",
+    "dark-bounty": "黑暗賞金",
+    "debt-collection": "被人討債",
+    "first-steps": "邁出第一步",
+    "fishs-aid": "老魚的協助",
+    "following-clues": "追尋線索",
+    "grave-job": "盜墓工作",
+    "high-sea-escort": "遠洋護衛",
+    "jekserahs-plans": "婕克瑟拉的陰謀",
+    "redthorns-aid": "猩紅荊棘的協助",
+    "sin-ra": "獲悉辛-拉集團",
+    "stonebreakers-censer": "碎石者的元素能爐",
+    "sun-blessed": "神聖的太陽徽章",
+    "the-drakes-command": "上古亞龍的命令",
+    "the-drakes-treasure": "上古亞龍的寶物",
+    "the-poisons-source": "獲知毒素的源頭",
+    "the-scepter-and-the-voice": "權杖與魔音",
+    "the-voices-command": "神秘聲音的指令",
+    "the-voices-treasure": "神秘聲音的寶物",
+    "through-the-nest": "穿越腐鼠族巢穴",
+    "through-the-ruins": "穿越廢墟",
+    "through-the-trench": "穿越海溝",
+    "tremors": "引發波動",
+    "water-staff": "水之法杖"
+  },
+  "personalQuest": {
+    "gh": {
+      "510": {
+        "": "索恩的追尋者",
+        "1": "完成地穴場景",
+        "2": "之後解鎖\"劇毒地窖\"(場景 52)並按照場景說明繼續進行"
+      },
+      "511": {
+        "": "商人階級",
+        "1": "%game.items.slots.head% 道具",
+        "2": "%game.items.slots.body% 道具",
+        "3": "%game.items.slots.legs% 道具",
+        "4": "%game.items.slots.onehand% 或者 %game.items.slots.twohand% 道具",
+        "5": "%game.items.slots.small% 道具"
+      },
+      "512": {
+        "": "貪婪萬歲"
+      },
+      "513": {
+        "": "找尋解藥",
+        "1": "殺死森林小妖",
+        "2": "之後解鎖\"被遺忘的果林\"(場景 59)並按照場景說明繼續進行"
+      },
+      "514": {
+        "": "解剖學研究",
+        "1": "需經歷隊友變為筋疲力盡"
+      },
+      "515": {
+        "": "執法者",
+        "1": "殺死強盜或邪教徒"
+      },
+      "516": {
+        "": "血海深仇",
+        "1": "殺死腐鼠族"
+      },
+      "517": {
+        "": "狩獵的戰利品",
+        "1": "殺死不同種類的怪物"
+      },
+      "518": {
+        "": "永恆的漫遊者",
+        "1": "完成不同的場景"
+      },
+      "519": {
+        "": "戰鬥傳說",
+        "1": "從戰鬥目標卡中獲得 %game.checkmark%"
+      },
+      "520": {
+        "": "行使光明",
+        "1": "在死靈法師的聖所找到骨禍斧，之後用它殺死骷髏，行屍或者怨靈"
+      },
+      "521": {
+        "": "奪回樹林",
+        "1": "在匕首森林裡完成場景",
+        "2": "之後解鎖\"迷霧叢林\"(場景 55)並按照場景說明繼續進行"
+      },
+      "522": {
+        "": "稀薄之地",
+        "1": "完成支線場景(場景編號>51)"
+      },
+      "523": {
+        "": "惡魔獵殺者",
+        "1": "殺死烈焰惡魔",
+        "2": "殺死冰霜惡魔",
+        "3": "殺死疾風惡魔",
+        "4": "殺死大地惡魔",
+        "5": "殺死暗夜惡魔",
+        "6": "殺死旭日惡魔"
+      },
+      "524": {
+        "": "無所畏懼",
+        "1": "殺死精英級別的怪物"
+      },
+      "525": {
+        "": "悲天憫人",
+        "1": "向聖橡樹庇護所累計捐款"
+      },
+      "526": {
+        "": "復仇",
+        "1": "在幽暗港內完成場景",
+        "2": "之後解鎖\"調查軍營的內部\"(場景 57)並按照場景說明繼續進行"
+      },
+      "527": {
+        "": "嗜血之神的狂信者"
+      },
+      "528": {
+        "": "巨獸殺手",
+        "1": "完成有頭目存在的場景"
+      },
+      "529": {
+        "": "殞落的人們",
+        "1": "在徘徊沼澤完成場景",
+        "2": "之後解鎖\"飄渺燈塔\"(場景 61)並按照場景說明繼續進行"
+      },
+      "530": {
+        "": "強化能力",
+        "1": "購買附魔效果"
+      },
+      "531": {
+        "": "元素樣本",
+        "1": "在幽暗港完成一個場景",
+        "2": "在匕首森林完成一個場景",
+        "3": "在徘徊沼澤完成一個場景",
+        "4": "在守望山脈完成一個場景",
+        "5": "在銅頸山脈完成一個場景",
+        "6": "在迷霧海完成一個場景"
+      },
+      "532": {
+        "": "援手",
+        "1": "需經歷其他角色完成個人任務"
+      },
+      "533": {
+        "": "完美的毒藥",
+        "1": "殺死軟泥怪",
+        "2": "殺死伏擊者",
+        "3": "殺死噴吐亞龍"
+      }
+    }
+  },
+  "scenario": {
+    "group": {
+      "randomMonsterCard": "隨機遭遇卡"
+    },
+    "rewards": {
+      "gh": {
+        "56": "\"奪回樹林\"個人任務完成",
+        "58": "\"復仇\"個人任務完成",
+        "60": "\"找尋解藥\"個人任務完成",
+        "62": "\"殞落的人們\"個人任務完成"
+      }
+    },
+    "rules": {
+      "gh": {
+        "19": {
+          "1": "朝著祭壇 %game.mapMarker.b%移動"
+        },
+        "38": {
+          "1": "朝著場景地圖板塊D上的羚牛族薩滿移動"
+        },
+        "42": {
+          "1": "所有怪物的所有攻擊添加+1 %game.action.attack%"
+        },
+        "71": {
+          "1": "強制向左移動",
+          "2": "強制向上移動",
+          "3": "強制向右移動",
+          "4": "強制向下移動"
+        },
+        "73": {
+          "1": "滾落巨石。"
+        },
+        "74": {
+          "1": "放置積水疊加板塊。"
+        },
+        "78": {
+          "2": "免疫所有強制移動",
+          "3": "可以開門"
+        },
+        "79": {
+          "1": "如果被移開起始位置，執行行動回合時移動回起始位置"
+        },
+        "86": {
+          "1": "朝著碼頭 %game.mapMarker.b% 移動"
+        },
+        "89": {
+          "1": "所有的邪教徒召喚精英級別的巨型蝰蛇而不是普通級別的骷髏。"
+        }
+      }
+    },
+    "title": {
+      "gh": {
+        "1": "黑土墓塚",
+        "10": "元力維度",
+        "11": "幽暗港廣場A",
+        "12": "幽暗港廣場B",
+        "13": "先知神廟",
+        "14": "冰霜洞窟",
+        "15": "力之神祠",
+        "16": "銅頸小徑",
+        "17": "迷失之島",
+        "18": "廢棄的下水道",
+        "19": "遺忘地穴",
+        "2": "墓中賊窩",
+        "20": "死靈法師的聖所",
+        "21": "煉獄王座",
+        "22": "元素神殿",
+        "23": "地底廢墟",
+        "24": "回音密室",
+        "25": "冰冠峰頂",
+        "26": "遠古蓄水池",
+        "27": "災禍裂縫",
+        "28": "外道儀式大廳",
+        "29": "幽暗聖殿",
+        "3": "羚牛族營地",
+        "30": "深淵神祠",
+        "31": "永夜維度",
+        "32": "衰敗樹林",
+        "33": "原生族軍械庫",
+        "34": "焦灼之巔",
+        "35": "幽港堡壘 A",
+        "36": "幽港堡壘 B",
+        "37": "末日海溝",
+        "38": "奴隸監獄",
+        "39": "凶險雙峰",
+        "4": "詛咒地穴",
+        "40": "遠古防禦",
+        "41": "時損墓室",
+        "42": "奇聲幻域",
+        "43": "亞龍巢穴",
+        "44": "突襲部落據點",
+        "45": "叛軍的沼澤",
+        "46": "夢魘峰頂",
+        "47": "迷視巢穴",
+        "48": "暗影原野",
+        "49": "叛軍據點",
+        "5": "廢墟地穴",
+        "50": "幽魂堡壘",
+        "51": "虛影迷域",
+        "52": "劇毒地窖",
+        "53": "地穴密室",
+        "54": "冰晶宮殿",
+        "55": "迷霧叢林",
+        "56": "強盜的樹林",
+        "57": "調查軍營的內部",
+        "58": "血腥小屋",
+        "59": "被遺忘的果林",
+        "6": "腐朽地穴",
+        "60": "煉金實驗室",
+        "61": "飄渺燈塔",
+        "62": "靈魂葬坑",
+        "63": "熔岩坑",
+        "64": "水下環礁湖",
+        "65": "硫磺礦井",
+        "66": "鐘擺灣",
+        "67": "神秘圖書館",
+        "68": "劇毒沼澤",
+        "69": "不幸之井",
+        "7": "活力洞窟",
+        "70": "鎖鏈島",
+        "71": "凜風高地",
+        "72": "滲漿果園",
+        "73": "岩崩山脊",
+        "74": "遠航商船",
+        "75": "蔓生墓園",
+        "76": "巢靈族巢穴",
+        "77": "秘密地下室",
+        "78": "獻祭深坑",
+        "79": "失落神廟",
+        "8": "幽暗港倉庫",
+        "80": "守夜堡壘",
+        "81": "蝕之神廟",
+        "82": "灼炎山",
+        "83": "陰暗之地",
+        "84": "水晶洞穴",
+        "85": "太陽神廟",
+        "86": "苦難村莊",
+        "87": "腐化海灣",
+        "88": "水之維度",
+        "89": "辛-拉集團的隱蔽所",
+        "9": "鑽石礦井",
+        "90": "邪魔裂縫",
+        "91": "無序荒野",
+        "92": "喧嘩的後巷",
+        "93": "沈船島",
+        "94": "腐靈族巢穴",
+        "95": "貪婪深坑",
+        "randomDungeon-rnd": "隨機地城"
+      }
+    }
+  },
+  "section": {
+    "title": {
+      "gh": {
+        "randomMonsterCard-554": "污穢",
+        "randomMonsterCard-555": "浸沒",
+        "randomMonsterCard-556": "絕望",
+        "randomMonsterCard-557": "褻瀆",
+        "randomMonsterCard-558": "狂野",
+        "randomMonsterCard-559": "固守",
+        "randomMonsterCard-560": "血腥",
+        "randomMonsterCard-561": "腐敗",
+        "randomMonsterCard-562": "迷霧",
+        "randomMonsterCard-563": "破碎",
+        "randomMonsterCard-564": "部落",
+        "randomMonsterCard-565": "驚懼",
+        "randomMonsterCard-566": "上古",
+        "randomMonsterCard-567": "鱗甲",
+        "randomMonsterCard-568": "惡毒",
+        "randomMonsterCard-569": "無常",
+        "randomMonsterCard-570": "腐化",
+        "randomMonsterCard-571": "帶菌",
+        "randomMonsterCard-572": "惡臭",
+        "randomMonsterCard-573": "嚴寒"
+      }
+    }
+  }
+}

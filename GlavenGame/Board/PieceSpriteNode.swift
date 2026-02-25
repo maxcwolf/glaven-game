@@ -195,6 +195,28 @@ class PieceSpriteNode: SKNode {
         run(SKAction.fadeAlpha(to: targetAlpha, duration: 0.3))
     }
 
+    /// Animate a gold/loot pickup floating up from the piece.
+    func animateLoot(text: String) {
+        let label = SKLabelNode(fontNamed: "Helvetica-Bold")
+        label.text = text
+        label.fontSize = 15
+        label.fontColor = SKColor(red: 1.0, green: 0.85, blue: 0.1, alpha: 1.0) // gold
+        label.position = CGPoint(x: 0, y: effectiveSize / 2 + 5)
+        label.zPosition = 20
+        addChild(label)
+
+        let rise = SKAction.group([
+            SKAction.moveBy(x: 0, y: 32, duration: 1.0),
+            SKAction.sequence([
+                SKAction.wait(forDuration: 0.5),
+                SKAction.fadeOut(withDuration: 0.5)
+            ])
+        ])
+        label.run(rise) {
+            label.removeFromParent()
+        }
+    }
+
     /// Animate death (fade + shrink).
     func animateDeath(completion: @escaping () -> Void) {
         let death = SKAction.group([

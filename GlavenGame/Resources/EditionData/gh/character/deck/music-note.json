@@ -1,0 +1,1621 @@
+{
+  "name": "music-note",
+  "edition": "gh",
+  "character": true,
+  "abilities": [
+    {
+      "name": "Power Ballad",
+      "cardId": 348,
+      "level": 1,
+      "initiative": 19,
+      "actions": [
+        {
+          "type": "box",
+          "value": "%data.custom.gh.music-note.song%",
+          "small": true
+        },
+        {
+          "type": "custom",
+          "value": "%data.custom.gh.music-note.abilities.348.1%",
+          "small": true
+        },
+        {
+          "type": "custom",
+          "value": "%data.custom.gh.music-note.xp%",
+          "small": true
+        },
+        {
+          "type": "concatenation",
+          "value": "",
+          "subActions": [
+            {
+              "type": "card",
+              "value": "persistent"
+            },
+            {
+              "type": "custom",
+              "value": "%data.custom.gh.music-note.another%",
+              "small": true
+            }
+          ]
+        }
+      ],
+      "bottomActions": [
+        {
+          "type": "move",
+          "value": 2,
+          "enhancementTypes": [
+            "circle"
+          ],
+          "subActions": [
+            {
+              "type": "condition",
+              "value": "strengthen",
+              "enhancementTypes": [
+                "diamond_plus"
+              ],
+              "subActions": [
+                {
+                  "type": "specialTarget",
+                  "value": "alliesAdjacentAffect",
+                  "small": true
+                }
+              ]
+            },
+            {
+              "type": "card",
+              "value": "experience:1"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Defensive Ditty",
+      "cardId": 349,
+      "level": 1,
+      "initiative": 9,
+      "actions": [
+        {
+          "type": "box",
+          "value": "%data.custom.gh.music-note.song%",
+          "small": true
+        },
+        {
+          "type": "shield",
+          "value": 1,
+          "subActions": [
+            {
+              "type": "specialTarget",
+              "value": "alliesAffect",
+              "small": true
+            }
+          ]
+        },
+        {
+          "type": "custom",
+          "value": "%data.custom.gh.music-note.xp%",
+          "small": true
+        },
+        {
+          "type": "concatenation",
+          "value": "",
+          "subActions": [
+            {
+              "type": "card",
+              "value": "persistent"
+            },
+            {
+              "type": "custom",
+              "value": "%data.custom.gh.music-note.another%",
+              "small": true
+            }
+          ]
+        }
+      ],
+      "bottomActions": [
+        {
+          "type": "custom",
+          "value": "%data.custom.gh.music-note.abilities.349.1%",
+          "small": true,
+          "subActions": [
+            {
+              "type": "concatenation",
+              "value": "",
+              "subActions": [
+                {
+                  "type": "concatenationSpacer",
+                  "value": 1
+                },
+                {
+                  "type": "card",
+                  "value": "experience:1"
+                },
+                {
+                  "type": "concatenationSpacer",
+                  "value": 1
+                },
+                {
+                  "type": "card",
+                  "value": "round"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Song of Speed",
+      "cardId": 350,
+      "level": 1,
+      "initiative": 5,
+      "actions": [
+        {
+          "type": "box",
+          "value": "%data.custom.gh.music-note.song%",
+          "small": true
+        },
+        {
+          "type": "custom",
+          "value": "%data.custom.gh.music-note.abilities.350.1%",
+          "small": true
+        },
+        {
+          "type": "custom",
+          "value": "%data.custom.gh.music-note.xp%",
+          "small": true
+        },
+        {
+          "type": "concatenation",
+          "value": "",
+          "subActions": [
+            {
+              "type": "card",
+              "value": "persistent"
+            },
+            {
+              "type": "custom",
+              "value": "%data.custom.gh.music-note.another%",
+              "small": true
+            }
+          ]
+        }
+      ],
+      "bottomActions": [
+        {
+          "type": "condition",
+          "value": "muddle",
+          "subActions": [
+            {
+              "type": "specialTarget",
+              "value": "enemiesRange:4",
+              "small": true
+            },
+            {
+              "type": "card",
+              "value": "experience:1"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Tuning the Outcome",
+      "cardId": 351,
+      "level": 1,
+      "initiative": 78,
+      "actions": [
+        {
+          "type": "condition",
+          "value": "bless",
+          "enhancementTypes": [
+            "diamond_plus"
+          ],
+          "subActions": [
+            {
+              "type": "specialTarget",
+              "value": "alliesAdjacentAffect",
+              "small": true
+            }
+          ]
+        }
+      ],
+      "bottomActions": [
+        {
+          "type": "move",
+          "value": 3,
+          "enhancementTypes": [
+            "circle"
+          ],
+          "subActions": [
+            {
+              "type": "condition",
+              "value": "curse",
+              "enhancementTypes": [
+                "diamond"
+              ],
+              "subActions": [
+                {
+                  "type": "range",
+                  "value": 3,
+                  "small": true
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Call to Action",
+      "cardId": 352,
+      "level": 1,
+      "initiative": 85,
+      "actions": [
+        {
+          "type": "condition",
+          "value": "strengthen",
+          "subActions": [
+            {
+              "type": "specialTarget",
+              "value": "alliesAffect",
+              "small": true
+            }
+          ]
+        }
+      ],
+      "bottomActions": [
+        {
+          "type": "custom",
+          "value": "%data.custom.gh.music-note.abilities.352.1%",
+          "small": true,
+          "subActions": [
+            {
+              "type": "attack",
+              "value": 4,
+              "enhancementTypes": [
+                "diamond"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Warding Dagger",
+      "cardId": 353,
+      "level": 1,
+      "initiative": 56,
+      "actions": [
+        {
+          "type": "attack",
+          "value": 3,
+          "enhancementTypes": [
+            "diamond"
+          ],
+          "subActions": [
+            {
+              "type": "condition",
+              "value": "immobilize",
+              "small": true
+            }
+          ]
+        }
+      ],
+      "bottomLost": true,
+      "bottomActions": [
+        {
+          "type": "move",
+          "value": 4,
+          "enhancementTypes": [
+            "circle"
+          ],
+          "subActions": [
+            {
+              "type": "shield",
+              "value": 2,
+              "enhancementTypes": [
+                "circle"
+              ],
+              "subActions": [
+                {
+                  "type": "specialTarget",
+                  "value": "alliesAdjacentAffect",
+                  "small": true
+                }
+              ]
+            },
+            {
+              "type": "concatenation",
+              "value": "",
+              "subActions": [
+                {
+                  "type": "concatenationSpacer",
+                  "value": 1
+                },
+                {
+                  "type": "card",
+                  "value": "experience:1"
+                },
+                {
+                  "type": "concatenationSpacer",
+                  "value": 1
+                },
+                {
+                  "type": "card",
+                  "value": "round"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Throw Voice",
+      "cardId": 354,
+      "level": 1,
+      "initiative": 44,
+      "actions": [
+        {
+          "type": "concatenation",
+          "value": "",
+          "subActions": [
+            {
+              "type": "condition",
+              "value": "disarm",
+              "subActions": [
+                {
+                  "type": "range",
+                  "value": 3,
+                  "small": true
+                }
+              ]
+            },
+            {
+              "type": "concatenationSpacer",
+              "value": 1
+            },
+            {
+              "type": "area",
+              "value": "(0,0,enhance)|(0,1,target)|(1,0,target)|(1,1,target)",
+              "enhancementTypes": [
+                "hex"
+              ]
+            }
+          ]
+        }
+      ],
+      "bottomLost": true,
+      "bottomActions": [
+        {
+          "type": "concatenation",
+          "value": "",
+          "subActions": [
+            {
+              "type": "range",
+              "value": 3,
+              "small": true,
+              "subActions": [
+                {
+                  "type": "custom",
+                  "value": "%data.custom.gh.music-note.abilities.354.1%",
+                  "small": true
+                },
+                {
+                  "type": "card",
+                  "value": "experience:1"
+                }
+              ]
+            },
+            {
+              "type": "area",
+              "value": "(0,0,enhance)|(0,1,target)|(1,0,target)|(1,1,target)",
+              "enhancementTypes": [
+                "hex"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Singing Arrow",
+      "cardId": 355,
+      "level": 1,
+      "initiative": 89,
+      "actions": [
+        {
+          "type": "concatenation",
+          "value": 0,
+          "enhancementTypes": [
+            "any"
+          ],
+          "subActions": [
+            {
+              "type": "condition",
+              "value": "curse",
+              "subActions": [
+                {
+                  "type": "range",
+                  "value": 3,
+                  "small": true
+                }
+              ]
+            },
+            {
+              "type": "concatenationSpacer",
+              "value": 1
+            },
+            {
+              "type": "area",
+              "value": "(0,0,enhance)|(0,1,target)|(1,0,target)|(1,1,target)",
+              "enhancementTypes": [
+                "hex"
+              ]
+            }
+          ]
+        }
+      ],
+      "bottomActions": [
+        {
+          "type": "attack",
+          "value": 1,
+          "enhancementTypes": [
+            "diamond"
+          ],
+          "subActions": [
+            {
+              "type": "range",
+              "value": 3,
+              "enhancementTypes": [
+                "square"
+              ]
+            },
+            {
+              "type": "condition",
+              "value": "wound",
+              "small": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Marching Beat",
+      "cardId": 356,
+      "level": 1,
+      "initiative": 32,
+      "actions": [
+        {
+          "type": "custom",
+          "value": "%data.custom.gh.music-note.abilities.356.1%",
+          "small": true,
+          "subActions": [
+            {
+              "type": "move",
+              "value": 4,
+              "enhancementTypes": [
+                "circle"
+              ]
+            }
+          ]
+        }
+      ],
+      "bottomActions": [
+        {
+          "type": "move",
+          "value": 4,
+          "enhancementTypes": [
+            "circle"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Wistful Wounding",
+      "cardId": 357,
+      "level": "X",
+      "initiative": 16,
+      "actions": [
+        {
+          "type": "box",
+          "value": "%data.custom.gh.music-note.song%",
+          "small": true
+        },
+        {
+          "type": "custom",
+          "value": "%data.custom.gh.music-note.abilities.357.1%",
+          "small": true
+        },
+        {
+          "type": "custom",
+          "value": "%data.custom.gh.music-note.xp%",
+          "small": true
+        },
+        {
+          "type": "concatenation",
+          "value": "",
+          "subActions": [
+            {
+              "type": "card",
+              "value": "persistent"
+            },
+            {
+              "type": "custom",
+              "value": "%data.custom.gh.music-note.another%",
+              "small": true
+            }
+          ]
+        }
+      ],
+      "bottomActions": [
+        {
+          "type": "attack",
+          "value": 1,
+          "subActions": [
+            {
+              "type": "range",
+              "value": 4,
+              "small": true,
+              "enhancementTypes": [
+                "square"
+              ]
+            },
+            {
+              "type": "loot",
+              "value": 1
+            },
+            {
+              "type": "card",
+              "value": "experience:1"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Unending Chant",
+      "cardId": 358,
+      "level": "X",
+      "initiative": 51,
+      "actions": [
+        {
+          "type": "custom",
+          "value": "%data.custom.gh.music-note.abilities.358.1%",
+          "small": true,
+          "subActions": [
+            {
+              "type": "concatenation",
+              "value": "",
+              "subActions": [
+                {
+                  "type": "card",
+                  "value": "persistent"
+                },
+                {
+                  "type": "card",
+                  "value": "slot"
+                },
+                {
+                  "type": "card",
+                  "value": "slot"
+                },
+                {
+                  "type": "card",
+                  "value": "slotXp:1"
+                },
+                {
+                  "type": "concatenationSpacer",
+                  "value": 1
+                },
+                {
+                  "type": "concatenationSpacer",
+                  "value": 3
+                },
+                {
+                  "type": "card",
+                  "value": "slot"
+                },
+                {
+                  "type": "card",
+                  "value": "slotXp:1"
+                },
+                {
+                  "type": "concatenationSpacer",
+                  "value": 1
+                },
+                {
+                  "type": "card",
+                  "value": "lost"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "bottomActions": [
+        {
+          "type": "move",
+          "value": 2,
+          "subActions": [
+            {
+              "type": "shield",
+              "value": 1,
+              "enhancementTypes": [
+                "circle"
+              ],
+              "subActions": [
+                {
+                  "type": "specialTarget",
+                  "value": "alliesAdjacentAffect",
+                  "small": true
+                }
+              ]
+            },
+            {
+              "type": "concatenation",
+              "value": "",
+              "subActions": [
+                {
+                  "type": "concatenationSpacer",
+                  "value": 1
+                },
+                {
+                  "type": "card",
+                  "value": "round"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Nimble Knife",
+      "cardId": 359,
+      "level": "X",
+      "initiative": 27,
+      "actions": [
+        {
+          "type": "attack",
+          "value": 2,
+          "enhancementTypes": [
+            "diamond"
+          ],
+          "subActions": [
+            {
+              "type": "condition",
+              "value": "curse",
+              "small": true
+            },
+            {
+              "type": "condition",
+              "value": "bless",
+              "enhancementTypes": [
+                "diamond_plus"
+              ],
+              "subActions": [
+                {
+                  "type": "specialTarget",
+                  "value": "allyAffectAdjacent",
+                  "small": true
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "bottomActions": [
+        {
+          "type": "move",
+          "value": 4,
+          "enhancementTypes": [
+            "circle"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Soothing Lullaby",
+      "cardId": 360,
+      "level": 2,
+      "initiative": 11,
+      "actions": [
+        {
+          "type": "box",
+          "value": "%data.custom.gh.music-note.song%",
+          "small": true
+        },
+        {
+          "type": "custom",
+          "value": "%data.custom.gh.music-note.abilities.360.1%",
+          "small": true
+        },
+        {
+          "type": "custom",
+          "value": "%data.custom.gh.music-note.xp%",
+          "small": true
+        },
+        {
+          "type": "concatenation",
+          "value": "",
+          "subActions": [
+            {
+              "type": "card",
+              "value": "persistent"
+            },
+            {
+              "type": "custom",
+              "value": "%data.custom.gh.music-note.another%",
+              "small": true
+            }
+          ]
+        }
+      ],
+      "bottomActions": [
+        {
+          "type": "heal",
+          "value": 3,
+          "enhancementTypes": [
+            "diamond_plus"
+          ],
+          "subActions": [
+            {
+              "type": "range",
+              "value": 4,
+              "small": true
+            },
+            {
+              "type": "card",
+              "value": "experience:1"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Change Tempo",
+      "cardId": 361,
+      "level": 2,
+      "initiative": 91,
+      "actions": [
+        {
+          "type": "condition",
+          "value": "immobilize",
+          "subActions": [
+            {
+              "type": "specialTarget",
+              "value": "enemiesRange:3",
+              "small": true
+            }
+          ]
+        }
+      ],
+      "bottomActions": [
+        {
+          "type": "move",
+          "value": 5,
+          "enhancementTypes": [
+            "circle"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Echoing Aria",
+      "cardId": 362,
+      "level": 3,
+      "initiative": 8,
+      "actions": [
+        {
+          "type": "box",
+          "value": "%data.custom.gh.music-note.song%",
+          "small": true
+        },
+        {
+          "type": "custom",
+          "value": "%data.custom.gh.music-note.abilities.362.1%",
+          "small": true
+        },
+        {
+          "type": "custom",
+          "value": "%data.custom.gh.music-note.xp%",
+          "small": true
+        },
+        {
+          "type": "concatenation",
+          "value": "",
+          "subActions": [
+            {
+              "type": "card",
+              "value": "persistent"
+            },
+            {
+              "type": "custom",
+              "value": "%data.custom.gh.music-note.another%",
+              "small": true
+            }
+          ]
+        }
+      ],
+      "bottomActions": [
+        {
+          "type": "shield",
+          "value": 2,
+          "subActions": [
+            {
+              "type": "specialTarget",
+              "value": "alliesRangeAffect:3",
+              "small": true
+            },
+            {
+              "type": "concatenation",
+              "value": "",
+              "subActions": [
+                {
+                  "type": "concatenationSpacer",
+                  "value": 1
+                },
+                {
+                  "type": "card",
+                  "value": "experience:1"
+                },
+                {
+                  "type": "concatenationSpacer",
+                  "value": 1
+                },
+                {
+                  "type": "card",
+                  "value": "round"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Crippling Chorus",
+      "cardId": 363,
+      "level": 3,
+      "initiative": 62,
+      "lost": true,
+      "actions": [
+        {
+          "type": "condition",
+          "value": "stun",
+          "enhancementTypes": [
+            "diamond"
+          ],
+          "subActions": [
+            {
+              "type": "specialTarget",
+              "value": "enemiesRange:3",
+              "small": true
+            }
+          ]
+        },
+        {
+          "type": "card",
+          "value": "experience:2"
+        }
+      ],
+      "bottomActions": [
+        {
+          "type": "move",
+          "value": 3,
+          "enhancementTypes": [
+            "circle"
+          ]
+        },
+        {
+          "type": "condition",
+          "value": "disarm",
+          "enhancementTypes": [
+            "diamond"
+          ],
+          "subActions": [
+            {
+              "type": "specialTarget",
+              "value": "enemyAdjacent",
+              "small": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Disorienting Dirge",
+      "cardId": 364,
+      "level": 4,
+      "initiative": 14,
+      "actions": [
+        {
+          "type": "box",
+          "value": "%data.custom.gh.music-note.song%",
+          "small": true
+        },
+        {
+          "type": "custom",
+          "value": "%data.custom.gh.music-note.abilities.364.1%",
+          "small": true
+        },
+        {
+          "type": "custom",
+          "value": "%data.custom.gh.music-note.xp%",
+          "small": true
+        },
+        {
+          "type": "concatenation",
+          "value": "",
+          "subActions": [
+            {
+              "type": "card",
+              "value": "persistent"
+            },
+            {
+              "type": "custom",
+              "value": "%data.custom.gh.music-note.another%",
+              "small": true
+            }
+          ]
+        }
+      ],
+      "bottomActions": [
+        {
+          "type": "condition",
+          "value": "curse",
+          "enhancementTypes": [
+            "diamond"
+          ],
+          "subActions": [
+            {
+              "type": "specialTarget",
+              "value": "enemiesRange:3",
+              "small": true
+            },
+            {
+              "type": "condition",
+              "value": "bless",
+              "enhancementTypes": [
+                "diamond_plus"
+              ],
+              "subActions": [
+                {
+                  "type": "specialTarget",
+                  "value": "alliesRangeAffect:3",
+                  "small": true
+                }
+              ]
+            },
+            {
+              "type": "card",
+              "value": "experience:1"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Inspiring Anthem",
+      "cardId": 365,
+      "level": 4,
+      "initiative": 50,
+      "actions": [
+        {
+          "type": "custom",
+          "value": "%data.custom.gh.music-note.abilities.365.1%",
+          "small": true,
+          "subActions": [
+            {
+              "type": "move",
+              "value": 5,
+              "enhancementTypes": [
+                "circle"
+              ]
+            }
+          ]
+        }
+      ],
+      "bottomActions": [
+        {
+          "type": "custom",
+          "value": "%data.custom.gh.music-note.abilities.365.1%",
+          "small": true,
+          "subActions": [
+            {
+              "type": "attack",
+              "value": 5,
+              "enhancementTypes": [
+                "diamond"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Melody and Harmony",
+      "cardId": 366,
+      "level": 5,
+      "initiative": 78,
+      "lost": true,
+      "actions": [
+        {
+          "type": "custom",
+          "value": "%data.custom.gh.music-note.abilities.366.1%",
+          "small": true
+        },
+        {
+          "type": "custom",
+          "value": "%data.custom.gh.music-note.abilities.366.2%",
+          "small": true
+        },
+        {
+          "type": "concatenation",
+          "value": "",
+          "subActions": [
+            {
+              "type": "concatenationSpacer",
+              "value": 1
+            },
+            {
+              "type": "card",
+              "value": "persistent"
+            }
+          ]
+        }
+      ],
+      "bottomActions": [
+        {
+          "type": "move",
+          "value": 3,
+          "enhancementTypes": [
+            "circle"
+          ]
+        },
+        {
+          "type": "attack",
+          "value": 3,
+          "enhancementTypes": [
+            "diamond"
+          ],
+          "subActions": [
+            {
+              "type": "range",
+              "value": 3,
+              "small": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Mobilizing Measure",
+      "cardId": 367,
+      "level": 5,
+      "initiative": 6,
+      "actions": [
+        {
+          "type": "box",
+          "value": "%data.custom.gh.music-note.song%",
+          "small": true
+        },
+        {
+          "type": "custom",
+          "value": "%data.custom.gh.music-note.abilities.367.1%",
+          "small": true
+        },
+        {
+          "type": "custom",
+          "value": "%data.custom.gh.music-note.xp%",
+          "small": true
+        },
+        {
+          "type": "concatenation",
+          "value": "",
+          "subActions": [
+            {
+              "type": "card",
+              "value": "persistent"
+            },
+            {
+              "type": "custom",
+              "value": "%data.custom.gh.music-note.another%",
+              "small": true
+            }
+          ]
+        }
+      ],
+      "bottomActions": [
+        {
+          "type": "move",
+          "value": 6,
+          "enhancementTypes": [
+            "circle"
+          ]
+        },
+        {
+          "type": "card",
+          "value": "experience:1"
+        }
+      ]
+    },
+    {
+      "name": "Pull the Strings",
+      "cardId": 368,
+      "level": 6,
+      "initiative": 20,
+      "actions": [
+        {
+          "type": "box",
+          "value": "%data.custom.gh.music-note.song%",
+          "small": true
+        },
+        {
+          "type": "custom",
+          "value": "%data.custom.gh.music-note.abilities.368.1%",
+          "small": true
+        },
+        {
+          "type": "custom",
+          "value": "%data.custom.gh.music-note.xp%",
+          "small": true
+        },
+        {
+          "type": "concatenation",
+          "value": "",
+          "subActions": [
+            {
+              "type": "card",
+              "value": "persistent"
+            },
+            {
+              "type": "custom",
+              "value": "%data.custom.gh.music-note.another%",
+              "small": true
+            }
+          ]
+        }
+      ],
+      "bottomActions": [
+        {
+          "type": "custom",
+          "value": "%data.custom.gh.music-note.abilities.368.2%",
+          "small": true,
+          "subActions": [
+            {
+              "type": "attack",
+              "value": 0,
+              "valueType": "plus"
+            },
+            {
+              "type": "custom",
+              "value": "%data.custom.gh.music-note.abilities.368.3%",
+              "small": true
+            },
+            {
+              "type": "card",
+              "value": "experience:1"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Provoke Terror",
+      "cardId": 369,
+      "level": 6,
+      "initiative": 60,
+      "actions": [
+        {
+          "type": "concatenation",
+          "value": "",
+          "subActions": [
+            {
+              "type": "condition",
+              "value": "stun",
+              "subActions": [
+                {
+                  "type": "range",
+                  "value": 4,
+                  "small": true
+                }
+              ]
+            },
+            {
+              "type": "concatenationSpacer",
+              "value": 1
+            },
+            {
+              "type": "area",
+              "value": "(0,0,enhance)|(0,1,target)|(1,0,target)|(1,1,target)",
+              "enhancementTypes": [
+                "hex"
+              ]
+            }
+          ]
+        }
+      ],
+      "bottomActions": [
+        {
+          "type": "attack",
+          "value": 4,
+          "enhancementTypes": [
+            "diamond"
+          ],
+          "subActions": [
+            {
+              "type": "range",
+              "value": 4,
+              "small": true
+            },
+            {
+              "type": "push",
+              "value": 3,
+              "small": true,
+              "enhancementTypes": [
+                "circle"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Nightmare Serenade",
+      "cardId": 370,
+      "level": 7,
+      "initiative": 13,
+      "actions": [
+        {
+          "type": "box",
+          "value": "%data.custom.gh.music-note.song%",
+          "small": true
+        },
+        {
+          "type": "custom",
+          "value": "%data.custom.gh.music-note.abilities.370.1%",
+          "small": true
+        },
+        {
+          "type": "custom",
+          "value": "%data.custom.gh.music-note.xp%",
+          "small": true
+        },
+        {
+          "type": "concatenation",
+          "value": "",
+          "subActions": [
+            {
+              "type": "card",
+              "value": "persistent"
+            },
+            {
+              "type": "custom",
+              "value": "%data.custom.gh.music-note.another%",
+              "small": true
+            }
+          ]
+        }
+      ],
+      "bottomActions": [
+        {
+          "type": "concatenation",
+          "value": "",
+          "subActions": [
+            {
+              "type": "attack",
+              "value": 1,
+              "enhancementTypes": [
+                "diamond"
+              ],
+              "subActions": [
+                {
+                  "type": "range",
+                  "value": 3,
+                  "small": true
+                },
+                {
+                  "type": "condition",
+                  "value": "curse",
+                  "small": true
+                },
+                {
+                  "type": "card",
+                  "value": "experience:1"
+                }
+              ]
+            },
+            {
+              "type": "concatenationSpacer",
+              "value": 1
+            },
+            {
+              "type": "area",
+              "value": "(0,0,enhance)|(0,1,target)|(1,0,target)|(1,1,target)",
+              "enhancementTypes": [
+                "hex"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Booming Proclamation",
+      "cardId": 371,
+      "level": 7,
+      "initiative": 65,
+      "actions": [
+        {
+          "type": "attack",
+          "value": 1,
+          "enhancementTypes": [
+            "diamond"
+          ],
+          "subActions": [
+            {
+              "type": "specialTarget",
+              "value": "enemiesRange:2",
+              "small": true
+            },
+            {
+              "type": "push",
+              "value": 2,
+              "small": true,
+              "enhancementTypes": [
+                "circle"
+              ]
+            }
+          ]
+        }
+      ],
+      "bottomLost": true,
+      "bottomActions": [
+        {
+          "type": "custom",
+          "value": "%data.custom.gh.music-note.abilities.371.1%",
+          "small": true,
+          "subActions": [
+            {
+              "type": "attack",
+              "value": 3,
+              "enhancementTypes": [
+                "diamond"
+              ]
+            }
+          ]
+        },
+        {
+          "type": "card",
+          "value": "experience:1"
+        }
+      ]
+    },
+    {
+      "name": "Tranquil Trill",
+      "cardId": 372,
+      "level": 8,
+      "initiative": 10,
+      "actions": [
+        {
+          "type": "box",
+          "value": "%data.custom.gh.music-note.song%",
+          "small": true
+        },
+        {
+          "type": "custom",
+          "value": "%data.custom.gh.music-note.abilities.372.1%",
+          "small": true
+        },
+        {
+          "type": "custom",
+          "value": "%data.custom.gh.music-note.xp%",
+          "small": true
+        },
+        {
+          "type": "concatenation",
+          "value": "",
+          "subActions": [
+            {
+              "type": "card",
+              "value": "persistent"
+            },
+            {
+              "type": "custom",
+              "value": "%data.custom.gh.music-note.another%",
+              "small": true
+            }
+          ]
+        }
+      ],
+      "bottomActions": [
+        {
+          "type": "condition",
+          "value": "disarm",
+          "enhancementTypes": [
+            "diamond"
+          ],
+          "subActions": [
+            {
+              "type": "specialTarget",
+              "value": "enemiesAdjacent",
+              "small": true
+            }
+          ]
+        },
+        {
+          "type": "card",
+          "value": "experience:1"
+        }
+      ]
+    },
+    {
+      "name": "Commanding Presence",
+      "cardId": 373,
+      "level": 8,
+      "initiative": 59,
+      "actions": [
+        {
+          "type": "custom",
+          "value": "%data.custom.gh.music-note.abilities.373.1%",
+          "small": true,
+          "subActions": [
+            {
+              "type": "attack",
+              "value": 2,
+              "enhancementTypes": [
+                "diamond"
+              ],
+              "subActions": [
+                {
+                  "type": "specialTarget",
+                  "value": "enemiesAdjacent",
+                  "small": true
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "bottomLost": true,
+      "bottomActions": [
+        {
+          "type": "concatenation",
+          "value": "",
+          "subActions": [
+            {
+              "type": "range",
+              "value": 2,
+              "small": true,
+              "subActions": [
+                {
+                  "type": "custom",
+                  "value": "%data.custom.gh.music-note.abilities.373.2%",
+                  "small": true
+                },
+                {
+                  "type": "card",
+                  "value": "experience:1"
+                }
+              ]
+            },
+            {
+              "type": "area",
+              "value": "(0,1,target)|(1,0,target)|(1,1,target)|(1,2,target)|(2,0,target)|(2,1,target)|(2,2,target)"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Captivating Performance",
+      "cardId": 374,
+      "level": 9,
+      "initiative": 25,
+      "actions": [
+        {
+          "type": "box",
+          "value": "%data.custom.gh.music-note.song%",
+          "small": true
+        },
+        {
+          "type": "custom",
+          "value": "%data.custom.gh.music-note.abilities.374.1%",
+          "small": true
+        },
+        {
+          "type": "custom",
+          "value": "%data.custom.gh.music-note.xp%",
+          "small": true
+        },
+        {
+          "type": "concatenation",
+          "value": "",
+          "subActions": [
+            {
+              "type": "card",
+              "value": "persistent"
+            },
+            {
+              "type": "custom",
+              "value": "%data.custom.gh.music-note.another%",
+              "small": true
+            }
+          ]
+        }
+      ],
+      "bottomActions": [
+        {
+          "type": "condition",
+          "value": "stun",
+          "enhancementTypes": [
+            "diamond"
+          ],
+          "subActions": [
+            {
+              "type": "range",
+              "value": 3,
+              "small": true
+            },
+            {
+              "type": "target",
+              "value": 3,
+              "small": true,
+              "enhancementTypes": [
+                "circle"
+              ]
+            }
+          ]
+        },
+        {
+          "type": "card",
+          "value": "experience:1"
+        }
+      ]
+    },
+    {
+      "name": "Shadow Puppets",
+      "cardId": 375,
+      "level": 9,
+      "initiative": 52,
+      "actions": [
+        {
+          "type": "move",
+          "value": 4,
+          "enhancementTypes": [
+            "circle"
+          ],
+          "subActions": [
+            {
+              "type": "jump",
+              "value": "",
+              "small": true
+            },
+            {
+              "type": "custom",
+              "value": "%data.custom.gh.music-note.abilities.375.1%",
+              "small": true
+            }
+          ]
+        }
+      ],
+      "bottomActions": [
+        {
+          "type": "custom",
+          "value": "%data.custom.gh.music-note.abilities.375.2%",
+          "small": true,
+          "subActions": [
+            {
+              "type": "attack",
+              "value": 4
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

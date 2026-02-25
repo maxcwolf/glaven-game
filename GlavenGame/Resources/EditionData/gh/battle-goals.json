@@ -1,0 +1,122 @@
+[
+    {
+        "cardId": "474",
+        "name": "Aggressor",
+        "checks": 2
+    },
+    {
+        "cardId": "478",
+        "name": "Diehard",
+        "checks": 1
+    },
+    {
+        "cardId": "475",
+        "name": "Dynamo",
+        "checks": 1
+    },
+    {
+        "cardId": "479",
+        "name": "Executioner",
+        "checks": 1
+    },
+    {
+        "cardId": "467",
+        "name": "Explorer",
+        "checks": 1
+    },
+    {
+        "cardId": "463",
+        "name": "Fast Healer",
+        "checks": 1
+    },
+    {
+        "cardId": "468",
+        "name": "Hoarder",
+        "checks": 1
+    },
+    {
+        "cardId": "472",
+        "name": "Hunter",
+        "checks": 1
+    },
+    {
+        "cardId": "469",
+        "name": "Indigent",
+        "checks": 2
+    },
+    {
+        "cardId": "459",
+        "name": "Layabout",
+        "checks": 2
+    },
+    {
+        "cardId": "462",
+        "name": "Masochist",
+        "checks": 1
+    },
+    {
+        "cardId": "464",
+        "name": "Neutralizer",
+        "checks": 1
+    },
+    {
+        "cardId": "477",
+        "name": "Opener",
+        "checks": 1
+    },
+    {
+        "cardId": "470",
+        "name": "Pacifist",
+        "checks": 1
+    },
+    {
+        "cardId": "465",
+        "name": "Plunderer",
+        "checks": 1
+    },
+    {
+        "cardId": "473",
+        "name": "Professional",
+        "checks": 1
+    },
+    {
+        "cardId": "466",
+        "name": "Protector",
+        "checks": 1
+    },
+    {
+        "cardId": "476",
+        "name": "Purist",
+        "checks": 2
+    },
+    {
+        "cardId": "471",
+        "name": "Sadist",
+        "checks": 1
+    },
+    {
+        "cardId": "481",
+        "name": "Scrambler",
+        "checks": 1
+    },
+    {
+        "cardId": "480",
+        "name": "Straggler",
+        "checks": 1
+    },
+    {
+        "cardId": "458",
+        "name": "Streamliner",
+        "checks": 1
+    },
+    {
+        "cardId": "460",
+        "name": "Workhorse",
+        "checks": 1
+    },
+    {
+        "cardId": "461",
+        "name": "Zealot",
+        "checks": 1
+    }
+]

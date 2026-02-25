@@ -1,0 +1,92 @@
+{
+  "index": "554",
+  "group": "randomMonsterCard",
+  "name": "Mangy",
+  "edition": "gh",
+  "named": true,
+  "monsters": [
+    "cave-bear",
+    "vermling-scout",
+    "vermling-shaman"
+  ],
+  "rooms": [
+    {
+      "roomNumber": 1,
+      "initial": true,
+      "treasures": [],
+      "monster": [
+        {
+          "name": "cave-bear",
+          "player2": "normal",
+          "player3": "normal",
+          "player4": "elite",
+          "marker": "3"
+        },
+        {
+          "name": "vermling-scout",
+          "type": "normal",
+          "marker": "5"
+        },
+        {
+          "name": "vermling-scout",
+          "type": "normal",
+          "marker": "6"
+        },
+        {
+          "name": "vermling-scout",
+          "player2": "normal",
+          "player3": "elite",
+          "player4": "elite",
+          "marker": "7"
+        },
+        {
+          "name": "vermling-scout",
+          "player3": "normal",
+          "player4": "normal",
+          "marker": "2"
+        },
+        {
+          "name": "vermling-scout",
+          "player3": "normal",
+          "player4": "normal",
+          "marker": "4"
+        },
+        {
+          "name": "vermling-scout",
+          "player3": "normal",
+          "player4": "elite",
+          "marker": "8"
+        },
+        {
+          "name": "vermling-scout",
+          "player3": "normal",
+          "player4": "elite",
+          "marker": "9"
+        },
+        {
+          "name": "vermling-shaman",
+          "type": "elite",
+          "marker": "1"
+        }
+      ]
+    }
+  ],
+  "overlays": [
+    {
+      "type": "loot",
+      "marker": 10
+    },
+    {
+      "type": "loot",
+      "marker": 11
+    },
+    {
+      "type": "treasure",
+      "value": "gold",
+      "values": [
+        10
+      ],
+      "marker": "12"
+    }
+  ]
+}

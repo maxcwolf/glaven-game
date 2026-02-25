@@ -1,0 +1,1754 @@
+{
+  "name": "lightning",
+  "edition": "gh",
+  "character": true,
+  "abilities": [
+    {
+      "name": "Resolute Stand",
+      "cardId": 319,
+      "level": 1,
+      "initiative": 9,
+      "lost": true,
+      "actions": [
+        {
+          "type": "attack",
+          "value": "X",
+          "enhancementTypes": [
+            "diamond"
+          ],
+          "subActions": [
+            {
+              "type": "custom",
+              "value": "%data.custom.gh.lightning.abilities.319.1%",
+              "small": true
+            },
+            {
+              "type": "custom",
+              "value": "%data.custom.gh.lightning.abilities.319.2%",
+              "small": true
+            }
+          ]
+        }
+      ],
+      "bottomActions": [
+        {
+          "type": "move",
+          "value": 2,
+          "enhancementTypes": [
+            "circle"
+          ]
+        },
+        {
+          "type": "retaliate",
+          "value": 1,
+          "enhancementTypes": [
+            "diamond_plus"
+          ],
+          "subActions": [
+            {
+              "type": "specialTarget",
+              "value": "self",
+              "small": true
+            }
+          ]
+        },
+        {
+          "type": "concatenation",
+          "value": "",
+          "subActions": [
+            {
+              "type": "concatenationSpacer",
+              "value": 1
+            },
+            {
+              "type": "card",
+              "value": "round"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Growing Rage",
+      "cardId": 320,
+      "level": 1,
+      "initiative": 85,
+      "actions": [
+        {
+          "type": "attack",
+          "value": "X",
+          "enhancementTypes": [
+            "diamond"
+          ],
+          "subActions": [
+            {
+              "type": "custom",
+              "value": "%data.custom.gh.lightning.abilities.320.1%",
+              "small": true
+            }
+          ]
+        },
+        {
+          "type": "card",
+          "value": "experience:1"
+        }
+      ],
+      "bottomActions": [
+        {
+          "type": "move",
+          "value": 3,
+          "enhancementTypes": [
+            "circle"
+          ]
+        },
+        {
+          "type": "custom",
+          "value": "%data.custom.gh.lightning.abilities.320.2%",
+          "small": true,
+          "subActions": [
+            {
+              "type": "attack",
+              "value": 2,
+              "subActions": [
+                {
+                  "type": "custom",
+                  "value": "%data.custom.gh.lightning.abilities.320.3%",
+                  "small": true
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Strength in Agony",
+      "cardId": 321,
+      "level": 1,
+      "initiative": 37,
+      "actions": [
+        {
+          "type": "attack",
+          "value": 3,
+          "enhancementTypes": [
+            "diamond"
+          ],
+          "subActions": [
+            {
+              "type": "custom",
+              "value": "%data.custom.gh.lightning.abilities.321.1%",
+              "small": true
+            }
+          ]
+        }
+      ],
+      "bottomActions": [
+        {
+          "type": "custom",
+          "value": "%data.custom.gh.lightning.abilities.321.2%",
+          "small": true,
+          "subActions": [
+            {
+              "type": "move",
+              "value": "4+X",
+              "enhancementTypes": [
+                "circle"
+              ],
+              "subActions": [
+                {
+                  "type": "custom",
+                  "value": "%data.custom.gh.lightning.abilities.321.3%",
+                  "small": true
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Defiance of Death",
+      "cardId": 322,
+      "level": 1,
+      "initiative": 31,
+      "actions": [
+        {
+          "type": "attack",
+          "value": 3,
+          "enhancementTypes": [
+            "diamond",
+            "diamond"
+          ],
+          "subActions": [
+            {
+              "type": "custom",
+              "value": "%data.custom.gh.lightning.abilities.322.1%",
+              "small": true
+            }
+          ]
+        }
+      ],
+      "bottomActions": [
+        {
+          "type": "custom",
+          "value": "%data.custom.gh.lightning.abilities.322.2%",
+          "small": true,
+          "subActions": [
+            {
+              "type": "concatenation",
+              "value": "",
+              "subActions": [
+                {
+                  "type": "concatenationSpacer",
+                  "value": 1
+                },
+                {
+                  "type": "card",
+                  "value": "persistent"
+                },
+                {
+                  "type": "card",
+                  "value": "slotXp:1"
+                },
+                {
+                  "type": "card",
+                  "value": "slotXp:1"
+                },
+                {
+                  "type": "concatenationSpacer",
+                  "value": 2
+                },
+                {
+                  "type": "concatenationSpacer",
+                  "value": 3
+                },
+                {
+                  "type": "card",
+                  "value": "slotXp:1"
+                },
+                {
+                  "type": "concatenationSpacer",
+                  "value": 1
+                },
+                {
+                  "type": "card",
+                  "value": "lost"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "From the Brink",
+      "cardId": 323,
+      "level": 1,
+      "initiative": 24,
+      "lost": true,
+      "actions": [
+        {
+          "type": "heal",
+          "value": "X",
+          "subActions": [
+            {
+              "type": "range",
+              "value": 2,
+              "small": true
+            },
+            {
+              "type": "custom",
+              "value": "%data.custom.gh.lightning.abilities.323.1%",
+              "small": true
+            }
+          ]
+        },
+        {
+          "type": "card",
+          "value": "experience:2"
+        }
+      ],
+      "bottomActions": [
+        {
+          "type": "move",
+          "value": 3,
+          "enhancementTypes": [
+            "circle"
+          ]
+        },
+        {
+          "type": "push",
+          "value": 1,
+          "enhancementTypes": [
+            "circle"
+          ],
+          "subActions": [
+            {
+              "type": "specialTarget",
+              "value": "enemyAdjacent",
+              "small": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Blood Pact",
+      "cardId": 324,
+      "level": 1,
+      "initiative": 76,
+      "actions": [
+        {
+          "type": "attack",
+          "value": 6,
+          "enhancementTypes": [
+            "diamond"
+          ],
+          "subActions": [
+            {
+              "type": "custom",
+              "value": "%data.custom.gh.lightning.abilities.324.1%",
+              "small": true
+            }
+          ]
+        },
+        {
+          "type": "card",
+          "value": "experience:1"
+        }
+      ],
+      "bottomLost": true,
+      "bottomActions": [
+        {
+          "type": "custom",
+          "value": "%data.custom.gh.lightning.abilities.324.2%",
+          "small": true
+        },
+        {
+          "type": "custom",
+          "value": "%data.custom.gh.lightning.abilities.324.3%",
+          "small": true
+        },
+        {
+          "type": "concatenation",
+          "value": "",
+          "subActions": [
+            {
+              "type": "concatenationSpacer",
+              "value": 1
+            },
+            {
+              "type": "card",
+              "value": "experience:2"
+            },
+            {
+              "type": "concatenationSpacer",
+              "value": 1
+            },
+            {
+              "type": "card",
+              "value": "persistent"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Cauterize",
+      "cardId": 325,
+      "level": 1,
+      "initiative": 40,
+      "actions": [
+        {
+          "type": "attack",
+          "value": 1,
+          "enhancementTypes": [
+            "diamond"
+          ],
+          "subActions": [
+            {
+              "type": "range",
+              "value": 3,
+              "small": true
+            },
+            {
+              "type": "target",
+              "value": 2,
+              "small": true,
+              "enhancementTypes": [
+                "circle"
+              ]
+            },
+            {
+              "type": "condition",
+              "value": "wound",
+              "small": true
+            }
+          ]
+        },
+        {
+          "type": "element",
+          "value": "fire"
+        }
+      ],
+      "bottomActions": [
+        {
+          "type": "custom",
+          "value": "%data.custom.gh.lightning.abilities.325.1%",
+          "small": true,
+          "subActions": [
+            {
+              "type": "concatenation",
+              "value": 0,
+              "subActions": [
+                {
+                  "type": "concatenationSpacer",
+                  "value": 1
+                },
+                {
+                  "type": "card",
+                  "value": "persistent"
+                },
+                {
+                  "type": "card",
+                  "value": "slot"
+                },
+                {
+                  "type": "card",
+                  "value": "slotXp:1"
+                },
+                {
+                  "type": "concatenationSpacer",
+                  "value": 1
+                },
+                {
+                  "type": "card",
+                  "value": "slot"
+                },
+                {
+                  "type": "card",
+                  "value": "slotXp:1"
+                },
+                {
+                  "type": "card",
+                  "value": "lost"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Dazing Wound",
+      "cardId": 326,
+      "level": 1,
+      "initiative": 29,
+      "actions": [
+        {
+          "type": "attack",
+          "value": 3,
+          "enhancementTypes": [
+            "diamond"
+          ],
+          "subActions": [
+            {
+              "type": "custom",
+              "value": "%data.custom.gh.lightning.abilities.326.1%",
+              "small": true
+            }
+          ]
+        }
+      ],
+      "bottomActions": [
+        {
+          "type": "move",
+          "value": 4,
+          "enhancementTypes": [
+            "circle"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Furious Aid",
+      "cardId": 327,
+      "level": 1,
+      "initiative": 43,
+      "lost": true,
+      "actions": [
+        {
+          "type": "loot",
+          "value": 2
+        },
+        {
+          "type": "card",
+          "value": "experience:1"
+        }
+      ],
+      "bottomActions": [
+        {
+          "type": "heal",
+          "value": 3,
+          "enhancementTypes": [
+            "diamond_plus"
+          ],
+          "subActions": [
+            {
+              "type": "range",
+              "value": 3,
+              "small": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Bounce Back",
+      "cardId": 328,
+      "level": 1,
+      "initiative": 14,
+      "actions": [
+        {
+          "type": "retaliate",
+          "value": 2,
+          "enhancementTypes": [
+            "diamond_plus"
+          ],
+          "subActions": [
+            {
+              "type": "specialTarget",
+              "value": "self",
+              "small": true
+            }
+          ]
+        },
+        {
+          "type": "concatenation",
+          "value": "",
+          "subActions": [
+            {
+              "type": "concatenationSpacer",
+              "value": 1
+            },
+            {
+              "type": "card",
+              "value": "round"
+            }
+          ]
+        }
+      ],
+      "bottomActions": [
+        {
+          "type": "move",
+          "value": 3
+        },
+        {
+          "type": "heal",
+          "value": 1,
+          "enhancementTypes": [
+            "diamond_plus"
+          ],
+          "subActions": [
+            {
+              "type": "specialTarget",
+              "value": "self",
+              "small": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Unbridled Power",
+      "cardId": 329,
+      "level": "X",
+      "initiative": 67,
+      "actions": [
+        {
+          "type": "attack",
+          "value": 2,
+          "enhancementTypes": [
+            "diamond"
+          ],
+          "subActions": [
+            {
+              "type": "condition",
+              "value": "stun"
+            },
+            {
+              "type": "element",
+              "value": "fire",
+              "valueType": "minus",
+              "subActions": [
+                {
+                  "type": "attack",
+                  "value": 2,
+                  "valueType": "add",
+                  "small": true
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "bottomLost": true,
+      "bottomActions": [
+        {
+          "type": "custom",
+          "value": "%data.custom.gh.lightning.abilities.329.1%",
+          "small": true,
+          "subActions": [
+            {
+              "type": "heal",
+              "value": 3,
+              "subActions": [
+                {
+                  "type": "specialTarget",
+                  "value": "self",
+                  "small": true
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "concatenation",
+          "value": "",
+          "subActions": [
+            {
+              "type": "concatenationSpacer",
+              "value": 1
+            },
+            {
+              "type": "card",
+              "value": "experience:2"
+            },
+            {
+              "type": "concatenationSpacer",
+              "value": 1
+            },
+            {
+              "type": "card",
+              "value": "persistent"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Glass Hammer",
+      "cardId": 330,
+      "level": "X",
+      "initiative": 11,
+      "lost": true,
+      "actions": [
+        {
+          "type": "attack",
+          "value": "X",
+          "enhancementTypes": [
+            "diamond"
+          ],
+          "subActions": [
+            {
+              "type": "custom",
+              "value": "%data.custom.gh.lightning.abilities.330.1%",
+              "small": true
+            },
+            {
+              "type": "custom",
+              "value": "%data.custom.gh.lightning.abilities.330.2%",
+              "small": true
+            }
+          ]
+        },
+        {
+          "type": "custom",
+          "value": "%data.custom.gh.lightning.abilities.330.3%",
+          "small": true
+        }
+      ],
+      "bottomActions": [
+        {
+          "type": "move",
+          "value": 3
+        }
+      ]
+    },
+    {
+      "name": "Numb the Pain",
+      "cardId": 331,
+      "level": "X",
+      "initiative": 35,
+      "actions": [
+        {
+          "type": "attack",
+          "value": 3,
+          "enhancementTypes": [
+            "diamond"
+          ],
+          "subActions": [
+            {
+              "type": "custom",
+              "value": "%data.custom.gh.lightning.abilities.331.1%",
+              "small": true
+            }
+          ]
+        },
+        {
+          "type": "concatenation",
+          "value": "",
+          "subActions": [
+            {
+              "type": "concatenationSpacer",
+              "value": 1
+            },
+            {
+              "type": "card",
+              "value": "round"
+            }
+          ]
+        }
+      ],
+      "bottomActions": [
+        {
+          "type": "move",
+          "value": 3,
+          "enhancementTypes": [
+            "circle"
+          ]
+        },
+        {
+          "type": "custom",
+          "value": "%data.custom.gh.lightning.abilities.331.2%",
+          "small": true
+        }
+      ]
+    },
+    {
+      "name": "Reckless Offensive",
+      "cardId": 332,
+      "level": 2,
+      "initiative": 21,
+      "actions": [
+        {
+          "type": "custom",
+          "value": "%data.custom.gh.lightning.abilities.332.1%",
+          "small": true,
+          "subActions": [
+            {
+              "type": "attack",
+              "value": 4,
+              "enhancementTypes": [
+                "diamond",
+                "diamond"
+              ],
+              "subActions": [
+                {
+                  "type": "target",
+                  "value": "X",
+                  "small": true
+                },
+                {
+                  "type": "custom",
+                  "value": "%data.custom.gh.lightning.abilities.332.2%",
+                  "small": true
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "bottomLost": true,
+      "bottomActions": [
+        {
+          "type": "custom",
+          "value": "%data.custom.gh.lightning.abilities.332.3%",
+          "small": true
+        },
+        {
+          "type": "retaliate",
+          "value": 2,
+          "subActions": [
+            {
+              "type": "specialTarget",
+              "value": "self",
+              "small": true
+            }
+          ]
+        },
+        {
+          "type": "concatenation",
+          "value": "",
+          "subActions": [
+            {
+              "type": "concatenationSpacer",
+              "value": 1
+            },
+            {
+              "type": "card",
+              "value": "persistent"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Break the Chains",
+      "cardId": 333,
+      "level": 2,
+      "initiative": 53,
+      "actions": [
+        {
+          "type": "attack",
+          "value": 2,
+          "enhancementTypes": [
+            "diamond"
+          ],
+          "subActions": [
+            {
+              "type": "range",
+              "value": 3,
+              "small": true
+            },
+            {
+              "type": "target",
+              "value": 2,
+              "small": true,
+              "enhancementTypes": [
+                "circle"
+              ]
+            },
+            {
+              "type": "pull",
+              "value": 2,
+              "small": true
+            }
+          ]
+        }
+      ],
+      "bottomActions": [
+        {
+          "type": "move",
+          "value": 3,
+          "enhancementTypes": [
+            "circle"
+          ],
+          "subActions": [
+            {
+              "type": "custom",
+              "value": "%data.custom.gh.lightning.abilities.333.1%",
+              "small": true
+            },
+            {
+              "type": "element",
+              "value": "fire",
+              "valueType": "minus",
+              "subActions": [
+                {
+                  "type": "concatenation",
+                  "value": ",",
+                  "subActions": [
+                    {
+                      "type": "move",
+                      "value": 2,
+                      "valueType": "add",
+                      "small": true
+                    },
+                    {
+                      "type": "card",
+                      "value": "experience:1",
+                      "small": true
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Spiked Armor",
+      "cardId": 334,
+      "level": 3,
+      "initiative": 16,
+      "actions": [
+        {
+          "type": "custom",
+          "value": "%data.custom.gh.lightning.abilities.334.1%",
+          "small": true
+        },
+        {
+          "type": "concatenation",
+          "value": "",
+          "subActions": [
+            {
+              "type": "concatenationSpacer",
+              "value": 1
+            },
+            {
+              "type": "card",
+              "value": "experience:1"
+            },
+            {
+              "type": "concatenationSpacer",
+              "value": 1
+            },
+            {
+              "type": "card",
+              "value": "round"
+            }
+          ]
+        }
+      ],
+      "bottomActions": [
+        {
+          "type": "move",
+          "value": 2,
+          "enhancementTypes": [
+            "circle"
+          ]
+        },
+        {
+          "type": "attack",
+          "value": 2,
+          "enhancementTypes": [
+            "diamond"
+          ],
+          "subActions": [
+            {
+              "type": "specialTarget",
+              "value": "enemiesAdjacent",
+              "small": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Fatal fury",
+      "cardId": 335,
+      "level": 3,
+      "initiative": 34,
+      "actions": [
+        {
+          "type": "custom",
+          "value": "%data.custom.gh.lightning.abilities.335.1%",
+          "small": true
+        },
+        {
+          "type": "concatenation",
+          "value": "",
+          "subActions": [
+            {
+              "type": "element",
+              "value": "fire"
+            },
+            {
+              "type": "concatenationSpacer",
+              "value": 1
+            },
+            {
+              "type": "card",
+              "value": "experience:1"
+            }
+          ]
+        }
+      ],
+      "bottomActions": [
+        {
+          "type": "attack",
+          "value": 2
+        },
+        {
+          "type": "move",
+          "value": 1,
+          "enhancementTypes": [
+            "circle"
+          ]
+        },
+        {
+          "type": "attack",
+          "value": 2
+        }
+      ]
+    },
+    {
+      "name": "Flurry of Axes",
+      "cardId": 336,
+      "level": 4,
+      "initiative": 27,
+      "lost": true,
+      "actions": [
+        {
+          "type": "custom",
+          "value": "%data.custom.gh.lightning.abilities.336.1%",
+          "small": true,
+          "subActions": [
+            {
+              "type": "attack",
+              "value": "X",
+              "enhancementTypes": [
+                "diamond"
+              ],
+              "subActions": [
+                {
+                  "type": "range",
+                  "value": 3,
+                  "small": true
+                },
+                {
+                  "type": "specialTarget",
+                  "value": "enemies",
+                  "small": true
+                },
+                {
+                  "type": "custom",
+                  "value": "%data.custom.gh.lightning.abilities.336.2%",
+                  "small": true
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "card",
+          "value": "experience:2"
+        }
+      ],
+      "bottomActions": [
+        {
+          "type": "move",
+          "value": 5,
+          "enhancementTypes": [
+            "circle"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Shiny Distraction",
+      "cardId": 337,
+      "level": 4,
+      "initiative": 8,
+      "actions": [
+        {
+          "type": "loot",
+          "value": 1
+        },
+        {
+          "type": "shield",
+          "value": 1,
+          "enhancementTypes": [
+            "circle"
+          ],
+          "subActions": [
+            {
+              "type": "specialTarget",
+              "value": "self",
+              "small": true
+            }
+          ]
+        },
+        {
+          "type": "concatenation",
+          "value": "",
+          "subActions": [
+            {
+              "type": "concatenationSpacer",
+              "value": 1
+            },
+            {
+              "type": "card",
+              "value": "round"
+            }
+          ]
+        }
+      ],
+      "bottomActions": [
+        {
+          "type": "custom",
+          "value": "%data.custom.gh.lightning.abilities.337.1%",
+          "small": true
+        },
+        {
+          "type": "custom",
+          "value": "%data.custom.gh.lightning.abilities.337.2%",
+          "small": true
+        },
+        {
+          "type": "concatenation",
+          "value": "",
+          "subActions": [
+            {
+              "type": "concatenationSpacer",
+              "value": 1
+            },
+            {
+              "type": "element",
+              "value": "fire"
+            },
+            {
+              "type": "concatenationSpacer",
+              "value": 1
+            },
+            {
+              "type": "card",
+              "value": "round"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Seeing Red",
+      "cardId": 338,
+      "level": 5,
+      "initiative": 22,
+      "actions": [
+        {
+          "type": "attack",
+          "value": 4,
+          "enhancementTypes": [
+            "diamond",
+            "diamond"
+          ]
+        },
+        {
+          "type": "custom",
+          "value": "%data.custom.gh.lightning.abilities.338.1%",
+          "small": true
+        },
+        {
+          "type": "concatenation",
+          "value": "",
+          "subActions": [
+            {
+              "type": "concatenationSpacer",
+              "value": 1
+            },
+            {
+              "type": "card",
+              "value": "round"
+            }
+          ]
+        }
+      ],
+      "bottomLost": true,
+      "bottomActions": [
+        {
+          "type": "custom",
+          "value": "%data.custom.gh.lightning.abilities.338.2%",
+          "small": true
+        },
+        {
+          "type": "concatenation",
+          "value": "",
+          "subActions": [
+            {
+              "type": "concatenationSpacer",
+              "value": 1
+            },
+            {
+              "type": "card",
+              "value": "experience:2"
+            },
+            {
+              "type": "concatenationSpacer",
+              "value": 1
+            },
+            {
+              "type": "card",
+              "value": "persistent"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Final Fight",
+      "cardId": 339,
+      "level": 5,
+      "initiative": 89,
+      "actions": [
+        {
+          "type": "custom",
+          "value": "%data.custom.gh.lightning.abilities.339.1%",
+          "small": true
+        },
+        {
+          "type": "custom",
+          "value": "%data.custom.gh.lightning.abilities.339.2%",
+          "small": true
+        },
+        {
+          "type": "card",
+          "value": "experience:3"
+        }
+      ],
+      "bottomActions": [
+        {
+          "type": "move",
+          "value": "X",
+          "enhancementTypes": [
+            "circle"
+          ],
+          "subActions": [
+            {
+              "type": "custom",
+              "value": "%data.custom.gh.lightning.abilities.339.3%",
+              "small": true
+            }
+          ]
+        },
+        {
+          "type": "element",
+          "value": "fire",
+          "valueType": "minus",
+          "subActions": [
+            {
+              "type": "attack",
+              "value": 3
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Devil Horns",
+      "cardId": 340,
+      "level": 6,
+      "initiative": 31,
+      "actions": [
+        {
+          "type": "attack",
+          "value": 3,
+          "enhancementTypes": [
+            "diamond"
+          ],
+          "subActions": [
+            {
+              "type": "area",
+              "value": "(0,0,enhance)|(0,1,active)|(1,0,target)|(1,1,target)|(1,2,target)",
+              "enhancementTypes": [
+                "hex"
+              ]
+            },
+            {
+              "type": "condition",
+              "value": "wound",
+              "small": true
+            }
+          ]
+        },
+        {
+          "type": "element",
+          "value": "fire"
+        }
+      ],
+      "bottomActions": [
+        {
+          "type": "attack",
+          "value": 4,
+          "enhancementTypes": [
+            "diamond"
+          ]
+        },
+        {
+          "type": "card",
+          "value": "experience:1"
+        }
+      ]
+    },
+    {
+      "name": "Unstoppable Destruction",
+      "cardId": 341,
+      "level": 6,
+      "initiative": 57,
+      "actions": [
+        {
+          "type": "attack",
+          "value": 4,
+          "enhancementTypes": [
+            "diamond"
+          ],
+          "subActions": [
+            {
+              "type": "custom",
+              "value": "%data.custom.gh.lightning.abilities.341.1%",
+              "small": true
+            }
+          ]
+        }
+      ],
+      "bottomActions": [
+        {
+          "type": "custom",
+          "value": "%data.custom.gh.lightning.abilities.341.2%",
+          "small": true
+        },
+        {
+          "type": "concatenation",
+          "value": "",
+          "subActions": [
+            {
+              "type": "concatenationSpacer",
+              "value": 1
+            },
+            {
+              "type": "card",
+              "value": "round"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Burning Hatred",
+      "cardId": 342,
+      "level": 7,
+      "initiative": 40,
+      "actions": [
+        {
+          "type": "attack",
+          "value": 3,
+          "enhancementTypes": [
+            "diamond"
+          ],
+          "subActions": [
+            {
+              "type": "specialTarget",
+              "value": "enemiesAdjacent",
+              "small": true
+            },
+            {
+              "type": "element",
+              "value": "fire",
+              "valueType": "minus",
+              "subActions": [
+                {
+                  "type": "custom",
+                  "value": "%data.custom.gh.lightning.abilities.342.1%",
+                  "small": true
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "bottomActions": [
+        {
+          "type": "move",
+          "value": 3,
+          "enhancementTypes": [
+            "circle"
+          ]
+        },
+        {
+          "type": "condition",
+          "value": "wound",
+          "subActions": [
+            {
+              "type": "specialTarget",
+              "value": "enemiesAdjacent",
+              "small": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Careless Charge",
+      "cardId": 343,
+      "level": 7,
+      "initiative": 20,
+      "actions": [
+        {
+          "type": "move",
+          "value": 3,
+          "enhancementTypes": [
+            "circle"
+          ]
+        },
+        {
+          "type": "attack",
+          "value": 4,
+          "enhancementTypes": [
+            "diamond"
+          ],
+          "subActions": [
+            {
+              "type": "custom",
+              "value": "%data.custom.gh.lightning.abilities.343.1%",
+              "small": true
+            }
+          ]
+        }
+      ],
+      "bottomLost": true,
+      "bottomActions": [
+        {
+          "type": "custom",
+          "value": "%data.custom.gh.lightning.abilities.343.2%",
+          "small": true
+        },
+        {
+          "type": "concatenation",
+          "value": "",
+          "subActions": [
+            {
+              "type": "concatenationSpacer",
+              "value": 1
+            },
+            {
+              "type": "card",
+              "value": "experience:2"
+            },
+            {
+              "type": "concatenationSpacer",
+              "value": 1
+            },
+            {
+              "type": "card",
+              "value": "persistent"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Bone Breaker",
+      "cardId": 344,
+      "level": 8,
+      "initiative": 41,
+      "actions": [
+        {
+          "type": "attack",
+          "value": 5,
+          "enhancementTypes": [
+            "diamond"
+          ],
+          "subActions": [
+            {
+              "type": "condition",
+              "value": "wound",
+              "small": true
+            },
+            {
+              "type": "condition",
+              "value": "immobilize",
+              "small": true
+            }
+          ]
+        },
+        {
+          "type": "element",
+          "value": "fire"
+        }
+      ],
+      "bottomActions": [
+        {
+          "type": "attack",
+          "value": 3,
+          "enhancementTypes": [
+            "diamond"
+          ],
+          "subActions": [
+            {
+              "type": "range",
+              "value": 4,
+              "small": true
+            },
+            {
+              "type": "custom",
+              "value": "%data.custom.gh.lightning.abilities.344.1%",
+              "small": true
+            },
+            {
+              "type": "custom",
+              "value": "%data.custom.gh.lightning.abilities.344.2%",
+              "small": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Vengeful Barrage",
+      "cardId": 345,
+      "level": 8,
+      "initiative": 38,
+      "actions": [
+        {
+          "type": "custom",
+          "value": "%data.custom.gh.lightning.abilities.345.1%",
+          "small": true,
+          "subActions": [
+            {
+              "type": "concatenation",
+              "value": "",
+              "subActions": [
+                {
+                  "type": "card",
+                  "value": "persistent"
+                },
+                {
+                  "type": "card",
+                  "value": "slotXp:1"
+                },
+                {
+                  "type": "card",
+                  "value": "slot"
+                },
+                {
+                  "type": "card",
+                  "value": "slotXp:1"
+                },
+                {
+                  "type": "concatenationSpacer",
+                  "value": 2
+                },
+                {
+                  "type": "concatenationSpacer",
+                  "value": 1
+                },
+                {
+                  "type": "card",
+                  "value": "slot"
+                },
+                {
+                  "type": "card",
+                  "value": "slotXp:1"
+                },
+                {
+                  "type": "card",
+                  "value": "lost"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "bottomActions": [
+        {
+          "type": "move",
+          "value": 4,
+          "enhancementTypes": [
+            "circle"
+          ]
+        },
+        {
+          "type": "element",
+          "value": "fire",
+          "valueType": "minus",
+          "subActions": [
+            {
+              "type": "custom",
+              "value": "%data.custom.gh.lightning.abilities.345.2%",
+              "small": true
+            }
+          ]
+        },
+        {
+          "type": "concatenation",
+          "value": "",
+          "subActions": [
+            {
+              "type": "concatenationSpacer",
+              "value": 1
+            },
+            {
+              "type": "card",
+              "value": "round"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Immortality",
+      "cardId": 346,
+      "level": 9,
+      "initiative": 33,
+      "actions": [
+        {
+          "type": "custom",
+          "value": "%data.custom.gh.lightning.abilities.346.1%",
+          "small": true,
+          "subActions": [
+            {
+              "type": "concatenation",
+              "value": "",
+              "subActions": [
+                {
+                  "type": "card",
+                  "value": "persistent"
+                },
+                {
+                  "type": "card",
+                  "value": "slotXp:1"
+                },
+                {
+                  "type": "card",
+                  "value": "slot"
+                },
+                {
+                  "type": "card",
+                  "value": "slotXp:1"
+                },
+                {
+                  "type": "concatenationSpacer",
+                  "value": 2
+                },
+                {
+                  "type": "concatenationSpacer",
+                  "value": 1
+                },
+                {
+                  "type": "card",
+                  "value": "slot"
+                },
+                {
+                  "type": "card",
+                  "value": "slotXp:1"
+                },
+                {
+                  "type": "card",
+                  "value": "lost"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "bottomActions": [
+        {
+          "type": "move",
+          "value": 2,
+          "enhancementTypes": [
+            "circle"
+          ]
+        },
+        {
+          "type": "shield",
+          "value": 2,
+          "enhancementTypes": [
+            "circle"
+          ],
+          "subActions": [
+            {
+              "type": "specialTarget",
+              "value": "self",
+              "small": true
+            },
+            {
+              "type": "element",
+              "value": "fire",
+              "valueType": "minus",
+              "enhancementTypes": [
+                "square"
+              ],
+              "subActions": [
+                {
+                  "type": "retaliate",
+                  "value": 2,
+                  "small": true,
+                  "subActions": [
+                    {
+                      "type": "specialTarget",
+                      "value": "self",
+                      "small": true
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "concatenation",
+          "value": "",
+          "subActions": [
+            {
+              "type": "concatenationSpacer",
+              "value": 1
+            },
+            {
+              "type": "card",
+              "value": "round"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "The Maw of Madness",
+      "cardId": 347,
+      "level": 9,
+      "initiative": 10,
+      "actions": [
+        {
+          "type": "attack",
+          "value": 3,
+          "enhancementTypes": [
+            "diamond"
+          ],
+          "subActions": [
+            {
+              "type": "specialTarget",
+              "value": "enemiesAdjacent",
+              "small": true
+            },
+            {
+              "type": "condition",
+              "value": "muddle",
+              "small": true
+            }
+          ]
+        },
+        {
+          "type": "custom",
+          "value": "%data.custom.gh.lightning.abilities.347.1%",
+          "small": true
+        }
+      ],
+      "bottomActions": [
+        {
+          "type": "custom",
+          "value": "%data.custom.gh.lightning.abilities.347.2%",
+          "small": true,
+          "subActions": [
+            {
+              "type": "attack",
+              "value": "3+X",
+              "enhancementTypes": [
+                "diamond"
+              ],
+              "subActions": [
+                {
+                  "type": "range",
+                  "value": 3,
+                  "small": true,
+                  "enhancementTypes": [
+                    "square"
+                  ]
+                },
+                {
+                  "type": "condition",
+                  "value": "immobilize",
+                  "small": true
+                },
+                {
+                  "type": "custom",
+                  "value": "%data.custom.gh.lightning.abilities.347.3%",
+                  "small": true
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

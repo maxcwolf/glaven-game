@@ -1,0 +1,368 @@
+[
+    {
+        "cardId": "510",
+        "requirements": [
+            {
+                "name": "%data.personalQuest.gh.510.1%",
+                "counter": 3
+            },
+            {
+                "name": "%data.personalQuest.gh.510.2%",
+                "counter": 1,
+                "autotrack": "scenario:52|53",
+                "requires": [
+                    1
+                ]
+            }
+        ],
+        "unlockCharacter": "squidface"
+    },
+    {
+        "cardId": "511",
+        "requirements": [
+            {
+                "name": "%data.personalQuest.gh.511.1%",
+                "counter": 2,
+                "autotrack": "itemType:head"
+            },
+            {
+                "name": "%data.personalQuest.gh.511.2%",
+                "counter": 2,
+                "autotrack": "itemType:body"
+            },
+            {
+                "name": "%data.personalQuest.gh.511.3%",
+                "counter": 2,
+                "autotrack": "itemType:legs"
+            },
+            {
+                "name": "%data.personalQuest.gh.511.4%",
+                "counter": 3,
+                "autotrack": "itemType:onehand|twohand"
+            },
+            {
+                "name": "%data.personalQuest.gh.511.5%",
+                "counter": 4,
+                "autotrack": "itemType:small"
+            }
+        ],
+        "unlockCharacter": "three-spears"
+    },
+    {
+        "cardId": "512",
+        "requirements": [
+            {
+                "name": "%character.progress.gold%",
+                "counter": 200,
+                "autotrack": "gold"
+            }
+        ],
+        "unlockCharacter": "three-spears"
+    },
+    {
+        "cardId": "513",
+        "requirements": [
+            {
+                "name": "%data.personalQuest.gh.513.1%",
+                "counter": 8
+            },
+            {
+                "name": "%data.personalQuest.gh.513.2%",
+                "counter": 1,
+                "autotrack": "scenario:59|60",
+                "requires": [
+                    1
+                ]
+            }
+        ],
+        "openEnvelope": "X"
+    },
+    {
+        "cardId": "514",
+        "requirements": [
+            {
+                "name": "%data.personalQuest.gh.514.1%",
+                "counter": 15,
+                "autotrack": "exhaustedChars"
+            }
+        ],
+        "unlockCharacter": "saw"
+    },
+    {
+        "cardId": "515",
+        "requirements": [
+            {
+                "name": "%data.personalQuest.gh.515.1%",
+                "counter": 20
+            }
+        ],
+        "unlockCharacter": "sun"
+    },
+    {
+        "cardId": "516",
+        "requirements": [
+            {
+                "name": "%data.personalQuest.gh.516.1%",
+                "counter": 15
+            }
+        ],
+        "unlockCharacter": "lightning"
+    },
+    {
+        "cardId": "517",
+        "requirements": [
+            {
+                "name": "%data.personalQuest.gh.517.1%",
+                "counter": 20
+            }
+        ],
+        "unlockCharacter": "two-mini"
+    },
+    {
+        "cardId": "518",
+        "requirements": [
+            {
+                "name": "%data.personalQuest.gh.518.1%",
+                "counter": 15,
+                "autotrack": "scenariosCompleted"
+            }
+        ],
+        "unlockCharacter": "circles"
+    },
+    {
+        "cardId": "519",
+        "requirements": [
+            {
+                "name": "%data.personalQuest.gh.519.1%",
+                "counter": 15,
+                "autotrack": "battleGoals"
+            }
+        ],
+        "unlockCharacter": "music-note"
+    },
+    {
+        "cardId": "520",
+        "requirements": [
+            {
+                "name": "%data.items.gh-113%",
+                "counter": 1,
+                "autotrack": "item:113"
+            },
+            {
+                "name": "%data.personalQuest.gh.520.1%",
+                "counter": 7,
+                "requires": [
+                    1
+                ]
+            }
+        ],
+        "unlockCharacter": "sun"
+    },
+    {
+        "cardId": "521",
+        "requirements": [
+            {
+                "name": "%data.personalQuest.gh.521.1%",
+                "counter": 3
+            },
+            {
+                "name": "%data.personalQuest.gh.521.2%",
+                "counter": 1,
+                "autotrack": "scenario:55|56",
+                "requires": [
+                    1
+                ]
+            }
+        ],
+        "unlockCharacter": "angry-face"
+    },
+    {
+        "cardId": "522",
+        "requirements": [
+            {
+                "name": "%data.personalQuest.gh.522.1%",
+                "counter": 6,
+                "autotrack": "sideScenarios"
+            }
+        ],
+        "unlockCharacter": "eclipse"
+    },
+    {
+        "cardId": "523",
+        "requirements": [
+            {
+                "name": "%data.personalQuest.gh.523.1%",
+                "counter": 1
+            },
+            {
+                "name": "%data.personalQuest.gh.523.2%",
+                "counter": 1
+            },
+            {
+                "name": "%data.personalQuest.gh.523.3%",
+                "counter": 1
+            },
+            {
+                "name": "%data.personalQuest.gh.523.4%",
+                "counter": 1
+            },
+            {
+                "name": "%data.personalQuest.gh.523.5%",
+                "counter": 1
+            },
+            {
+                "name": "%data.personalQuest.gh.523.6%",
+                "counter": 1
+            }
+        ],
+        "unlockCharacter": "triangles"
+    },
+    {
+        "cardId": "524",
+        "requirements": [
+            {
+                "name": "%data.personalQuest.gh.524.1%",
+                "counter": 20
+            }
+        ],
+        "unlockCharacter": "two-mini"
+    },
+    {
+        "cardId": "525",
+        "requirements": [
+            {
+                "name": "%data.personalQuest.gh.525.1%",
+                "counter": 120,
+                "autotrack": "donatedGold"
+            }
+        ],
+        "unlockCharacter": "saw"
+    },
+    {
+        "cardId": "526",
+        "requirements": [
+            {
+                "name": "%data.personalQuest.gh.526.1%",
+                "counter": 4
+            },
+            {
+                "name": "%data.personalQuest.gh.526.2%",
+                "counter": 1,
+                "autotrack": "scenario:57|58",
+                "requires": [
+                    1
+                ]
+            }
+        ],
+        "openEnvelope": "X"
+    },
+    {
+        "cardId": "527",
+        "requirements": [
+            {
+                "name": "%game.exhausted%",
+                "counter": 12,
+                "autotrack": "exhaustedSelf"
+            }
+        ],
+        "unlockCharacter": "lightning"
+    },
+    {
+        "cardId": "528",
+        "requirements": [
+            {
+                "name": "%data.personalQuest.gh.528.1%",
+                "counter": 4,
+                "autotrack": "bossScenarios"
+            }
+        ],
+        "unlockCharacter": "angry-face"
+    },
+    {
+        "cardId": "529",
+        "requirements": [
+            {
+                "name": "%data.personalQuest.gh.529.1%",
+                "counter": 2
+            },
+            {
+                "name": "%data.personalQuest.gh.529.2%",
+                "counter": 1,
+                "autotrack": "scenario:61|62",
+                "requires": [
+                    1
+                ]
+            }
+        ],
+        "unlockCharacter": "eclipse"
+    },
+    {
+        "cardId": "530",
+        "requirements": [
+            {
+                "name": "%data.personalQuest.gh.530.1%",
+                "counter": 4
+            }
+        ],
+        "unlockCharacter": "circles"
+    },
+    {
+        "cardId": "531",
+        "requirements": [
+            {
+                "name": "%data.personalQuest.gh.531.1%",
+                "counter": 1
+            },
+            {
+                "name": "%data.personalQuest.gh.531.2%",
+                "counter": 1
+            },
+            {
+                "name": "%data.personalQuest.gh.531.3%",
+                "counter": 1
+            },
+            {
+                "name": "%data.personalQuest.gh.531.4%",
+                "counter": 1
+            },
+            {
+                "name": "%data.personalQuest.gh.531.5%",
+                "counter": 1
+            },
+            {
+                "name": "%data.personalQuest.gh.531.6%",
+                "counter": 1
+            }
+        ],
+        "unlockCharacter": "triangles"
+    },
+    {
+        "cardId": "532",
+        "requirements": [
+            {
+                "name": "%data.personalQuest.gh.532.1%",
+                "counter": 2,
+                "autotrack": "retiredChars"
+            }
+        ],
+        "unlockCharacter": "music-note"
+    },
+    {
+        "cardId": "533",
+        "requirements": [
+            {
+                "name": "%data.personalQuest.gh.533.1%",
+                "counter": 3
+            },
+            {
+                "name": "%data.personalQuest.gh.533.2%",
+                "counter": 3
+            },
+            {
+                "name": "%data.personalQuest.gh.533.3%",
+                "counter": 3
+            }
+        ],
+        "unlockCharacter": "squidface"
+    }
+]

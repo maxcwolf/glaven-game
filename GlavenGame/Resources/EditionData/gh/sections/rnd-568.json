@@ -1,0 +1,102 @@
+{
+  "index": "568",
+  "group": "randomMonsterCard",
+  "name": "Venomous",
+  "edition": "gh",
+  "named": true,
+  "monsters": [
+    "black-imp",
+    "giant-viper",
+    "harrower-infester"
+  ],
+  "rooms": [
+    {
+      "roomNumber": 1,
+      "initial": true,
+      "treasures": [],
+      "monster": [
+        {
+          "name": "black-imp",
+          "type": "normal",
+          "marker": "10"
+        },
+        {
+          "name": "black-imp",
+          "player2": "normal",
+          "player3": "elite",
+          "player4": "elite",
+          "marker": "11"
+        },
+        {
+          "name": "black-imp",
+          "player4": "normal",
+          "marker": "7"
+        },
+        {
+          "name": "giant-viper",
+          "type": "normal",
+          "marker": "3"
+        },
+        {
+          "name": "giant-viper",
+          "player2": "normal",
+          "player3": "normal",
+          "player4": "elite",
+          "marker": "2"
+        },
+        {
+          "name": "giant-viper",
+          "player2": "normal",
+          "player3": "normal",
+          "player4": "elite",
+          "marker": "4"
+        },
+        {
+          "name": "giant-viper",
+          "player3": "normal",
+          "player4": "normal",
+          "marker": "5"
+        },
+        {
+          "name": "harrower-infester",
+          "type": "elite",
+          "marker": "1"
+        },
+        {
+          "name": "harrower-infester",
+          "player3": "normal",
+          "player4": "elite",
+          "marker": "6"
+        }
+      ]
+    }
+  ],
+  "overlays": [
+    {
+      "type": "trap",
+      "value": "poison-gas-trap",
+      "values": [
+        "poison",
+        "stun"
+      ],
+      "marker": "8"
+    },
+    {
+      "type": "trap",
+      "value": "poison-gas-trap",
+      "values": [
+        "poison",
+        "stun"
+      ],
+      "marker": "9"
+    },
+    {
+      "type": "treasure",
+      "value": "enemiesCondition",
+      "values": [
+        "poison"
+      ],
+      "marker": "12"
+    }
+  ]
+}

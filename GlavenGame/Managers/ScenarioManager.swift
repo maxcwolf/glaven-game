@@ -68,11 +68,40 @@ final class ScenarioManager {
                 details: "Round \(game.round)"
             ))
         } else {
+            // Per Gloomhaven rules: gold/loot collected during a failed scenario is lost.
+            // Experience is kept.
+            for character in game.characters where !character.absent {
+                character.loot = 0
+                character.lootCards = []
+            }
+
             game.campaignLog.append(CampaignLogEntry(
                 type: .scenarioFailed,
                 message: "Failed Scenario #\(data.index): \(data.name)",
                 details: "Round \(game.round)"
             ))
+        }
+
+        // Reset character state for the next scenario.
+        // Per Gloomhaven rules, between scenarios characters:
+        //   - Recover from exhaustion
+        //   - Restore full HP
+        //   - Clear active conditions
+        //   - Return discarded cards to hand (lost cards remain lost)
+        //   - Clear temporary combat buffs (shield, retaliate, etc.)
+        //   - Dismiss summons
+        for character in game.characters where !character.absent {
+            character.exhausted = false
+            character.longRest = false
+            character.health = character.maxHealth
+            character.entityConditions.removeAll { !$0.permanent }
+            character.handCards.append(contentsOf: character.discardedCards)
+            character.discardedCards.removeAll()
+            character.shield = nil
+            character.shieldPersistent = nil
+            character.retaliate = []
+            character.retaliatePersistent = []
+            character.summons.removeAll()
         }
 
         // Clear scenario state

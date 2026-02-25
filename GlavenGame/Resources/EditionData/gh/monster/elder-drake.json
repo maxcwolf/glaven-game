@@ -1,0 +1,106 @@
+{
+  "name": "elder-drake",
+  "edition": "gh",
+  "deck": "boss",
+  "boss": true,
+  "count": 1,
+  "baseStat": {
+    "type": "boss",
+    "immunities": [
+      "wound",
+      "poison",
+      "disarm",
+      "immobilize",
+      "pull",
+      "push",
+      "stun"
+    ],
+    "special": [
+      [
+        {
+          "type": "attack",
+          "value": 0,
+          "valueType": "plus",
+          "subActions": [
+            {
+              "type": "area",
+              "value": "(1,0,active)|(1,1,active)|(2,0,active)|(2,1,target)|(2,2,target)|(2,3,target)|(3,0,target)|(3,1,target)|(3,2,target)|(4,0,target)"
+            }
+          ]
+        }
+      ],
+      [
+        {
+          "type": "summon",
+          "value": "objectiveSpawn",
+          "valueObject": [
+            {
+              "objective": {
+                "name": "zephyr",
+                "health": 0,
+                "initiativeShare": "elder-drake:-0.1",
+                "actions": [
+                  {
+                    "type": "move",
+                    "value": 2
+                  },
+                  {
+                    "type": "attack",
+                    "value": "C"
+                  }
+                ]
+              },
+              "count": 2
+            }
+          ]
+        },
+        {
+          "type": "custom",
+          "value": "%data.custom.gh.elder-drake.1%"
+        }
+      ]
+    ]
+  },
+  "stats": [
+    {
+      "level": 0,
+      "health": "11xC",
+      "attack": 3
+    },
+    {
+      "level": 1,
+      "health": "12xC",
+      "attack": 4
+    },
+    {
+      "level": 2,
+      "health": "15xC",
+      "attack": 4
+    },
+    {
+      "level": 3,
+      "health": "16xC",
+      "attack": 5
+    },
+    {
+      "level": 4,
+      "health": "20xC",
+      "attack": 5
+    },
+    {
+      "level": 5,
+      "health": "22xC",
+      "attack": 6
+    },
+    {
+      "level": 6,
+      "health": "27xC",
+      "attack": 6
+    },
+    {
+      "level": 7,
+      "health": "29xC",
+      "attack": 7
+    }
+  ]
+}

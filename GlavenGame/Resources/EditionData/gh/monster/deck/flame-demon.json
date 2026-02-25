@@ -1,0 +1,236 @@
+{
+  "name": "flame-demon",
+  "edition": "gh",
+  "abilities": [
+    {
+      "cardId": 628,
+      "initiative": 3,
+      "actions": [
+        {
+          "type": "move",
+          "value": 1,
+          "valueType": "plus"
+        },
+        {
+          "type": "attack",
+          "value": 1,
+          "valueType": "minus"
+        },
+        {
+          "type": "element",
+          "value": "fire"
+        }
+      ]
+    },
+    {
+      "cardId": 629,
+      "initiative": 24,
+      "actions": [
+        {
+          "type": "move",
+          "value": 0,
+          "valueType": "plus"
+        },
+        {
+          "type": "attack",
+          "value": 0,
+          "valueType": "plus"
+        },
+        {
+          "type": "element",
+          "value": "fire"
+        }
+      ]
+    },
+    {
+      "cardId": 630,
+      "initiative": 46,
+      "shuffle": true,
+      "actions": [
+        {
+          "type": "attack",
+          "value": 0,
+          "valueType": "plus",
+          "subActions": [
+            {
+              "type": "element",
+              "value": "fire",
+              "valueType": "minus",
+              "subActions": [
+                {
+                  "type": "area",
+                  "value": "(0,1,target)|(1,0,target)|(1,1,target)|(1,2,target)|(2,0,target)|(2,1,target)|(2,2,target)",
+                  "small": true
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "cardId": 631,
+      "initiative": 49,
+      "actions": [
+        {
+          "type": "attack",
+          "value": 0,
+          "valueType": "plus",
+          "subActions": [
+            {
+              "type": "area",
+              "value": "(1,1,target)|(1,2,active)|(2,0,target)"
+            },
+            {
+              "type": "element",
+              "value": "fire",
+              "valueType": "minus",
+              "subActions": [
+                {
+                  "type": "attack",
+                  "value": 1,
+                  "valueType": "add",
+                  "small": true
+                },
+                {
+                  "type": "condition",
+                  "value": "wound",
+                  "valueType": "plus",
+                  "small": true
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "cardId": 632,
+      "initiative": 67,
+      "actions": [
+        {
+          "type": "move",
+          "value": 1,
+          "valueType": "minus"
+        },
+        {
+          "type": "attack",
+          "value": 1,
+          "valueType": "plus",
+          "subActions": [
+            {
+              "type": "range",
+              "value": 1,
+              "valueType": "minus",
+              "small": true
+            }
+          ]
+        },
+        {
+          "type": "element",
+          "value": "fire"
+        }
+      ]
+    },
+    {
+      "cardId": 633,
+      "initiative": 77,
+      "actions": [
+        {
+          "type": "attack",
+          "value": 0,
+          "valueType": "plus",
+          "subActions": [
+            {
+              "type": "specialTarget",
+              "value": "enemiesAdjacent",
+              "small": true
+            }
+          ]
+        },
+        {
+          "type": "element",
+          "value": "ice",
+          "valueType": "minus",
+          "subActions": [
+            {
+              "type": "sufferDamage",
+              "value": 1,
+              "small": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "cardId": 634,
+      "initiative": 30,
+      "shuffle": true,
+      "actions": [
+        {
+          "type": "element",
+          "value": "fire",
+          "valueType": "minus",
+          "subActions": [
+            {
+              "type": "custom",
+              "value": "%data.custom.gh.flame-demon.1%",
+              "small": true
+            }
+          ]
+        },
+        {
+          "type": "move",
+          "value": 0,
+          "valueType": "plus"
+        },
+        {
+          "type": "attack",
+          "value": 2,
+          "valueType": "minus",
+          "subActions": [
+            {
+              "type": "condition",
+              "value": "wound",
+              "small": true
+            },
+            {
+              "type": "target",
+              "value": 2,
+              "small": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "cardId": 635,
+      "initiative": 8,
+      "actions": [
+        {
+          "type": "move",
+          "value": 1,
+          "valueType": "minus",
+          "subActions": [
+            {
+              "type": "custom",
+              "value": "%data.custom.gh.flame-demon.2%",
+              "small": true
+            }
+          ]
+        },
+        {
+          "type": "element",
+          "value": "wild",
+          "valueType": "minus",
+          "subActions": [
+            {
+              "type": "element",
+              "value": "fire"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

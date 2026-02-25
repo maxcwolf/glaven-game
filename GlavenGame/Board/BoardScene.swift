@@ -8,6 +8,7 @@ class BoardScene: SKScene {
 
     private let tileLayer = SKNode()
     private let overlayLayer = SKNode()
+    private let lootLayer = SKNode()
     private let pieceLayer = SKNode()
     private let highlightLayer = SKNode()
 
@@ -42,6 +43,7 @@ class BoardScene: SKScene {
 
         addChild(tileLayer)
         addChild(overlayLayer)
+        addChild(lootLayer)
         addChild(pieceLayer)
         addChild(highlightLayer)
 
@@ -64,6 +66,7 @@ class BoardScene: SKScene {
         boardStateRef = board
         tileLayer.removeAllChildren()
         overlayLayer.removeAllChildren()
+        lootLayer.removeAllChildren()
         pieceLayer.removeAllChildren()
         highlightLayer.removeAllChildren()
         pieceNodes.removeAll()
@@ -97,6 +100,11 @@ class BoardScene: SKScene {
             }
         }
 
+        // Restore loot tokens
+        for (coord, _) in board.lootTokens {
+            addLootSprite(at: coord, offsetCol: offsetCol, offsetRow: offsetRow)
+        }
+
         // Center camera on the visible board cells
         let centerCol = (board.bounds.minCol + board.bounds.maxCol) / 2 - offsetCol
         let centerRow = (board.bounds.minRow + board.bounds.maxRow) / 2 - offsetRow
@@ -106,18 +114,29 @@ class BoardScene: SKScene {
     // MARK: - Tile Sprites
 
     private func placeTileSprite(tile: UniqueTile, offsetCol: Int, offsetRow: Int) {
-        let pos = HexMath.hexToPixel(col: tile.anchorCol - offsetCol, row: tile.anchorRow - offsetRow)
         let imgOffset = TileImageOffsets.offset(for: tile.ref)
 
         guard let image = MapImageCache.shared.image(named: "map-tiles/\(tile.ref)") else { return }
         let texture = SKTexture(cgImage: image)
+        let imgW = texture.size().width
+        let imgH = texture.size().height
+
+        // Cell(0,0)'s center relative to the image's top-left corner (y-down pixel space).
+        // imgOffset.left/top are negative: they describe how far the image extends past cell(0,0).
+        // e.g. left=-22 means image starts 22px to the LEFT of cell(0,0)'s left edge.
+        let cellCenterXFromImageLeft = CGFloat(-imgOffset.left) + HexMath.cellStepX / 2
+        let cellCenterYFromImageTop  = CGFloat(-imgOffset.top)  + HexMath.cellSize  / 2
+
+        // SpriteKit anchor is a fraction of sprite size measured from bottom-left (y-up).
+        let anchorX = cellCenterXFromImageLeft / imgW
+        let anchorY = (imgH - cellCenterYFromImageTop) / imgH
+
         let sprite = SKSpriteNode(texture: texture)
-        sprite.anchorPoint = CGPoint(x: 0, y: 1) // top-left anchor like SwiftUI
-        sprite.position = CGPoint(
-            x: pos.x + CGFloat(imgOffset.left),
-            y: -pos.y - CGFloat(imgOffset.top) // flip Y for SpriteKit
-        )
-        sprite.zRotation = -CGFloat(tile.turns) * .pi / 3.0 // negative for SpriteKit's CCW rotation
+        sprite.anchorPoint = CGPoint(x: anchorX, y: anchorY)
+        // Place the anchor point (= cell(0,0)'s center) at cell(0,0)'s center in scene space.
+        // Rotation then matches SwiftUI's rotationEffect which also rotates around cell(0,0)'s center.
+        sprite.position = hexCenterInScene(col: tile.anchorCol - offsetCol, row: tile.anchorRow - offsetRow)
+        sprite.zRotation = -CGFloat(tile.turns) * .pi / 3.0 // negative for SpriteKit's CCW convention
         sprite.zPosition = 0
         tileLayer.addChild(sprite)
     }
@@ -142,6 +161,38 @@ class BoardScene: SKScene {
     func removeOverlaySprite(at coord: HexCoord, offsetCol: Int, offsetRow: Int) {
         let name = "overlay_\(coord.col)_\(coord.row)"
         overlayLayer.childNode(withName: name)?.removeFromParent()
+    }
+
+    // MARK: - Loot Sprites
+
+    /// Add a loot token sprite at a hex coordinate.
+    func addLootSprite(at coord: HexCoord, offsetCol: Int, offsetRow: Int) {
+        let center = hexCenterInScene(col: coord.col - offsetCol, row: coord.row - offsetRow)
+        let radius: CGFloat = 14
+
+        let circle = SKShapeNode(circleOfRadius: radius)
+        circle.fillColor = SKColor(red: 0.9, green: 0.75, blue: 0.1, alpha: 0.95)
+        circle.strokeColor = SKColor(red: 0.6, green: 0.45, blue: 0.0, alpha: 1.0)
+        circle.lineWidth = 2
+        circle.position = center
+        circle.zPosition = 8
+        circle.name = "loot_\(coord.col)_\(coord.row)"
+
+        let label = SKLabelNode(text: "g")
+        label.fontName = "GermaniaOne-Regular"
+        label.fontSize = 14
+        label.fontColor = SKColor(red: 0.4, green: 0.25, blue: 0.0, alpha: 1.0)
+        label.verticalAlignmentMode = .center
+        label.horizontalAlignmentMode = .center
+        circle.addChild(label)
+
+        lootLayer.addChild(circle)
+    }
+
+    /// Remove the loot token sprite at a hex coordinate.
+    func removeLootSprite(at coord: HexCoord, offsetCol: Int, offsetRow: Int) {
+        let name = "loot_\(coord.col)_\(coord.row)"
+        lootLayer.childNode(withName: name)?.removeFromParent()
     }
 
     // MARK: - Piece Sprites
@@ -179,6 +230,12 @@ class BoardScene: SKScene {
     func pieceDamage(id: PieceID, amount: Int) {
         guard let node = pieceNodes[id] else { return }
         node.animateDamage(amount: amount)
+    }
+
+    /// Show a gold/loot pickup floating up from a piece.
+    func pieceLoot(id: PieceID, text: String) {
+        guard let node = pieceNodes[id] else { return }
+        node.animateLoot(text: text)
     }
 
     /// Animate a piece moving along a path.
@@ -324,22 +381,12 @@ class BoardScene: SKScene {
         let refPoint = turnAxis?.refPoint ?? (0, 0)
         let origin = turnAxis?.origin ?? (0, 0)
 
-        // This tile's anchor point (first passable cell)
-        let grid = TileGrids.grid(for: data.ref)
-        var anchorCol = 0
-        var anchorRow = 0
-        outer: for (y, row) in grid.enumerated() {
-            for (x, passable) in row.enumerated() {
-                if passable {
-                    let rotated = HexMath.normaliseAndRotatePoint(
-                        turns: data.turns, refPoint: refPoint, origin: origin, tileCoord: (x, y)
-                    )
-                    anchorCol = rotated.0
-                    anchorRow = rotated.1
-                    break outer
-                }
-            }
-        }
+        // This tile's anchor point is cell(0,0) of the tile's local grid — matches ScenarioMapSheet.
+        let rotated = HexMath.normaliseAndRotatePoint(
+            turns: data.turns, refPoint: refPoint, origin: origin, tileCoord: (0, 0)
+        )
+        let anchorCol = rotated.0
+        let anchorRow = rotated.1
 
         let tileID = "\(data.ref)-\(anchorCol)-\(anchorRow)"
         tiles.append(UniqueTile(id: tileID, ref: data.ref, anchorCol: anchorCol, anchorRow: anchorRow, turns: data.turns))

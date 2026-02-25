@@ -1,0 +1,1410 @@
+{
+  "name": "brute",
+  "edition": "gh",
+  "character": true,
+  "abilities": [
+    {
+      "name": "Trample",
+      "cardId": 1,
+      "level": 1,
+      "initiative": 72,
+      "actions": [
+        {
+          "type": "attack",
+          "value": 3,
+          "enhancementTypes": [
+            "diamond"
+          ],
+          "subActions": [
+            {
+              "type": "pierce",
+              "value": 2,
+              "small": true,
+              "enhancementTypes": [
+                "diamond"
+              ]
+            }
+          ]
+        }
+      ],
+      "bottomLost": true,
+      "bottomActions": [
+        {
+          "type": "move",
+          "value": 4,
+          "enhancementTypes": [
+            "circle"
+          ],
+          "subActions": [
+            {
+              "type": "jump",
+              "value": "",
+              "small": true
+            }
+          ]
+        },
+        {
+          "type": "attack",
+          "value": 2,
+          "enhancementTypes": [
+            "diamond",
+            "diamond"
+          ],
+          "subActions": [
+            {
+              "type": "specialTarget",
+              "value": "enemiesMovedThrough",
+              "small": true
+            }
+          ]
+        },
+        {
+          "type": "card",
+          "value": "experience:2"
+        }
+      ]
+    },
+    {
+      "name": "Eye for an Eye",
+      "cardId": 2,
+      "level": 1,
+      "initiative": 18,
+      "actions": [
+        {
+          "type": "retaliate",
+          "value": 2,
+          "enhancementTypes": [
+            "diamond_plus"
+          ],
+          "subActions": [
+            {
+              "type": "specialTarget",
+              "value": "self",
+              "small": true
+            },
+            {
+              "type": "custom",
+              "value": "%data.custom.gh.brute.abilities.2.1%",
+              "small": true
+            }
+          ]
+        },
+        {
+          "type": "card",
+          "value": "round"
+        }
+      ],
+      "bottomActions": [
+        {
+          "type": "heal",
+          "value": 2,
+          "enhancementTypes": [
+            "diamond_plus",
+            "diamond_plus"
+          ],
+          "subActions": [
+            {
+              "type": "range",
+              "value": 1,
+              "small": true
+            }
+          ]
+        },
+        {
+          "type": "element",
+          "value": "earth"
+        }
+      ]
+    },
+    {
+      "name": "Sweeping Blow",
+      "cardId": 3,
+      "level": 1,
+      "initiative": 64,
+      "actions": [
+        {
+          "type": "attack",
+          "value": 2,
+          "enhancementTypes": [
+            "diamond"
+          ],
+          "subActions": [
+            {
+              "type": "area",
+              "value": "(0,0,enhance)|(0,1,active)|(1,0,target)|(1,1,target)|(1,2,target)",
+              "enhancementTypes": [
+                "hex"
+              ]
+            }
+          ]
+        }
+      ],
+      "bottomActions": [
+        {
+          "type": "move",
+          "value": 3
+        },
+        {
+          "type": "push",
+          "value": 1,
+          "enhancementTypes": [
+            "diamond"
+          ],
+          "subActions": [
+            {
+              "type": "specialTarget",
+              "value": "enemiesAdjacent",
+              "small": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Provoking Roar",
+      "cardId": 4,
+      "level": 1,
+      "initiative": 10,
+      "actions": [
+        {
+          "type": "attack",
+          "value": 2,
+          "enhancementTypes": [
+            "diamond"
+          ],
+          "subActions": [
+            {
+              "type": "condition",
+              "value": "disarm",
+              "small": true
+            }
+          ]
+        }
+      ],
+      "bottomActions": [
+        {
+          "type": "custom",
+          "value": "%data.custom.gh.brute.abilities.4.1%",
+          "small": true
+        },
+        {
+          "type": "card",
+          "value": "round"
+        }
+      ]
+    },
+    {
+      "name": "Overwhelming Assault",
+      "cardId": 5,
+      "level": 1,
+      "initiative": 61,
+      "lost": true,
+      "actions": [
+        {
+          "type": "attack",
+          "value": 6,
+          "enhancementTypes": [
+            "diamond",
+            "diamond"
+          ]
+        },
+        {
+          "type": "card",
+          "value": "experience:2"
+        }
+      ],
+      "bottomActions": [
+        {
+          "type": "move",
+          "value": 3
+        },
+        {
+          "type": "push",
+          "value": 2,
+          "enhancementTypes": [
+            "diamond"
+          ],
+          "subActions": [
+            {
+              "type": "specialTarget",
+              "value": "enemyAdjacent",
+              "small": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Grab and Go",
+      "cardId": 6,
+      "level": 1,
+      "initiative": 87,
+      "actions": [
+        {
+          "type": "loot",
+          "value": 1
+        }
+      ],
+      "bottomActions": [
+        {
+          "type": "move",
+          "value": 4,
+          "enhancementTypes": [
+            "circle",
+            "circle"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Warding Strength",
+      "cardId": 7,
+      "level": 1,
+      "initiative": 32,
+      "actions": [
+        {
+          "type": "attack",
+          "value": 3,
+          "enhancementTypes": [
+            "diamond"
+          ],
+          "subActions": [
+            {
+              "type": "push",
+              "value": 2,
+              "small": true,
+              "enhancementTypes": [
+                "diamond"
+              ]
+            }
+          ]
+        }
+      ],
+      "bottomActions": [
+        {
+          "type": "custom",
+          "value": "%data.custom.gh.brute.abilities.7.1%",
+          "small": true
+        },
+        {
+          "type": "concatenation",
+          "subActions": [
+            {
+              "type": "card",
+              "value": "persistent"
+            },
+            {
+              "type": "card",
+              "value": "slot"
+            },
+            {
+              "type": "card",
+              "value": "slotXp:1"
+            },
+            {
+              "type": "card",
+              "value": "slot"
+            },
+            {
+              "type": "card",
+              "value": "slotXp:1"
+            },
+            {
+              "type": "card",
+              "value": "slot"
+            },
+            {
+              "type": "card",
+              "value": "slotXp:1"
+            },
+            {
+              "type": "card",
+              "value": "lost"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Shield Bash",
+      "cardId": 8,
+      "level": 1,
+      "initiative": 15,
+      "lost": true,
+      "actions": [
+        {
+          "type": "attack",
+          "value": 4,
+          "enhancementTypes": [
+            "diamond",
+            "diamond"
+          ],
+          "subActions": [
+            {
+              "type": "condition",
+              "value": "stun",
+              "small": true
+            }
+          ]
+        },
+        {
+          "type": "card",
+          "value": "experience:2"
+        }
+      ],
+      "bottomActions": [
+        {
+          "type": "shield",
+          "value": 1,
+          "enhancementTypes": [
+            "diamond_plus",
+            "diamond_plus"
+          ],
+          "subActions": [
+            {
+              "type": "specialTarget",
+              "value": "self",
+              "small": true
+            }
+          ]
+        },
+        {
+          "type": "card",
+          "value": "round"
+        }
+      ]
+    },
+    {
+      "name": "Leaping Cleave",
+      "cardId": 9,
+      "level": 1,
+      "initiative": 54,
+      "actions": [
+        {
+          "type": "attack",
+          "value": 3,
+          "enhancementTypes": [
+            "diamond"
+          ],
+          "subActions": [
+            {
+              "type": "area",
+              "value": "(0,1,active)|(1,0,target)|(1,1,target)|(1,2,enhance)",
+              "enhancementTypes": [
+                "hex"
+              ]
+            }
+          ]
+        },
+        {
+          "type": "card",
+          "value": "experience:1"
+        }
+      ],
+      "bottomActions": [
+        {
+          "type": "move",
+          "value": 3,
+          "enhancementTypes": [
+            "circle"
+          ],
+          "subActions": [
+            {
+              "type": "jump",
+              "value": "",
+              "small": true
+            }
+          ]
+        },
+        {
+          "type": "element",
+          "value": "air"
+        }
+      ]
+    },
+    {
+      "name": "Spare Dagger",
+      "cardId": 10,
+      "level": 1,
+      "initiative": 27,
+      "actions": [
+        {
+          "type": "attack",
+          "value": 3,
+          "enhancementTypes": [
+            "diamond"
+          ],
+          "subActions": [
+            {
+              "type": "range",
+              "value": 3,
+              "small": true
+            }
+          ]
+        },
+        {
+          "type": "card",
+          "value": "experience:1"
+        }
+      ],
+      "bottomActions": [
+        {
+          "type": "attack",
+          "value": 2,
+          "enhancementTypes": [
+            "diamond"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Skewer",
+      "cardId": 11,
+      "level": "X",
+      "initiative": 35,
+      "actions": [
+        {
+          "type": "attack",
+          "value": 3,
+          "enhancementTypes": [
+            "diamond"
+          ],
+          "subActions": [
+            {
+              "type": "area",
+              "value": "(0,3,active)|(1,1,target)|(1,2,target)|(2,0,enhance)",
+              "enhancementTypes": [
+                "hex"
+              ]
+            },
+            {
+              "type": "element",
+              "value": "air",
+              "valueType": "minus",
+              "subActions": [
+                {
+                  "type": "attack",
+                  "value": 1,
+                  "valueType": "add",
+                  "small": true
+                },
+                {
+                  "type": "pierce",
+                  "value": 1,
+                  "small": true
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "card",
+          "value": "experience:1"
+        }
+      ],
+      "bottomLost": true,
+      "bottomActions": [
+        {
+          "type": "move",
+          "value": 6,
+          "enhancementTypes": [
+            "circle",
+            "circle"
+          ]
+        },
+        {
+          "type": "card",
+          "value": "experience:1"
+        }
+      ]
+    },
+    {
+      "name": "Balanced Measure",
+      "cardId": 12,
+      "level": "X",
+      "initiative": 77,
+      "actions": [
+        {
+          "type": "attack",
+          "value": "X",
+          "subActions": [
+            {
+              "type": "custom",
+              "value": "%data.custom.gh.brute.abilities.12.1%",
+              "small": true
+            }
+          ]
+        },
+        {
+          "type": "card",
+          "value": "experience:1"
+        }
+      ],
+      "bottomActions": [
+        {
+          "type": "move",
+          "value": "X",
+          "subActions": [
+            {
+              "type": "custom",
+              "value": "%data.custom.gh.brute.abilities.12.2%",
+              "small": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Wall of Doom",
+      "cardId": 13,
+      "level": "X",
+      "initiative": 20,
+      "lost": true,
+      "actions": [
+        {
+          "type": "retaliate",
+          "value": 2,
+          "enhancementTypes": [
+            "diamond_plus"
+          ],
+          "subActions": [
+            {
+              "type": "specialTarget",
+              "value": "self",
+              "small": true
+            }
+          ]
+        },
+        {
+          "type": "shield",
+          "value": 2,
+          "enhancementTypes": [
+            "diamond_plus"
+          ],
+          "subActions": [
+            {
+              "type": "specialTarget",
+              "value": "self",
+              "small": true
+            }
+          ]
+        },
+        {
+          "type": "concatenation",
+          "subActions": [
+            {
+              "type": "card",
+              "value": "experience:2"
+            },
+            {
+              "type": "card",
+              "value": "round"
+            }
+          ]
+        }
+      ],
+      "bottomActions": [
+        {
+          "type": "custom",
+          "value": "%data.custom.gh.brute.abilities.13.1%",
+          "small": true
+        },
+        {
+          "type": "card",
+          "value": "round"
+        }
+      ]
+    },
+    {
+      "name": "Fatal Advance",
+      "cardId": 14,
+      "level": 2,
+      "initiative": 40,
+      "lost": true,
+      "actions": [
+        {
+          "type": "custom",
+          "value": "%data.custom.gh.brute.abilities.14.1%",
+          "small": true
+        },
+        {
+          "type": "card",
+          "value": "experience:2"
+        }
+      ],
+      "bottomActions": [
+        {
+          "type": "move",
+          "value": 4,
+          "enhancementTypes": [
+            "circle"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Juggernaut",
+      "cardId": 15,
+      "level": 2,
+      "initiative": 34,
+      "actions": [
+        {
+          "type": "move",
+          "value": 2,
+          "enhancementTypes": [
+            "circle"
+          ]
+        },
+        {
+          "type": "attack",
+          "value": 2,
+          "enhancementTypes": [
+            "diamond"
+          ]
+        }
+      ],
+      "bottomActions": [
+        {
+          "type": "custom",
+          "value": "%data.custom.gh.brute.abilities.15.1%",
+          "small": true
+        },
+        {
+          "type": "concatenation",
+          "subActions": [
+            {
+              "type": "concatenationSpacer",
+              "value": 1
+            },
+            {
+              "type": "card",
+              "value": "persistent"
+            },
+            {
+              "type": "card",
+              "value": "slotXp:1"
+            },
+            {
+              "type": "card",
+              "value": "slotXp:1"
+            },
+            {
+              "type": "concatenationSpacer",
+              "value": 3
+            },
+            {
+              "type": "concatenationSpacer",
+              "value": 2
+            },
+            {
+              "type": "card",
+              "value": "slotXp:1"
+            },
+            {
+              "type": "concatenationSpacer",
+              "value": 1
+            },
+            {
+              "type": "card",
+              "value": "lost"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Hook and Chain",
+      "cardId": 16,
+      "level": 3,
+      "initiative": 42,
+      "actions": [
+        {
+          "type": "attack",
+          "value": 3,
+          "enhancementTypes": [
+            "diamond",
+            "diamond"
+          ],
+          "subActions": [
+            {
+              "type": "range",
+              "value": 3,
+              "small": true
+            },
+            {
+              "type": "pull",
+              "value": 2,
+              "small": true
+            }
+          ]
+        }
+      ],
+      "bottomActions": [
+        {
+          "type": "move",
+          "value": 4,
+          "subActions": [
+            {
+              "type": "custom",
+              "value": "%data.custom.gh.brute.abilities.16.1%",
+              "small": true
+            },
+            {
+              "type": "attack",
+              "value": "X"
+            },
+            {
+              "type": "custom",
+              "value": "%data.custom.gh.brute.abilities.16.2%",
+              "small": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Brute Force",
+      "cardId": 17,
+      "level": 3,
+      "initiative": 51,
+      "actions": [
+        {
+          "type": "attack",
+          "value": 2,
+          "enhancementTypes": [
+            "diamond"
+          ],
+          "subActions": [
+            {
+              "type": "area",
+              "value": "(0,0,enhance)|(0,1,active)|(0,2,enhance)|(1,0,target)|(1,1,target)|(1,2,target)",
+              "enhancementTypes": [
+                "hex",
+                "hex"
+              ]
+            },
+            {
+              "type": "condition",
+              "value": "muddle",
+              "small": true
+            }
+          ]
+        },
+        {
+          "type": "card",
+          "value": "experience:1"
+        }
+      ],
+      "bottomActions": [
+        {
+          "type": "move",
+          "value": 2
+        },
+        {
+          "type": "shield",
+          "value": 1,
+          "enhancementTypes": [
+            "diamond_plus"
+          ],
+          "subActions": [
+            {
+              "type": "specialTarget",
+              "value": "self",
+              "small": true
+            }
+          ]
+        },
+        {
+          "type": "card",
+          "value": "round"
+        }
+      ]
+    },
+    {
+      "name": "Unstoppable Chard",
+      "cardId": 18,
+      "level": 4,
+      "initiative": 86,
+      "actions": [
+        {
+          "type": "attack",
+          "value": 5,
+          "enhancementTypes": [
+            "diamond"
+          ]
+        },
+        {
+          "type": "card",
+          "value": "experience:1"
+        }
+      ],
+      "bottomLost": true,
+      "bottomActions": [
+        {
+          "type": "move",
+          "value": 4,
+          "enhancementTypes": [
+            "circle"
+          ]
+        },
+        {
+          "type": "condition",
+          "value": "stun",
+          "subActions": [
+            {
+              "type": "specialTarget",
+              "value": "enemiesAdjacent",
+              "small": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Devastating Hack",
+      "cardId": 19,
+      "level": 4,
+      "initiative": 27,
+      "lost": true,
+      "actions": [
+        {
+          "type": "attack",
+          "value": 8,
+          "enhancementTypes": [
+            "diamond",
+            "diamond"
+          ]
+        },
+        {
+          "type": "card",
+          "value": "experience:3"
+        }
+      ],
+      "bottomActions": [
+        {
+          "type": "loot",
+          "value": 1
+        }
+      ]
+    },
+    {
+      "name": "Whirlwind",
+      "cardId": 20,
+      "level": 5,
+      "initiative": 28,
+      "lost": true,
+      "actions": [
+        {
+          "type": "attack",
+          "value": 4,
+          "enhancementTypes": [
+            "diamond"
+          ],
+          "subActions": [
+            {
+              "type": "specialTarget",
+              "value": "enemiesAdjacent",
+              "small": true
+            },
+            {
+              "type": "custom",
+              "value": "%data.custom.gh.brute.abilities.20.1%",
+              "small": true
+            }
+          ]
+        }
+      ],
+      "bottomActions": [
+        {
+          "type": "move",
+          "value": 4,
+          "enhancementTypes": [
+            "circle"
+          ]
+        },
+        {
+          "type": "push",
+          "value": 3,
+          "enhancementTypes": [
+            "diamond"
+          ],
+          "subActions": [
+            {
+              "type": "specialTarget",
+              "value": "enemyAdjacent",
+              "small": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Skirmishing Maneuver",
+      "cardId": 21,
+      "level": 5,
+      "initiative": 29,
+      "actions": [
+        {
+          "type": "attack",
+          "value": 2
+        },
+        {
+          "type": "move",
+          "value": 2,
+          "enhancementTypes": [
+            "circle"
+          ]
+        },
+        {
+          "type": "attack",
+          "value": 2
+        }
+      ],
+      "bottomActions": [
+        {
+          "type": "attack",
+          "value": 3,
+          "enhancementTypes": [
+            "diamond"
+          ],
+          "subActions": [
+            {
+              "type": "range",
+              "value": 3,
+              "small": true
+            }
+          ]
+        },
+        {
+          "type": "card",
+          "value": "experience:1"
+        }
+      ]
+    },
+    {
+      "name": "Quietus",
+      "cardId": 22,
+      "level": 6,
+      "initiative": 57,
+      "actions": [
+        {
+          "type": "custom",
+          "value": "%data.custom.gh.brute.abilities.22.1%",
+          "small": true
+        },
+        {
+          "type": "card",
+          "value": "experience:1"
+        }
+      ],
+      "bottomActions": [
+        {
+          "type": "move",
+          "value": 3,
+          "enhancementTypes": [
+            "circle"
+          ]
+        },
+        {
+          "type": "custom",
+          "value": "%data.custom.gh.brute.abilities.22.2%",
+          "small": true
+        },
+        {
+          "type": "card",
+          "value": "round"
+        }
+      ]
+    },
+    {
+      "name": "Immovable Phalanx",
+      "cardId": 23,
+      "level": 6,
+      "initiative": 17,
+      "actions": [
+        {
+          "type": "attack",
+          "value": 4,
+          "enhancementTypes": [
+            "diamond"
+          ]
+        },
+        {
+          "type": "shield",
+          "value": 1,
+          "enhancementTypes": [
+            "diamond_plus"
+          ],
+          "subActions": [
+            {
+              "type": "specialTarget",
+              "value": "self",
+              "small": true
+            }
+          ]
+        },
+        {
+          "type": "card",
+          "value": "round"
+        }
+      ],
+      "bottomLost": true,
+      "bottomActions": [
+        {
+          "type": "custom",
+          "value": "%data.custom.gh.brute.abilities.23.1%",
+          "small": true
+        },
+        {
+          "type": "card",
+          "value": "persistent"
+        }
+      ]
+    },
+    {
+      "name": "Defensive Tactics",
+      "cardId": 24,
+      "level": 7,
+      "initiative": 26,
+      "actions": [
+        {
+          "type": "attack",
+          "value": 2,
+          "enhancementTypes": [
+            "diamond"
+          ],
+          "subActions": [
+            {
+              "type": "range",
+              "value": 3,
+              "small": true
+            },
+            {
+              "type": "target",
+              "value": 2,
+              "small": true,
+              "enhancementTypes": [
+                "diamond"
+              ]
+            },
+            {
+              "type": "condition",
+              "value": "immobilize",
+              "small": true
+            }
+          ]
+        },
+        {
+          "type": "card",
+          "value": "experience:1"
+        }
+      ],
+      "bottomLost": true,
+      "bottomActions": [
+        {
+          "type": "retaliate",
+          "value": 1,
+          "subActions": [
+            {
+              "type": "specialTarget",
+              "value": "self",
+              "small": true
+            }
+          ]
+        },
+        {
+          "type": "shield",
+          "value": 1,
+          "subActions": [
+            {
+              "type": "specialTarget",
+              "value": "self",
+              "small": true
+            }
+          ]
+        },
+        {
+          "type": "concatenation",
+          "subActions": [
+            {
+              "type": "card",
+              "value": "experience:2"
+            },
+            {
+              "type": "card",
+              "value": "persistent"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Crippling Offensive",
+      "cardId": 25,
+      "level": 7,
+      "initiative": 33,
+      "lost": true,
+      "actions": [
+        {
+          "type": "attack",
+          "value": 6,
+          "enhancementTypes": [
+            "diamond",
+            "diamond"
+          ],
+          "subActions": [
+            {
+              "type": "condition",
+              "value": "wound",
+              "small": true
+            },
+            {
+              "type": "condition",
+              "value": "stun",
+              "small": true
+            }
+          ]
+        },
+        {
+          "type": "card",
+          "value": "experience:3"
+        }
+      ],
+      "bottomActions": [
+        {
+          "type": "move",
+          "value": 3,
+          "enhancementTypes": [
+            "circle"
+          ]
+        },
+        {
+          "type": "concatenation",
+          "value": "and:2",
+          "subActions": [
+            {
+              "type": "condition",
+              "value": "immobilize"
+            },
+            {
+              "type": "push",
+              "value": 1
+            },
+            {
+              "type": "specialTarget",
+              "value": "enemyAdjacent",
+              "small": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Frenzied Onslaught",
+      "cardId": 26,
+      "level": 8,
+      "initiative": 41,
+      "actions": [
+        {
+          "type": "move",
+          "value": 2
+        },
+        {
+          "type": "attack",
+          "value": 2,
+          "enhancementTypes": [
+            "diamond"
+          ]
+        },
+        {
+          "type": "move",
+          "value": 2
+        },
+        {
+          "type": "attack",
+          "value": 2,
+          "enhancementTypes": [
+            "diamond"
+          ]
+        }
+      ],
+      "bottomActions": [
+        {
+          "type": "custom",
+          "value": "%data.custom.gh.brute.abilities.26.1%",
+          "small": true
+        },
+        {
+          "type": "concatenation",
+          "subActions": [
+            {
+              "type": "card",
+              "value": "experience:1"
+            },
+            {
+              "type": "card",
+              "value": "round"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Selfish Retribution",
+      "cardId": 27,
+      "level": 8,
+      "initiative": 12,
+      "lost": true,
+      "actions": [
+        {
+          "type": "move",
+          "value": 1,
+          "enhancementTypes": [
+            "circle"
+          ]
+        },
+        {
+          "type": "loot",
+          "value": 2
+        }
+      ],
+      "bottomActions": [
+        {
+          "type": "move",
+          "value": 3,
+          "enhancementTypes": [
+            "circle"
+          ]
+        },
+        {
+          "type": "retaliate",
+          "value": 2,
+          "enhancementTypes": [
+            "diamond_plus"
+          ],
+          "subActions": [
+            {
+              "type": "specialTarget",
+              "value": "self",
+              "small": true
+            }
+          ]
+        },
+        {
+          "type": "concatenation",
+          "subActions": [
+            {
+              "type": "card",
+              "value": "experience:1"
+            },
+            {
+              "type": "card",
+              "value": "round"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "King of the Hill",
+      "cardId": 28,
+      "level": 9,
+      "initiative": 39,
+      "lost": true,
+      "actions": [
+        {
+          "type": "attack",
+          "value": 6,
+          "enhancementTypes": [
+            "diamond",
+            "diamond"
+          ],
+          "subActions": [
+            {
+              "type": "specialTarget",
+              "value": "enemiesAdjacent",
+              "small": true
+            },
+            {
+              "type": "push",
+              "value": 1,
+              "small": true
+            },
+            {
+              "type": "custom",
+              "value": "%data.custom.gh.brute.abilities.28.1%",
+              "small": true
+            }
+          ]
+        }
+      ],
+      "bottomActions": [
+        {
+          "type": "heal",
+          "value": 5,
+          "enhancementTypes": [
+            "diamond_plus"
+          ],
+          "subActions": [
+            {
+              "type": "specialTarget",
+              "value": "self",
+              "small": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Face Your End",
+      "cardId": 29,
+      "level": 9,
+      "initiative": 67,
+      "actions": [
+        {
+          "type": "attack",
+          "value": 2,
+          "enhancementTypes": [
+            "diamond"
+          ],
+          "subActions": [
+            {
+              "type": "range",
+              "value": 4,
+              "small": true
+            },
+            {
+              "type": "target",
+              "value": 3,
+              "small": true,
+              "enhancementTypes": [
+                "diamond"
+              ]
+            },
+            {
+              "type": "pull",
+              "value": 3,
+              "small": true
+            }
+          ]
+        },
+        {
+          "type": "card",
+          "value": "experience:1"
+        }
+      ],
+      "bottomLost": true,
+      "bottomActions": [
+        {
+          "type": "custom",
+          "value": "%data.custom.gh.brute.abilities.29.1%",
+          "small": true
+        },
+        {
+          "type": "card",
+          "value": "experience:2"
+        }
+      ]
+    }
+  ]
+}

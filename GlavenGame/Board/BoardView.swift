@@ -5,6 +5,7 @@ import SpriteKit
 struct BoardView: View {
     @Environment(GameManager.self) private var gameManager
     @Bindable var coordinator: BoardCoordinator
+    @State private var previewMonsterAbility: (GameMonster, AbilityModel)?
 
     var body: some View {
         ZStack {
@@ -71,11 +72,20 @@ struct BoardView: View {
                 shortRestOverlay(pending: pending, character: character)
             }
 
-            // Modifier card popup
-            if coordinator.showModifierCard, let mod = coordinator.lastDrawnModifier {
-                modifierCardPopup(mod)
-                    .transition(.scale.combined(with: .opacity))
-                    .animation(.spring(duration: 0.3), value: coordinator.showModifierCard)
+            // Interactive attack modifier draw overlay
+            if let pending = coordinator.pendingModifierDraw {
+                AttackModifierDrawOverlay(pending: pending, coordinator: coordinator)
+                    .transition(.opacity.combined(with: .scale(scale: 0.97)))
+                    .animation(.easeInOut(duration: 0.2), value: coordinator.pendingModifierDraw?.id)
+                    .zIndex(10)
+            }
+
+            // Monster ability card preview (tap on monster group in info panel)
+            if let (monster, ability) = previewMonsterAbility {
+                monsterAbilityPreviewOverlay(monster: monster, ability: ability)
+                    .transition(.opacity.combined(with: .scale(scale: 0.97)))
+                    .animation(.easeInOut(duration: 0.15), value: previewMonsterAbility != nil)
+                    .zIndex(8)
             }
 
             // Full-size card image preview overlay
@@ -172,16 +182,26 @@ struct BoardView: View {
 
     @ViewBuilder
     private var bottomBar: some View {
-        HStack(spacing: 12) {
-            if coordinator.boardPhase == .setup {
-                setupBottomBar
-            } else if coordinator.boardPhase == .execution {
-                executionBottomBar
-            } else {
-                Spacer()
+        HStack(alignment: .top, spacing: 0) {
+            // Main execution/setup content — takes all remaining space
+            HStack(spacing: 12) {
+                if coordinator.boardPhase == .setup {
+                    setupBottomBar
+                } else if coordinator.boardPhase == .execution {
+                    executionBottomBar
+                } else {
+                    Spacer()
+                }
+            }
+            .frame(maxWidth: .infinity)
+            .padding()
+
+            // Monster ability cards — natural content width, pinned to the right
+            if coordinator.boardPhase == .execution {
+                MonsterAbilityStripView(coordinator: coordinator, cardWidth: 140)
+                    .padding(.trailing, 8)
             }
         }
-        .padding()
         .background(.black.opacity(0.4))
     }
 
@@ -665,6 +685,7 @@ struct BoardView: View {
     @ViewBuilder
     private func monsterGroupCard(_ monster: GameMonster) -> some View {
         let monsterColor: Color = monster.isBoss ? .purple : .red
+        let ability = gameManager.monsterManager.currentAbility(for: monster)
 
         VStack(alignment: .leading, spacing: 3) {
             // Monster name
@@ -680,6 +701,11 @@ struct BoardView: View {
                 Text("Lv\(monster.level)")
                     .font(.system(size: 8, weight: .medium))
                     .foregroundStyle(.white.opacity(0.5))
+                if ability != nil {
+                    Image(systemName: "rectangle.portrait.on.rectangle.portrait.fill")
+                        .font(.system(size: 8))
+                        .foregroundStyle(monsterColor.opacity(0.7))
+                }
             }
 
             // Standee rows — elites first, then normals
@@ -699,6 +725,11 @@ struct BoardView: View {
             RoundedRectangle(cornerRadius: 5)
                 .stroke(monsterColor.opacity(0.2), lineWidth: 1)
         )
+        .onTapGesture {
+            if let ability {
+                previewMonsterAbility = (monster, ability)
+            }
+        }
     }
 
     @ViewBuilder
@@ -843,33 +874,177 @@ struct BoardView: View {
 
     @ViewBuilder
     private func scenarioEndOverlay(result: BoardCoordinator.ScenarioResult) -> some View {
-        Color.black.opacity(0.6)
+        let isVictory = result == .victory
+        let accentColor: Color = isVictory ? .yellow : .red
+        let characters = gameManager.game.characters.filter { !$0.absent }
+
+        Color.black.opacity(0.75)
             .ignoresSafeArea()
             .overlay {
-                VStack(spacing: 20) {
-                    Image(systemName: result == .victory ? "checkmark.seal.fill" : "xmark.seal.fill")
-                        .font(.system(size: 64))
-                        .foregroundStyle(result == .victory ? .yellow : .red)
+                VStack(spacing: 0) {
+                    // Header
+                    VStack(spacing: 8) {
+                        Image(systemName: isVictory ? "checkmark.seal.fill" : "xmark.seal.fill")
+                            .font(.system(size: 56))
+                            .foregroundStyle(accentColor)
 
-                    Text(result == .victory ? "Victory!" : "Defeat")
-                        .font(.system(size: 36, weight: .bold, design: .serif))
-                        .foregroundStyle(.white)
+                        Text(isVictory ? "Scenario Complete!" : "Scenario Failed")
+                            .font(.system(size: 32, weight: .bold, design: .serif))
+                            .foregroundStyle(.white)
 
-                    Text("Round \(gameManager.game.round)")
-                        .font(.title3)
-                        .foregroundStyle(.white.opacity(0.7))
+                        Text(isVictory
+                             ? "All enemies have been defeated."
+                             : "All characters are exhausted.")
+                            .font(.subheadline)
+                            .foregroundStyle(.white.opacity(0.65))
 
-                    Button(result == .victory ? "Complete Scenario" : "Return to Menu") {
-                        coordinator.confirmScenarioEnd()
+                        Text("Round \(gameManager.game.round)")
+                            .font(.caption)
+                            .foregroundStyle(.white.opacity(0.4))
                     }
-                    .buttonStyle(.borderedProminent)
-                    .tint(result == .victory ? .green : .orange)
-                    .controlSize(.large)
+                    .padding(.bottom, 20)
+
+                    Divider().overlay(accentColor.opacity(0.3))
+                        .padding(.horizontal, -24)
+
+                    // Rules reminder (defeat only)
+                    if !isVictory {
+                        HStack(spacing: 8) {
+                            Image(systemName: "info.circle.fill")
+                                .foregroundStyle(.orange.opacity(0.8))
+                                .font(.system(size: 13))
+                            Text("Gold collected this scenario is lost. Experience is kept.")
+                                .font(.caption)
+                                .foregroundStyle(.white.opacity(0.6))
+                        }
+                        .padding(.vertical, 12)
+                    } else {
+                        Spacer().frame(height: 16)
+                    }
+
+                    // Character summary cards
+                    HStack(alignment: .top, spacing: 12) {
+                        ForEach(characters, id: \.id) { character in
+                            scenarioResultCharacterCard(character, isVictory: isVictory)
+                        }
+                    }
+                    .padding(.bottom, 20)
+
+                    Divider().overlay(accentColor.opacity(0.3))
+                        .padding(.horizontal, -24)
+                        .padding(.bottom, 20)
+
+                    // Action button
+                    Button {
+                        coordinator.confirmScenarioEnd()
+                    } label: {
+                        Label(
+                            isVictory ? "Complete Scenario" : "Return to Campaign",
+                            systemImage: isVictory ? "checkmark.circle.fill" : "arrow.uturn.left.circle.fill"
+                        )
+                        .font(.system(size: 17, weight: .semibold))
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 28)
+                        .padding(.vertical, 14)
+                        .background(isVictory ? Color.green : Color.orange)
+                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                    }
+                    .buttonStyle(.plain)
+
+                    if !isVictory {
+                        Text("The scenario remains available to attempt again.")
+                            .font(.caption2)
+                            .foregroundStyle(.white.opacity(0.35))
+                            .padding(.top, 8)
+                    }
                 }
+                .padding(32)
+                .frame(maxWidth: 640)
+                .background(
+                    RoundedRectangle(cornerRadius: 20)
+                        .fill(.black.opacity(0.92))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 20)
+                                .stroke(accentColor.opacity(0.35), lineWidth: 1.5)
+                        )
+                )
                 .padding(40)
-                .background(.black.opacity(0.8))
-                .clipShape(RoundedRectangle(cornerRadius: 16))
             }
+    }
+
+    @ViewBuilder
+    private func scenarioResultCharacterCard(_ character: GameCharacter, isVictory: Bool) -> some View {
+        let charColor = Color(hex: character.color) ?? .blue
+        let isExhausted = character.exhausted || character.health <= 0
+
+        VStack(spacing: 8) {
+            // Avatar / icon
+            BundledImage(ImageLoader.characterIcon(edition: character.edition, name: character.name), size: 32, systemName: "person.fill")
+                .foregroundStyle(charColor)
+                .opacity(isExhausted && !isVictory ? 0.5 : 1.0)
+
+            // Name
+            Text(character.title.isEmpty
+                 ? character.name.replacingOccurrences(of: "-", with: " ").capitalized
+                 : character.title)
+                .font(.system(size: 11, weight: .bold))
+                .foregroundStyle(.white)
+                .lineLimit(1)
+                .multilineTextAlignment(.center)
+
+            Divider().overlay(charColor.opacity(0.3))
+
+            // XP gained (kept on both win and loss)
+            HStack(spacing: 4) {
+                Image(systemName: "star.fill")
+                    .font(.system(size: 9))
+                    .foregroundStyle(.yellow)
+                Text("\(character.experience) XP")
+                    .font(.system(size: 10, weight: .medium))
+                    .foregroundStyle(.yellow.opacity(0.9))
+            }
+
+            // Gold / loot
+            if isVictory {
+                HStack(spacing: 4) {
+                    Image(systemName: "circlebadge.fill")
+                        .font(.system(size: 9))
+                        .foregroundStyle(.yellow.opacity(0.8))
+                    Text("\(character.loot)g")
+                        .font(.system(size: 10, weight: .medium))
+                        .foregroundStyle(.yellow.opacity(0.8))
+                }
+            } else {
+                // Defeat: gold is lost — show it crossed out
+                HStack(spacing: 4) {
+                    Image(systemName: "circlebadge.slash.fill")
+                        .font(.system(size: 9))
+                        .foregroundStyle(.red.opacity(0.6))
+                    Text("\(character.loot)g lost")
+                        .font(.system(size: 10, weight: .medium))
+                        .foregroundStyle(.red.opacity(0.6))
+                }
+            }
+
+            // Status badge
+            if isExhausted && !isVictory {
+                Text("EXHAUSTED")
+                    .font(.system(size: 7, weight: .heavy))
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 2)
+                    .background(.red.opacity(0.7))
+                    .clipShape(Capsule())
+            }
+        }
+        .padding(12)
+        .frame(minWidth: 90)
+        .background(charColor.opacity(0.12))
+        .clipShape(RoundedRectangle(cornerRadius: 10))
+        .overlay(
+            RoundedRectangle(cornerRadius: 10)
+                .stroke(isExhausted && !isVictory ? .red.opacity(0.4) : charColor.opacity(0.3), lineWidth: 1)
+        )
     }
 
     // MARK: - Damage Mitigation Overlay
@@ -1233,6 +1408,117 @@ struct BoardView: View {
         return .white
     }
 
+    // MARK: - Monster Ability Preview
+
+    @ViewBuilder
+    private func monsterAbilityPreviewOverlay(monster: GameMonster, ability: AbilityModel) -> some View {
+        let color = monsterAbilityColor(monster)
+        Color.black.opacity(0.6)
+            .ignoresSafeArea()
+            .onTapGesture { previewMonsterAbility = nil }
+            .overlay {
+                VStack(spacing: 14) {
+                    // Header
+                    HStack(spacing: 8) {
+                        monsterAbilityThumb(monster)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(monster.name.split(separator: "-").map { $0.capitalized }.joined(separator: " "))
+                                .font(.title3.weight(.bold))
+                                .foregroundStyle(.white)
+                            Text("Ability Card — Round \(gameManager.game.round)")
+                                .font(.caption)
+                                .foregroundStyle(.white.opacity(0.5))
+                        }
+                        Spacer()
+                        Button {
+                            previewMonsterAbility = nil
+                        } label: {
+                            Image(systemName: "xmark")
+                                .font(.system(size: 12, weight: .bold))
+                                .foregroundStyle(.white.opacity(0.9))
+                                .frame(width: 28, height: 28)
+                                .background(.ultraThinMaterial)
+                                .clipShape(Circle())
+                        }
+                        .buttonStyle(.plain)
+                    }
+
+                    let deckName = monster.monsterData?.deck ?? monster.name
+                    let cardIndex = gameManager.monsterManager.currentAbilityCardIndex(for: monster)
+                    let imageURL = cardIndex.flatMap { ImageLoader.monsterAbilityCardURL(deckName: deckName, cardIndex: $0) }
+
+                    if let imageURL {
+                        AsyncImage(url: imageURL) { phase in
+                            switch phase {
+                            case .success(let image):
+                                image.resizable().scaledToFit()
+                            case .failure:
+                                fallbackCard(ability: ability, color: color)
+                            case .empty:
+                                RoundedRectangle(cornerRadius: 8)
+                                    .fill(.white.opacity(0.06))
+                                    .overlay { ProgressView().tint(.white.opacity(0.5)) }
+                            @unknown default:
+                                EmptyView()
+                            }
+                        }
+                        .frame(maxWidth: 440, maxHeight: 320)
+                        .clipShape(RoundedRectangle(cornerRadius: 8))
+                    } else {
+                        fallbackCard(ability: ability, color: color)
+                    }
+                }
+                .padding(24)
+                .background(.black.opacity(0.9))
+                .clipShape(RoundedRectangle(cornerRadius: 16))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 16)
+                        .stroke(color.opacity(0.5), lineWidth: 1.5)
+                )
+                .padding(40)
+            }
+    }
+
+    @ViewBuilder
+    private func fallbackCard(ability: AbilityModel, color: Color) -> some View {
+        BoardAbilityCardView(
+            card: ability,
+            characterColor: color,
+            highlight: .none,
+            width: 180,
+            height: 290
+        )
+    }
+
+    @ViewBuilder
+    private func monsterAbilityThumb(_ monster: GameMonster) -> some View {
+        if let img = ImageLoader.monsterThumbnail(edition: monster.edition, name: monster.name) {
+            #if os(macOS)
+            Image(nsImage: img)
+                .resizable().scaledToFill()
+                .frame(width: 36, height: 36).clipShape(Circle())
+                .overlay(Circle().strokeBorder(.white.opacity(0.3), lineWidth: 1))
+            #else
+            Image(uiImage: img)
+                .resizable().scaledToFill()
+                .frame(width: 36, height: 36).clipShape(Circle())
+                .overlay(Circle().strokeBorder(.white.opacity(0.3), lineWidth: 1))
+            #endif
+        } else {
+            Image(systemName: monster.isBoss ? "crown.fill" : "pawprint.fill")
+                .font(.system(size: 18))
+                .foregroundStyle(monsterAbilityColor(monster))
+                .frame(width: 36, height: 36)
+                .background(Circle().fill(.white.opacity(0.08)))
+        }
+    }
+
+    private func monsterAbilityColor(_ monster: GameMonster) -> Color {
+        if monster.isBoss { return .purple }
+        let hue = Double(abs(monster.name.hashValue) % 60) / 360.0
+        return Color(hue: hue, saturation: 0.7, brightness: 0.65)
+    }
+
     // MARK: - Card Image Preview
 
     /// Returns a closure that shows the card image preview for the given card, or nil if no cardId.
@@ -1256,6 +1542,11 @@ struct BoardView: View {
                         .resizable()
                         .aspectRatio(contentMode: .fit)
                         .frame(maxWidth: 363, maxHeight: 504)
+                        .padding(12)
+                        .background(
+                            RoundedRectangle(cornerRadius: 16)
+                                .fill(.black.opacity(0.6))
+                        )
                         .shadow(color: .black.opacity(0.5), radius: 20)
                         .overlay(alignment: .topTrailing) {
                             Button {
@@ -1270,7 +1561,7 @@ struct BoardView: View {
                                     .shadow(color: .black.opacity(0.3), radius: 4)
                             }
                             .buttonStyle(.plain)
-                            .offset(x: 13, y: -13)
+                            .padding(4)
                         }
                 } else {
                     VStack(spacing: 12) {

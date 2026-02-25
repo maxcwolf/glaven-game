@@ -1,0 +1,112 @@
+{
+  "name": "prime-demon",
+  "edition": "gh",
+  "deck": "boss",
+  "boss": true,
+  "count": 1,
+  "baseStat": {
+    "type": "boss",
+    "immunities": [
+      "wound",
+      "poison",
+      "disarm",
+      "immobilize",
+      "muddle",
+      "stun"
+    ],
+    "special": [
+      [
+        {
+          "type": "custom",
+          "value": "%data.custom.gh.prime-demon.1%",
+          "small": true
+        },
+        {
+          "type": "summon",
+          "value": "demon"
+        },
+        {
+          "type": "move",
+          "value": 2,
+          "valueType": "plus"
+        },
+        {
+          "type": "attack",
+          "value": 1,
+          "valueType": "minus"
+        }
+      ],
+      [
+        {
+          "type": "custom",
+          "value": "%data.custom.gh.prime-demon.1%",
+          "small": true
+        },
+        {
+          "type": "summon",
+          "value": "demon"
+        },
+        {
+          "type": "move",
+          "value": 2,
+          "valueType": "plus"
+        },
+        {
+          "type": "attack",
+          "value": 1,
+          "valueType": "minus"
+        }
+      ]
+    ]
+  },
+  "stats": [
+    {
+      "level": 0,
+      "health": "8xC",
+      "movement": 3,
+      "attack": 4
+    },
+    {
+      "level": 1,
+      "health": "9xC",
+      "movement": 4,
+      "attack": 4
+    },
+    {
+      "level": 2,
+      "health": "10xC",
+      "movement": 4,
+      "attack": 5
+    },
+    {
+      "level": 3,
+      "health": "12xC",
+      "movement": 4,
+      "attack": 6
+    },
+    {
+      "level": 4,
+      "health": "14xC",
+      "movement": 5,
+      "attack": 6
+    },
+    {
+      "level": 5,
+      "health": "16xC",
+      "movement": 5,
+      "attack": 7
+    },
+    {
+      "level": 6,
+      "health": "20xC",
+      "movement": 5,
+      "attack": 7
+    },
+    {
+      "level": 7,
+      "health": "22xC",
+      "movement": 5,
+      "attack": 8
+    }
+  ]
+}

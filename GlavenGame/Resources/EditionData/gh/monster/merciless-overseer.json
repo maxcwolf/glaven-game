@@ -1,0 +1,96 @@
+{
+  "name": "merciless-overseer",
+  "edition": "gh",
+  "deck": "boss",
+  "boss": true,
+  "count": 1,
+  "baseStat": {
+    "type": "boss",
+    "attack": "V",
+    "note": "%data.custom.gh.merciless-overseer.2%",
+    "immunities": [
+      "disarm",
+      "wound",
+      "curse",
+      "stun"
+    ],
+    "special": [
+      [
+        {
+          "type": "custom",
+          "value": "%data.custom.gh.merciless-overseer.1%"
+        }
+      ],
+      [
+        {
+          "type": "summon",
+          "value": "monsterStandee",
+          "valueObject": [
+            {
+              "monster": {
+                "name": "vermling-scout",
+                "player2": "normal",
+                "player4": "elite"
+              },
+              "count": 2
+            },
+            {
+              "monster": {
+                "name": "vermling-scout",
+                "player3": "normal"
+              }
+            },
+            {
+              "monster": {
+                "name": "vermling-scout",
+                "player3": "elite"
+              }
+            }
+          ]
+        }
+      ]
+    ]
+  },
+  "stats": [
+    {
+      "level": 0,
+      "health": "6xC",
+      "movement": 2
+    },
+    {
+      "level": 1,
+      "health": "8xC",
+      "movement": 2
+    },
+    {
+      "level": 2,
+      "health": "9xC",
+      "movement": 3
+    },
+    {
+      "level": 3,
+      "health": "11xC",
+      "movement": 3
+    },
+    {
+      "level": 4,
+      "health": "12xC",
+      "movement": 4
+    },
+    {
+      "level": 5,
+      "health": "14xC",
+      "movement": 4
+    },
+    {
+      "level": 6,
+      "health": "16xC",
+      "movement": 4
+    },
+    {
+      "level": 7,
+      "health": "19xC",
+      "movement": 4
+    }
+  ]
+}

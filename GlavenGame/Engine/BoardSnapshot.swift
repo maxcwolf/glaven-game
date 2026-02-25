@@ -9,6 +9,7 @@ struct BoardSnapshot: Codable {
     let doors: [DoorInfo]
     let bounds: MapBounds
     let eliteStandees: Set<PieceIDCodable>
+    let lootTokens: [HexCoord: Int]
 
     /// Create a snapshot from the current board state.
     static func from(_ board: BoardState) -> BoardSnapshot {
@@ -22,7 +23,8 @@ struct BoardSnapshot: Codable {
             startingLocations: board.startingLocations,
             doors: board.doors,
             bounds: board.bounds,
-            eliteStandees: Set(board.eliteStandees.map { PieceIDCodable($0) })
+            eliteStandees: Set(board.eliteStandees.map { PieceIDCodable($0) }),
+            lootTokens: board.lootTokens
         )
     }
 
@@ -37,6 +39,7 @@ struct BoardSnapshot: Codable {
         board.doors = doors
         board.bounds = bounds
         board.eliteStandees = Set(eliteStandees.map { $0.pieceID })
+        board.lootTokens = lootTokens
     }
 }
 

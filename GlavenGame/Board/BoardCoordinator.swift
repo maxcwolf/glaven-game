@@ -22,6 +22,10 @@ enum InteractionMode {
     case selectingMultiAttackTargets(pieceID: PieceID, range: Int, validTargets: Set<PieceID>, targetCount: Int, selected: [PieceID])
     case placingSummon(summonID: String, characterID: String, validHexes: Set<HexCoord>)
     case selectingPushPullHex(target: PieceID, attackerPos: HexCoord, validHexes: Set<HexCoord>, remainingSteps: Int, isPush: Bool)
+    /// Player selects a single enemy to apply a condition to.
+    case selectingConditionTarget(pieceID: PieceID, condition: ConditionName, validTargets: Set<PieceID>)
+    /// Player selects an ally (or self) within range to heal.
+    case selectingHealTarget(pieceID: PieceID, healValue: Int, validTargets: Set<PieceID>)
     case watchingMonsterTurn
 }
 
@@ -168,6 +172,70 @@ final class BoardCoordinator {
 
     /// Selected card pairs from card selection phase. Key = character ID.
     var selectedCardPairs: [String: (top: AbilityModel, bottom: AbilityModel)] = [:]
+
+    // MARK: - Attack Modifier Draw
+
+    /// Context for an interactive attack modifier draw presented to the player before combat resolves.
+    struct PendingModifierDraw: Identifiable {
+        let id = UUID()
+        let attackerPiece: PieceID
+        let defenderPiece: PieceID
+        let baseAttack: Int
+        let advantage: Bool
+        let disadvantage: Bool
+        /// Draws one card from the appropriate deck (mutates the deck).
+        let drawCard: () -> AttackModifier?
+        var continuation: CheckedContinuation<[AttackModifier], Never>?
+    }
+
+    /// Non-nil when an attack is waiting for the player to draw modifier card(s).
+    var pendingModifierDraw: PendingModifierDraw?
+
+    /// Called from the draw overlay UI when the player confirms their drawn cards.
+    func completeModifierDraw(selectedCards: [AttackModifier]) {
+        let cont = pendingModifierDraw?.continuation
+        pendingModifierDraw = nil
+        cont?.resume(returning: selectedCards)
+    }
+
+    /// Presents the interactive modifier draw overlay and suspends until the player confirms.
+    func performModifierDraw(
+        attacker: PieceID,
+        defender: PieceID,
+        baseAttack: Int,
+        advantage: Bool,
+        disadvantage: Bool,
+        drawCard: @escaping () -> AttackModifier?
+    ) async -> [AttackModifier] {
+        return await withCheckedContinuation { continuation in
+            pendingModifierDraw = PendingModifierDraw(
+                attackerPiece: attacker,
+                defenderPiece: defender,
+                baseAttack: baseAttack,
+                advantage: advantage,
+                disadvantage: disadvantage,
+                drawCard: drawCard,
+                continuation: continuation
+            )
+        }
+    }
+
+    /// Returns a display label for a piece (e.g. "Brute", "Spider #1").
+    func pieceLabel(_ piece: PieceID) -> String {
+        switch piece {
+        case .character(let id):
+            return gameManager?.game.characters.first(where: { $0.id == id })?.name ?? id
+        case .monster(let name, let standee):
+            return "\(name) #\(standee)"
+        case .summon(let id):
+            for char in gameManager?.game.characters ?? [] {
+                if let s = char.summons.first(where: { $0.id == id }) { return s.name }
+            }
+            return "Summon"
+        case .objective(let id):
+            return "Objective \(id)"
+        }
+    }
 
     // MARK: - Damage Mitigation
 
@@ -428,6 +496,10 @@ final class BoardCoordinator {
         self.scenarioData = scenario
         self.boardState = BoardBuilder.build(from: scenario, playerCount: playerCount)
         self.scenarioResult = nil
+
+        // Reset round state so monster abilities are drawn fresh regardless of how the previous game ended.
+        gameManager?.game.state = .draw
+        gameManager?.game.round = 0
 
         // Create the SpriteKit scene
         let scene = BoardScene(size: CGSize(width: 1200, height: 800))
@@ -807,9 +879,11 @@ final class BoardCoordinator {
             return
         }
 
-        // Defeat: all characters exhausted
-        let allExhausted = gameManager.game.activeCharacters.allSatisfy { $0.exhausted }
-        if allExhausted && !gameManager.game.activeCharacters.isEmpty {
+        // Defeat: all non-absent characters are exhausted.
+        // Must use characters (not activeCharacters) because activeCharacters
+        // already filters OUT exhausted ones — so it would be empty when all are dead.
+        let allChars = gameManager.game.characters.filter { !$0.absent }
+        if !allChars.isEmpty && allChars.allSatisfy({ $0.exhausted }) {
             scenarioResult = .defeat
             boardPhase = .scenarioEnd
             interactionMode = .idle
@@ -875,6 +949,9 @@ final class BoardCoordinator {
 
             // Check if character stepped on a closed door
             self?.checkForDoorReveal(from: target)
+
+            // Check if character stepped on a loot token
+            self?.checkForLoot(pieceID: pieceID, at: target)
         }
     }
 
@@ -917,10 +994,98 @@ final class BoardCoordinator {
         boardScene?.highlightHexes(targetHexes, color: .red, offsetCol: offsetCol, offsetRow: offsetRow)
     }
 
+    /// Begin an interactive condition-apply action (player taps a single enemy target).
+    func beginConditionAction(pieceID: PieceID, condition: ConditionName, range: Int) {
+        guard let pos = boardState.piecePositions[pieceID] else { return }
+
+        var validTargets = Set<PieceID>()
+        for (id, coord) in boardState.piecePositions {
+            if case .monster = id {
+                if pos.distance(to: coord) <= range &&
+                   LineOfSight.hasLOS(from: pos, to: coord, board: boardState) {
+                    validTargets.insert(id)
+                }
+            }
+        }
+
+        if validTargets.isEmpty {
+            log("\(pieceID): No valid targets in range \(range) for \(condition.rawValue)", category: .condition)
+            interactionMode = .idle
+            activePlayerTurn?.advanceAfterAsyncAction()
+            return
+        }
+
+        interactionMode = .selectingConditionTarget(pieceID: pieceID, condition: condition, validTargets: validTargets)
+        let targetHexes = Set(validTargets.compactMap { boardState.piecePositions[$0] })
+        boardScene?.highlightHexes(targetHexes, color: .yellow, offsetCol: offsetCol, offsetRow: offsetRow)
+    }
+
+    /// Begin an interactive heal action — player selects an ally (or self) within range to heal.
+    func beginHealAction(pieceID: PieceID, healValue: Int, range: Int) {
+        guard let pos = boardState.piecePositions[pieceID] else { return }
+
+        var validTargets = Set<PieceID>()
+        for (id, coord) in boardState.piecePositions {
+            if case .character = id {
+                if pos.distance(to: coord) <= range {
+                    validTargets.insert(id)
+                }
+            }
+        }
+
+        if validTargets.isEmpty {
+            log("\(pieceID): No allies in range \(range) to heal", category: .heal)
+            interactionMode = .idle
+            activePlayerTurn?.advanceAfterAsyncAction()
+            return
+        }
+
+        interactionMode = .selectingHealTarget(pieceID: pieceID, healValue: healValue, validTargets: validTargets)
+        let targetHexes = Set(validTargets.compactMap { boardState.piecePositions[$0] })
+        boardScene?.highlightHexes(targetHexes, color: .green, offsetCol: offsetCol, offsetRow: offsetRow)
+    }
+
+    /// Apply a condition to all enemies within range from the acting piece (auto, no target selection).
+    func applyConditionToAllEnemies(from pieceID: PieceID, condition: ConditionName, range: Int) {
+        guard let gameManager = gameManager,
+              let pos = boardState.piecePositions[pieceID] else { return }
+
+        var applied = 0
+        for (id, coord) in boardState.piecePositions {
+            guard case .monster(let name, let standee) = id else { continue }
+            guard pos.distance(to: coord) <= range else { continue }
+            guard LineOfSight.hasLOS(from: pos, to: coord, board: boardState) else { continue }
+            if let monster = gameManager.game.monsters.first(where: { $0.name == name }),
+               let entity = monster.entities.first(where: { $0.number == standee }) {
+                gameManager.entityManager.addCondition(condition, to: entity)
+                log("  \(id): \(condition.rawValue) applied", category: .condition)
+                applied += 1
+            }
+        }
+        if applied == 0 {
+            log("\(pieceID): No enemies in range \(range) for \(condition.rawValue)", category: .condition)
+        }
+    }
+
+    /// Apply a condition to all allies within range from the acting piece (auto, no target selection).
+    func applyConditionToAllAllies(from pieceID: PieceID, condition: ConditionName, range: Int) {
+        guard let gameManager = gameManager,
+              let pos = boardState.piecePositions[pieceID] else { return }
+
+        for (id, coord) in boardState.piecePositions {
+            guard case .character(let charID) = id else { continue }
+            guard pos.distance(to: coord) <= range else { continue }
+            if let character = gameManager.game.characters.first(where: { $0.id == charID }) {
+                gameManager.entityManager.addCondition(condition, to: character)
+                log("  \(id): \(condition.rawValue) applied", category: .condition)
+            }
+        }
+    }
+
     /// Resolve a player attack on a single target. Called once per target.
     /// When `advanceAction` is true (default), calls `advanceAfterAsyncAction()` when done.
     /// Pass false when resolving multiple targets — the caller advances after all are resolved.
-    func resolvePlayerAttack(attacker: PieceID, target: PieceID, attackValue: Int, range: Int, advanceAction: Bool = true) {
+    func resolvePlayerAttack(attacker: PieceID, target: PieceID, attackValue: Int, range: Int, advanceAction: Bool = true) async {
         guard let gameManager = gameManager,
               let attackerPos = boardState.piecePositions[attacker],
               let targetPos = boardState.piecePositions[target] else { return }
@@ -948,22 +1113,36 @@ final class BoardCoordinator {
             isPoisoned = entity.entityConditions.contains(where: { $0.name == .poison && !$0.expired })
         }
 
-        // Determine advantage/disadvantage
+        // Determine advantage/disadvantage (including attacker conditions)
         let isRangedAdjacent = range > 1 && attackerPos.isAdjacent(to: targetPos)
+        var advantage = false
+        var disadvantage = isRangedAdjacent
 
-        // Get attacker's character for modifier deck — each target draws separately
+        // Build draw closure and check conditions
         var drawModifier: () -> AttackModifier? = { nil }
         if case .character(let charID) = attacker,
            let character = gameManager.game.characters.first(where: { $0.id == charID }) {
             drawModifier = { gameManager.attackModifierManager.drawCharacterCard(for: character) }
+            advantage = CombatResolver.hasAdvantage(attacker: character)
+            disadvantage = disadvantage || CombatResolver.hasDisadvantage(attacker: character, isRangedAdjacent: isRangedAdjacent)
         }
+
+        // Interactive modifier draw — player physically draws card(s)
+        let preDrawnCards = await performModifierDraw(
+            attacker: attacker,
+            defender: target,
+            baseAttack: attackValue,
+            advantage: advantage,
+            disadvantage: disadvantage,
+            drawCard: drawModifier
+        )
 
         let result = CombatResolver.resolveAttack(
             attacker: attacker,
             defender: target,
             baseAttack: attackValue,
-            advantage: false,
-            disadvantage: isRangedAdjacent,
+            advantage: advantage,
+            disadvantage: disadvantage,
             isPoisoned: isPoisoned,
             shield: defenderShield,
             pierce: pierce,
@@ -971,20 +1150,16 @@ final class BoardCoordinator {
             retaliateValue: retInfo.value,
             retaliateRange: retInfo.range,
             attackerDefenderDistance: attackerPos.distance(to: targetPos),
-            drawModifier: drawModifier,
+            preDrawnCards: preDrawnCards,
+            drawModifier: { nil },
             defenderHealth: defenderHealth
         )
 
-        // Show modifier card popup
-        if let mod = result.modifierCard {
-            lastDrawnModifier = mod
-            showModifierCard = true
-            DispatchQueue.main.asyncAfter(deadline: .now() + 4.0) { [weak self] in
-                self?.showModifierCard = false
-            }
-        }
-
-        log("\(attacker): Attack \(target) — \(result.damage) damage", category: .attack)
+        let breakdown = CombatResolver.damageBreakdown(
+            base: attackValue, isPoisoned: isPoisoned,
+            preDrawnCards: preDrawnCards, shield: defenderShield, pierce: pierce,
+            isMiss: result.isMiss, finalDamage: result.damage)
+        log("\(attacker) → \(target): \(breakdown)", category: .attack)
 
         // Apply damage
         if result.damage > 0 {
@@ -1019,6 +1194,7 @@ final class BoardCoordinator {
 
         if result.killed {
             log("\(target): Killed!", category: .death)
+            dropLoot(for: target)
             boardState.removePiece(target)
             boardScene?.removePieceSprite(id: target)
             if case .monster(let name, let standee) = target,
@@ -1034,7 +1210,6 @@ final class BoardCoordinator {
         }
 
         // Push/Pull: if target survived and attacker has pending push or pull, begin the flow.
-        // The push/pull flow is async — it will call advanceAfterAsyncAction() when done.
         if advanceAction {
             let pushSteps = activePlayerTurn?.pendingPush ?? 0
             let pullSteps = activePlayerTurn?.pendingPull ?? 0
@@ -1148,6 +1323,74 @@ final class BoardCoordinator {
         }
     }
 
+    // MARK: - Loot
+
+    /// Drop a loot token at the current position of a killed monster.
+    /// Must be called BEFORE removing the piece from the board.
+    func dropLoot(for pieceID: PieceID) {
+        guard case .monster = pieceID,
+              let pos = boardState.piecePositions[pieceID] else { return }
+        boardState.placeLoot(at: pos)
+        boardScene?.addLootSprite(at: pos, offsetCol: offsetCol, offsetRow: offsetRow)
+        log("Loot token dropped at (\(pos.col), \(pos.row))", category: .loot)
+    }
+
+    /// Check if a character ended movement on a hex with loot and pick it up (movement looting).
+    func checkForLoot(pieceID: PieceID, at coord: HexCoord) {
+        guard case .character = pieceID,
+              (boardState.lootTokens[coord] ?? 0) > 0 else { return }
+        collectLootAt(pieceID: pieceID, coords: [coord])
+    }
+
+    /// Execute a Loot ability action — collect all tokens within `range` hexes of the character.
+    /// Per Gloomhaven rules, "Loot X" picks up loot from any hex within X distance.
+    func collectLootInRange(pieceID: PieceID, range: Int) {
+        guard let pos = boardState.piecePositions[pieceID] else { return }
+
+        let coords = boardState.lootTokens.keys.filter { coord in
+            (boardState.lootTokens[coord] ?? 0) > 0 && pos.distance(to: coord) <= range
+        }
+
+        if coords.isEmpty {
+            log("\(pieceID): Loot \(range) — no tokens within range \(range)", category: .loot)
+            return
+        }
+        collectLootAt(pieceID: pieceID, coords: Array(coords))
+    }
+
+    /// Collect loot tokens at specific coordinates and apply them to the character.
+    /// Shows a floating animation on the character piece.
+    private func collectLootAt(pieceID: PieceID, coords: [HexCoord]) {
+        guard case .character(let charID) = pieceID,
+              let gameManager = gameManager,
+              let character = gameManager.game.characters.first(where: { $0.id == charID }) else { return }
+
+        var totalValue = 0
+
+        for coord in coords {
+            let count = boardState.takeLoot(at: coord)
+            guard count > 0 else { continue }
+            boardScene?.removeLootSprite(at: coord, offsetCol: offsetCol, offsetRow: offsetRow)
+
+            for _ in 0..<count {
+                if let loot = gameManager.lootManager.drawCard() {
+                    let value = gameManager.lootManager.getValue(for: loot)
+                    gameManager.lootManager.applyLoot(loot, to: character)
+                    totalValue += value
+                    log("\(charID): Looted \(loot.type.rawValue) (+\(value)g)", category: .loot)
+                } else {
+                    character.loot += 1
+                    totalValue += 1
+                    log("\(charID): Looted gold (+1g)", category: .loot)
+                }
+            }
+        }
+
+        // Floating animation on the character sprite
+        let animText = totalValue > 0 ? "+\(totalValue)g" : "Loot!"
+        boardScene?.pieceLoot(id: pieceID, text: animText)
+    }
+
     // MARK: - Trap Triggering
 
     /// Check if a piece landed on a trap and trigger it.
@@ -1251,6 +1494,7 @@ final class BoardCoordinator {
                entity.health <= 0 {
                 entity.dead = true
                 log("\(pieceID): Killed by trap!", category: .death)
+                dropLoot(for: pieceID)
                 boardState.removePiece(pieceID)
                 boardScene?.removePieceSprite(id: pieceID)
                 checkVictoryDefeat()
@@ -1300,16 +1544,38 @@ final class BoardCoordinator {
             board: boardState, playerCount: max(2, gameManager.game.activeCharacters.count)
         )
 
-        // Add monster figures to GameState via ScenarioManager
-        // The BoardBuilder already placed them on the board; now register with game state
+        // Add monster figures to GameState — group + individual entities
         for (pieceID, _) in newMonsters {
-            if case .monster(let name, _) = pieceID {
-                // Ensure the monster group exists in game state
-                if !gameManager.game.monsters.contains(where: { $0.name == name }) {
-                    gameManager.monsterManager.addMonster(name: name, edition: gameManager.game.edition ?? "gh")
+            guard case .monster(let name, let standee) = pieceID else { continue }
+            let edition = gameManager.game.edition ?? "gh"
+
+            // Ensure the monster group exists
+            if !gameManager.game.monsters.contains(where: { $0.name == name }) {
+                gameManager.monsterManager.addMonster(name: name, edition: edition)
+            }
+
+            // Create the individual entity with correct type (normal vs elite) and HP
+            if let monster = gameManager.game.monsters.first(where: { $0.name == name }) {
+                let isElite = boardState.eliteStandees.contains(pieceID)
+                gameManager.monsterManager.addEntity(
+                    type: isElite ? .elite : .normal,
+                    to: monster,
+                    number: standee
+                )
+
+                // Draw ability card for the current round if this group hasn't drawn yet
+                if gameManager.monsterManager.currentAbility(for: monster) == nil {
+                    gameManager.monsterManager.drawAbility(for: monster)
                 }
             }
         }
+
+        // Recalculate offsets from the expanded bounds — boardState.bounds was updated
+        // by BoardBuilder.revealRoom → recomputeBounds, but offsetCol/offsetRow were set
+        // at startScenario from the initial (room-1 only) bounds and are now stale.
+        let padding = 2
+        offsetCol = boardState.bounds.minCol - padding
+        offsetRow = boardState.bounds.minRow - padding
 
         // Rebuild the visual board to include the new room
         boardScene?.buildBoard(from: boardState, scenario: scenario, offsetCol: offsetCol, offsetRow: offsetRow,
@@ -1367,7 +1633,7 @@ final class BoardCoordinator {
             if validTargets.contains(piece) {
                 let attackValue = activePlayerTurn?.currentAttackValue() ?? 2
                 let range = activePlayerTurn?.currentAttackRange() ?? 1
-                resolvePlayerAttack(attacker: attackerID, target: piece, attackValue: attackValue, range: range)
+                Task { await self.resolvePlayerAttack(attacker: attackerID, target: piece, attackValue: attackValue, range: range) }
             }
 
         case .selectingMultiAttackTargets(let attackerID, let range, let validTargets, let targetCount, var selected):
@@ -1376,13 +1642,16 @@ final class BoardCoordinator {
                 log("\(attackerID): Target \(selected.count)/\(targetCount) — \(piece)", category: .attack)
 
                 if selected.count >= targetCount || selected.count >= validTargets.count {
-                    // All targets selected — resolve each attack (no push/pull for multi-target)
+                    // All targets selected — resolve each attack sequentially (no push/pull for multi-target)
                     let attackValue = activePlayerTurn?.currentAttackValue() ?? 2
                     let attackRange = activePlayerTurn?.currentAttackRange() ?? 1
-                    for target in selected {
-                        resolvePlayerAttack(attacker: attackerID, target: target, attackValue: attackValue, range: attackRange, advanceAction: false)
+                    let targets = selected
+                    Task {
+                        for target in targets {
+                            await self.resolvePlayerAttack(attacker: attackerID, target: target, attackValue: attackValue, range: attackRange, advanceAction: false)
+                        }
+                        self.activePlayerTurn?.advanceAfterAsyncAction()
                     }
-                    activePlayerTurn?.advanceAfterAsyncAction()
                 } else {
                     // Update mode with new selected list, highlight remaining valid targets
                     let remaining = validTargets.subtracting(selected)
@@ -1393,6 +1662,33 @@ final class BoardCoordinator {
                     let targetHexes = Set(remaining.compactMap { boardState.piecePositions[$0] })
                     boardScene?.highlightHexes(targetHexes, color: .red, offsetCol: offsetCol, offsetRow: offsetRow)
                 }
+            }
+
+        case .selectingConditionTarget(let attackerID, let condition, let validTargets):
+            if validTargets.contains(piece) {
+                guard let gameManager = gameManager else { return }
+                if case .monster(let name, let standee) = piece,
+                   let monster = gameManager.game.monsters.first(where: { $0.name == name }),
+                   let entity = monster.entities.first(where: { $0.number == standee }) {
+                    gameManager.entityManager.addCondition(condition, to: entity)
+                    log("\(attackerID): \(condition.rawValue) → \(piece)", category: .condition)
+                }
+                boardScene?.clearHighlights()
+                interactionMode = .idle
+                activePlayerTurn?.advanceAfterAsyncAction()
+            }
+
+        case .selectingHealTarget(let healerID, let healValue, let validTargets):
+            if validTargets.contains(piece) {
+                guard let gameManager = gameManager else { return }
+                if case .character(let charID) = piece,
+                   let character = gameManager.game.characters.first(where: { $0.id == charID }) {
+                    gameManager.entityManager.changeHealth(character, amount: healValue)
+                    log("\(healerID) → \(piece): Heal \(healValue)", category: .heal)
+                }
+                boardScene?.clearHighlights()
+                interactionMode = .idle
+                activePlayerTurn?.advanceAfterAsyncAction()
             }
 
         default:
@@ -1407,10 +1703,13 @@ final class BoardCoordinator {
 
         let attackValue = activePlayerTurn?.currentAttackValue() ?? 2
         let attackRange = activePlayerTurn?.currentAttackRange() ?? 1
-        for target in selected {
-            resolvePlayerAttack(attacker: attackerID, target: target, attackValue: attackValue, range: attackRange, advanceAction: false)
+        let targets = selected
+        Task {
+            for target in targets {
+                await self.resolvePlayerAttack(attacker: attackerID, target: target, attackValue: attackValue, range: attackRange, advanceAction: false)
+            }
+            self.activePlayerTurn?.advanceAfterAsyncAction()
         }
-        activePlayerTurn?.advanceAfterAsyncAction()
     }
 
     // MARK: - Snapshot

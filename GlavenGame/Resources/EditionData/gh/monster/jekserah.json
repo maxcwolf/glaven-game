@@ -1,0 +1,146 @@
+{
+  "name": "jekserah",
+  "edition": "gh",
+  "deck": "boss",
+  "boss": true,
+  "count": 1,
+  "baseStat": {
+    "type": "boss",
+    "immunities": [
+      "disarm",
+      "wound",
+      "curse",
+      "stun"
+    ],
+    "special": [
+      [
+        {
+          "type": "summon",
+          "value": "monsterStandee",
+          "valueObject": [
+            {
+              "monster": {
+                "name": "living-bones",
+                "player3": "normal"
+              }
+            },
+            {
+              "monster": {
+                "name": "living-bones",
+                "player3": "elite"
+              }
+            },
+            {
+              "monster": {
+                "name": "living-bones",
+                "player2": "normal",
+                "player4": "elite"
+              },
+              "count": 2
+            }
+          ]
+        },
+        {
+          "type": "attack",
+          "value": 1,
+          "valueType": "minus",
+          "subActions": [
+            {
+              "type": "specialTarget",
+              "value": "enemiesAdjacent",
+              "small": true
+            }
+          ]
+        }
+      ],
+      [
+        {
+          "type": "summon",
+          "value": "monsterStandee",
+          "valueObject": [
+            {
+              "monster": {
+                "name": "living-corpse",
+                "player3": "normal"
+              }
+            },
+            {
+              "monster": {
+                "name": "living-corpse",
+                "player3": "elite"
+              }
+            },
+            {
+              "monster": {
+                "name": "living-corpse",
+                "player2": "normal",
+                "player4": "elite"
+              },
+              "count": 2
+            }
+          ]
+        },
+        {
+          "type": "move",
+          "value": 1,
+          "valueType": "minus"
+        },
+        {
+          "type": "attack",
+          "value": 2,
+          "valueType": "plus"
+        }
+      ]
+    ]
+  },
+  "stats": [
+    {
+      "level": 0,
+      "health": "6xC",
+      "movement": 2,
+      "attack": 2
+    },
+    {
+      "level": 1,
+      "health": "7xC",
+      "movement": 2,
+      "attack": 3
+    },
+    {
+      "level": 2,
+      "health": "9xC",
+      "movement": 3,
+      "attack": 3
+    },
+    {
+      "level": 3,
+      "health": "12xC",
+      "movement": 4,
+      "attack": 4
+    },
+    {
+      "level": 4,
+      "health": "13xC",
+      "movement": 4,
+      "attack": 5
+    },
+    {
+      "level": 5,
+      "health": "15xC",
+      "movement": 5,
+      "attack": 5
+    },
+    {
+      "level": 6,
+      "health": "18xC",
+      "movement": 5,
+      "attack": 5
+    },
+    {
+      "level": 7,
+      "health": "22xC",
+      "movement": 5,
+      "attack": 5
+    }
+  ]
+}

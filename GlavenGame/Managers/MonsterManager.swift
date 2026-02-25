@@ -93,6 +93,13 @@ final class MonsterManager {
         return allAbilities[abilityIndex]
     }
 
+    /// Returns the zero-based index of the currently drawn ability card within the ordered deck array.
+    /// Use this with `ImageLoader.monsterAbilityCardURL(deckName:cardIndex:)` to get the card image URL.
+    func currentAbilityCardIndex(for monster: GameMonster) -> Int? {
+        guard monster.ability >= 0, monster.ability < monster.abilities.count else { return nil }
+        return monster.abilities[monster.ability]
+    }
+
     func currentAbilityInitiative(for monster: GameMonster) -> Int? {
         currentAbility(for: monster)?.initiative
     }

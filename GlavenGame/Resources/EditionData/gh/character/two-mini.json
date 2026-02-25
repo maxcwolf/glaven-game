@@ -1,0 +1,274 @@
+{
+  "name": "two-mini",
+  "characterClass": "vermling",
+  "gender": "m",
+  "edition": "gh",
+  "handSize": 10,
+  "unlockEvent": "41",
+  "retireEvent": "58",
+  "color": "#b4765a",
+  "spoiler": true,
+  "stats": [
+    {
+      "level": 1,
+      "health": 6
+    },
+    {
+      "level": 2,
+      "health": 7
+    },
+    {
+      "level": 3,
+      "health": 8
+    },
+    {
+      "level": 4,
+      "health": 9
+    },
+    {
+      "level": 5,
+      "health": 10
+    },
+    {
+      "level": 6,
+      "health": 11
+    },
+    {
+      "level": 7,
+      "health": 12
+    },
+    {
+      "level": 8,
+      "health": 13
+    },
+    {
+      "level": 9,
+      "health": 14
+    }
+  ],
+  "availableSummons": [
+    {
+      "name": "two-mini",
+      "cardId": "476",
+      "health": "8+Lx2",
+      "attack": 2,
+      "movement": 3,
+      "special": true
+    },
+    {
+      "name": "green-adder",
+      "cardId": "479",
+      "level": 1,
+      "health": 4,
+      "attack": 1,
+      "movement": 2,
+      "action": {
+        "type": "condition",
+        "value": "poison"
+      }
+    },
+    {
+      "name": "tattered-wolf",
+      "cardId": "480",
+      "level": 1,
+      "health": 4,
+      "attack": 2,
+      "movement": 3
+    },
+    {
+      "name": "red-falcon",
+      "cardId": "487",
+      "level": 1,
+      "health": 2,
+      "attack": 2,
+      "movement": 4,
+      "action": {
+        "type": "fly",
+        "value": ""
+      }
+    },
+    {
+      "name": "swamp-alligator",
+      "cardId": "492",
+      "level": 3,
+      "health": 5,
+      "attack": 3,
+      "movement": 2,
+      "action": {
+        "type": "condition",
+        "value": "immobilize"
+      }
+    },
+    {
+      "name": "monolith",
+      "cardId": "497",
+      "level": 5,
+      "health": 15,
+      "action": {
+        "type": "shield",
+        "value": 2
+      }
+    },
+    {
+      "name": "wind-totem",
+      "cardId": "500",
+      "level": 7,
+      "health": 8,
+      "attack": 1,
+      "action": {
+        "type": "specialTarget",
+        "value": "enemiesAdjacent"
+      },
+      "additionalAction": {
+        "type": "push",
+        "value": 2
+      }
+    },
+    {
+      "name": "spirit-banner",
+      "cardId": "505",
+      "level": 9,
+      "health": 8,
+      "action": {
+        "type": "custom",
+        "value": "%data.custom.gh.two-mini.1%",
+        "small": true
+      }
+    }
+  ],
+  "perks": [
+    {
+      "type": "remove",
+      "count": 1,
+      "cards": [
+        {
+          "count": 2,
+          "attackModifier": {
+            "type": "minus1"
+          }
+        }
+      ]
+    },
+    {
+      "type": "replace",
+      "count": 3,
+      "cards": [
+        {
+          "count": 1,
+          "attackModifier": {
+            "type": "minus1"
+          }
+        },
+        {
+          "count": 1,
+          "attackModifier": {
+            "type": "plus1"
+          }
+        }
+      ]
+    },
+    {
+      "type": "replace",
+      "count": 2,
+      "cards": [
+        {
+          "count": 1,
+          "attackModifier": {
+            "type": "plus0"
+          }
+        },
+        {
+          "count": 1,
+          "attackModifier": {
+            "type": "plus2"
+          }
+        }
+      ]
+    },
+    {
+      "type": "add",
+      "count": 2,
+      "cards": [
+        {
+          "count": 1,
+          "attackModifier": {
+            "type": "plus1",
+            "effects": [
+              {
+                "type": "condition",
+                "value": "wound"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "type": "add",
+      "count": 2,
+      "cards": [
+        {
+          "count": 1,
+          "attackModifier": {
+            "type": "plus1",
+            "effects": [
+              {
+                "type": "condition",
+                "value": "immobilize"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "type": "add",
+      "count": 3,
+      "cards": [
+        {
+          "count": 2,
+          "attackModifier": {
+            "type": "plus0",
+            "rolling": true,
+            "effects": [
+              {
+                "type": "heal",
+                "value": 1,
+                "effects": [
+                  {
+                    "type": "specialTarget",
+                    "value": "self"
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "type": "add",
+      "count": 1,
+      "cards": [
+        {
+          "count": 2,
+          "attackModifier": {
+            "type": "plus0",
+            "rolling": true,
+            "effects": [
+              {
+                "type": "element",
+                "value": "earth"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "type": "custom",
+      "count": 1,
+      "custom": "%game.custom.perks.ignoreNegativeScenario%"
+    }
+  ]
+}

@@ -1,0 +1,81 @@
+{
+  "index": "573",
+  "group": "randomMonsterCard",
+  "name": "Frigid",
+  "edition": "gh",
+  "named": true,
+  "monsters": [
+    "frost-demon",
+    "savvas-icestorm",
+    "wind-demon"
+  ],
+  "rooms": [
+    {
+      "roomNumber": 1,
+      "initial": true,
+      "treasures": [],
+      "monster": [
+        {
+          "name": "frost-demon",
+          "player2": "normal",
+          "player3": "normal",
+          "player4": "elite",
+          "marker": "5"
+        },
+        {
+          "name": "savvas-icestorm",
+          "type": "elite",
+          "marker": "3"
+        },
+        {
+          "name": "wind-demon",
+          "player3": "normal",
+          "player4": "normal",
+          "marker": "12"
+        },
+        {
+          "name": "wind-demon",
+          "player3": "normal",
+          "player4": "elite",
+          "marker": "10"
+        }
+      ]
+    }
+  ],
+  "overlays": [
+    {
+      "type": "difficultTerrain",
+      "value": "water",
+      "marker": "4"
+    },
+    {
+      "type": "difficultTerrain",
+      "value": "water",
+      "marker": "6"
+    },
+    {
+      "type": "trap",
+      "value": "spike-pit-trap",
+      "values": [
+        "disarm"
+      ],
+      "marker": "7"
+    },
+    {
+      "type": "trap",
+      "value": "spike-pit-trap",
+      "values": [
+        "disarm"
+      ],
+      "marker": "9"
+    },
+    {
+      "type": "trap",
+      "value": "spike-pit-trap",
+      "values": [
+        "disarm"
+      ],
+      "marker": "11"
+    }
+  ]
+}

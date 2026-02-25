@@ -114,7 +114,16 @@ final class SummonTurnController {
             let isRangedAdjacent = result.attackRange > 1 && attackerPos.isAdjacent(to: targetPos)
             let hasDisadvantage = CombatResolver.hasDisadvantage(attacker: summon, isRangedAdjacent: isRangedAdjacent)
 
-            // Draw from owner's attack modifier deck
+            // Interactive modifier draw — draw from owner's attack modifier deck
+            let preDrawnCards = await coordinator.performModifierDraw(
+                attacker: result.summonPieceID,
+                defender: target,
+                baseAttack: result.attackValue,
+                advantage: hasAdvantage,
+                disadvantage: hasDisadvantage,
+                drawCard: { gameManager.attackModifierManager.drawCharacterCard(for: character) }
+            )
+
             let attackResult = CombatResolver.resolveAttack(
                 attacker: result.summonPieceID,
                 defender: target,
@@ -126,20 +135,16 @@ final class SummonTurnController {
                 retaliateValue: retInfo.value,
                 retaliateRange: retInfo.range,
                 attackerDefenderDistance: attackerPos.distance(to: targetPos),
-                drawModifier: { gameManager.attackModifierManager.drawCharacterCard(for: character) },
+                preDrawnCards: preDrawnCards,
+                drawModifier: { nil },
                 defenderHealth: defenderHealth
             )
 
-            coordinator.log("  \(result.summonPieceID): Attack \(target) for \(attackResult.damage) damage", category: .attack)
-
-            // Show modifier card popup
-            if let mod = attackResult.modifierCard {
-                coordinator.lastDrawnModifier = mod
-                coordinator.showModifierCard = true
-                DispatchQueue.main.asyncAfter(deadline: .now() + 4.0) { [weak coordinator] in
-                    coordinator?.showModifierCard = false
-                }
-            }
+            let breakdown = CombatResolver.damageBreakdown(
+                base: result.attackValue, isPoisoned: isPoisoned,
+                preDrawnCards: preDrawnCards, shield: defenderShield,
+                isMiss: attackResult.isMiss, finalDamage: attackResult.damage)
+            coordinator.log("  \(result.summonPieceID) → \(target): \(breakdown)", category: .attack)
 
             // Apply damage
             if attackResult.damage > 0 {

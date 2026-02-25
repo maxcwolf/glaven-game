@@ -83,6 +83,9 @@ final class MonsterTurnController {
 
             await executeMonsterTurn(result: result, entity: entity, monster: monster)
 
+            // Stop if all characters were killed this turn
+            if coordinator.scenarioResult != nil { return }
+
             // Pause between entities
             try? await Task.sleep(nanoseconds: 400_000_000) // 400ms
         }
@@ -147,6 +150,16 @@ final class MonsterTurnController {
                 let isRangedAdjacent = (stat?.range?.intValue ?? 0) > 0 && attackerPos.isAdjacent(to: targetPos)
                 let hasDisadvantage = CombatResolver.hasDisadvantage(attacker: entity, isRangedAdjacent: isRangedAdjacent)
 
+                // Interactive modifier draw — player draws card(s) for this monster attack
+                let preDrawnCards = await coordinator.performModifierDraw(
+                    attacker: result.entityID,
+                    defender: target,
+                    baseAttack: totalAttack,
+                    advantage: hasAdvantage,
+                    disadvantage: hasDisadvantage,
+                    drawCard: { gameManager.attackModifierManager.drawMonsterCard() }
+                )
+
                 // Each target gets its own modifier card draw
                 let attackResult = CombatResolver.resolveAttack(
                     attacker: result.entityID,
@@ -160,11 +173,16 @@ final class MonsterTurnController {
                     retaliateValue: retInfo.value,
                     retaliateRange: retInfo.range,
                     attackerDefenderDistance: attackerPos.distance(to: targetPos),
-                    drawModifier: { gameManager.attackModifierManager.drawMonsterCard() },
+                    preDrawnCards: preDrawnCards,
+                    drawModifier: { nil },
                     defenderHealth: defenderHealth
                 )
 
-                coordinator.log("  \(result.entityID): Attack \(target) for \(attackResult.damage) damage", category: .attack)
+                let breakdown = CombatResolver.damageBreakdown(
+                    base: totalAttack, isPoisoned: isPoisoned,
+                    preDrawnCards: preDrawnCards, shield: defenderShield,
+                    isMiss: attackResult.isMiss, finalDamage: attackResult.damage)
+                coordinator.log("  \(result.entityID) → \(target): \(breakdown)", category: .attack)
 
                 if attackResult.damage > 0 {
                     coordinator.boardScene?.pieceDamage(id: target, amount: attackResult.damage)
@@ -208,6 +226,8 @@ final class MonsterTurnController {
                     coordinator.boardState.removePiece(target)
                     coordinator.boardScene?.removePieceSprite(id: target)
                     markDead(target: target, gameManager: gameManager)
+                    coordinator.checkVictoryDefeat()
+                    if coordinator.scenarioResult != nil { return }
                 }
 
                 // Apply conditions to target
@@ -230,24 +250,16 @@ final class MonsterTurnController {
                     coordinator.log("  \(target): \(condition.rawValue) applied", category: .condition)
                 }
 
-                // Show modifier card popup
-                if let mod = attackResult.modifierCard {
-                    coordinator.lastDrawnModifier = mod
-                    coordinator.showModifierCard = true
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 4.0) { [weak coordinator] in
-                        coordinator?.showModifierCard = false
-                    }
-                }
-
                 // Retaliate
                 if attackResult.retaliateDamage > 0 {
                     coordinator.log("  \(result.entityID): Takes \(attackResult.retaliateDamage) retaliate damage", category: .damage)
                     gameManager.entityManager.changeHealth(entity, amount: -attackResult.retaliateDamage)
                     if entity.health <= 0 {
                         entity.dead = true
+                        coordinator.log("  \(result.entityID): Killed by retaliate!", category: .death)
+                        coordinator.dropLoot(for: result.entityID)
                         coordinator.boardState.removePiece(result.entityID)
                         coordinator.boardScene?.removePieceSprite(id: result.entityID)
-                        coordinator.log("  \(result.entityID): Killed by retaliate!", category: .death)
                     }
                 }
             }

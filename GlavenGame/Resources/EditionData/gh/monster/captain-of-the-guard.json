@@ -1,0 +1,93 @@
+{
+  "name": "captain-of-the-guard",
+  "edition": "gh",
+  "deck": "boss",
+  "boss": true,
+  "count": 1,
+  "baseStat": {
+    "type": "boss",
+    "immunities": [
+      "disarm",
+      "wound",
+      "muddle",
+      "stun"
+    ],
+    "special": [
+      [
+        {
+          "type": "heal",
+          "value": 2,
+          "subActions": [
+            {
+              "type": "specialTarget",
+              "value": "selfAlliesAffect",
+              "small": true
+            }
+          ]
+        }
+      ],
+      [
+        {
+          "type": "custom",
+          "value": "%data.custom.gh.captain-of-the-guard.1%",
+          "small": true
+        },
+        {
+          "type": "attack",
+          "value": 1,
+          "valueType": "plus"
+        }
+      ]
+    ]
+  },
+  "stats": [
+    {
+      "level": 0,
+      "health": "7xC",
+      "movement": 2,
+      "attack": 3
+    },
+    {
+      "level": 1,
+      "health": "9xC",
+      "movement": 2,
+      "attack": 3
+    },
+    {
+      "level": 2,
+      "health": "11xC",
+      "movement": 2,
+      "attack": 4
+    },
+    {
+      "level": 3,
+      "health": "14xC",
+      "movement": 3,
+      "attack": 4
+    },
+    {
+      "level": 4,
+      "health": "16xC",
+      "movement": 3,
+      "attack": 5
+    },
+    {
+      "level": 5,
+      "health": "20xC",
+      "movement": 3,
+      "attack": 5
+    },
+    {
+      "level": 6,
+      "health": "21xC",
+      "movement": 4,
+      "attack": 6
+    },
+    {
+      "level": 7,
+      "health": "25xC",
+      "movement": 4,
+      "attack": 6
+    }
+  ]
+}

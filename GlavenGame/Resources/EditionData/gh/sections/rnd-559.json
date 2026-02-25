@@ -1,0 +1,94 @@
+{
+  "index": "559",
+  "group": "randomMonsterCard",
+  "name": "Fortified",
+  "edition": "gh",
+  "named": true,
+  "monsters": [
+    "ancient-artillery",
+    "city-archer",
+    "city-guard"
+  ],
+  "rooms": [
+    {
+      "roomNumber": 1,
+      "initial": true,
+      "treasures": [],
+      "monster": [
+        {
+          "name": "ancient-artillery",
+          "type": "normal",
+          "marker": "12"
+        },
+        {
+          "name": "ancient-artillery",
+          "player3": "normal",
+          "player4": "elite",
+          "marker": "9"
+        },
+        {
+          "name": "city-archer",
+          "type": "normal",
+          "marker": "6"
+        },
+        {
+          "name": "city-archer",
+          "player2": "normal",
+          "player3": "normal",
+          "player4": "elite",
+          "marker": "5"
+        },
+        {
+          "name": "city-archer",
+          "player4": "normal",
+          "marker": "7"
+        },
+        {
+          "name": "city-guard",
+          "type": "elite",
+          "marker": "1"
+        },
+        {
+          "name": "city-guard",
+          "player3": "normal",
+          "player4": "normal",
+          "marker": "2"
+        }
+      ]
+    }
+  ],
+  "overlays": [
+    {
+      "type": "loot",
+      "marker": "3"
+    },
+    {
+      "type": "loot",
+      "marker": "4"
+    },
+    {
+      "type": "trap",
+      "value": "bear-trap",
+      "values": [
+        "damage"
+      ],
+      "marker": "8"
+    },
+    {
+      "type": "trap",
+      "value": "bear-trap",
+      "values": [
+        "damage"
+      ],
+      "marker": "10"
+    },
+    {
+      "type": "trap",
+      "value": "bear-trap",
+      "values": [
+        "damage"
+      ],
+      "marker": "11"
+    }
+  ]
+}

@@ -1,0 +1,1865 @@
+{
+  "name": "circles",
+  "edition": "gh",
+  "character": true,
+  "abilities": [
+    {
+      "name": "Forged Ferocity",
+      "cardId": 233,
+      "level": 1,
+      "initiative": 96,
+      "lost": true,
+      "actions": [
+        {
+          "type": "summon",
+          "value": "summonData",
+          "valueObject": {
+            "name": "Iron Beast",
+            "edition": "gh",
+            "health": "5",
+            "attack": "1",
+            "movement": "2",
+            "count": 1,
+            "enhancements": [
+              "heal",
+              "attack",
+              "move"
+            ],
+            "action": {
+              "type": "retaliate",
+              "value": 1
+            },
+            "additionalAction": {
+              "type": "shield",
+              "value": 1
+            }
+          },
+          "small": true
+        },
+        {
+          "type": "concatenation",
+          "value": "",
+          "subActions": [
+            {
+              "type": "concatenationSpacer",
+              "value": 1
+            },
+            {
+              "type": "card",
+              "value": "experience:2"
+            },
+            {
+              "type": "concatenationSpacer",
+              "value": 1
+            },
+            {
+              "type": "card",
+              "value": "persistent"
+            }
+          ]
+        }
+      ],
+      "bottomLost": true,
+      "bottomActions": [
+        {
+          "type": "shield",
+          "value": 1,
+          "enhancementTypes": [
+            "square"
+          ],
+          "subActions": [
+            {
+              "type": "custom",
+              "value": "%data.custom.gh.circles.abilities.233.1%",
+              "small": true
+            }
+          ]
+        },
+        {
+          "type": "concatenation",
+          "value": "",
+          "subActions": [
+            {
+              "type": "concatenationSpacer",
+              "value": 1
+            },
+            {
+              "type": "element",
+              "value": "earth"
+            },
+            {
+              "type": "concatenationSpacer",
+              "value": 1
+            },
+            {
+              "type": "card",
+              "value": "round"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Wild Animation",
+      "cardId": 234,
+      "level": 1,
+      "initiative": 92,
+      "lost": true,
+      "actions": [
+        {
+          "type": "summon",
+          "value": "summonData",
+          "valueObject": {
+            "name": "Thorn Shooter",
+            "edition": "gh",
+            "health": "2",
+            "attack": "2",
+            "movement": "1",
+            "range": "4",
+            "count": 1,
+            "enhancements": [
+              "heal",
+              "attack",
+              "move"
+            ],
+            "action": {
+              "type": "condition",
+              "value": "poison"
+            }
+          },
+          "small": true
+        },
+        {
+          "type": "concatenation",
+          "value": "",
+          "subActions": [
+            {
+              "type": "concatenationSpacer",
+              "value": 1
+            },
+            {
+              "type": "card",
+              "value": "experience:2"
+            },
+            {
+              "type": "concatenationSpacer",
+              "value": 1
+            },
+            {
+              "type": "card",
+              "value": "persistent"
+            }
+          ]
+        }
+      ],
+      "bottomActions": [
+        {
+          "type": "move",
+          "value": 5,
+          "enhancementTypes": [
+            "circle"
+          ]
+        },
+        {
+          "type": "element",
+          "value": "air"
+        }
+      ]
+    },
+    {
+      "name": "Living Night",
+      "cardId": 235,
+      "level": 1,
+      "initiative": 82,
+      "lost": true,
+      "actions": [
+        {
+          "type": "summon",
+          "value": "summonData",
+          "valueObject": {
+            "name": "2 Shadow Wolves",
+            "edition": "gh",
+            "health": "3",
+            "attack": "2",
+            "movement": "3",
+            "count": 1,
+            "enhancements": [
+              "heal",
+              "attack",
+              "move"
+            ],
+            "action": {
+              "type": "pierce",
+              "value": 2
+            }
+          },
+          "small": true
+        },
+        {
+          "type": "concatenation",
+          "value": "",
+          "subActions": [
+            {
+              "type": "concatenationSpacer",
+              "value": 1
+            },
+            {
+              "type": "card",
+              "value": "experience:2"
+            },
+            {
+              "type": "concatenationSpacer",
+              "value": 1
+            },
+            {
+              "type": "card",
+              "value": "persistent"
+            }
+          ]
+        }
+      ],
+      "bottomActions": [
+        {
+          "type": "custom",
+          "value": "%data.custom.gh.circles.abilities.235.1%",
+          "small": true
+        },
+        {
+          "type": "concatenation",
+          "value": 0,
+          "subActions": [
+            {
+              "type": "concatenationSpacer",
+              "value": 1
+            },
+            {
+              "type": "element",
+              "value": "dark"
+            },
+            {
+              "type": "concatenationSpacer",
+              "value": 1
+            },
+            {
+              "type": "card",
+              "value": "persistent"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Unending Dominance",
+      "cardId": 236,
+      "level": 1,
+      "initiative": 98,
+      "lost": true,
+      "loss": true,
+      "actions": [
+        {
+          "type": "summon",
+          "value": "summonData",
+          "valueObject": {
+            "name": "Lava Golem",
+            "edition": "gh",
+            "health": "7",
+            "attack": "3 %game.element.fire%",
+            "movement": "2",
+            "count": 1,
+            "enhancements": [
+              "heal",
+              "move"
+            ],
+            "action": {
+              "type": "retaliate",
+              "value": 2,
+              "subActions": [
+                {
+                  "type": "range",
+                  "value": 2,
+                  "small": true
+                }
+              ]
+            },
+            "additionalAction": {
+              "type": "condition",
+              "value": "wound"
+            }
+          },
+          "small": true
+        },
+        {
+          "type": "concatenation",
+          "value": "",
+          "subActions": [
+            {
+              "type": "concatenationSpacer",
+              "value": 1
+            },
+            {
+              "type": "card",
+              "value": "experience:6"
+            },
+            {
+              "type": "concatenationSpacer",
+              "value": 1
+            },
+            {
+              "type": "card",
+              "value": "persistent"
+            }
+          ]
+        }
+      ],
+      "bottomLost": true,
+      "bottomLoss": true,
+      "bottomActions": [
+        {
+          "type": "custom",
+          "value": "%data.custom.gh.circles.abilities.236.1%",
+          "small": true
+        }
+      ]
+    },
+    {
+      "name": "Unwavering Hand",
+      "cardId": 237,
+      "level": 1,
+      "initiative": 31,
+      "actions": [
+        {
+          "type": "heal",
+          "value": 3,
+          "enhancementTypes": [
+            "diamond_plus",
+            "diamond_plus"
+          ],
+          "subActions": [
+            {
+              "type": "range",
+              "value": 3,
+              "small": true
+            }
+          ]
+        },
+        {
+          "type": "card",
+          "value": "experience:1"
+        }
+      ],
+      "bottomActions": [
+        {
+          "type": "custom",
+          "value": "%data.custom.gh.circles.abilities.237.1%",
+          "small": true,
+          "subActions": [
+            {
+              "type": "move",
+              "value": 1
+            },
+            {
+              "type": "custom",
+              "value": "%data.custom.gh.circles.abilities.237.2%",
+              "small": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Mighty Bond",
+      "cardId": 238,
+      "level": 1,
+      "initiative": 51,
+      "actions": [
+        {
+          "type": "custom",
+          "value": "%data.custom.gh.circles.abilities.238.1%",
+          "small": true,
+          "subActions": [
+            {
+              "type": "move",
+              "value": 0,
+              "valueType": "plus"
+            },
+            {
+              "type": "attack",
+              "value": 0,
+              "valueType": "plus"
+            },
+            {
+              "type": "custom",
+              "value": "%data.custom.gh.circles.abilities.238.2%",
+              "small": true
+            },
+            {
+              "type": "card",
+              "value": "experience:1"
+            }
+          ]
+        }
+      ],
+      "bottomActions": [
+        {
+          "type": "move",
+          "value": 4,
+          "enhancementTypes": [
+            "circle"
+          ],
+          "subActions": [
+            {
+              "type": "jump",
+              "value": "",
+              "small": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Bonded Might",
+      "cardId": 239,
+      "level": 1,
+      "initiative": 61,
+      "actions": [
+        {
+          "type": "custom",
+          "value": "%data.custom.gh.circles.abilities.239.1%",
+          "small": true,
+          "subActions": [
+            {
+              "type": "move",
+              "value": 0,
+              "valueType": "plus"
+            },
+            {
+              "type": "attack",
+              "value": 0,
+              "valueType": "plus"
+            },
+            {
+              "type": "custom",
+              "value": "%data.custom.gh.circles.abilities.239.2%",
+              "small": true
+            },
+            {
+              "type": "card",
+              "value": "experience:1"
+            }
+          ]
+        }
+      ],
+      "bottomActions": [
+        {
+          "type": "loot",
+          "value": 1
+        }
+      ]
+    },
+    {
+      "name": "Biting Wind",
+      "cardId": 240,
+      "level": 1,
+      "initiative": 25,
+      "actions": [
+        {
+          "type": "attack",
+          "value": 2,
+          "enhancementTypes": [
+            "diamond"
+          ],
+          "subActions": [
+            {
+              "type": "range",
+              "value": 3,
+              "small": true,
+              "enhancementTypes": [
+                "square"
+              ]
+            },
+            {
+              "type": "element",
+              "value": "air",
+              "valueType": "minus",
+              "subActions": [
+                {
+                  "type": "concatenation",
+                  "value": ",",
+                  "subActions": [
+                    {
+                      "type": "attack",
+                      "value": 1,
+                      "valueType": "add",
+                      "small": true
+                    },
+                    {
+                      "type": "push",
+                      "value": 2,
+                      "small": true
+                    },
+                    {
+                      "type": "card",
+                      "value": "experience:1",
+                      "small": true
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "bottomActions": [
+        {
+          "type": "heal",
+          "value": 3,
+          "enhancementTypes": [
+            "diamond_plus"
+          ],
+          "subActions": [
+            {
+              "type": "range",
+              "value": 3,
+              "small": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Black Fire",
+      "cardId": 241,
+      "level": 1,
+      "initiative": 24,
+      "actions": [
+        {
+          "type": "attack",
+          "value": 1,
+          "enhancementTypes": [
+            "diamond"
+          ],
+          "subActions": [
+            {
+              "type": "range",
+              "value": 5,
+              "small": true
+            },
+            {
+              "type": "target",
+              "value": 2,
+              "small": true,
+              "enhancementTypes": [
+                "circle"
+              ]
+            },
+            {
+              "type": "element",
+              "value": "fire",
+              "valueType": "minus",
+              "subActions": [
+                {
+                  "type": "concatenation",
+                  "value": ",",
+                  "subActions": [
+                    {
+                      "type": "condition",
+                      "value": "wound",
+                      "small": true
+                    },
+                    {
+                      "type": "card",
+                      "value": "experience:1",
+                      "small": true
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "bottomActions": [
+        {
+          "type": "move",
+          "value": 3,
+          "enhancementTypes": [
+            "circle"
+          ]
+        },
+        {
+          "type": "condition",
+          "value": "muddle",
+          "subActions": [
+            {
+              "type": "specialTarget",
+              "value": "enemiesAdjacent",
+              "small": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Leathery Wings",
+      "cardId": 242,
+      "level": "X",
+      "initiative": 90,
+      "lost": true,
+      "actions": [
+        {
+          "type": "summon",
+          "value": "summonData",
+          "valueObject": {
+            "name": "Bat Swarm",
+            "edition": "gh",
+            "health": "4",
+            "attack": "2 %game.element.air%",
+            "movement": "2",
+            "count": 1,
+            "enhancements": [
+              "heal",
+              "move"
+            ],
+            "action": {
+              "type": "fly"
+            }
+          },
+          "small": true
+        },
+        {
+          "type": "concatenation",
+          "value": "",
+          "subActions": [
+            {
+              "type": "concatenationSpacer",
+              "value": 1
+            },
+            {
+              "type": "card",
+              "value": "experience:2"
+            },
+            {
+              "type": "concatenationSpacer",
+              "value": 1
+            },
+            {
+              "type": "card",
+              "value": "persistent"
+            }
+          ]
+        }
+      ],
+      "bottomActions": [
+        {
+          "type": "condition",
+          "value": "strengthen",
+          "enhancementTypes": [
+            "diamond_plus"
+          ],
+          "subActions": [
+            {
+              "type": "specialTarget",
+              "value": "alliesAdjacentAffect",
+              "small": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Volatile Flame",
+      "cardId": 243,
+      "level": "X",
+      "initiative": 94,
+      "lost": true,
+      "actions": [
+        {
+          "type": "summon",
+          "value": "summonData",
+          "valueObject": {
+            "name": "Living Bomb",
+            "edition": "gh",
+            "health": "1",
+            "attack": "2",
+            "movement": "3",
+            "count": 1,
+            "enhancements": [
+              "attack",
+              "move"
+            ],
+            "action": {
+              "type": "custom",
+              "value": "%data.custom.gh.circles.abilities.243.1%",
+              "small": true,
+              "subActions": [
+                {
+                  "type": "attack",
+                  "value": "3 %game.element.fire%",
+                  "subActions": [
+                    {
+                      "type": "specialTarget",
+                      "value": "enemiesRange:2",
+                      "small": true
+                    }
+                  ]
+                }
+              ]
+            }
+          },
+          "small": true
+        },
+        {
+          "type": "concatenation",
+          "value": "",
+          "subActions": [
+            {
+              "type": "concatenationSpacer",
+              "value": 1
+            },
+            {
+              "type": "card",
+              "value": "experience:2"
+            },
+            {
+              "type": "concatenationSpacer",
+              "value": 1
+            },
+            {
+              "type": "card",
+              "value": "persistent"
+            }
+          ]
+        }
+      ],
+      "bottomActions": [
+        {
+          "type": "attack",
+          "value": 2,
+          "enhancementTypes": [
+            "diamond"
+          ],
+          "subActions": [
+            {
+              "type": "range",
+              "value": 3,
+              "small": true
+            }
+          ]
+        },
+        {
+          "type": "element",
+          "value": "fire"
+        }
+      ]
+    },
+    {
+      "name": "Ethereal Vines",
+      "cardId": 244,
+      "level": "X",
+      "initiative": 30,
+      "actions": [
+        {
+          "type": "attack",
+          "value": 1,
+          "enhancementTypes": [
+            "diamond"
+          ],
+          "subActions": [
+            {
+              "type": "area",
+              "value": "(0,1,target)|(1,0,target)|(1,1,target)"
+            },
+            {
+              "type": "range",
+              "value": 3,
+              "small": true
+            },
+            {
+              "type": "condition",
+              "value": "immobilize",
+              "small": true
+            }
+          ]
+        }
+      ],
+      "bottomActions": [
+        {
+          "type": "move",
+          "value": 2,
+          "enhancementTypes": [
+            "circle"
+          ]
+        },
+        {
+          "type": "heal",
+          "value": 1,
+          "enhancementTypes": [
+            "diamond_plus"
+          ],
+          "subActions": [
+            {
+              "type": "custom",
+              "value": "%data.custom.gh.circles.abilities.244.1%",
+              "small": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Earthen Steed",
+      "cardId": 245,
+      "level": 2,
+      "initiative": 13,
+      "lost": true,
+      "actions": [
+        {
+          "type": "custom",
+          "value": "%data.custom.gh.circles.abilities.245.1%",
+          "small": true
+        },
+        {
+          "type": "concatenation",
+          "value": "",
+          "subActions": [
+            {
+              "type": "concatenationSpacer",
+              "value": 1
+            },
+            {
+              "type": "card",
+              "value": "persistent"
+            }
+          ]
+        }
+      ],
+      "bottomActions": [
+        {
+          "type": "move",
+          "value": 5,
+          "enhancementTypes": [
+            "circle"
+          ],
+          "subActions": [
+            {
+              "type": "jump",
+              "value": "",
+              "small": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Grasping the Void",
+      "cardId": 246,
+      "level": 2,
+      "initiative": 62,
+      "actions": [
+        {
+          "type": "attack",
+          "value": 2,
+          "enhancementTypes": [
+            "diamond"
+          ],
+          "subActions": [
+            {
+              "type": "range",
+              "value": 3,
+              "small": true
+            },
+            {
+              "type": "condition",
+              "value": "curse",
+              "small": true
+            },
+            {
+              "type": "element",
+              "value": "dark",
+              "valueType": "minus",
+              "subActions": [
+                {
+                  "type": "concatenation",
+                  "value": ",",
+                  "subActions": [
+                    {
+                      "type": "condition",
+                      "value": "stun",
+                      "small": true
+                    },
+                    {
+                      "type": "card",
+                      "value": "experience:1",
+                      "small": true
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "bottomActions": [
+        {
+          "type": "attack",
+          "value": 2,
+          "enhancementTypes": [
+            "diamond"
+          ],
+          "subActions": [
+            {
+              "type": "range",
+              "value": 3,
+              "small": true
+            }
+          ]
+        },
+        {
+          "type": "heal",
+          "value": 2,
+          "enhancementTypes": [
+            "diamond_plus"
+          ],
+          "subActions": [
+            {
+              "type": "specialTarget",
+              "value": "self",
+              "small": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Tear the Fabric",
+      "cardId": 247,
+      "level": 3,
+      "initiative": 41,
+      "lost": true,
+      "actions": [
+        {
+          "type": "custom",
+          "value": "%data.custom.gh.circles.abilities.247.1%",
+          "small": true
+        },
+        {
+          "type": "card",
+          "value": "experience:2"
+        }
+      ],
+      "bottomActions": [
+        {
+          "type": "heal",
+          "value": 4,
+          "enhancementTypes": [
+            "diamond_plus",
+            "diamond_plus"
+          ],
+          "subActions": [
+            {
+              "type": "specialTarget",
+              "value": "self",
+              "small": true
+            },
+            {
+              "type": "element",
+              "value": "earth",
+              "valueType": "minus",
+              "subActions": [
+                {
+                  "type": "concatenation",
+                  "value": ",",
+                  "subActions": [
+                    {
+                      "type": "heal",
+                      "value": 2,
+                      "valueType": "add",
+                      "small": true
+                    },
+                    {
+                      "type": "card",
+                      "value": "experience:1",
+                      "small": true
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Oozing Manifestation",
+      "cardId": 248,
+      "level": 3,
+      "initiative": 86,
+      "lost": true,
+      "actions": [
+        {
+          "type": "summon",
+          "value": "summonData",
+          "valueObject": {
+            "name": "Slime Spirit",
+            "edition": "gh",
+            "health": "4",
+            "attack": "1",
+            "movement": "3",
+            "count": 1,
+            "enhancements": [
+              "heal",
+              "attack",
+              "move"
+            ],
+            "action": {
+              "type": "shield",
+              "value": 2,
+              "small": true
+            },
+            "additionalAction": {
+              "type": "condition",
+              "value": "muddle",
+              "small": true
+            }
+          },
+          "small": true
+        },
+        {
+          "type": "concatenation",
+          "value": "",
+          "subActions": [
+            {
+              "type": "concatenationSpacer",
+              "value": 1
+            },
+            {
+              "type": "card",
+              "value": "experience:2"
+            },
+            {
+              "type": "concatenationSpacer",
+              "value": 1
+            },
+            {
+              "type": "card",
+              "value": "persistent"
+            }
+          ]
+        }
+      ],
+      "bottomActions": [
+        {
+          "type": "attack",
+          "value": 3,
+          "enhancementTypes": [
+            "diamond"
+          ],
+          "subActions": [
+            {
+              "type": "range",
+              "value": 3,
+              "small": true
+            },
+            {
+              "type": "condition",
+              "value": "immobilize",
+              "small": true
+            },
+            {
+              "type": "element",
+              "value": "dark",
+              "valueType": "minus",
+              "subActions": [
+                {
+                  "type": "concatenation",
+                  "value": ",",
+                  "subActions": [
+                    {
+                      "type": "condition",
+                      "value": "curse",
+                      "small": true
+                    },
+                    {
+                      "type": "card",
+                      "value": "experience:1",
+                      "small": true
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Living Mountain",
+      "cardId": 249,
+      "level": 4,
+      "initiative": 88,
+      "lost": true,
+      "actions": [
+        {
+          "type": "summon",
+          "value": "summonData",
+          "valueObject": {
+            "name": "Rock Colossus",
+            "edition": "gh",
+            "health": "7",
+            "attack": "3 %game.element.earth%",
+            "movement": "1",
+            "count": 1,
+            "enhancements": [
+              "heal",
+              "move"
+            ]
+          },
+          "small": true
+        },
+        {
+          "type": "concatenation",
+          "value": "",
+          "subActions": [
+            {
+              "type": "concatenationSpacer",
+              "value": 1
+            },
+            {
+              "type": "card",
+              "value": "experience:2"
+            },
+            {
+              "type": "concatenationSpacer",
+              "value": 1
+            },
+            {
+              "type": "card",
+              "value": "persistent"
+            }
+          ]
+        }
+      ],
+      "bottomActions": [
+        {
+          "type": "move",
+          "value": 2,
+          "enhancementTypes": [
+            "circle"
+          ]
+        },
+        {
+          "type": "loot",
+          "value": 1
+        }
+      ]
+    },
+    {
+      "name": "Divided Mind",
+      "cardId": 250,
+      "level": 4,
+      "initiative": 55,
+      "actions": [
+        {
+          "type": "custom",
+          "value": "%data.custom.gh.circles.abilities.250.1%",
+          "small": true,
+          "subActions": [
+            {
+              "type": "move",
+              "value": 0,
+              "valueType": "plus"
+            },
+            {
+              "type": "custom",
+              "value": "%data.custom.gh.circles.abilities.250.2%",
+              "small": true
+            }
+          ]
+        },
+        {
+          "type": "card",
+          "value": "experience:1"
+        }
+      ],
+      "bottomActions": [
+        {
+          "type": "custom",
+          "value": "%data.custom.gh.circles.abilities.250.1%",
+          "small": true,
+          "subActions": [
+            {
+              "type": "attack",
+              "value": 0,
+              "valueType": "plus"
+            },
+            {
+              "type": "custom",
+              "value": "%data.custom.gh.circles.abilities.250.2%",
+              "small": true
+            }
+          ]
+        },
+        {
+          "type": "card",
+          "value": "experience:1"
+        }
+      ]
+    },
+    {
+      "name": "Strength in Numbers",
+      "cardId": 251,
+      "level": 5,
+      "initiative": 45,
+      "actions": [
+        {
+          "type": "custom",
+          "value": "%data.custom.gh.circles.abilities.251.1%",
+          "small": true,
+          "subActions": [
+            {
+              "type": "move",
+              "value": 1,
+              "valueType": "plus"
+            },
+            {
+              "type": "attack",
+              "value": 1,
+              "valueType": "plus"
+            },
+            {
+              "type": "custom",
+              "value": "%data.custom.gh.circles.abilities.251.2%",
+              "small": true
+            }
+          ]
+        },
+        {
+          "type": "card",
+          "value": "experience:1"
+        }
+      ],
+      "bottomActions": [
+        {
+          "type": "attack",
+          "value": "X",
+          "subActions": [
+            {
+              "type": "range",
+              "value": "X",
+              "small": true
+            },
+            {
+              "type": "custom",
+              "value": "%data.custom.gh.circles.abilities.251.3%",
+              "small": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Conjured Aid",
+      "cardId": 252,
+      "level": 5,
+      "initiative": 87,
+      "lost": true,
+      "actions": [
+        {
+          "type": "summon",
+          "value": "summonData",
+          "valueObject": {
+            "name": "Healing Sprite",
+            "edition": "gh",
+            "health": "2",
+            "attack": "1",
+            "movement": "2",
+            "range": "3",
+            "count": 1,
+            "enhancements": [
+              "heal",
+              "move",
+              "range"
+            ],
+            "action": {
+              "type": "custom",
+              "value": "%data.custom.gh.circles.abilities.252.1%",
+              "small": true,
+              "subActions": [
+                {
+                  "type": "heal",
+                  "value": 2,
+                  "subActions": [
+                    {
+                      "type": "range",
+                      "value": 2,
+                      "small": true
+                    }
+                  ]
+                },
+                {
+                  "type": "custom",
+                  "value": "%data.custom.gh.circles.abilities.252.2%",
+                  "small": true
+                }
+              ]
+            }
+          },
+          "small": true
+        },
+        {
+          "type": "concatenation",
+          "value": "",
+          "subActions": [
+            {
+              "type": "concatenationSpacer",
+              "value": 1
+            },
+            {
+              "type": "card",
+              "value": "experience:3"
+            },
+            {
+              "type": "concatenationSpacer",
+              "value": 1
+            },
+            {
+              "type": "card",
+              "value": "persistent"
+            }
+          ]
+        }
+      ],
+      "bottomActions": [
+        {
+          "type": "move",
+          "value": 5,
+          "enhancementTypes": [
+            "circle"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Endless Spikes",
+      "cardId": 253,
+      "level": 6,
+      "initiative": 97,
+      "lost": true,
+      "actions": [
+        {
+          "type": "summon",
+          "value": "summonData",
+          "valueObject": {
+            "name": "3 Nail Spheres",
+            "edition": "gh",
+            "health": "4",
+            "movement": "2",
+            "count": 1,
+            "enhancements": [
+              "heal",
+              "move"
+            ],
+            "action": {
+              "type": "retaliate",
+              "value": 2
+            },
+            "additionalAction": {
+              "type": "shield",
+              "value": 1
+            }
+          },
+          "small": true
+        },
+        {
+          "type": "concatenation",
+          "value": "",
+          "subActions": [
+            {
+              "type": "concatenationSpacer",
+              "value": 1
+            },
+            {
+              "type": "card",
+              "value": "experience:3"
+            },
+            {
+              "type": "concatenationSpacer",
+              "value": 1
+            },
+            {
+              "type": "card",
+              "value": "persistent"
+            }
+          ]
+        }
+      ],
+      "bottomActions": [
+        {
+          "type": "retaliate",
+          "value": 2,
+          "subActions": [
+            {
+              "type": "custom",
+              "value": "%data.custom.gh.circles.abilities.253.1%",
+              "small": true
+            }
+          ]
+        },
+        {
+          "type": "concatenation",
+          "value": "",
+          "subActions": [
+            {
+              "type": "concatenationSpacer",
+              "value": 1
+            },
+            {
+              "type": "card",
+              "value": "round"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Inexorable Momentum",
+      "cardId": 254,
+      "level": 6,
+      "initiative": 32,
+      "actions": [
+        {
+          "type": "attack",
+          "value": 3,
+          "enhancementTypes": [
+            "diamond"
+          ],
+          "subActions": [
+            {
+              "type": "range",
+              "value": 3,
+              "small": true
+            },
+            {
+              "type": "pierce",
+              "value": 3,
+              "small": true,
+              "enhancementTypes": [
+                "circle"
+              ]
+            },
+            {
+              "type": "element",
+              "value": "air",
+              "valueType": "minus",
+              "subActions": [
+                {
+                  "type": "attack",
+                  "value": 2,
+                  "valueType": "add",
+                  "small": true
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "bottomActions": [
+        {
+          "type": "move",
+          "value": 3,
+          "enhancementTypes": [
+            "circle"
+          ]
+        },
+        {
+          "type": "custom",
+          "value": "%data.custom.gh.circles.abilities.254.1%",
+          "small": true,
+          "subActions": [
+            {
+              "type": "move",
+              "value": 3,
+              "enhancementTypes": [
+                "circle"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Negative Energy",
+      "cardId": 255,
+      "level": 7,
+      "initiative": 95,
+      "lost": true,
+      "actions": [
+        {
+          "type": "summon",
+          "value": "summonData",
+          "valueObject": {
+            "name": "Void Eater",
+            "edition": "gh",
+            "health": "5",
+            "attack": "2",
+            "movement": "3",
+            "range": "2",
+            "count": 1,
+            "enhancements": [
+              "heal",
+              "attack",
+              "move",
+              "range"
+            ],
+            "action": {
+              "type": "condition",
+              "value": "curse"
+            }
+          },
+          "small": true
+        },
+        {
+          "type": "concatenation",
+          "value": "",
+          "subActions": [
+            {
+              "type": "concatenationSpacer",
+              "value": 1
+            },
+            {
+              "type": "card",
+              "value": "experience:3"
+            },
+            {
+              "type": "concatenationSpacer",
+              "value": 1
+            },
+            {
+              "type": "card",
+              "value": "persistent"
+            }
+          ]
+        }
+      ],
+      "bottomActions": [
+        {
+          "type": "condition",
+          "value": "curse",
+          "subActions": [
+            {
+              "type": "custom",
+              "value": "%data.custom.gh.circles.abilities.255.1%",
+              "small": true
+            }
+          ]
+        },
+        {
+          "type": "element",
+          "value": "dark"
+        }
+      ]
+    },
+    {
+      "name": "Staff of Visions",
+      "cardId": 256,
+      "level": 7,
+      "initiative": 27,
+      "actions": [
+        {
+          "type": "attack",
+          "value": 5,
+          "enhancementTypes": [
+            "diamond",
+            "diamond"
+          ],
+          "subActions": [
+            {
+              "type": "condition",
+              "value": "muddle",
+              "small": true
+            },
+            {
+              "type": "element",
+              "value": "fire",
+              "valueType": "minus",
+              "subActions": [
+                {
+                  "type": "concatenation",
+                  "value": ",",
+                  "subActions": [
+                    {
+                      "type": "attack",
+                      "value": 1,
+                      "valueType": "add",
+                      "small": true
+                    },
+                    {
+                      "type": "condition",
+                      "value": "wound",
+                      "small": true
+                    },
+                    {
+                      "type": "card",
+                      "value": "experience:1",
+                      "small": true
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "bottomActions": [
+        {
+          "type": "move",
+          "value": 3,
+          "enhancementTypes": [
+            "circle"
+          ]
+        },
+        {
+          "type": "condition",
+          "value": "strengthen",
+          "enhancementTypes": [
+            "diamond_plus"
+          ],
+          "subActions": [
+            {
+              "type": "specialTarget",
+              "value": "alliesAdjacentAffect",
+              "small": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Intervening Apparitions",
+      "cardId": 257,
+      "level": 8,
+      "initiative": 68,
+      "actions": [
+        {
+          "type": "custom",
+          "value": "%data.custom.gh.circles.abilities.257.1%",
+          "small": true,
+          "subActions": [
+            {
+              "type": "concatenation",
+              "value": "",
+              "subActions": [
+                {
+                  "type": "concatenationSpacer",
+                  "value": 1
+                },
+                {
+                  "type": "card",
+                  "value": "persistent"
+                },
+                {
+                  "type": "card",
+                  "value": "slotXp:1"
+                },
+                {
+                  "type": "card",
+                  "value": "slotXp:1"
+                },
+                {
+                  "type": "concatenationSpacer",
+                  "value": 3
+                },
+                {
+                  "type": "concatenationSpacer",
+                  "value": 2
+                },
+                {
+                  "type": "card",
+                  "value": "slotXp:1"
+                },
+                {
+                  "type": "concatenationSpacer",
+                  "value": 1
+                },
+                {
+                  "type": "card",
+                  "value": "lost"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "bottomActions": [
+        {
+          "type": "custom",
+          "value": "%data.custom.gh.circles.abilities.257.2%",
+          "small": true
+        },
+        {
+          "type": "element",
+          "value": "light"
+        }
+      ]
+    },
+    {
+      "name": "Otherworldly Rage",
+      "cardId": 258,
+      "level": 8,
+      "initiative": 35,
+      "actions": [
+        {
+          "type": "custom",
+          "value": "%data.custom.gh.circles.abilities.258.1%",
+          "small": true,
+          "subActions": [
+            {
+              "type": "attack",
+              "value": 2,
+              "valueType": "plus",
+              "subActions": [
+                {
+                  "type": "condition",
+                  "value": "wound",
+                  "small": true
+                },
+                {
+                  "type": "condition",
+                  "value": "poison",
+                  "small": true
+                }
+              ]
+            },
+            {
+              "type": "custom",
+              "value": "%data.custom.gh.circles.abilities.258.2%",
+              "small": true
+            }
+          ]
+        },
+        {
+          "type": "card",
+          "value": "experience:1"
+        }
+      ],
+      "bottomActions": [
+        {
+          "type": "custom",
+          "value": "%data.custom.gh.circles.abilities.258.3%",
+          "small": true
+        },
+        {
+          "type": "move",
+          "value": 3,
+          "enhancementTypes": [
+            "circle"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Interplanar Mastery",
+      "cardId": 259,
+      "level": 9,
+      "initiative": 22,
+      "lost": true,
+      "loss": true,
+      "actions": [
+        {
+          "type": "custom",
+          "value": "%data.custom.gh.circles.abilities.259.1%",
+          "small": true
+        }
+      ],
+      "bottomActions": [
+        {
+          "type": "move",
+          "value": 6,
+          "subActions": [
+            {
+              "type": "jump",
+              "value": "",
+              "small": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Horned Majesty",
+      "cardId": 260,
+      "level": 9,
+      "initiative": 80,
+      "lost": true,
+      "actions": [
+        {
+          "type": "summon",
+          "value": "summonData",
+          "valueObject": {
+            "name": "Black Unicorn",
+            "edition": "gh",
+            "health": "6",
+            "attack": "4",
+            "movement": "4",
+            "count": 1,
+            "enhancements": [
+              "heal",
+              "attack",
+              "move"
+            ],
+            "action": {
+              "type": "pierce",
+              "value": 3
+            }
+          },
+          "small": true
+        },
+        {
+          "type": "concatenation",
+          "value": "",
+          "subActions": [
+            {
+              "type": "concatenationSpacer",
+              "value": 1
+            },
+            {
+              "type": "card",
+              "value": "experience:3"
+            },
+            {
+              "type": "concatenationSpacer",
+              "value": 1
+            },
+            {
+              "type": "card",
+              "value": "persistent"
+            }
+          ]
+        }
+      ],
+      "bottomActions": [
+        {
+          "type": "custom",
+          "value": "%data.custom.gh.circles.abilities.260.1%",
+          "small": true,
+          "subActions": [
+            {
+              "type": "attack",
+              "value": 0,
+              "valueType": "plus"
+            },
+            {
+              "type": "custom",
+              "value": "%data.custom.gh.circles.abilities.260.2%",
+              "small": true
+            }
+          ]
+        },
+        {
+          "type": "card",
+          "value": "experience:1"
+        }
+      ]
+    }
+  ]
+}

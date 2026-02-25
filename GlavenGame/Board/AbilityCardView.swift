@@ -322,7 +322,7 @@ struct BoardAbilityCardView: View {
     private func sufferActionView(_ action: ActionModel) -> some View {
         let value = action.value?.stringValue ?? ""
         HStack(spacing: 3) {
-            BundledImage(ImageLoader.actionIcon("damage"), size: scaledFont(11), systemName: "heart.slash")
+            BundledImage(ImageLoader.actionIcon("damage"), size: scaledFont(11), systemName: "heart.slash", useTemplate: true)
                 .foregroundStyle(.red.opacity(0.7))
                 .frame(width: scaledFont(12))
             Text("Suffer \(value) damage")
@@ -371,7 +371,7 @@ struct BoardAbilityCardView: View {
     private func teleportActionView(_ action: ActionModel) -> some View {
         let value = action.value?.stringValue ?? ""
         HStack(spacing: 3) {
-            BundledImage(ImageLoader.actionIcon("teleport"), size: scaledFont(11), systemName: "arrow.triangle.swap")
+            BundledImage(ImageLoader.actionIcon("teleport"), size: scaledFont(11), systemName: "arrow.triangle.swap", useTemplate: true)
                 .foregroundStyle(.purple)
                 .frame(width: scaledFont(12))
             Text("Teleport \(value)")
@@ -486,12 +486,10 @@ struct BoardAbilityCardView: View {
     private func actionIconView(_ type: ActionType, value: String? = nil, size: CGFloat) -> some View {
         if type == .condition, let name = value {
             BundledImage(ImageLoader.conditionIcon(name), size: size, systemName: "exclamationmark.triangle.fill")
-                .foregroundStyle(colorForAction(type))
         } else if type == .element, let name = value {
             BundledImage(ImageLoader.elementIcon(name), size: size, systemName: "flame.fill")
-                .foregroundStyle(colorForAction(type))
         } else {
-            BundledImage(ImageLoader.actionIcon(type.rawValue), size: size, systemName: fallbackIconName(for: type))
+            BundledImage(ImageLoader.actionIcon(type.rawValue), size: size, systemName: fallbackIconName(for: type), useTemplate: true)
                 .foregroundStyle(colorForAction(type))
         }
     }

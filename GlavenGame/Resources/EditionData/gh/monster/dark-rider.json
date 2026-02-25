@@ -1,0 +1,113 @@
+{
+  "name": "dark-rider",
+  "edition": "gh",
+  "deck": "boss",
+  "boss": true,
+  "count": 1,
+  "baseStat": {
+    "type": "boss",
+    "note": "%data.custom.gh.dark-rider.1%",
+    "immunities": [
+      "immobilize",
+      "poison",
+      "stun",
+      "disarm"
+    ],
+    "special": [
+      [
+        {
+          "type": "move",
+          "value": 2,
+          "valueType": "plus"
+        },
+        {
+          "type": "attack",
+          "value": 0,
+          "valueType": "plus"
+        }
+      ],
+      [
+        {
+          "type": "move",
+          "value": 0,
+          "valueType": "plus"
+        },
+        {
+          "type": "summon",
+          "value": "monsterStandee",
+          "valueObject": [
+            {
+              "monster": {
+                "name": "forest-imp",
+                "player2": "normal"
+              }
+            },
+            {
+              "monster": {
+                "name": "forest-imp",
+                "player3": "normal",
+                "player4": "normal"
+              },
+              "count": 2
+            }
+          ]
+        },
+        {
+          "type": "attack",
+          "value": 1,
+          "valueType": "minus"
+        }
+      ]
+    ]
+  },
+  "stats": [
+    {
+      "level": 0,
+      "health": "9xC",
+      "movement": 2,
+      "attack": "3+X"
+    },
+    {
+      "level": 1,
+      "health": "10xC",
+      "movement": 3,
+      "attack": "3+X"
+    },
+    {
+      "level": 2,
+      "health": "12xC",
+      "movement": 3,
+      "attack": "3+X"
+    },
+    {
+      "level": 3,
+      "health": "13xC",
+      "movement": 3,
+      "attack": "4+X"
+    },
+    {
+      "level": 4,
+      "health": "15xC",
+      "movement": 3,
+      "attack": "4+X"
+    },
+    {
+      "level": 5,
+      "health": "16xC",
+      "movement": 3,
+      "attack": "5+X"
+    },
+    {
+      "level": 6,
+      "health": "16xC",
+      "movement": 4,
+      "attack": "5+X"
+    },
+    {
+      "level": 7,
+      "health": "18xC",
+      "movement": 4,
+      "attack": "6+X"
+    }
+  ]
+}

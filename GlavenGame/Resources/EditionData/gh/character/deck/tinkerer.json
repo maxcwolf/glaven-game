@@ -1,0 +1,1486 @@
+{
+  "name": "tinkerer",
+  "edition": "gh",
+  "character": true,
+  "abilities": [
+    {
+      "name": "Proximity Mine",
+      "cardId": 30,
+      "level": 1,
+      "initiative": 62,
+      "lost": true,
+      "actions": [
+        {
+          "type": "custom",
+          "value": "%data.custom.gh.tinkerer.abilities.30.1%"
+        },
+        {
+          "type": "custom",
+          "value": "%data.custom.gh.tinkerer.abilities.30.2%"
+        }
+      ],
+      "bottomActions": [
+        {
+          "type": "move",
+          "value": 4,
+          "enhancementTypes": [
+            "circle"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Harmless Contraption",
+      "cardId": 31,
+      "level": 1,
+      "initiative": 74,
+      "lost": true,
+      "actions": [
+        {
+          "type": "summon",
+          "value": "summonData",
+          "valueObject": {
+            "name": "decoy",
+            "health": "6",
+            "movement": "2",
+            "count": 1,
+            "enhancements": [
+              "heal",
+              "move"
+            ]
+          },
+          "small": true
+        },
+        {
+          "type": "concatenation",
+          "value": "",
+          "subActions": [
+            {
+              "type": "card",
+              "value": "experience:2"
+            },
+            {
+              "type": "card",
+              "value": "persistent"
+            }
+          ]
+        }
+      ],
+      "bottomActions": [
+        {
+          "type": "heal",
+          "value": 2,
+          "enhancementTypes": [
+            "diamond_plus"
+          ],
+          "subActions": [
+            {
+              "type": "range",
+              "value": 3,
+              "small": true,
+              "enhancementTypes": [
+                "square"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Flamethrower",
+      "cardId": 32,
+      "level": 1,
+      "initiative": 47,
+      "lost": true,
+      "actions": [
+        {
+          "type": "attack",
+          "value": 3,
+          "enhancementTypes": [
+            "diamond"
+          ],
+          "subActions": [
+            {
+              "type": "area",
+              "value": "(0,1,target)|(0,2,active)|(1,0,enhance)|(1,1,target)|(1,2,target)|(2,2,enhance)",
+              "enhancementTypes": [
+                "hex",
+                "hex"
+              ]
+            },
+            {
+              "type": "condition",
+              "value": "wound",
+              "small": true
+            },
+            {
+              "type": "concatenation",
+              "value": 0,
+              "subActions": [
+                {
+                  "type": "card",
+                  "value": "experience:2"
+                },
+                {
+                  "type": "element",
+                  "value": "fire"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "bottomActions": [
+        {
+          "type": "shield",
+          "value": "1",
+          "enhancementTypes": [
+            "diamond_plus"
+          ],
+          "subActions": [
+            {
+              "type": "specialTarget",
+              "value": "selfAlliesAdjacentAffect",
+              "small": true
+            },
+            {
+              "type": "card",
+              "value": "round"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Hook Gun",
+      "cardId": 33,
+      "level": 1,
+      "initiative": 72,
+      "actions": [
+        {
+          "type": "attack",
+          "value": 2,
+          "subActions": [
+            {
+              "type": "range",
+              "value": 3,
+              "small": true,
+              "enhancementTypes": [
+                "square"
+              ]
+            },
+            {
+              "type": "pull",
+              "value": 2,
+              "small": true,
+              "enhancementTypes": [
+                "diamond"
+              ]
+            }
+          ]
+        }
+      ],
+      "bottomLost": true,
+      "bottomActions": [
+        {
+          "type": "loot",
+          "value": 2,
+          "subActions": [
+            {
+              "type": "card",
+              "value": "experience:1"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Ink Bomb",
+      "cardId": 34,
+      "level": 1,
+      "initiative": 74,
+      "lost": true,
+      "actions": [
+        {
+          "type": "attack",
+          "value": 4,
+          "enhancementTypes": [
+            "diamond"
+          ],
+          "subActions": [
+            {
+              "type": "area",
+              "value": "(0,1,target)|(1,0,target)|(1,1,target)"
+            },
+            {
+              "type": "range",
+              "value": 3,
+              "small": true
+            },
+            {
+              "type": "custom",
+              "value": "%data.custom.gh.tinkerer.abilities.34.1%",
+              "small": true
+            },
+            {
+              "type": "element",
+              "value": "dark",
+              "small": true
+            }
+          ]
+        }
+      ],
+      "bottomActions": [
+        {
+          "type": "move",
+          "value": 4,
+          "enhancementTypes": [
+            "circle"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Net Shooter",
+      "cardId": 35,
+      "level": 1,
+      "initiative": 19,
+      "lost": true,
+      "actions": [
+        {
+          "type": "attack",
+          "value": 3,
+          "subActions": [
+            {
+              "type": "area",
+              "value": "(0,0,enhance)|(0,1,target)|(1,0,target)|(1,1,target)",
+              "enhancementTypes": [
+                "hex"
+              ]
+            },
+            {
+              "type": "range",
+              "value": 3,
+              "small": true
+            },
+            {
+              "type": "condition",
+              "value": "immobilize",
+              "small": true
+            },
+            {
+              "type": "custom",
+              "value": "%data.custom.gh.tinkerer.abilities.35.1%",
+              "small": true
+            }
+          ]
+        }
+      ],
+      "bottomActions": [
+        {
+          "type": "condition",
+          "value": "immobilize",
+          "enhancementTypes": [
+            "diamond"
+          ],
+          "subActions": [
+            {
+              "type": "specialTarget",
+              "value": "enemyAdjacent",
+              "small": true
+            }
+          ]
+        },
+        {
+          "type": "move",
+          "value": 2,
+          "enhancementTypes": [
+            "circle"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Stun Shot",
+      "cardId": 36,
+      "level": 1,
+      "initiative": 20,
+      "actions": [
+        {
+          "type": "attack",
+          "value": 1,
+          "enhancementTypes": [
+            "diamond"
+          ],
+          "subActions": [
+            {
+              "type": "range",
+              "value": 3,
+              "small": true,
+              "enhancementTypes": [
+                "square"
+              ]
+            },
+            {
+              "type": "condition",
+              "value": "stun",
+              "small": true
+            }
+          ]
+        }
+      ],
+      "bottomActions": [
+        {
+          "type": "move",
+          "value": 4,
+          "enhancementTypes": [
+            "circle"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Reinvigorating Elixir",
+      "cardId": 37,
+      "level": 1,
+      "initiative": 37,
+      "actions": [
+        {
+          "type": "heal",
+          "value": 3,
+          "enhancementTypes": [
+            "diamond_plus"
+          ],
+          "subActions": [
+            {
+              "type": "range",
+              "value": 3,
+              "small": true,
+              "enhancementTypes": [
+                "square"
+              ]
+            }
+          ]
+        }
+      ],
+      "bottomLost": true,
+      "bottomActions": [
+        {
+          "type": "custom",
+          "value": "%data.custom.gh.tinkerer.abilities.37.1%",
+          "small": true,
+          "subActions": [
+            {
+              "type": "card",
+              "value": "experience:2"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Restorative Mist",
+      "cardId": 38,
+      "level": 1,
+      "initiative": 17,
+      "actions": [
+        {
+          "type": "heal",
+          "value": 3,
+          "enhancementTypes": [
+            "diamond_plus"
+          ],
+          "subActions": [
+            {
+              "type": "range",
+              "value": 3,
+              "small": true,
+              "enhancementTypes": [
+                "square"
+              ]
+            }
+          ]
+        }
+      ],
+      "bottomActions": [
+        {
+          "type": "move",
+          "value": 2,
+          "enhancementTypes": [
+            "circle"
+          ]
+        },
+        {
+          "type": "heal",
+          "value": 1,
+          "subActions": [
+            {
+              "type": "specialTarget",
+              "value": "alliesAdjacentAffect",
+              "small": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Energizing Tonic",
+      "cardId": 39,
+      "level": 1,
+      "initiative": 16,
+      "lost": true,
+      "actions": [
+        {
+          "type": "heal",
+          "value": 5,
+          "enhancementTypes": [
+            "diamond_plus",
+            "diamond_plus"
+          ],
+          "subActions": [
+            {
+              "type": "range",
+              "value": 2,
+              "small": true
+            },
+            {
+              "type": "card",
+              "value": "experience:2"
+            }
+          ]
+        }
+      ],
+      "bottomLost": true,
+      "bottomActions": [
+        {
+          "type": "move",
+          "value": 6,
+          "enhancementTypes": [
+            "circle"
+          ],
+          "subActions": [
+            {
+              "type": "card",
+              "value": "experience:1"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Enhancement Field",
+      "cardId": 40,
+      "level": 1,
+      "initiative": 61,
+      "actions": [
+        {
+          "type": "attack",
+          "value": 3,
+          "enhancementTypes": [
+            "diamond"
+          ],
+          "subActions": [
+            {
+              "type": "range",
+              "value": 3,
+              "small": true
+            }
+          ]
+        }
+      ],
+      "bottomActions": [
+        {
+          "type": "custom",
+          "value": "%data.custom.gh.tinkerer.abilities.40.1%",
+          "small": true,
+          "subActions": [
+            {
+              "type": "card",
+              "value": "round"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Toxic Bolt",
+      "cardId": 41,
+      "level": 1,
+      "initiative": 18,
+      "actions": [
+        {
+          "type": "attack",
+          "value": 2,
+          "subActions": [
+            {
+              "type": "range",
+              "value": 3,
+              "small": true,
+              "enhancementTypes": [
+                "square"
+              ]
+            },
+            {
+              "type": "condition",
+              "value": "poison",
+              "small": true
+            },
+            {
+              "type": "element",
+              "value": "earth"
+            }
+          ]
+        }
+      ],
+      "bottomLost": true,
+      "bottomActions": [
+        {
+          "type": "attack",
+          "value": 5,
+          "enhancementTypes": [
+            "diamond"
+          ],
+          "subActions": [
+            {
+              "type": "range",
+              "value": 2,
+              "small": true,
+              "enhancementTypes": [
+                "square"
+              ]
+            },
+            {
+              "type": "card",
+              "value": "experience:2"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Reviving Shock",
+      "cardId": 42,
+      "level": "X",
+      "initiative": 34,
+      "actions": [
+        {
+          "type": "attack",
+          "value": 2,
+          "enhancementTypes": [
+            "diamond"
+          ],
+          "subActions": [
+            {
+              "type": "range",
+              "value": 3,
+              "small": true
+            },
+            {
+              "type": "target",
+              "value": 2,
+              "small": true,
+              "enhancementTypes": [
+                "circle"
+              ]
+            }
+          ]
+        }
+      ],
+      "bottomLost": true,
+      "bottomActions": [
+        {
+          "type": "heal",
+          "value": 5,
+          "enhancementTypes": [
+            "diamond_plus",
+            "diamond_plus"
+          ],
+          "subActions": [
+            {
+              "type": "range",
+              "value": 2,
+              "small": true
+            },
+            {
+              "type": "card",
+              "value": "experience:2"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Volatile Concoction",
+      "cardId": 43,
+      "level": "X",
+      "initiative": 76,
+      "actions": [
+        {
+          "type": "custom",
+          "value": "%data.custom.gh.tinkerer.abilities.43.1%",
+          "small": true
+        }
+      ],
+      "bottomActions": [
+        {
+          "type": "custom",
+          "value": "%data.custom.gh.tinkerer.abilities.43.2%",
+          "small": true,
+          "subActions": [
+            {
+              "type": "element",
+              "value": "ice",
+              "valueType": "minus",
+              "subActions": [
+                {
+                  "type": "custom",
+                  "value": "%data.custom.gh.tinkerer.abilities.43.3%",
+                  "small": true
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Potent Potables",
+      "cardId": 44,
+      "level": "X",
+      "initiative": 46,
+      "actions": [
+        {
+          "type": "custom",
+          "value": "%data.custom.gh.tinkerer.abilities.44.1%",
+          "small": true
+        },
+        {
+          "type": "concatenation",
+          "value": "",
+          "subActions": [
+            {
+              "type": "concatenationSpacer",
+              "value": 2
+            },
+            {
+              "type": "card",
+              "value": "persistent"
+            },
+            {
+              "type": "card",
+              "value": "slot"
+            },
+            {
+              "type": "card",
+              "value": "slotXp:1"
+            },
+            {
+              "type": "concatenationSpacer",
+              "value": 2
+            },
+            {
+              "type": "concatenationSpacer",
+              "value": 1
+            },
+            {
+              "type": "card",
+              "value": "slot"
+            },
+            {
+              "type": "card",
+              "value": "slotXp:1"
+            },
+            {
+              "type": "card",
+              "value": "lost"
+            }
+          ]
+        }
+      ],
+      "bottomActions": [
+        {
+          "type": "move",
+          "value": 3,
+          "enhancementTypes": [
+            "circle"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Stamina Booster",
+      "cardId": 45,
+      "level": 2,
+      "initiative": 48,
+      "actions": [
+        {
+          "type": "heal",
+          "value": 4,
+          "enhancementTypes": [
+            "diamond_plus"
+          ],
+          "subActions": [
+            {
+              "type": "range",
+              "value": 3,
+              "small": true
+            }
+          ]
+        }
+      ],
+      "bottomLost": true,
+      "bottomLoss": true,
+      "bottomActions": [
+        {
+          "type": "custom",
+          "value": "%data.custom.gh.tinkerer.abilities.45.1%",
+          "small": true,
+          "subActions": [
+            {
+              "type": "card",
+              "value": "experience:2"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Disorienting Flash",
+      "cardId": 46,
+      "level": 2,
+      "initiative": 73,
+      "lost": true,
+      "actions": [
+        {
+          "type": "condition",
+          "value": "stun",
+          "subActions": [
+            {
+              "type": "range",
+              "value": 3,
+              "small": true,
+              "enhancementTypes": [
+                "square"
+              ]
+            },
+            {
+              "type": "target",
+              "value": 2,
+              "small": true,
+              "enhancementTypes": [
+                "circle"
+              ]
+            },
+            {
+              "type": "card",
+              "value": "experience:2"
+            }
+          ]
+        }
+      ],
+      "bottomActions": [
+        {
+          "type": "condition",
+          "value": "muddle",
+          "subActions": [
+            {
+              "type": "specialTarget",
+              "value": "enemiesAdjacent",
+              "small": true
+            }
+          ]
+        },
+        {
+          "type": "move",
+          "value": 2,
+          "enhancementTypes": [
+            "circle"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Tinkerer's Tools",
+      "cardId": 47,
+      "level": 3,
+      "initiative": 26,
+      "actions": [
+        {
+          "type": "custom",
+          "value": "%data.custom.gh.tinkerer.abilities.47.1%",
+          "small": true,
+          "subActions": [
+            {
+              "type": "card",
+              "value": "experience:1"
+            }
+          ]
+        }
+      ],
+      "bottomActions": [
+        {
+          "type": "custom",
+          "value": "%data.custom.gh.tinkerer.abilities.47.2%",
+          "small": true
+        }
+      ]
+    },
+    {
+      "name": "Crank Bow",
+      "cardId": 48,
+      "level": 3,
+      "initiative": 66,
+      "lost": true,
+      "actions": [
+        {
+          "type": "attack",
+          "value": 6,
+          "enhancementTypes": [
+            "diamond",
+            "diamond"
+          ],
+          "subActions": [
+            {
+              "type": "range",
+              "value": 5,
+              "small": true
+            },
+            {
+              "type": "card",
+              "value": "experience:2"
+            }
+          ]
+        }
+      ],
+      "bottomActions": [
+        {
+          "type": "move",
+          "value": 4,
+          "enhancementTypes": [
+            "circle"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Dangerous Contraption",
+      "cardId": 49,
+      "level": 4,
+      "initiative": 84,
+      "lost": true,
+      "actions": [
+        {
+          "type": "summon",
+          "value": "summonData",
+          "valueObject": {
+            "name": "battle-bot",
+            "health": "6",
+            "attack": "2",
+            "movement": "2",
+            "count": 1,
+            "enhancements": [
+              "heal",
+              "move",
+              "attack"
+            ]
+          },
+          "small": true
+        },
+        {
+          "type": "concatenation",
+          "value": "",
+          "subActions": [
+            {
+              "type": "card",
+              "value": "experience:2"
+            },
+            {
+              "type": "card",
+              "value": "persistent"
+            }
+          ]
+        }
+      ],
+      "bottomActions": [
+        {
+          "type": "move",
+          "value": 4,
+          "enhancementTypes": [
+            "circle"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Micro Bots",
+      "cardId": 50,
+      "level": 4,
+      "initiative": 22,
+      "lost": true,
+      "actions": [
+        {
+          "type": "heal",
+          "value": 6,
+          "enhancementTypes": [
+            "diamond_plus",
+            "diamond_plus"
+          ],
+          "subActions": [
+            {
+              "type": "range",
+              "value": 3,
+              "small": true
+            },
+            {
+              "type": "card",
+              "value": "experience:2"
+            }
+          ]
+        }
+      ],
+      "bottomLost": true,
+      "bottomActions": [
+        {
+          "type": "move",
+          "value": 3,
+          "enhancementTypes": [
+            "circle"
+          ]
+        },
+        {
+          "type": "loot",
+          "value": 1
+        }
+      ]
+    },
+    {
+      "name": "Noxious Vials",
+      "cardId": 51,
+      "level": 5,
+      "initiative": 75,
+      "actions": [
+        {
+          "type": "custom",
+          "value": "%data.custom.gh.tinkerer.abilities.51.1%",
+          "small": true
+        }
+      ],
+      "bottomLost": true,
+      "bottomActions": [
+        {
+          "type": "attack",
+          "value": 3,
+          "enhancementTypes": [
+            "diamond"
+          ],
+          "subActions": [
+            {
+              "type": "area",
+              "value": "(0,0,enhance)|(0,1,target)|(1,0,target)|(1,1,target)",
+              "enhancementTypes": [
+                "hex"
+              ]
+            },
+            {
+              "type": "range",
+              "value": "",
+              "small": true
+            },
+            {
+              "type": "condition",
+              "value": "poison",
+              "small": true
+            },
+            {
+              "type": "custom",
+              "value": "%data.custom.gh.tinkerer.abilities.51.2%",
+              "small": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Disintegration Beam",
+      "cardId": 52,
+      "level": 5,
+      "initiative": 36,
+      "lost": true,
+      "actions": [
+        {
+          "type": "custom",
+          "value": "%data.custom.gh.tinkerer.abilities.52.1%",
+          "small": true,
+          "subActions": [
+            {
+              "type": "area",
+              "value": "(0,3,target)|(0,4,active)|(1,1,target)|(1,2,target)|(2,0,enhance)",
+              "enhancementTypes": [
+                "hex"
+              ]
+            },
+            {
+              "type": "custom",
+              "value": "%data.custom.gh.tinkerer.abilities.52.2%",
+              "small": true
+            }
+          ]
+        }
+      ],
+      "bottomActions": [
+        {
+          "type": "move",
+          "value": 2,
+          "enhancementTypes": [
+            "circle"
+          ]
+        },
+        {
+          "type": "condition",
+          "value": "disarm",
+          "enhancementTypes": [
+            "diamond"
+          ],
+          "subActions": [
+            {
+              "type": "specialTarget",
+              "value": "enemyAdjacent",
+              "small": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Gas Canister",
+      "cardId": 53,
+      "level": 6,
+      "initiative": 71,
+      "actions": [
+        {
+          "type": "custom",
+          "value": "%data.custom.gh.tinkerer.abilities.53.1%",
+          "small": true
+        }
+      ],
+      "bottomActions": [
+        {
+          "type": "custom",
+          "value": "%data.custom.gh.tinkerer.abilities.53.2%",
+          "small": true
+        },
+        {
+          "type": "concatenation",
+          "value": "",
+          "subActions": [
+            {
+              "type": "concatenationSpacer",
+              "value": 2
+            },
+            {
+              "type": "card",
+              "value": "persistent"
+            },
+            {
+              "type": "card",
+              "value": "slot"
+            },
+            {
+              "type": "card",
+              "value": "slotXp:1"
+            },
+            {
+              "type": "concatenationSpacer",
+              "value": 2
+            },
+            {
+              "type": "concatenationSpacer",
+              "value": 1
+            },
+            {
+              "type": "card",
+              "value": "slot"
+            },
+            {
+              "type": "card",
+              "value": "slotXp:1"
+            },
+            {
+              "type": "card",
+              "value": "lost"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Auto Turret",
+      "cardId": 54,
+      "level": 6,
+      "initiative": 34,
+      "actions": [
+        {
+          "type": "custom",
+          "value": "%data.custom.gh.tinkerer.abilities.54.1%",
+          "small": true
+        },
+        {
+          "type": "concatenation",
+          "value": "",
+          "subActions": [
+            {
+              "type": "card",
+              "value": "persistent"
+            },
+            {
+              "type": "card",
+              "value": "slotXp:1"
+            },
+            {
+              "type": "card",
+              "value": "slot"
+            },
+            {
+              "type": "card",
+              "value": "slotXp:1"
+            },
+            {
+              "type": "concatenationSpacer",
+              "value": 1
+            },
+            {
+              "type": "concatenationSpacer",
+              "value": 2
+            },
+            {
+              "type": "card",
+              "value": "slot"
+            },
+            {
+              "type": "card",
+              "value": "slotXp:1"
+            },
+            {
+              "type": "card",
+              "value": "lost"
+            }
+          ]
+        }
+      ],
+      "bottomActions": [
+        {
+          "type": "heal",
+          "value": 3,
+          "enhancementTypes": [
+            "diamond_plus"
+          ],
+          "subActions": [
+            {
+              "type": "range",
+              "value": 4,
+              "small": true,
+              "enhancementTypes": [
+                "square"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Murderous Contraption",
+      "cardId": 55,
+      "level": 7,
+      "initiative": 94,
+      "lost": true,
+      "actions": [
+        {
+          "type": "summon",
+          "value": "summonData",
+          "valueObject": {
+            "name": "kill-bot",
+            "health": "6",
+            "attack": "3",
+            "movement": "3",
+            "count": 1,
+            "enhancements": [
+              "heal",
+              "move",
+              "attack"
+            ]
+          },
+          "small": true
+        },
+        {
+          "type": "concatenation",
+          "value": "",
+          "subActions": [
+            {
+              "type": "card",
+              "value": "experience:2"
+            },
+            {
+              "type": "card",
+              "value": "persistent"
+            }
+          ]
+        }
+      ],
+      "bottomActions": [
+        {
+          "type": "attack",
+          "value": 4,
+          "enhancementTypes": [
+            "diamond"
+          ],
+          "subActions": [
+            {
+              "type": "range",
+              "value": 3,
+              "small": true,
+              "enhancementTypes": [
+                "square"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Curative Aerosol",
+      "cardId": 56,
+      "level": 7,
+      "initiative": 21,
+      "actions": [
+        {
+          "type": "move",
+          "value": 2,
+          "small": true
+        },
+        {
+          "type": "heal",
+          "value": 2,
+          "small": true,
+          "enhancementTypes": [
+            "diamond_plus"
+          ],
+          "subActions": [
+            {
+              "type": "range",
+              "value": 1,
+              "small": true
+            }
+          ]
+        },
+        {
+          "type": "move",
+          "value": 2,
+          "small": true
+        },
+        {
+          "type": "heal",
+          "value": 2,
+          "small": true,
+          "enhancementTypes": [
+            "diamond_plus"
+          ],
+          "subActions": [
+            {
+              "type": "range",
+              "value": 1,
+              "small": true
+            }
+          ]
+        }
+      ],
+      "bottomLost": true,
+      "bottomActions": [
+        {
+          "type": "heal",
+          "value": 4,
+          "enhancementTypes": [
+            "diamond_plus"
+          ],
+          "subActions": [
+            {
+              "type": "range",
+              "value": 3,
+              "small": true
+            },
+            {
+              "type": "target",
+              "value": 2,
+              "small": true,
+              "enhancementTypes": [
+                "circle"
+              ]
+            },
+            {
+              "type": "card",
+              "value": "experience:2"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Jet Propulsion",
+      "cardId": 57,
+      "level": 8,
+      "initiative": 38,
+      "actions": [
+        {
+          "type": "custom",
+          "value": "%data.custom.gh.tinkerer.abilities.57.1%",
+          "small": true,
+          "subActions": [
+            {
+              "type": "move",
+              "value": 2,
+              "valueType": "plus"
+            },
+            {
+              "type": "custom",
+              "value": "%data.custom.gh.tinkerer.abilities.57.2%",
+              "small": true
+            }
+          ]
+        }
+      ],
+      "bottomLost": true,
+      "bottomActions": [
+        {
+          "type": "move",
+          "value": 8,
+          "enhancementTypes": [
+            "circle"
+          ],
+          "subActions": [
+            {
+              "type": "jump",
+              "value": "",
+              "small": true
+            },
+            {
+              "type": "card",
+              "value": "experience:2"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Harsh Stimulants",
+      "cardId": 58,
+      "level": 8,
+      "initiative": 27,
+      "lost": true,
+      "actions": [
+        {
+          "type": "attack",
+          "value": 9,
+          "enhancementTypes": [
+            "diamond",
+            "diamond"
+          ],
+          "subActions": [
+            {
+              "type": "custom",
+              "value": "%data.custom.gh.tinkerer.abilities.58.1%",
+              "small": true
+            },
+            {
+              "type": "card",
+              "value": "experience:2"
+            }
+          ]
+        }
+      ],
+      "bottomActions": [
+        {
+          "type": "custom",
+          "value": "%data.custom.gh.tinkerer.abilities.58.2%",
+          "small": true,
+          "subActions": [
+            {
+              "type": "custom",
+              "value": "%data.custom.gh.tinkerer.abilities.58.3%",
+              "small": true
+            },
+            {
+              "type": "card",
+              "value": "round"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Lethal Injection",
+      "cardId": 59,
+      "level": 9,
+      "initiative": 85,
+      "lost": true,
+      "actions": [
+        {
+          "type": "custom",
+          "value": "%data.custom.gh.tinkerer.abilities.59.1%",
+          "small": true,
+          "subActions": [
+            {
+              "type": "card",
+              "value": "experience:2"
+            }
+          ]
+        }
+      ],
+      "bottomActions": [
+        {
+          "type": "move",
+          "value": 4,
+          "enhancementTypes": [
+            "circle"
+          ]
+        },
+        {
+          "type": "condition",
+          "value": "poison",
+          "subActions": [
+            {
+              "type": "specialTarget",
+              "value": "enemiesAdjacent",
+              "small": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Chimeric Formula",
+      "cardId": 60,
+      "level": 9,
+      "initiative": 43,
+      "actions": [
+        {
+          "type": "custom",
+          "value": "%data.custom.gh.tinkerer.abilities.60.1%",
+          "small": true
+        }
+      ],
+      "bottomLost": true,
+      "bottomActions": [
+        {
+          "type": "custom",
+          "value": "%data.custom.gh.tinkerer.abilities.60.2%",
+          "small": true,
+          "subActions": [
+            {
+              "type": "card",
+              "value": "experience:2"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
