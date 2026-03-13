@@ -257,7 +257,7 @@ Full rules audit against the official Gloomhaven v1 rulebook and 114 GH scenario
 ### High — affects many scenarios or core character builds
 
 - [x] **Teleport movement** — `beginTeleportAction()` shows all passable hexes within range regardless of obstacles/enemies; `executeTeleport()` places directly without pathfinding and skips trap/hazard triggers
-- [ ] **Treasure reward distribution** — treasures can be marked looted but no actual gold/items/designs awarded from `treasures.json` lookup (76 entries); purely cosmetic currently
+- [x] **Treasure reward distribution** — `TreasureLootSheet.applyTreasureReward()` parses reward strings and distributes gold, XP, items, conditions, damage, heals, party achievements to characters/party
 - [ ] **Persistent ability tracking** — `AbilityModel.persistent` flag exists but no ongoing effect system; persistent cards should stay in active area providing continuous bonuses (shield, retaliate, element generation)
 - [ ] **Curse/Bless deck limits** — no enforcement of max 10 curse and 10 bless cards per deck; `addCurse()`/`addBless()` add without limit
 - [x] **Ally deck for escorts** — `EscortTurnController` draws from ally or monster AM deck based on `container.useAllyDeck` flag
@@ -299,7 +299,7 @@ Full rules audit against the official Gloomhaven v1 rulebook and 114 GH scenario
 4. ~~Loot/coin pickup~~ ✅
 5. ~~AoE spatial patterns~~ ✅
 6. ~~Teleport movement~~ ✅
-7. Treasure reward distribution (76 unrewarded treasures)
+7. ~~Treasure reward distribution~~ ✅
 8. Persistent ability tracking (ongoing effects)
 9. Curse/Bless deck limits (rules enforcement)
 10. ~~Ally deck for escorts~~ ✅

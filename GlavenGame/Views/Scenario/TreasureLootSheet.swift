@@ -104,7 +104,8 @@ struct TreasureLootSheet: View {
 
     private func lootTreasure(_ index: String) {
         guard let scenario = scenario else { return }
-        let key = "\(scenario.data.edition)-\(scenario.data.index)-\(index)"
+        let edition = scenario.data.edition
+        let key = "\(edition)-\(scenario.data.index)-\(index)"
         gameManager.game.lootedTreasures.insert(key)
         gameManager.game.campaignLog.append(
             CampaignLogEntry(
@@ -112,5 +113,102 @@ struct TreasureLootSheet: View {
                 message: "Treasure #\(index) looted in Scenario #\(scenario.data.index)"
             )
         )
+
+        // Apply the treasure reward
+        if let treasureIdx = Int(index),
+           let rewardString = gameManager.editionStore.treasureReward(index: treasureIdx, edition: edition) {
+            applyTreasureReward(rewardString, edition: edition)
+        }
+    }
+
+    /// Apply a treasure reward string to the active party/characters.
+    private func applyTreasureReward(_ rewardString: String, edition: String) {
+        let parts = rewardString.split(separator: "|").map(String.init)
+        for part in parts {
+            applySingleReward(part, edition: edition)
+        }
+    }
+
+    private func applySingleReward(_ reward: String, edition: String) {
+        let components = reward.split(separator: ":", maxSplits: 1).map(String.init)
+        let type = components[0]
+        let value = components.count > 1 ? components[1] : nil
+
+        switch type {
+        case "gold", "goldFh":
+            if let v = value.flatMap({ Int($0) }) {
+                // Distribute gold to the active (non-exhausted) character with lowest gold, or all equally
+                for character in gameManager.game.activeCharacters where !character.exhausted {
+                    character.loot += v
+                    break // Give to first active character (the looter)
+                }
+            }
+        case "experience", "experienceFh":
+            if let v = value.flatMap({ Int($0) }) {
+                for character in gameManager.game.activeCharacters where !character.exhausted {
+                    character.experience += v
+                    break
+                }
+            }
+        case "item", "itemFh":
+            // Unlock specific items for the party
+            if let value = value {
+                for idStr in value.split(separator: "+") {
+                    if let id = Int(idStr) {
+                        gameManager.game.unlockedItems.insert("\(edition)-\(id)")
+                    }
+                }
+            }
+        case "itemDesign":
+            if let value = value, let id = Int(value) {
+                gameManager.game.unlockedItems.insert("\(edition)-\(id)")
+            }
+        case "randomItemDesign":
+            // Random item design — player should draw from random item pool
+            // Handled via the existing random item dialog flow
+            break
+        case "scenario":
+            // Scenario unlock is handled by scenario completion flow
+            break
+        case "battleGoal":
+            if let v = value.flatMap({ Int($0) }) {
+                for character in gameManager.game.activeCharacters where !character.exhausted {
+                    character.battleGoalProgress += v
+                    break
+                }
+            }
+        case "damage":
+            if let v = value.flatMap({ Int($0) }) {
+                for character in gameManager.game.activeCharacters where !character.exhausted {
+                    gameManager.entityManager.changeHealth(character, amount: -v)
+                    break
+                }
+            }
+        case "heal":
+            if let v = value.flatMap({ Int($0) }) {
+                for character in gameManager.game.activeCharacters where !character.exhausted {
+                    gameManager.entityManager.changeHealth(character, amount: v)
+                    break
+                }
+            }
+        case "condition":
+            if let value = value {
+                let conditions = value.split(separator: "+").map(String.init)
+                for condStr in conditions {
+                    if let condName = ConditionName(rawValue: condStr) {
+                        for character in gameManager.game.activeCharacters where !character.exhausted {
+                            gameManager.entityManager.addCondition(condName, to: character)
+                            break
+                        }
+                    }
+                }
+            }
+        case "partyAchievement":
+            if let value = value {
+                gameManager.game.partyAchievements.insert(value)
+            }
+        default:
+            break
+        }
     }
 }
