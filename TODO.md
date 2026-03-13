@@ -254,19 +254,13 @@ Full rules audit against the official Gloomhaven v1 rulebook and 114 GH scenario
 - [x] **Loot/coin pickup** — end-of-turn auto-loot in `finishPlayerTurn()`; movement loot via `checkForLoot()`; loot-action via `collectLootInRange()`; monster death drops via `dropLoot()`
 - [x] **AoE spatial patterns** — `AoEResolver` transforms AoE patterns to board coords with rotation, integrated into MonsterAI
 
-### Critical — scenarios unplayable or significantly broken
-
-- [x] **AoE spatial patterns** — `AoEResolver.resolveTargets()` transforms AoE patterns to board coordinates, tries all 6 rotations, picks orientation that maximizes hits (focus priority); integrated into `MonsterAI.computeTurn()`
-- [x] **Loot/coin pickup** — end-of-turn auto-loot in `finishPlayerTurn()`; movement loot via `checkForLoot()`; loot-action via `collectLootInRange()`; monster death drops via `dropLoot()`
-- [x] **Character exhaustion from cards** — `advanceToNextCardSelection()` checks hand < 2: forces long rest if discard >= 2, exhausts if both insufficient; 0 HP exhaustion via `EntityManager.changeHealth()`
-
 ### High — affects many scenarios or core character builds
 
 - [ ] **Teleport movement** — treated as normal movement via `beginMoveAction()`; should bypass all terrain, obstacles, figures, and traps; used by The Gloom boss and several character classes
 - [ ] **Treasure reward distribution** — treasures can be marked looted but no actual gold/items/designs awarded from `treasures.json` lookup (76 entries); purely cosmetic currently
 - [ ] **Persistent ability tracking** — `AbilityModel.persistent` flag exists but no ongoing effect system; persistent cards should stay in active area providing continuous bonuses (shield, retaliate, element generation)
 - [ ] **Curse/Bless deck limits** — no enforcement of max 10 curse and 10 bless cards per deck; `addCurse()`/`addBless()` add without limit
-- [ ] **Ally deck for escorts** — `allyDeck` field parsed in `ScenarioData` but never used; escorts with ally decks should draw from ally AM deck for attacks
+- [x] **Ally deck for escorts** — `EscortTurnController` draws from ally or monster AM deck based on `container.useAllyDeck` flag
 - [ ] **End-of-scenario bonus XP** — level-based bonus XP (4 + level × 2) tracked in `LevelManager.experience()` but not confirmed to be applied to characters at scenario conclusion
 
 ### Moderate — affects some scenarios or character builds
@@ -308,7 +302,7 @@ Full rules audit against the official Gloomhaven v1 rulebook and 114 GH scenario
 7. Treasure reward distribution (76 unrewarded treasures)
 8. Persistent ability tracking (ongoing effects)
 9. Curse/Bless deck limits (rules enforcement)
-10. Ally deck for escorts
+10. ~~Ally deck for escorts~~ ✅
 11. Battle goal evaluation
 12. City/Road events
 13. Jump visual distinction
