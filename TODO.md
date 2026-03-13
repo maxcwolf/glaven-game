@@ -261,7 +261,7 @@ Full rules audit against the official Gloomhaven v1 rulebook and 114 GH scenario
 - [ ] **Persistent ability tracking** — `AbilityModel.persistent` flag exists but no ongoing effect system; persistent cards should stay in active area providing continuous bonuses (shield, retaliate, element generation)
 - [x] **Curse/Bless deck limits** — `addCurse()`/`addBless()` now enforce max 10 per deck before inserting
 - [x] **Ally deck for escorts** — `EscortTurnController` draws from ally or monster AM deck based on `container.useAllyDeck` flag
-- [ ] **End-of-scenario bonus XP** — level-based bonus XP (4 + level × 2) tracked in `LevelManager.experience()` but not confirmed to be applied to characters at scenario conclusion
+- [x] **End-of-scenario bonus XP** — `finishScenario(success:)` awards `levelManager.experience()` (4 + level × 2) to all non-exhausted characters on victory
 
 ### Moderate — affects some scenarios or character builds
 

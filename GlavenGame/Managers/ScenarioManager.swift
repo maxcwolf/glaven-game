@@ -56,7 +56,13 @@ final class ScenarioManager {
             // Record completion
             game.completedScenarios.insert(data.id)
 
-            // Apply rewards
+            // Level-based bonus XP for all non-exhausted characters (GH rulebook p.34)
+            let bonusXP = levelManager.experience()
+            for character in game.activeCharacters where !character.exhausted {
+                character.experience += bonusXP
+            }
+
+            // Apply scenario-specific rewards
             if let rewards = data.rewards {
                 applyRewards(rewards, edition: data.edition)
             }
