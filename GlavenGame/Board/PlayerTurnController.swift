@@ -183,7 +183,7 @@ final class PlayerTurnController {
 
         case .teleport:
             let teleportValue = action.value?.intValue ?? 2
-            coordinator.beginMoveAction(pieceID: pieceID, moveRange: teleportValue)
+            coordinator.beginTeleportAction(pieceID: pieceID, range: teleportValue)
             coordinator.log("\(characterID): Teleport \(teleportValue)", category: .move)
 
         case .attack:

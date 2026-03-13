@@ -15,7 +15,7 @@ enum BoardPhase: String {
 enum InteractionMode {
     case idle
     case placingCharacter(characterID: String)
-    case selectingMove(pieceID: PieceID, range: Int, validHexes: Set<HexCoord>)
+    case selectingMove(pieceID: PieceID, range: Int, validHexes: Set<HexCoord>, teleport: Bool = false)
     /// Single-target attack selection (targetCount == 1).
     case selectingAttackTarget(pieceID: PieceID, range: Int, validTargets: Set<PieceID>)
     /// Multi-target attack selection (targetCount > 1). Player picks targets one by one.
@@ -981,6 +981,26 @@ final class BoardCoordinator {
         boardScene?.highlightHexes(validHexes, color: .cyan, offsetCol: offsetCol, offsetRow: offsetRow)
     }
 
+    /// Begin a teleport action — can move to any unoccupied revealed hex within range,
+    /// ignoring obstacles, figures, traps, and terrain along the way.
+    func beginTeleportAction(pieceID: PieceID, range: Int) {
+        guard let pos = boardState.piecePositions[pieceID] else { return }
+
+        let occupiedHexes = Set(boardState.piecePositions.values)
+
+        // Any passable hex on the board within range that isn't occupied by another figure
+        var validHexes = Set<HexCoord>()
+        for (coord, cell) in boardState.cells {
+            guard cell.passable else { continue }
+            guard !occupiedHexes.contains(coord) || coord == pos else { continue }
+            guard pos.distance(to: coord) <= range else { continue }
+            validHexes.insert(coord)
+        }
+
+        interactionMode = .selectingMove(pieceID: pieceID, range: range, validHexes: validHexes, teleport: true)
+        boardScene?.highlightHexes(validHexes, color: .purple, offsetCol: offsetCol, offsetRow: offsetRow)
+    }
+
     /// Execute a move to a target hex.
     func executeMove(pieceID: PieceID, to target: HexCoord) {
         guard let pos = boardState.piecePositions[pieceID] else { return }
@@ -1009,6 +1029,24 @@ final class BoardCoordinator {
             self?.checkForDoorReveal(from: target)
 
             // Check if character stepped on a loot token
+            self?.checkForLoot(pieceID: pieceID, at: target)
+        }
+    }
+
+    /// Execute a teleport to a target hex — direct placement, no pathfinding.
+    /// Teleporting bypasses traps, hazards, and obstacles.
+    func executeTeleport(pieceID: PieceID, to target: HexCoord) {
+        guard let pos = boardState.piecePositions[pieceID] else { return }
+
+        boardScene?.clearHighlights()
+        boardScene?.movePiece(id: pieceID, along: [pos, target], offsetCol: offsetCol, offsetRow: offsetRow) { [weak self] in
+            self?.boardState.movePiece(pieceID, to: target)
+            self?.interactionMode = .idle
+            self?.log("\(pieceID): Teleported to (\(target.col), \(target.row))", category: .move)
+
+            // Teleport does NOT trigger traps or hazards (you bypass them)
+            // But do check for door reveals and loot
+            self?.checkForDoorReveal(from: target)
             self?.checkForLoot(pieceID: pieceID, at: target)
         }
     }
@@ -1692,9 +1730,13 @@ final class BoardCoordinator {
         case .placingCharacter(let charID):
             placeCharacter(characterID: charID, at: coord)
 
-        case .selectingMove(let pieceID, _, let validHexes):
+        case .selectingMove(let pieceID, _, let validHexes, let isTeleport):
             if validHexes.contains(coord) {
-                executeMove(pieceID: pieceID, to: coord)
+                if isTeleport {
+                    executeTeleport(pieceID: pieceID, to: coord)
+                } else {
+                    executeMove(pieceID: pieceID, to: coord)
+                }
             }
 
         case .placingSummon(let summonID, let characterID, let validHexes):

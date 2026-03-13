@@ -256,7 +256,7 @@ Full rules audit against the official Gloomhaven v1 rulebook and 114 GH scenario
 
 ### High — affects many scenarios or core character builds
 
-- [ ] **Teleport movement** — treated as normal movement via `beginMoveAction()`; should bypass all terrain, obstacles, figures, and traps; used by The Gloom boss and several character classes
+- [x] **Teleport movement** — `beginTeleportAction()` shows all passable hexes within range regardless of obstacles/enemies; `executeTeleport()` places directly without pathfinding and skips trap/hazard triggers
 - [ ] **Treasure reward distribution** — treasures can be marked looted but no actual gold/items/designs awarded from `treasures.json` lookup (76 entries); purely cosmetic currently
 - [ ] **Persistent ability tracking** — `AbilityModel.persistent` flag exists but no ongoing effect system; persistent cards should stay in active area providing continuous bonuses (shield, retaliate, element generation)
 - [ ] **Curse/Bless deck limits** — no enforcement of max 10 curse and 10 bless cards per deck; `addCurse()`/`addBless()` add without limit
@@ -298,7 +298,7 @@ Full rules audit against the official Gloomhaven v1 rulebook and 114 GH scenario
 3. ~~Objective `count` field~~ ✅
 4. ~~Loot/coin pickup~~ ✅
 5. ~~AoE spatial patterns~~ ✅
-6. Teleport movement (The Gloom, character classes)
+6. ~~Teleport movement~~ ✅
 7. Treasure reward distribution (76 unrewarded treasures)
 8. Persistent ability tracking (ongoing effects)
 9. Curse/Bless deck limits (rules enforcement)
