@@ -877,6 +877,14 @@ final class BoardCoordinator {
 
     /// Called when the player finishes their turn (all actions done or skipped).
     func finishPlayerTurn() {
+        // End-of-turn auto-loot: pick up any loot on the character's current hex
+        if let ptc = activePlayerTurn {
+            let pieceID = PieceID.character(ptc.characterID)
+            if let pos = boardState.piecePositions[pieceID] {
+                checkForLoot(pieceID: pieceID, at: pos)
+            }
+        }
+
         checkVictoryDefeat()
         if scenarioResult == nil {
             advanceToNextFigure()

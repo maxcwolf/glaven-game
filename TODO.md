@@ -250,12 +250,14 @@ Full rules audit against the official Gloomhaven v1 rulebook and 114 GH scenario
 - [x] **Global/party achievements** — `checkSingleRequirement()` gates scenario access
 - [x] **Escort AI and movement** — `EscortAI.computeTurn()` uses summon-like AI (focus → pathfind → attack) with `EscortTurnController` for animated execution; draws from ally or monster AM deck based on `allyDeck` flag
 - [x] **Objective `count` field** — `ObjectiveData.count` parsed from scenario JSON; `ScenarioManager.addObjective()` creates multiple entities per container
+- [x] **Character exhaustion from cards** — `advanceToNextCardSelection()` handles forced long rest and exhaustion; 0 HP exhaustion via `EntityManager`
+- [x] **Loot/coin pickup** — end-of-turn auto-loot in `finishPlayerTurn()`; movement loot via `checkForLoot()`; loot-action via `collectLootInRange()`; monster death drops via `dropLoot()`
 
 ### Critical — scenarios unplayable or significantly broken
 
 - [ ] **AoE spatial patterns** — multi-target works by proximity but hex-shaped AoE (line, cone, burst) not spatially evaluated; affects many monster/character ability cards
-- [ ] **Loot/coin pickup** — no end-of-turn auto-loot on current hex, no loot-action board collection; `lootTokens` board state exists but pickup never triggers; loot is a core economy mechanic
-- [ ] **Character exhaustion from cards** — no auto-check when hand + discard < 2; characters only exhaust via manual toggle or 0 HP; per GH rules, must exhaust when unable to play 2 cards or rest
+- [x] **Loot/coin pickup** — end-of-turn auto-loot in `finishPlayerTurn()`; movement loot via `checkForLoot()`; loot-action via `collectLootInRange()`; monster death drops via `dropLoot()`
+- [x] **Character exhaustion from cards** — `advanceToNextCardSelection()` checks hand < 2: forces long rest if discard >= 2, exhausts if both insufficient; 0 HP exhaustion via `EntityManager.changeHealth()`
 
 ### High — affects many scenarios or core character builds
 
@@ -297,9 +299,9 @@ Full rules audit against the official Gloomhaven v1 rulebook and 114 GH scenario
 ### Priority order (remaining)
 
 1. ~~Escort AI and movement~~ ✅
-2. Character exhaustion from cards (core rules violation)
+2. ~~Character exhaustion from cards~~ ✅ (already implemented)
 3. ~~Objective `count` field~~ ✅
-4. Loot/coin pickup (core economy)
+4. ~~Loot/coin pickup~~ ✅
 5. AoE spatial patterns (many ability cards affected)
 6. Teleport movement (The Gloom, character classes)
 7. Treasure reward distribution (76 unrewarded treasures)
