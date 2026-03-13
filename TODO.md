@@ -271,7 +271,7 @@ Full rules audit against the official Gloomhaven v1 rulebook and 114 GH scenario
 - [ ] **Icy terrain** — no forced-movement mechanic for icy terrain (continue movement in same direction until hitting obstacle)
 - [ ] **Dynamic obstacles** — no mechanism to create or destroy obstacles mid-scenario; `HexCell` overlays are immutable after board build; some scenario rules and abilities create/destroy obstacles
 - [ ] **Personal quest auto-completion** — `personalQuest` tracked but completion conditions never auto-evaluated; retirement should trigger automatically when quest is fulfilled
-- [ ] **XP from ability cards** — XP is added when `.experience` actions fire, but no "once per card use" enforcement; some ability cards grant XP on use
+- [x] **XP from ability cards** — `.experience` actions in ability card action trees fire once during turn execution; no double-counting since each card's actions execute exactly once per play
 - [x] **Summon placement validation** — `executeSummon()` computes `emptyNeighbors` as passable + unoccupied hexes adjacent to summoner; placement via interactive hex selection
 
 ### Minor — edge cases, advanced mechanics, FH-only conditions
@@ -287,7 +287,7 @@ Full rules audit against the official Gloomhaven v1 rulebook and 114 GH scenario
 - [ ] **Enfeeble** (FH) — no mechanics
 - [x] **Invisible + AoE interaction** — `gatherEnemies(includeInvisible: true)` used by AoE resolver; invisible figures excluded from focus but hit by area attacks
 - [ ] **Multi-hex obstacles** — `HexCell` stores one overlay per hex; no support for obstacles spanning multiple hexes (rare in GH, more common in FH)
-- [ ] **Trap condition effects** — some traps apply conditions (poison, wound) in addition to or instead of damage; current trap handling only supports damage via `trapDamage: Int?`
+- [x] **Trap condition effects** — `checkForTrap()` now applies conditions by sub-type: poison→Poison, bear→Immobilize, thorns→Wound; `trapConditions()` maps sub-types to condition arrays
 - [ ] **Random dungeon mode** — `randomDungeon` field in scenario rules not handled; procedural dungeon generation not implemented
 - [ ] **Pathfinding visualization** — AI pathfinding works but no visual debug overlay for monster movement decisions
 

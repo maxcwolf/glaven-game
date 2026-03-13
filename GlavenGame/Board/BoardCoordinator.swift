@@ -1588,9 +1588,11 @@ final class BoardCoordinator {
         // Apply damage
         applyTrapDamage(damage, to: pieceID, gameManager: gameManager)
 
-        // Apply conditions (e.g., poison trap)
-        if subType == "poison" {
-            applyTrapCondition(.poison, to: pieceID, gameManager: gameManager)
+        // Apply conditions based on trap sub-type
+        if let conditions = trapConditions(for: subType) {
+            for condition in conditions {
+                applyTrapCondition(condition, to: pieceID, gameManager: gameManager)
+            }
         }
 
         // Visual feedback
@@ -1655,6 +1657,16 @@ final class BoardCoordinator {
             }
         default:
             break
+        }
+    }
+
+    /// Map trap sub-types to conditions they apply (in addition to damage).
+    private func trapConditions(for subType: String?) -> [ConditionName]? {
+        switch subType {
+        case "poison": return [.poison]
+        case "bear": return [.immobilize]
+        case "thorns": return [.wound]
+        default: return nil
         }
     }
 
