@@ -102,7 +102,9 @@ final class ScenarioManager {
             character.health = character.maxHealth
             character.entityConditions.removeAll { !$0.permanent }
             character.handCards.append(contentsOf: character.discardedCards)
+            character.handCards.append(contentsOf: character.activeCards)
             character.discardedCards.removeAll()
+            character.activeCards.removeAll()
             character.shield = nil
             character.shieldPersistent = nil
             character.retaliate = []

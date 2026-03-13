@@ -64,6 +64,7 @@ final class GameCharacter: Figure, Entity {
     var handCards: [Int] = []       // Cards currently in hand
     var discardedCards: [Int] = []  // Cards in discard pile (recoverable)
     var lostCards: [Int] = []       // Cards permanently lost this scenario
+    var activeCards: [Int] = []     // Persistent cards in the active area (ongoing effects)
 
     // Character-level resources (FH: lumber, metal, hide, herbs)
     var resources: [String: Int] = [:]

@@ -198,6 +198,7 @@ struct CharacterSnapshot: Codable {
     var handCards: [Int]
     var discardedCards: [Int]
     var lostCards: [Int]
+    var activeCards: [Int]
     var resources: [String: Int]
     var enhancements: [Enhancement]
     // Scenario item states (optional for backward compatibility)
@@ -220,7 +221,7 @@ struct CharacterSnapshot: Codable {
          notes: String = "", battleGoalProgress: Int = 0,
          personalQuest: String? = nil, personalQuestProgress: [Int] = [],
          retired: Bool = false,
-         handCards: [Int] = [], discardedCards: [Int] = [], lostCards: [Int] = [],
+         handCards: [Int] = [], discardedCards: [Int] = [], lostCards: [Int] = [], activeCards: [Int] = [],
          resources: [String: Int] = [:], enhancements: [Enhancement] = [],
          spentItems: [String]? = nil, consumedItems: [String]? = nil) {
         self.name = name; self.edition = edition; self.level = level
@@ -247,6 +248,7 @@ struct CharacterSnapshot: Codable {
         self.handCards = handCards
         self.discardedCards = discardedCards
         self.lostCards = lostCards
+        self.activeCards = activeCards
         self.resources = resources
         self.enhancements = enhancements
         self.spentItems = spentItems
@@ -296,6 +298,7 @@ struct CharacterSnapshot: Codable {
         handCards = try container.decodeIfPresent([Int].self, forKey: .handCards) ?? []
         discardedCards = try container.decodeIfPresent([Int].self, forKey: .discardedCards) ?? []
         lostCards = try container.decodeIfPresent([Int].self, forKey: .lostCards) ?? []
+        activeCards = try container.decodeIfPresent([Int].self, forKey: .activeCards) ?? []
         resources = try container.decodeIfPresent([String: Int].self, forKey: .resources) ?? [:]
         enhancements = try container.decodeIfPresent([Enhancement].self, forKey: .enhancements) ?? []
         spentItems = try container.decodeIfPresent([String].self, forKey: .spentItems)

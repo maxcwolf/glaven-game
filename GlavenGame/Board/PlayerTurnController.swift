@@ -585,11 +585,14 @@ final class PlayerTurnController {
     }
 
     private func finishTurn() {
-        // Move cards to appropriate piles
+        // Move cards to appropriate piles (hand → discard/lost/active)
         guard let character = gameManager?.game.characters.first(where: { $0.id == characterID }) else { return }
 
         if let top = topCard?.cardId {
-            if topCard?.lost == true {
+            if topCard?.persistent == true {
+                // Persistent cards go to active area (ongoing effects)
+                character.activeCards.append(top)
+            } else if topCard?.lost == true {
                 character.lostCards.append(top)
             } else {
                 character.discardedCards.append(top)
@@ -598,7 +601,9 @@ final class PlayerTurnController {
         }
 
         if let bottom = bottomCard?.cardId {
-            if bottomCard?.bottomLost == true {
+            if bottomCard?.persistent == true {
+                character.activeCards.append(bottom)
+            } else if bottomCard?.bottomLost == true {
                 character.lostCards.append(bottom)
             } else {
                 character.discardedCards.append(bottom)

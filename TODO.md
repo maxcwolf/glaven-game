@@ -258,7 +258,7 @@ Full rules audit against the official Gloomhaven v1 rulebook and 114 GH scenario
 
 - [x] **Teleport movement** — `beginTeleportAction()` shows all passable hexes within range regardless of obstacles/enemies; `executeTeleport()` places directly without pathfinding and skips trap/hazard triggers
 - [x] **Treasure reward distribution** — `TreasureLootSheet.applyTreasureReward()` parses reward strings and distributes gold, XP, items, conditions, damage, heals, party achievements to characters/party
-- [ ] **Persistent ability tracking** — `AbilityModel.persistent` flag exists but no ongoing effect system; persistent cards should stay in active area providing continuous bonuses (shield, retaliate, element generation)
+- [x] **Persistent ability tracking** — `activeCards` array on `GameCharacter`; persistent cards routed to active area in `finishTurn()`; returned to hand between scenarios; snapshot-safe with backward compat
 - [x] **Curse/Bless deck limits** — `addCurse()`/`addBless()` now enforce max 10 per deck before inserting
 - [x] **Ally deck for escorts** — `EscortTurnController` draws from ally or monster AM deck based on `container.useAllyDeck` flag
 - [x] **End-of-scenario bonus XP** — `finishScenario(success:)` awards `levelManager.experience()` (4 + level × 2) to all non-exhausted characters on victory
@@ -300,7 +300,7 @@ Full rules audit against the official Gloomhaven v1 rulebook and 114 GH scenario
 5. ~~AoE spatial patterns~~ ✅
 6. ~~Teleport movement~~ ✅
 7. ~~Treasure reward distribution~~ ✅
-8. Persistent ability tracking (ongoing effects)
+8. ~~Persistent ability tracking~~ ✅
 9. ~~Curse/Bless deck limits~~ ✅
 10. ~~Ally deck for escorts~~ ✅
 11. Battle goal evaluation
