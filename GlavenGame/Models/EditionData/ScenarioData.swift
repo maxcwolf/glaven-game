@@ -129,8 +129,11 @@ struct ObjectiveData: Codable, Hashable {
     var tags: [String]?
     var allyDeck: Bool?
     var trackDamage: Bool?
+    var actions: [ActionModel]?
+    var count: Int?
 
     var isEscort: Bool { escort ?? false }
+    var useAllyDeck: Bool { allyDeck ?? false }
     var resolvedInitiative: Int {
         switch initiative {
         case .int(let v): return v
@@ -138,6 +141,7 @@ struct ObjectiveData: Codable, Hashable {
         case nil: return 99
         }
     }
+    var resolvedCount: Int { count ?? 1 }
 }
 
 // MARK: - Scenario Requirement

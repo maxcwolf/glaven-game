@@ -163,6 +163,7 @@ final class BoardCoordinator {
 
     /// The monster turn controller.
     var monsterTurnController: MonsterTurnController?
+    var escortTurnController: EscortTurnController?
 
     /// Characters that have completed card selection this round.
     var cardSelectionsComplete: Set<String> = []
@@ -539,6 +540,7 @@ final class BoardCoordinator {
         activePlayerTurn = nil
         monsterTurnController = nil
         summonTurnController = nil
+        escortTurnController = nil
         pendingSummonPlacement = nil
         pendingShortRest = nil
         cardSelectionsComplete = []
@@ -820,10 +822,29 @@ final class BoardCoordinator {
                 }
             }
 
-        case .objective:
-            // Objectives don't take actions, just skip
-            gameManager.roundManager.toggleFigure(entry.figure) // toggle on
-            advanceToNextFigure()
+        case .objective(let container):
+            if container.escort && container.hasEscortActions {
+                // Escort turn — automated AI
+                gameManager.roundManager.toggleFigure(entry.figure) // toggle on
+                interactionMode = .watchingMonsterTurn
+                log("\(container.name): Escort turn begins", category: .round)
+
+                let controller = EscortTurnController(coordinator: self, gameManager: gameManager)
+                self.escortTurnController = controller
+
+                Task { @MainActor in
+                    await controller.executeEscortTurns(for: container)
+                    self.escortTurnController = nil
+                    self.checkVictoryDefeat()
+                    if self.scenarioResult == nil {
+                        self.advanceToNextFigure()
+                    }
+                }
+            } else {
+                // Non-escort objectives or passive escorts — skip
+                gameManager.roundManager.toggleFigure(entry.figure) // toggle on
+                advanceToNextFigure()
+            }
         }
     }
 

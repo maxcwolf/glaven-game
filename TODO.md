@@ -222,56 +222,91 @@ Tracking features needed for parity with [Gloomhaven Secretariat](https://github
 
 ## Missing Gloomhaven Rules
 
-Rules audit against the official Gloomhaven rulebook (133 GH scenarios). Organized by gameplay impact.
+Full rules audit against the official Gloomhaven v1 rulebook and 114 GH scenario JSONs. Last updated 2026-03-13.
 
-### Critical — scenarios unplayable without these
+### Completed
 
 - [x] **Traps trigger on enter** — damage applied, trap removed, flying immune
 - [x] **Short rest** — recover discards minus one random, optional re-pick for 1 HP
 - [x] **Difficulty selector** — Story/Easy/Normal/Hard/Very Hard with floor() level formula
 - [x] **Scenario finish conditions** — `finish: "won"/"lost"` enforced via `Scenario.pendingFinish`; checked after every kill and at round end
-- [x] **Figure trigger types** — `dead`/`present`/`killed` in `ScenarioFigureRule` evaluated in `shouldTrigger()` (affects ~30 scenarios: escort-loss #56, kill-count win #10, timed victory #27, etc.)
-- [x] **`rooms` reveal effect** — rules with a `rooms: [Int]` array now open those rooms immediately (affects #33, #53, #74, #79, #90, #92 + several solo scenarios)
-- [x] **`amAdd` figure effect** — adds curse/minus1/bless etc. to all character AM decks at scenario start (20 scenarios: #2, #6, #14, #19, #23, #25, #26, #29, #31 …)
-- [x] **`permanentCondition` figure effect** — applies un-removable condition to entities (solo #14 hound→invisible)
-- [x] **`dormant`/`activate` figure effects** — toggle `entity.off` for deferred-spawn monsters (#3 Corrupted Laboratory)
-- [x] **Objective entity death** — `EntityManager.changeHealth` now sets `dead = true` on `GameObjectiveEntity` at 0 HP
-- [x] **`statEffects` rules** — `StatEffectRule`/`StatEffectData` models match actual JSON; `ScenarioRulesManager.applyScenarioStatEffects()` renames monsters, overrides decks, scales HP (Hx2/HxC formulas), adds immunities/stat actions; `MonsterManager.applyScenarioStatEffect()` applies to existing entities and persists for future spawns; snapshot serialization updated for backward compat
-- [x] **Hazardous terrain** — `checkForHazard()` deals `levelManager.terrain()` damage on enter (movement, push/pull) and at start-of-turn for both characters and monsters; flying figures immune; terrain persists
-- [x] **Push/Pull (monster attacks)** — attack sub-action push/pull (`pendingPush`/`pendingPull` on `MonsterTurnResult`) now executes via `BoardCoordinator.performPushPull()` (async, auto-executes or prompts player for direction); player-turn push/pull already worked
-- [x] **Item use during turns** — `spentItems`/`consumedItems` on `GameCharacter`; tapping items in `CharacterItemsView` toggles state; long rest clears spent; scenario end clears both; undo/redo safe
-- [ ] **AoE spatial patterns** — multi-target works by proximity but hex-shaped AoE (line, cone, burst) not evaluated
-- [ ] **Loot/coin pickup** — no end-of-turn auto-loot, no loot-action board collection; `lootTokens` board state exists but never triggers
+- [x] **Figure trigger types** — `dead`/`present`/`killed` in `ScenarioFigureRule` evaluated in `shouldTrigger()` (affects ~30 scenarios)
+- [x] **`rooms` reveal effect** — rules with a `rooms: [Int]` array open those rooms immediately
+- [x] **`amAdd` figure effect** — adds curse/minus1/bless etc. to all character AM decks at scenario start (20+ scenarios)
+- [x] **`permanentCondition` figure effect** — applies un-removable condition to entities
+- [x] **`dormant`/`activate` figure effects** — toggle `entity.off` for deferred-spawn monsters
+- [x] **Objective entity death** — `EntityManager.changeHealth` sets `dead = true` on `GameObjectiveEntity` at 0 HP
+- [x] **`statEffects` rules** — renames monsters, overrides decks, scales HP (Hx2/HxC), adds immunities/stat actions
+- [x] **Hazardous terrain** — `checkForHazard()` deals terrain damage on enter/push/pull/start-of-turn; flying immune
+- [x] **Push/Pull (monster attacks)** — attack sub-action push/pull via `performPushPull()`
+- [x] **Item use during turns** — `spentItems`/`consumedItems` on `GameCharacter`; long rest clears spent; scenario end clears both
+- [x] **Rolling modifiers** — `drawChain()` auto-chains rolling cards for both player and monster draws
+- [x] **Advantage/Disadvantage cancellation** — when both are true, neither branch triggers; single card drawn (correct GH behavior)
+- [x] **Monster focus tiebreakers** — full chain: shortest path → proximity → initiative in `MonsterAI.findFocus()`
+- [x] **Monster trap avoidance** — `Pathfinder` avoids traps first, falls back to allowing traps if no other path
+- [x] **Retaliate range check** — `CombatResolver` checks `attackerDefenderDistance <= retaliateRange`
+- [x] **Spawn in occupied hex** — `BoardBuilder.findNearestEmpty()` BFS fallback when spawn hex is occupied
+- [x] **Scenario links/unlocks** — completing scenarios unlocks new ones via `unlocks` array
+- [x] **Global/party achievements** — `checkSingleRequirement()` gates scenario access
+- [x] **Escort AI and movement** — `EscortAI.computeTurn()` uses summon-like AI (focus → pathfind → attack) with `EscortTurnController` for animated execution; draws from ally or monster AM deck based on `allyDeck` flag
+- [x] **Objective `count` field** — `ObjectiveData.count` parsed from scenario JSON; `ScenarioManager.addObjective()` creates multiple entities per container
+
+### Critical — scenarios unplayable or significantly broken
+
+- [ ] **AoE spatial patterns** — multi-target works by proximity but hex-shaped AoE (line, cone, burst) not spatially evaluated; affects many monster/character ability cards
+- [ ] **Loot/coin pickup** — no end-of-turn auto-loot on current hex, no loot-action board collection; `lootTokens` board state exists but pickup never triggers; loot is a core economy mechanic
+- [ ] **Character exhaustion from cards** — no auto-check when hand + discard < 2; characters only exhaust via manual toggle or 0 HP; per GH rules, must exhaust when unable to play 2 cards or rest
+
+### High — affects many scenarios or core character builds
+
+- [ ] **Teleport movement** — treated as normal movement via `beginMoveAction()`; should bypass all terrain, obstacles, figures, and traps; used by The Gloom boss and several character classes
+- [ ] **Treasure reward distribution** — treasures can be marked looted but no actual gold/items/designs awarded from `treasures.json` lookup (76 entries); purely cosmetic currently
+- [ ] **Persistent ability tracking** — `AbilityModel.persistent` flag exists but no ongoing effect system; persistent cards should stay in active area providing continuous bonuses (shield, retaliate, element generation)
+- [ ] **Curse/Bless deck limits** — no enforcement of max 10 curse and 10 bless cards per deck; `addCurse()`/`addBless()` add without limit
+- [ ] **Ally deck for escorts** — `allyDeck` field parsed in `ScenarioData` but never used; escorts with ally decks should draw from ally AM deck for attacks
+- [ ] **End-of-scenario bonus XP** — level-based bonus XP (4 + level × 2) tracked in `LevelManager.experience()` but not confirmed to be applied to characters at scenario conclusion
 
 ### Moderate — affects some scenarios or character builds
 
-- [x] **Rolling modifiers in monster turns** — already handled: `AttackModifierDrawOverlay.drawChain()` auto-chains rolling cards for both player and monster draws
-- [ ] **Teleport** — treated as normal movement; should bypass all terrain and obstacles
-- [ ] **Jump movement in player UI** — pathfinding correctly treats intermediate hexes as passable, but no visual distinction in player turn UI
-- [ ] **Treasure rewards** — treasures can be marked looted but no actual gold/items distributed from `treasures.json` lookup
-- [ ] **City/Road events** — not implemented
-- [ ] **Battle goals** — `selectedBattleGoal` tracked per character but completion condition never evaluated
+- [ ] **Jump movement visual** — pathfinding correctly treats intermediate hexes as passable, but player turn UI shows no visual distinction between move and jump
+- [ ] **Battle goal evaluation** — `selectedBattleGoal` tracked per character but completion conditions never auto-evaluated; should award checkmarks toward perks
+- [ ] **City/Road events between scenarios** — event card system exists but no automatic prompting between scenarios for city/road event draws
+- [ ] **Icy terrain** — no forced-movement mechanic for icy terrain (continue movement in same direction until hitting obstacle)
+- [ ] **Dynamic obstacles** — no mechanism to create or destroy obstacles mid-scenario; `HexCell` overlays are immutable after board build; some scenario rules and abilities create/destroy obstacles
+- [ ] **Personal quest auto-completion** — `personalQuest` tracked but completion conditions never auto-evaluated; retirement should trigger automatically when quest is fulfilled
+- [ ] **XP from ability cards** — XP is added when `.experience` actions fire, but no "once per card use" enforcement; some ability cards grant XP on use
+- [ ] **Summon placement validation** — no enforcement that summons must be placed on an empty hex adjacent to the summoner; `placingSummon` interaction mode exists but valid hex calculation may be incomplete
 
-### Minor — advanced/Frosthaven-only conditions
+### Minor — edge cases, advanced mechanics, FH-only conditions
 
-- [ ] **Brittle** — no mechanics (should double damage from next source)
-- [ ] **Ward** — no mechanics (should halve damage from next source)
-- [ ] **Bane** — no mechanics (should add −10 curse to that figure's modifier deck)
-- [ ] **Chill** — no mechanics (should reduce movement by 2)
-- [ ] **Impair / Rupture / Infect / Plague / Enfeeble** — defined, no effect logic
+- [ ] **Brittle** (FH) — no mechanics; should double damage from next source
+- [ ] **Ward** (FH) — no mechanics; should halve damage from next source, rounded down
+- [ ] **Bane** (FH) — no mechanics; should deal 10 damage at end of affected figure's next turn
+- [ ] **Chill** (FH) — no mechanics; stackable, should reduce movement by 1 per stack
+- [ ] **Impair** (FH) — no mechanics; should cause disadvantage on all attacks
+- [ ] **Rupture** (FH) — no mechanics; should cause suffer 1 damage on positive condition gain
+- [ ] **Infect** (FH) — no mechanics; should prevent healing (both heal actions and passive regeneration)
+- [ ] **Plague** (FH) — no mechanics
+- [ ] **Enfeeble** (FH) — no mechanics
+- [ ] **Invisible + AoE interaction** — invisible figures excluded from monster focus (correct) but should still be hittable by AoE attacks that include their hex
+- [ ] **Multi-hex obstacles** — `HexCell` stores one overlay per hex; no support for obstacles spanning multiple hexes (rare in GH, more common in FH)
+- [ ] **Trap condition effects** — some traps apply conditions (poison, wound) in addition to or instead of damage; current trap handling only supports damage via `trapDamage: Int?`
+- [ ] **Random dungeon mode** — `randomDungeon` field in scenario rules not handled; procedural dungeon generation not implemented
+- [ ] **Pathfinding visualization** — AI pathfinding works but no visual debug overlay for monster movement decisions
 
-### Priority order
+### Priority order (remaining)
 
-1. ~~Trap triggering~~ ✅
-2. ~~Short rest~~ ✅
-3. ~~Difficulty selector~~ ✅
-4. ~~Scenario finish conditions~~ ✅
-5. ~~Figure triggers (dead/present/killed)~~ ✅
-6. ~~rooms-reveal, amAdd, dormant/activate, permanentCondition~~ ✅
-7. ~~`statEffects` rules~~ ✅
-8. ~~Push/Pull forced movement~~ ✅ (monster attack sub-actions; top-level push on boss cards TBD)
-9. ~~Rolling modifiers in monster turns~~ ✅ (already worked via drawChain())
-10. ~~Hazardous terrain~~ ✅
-11. ~~Item activation during turns~~ ✅
-12. Loot/coin pickup
-13. AoE spatial patterns
+1. ~~Escort AI and movement~~ ✅
+2. Character exhaustion from cards (core rules violation)
+3. ~~Objective `count` field~~ ✅
+4. Loot/coin pickup (core economy)
+5. AoE spatial patterns (many ability cards affected)
+6. Teleport movement (The Gloom, character classes)
+7. Treasure reward distribution (76 unrewarded treasures)
+8. Persistent ability tracking (ongoing effects)
+9. Curse/Bless deck limits (rules enforcement)
+10. Ally deck for escorts
+11. Battle goal evaluation
+12. City/Road events
+13. Jump visual distinction
+14. FH conditions (Brittle, Ward, Bane, Chill, etc.)

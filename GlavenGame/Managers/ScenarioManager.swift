@@ -367,16 +367,21 @@ final class ScenarioManager {
             level: game.level
         )
         container.initiative = objData.resolvedInitiative
+        container.escortActions = objData.actions ?? []
+        container.useAllyDeck = objData.useAllyDeck
 
-        // Calculate health
+        // Calculate health and create entities (count > 1 for multi-instance objectives)
+        let entityCount = objData.resolvedCount
         if let healthValue = objData.health {
             let hp = evaluateEntityValue(healthValue, level: game.level,
                                           characterCount: game.activeCharacters.count)
-            let entity = GameObjectiveEntity(number: index, health: hp, maxHealth: hp)
-            if let marker = objData.marker {
-                entity.marker = marker
+            for i in 0..<entityCount {
+                let entity = GameObjectiveEntity(number: index + i, health: hp, maxHealth: hp)
+                if let marker = objData.marker {
+                    entity.marker = marker
+                }
+                container.entities.append(entity)
             }
-            container.entities.append(entity)
         }
 
         game.figures.append(.objective(container))
