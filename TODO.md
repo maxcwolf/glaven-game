@@ -252,10 +252,11 @@ Full rules audit against the official Gloomhaven v1 rulebook and 114 GH scenario
 - [x] **Objective `count` field** — `ObjectiveData.count` parsed from scenario JSON; `ScenarioManager.addObjective()` creates multiple entities per container
 - [x] **Character exhaustion from cards** — `advanceToNextCardSelection()` handles forced long rest and exhaustion; 0 HP exhaustion via `EntityManager`
 - [x] **Loot/coin pickup** — end-of-turn auto-loot in `finishPlayerTurn()`; movement loot via `checkForLoot()`; loot-action via `collectLootInRange()`; monster death drops via `dropLoot()`
+- [x] **AoE spatial patterns** — `AoEResolver` transforms AoE patterns to board coords with rotation, integrated into MonsterAI
 
 ### Critical — scenarios unplayable or significantly broken
 
-- [ ] **AoE spatial patterns** — multi-target works by proximity but hex-shaped AoE (line, cone, burst) not spatially evaluated; affects many monster/character ability cards
+- [x] **AoE spatial patterns** — `AoEResolver.resolveTargets()` transforms AoE patterns to board coordinates, tries all 6 rotations, picks orientation that maximizes hits (focus priority); integrated into `MonsterAI.computeTurn()`
 - [x] **Loot/coin pickup** — end-of-turn auto-loot in `finishPlayerTurn()`; movement loot via `checkForLoot()`; loot-action via `collectLootInRange()`; monster death drops via `dropLoot()`
 - [x] **Character exhaustion from cards** — `advanceToNextCardSelection()` checks hand < 2: forces long rest if discard >= 2, exhausts if both insufficient; 0 HP exhaustion via `EntityManager.changeHealth()`
 
@@ -302,7 +303,7 @@ Full rules audit against the official Gloomhaven v1 rulebook and 114 GH scenario
 2. ~~Character exhaustion from cards~~ ✅ (already implemented)
 3. ~~Objective `count` field~~ ✅
 4. ~~Loot/coin pickup~~ ✅
-5. AoE spatial patterns (many ability cards affected)
+5. ~~AoE spatial patterns~~ ✅
 6. Teleport movement (The Gloom, character classes)
 7. Treasure reward distribution (76 unrewarded treasures)
 8. Persistent ability tracking (ongoing effects)

@@ -68,7 +68,7 @@ enum MonsterAI {
         let baseRange = stat?.range?.intValue ?? 0
 
         // Parse ability card modifiers
-        let (moveModifier, attackModifier, rangeModifier, pushSteps, pullSteps, extraActions) = parseAbilityCard(ability)
+        let (moveModifier, attackModifier, rangeModifier, pushSteps, pullSteps, extraActions, aoePattern) = parseAbilityCard(ability)
 
         let totalMove = max(0, baseMove + moveModifier)
         let totalAttack = baseAttack + attackModifier
@@ -158,20 +158,35 @@ enum MonsterAI {
             let canHitFocus = finalPos.distance(to: focusPos) <= totalRange &&
                               LineOfSight.hasLOS(from: finalPos, to: focusPos, board: board)
             if canHitFocus {
-                attackTargets.append(focus)
-
-                // Find additional targets if ability has Target > 1
-                if targetCount > 1 {
-                    let additionalTargets = findAdditionalTargets(
-                        from: finalPos,
-                        primaryTarget: focus,
+                if let aoe = aoePattern {
+                    // AoE attack — resolve spatial pattern to find all targets
+                    attackTargets = AoEResolver.resolveTargets(
+                        pattern: aoe,
+                        attackerPos: finalPos,
+                        focusTarget: focus,
                         enemies: enemies,
-                        board: board,
-                        range: totalRange,
-                        count: targetCount - 1,
-                        gameState: gameState
+                        board: board
                     )
-                    attackTargets.append(contentsOf: additionalTargets)
+                    // If AoE didn't hit the focus (shouldn't happen), fall back to focus only
+                    if attackTargets.isEmpty {
+                        attackTargets = [focus]
+                    }
+                } else {
+                    attackTargets.append(focus)
+
+                    // Find additional targets if ability has Target > 1
+                    if targetCount > 1 {
+                        let additionalTargets = findAdditionalTargets(
+                            from: finalPos,
+                            primaryTarget: focus,
+                            enemies: enemies,
+                            board: board,
+                            range: totalRange,
+                            count: targetCount - 1,
+                            gameState: gameState
+                        )
+                        attackTargets.append(contentsOf: additionalTargets)
+                    }
                 }
             }
         }
@@ -463,14 +478,15 @@ enum MonsterAI {
         }
     }
 
-    /// Parse an ability card for move/attack/range modifiers, push/pull steps, and extra actions.
-    private static func parseAbilityCard(_ ability: AbilityModel) -> (move: Int, attack: Int, range: Int, push: Int, pull: Int, extra: [ActionModel]) {
+    /// Parse an ability card for move/attack/range modifiers, push/pull steps, extra actions, and AoE pattern.
+    private static func parseAbilityCard(_ ability: AbilityModel) -> (move: Int, attack: Int, range: Int, push: Int, pull: Int, extra: [ActionModel], aoe: String?) {
         var moveModifier = 0
         var attackModifier = 0
         var rangeModifier = 0
         var pushSteps = 0
         var pullSteps = 0
         var extraActions: [ActionModel] = []
+        var aoePattern: String?
 
         for action in ability.actions ?? [] {
             switch action.type {
@@ -482,7 +498,7 @@ enum MonsterAI {
                 if let val = action.value?.intValue {
                     attackModifier += applyValueType(val, action.valueType)
                 }
-                // Check subActions for range/push/pull modifiers
+                // Check subActions for range/push/pull/area modifiers
                 for sub in action.subActions ?? [] {
                     switch sub.type {
                     case .range:
@@ -493,8 +509,17 @@ enum MonsterAI {
                         if let val = sub.value?.intValue { pushSteps += val }
                     case .pull:
                         if let val = sub.value?.intValue { pullSteps += val }
+                    case .area:
+                        if let val = sub.value?.stringValue, !val.isEmpty {
+                            aoePattern = val
+                        }
                     default: break
                     }
+                }
+            case .area:
+                // Top-level area action (some cards have area as a standalone action)
+                if let val = action.value?.stringValue, !val.isEmpty {
+                    aoePattern = val
                 }
             case .range:
                 if let val = action.value?.intValue {
@@ -505,7 +530,7 @@ enum MonsterAI {
             }
         }
 
-        return (moveModifier, attackModifier, rangeModifier, pushSteps, pullSteps, extraActions)
+        return (moveModifier, attackModifier, rangeModifier, pushSteps, pullSteps, extraActions, aoePattern)
     }
 
     /// Apply a value type modifier.
