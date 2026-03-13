@@ -269,7 +269,7 @@ Full rules audit against the official Gloomhaven v1 rulebook and 114 GH scenario
 - [ ] **Battle goal evaluation** — `selectedBattleGoal` tracked per character but completion conditions never auto-evaluated; should award checkmarks toward perks
 - [ ] **City/Road events between scenarios** — event card system exists but no automatic prompting between scenarios for city/road event draws
 - [ ] **Icy terrain** — no forced-movement mechanic for icy terrain (continue movement in same direction until hitting obstacle)
-- [ ] **Dynamic obstacles** — no mechanism to create or destroy obstacles mid-scenario; `HexCell` overlays are immutable after board build; some scenario rules and abilities create/destroy obstacles
+- [x] **Dynamic obstacles** — `BoardState.placeObstacle()`/`removeObstacle()`/`placeTrap()`/`placeHazard()` allow overlay mutations mid-scenario; passability updated automatically
 - [ ] **Personal quest auto-completion** — `personalQuest` tracked but completion conditions never auto-evaluated; retirement should trigger automatically when quest is fulfilled
 - [x] **XP from ability cards** — `.experience` actions in ability card action trees fire once during turn execution; no double-counting since each card's actions execute exactly once per play
 - [x] **Summon placement validation** — `executeSummon()` computes `emptyNeighbors` as passable + unoccupied hexes adjacent to summoner; placement via interactive hex selection

@@ -127,6 +127,37 @@ final class BoardState {
         return count
     }
 
+    /// Place an obstacle at a hex (makes it impassable).
+    func placeObstacle(at coord: HexCoord, subType: String? = nil) {
+        guard cells[coord] != nil else { return }
+        cells[coord]?.overlay = .obstacle
+        cells[coord]?.overlaySubType = subType
+        cells[coord]?.passable = false
+    }
+
+    /// Remove an obstacle from a hex (makes it passable again).
+    func removeObstacle(at coord: HexCoord) {
+        guard cells[coord] != nil else { return }
+        cells[coord]?.overlay = nil
+        cells[coord]?.overlaySubType = nil
+        cells[coord]?.passable = true
+    }
+
+    /// Place a trap at a hex.
+    func placeTrap(at coord: HexCoord, damage: Int, subType: String? = nil) {
+        guard cells[coord] != nil else { return }
+        cells[coord]?.overlay = .trap
+        cells[coord]?.overlaySubType = subType
+        cells[coord]?.trapDamage = damage
+    }
+
+    /// Place hazardous terrain at a hex.
+    func placeHazard(at coord: HexCoord, subType: String? = nil) {
+        guard cells[coord] != nil else { return }
+        cells[coord]?.overlay = .hazard
+        cells[coord]?.overlaySubType = subType
+    }
+
     /// Remove a treasure overlay from a cell (after it's looted).
     func removeTreasure(at coord: HexCoord) {
         cells[coord]?.overlay = nil
