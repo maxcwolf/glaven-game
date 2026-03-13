@@ -38,12 +38,11 @@ private struct ScaledContentView: View {
     }
 }
 
-@main
-struct GlavenGameApp: App {
+public struct GlavenGameApp: App {
     let modelContainer: ModelContainer
     let gameManager: GameManager
 
-    init() {
+    public init() {
         GlavenFont.registerFonts()
         let schema = Schema([
             SettingsModel.self,
@@ -58,7 +57,7 @@ struct GlavenGameApp: App {
         GlavenTheme.isLight = gameManager.settingsManager.lightMode
     }
 
-    var body: some Scene {
+    public var body: some Scene {
         WindowGroup {
             ScaledContentView()
                 .environment(gameManager)

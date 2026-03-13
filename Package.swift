@@ -7,11 +7,13 @@ let package = Package(
         .macOS(.v14)
     ],
     products: [
-        .executable(name: "GlavenGame", targets: ["GlavenGame"])
+        .executable(name: "GlavenGame", targets: ["GlavenGame"]),
+        .library(name: "GlavenGameLib", targets: ["GlavenGameLib"])
     ],
     targets: [
-        .executableTarget(
-            name: "GlavenGame",
+        // Library target containing all game logic (testable)
+        .target(
+            name: "GlavenGameLib",
             path: "GlavenGame",
             exclude: ["Previews", "Assets.xcassets"],
             resources: [
@@ -22,6 +24,17 @@ let package = Package(
                 .copy("Resources/ScenarioMaps"),
                 .copy("Resources/CardImages")
             ]
+        ),
+        // Executable target — thin wrapper that launches the app
+        .executableTarget(
+            name: "GlavenGame",
+            dependencies: ["GlavenGameLib"],
+            path: "GlavenGameApp"
+        ),
+        .testTarget(
+            name: "GlavenGameTests",
+            dependencies: ["GlavenGameLib"],
+            path: "Tests"
         )
     ]
 )

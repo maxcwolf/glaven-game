@@ -1,0 +1,3 @@
+import GlavenGameLib
+
+GlavenGameApp.main()
