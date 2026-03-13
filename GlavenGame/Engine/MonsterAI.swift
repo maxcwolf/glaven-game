@@ -160,11 +160,13 @@ enum MonsterAI {
             if canHitFocus {
                 if let aoe = aoePattern {
                     // AoE attack — resolve spatial pattern to find all targets
+                    // AoE includes invisible figures (they can be hit by area attacks)
+                    let allEnemies = gatherEnemies(board: board, monster: monster, gameState: gameState, includeInvisible: true)
                     attackTargets = AoEResolver.resolveTargets(
                         pattern: aoe,
                         attackerPos: finalPos,
                         focusTarget: focus,
-                        enemies: enemies,
+                        enemies: allEnemies,
                         board: board
                     )
                     // If AoE didn't hit the focus (shouldn't happen), fall back to focus only
@@ -419,25 +421,28 @@ enum MonsterAI {
 
     // MARK: - Helpers
 
-    /// Gather all enemy piece IDs (characters and their summons), excluding invisible figures.
-    static func gatherEnemies(board: BoardState, monster: GameMonster, gameState: GameState) -> [PieceID] {
+    /// Gather all enemy piece IDs (characters and their summons).
+    /// By default excludes invisible figures (for focus/targeting), but `includeInvisible: true`
+    /// includes them (for AoE attacks that hit all figures in the pattern).
+    static func gatherEnemies(board: BoardState, monster: GameMonster, gameState: GameState, includeInvisible: Bool = false) -> [PieceID] {
         board.piecePositions.keys.filter { id in
             switch id {
             case .character(let charID):
                 guard !monster.isAlly && !monster.isAllied else { return false }
-                // Exclude invisible characters
-                if let char = gameState.characters.first(where: { $0.id == charID }),
+                if !includeInvisible,
+                   let char = gameState.characters.first(where: { $0.id == charID }),
                    char.entityConditions.contains(where: { $0.name == .invisible && !$0.expired }) {
                     return false
                 }
                 return true
             case .summon(let summonID):
                 guard !monster.isAlly && !monster.isAllied else { return false }
-                // Exclude invisible summons
-                for char in gameState.characters {
-                    if let summon = char.summons.first(where: { $0.id == summonID }),
-                       summon.entityConditions.contains(where: { $0.name == .invisible && !$0.expired }) {
-                        return false
+                if !includeInvisible {
+                    for char in gameState.characters {
+                        if let summon = char.summons.first(where: { $0.id == summonID }),
+                           summon.entityConditions.contains(where: { $0.name == .invisible && !$0.expired }) {
+                            return false
+                        }
                     }
                 }
                 return true

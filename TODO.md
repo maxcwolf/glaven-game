@@ -272,7 +272,7 @@ Full rules audit against the official Gloomhaven v1 rulebook and 114 GH scenario
 - [ ] **Dynamic obstacles** — no mechanism to create or destroy obstacles mid-scenario; `HexCell` overlays are immutable after board build; some scenario rules and abilities create/destroy obstacles
 - [ ] **Personal quest auto-completion** — `personalQuest` tracked but completion conditions never auto-evaluated; retirement should trigger automatically when quest is fulfilled
 - [ ] **XP from ability cards** — XP is added when `.experience` actions fire, but no "once per card use" enforcement; some ability cards grant XP on use
-- [ ] **Summon placement validation** — no enforcement that summons must be placed on an empty hex adjacent to the summoner; `placingSummon` interaction mode exists but valid hex calculation may be incomplete
+- [x] **Summon placement validation** — `executeSummon()` computes `emptyNeighbors` as passable + unoccupied hexes adjacent to summoner; placement via interactive hex selection
 
 ### Minor — edge cases, advanced mechanics, FH-only conditions
 
@@ -285,7 +285,7 @@ Full rules audit against the official Gloomhaven v1 rulebook and 114 GH scenario
 - [ ] **Infect** (FH) — no mechanics; should prevent healing (both heal actions and passive regeneration)
 - [ ] **Plague** (FH) — no mechanics
 - [ ] **Enfeeble** (FH) — no mechanics
-- [ ] **Invisible + AoE interaction** — invisible figures excluded from monster focus (correct) but should still be hittable by AoE attacks that include their hex
+- [x] **Invisible + AoE interaction** — `gatherEnemies(includeInvisible: true)` used by AoE resolver; invisible figures excluded from focus but hit by area attacks
 - [ ] **Multi-hex obstacles** — `HexCell` stores one overlay per hex; no support for obstacles spanning multiple hexes (rare in GH, more common in FH)
 - [ ] **Trap condition effects** — some traps apply conditions (poison, wound) in addition to or instead of damage; current trap handling only supports damage via `trapDamage: Int?`
 - [ ] **Random dungeon mode** — `randomDungeon` field in scenario rules not handled; procedural dungeon generation not implemented
