@@ -216,7 +216,7 @@ Tracking features needed for parity with [Gloomhaven Secretariat](https://github
 - [x] iPadOS 17+
 - [x] App icon and branding
 - [x] iPhone layout (compact width adaptations)
-- [ ] Unit tests
+- [x] Unit tests (160 tests: unit, e2e, and rulebook verification)
 
 ---
 
@@ -276,13 +276,13 @@ Full rules audit against the official Gloomhaven v1 rulebook and 114 GH scenario
 
 ### Minor — edge cases, advanced mechanics, FH-only conditions
 
-- [ ] **Brittle** (FH) — no mechanics; should double damage from next source
-- [ ] **Ward** (FH) — no mechanics; should halve damage from next source, rounded down
-- [ ] **Bane** (FH) — no mechanics; should deal 10 damage at end of affected figure's next turn
-- [ ] **Chill** (FH) — no mechanics; stackable, should reduce movement by 1 per stack
-- [ ] **Impair** (FH) — no mechanics; should cause disadvantage on all attacks
-- [ ] **Rupture** (FH) — no mechanics; should cause suffer 1 damage on positive condition gain
-- [ ] **Infect** (FH) — no mechanics; should prevent healing (both heal actions and passive regeneration)
+- [x] **Brittle** (FH) — doubles damage from next source, then removed; in `changeHealth()`
+- [x] **Ward** (FH) — halves damage (integer division), then removed; in `changeHealth()`
+- [x] **Bane** (FH) — deals 10 damage in `applyConditionsTurn()`, expires afterTurn
+- [x] **Chill** (FH) — reduces movement by stack value in MonsterAI/SummonAI
+- [x] **Impair** (FH) — gives disadvantage via `hasDisadvantage()` in CombatResolver
+- [x] **Rupture** (FH) — 1 damage on positive condition gain in `addCondition()`
+- [x] **Infect** (FH) — blocks healing (amount > 0) in `changeHealth()`
 - [ ] **Plague** (FH) — no mechanics
 - [ ] **Enfeeble** (FH) — no mechanics
 - [x] **Invisible + AoE interaction** — `gatherEnemies(includeInvisible: true)` used by AoE resolver; invisible figures excluded from focus but hit by area attacks

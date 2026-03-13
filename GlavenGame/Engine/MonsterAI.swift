@@ -70,7 +70,11 @@ enum MonsterAI {
         // Parse ability card modifiers
         let (moveModifier, attackModifier, rangeModifier, pushSteps, pullSteps, extraActions, aoePattern) = parseAbilityCard(ability)
 
-        let totalMove = max(0, baseMove + moveModifier)
+        // Chill (FH): reduce movement by 1 per stack
+        let chillReduction = entity.entityConditions
+            .filter { $0.name == .chill && !$0.expired }
+            .reduce(0) { $0 + max(1, $1.value) }
+        let totalMove = max(0, baseMove + moveModifier - chillReduction)
         let totalAttack = baseAttack + attackModifier
         let totalRange = max(baseRange + rangeModifier, totalAttack > 0 ? 1 : 0) // melee has range 1
         let isMelee = (baseRange + rangeModifier) <= 0

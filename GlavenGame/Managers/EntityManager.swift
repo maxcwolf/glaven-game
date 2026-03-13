@@ -16,8 +16,28 @@ final class EntityManager {
 
     func changeHealth(_ entity: any Entity, amount: Int) {
         onBeforeMutate?()
+        var adjustedAmount = amount
+
+        if amount < 0 {
+            // Brittle (FH): double damage from next source, then remove
+            if hasCondition(.brittle, on: entity) {
+                adjustedAmount = amount * 2
+                entity.entityConditions.removeAll { $0.name == .brittle }
+            }
+            // Ward (FH): halve damage from next source (rounded down), then remove
+            if hasCondition(.ward, on: entity) {
+                adjustedAmount = adjustedAmount / 2
+                entity.entityConditions.removeAll { $0.name == .ward }
+            }
+        } else if amount > 0 {
+            // Infect (FH): prevent all healing
+            if hasCondition(.infect, on: entity) {
+                adjustedAmount = 0
+            }
+        }
+
         let oldHealth = entity.health
-        entity.health = max(0, min(entity.maxHealth, entity.health + amount))
+        entity.health = max(0, min(entity.maxHealth, entity.health + adjustedAmount))
         let actualChange = entity.health - oldHealth
 
         // Record stats for characters
@@ -63,6 +83,11 @@ final class EntityManager {
         condition.permanent = permanent
         entity.entityConditions.append(condition)
 
+        // Rupture (FH): suffer 1 damage when gaining a positive condition
+        if conditionName.isPositive && hasCondition(.rupture, on: entity) {
+            changeHealth(entity, amount: -1)
+        }
+
         // Record stats
         if let charName = characterName(for: entity) {
             scenarioStatsManager?.recordConditionReceived(by: charName)
@@ -100,6 +125,11 @@ final class EntityManager {
             // Wound: deal 1 damage at start of turn
             if condition.name == .wound && types.contains(.apply) {
                 changeHealth(entity, amount: -1)
+            }
+
+            // Bane (FH): deal 10 damage at end of affected figure's next turn
+            if condition.name == .bane {
+                changeHealth(entity, amount: -10)
             }
 
             // Regenerate: heal 1 at start of turn

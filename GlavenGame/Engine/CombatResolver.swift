@@ -284,6 +284,6 @@ enum CombatResolver {
 
     /// Determine if an attack has disadvantage.
     static func hasDisadvantage(attacker: any Entity, isRangedAdjacent: Bool) -> Bool {
-        hasCondition(.muddle, on: attacker) || isRangedAdjacent
+        hasCondition(.muddle, on: attacker) || hasCondition(.impair, on: attacker) || isRangedAdjacent
     }
 }

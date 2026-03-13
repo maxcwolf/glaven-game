@@ -45,7 +45,11 @@ enum SummonAI {
         let isDisarmed = summon.entityConditions.contains(where: { $0.name == .disarm && !$0.expired })
 
         // Use summon's base stats (no ability card modifiers)
-        let totalMove = summon.movement
+        // Chill (FH): reduce movement by 1 per stack
+        let chillReduction = summon.entityConditions
+            .filter { $0.name == .chill && !$0.expired }
+            .reduce(0) { $0 + max(1, $1.value) }
+        let totalMove = max(0, summon.movement - chillReduction)
         let totalAttack = summon.effectiveAttack
         let totalRange = max(summon.range, totalAttack > 0 ? 1 : 0)
         let isRanged = summon.range > 0
