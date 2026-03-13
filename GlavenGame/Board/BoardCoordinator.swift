@@ -981,6 +981,54 @@ final class BoardCoordinator {
         boardScene?.highlightHexes(validHexes, color: .cyan, offsetCol: offsetCol, offsetRow: offsetRow)
     }
 
+    /// Begin a jump move action — ignores traps and difficult terrain for intermediate hexes.
+    func beginJumpMoveAction(pieceID: PieceID, moveRange: Int) {
+        guard let pos = boardState.piecePositions[pieceID] else { return }
+
+        let enemyPositions = Set(boardState.piecePositions.compactMap { id, coord -> HexCoord? in
+            if case .monster = id { return coord }
+            return nil
+        })
+        let allyPositions = Set(boardState.piecePositions.compactMap { id, coord -> HexCoord? in
+            if case .character = id, id != pieceID { return coord }
+            return nil
+        })
+
+        let reachable = Pathfinder.reachableHexes(
+            board: boardState, from: pos, range: moveRange,
+            jumping: true,
+            occupiedByEnemy: enemyPositions, occupiedByAlly: allyPositions
+        )
+
+        let validHexes = Set(reachable.keys)
+        interactionMode = .selectingMove(pieceID: pieceID, range: moveRange, validHexes: validHexes)
+        boardScene?.highlightHexes(validHexes, color: .green, offsetCol: offsetCol, offsetRow: offsetRow)
+    }
+
+    /// Begin a fly move action — ignores obstacles and terrain costs.
+    func beginFlyMoveAction(pieceID: PieceID, moveRange: Int) {
+        guard let pos = boardState.piecePositions[pieceID] else { return }
+
+        let enemyPositions = Set(boardState.piecePositions.compactMap { id, coord -> HexCoord? in
+            if case .monster = id { return coord }
+            return nil
+        })
+        let allyPositions = Set(boardState.piecePositions.compactMap { id, coord -> HexCoord? in
+            if case .character = id, id != pieceID { return coord }
+            return nil
+        })
+
+        let reachable = Pathfinder.reachableHexes(
+            board: boardState, from: pos, range: moveRange,
+            flying: true,
+            occupiedByEnemy: enemyPositions, occupiedByAlly: allyPositions
+        )
+
+        let validHexes = Set(reachable.keys)
+        interactionMode = .selectingMove(pieceID: pieceID, range: moveRange, validHexes: validHexes)
+        boardScene?.highlightHexes(validHexes, color: .yellow, offsetCol: offsetCol, offsetRow: offsetRow)
+    }
+
     /// Begin a teleport action — can move to any unoccupied revealed hex within range,
     /// ignoring obstacles, figures, traps, and terrain along the way.
     func beginTeleportAction(pieceID: PieceID, range: Int) {

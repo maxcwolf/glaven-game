@@ -265,7 +265,7 @@ Full rules audit against the official Gloomhaven v1 rulebook and 114 GH scenario
 
 ### Moderate — affects some scenarios or character builds
 
-- [ ] **Jump movement visual** — pathfinding correctly treats intermediate hexes as passable, but player turn UI shows no visual distinction between move and jump
+- [x] **Jump movement visual** — `beginJumpMoveAction()` (green highlights) and `beginFlyMoveAction()` (yellow) use distinct pathfinding modes and colors vs normal move (cyan) and teleport (purple)
 - [ ] **Battle goal evaluation** — `selectedBattleGoal` tracked per character but completion conditions never auto-evaluated; should award checkmarks toward perks
 - [ ] **City/Road events between scenarios** — event card system exists but no automatic prompting between scenarios for city/road event draws
 - [ ] **Icy terrain** — no forced-movement mechanic for icy terrain (continue movement in same direction until hitting obstacle)

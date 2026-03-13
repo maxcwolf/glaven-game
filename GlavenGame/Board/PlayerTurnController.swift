@@ -173,12 +173,12 @@ final class PlayerTurnController {
 
         case .jump:
             let jumpValue = action.value?.intValue ?? 2
-            coordinator.beginMoveAction(pieceID: pieceID, moveRange: jumpValue)
+            coordinator.beginJumpMoveAction(pieceID: pieceID, moveRange: jumpValue)
             coordinator.log("\(characterID): Jump \(jumpValue)", category: .move)
 
         case .fly:
             let flyValue = action.value?.intValue ?? 2
-            coordinator.beginMoveAction(pieceID: pieceID, moveRange: flyValue)
+            coordinator.beginFlyMoveAction(pieceID: pieceID, moveRange: flyValue)
             coordinator.log("\(characterID): Fly \(flyValue)", category: .move)
 
         case .teleport:
