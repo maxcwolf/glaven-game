@@ -33,4 +33,8 @@ struct PersonalQuestRequirement: Codable, Hashable {
     var counter: IntOrString?
     var autotrack: String?
     var requires: [Int]?
+
+    var counterValue: Int {
+        counter?.intValue ?? 1
+    }
 }

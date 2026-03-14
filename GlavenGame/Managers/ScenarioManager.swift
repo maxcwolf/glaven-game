@@ -85,6 +85,19 @@ final class ScenarioManager {
                 }
             }
 
+            // Update personal quest progress for all characters
+            for character in game.activeCharacters where !character.exhausted {
+                let complete = PersonalQuestEvaluator.updateProgress(
+                    character: character, game: game, editionStore: editionStore
+                )
+                if complete {
+                    game.campaignLog.append(CampaignLogEntry(
+                        type: .characterRetired,
+                        message: "\(character.name) completed their personal quest and is ready to retire"
+                    ))
+                }
+            }
+
             // Campaign log
             game.campaignLog.append(CampaignLogEntry(
                 type: .scenarioCompleted,
