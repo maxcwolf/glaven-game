@@ -32,6 +32,7 @@ extension GameState {
             globalAchievements: globalAchievements,
             partyAchievements: partyAchievements,
             campaignStickers: campaignStickers,
+            mapOverlays: mapOverlays,
             lootedTreasures: lootedTreasures,
             retiredCharacters: retiredCharacters,
             campaignLog: campaignLog,
@@ -67,6 +68,7 @@ extension GameState {
         globalAchievements = snapshot.globalAchievements
         partyAchievements = snapshot.partyAchievements
         campaignStickers = snapshot.campaignStickers
+        mapOverlays = snapshot.mapOverlays
         lootedTreasures = snapshot.lootedTreasures
         retiredCharacters = snapshot.retiredCharacters
         campaignLog = snapshot.campaignLog

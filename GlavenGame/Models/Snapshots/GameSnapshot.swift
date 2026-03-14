@@ -30,6 +30,7 @@ struct GameSnapshot: Codable {
     var globalAchievements: Set<String>
     var partyAchievements: Set<String>
     var campaignStickers: Set<String>
+    var mapOverlays: [WorldMapOverlay]
     var lootedTreasures: Set<String>
     var retiredCharacters: [CharacterSnapshot]
     var campaignLog: [CampaignLogEntry]
@@ -46,7 +47,7 @@ struct GameSnapshot: Codable {
          scenario: ScenarioSnapshot?, completedScenarios: Set<String>,
          manualScenarios: Set<String> = [],
          globalAchievements: Set<String>, partyAchievements: Set<String>,
-         campaignStickers: Set<String>, lootedTreasures: Set<String> = [],
+         campaignStickers: Set<String>, mapOverlays: [WorldMapOverlay] = [], lootedTreasures: Set<String> = [],
          retiredCharacters: [CharacterSnapshot] = [], campaignLog: [CampaignLogEntry] = [],
          unlockedCharacters: Set<String> = [],
          unlockedItems: Set<String> = [],
@@ -65,7 +66,7 @@ struct GameSnapshot: Codable {
         self.scenario = scenario; self.completedScenarios = completedScenarios
         self.manualScenarios = manualScenarios
         self.globalAchievements = globalAchievements; self.partyAchievements = partyAchievements
-        self.campaignStickers = campaignStickers; self.lootedTreasures = lootedTreasures
+        self.campaignStickers = campaignStickers; self.mapOverlays = mapOverlays; self.lootedTreasures = lootedTreasures
         self.retiredCharacters = retiredCharacters; self.campaignLog = campaignLog
         self.unlockedCharacters = unlockedCharacters
         self.unlockedItems = unlockedItems
@@ -101,6 +102,7 @@ struct GameSnapshot: Codable {
         globalAchievements = try c.decode(Set<String>.self, forKey: .globalAchievements)
         partyAchievements = try c.decode(Set<String>.self, forKey: .partyAchievements)
         campaignStickers = try c.decode(Set<String>.self, forKey: .campaignStickers)
+        mapOverlays = try c.decodeIfPresent([WorldMapOverlay].self, forKey: .mapOverlays) ?? []
         lootedTreasures = try c.decodeIfPresent(Set<String>.self, forKey: .lootedTreasures) ?? []
         retiredCharacters = try c.decodeIfPresent([CharacterSnapshot].self, forKey: .retiredCharacters) ?? []
         campaignLog = try c.decodeIfPresent([CampaignLogEntry].self, forKey: .campaignLog) ?? []

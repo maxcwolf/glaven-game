@@ -90,6 +90,11 @@ struct WorldMapView: View {
                 ZStack(alignment: .topLeading) {
                     baseMap(dims: dims)
 
+                    // Render overlay stickers (placed by scenario completion rewards)
+                    ForEach(gameManager.game.mapOverlays, id: \.name) { overlay in
+                        OverlayStickerView(overlay: overlay, edition: edition, zoom: zoom)
+                    }
+
                     ForEach(scenarios) { scenario in
                         ScenarioMarkerView(
                             scenario: scenario,

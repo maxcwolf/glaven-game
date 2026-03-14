@@ -78,6 +78,12 @@ struct DebugSheet: View {
             debugRow("Looted Treasures", value: "\(game.lootedTreasures.count)")
             debugRow("Retired Characters", value: "\(game.retiredCharacters.count)")
             debugRow("Campaign Log", value: "\(game.campaignLog.count) entries")
+            debugRow("Map Stickers", value: "\(game.mapOverlays.count)")
+            if !game.mapOverlays.isEmpty {
+                ForEach(game.mapOverlays, id: \.name) { overlay in
+                    debugRow("  \(overlay.name)", value: "(\(Int(overlay.coordinates.x ?? 0)), \(Int(overlay.coordinates.y ?? 0)))")
+                }
+            }
         }
     }
 
@@ -170,6 +176,19 @@ struct DebugSheet: View {
                 game.round = 0
                 game.state = .draw
                 logOutput = "Round reset to 0"
+            }
+            Button("Place Test Map Sticker") {
+                var coords = WorldMapCoordinates()
+                coords.x = 1400; coords.y = 900; coords.width = 100; coords.height = 100
+                let overlay = WorldMapOverlay(name: "test-sticker", location: "center", coordinates: coords)
+                if !game.mapOverlays.contains(where: { $0.name == overlay.name }) {
+                    game.mapOverlays.append(overlay)
+                }
+                logOutput = "Placed test sticker at (1400, 900). Open World Map to see it. Total overlays: \(game.mapOverlays.count)"
+            }
+            Button("Clear Map Stickers") {
+                game.mapOverlays.removeAll()
+                logOutput = "All map stickers cleared"
             }
         }
     }

@@ -34,6 +34,8 @@ final class GameState {
     var globalAchievements: Set<String> = []
     var partyAchievements: Set<String> = []
     var campaignStickers: Set<String> = []
+    /// Visual overlay stickers placed on the world map (from scenario completion rewards).
+    var mapOverlays: [WorldMapOverlay] = []
 
     // Treasures: "{edition}-{scenarioIndex}-{treasureIndex}"
     var lootedTreasures: Set<String> = []

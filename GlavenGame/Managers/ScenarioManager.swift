@@ -541,6 +541,17 @@ final class ScenarioManager {
         if let stickers = rewards.campaignSticker {
             for s in stickers { game.campaignStickers.insert(s) }
         }
+        // Collect visual overlay stickers for world map rendering
+        if let overlay = rewards.overlaySticker {
+            if !game.mapOverlays.contains(where: { $0.name == overlay.name }) {
+                game.mapOverlays.append(overlay)
+            }
+        }
+        if let overlay = rewards.overlayCampaignSticker {
+            if !game.mapOverlays.contains(where: { $0.name == overlay.name }) {
+                game.mapOverlays.append(overlay)
+            }
+        }
         if let rep = rewards.reputation {
             game.partyReputation += resolveRewardInt(rep)
         }
