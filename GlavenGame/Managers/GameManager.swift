@@ -101,6 +101,7 @@ final class GameManager {
         // Wire cross-manager dependencies
         entityMgr.scenarioStatsManager = statsMgr
         charMgr.scenarioStatsManager = statsMgr
+        scenarioMgr.scenarioStatsManager = statsMgr
 
         // Wire scenario rules to round advancement
         roundMgr.onRoundAdvanced = { [weak self] in

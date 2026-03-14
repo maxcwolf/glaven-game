@@ -45,7 +45,7 @@ Tracking features needed for parity with [Gloomhaven Secretariat](https://github
 - [x] Monster stats dialog with level-specific stats
 - [x] Monster stat effect application
 - [x] Number picker dialog (quantity selection)
-- [ ] Focus / auto-targeting (nearest, path distance)
+- [x] Focus / auto-targeting (nearest, path distance)
 - [ ] Pathfinding visualization
 - [x] Named monster support (bosses with custom decks)
 
@@ -266,7 +266,7 @@ Full rules audit against the official Gloomhaven v1 rulebook and 114 GH scenario
 ### Moderate — affects some scenarios or character builds
 
 - [x] **Jump movement visual** — `beginJumpMoveAction()` (green highlights) and `beginFlyMoveAction()` (yellow) use distinct pathfinding modes and colors vs normal move (cyan) and teleport (purple)
-- [ ] **Battle goal evaluation** — `selectedBattleGoal` tracked per character but completion conditions never auto-evaluated; should award checkmarks toward perks
+- [x] **Battle goal evaluation** — `BattleGoalEvaluator` auto-evaluates 12 of 24 GH goals at scenario end (state checks: hand/discard count, HP, kills, coins, items, allies exhausted; XP); remaining 12 return nil for manual check; checkmarks awarded via `finishScenario()`
 - [ ] **City/Road events between scenarios** — event card system exists but no automatic prompting between scenarios for city/road event draws
 - [ ] **Icy terrain** — no forced-movement mechanic for icy terrain (continue movement in same direction until hitting obstacle)
 - [x] **Dynamic obstacles** — `BoardState.placeObstacle()`/`removeObstacle()`/`placeTrap()`/`placeHazard()` allow overlay mutations mid-scenario; passability updated automatically

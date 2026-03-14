@@ -7,6 +7,7 @@ final class ScenarioManager {
     private let monsterManager: MonsterManager
     private let levelManager: LevelManager
     var onBeforeMutate: (() -> Void)?
+    var scenarioStatsManager: ScenarioStatsManager?
 
     init(game: GameState, editionStore: EditionDataStore,
          monsterManager: MonsterManager, levelManager: LevelManager) {
@@ -65,6 +66,23 @@ final class ScenarioManager {
             // Apply scenario-specific rewards
             if let rewards = data.rewards {
                 applyRewards(rewards, edition: data.edition)
+            }
+
+            // Evaluate battle goals and award checkmarks
+            if let statsManager = scenarioStatsManager {
+                let battleGoals = editionStore.battleGoals(for: data.edition)
+                let results = BattleGoalEvaluator.evaluateAll(
+                    game: game,
+                    statsManager: statsManager,
+                    scenarioXPGained: [:],  // XP tracking per-character not needed for most goals
+                    battleGoalData: battleGoals
+                )
+                for (charID, result) in results {
+                    if result.checksAwarded > 0,
+                       let character = game.characters.first(where: { $0.id == charID }) {
+                        character.battleGoalProgress += result.checksAwarded
+                    }
+                }
             }
 
             // Campaign log
