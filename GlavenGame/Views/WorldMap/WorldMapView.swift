@@ -31,6 +31,16 @@ struct WorldMapView: View {
         gameManager.game.scenario != nil
     }
 
+    private var achievementStickers: [AchievementSticker] {
+        AchievementSticker.build(
+            globalAchievements: gameManager.game.globalAchievements,
+            partyAchievements: gameManager.game.partyAchievements,
+            scenarios: gameManager.editionStore.scenarios(for: edition),
+            completedScenarios: gameManager.game.completedScenarios,
+            edition: edition
+        )
+    }
+
     var body: some View {
         NavigationStack {
             GeometryReader { geo in
@@ -90,9 +100,14 @@ struct WorldMapView: View {
                 ZStack(alignment: .topLeading) {
                     baseMap(dims: dims)
 
-                    // Render overlay stickers (placed by scenario completion rewards)
+                    // Render image overlay stickers (FH-style, placed by scenario completion rewards)
                     ForEach(gameManager.game.mapOverlays, id: \.name) { overlay in
                         OverlayStickerView(overlay: overlay, edition: edition, zoom: zoom)
+                    }
+
+                    // Render achievement stickers (text badges for earned achievements)
+                    ForEach(achievementStickers) { sticker in
+                        AchievementStickerView(sticker: sticker, zoom: zoom)
                     }
 
                     ForEach(scenarios) { scenario in
