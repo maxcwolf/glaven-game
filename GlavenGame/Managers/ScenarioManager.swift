@@ -23,6 +23,16 @@ final class ScenarioManager {
         onBeforeMutate?()
         let scenario = Scenario(data: scenarioData)
         game.scenario = scenario
+
+        // Determine if an event should be drawn before this scenario
+        if scenarioData.eventType == "road" {
+            game.pendingEventType = "road"
+        } else if !scenarioData.isInitial {
+            game.pendingEventType = "city"
+        } else {
+            game.pendingEventType = nil
+        }
+
         applyScenarioData(scenarioData)
 
         // Solo scenario: mark all other characters absent

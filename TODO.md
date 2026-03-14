@@ -267,7 +267,7 @@ Full rules audit against the official Gloomhaven v1 rulebook and 114 GH scenario
 
 - [x] **Jump movement visual** — `beginJumpMoveAction()` (green highlights) and `beginFlyMoveAction()` (yellow) use distinct pathfinding modes and colors vs normal move (cyan) and teleport (purple)
 - [x] **Battle goal evaluation** — `BattleGoalEvaluator` auto-evaluates 12 of 24 GH goals at scenario end (state checks: hand/discard count, HP, kills, coins, items, allies exhausted; XP); remaining 12 return nil for manual check; checkmarks awarded via `finishScenario()`
-- [ ] **City/Road events between scenarios** — event card system exists but no automatic prompting between scenarios for city/road event draws
+- [x] **City/Road events between scenarios** — `EventCardManager` manages city (81) and road (69) event decks; `EventCardData` model loads full narrative/options/effects from JSON; `setScenario()` sets `pendingEventType` based on scenario `eventType` field; deck state tracked in `GameState.drawnCityEvents`/`drawnRoadEvents`
 - [ ] **Icy terrain** — no forced-movement mechanic for icy terrain (continue movement in same direction until hitting obstacle)
 - [x] **Dynamic obstacles** — `BoardState.placeObstacle()`/`removeObstacle()`/`placeTrap()`/`placeHazard()` allow overlay mutations mid-scenario; passability updated automatically
 - [x] **Personal quest auto-completion** — `PersonalQuestEvaluator` auto-tracks 8 of 12 autotrack types (gold, scenarios, battleGoals, scenario-specific, item, itemType, retiredChars, sideScenarios); completion check on `finishScenario()`; logs retirement prompt

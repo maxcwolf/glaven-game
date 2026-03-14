@@ -11,6 +11,7 @@ final class EditionDataStore {
     var battleGoalsByEdition: [String: [BattleGoalData]] = [:]
     var itemsByEdition: [String: [ItemData]] = [:]
     var personalQuestsByEdition: [String: [PersonalQuestData]] = [:]
+    var eventsByEdition: [String: [EventCardData]] = [:]
     var treasuresByEdition: [String: [String]] = [:]  // Raw reward strings indexed by position
     var labelsByEdition: [String: [String: Any]] = [:]  // Label data from label/en.json
 
@@ -75,6 +76,7 @@ final class EditionDataStore {
         if let v = loadJSONFile("items.json", from: editionURL, edition: editionName, editionKeyPath: \ItemData.edition) { itemsByEdition[editionName] = v }
         if let v = loadJSONFile("battle-goals.json", from: editionURL, edition: editionName, editionKeyPath: \BattleGoalData.edition) { battleGoalsByEdition[editionName] = v }
         if let v: [String] = loadJSONFile("treasures.json", from: editionURL, edition: editionName) { treasuresByEdition[editionName] = v }
+        if let v = loadJSONFile("events.json", from: editionURL, edition: editionName, editionKeyPath: \EventCardData.edition) { eventsByEdition[editionName] = v }
         if let v = loadJSONFile("personal-quests.json", from: editionURL, edition: editionName, editionKeyPath: \PersonalQuestData.edition) { personalQuestsByEdition[editionName] = v }
 
         // Load label data for custom ability text resolution
@@ -266,6 +268,12 @@ final class EditionDataStore {
 
     func personalQuest(cardId: String) -> PersonalQuestData? {
         personalQuestIndex[cardId]
+    }
+
+    // MARK: - Events
+
+    func events(for edition: String) -> [EventCardData] {
+        eventsByEdition[edition] ?? []
     }
 
     // MARK: - Treasures
