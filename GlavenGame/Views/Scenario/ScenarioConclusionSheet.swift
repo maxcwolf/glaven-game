@@ -6,82 +6,111 @@ struct ScenarioConclusionSheet: View {
 
     let success: Bool
 
+    @State private var showingStickerPlacement = false
+    @State private var earnedOverlay: WorldMapOverlay?
+
     private var scenario: Scenario? { gameManager.game.scenario }
 
     var body: some View {
         NavigationStack {
-            ScrollView {
-                VStack(spacing: 20) {
-                    // Status icon
-                    Image(systemName: success ? "checkmark.seal.fill" : "xmark.seal.fill")
-                        .font(.system(size: 60))
-                        .foregroundStyle(success ? GlavenTheme.positive : Color.red)
+            if showingStickerPlacement, let overlay = earnedOverlay {
+                StickerPlacementView(overlay: overlay, edition: gameManager.game.edition ?? "gh") {
+                    dismiss()
+                }
+            } else {
+                conclusionContent
+            }
+        }
+    }
 
-                    Text(success ? "Scenario Complete!" : "Scenario Failed")
-                        .font(.title2)
-                        .fontWeight(.bold)
-                        .foregroundStyle(GlavenTheme.primaryText)
+    @ViewBuilder
+    private var conclusionContent: some View {
+        ScrollView {
+            VStack(spacing: 20) {
+                // Status icon
+                Image(systemName: success ? "checkmark.seal.fill" : "xmark.seal.fill")
+                    .font(.system(size: 60))
+                    .foregroundStyle(success ? GlavenTheme.positive : Color.red)
 
-                    if let scenario = scenario {
-                        Text("#\(scenario.data.index) \(scenario.data.name)")
-                            .font(.headline)
-                            .foregroundStyle(GlavenTheme.secondaryText)
+                Text(success ? "Scenario Complete!" : "Scenario Failed")
+                    .font(.title2)
+                    .fontWeight(.bold)
+                    .foregroundStyle(GlavenTheme.primaryText)
 
-                        // Rewards
-                        if success, let rewards = scenario.data.rewards {
-                            RewardsSummaryView(rewards: rewards)
-                        }
+                if let scenario = scenario {
+                    Text("#\(scenario.data.index) \(scenario.data.name)")
+                        .font(.headline)
+                        .foregroundStyle(GlavenTheme.secondaryText)
 
-                        // Unlocks
-                        if success, let unlocks = scenario.data.unlocks, !unlocks.isEmpty {
-                            unlocksSection(unlocks)
-                        }
-
-                        // Stats
-                        ScenarioStatsView()
-                            .padding(.top, 8)
+                    // Rewards
+                    if success, let rewards = scenario.data.rewards {
+                        RewardsSummaryView(rewards: rewards)
                     }
 
-                    Spacer(minLength: 16)
+                    // Unlocks
+                    if success, let unlocks = scenario.data.unlocks, !unlocks.isEmpty {
+                        unlocksSection(unlocks)
+                    }
 
-                    // Actions
-                    HStack(spacing: 16) {
-                        if success {
-                            Button {
-                                gameManager.scenarioManager.finishScenario(success: true)
-                                dismiss()
-                            } label: {
-                                Text("Apply Rewards")
-                                    .fontWeight(.semibold)
-                                    .frame(maxWidth: .infinity)
-                            }
-                            .buttonStyle(.borderedProminent)
-                            .controlSize(.large)
-                        } else {
-                            Button {
-                                gameManager.scenarioManager.finishScenario(success: false)
-                                dismiss()
-                            } label: {
-                                Text("End Scenario")
-                                    .frame(maxWidth: .infinity)
-                            }
-                            .buttonStyle(.bordered)
-                            .controlSize(.large)
+                    // Stats
+                    ScenarioStatsView()
+                        .padding(.top, 8)
+                }
+
+                Spacer(minLength: 16)
+
+                // Actions
+                HStack(spacing: 16) {
+                    if success {
+                        Button {
+                            applyRewardsAndShowSticker()
+                        } label: {
+                            Text("Apply Rewards")
+                                .fontWeight(.semibold)
+                                .frame(maxWidth: .infinity)
                         }
+                        .buttonStyle(.borderedProminent)
+                        .controlSize(.large)
+                    } else {
+                        Button {
+                            gameManager.scenarioManager.finishScenario(success: false)
+                            dismiss()
+                        } label: {
+                            Text("End Scenario")
+                                .frame(maxWidth: .infinity)
+                        }
+                        .buttonStyle(.bordered)
+                        .controlSize(.large)
                     }
                 }
-                .padding()
             }
-            .background(GlavenTheme.background)
-            .navigationTitle(success ? "Victory" : "Defeat")
-            #if os(macOS)
-            .frame(minWidth: 400, minHeight: 500)
-            #endif
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Dismiss") { dismiss() }
-                }
+            .padding()
+        }
+        .background(GlavenTheme.background)
+        .navigationTitle(success ? "Victory" : "Defeat")
+        #if os(macOS)
+        .frame(minWidth: 400, minHeight: 500)
+        #endif
+        .toolbar {
+            ToolbarItem(placement: .cancellationAction) {
+                Button("Dismiss") { dismiss() }
             }
+        }
+    }
+
+    private func applyRewardsAndShowSticker() {
+        // Check for overlay sticker BEFORE applying rewards (so we know what was just earned)
+        let overlay = scenario?.data.rewards?.overlaySticker ?? scenario?.data.rewards?.overlayCampaignSticker
+
+        gameManager.scenarioManager.finishScenario(success: true)
+
+        if let overlay = overlay, overlay.coordinates.x != nil {
+            earnedOverlay = overlay
+            withAnimation {
+                showingStickerPlacement = true
+            }
+        } else {
+            dismiss()
         }
     }
 
