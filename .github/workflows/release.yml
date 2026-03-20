@@ -96,16 +96,24 @@ jobs:
             -configuration Release \
             -derivedDataPath build \
             -destination 'platform=macOS' \
-            CODE_SIGN_IDENTITY="$CODESIGN_IDENTITY" \
+            CODE_SIGN_IDENTITY="-" \
             CODE_SIGN_STYLE=Manual \
-            CODE_SIGN_ENTITLEMENTS=GlavenGame.entitlements \
-            OTHER_CODE_SIGN_FLAGS="--options runtime" \
             ONLY_ACTIVE_ARCH=NO \
             build
 
-      - name: Verify code signature
+      - name: Re-sign app bundle for distribution
         run: |
           APP_PATH="build/Build/Products/Release/GlavenGame.app"
+
+          # Re-sign with Developer ID, hardened runtime, secure timestamp, and clean entitlements
+          codesign --deep --force --verify --verbose \
+            --sign "$CODESIGN_IDENTITY" \
+            --entitlements GlavenGame.entitlements \
+            --options runtime \
+            --timestamp \
+            "$APP_PATH"
+
+          # Verify
           codesign --verify --deep --strict "$APP_PATH"
           echo "Code signature verified"
 
@@ -134,7 +142,7 @@ jobs:
       - name: Codesign DMG
         run: |
           TAG="${GITHUB_REF_NAME}"
-          codesign --force --sign "Developer ID Application: Max Wolf (A5QKST5K59)" "GlavenGame-${TAG}.dmg"
+          codesign --force --sign "$CODESIGN_IDENTITY" --timestamp "GlavenGame-${TAG}.dmg"
 
       - name: Notarize DMG
         env:
