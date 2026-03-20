@@ -159,7 +159,7 @@ jobs:
             --password "$NOTARIZE_PASSWORD" \
             --team-id "$NOTARIZE_TEAM_ID" \
             --wait \
-            --timeout 600
+            --timeout 1800
 
           echo "Stapling notarization ticket..."
           xcrun stapler staple "$DMG"
