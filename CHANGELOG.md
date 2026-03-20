@@ -8,6 +8,7 @@ Format based on [Conventional Commits](https://www.conventionalcommits.org/).
 ### Documentation
 
 - Update CHANGELOG.md for v1.0.0-beta by @github-actions[bot]
+- Update CHANGELOG.md for v1.0.0-beta by @github-actions[bot]
 - Clean up TODO.md after completing all critical rules items by @maxcwolf
 
 ### Features
