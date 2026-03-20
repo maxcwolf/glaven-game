@@ -68,17 +68,65 @@ jobs:
       - name: Generate Xcode project
         run: xcodegen generate
 
+      # Import Developer ID certificate from secrets (if available)
+      - name: Import signing certificate
+        if: env.CERT_BASE64 != ''
+        env:
+          CERT_BASE64: ${{ secrets.DEVELOPER_ID_CERT_BASE64 }}
+          CERT_PASSWORD: ${{ secrets.DEVELOPER_ID_CERT_PASSWORD }}
+        run: |
+          # Decode certificate
+          echo "$CERT_BASE64" | base64 --decode > certificate.p12
+
+          # Create temporary keychain
+          KEYCHAIN_PATH="$RUNNER_TEMP/app-signing.keychain-db"
+          KEYCHAIN_PASSWORD="$(openssl rand -base64 32)"
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+
+          # Import certificate
+          security import certificate.p12 -P "$CERT_PASSWORD" -A -t cert -f pkcs12 \
+            -k "$KEYCHAIN_PATH"
+          security set-key-partition-list -S apple-tool:,apple: -k "$KEYCHAIN_PASSWORD" \
+            "$KEYCHAIN_PATH"
+          security list-keychain -d user -s "$KEYCHAIN_PATH"
+
+          # Export identity name for later steps
+          IDENTITY=$(security find-identity -v -p codesigning "$KEYCHAIN_PATH" | head -1 | sed 's/.*"\(.*\)".*/\1/')
+          echo "CODESIGN_IDENTITY=$IDENTITY" >> "$GITHUB_ENV"
+          echo "KEYCHAIN_PATH=$KEYCHAIN_PATH" >> "$GITHUB_ENV"
+
+          rm certificate.p12
+
       - name: Build macOS app
         run: |
+          # Use Developer ID if available, otherwise ad-hoc
+          SIGN_IDENTITY="${CODESIGN_IDENTITY:--}"
+
           xcodebuild \
             -project GlavenGame.xcodeproj \
             -scheme GlavenGame \
             -configuration Release \
             -derivedDataPath build \
             -destination 'platform=macOS' \
-            CODE_SIGN_IDENTITY="-" \
+            CODE_SIGN_IDENTITY="$SIGN_IDENTITY" \
             ONLY_ACTIVE_ARCH=NO \
             build
+
+      - name: Codesign app bundle
+        if: env.CODESIGN_IDENTITY != ''
+        run: |
+          APP_PATH="build/Build/Products/Release/Glaven.app"
+          codesign --deep --force --verify --verbose \
+            --sign "$CODESIGN_IDENTITY" \
+            --entitlements GlavenGame.entitlements \
+            --options runtime \
+            "$APP_PATH"
+
+          # Verify signature
+          codesign --verify --deep --strict "$APP_PATH"
+          echo "Code signing verified successfully"
 
       - name: Package DMG
         run: |
@@ -101,6 +149,39 @@ jobs:
             -ov \
             -format UDZO \
             "Glaven-${TAG}.dmg"
+
+      - name: Codesign DMG
+        if: env.CODESIGN_IDENTITY != ''
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+          codesign --force --sign "$CODESIGN_IDENTITY" "Glaven-${TAG}.dmg"
+
+      - name: Notarize DMG
+        if: env.CODESIGN_IDENTITY != '' && env.NOTARIZE_APPLE_ID != ''
+        env:
+          NOTARIZE_APPLE_ID: ${{ secrets.NOTARIZE_APPLE_ID }}
+          NOTARIZE_PASSWORD: ${{ secrets.NOTARIZE_PASSWORD }}
+          NOTARIZE_TEAM_ID: ${{ secrets.NOTARIZE_TEAM_ID }}
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+          DMG="Glaven-${TAG}.dmg"
+
+          echo "Submitting $DMG for notarization..."
+          xcrun notarytool submit "$DMG" \
+            --apple-id "$NOTARIZE_APPLE_ID" \
+            --password "$NOTARIZE_PASSWORD" \
+            --team-id "$NOTARIZE_TEAM_ID" \
+            --wait \
+            --timeout 600
+
+          echo "Stapling notarization ticket..."
+          xcrun stapler staple "$DMG"
+
+          echo "Notarization complete"
+
+      - name: Cleanup keychain
+        if: always() && env.KEYCHAIN_PATH != ''
+        run: security delete-keychain "$KEYCHAIN_PATH" 2>/dev/null || true
 
       - name: Upload DMG
         uses: actions/upload-artifact@v4

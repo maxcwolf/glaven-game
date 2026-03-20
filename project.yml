@@ -49,7 +49,8 @@ targets:
         INFOPLIST_KEY_CFBundleDisplayName: GlavenGame
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         SWIFT_EMIT_LOC_STRINGS: true
-        CODE_SIGN_IDENTITY: "-"
+        CODE_SIGN_STYLE: Manual
+        CODE_SIGN_ENTITLEMENTS: GlavenGame.entitlements
         # iPad only (not iPhone), landscape only
         TARGETED_DEVICE_FAMILY: "1,2"
         INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad: "UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight"
@@ -58,7 +59,9 @@ targets:
         debug:
           SWIFT_OPTIMIZATION_LEVEL: "-Onone"
           SWIFT_ACTIVE_COMPILATION_CONDITIONS: DEBUG
+          CODE_SIGN_IDENTITY: "-"
         release:
           SWIFT_OPTIMIZATION_LEVEL: "-O"
+          CODE_SIGN_IDENTITY: "-"
     dependencies:
       - sdk: SpriteKit.framework
