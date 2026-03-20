@@ -8,6 +8,10 @@ on:
 permissions:
   contents: write
 
+concurrency:
+  group: release
+  cancel-in-progress: false
+
 jobs:
   changelog:
     name: Generate Changelog
@@ -57,84 +61,42 @@ jobs:
 
   build:
     name: Build macOS DMG
-    runs-on: macos-15
+    runs-on: self-hosted
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Install xcodegen
-        run: brew install xcodegen
-
       - name: Generate Xcode project
         run: xcodegen generate
 
-      # Import Developer ID certificate from secrets (if available)
-      - name: Import signing certificate
-        if: env.CERT_BASE64 != ''
-        env:
-          CERT_BASE64: ${{ secrets.DEVELOPER_ID_CERT_BASE64 }}
-          CERT_PASSWORD: ${{ secrets.DEVELOPER_ID_CERT_PASSWORD }}
-        run: |
-          # Decode certificate
-          echo "$CERT_BASE64" | base64 --decode > certificate.p12
-
-          # Create temporary keychain
-          KEYCHAIN_PATH="$RUNNER_TEMP/app-signing.keychain-db"
-          KEYCHAIN_PASSWORD="$(openssl rand -base64 32)"
-          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
-          security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
-          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
-
-          # Import certificate
-          security import certificate.p12 -P "$CERT_PASSWORD" -A -t cert -f pkcs12 \
-            -k "$KEYCHAIN_PATH"
-          security set-key-partition-list -S apple-tool:,apple: -k "$KEYCHAIN_PASSWORD" \
-            "$KEYCHAIN_PATH"
-          security list-keychain -d user -s "$KEYCHAIN_PATH"
-
-          # Export identity name for later steps
-          IDENTITY=$(security find-identity -v -p codesigning "$KEYCHAIN_PATH" | head -1 | sed 's/.*"\(.*\)".*/\1/')
-          echo "CODESIGN_IDENTITY=$IDENTITY" >> "$GITHUB_ENV"
-          echo "KEYCHAIN_PATH=$KEYCHAIN_PATH" >> "$GITHUB_ENV"
-
-          rm certificate.p12
-
       - name: Build macOS app
         run: |
-          # Use Developer ID if available, otherwise ad-hoc
-          SIGN_IDENTITY="${CODESIGN_IDENTITY:--}"
-
           xcodebuild \
             -project GlavenGame.xcodeproj \
             -scheme GlavenGame \
             -configuration Release \
             -derivedDataPath build \
             -destination 'platform=macOS' \
-            CODE_SIGN_IDENTITY="$SIGN_IDENTITY" \
+            CODE_SIGN_IDENTITY="Developer ID Application: Max Wolf (A5QKST5K59)" \
+            CODE_SIGN_STYLE=Manual \
+            CODE_SIGN_ENTITLEMENTS=GlavenGame.entitlements \
+            OTHER_CODE_SIGN_FLAGS="--options runtime" \
             ONLY_ACTIVE_ARCH=NO \
             build
 
-      - name: Codesign app bundle
-        if: env.CODESIGN_IDENTITY != ''
+      - name: Verify code signature
         run: |
-          APP_PATH="build/Build/Products/Release/Glaven.app"
-          codesign --deep --force --verify --verbose \
-            --sign "$CODESIGN_IDENTITY" \
-            --entitlements GlavenGame.entitlements \
-            --options runtime \
-            "$APP_PATH"
-
-          # Verify signature
+          APP_PATH="build/Build/Products/Release/GlavenGame.app"
           codesign --verify --deep --strict "$APP_PATH"
-          echo "Code signing verified successfully"
+          echo "Code signature verified"
 
       - name: Package DMG
         run: |
           TAG="${GITHUB_REF_NAME}"
-          APP_PATH="build/Build/Products/Release/Glaven.app"
+          APP_PATH="build/Build/Products/Release/GlavenGame.app"
 
           if [ ! -d "$APP_PATH" ]; then
-            echo "ERROR: Glaven.app not found at $APP_PATH"
+            echo "ERROR: GlavenGame.app not found at $APP_PATH"
             find build -name "*.app" -type d
             exit 1
           fi
@@ -144,27 +106,25 @@ jobs:
           ln -s /Applications dmg_staging/Applications
 
           hdiutil create \
-            -volname "Glaven" \
+            -volname "GlavenGame" \
             -srcfolder dmg_staging \
             -ov \
             -format UDZO \
-            "Glaven-${TAG}.dmg"
+            "GlavenGame-${TAG}.dmg"
 
       - name: Codesign DMG
-        if: env.CODESIGN_IDENTITY != ''
         run: |
           TAG="${GITHUB_REF_NAME}"
-          codesign --force --sign "$CODESIGN_IDENTITY" "Glaven-${TAG}.dmg"
+          codesign --force --sign "Developer ID Application: Max Wolf (A5QKST5K59)" "GlavenGame-${TAG}.dmg"
 
       - name: Notarize DMG
-        if: env.CODESIGN_IDENTITY != '' && env.NOTARIZE_APPLE_ID != ''
         env:
           NOTARIZE_APPLE_ID: ${{ secrets.NOTARIZE_APPLE_ID }}
           NOTARIZE_PASSWORD: ${{ secrets.NOTARIZE_PASSWORD }}
           NOTARIZE_TEAM_ID: ${{ secrets.NOTARIZE_TEAM_ID }}
         run: |
           TAG="${GITHUB_REF_NAME}"
-          DMG="Glaven-${TAG}.dmg"
+          DMG="GlavenGame-${TAG}.dmg"
 
           echo "Submitting $DMG for notarization..."
           xcrun notarytool submit "$DMG" \
@@ -179,15 +139,15 @@ jobs:
 
           echo "Notarization complete"
 
-      - name: Cleanup keychain
-        if: always() && env.KEYCHAIN_PATH != ''
-        run: security delete-keychain "$KEYCHAIN_PATH" 2>/dev/null || true
-
       - name: Upload DMG
         uses: actions/upload-artifact@v4
         with:
           name: dmg
-          path: Glaven-*.dmg
+          path: GlavenGame-*.dmg
+
+      - name: Cleanup
+        if: always()
+        run: rm -rf build dmg_staging
 
   release:
     name: Create GitHub Release
@@ -216,7 +176,7 @@ jobs:
           fi
 
           gh release create "$TAG" \
-            Glaven-*.dmg \
-            --title "Glaven $TAG" \
+            GlavenGame-*.dmg \
+            --title "GlavenGame $TAG" \
             --notes-file release_notes.md \
             $PRERELEASE

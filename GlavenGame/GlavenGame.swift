@@ -38,6 +38,9 @@ private struct ScaledContentView: View {
     }
 }
 
+#if !SWIFT_PACKAGE
+@main
+#endif
 public struct GlavenGameApp: App {
     let modelContainer: ModelContainer
     let gameManager: GameManager
