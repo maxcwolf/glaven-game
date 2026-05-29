@@ -157,7 +157,10 @@ enum EscortAI {
     private static func gatherEnemies(board: BoardState, gameState: GameState) -> [PieceID] {
         board.piecePositions.keys.filter { id in
             guard case .monster(let name, let standee) = id else { return false }
-            if let monster = gameState.monsters.first(where: { $0.name == name }),
+            let monster = gameState.monsters.first(where: { $0.name == name })
+            // Allied monsters fight WITH the escort — they are not enemies.
+            if let m = monster, m.isAlly || m.isAllied { return false }
+            if let monster = monster,
                let entity = monster.entities.first(where: { $0.number == standee }),
                entity.entityConditions.contains(where: { $0.name == .invisible && !$0.expired }) {
                 return false
