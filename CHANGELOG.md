@@ -3,6 +3,25 @@
 All notable changes to this project will be documented in this file.
 Format based on [Conventional Commits](https://www.conventionalcommits.org/).
 
+## [1.0.0-beta.2] - 2026-05-29
+
+### Bug Fixes
+
+- **los**: Block line of sight through obstacle interiors by @maxcwolf
+- **actions**: Heal clears poison/wound; combined element consume picks one by @maxcwolf
+- **scenario**: Exact-count monster spawning fixed at scenario setup by @maxcwolf
+- **ai**: Summons and escorts no longer target allied monsters by @maxcwolf
+- **ai**: Respect immobilize and difficult-terrain budget in monster movement by @maxcwolf
+- **pathfinding**: Account for difficult-terrain cost in findPath and pathCost by @maxcwolf
+- **conditions**: Correct afterTurn lifecycle, bane timing, and invisible classification by @maxcwolf
+
+### Documentation
+
+- Update CHANGELOG.md for v1.0.0-beta by @github-actions[bot]
+
+
+**Full Changelog**: [v1.0.0-beta...v1.0.0-beta.2](https://github.com/maxcwolf/glaven-game/compare/v1.0.0-beta...v1.0.0-beta.2)
+
 ## [1.0.0-beta] - 2026-03-20
 
 ### Documentation
