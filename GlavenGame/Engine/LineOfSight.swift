@@ -130,7 +130,30 @@ enum LineOfSight {
         if pointInHex(p1, center: hexCenter, radius: hexRadius) { return true }
         if pointInHex(p2, center: hexCenter, radius: hexRadius) { return true }
 
+        // A line that penetrates the hex interior blocks LOS even when it enters and
+        // exits exactly at vertices — the degenerate case the strict edge-crossing test
+        // above misses (it makes a solid wall of obstacles fail to block). Model the
+        // blocker as a regular hexagon: if the segment passes within the apothem (the
+        // inscribed-circle radius), it goes through the interior. The small margin keeps
+        // edge-grazing "see-around" lines unblocked, so a single obstacle can still be
+        // seen past per Gloomhaven geometry.
+        let apothem = hexRadius * 0.866  // cos(30°)
+        if distancePointToSegment(hexCenter, p1, p2) < apothem - 1.0 {
+            return true
+        }
+
         return false
+    }
+
+    /// Shortest distance from a point to a line segment.
+    private static func distancePointToSegment(_ p: CGPoint, _ a: CGPoint, _ b: CGPoint) -> CGFloat {
+        let dx = b.x - a.x
+        let dy = b.y - a.y
+        let lenSq = dx * dx + dy * dy
+        if lenSq == 0 { return hypot(p.x - a.x, p.y - a.y) }
+        var t = ((p.x - a.x) * dx + (p.y - a.y) * dy) / lenSq
+        t = max(0, min(1, t))
+        return hypot(p.x - (a.x + t * dx), p.y - (a.y + t * dy))
     }
 
     /// Check if two line segments intersect.
