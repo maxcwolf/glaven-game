@@ -103,8 +103,12 @@ final class FHConditionTests: XCTestCase {
         t.entityManager.addCondition(.bane, to: char)
         t.entityManager.restoreConditions(char)
 
+        // Bane deals its 10 damage at the END of the figure's next turn (FH rules),
+        // not the start, so the figure gets to act before suffering it.
         t.entityManager.applyConditionsTurn(char)
-        XCTAssertEqual(char.health, 10, "Bane deals 10 damage")
+        XCTAssertEqual(char.health, 20, "Bane deals no damage at the start of the turn")
+        t.entityManager.expireConditions(char)
+        XCTAssertEqual(char.health, 10, "Bane deals 10 damage at the end of the turn")
     }
 
     func testBane_expiresAfterTurn() {

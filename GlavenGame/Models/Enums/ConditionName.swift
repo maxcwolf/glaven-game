@@ -17,7 +17,7 @@ enum ConditionName: String, Codable, CaseIterable {
 
     var isPositive: Bool {
         switch self {
-        case .strengthen, .regenerate, .ward, .bless, .dodge, .empower, .safeguard:
+        case .strengthen, .regenerate, .ward, .bless, .dodge, .empower, .safeguard, .invisible:
             return true
         default:
             return false
@@ -27,7 +27,7 @@ enum ConditionName: String, Codable, CaseIterable {
     var isNegative: Bool {
         switch self {
         case .stun, .immobilize, .disarm, .wound, .muddle, .poison,
-             .invisible, .curse, .bane, .brittle, .impair, .chill,
+             .curse, .bane, .brittle, .impair, .chill,
              .infect, .rupture, .plague, .enfeeble, .poison_x, .wound_x:
             return true
         default:

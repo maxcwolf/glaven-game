@@ -553,8 +553,9 @@ final class RB_ConditionTests: XCTestCase {
                       "p.20: Ranged attack adjacent = disadvantage")
     }
 
-    // p.23: "Regenerate — heals 1 at the start of the figure's turn, then is removed"
-    func testRegenerate_healsAndExpires() {
+    // FH: "Regenerate — heal 1 at the start of each of the figure's turns. Persistent;
+    // it is NOT removed after one heal (it is removed only when the figure suffers damage)."
+    func testRegenerate_healsAndPersists() {
         let t = TestGame()
         let char = t.addCharacter()
         char.health = 5
@@ -563,10 +564,13 @@ final class RB_ConditionTests: XCTestCase {
         t.entityManager.restoreConditions(char)
 
         t.entityManager.applyConditionsTurn(char)
-        XCTAssertEqual(char.health, 6, "p.23: Regenerate heals 1")
+        XCTAssertEqual(char.health, 6, "FH: Regenerate heals 1 at the start of the turn")
 
+        // Regenerate is a persistent per-turn heal and must NOT expire after a single heal.
         let regen = char.entityConditions.first(where: { $0.name == .regenerate })
-        XCTAssertTrue(regen?.expired == true, "p.23: Regenerate expires after healing")
+        XCTAssertEqual(regen?.expired, false, "FH: Regenerate persists (does not expire after healing)")
+        XCTAssertTrue(t.entityManager.hasCondition(.regenerate, on: char),
+                      "FH: Regenerate remains on the figure across turns")
     }
 
     // p.23: Immunity prevents condition application

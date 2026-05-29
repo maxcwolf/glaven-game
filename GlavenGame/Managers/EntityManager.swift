@@ -122,22 +122,16 @@ final class EntityManager {
 
             let types = condition.types
 
-            // Wound: deal 1 damage at start of turn
+            // Wound: deal 1 damage at start of turn (persists until removed)
             if condition.name == .wound && types.contains(.apply) {
                 changeHealth(entity, amount: -1)
             }
 
-            // Bane (FH): deal 10 damage at end of affected figure's next turn
-            if condition.name == .bane {
-                changeHealth(entity, amount: -10)
-            }
-
-            // Regenerate: heal 1 at start of turn
+            // Regenerate (FH): heal 1 at start of each turn. Persistent — it is NOT a
+            // one-shot; the figure keeps regenerating every turn until the condition is
+            // removed. (Bane is handled at the END of the turn, in expireConditions.)
             if condition.name == .regenerate && types.contains(.apply) {
                 changeHealth(entity, amount: 1)
-                // Regenerate expires after healing
-                entity.entityConditions[i].state = .expire
-                entity.entityConditions[i].expired = true
             }
 
             // Mark turn-type conditions
@@ -148,26 +142,41 @@ final class EntityManager {
     }
 
     func expireConditions(_ entity: any Entity) {
-        for i in entity.entityConditions.indices.reversed() {
+        // Bane deals its damage at the end of the figure's turn; defer the actual
+        // health change until after the loop so we never mutate entityConditions
+        // (changeHealth can strip brittle/ward) while iterating it by index.
+        var baneDamage = 0
+
+        for i in entity.entityConditions.indices {
             let condition = entity.entityConditions[i]
             let types = condition.types
 
             if condition.permanent { continue }
 
-            // Turn conditions expire at end of turn
+            // Turn conditions (e.g. stun) expire at end of turn.
             if condition.state == .turn {
                 entity.entityConditions[i].state = .removed
             }
 
-            // AfterTurn conditions expire
+            // AfterTurn conditions (immobilize/disarm/muddle/impair/strengthen/dodge/
+            // invisible/safeguard/bane) are active during the figure's next turn and
+            // are then REMOVED at the end of it. Marking them .removed (rather than a
+            // self-healing .expire/expired) prevents restoreConditions from reviving
+            // them on the following turn.
             if types.contains(.afterTurn) && condition.state == .normal {
-                entity.entityConditions[i].state = .expire
-                entity.entityConditions[i].expired = true
+                // Bane (FH): suffer 10 damage at the end of the figure's next turn.
+                if condition.name == .bane {
+                    baneDamage += 10
+                }
+                entity.entityConditions[i].state = .removed
             }
         }
 
-        // Remove fully removed conditions
+        // Remove fully removed conditions, then apply any deferred bane damage.
         entity.entityConditions.removeAll { $0.state == .removed }
+        if baneDamage > 0 {
+            changeHealth(entity, amount: -baneDamage)
+        }
     }
 
     private func characterName(for entity: any Entity) -> String? {
