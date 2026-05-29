@@ -174,7 +174,10 @@ final class ScenarioManager {
         scenario.revealedRooms.append(room.roomNumber)
 
         let edition = scenario.data.edition
-        let playerCount = max(2, game.activeCharacters.count)
+        // Player count for monster scaling is fixed at scenario setup by the number of
+        // participating (non-absent) characters; it must NOT shrink when a character is
+        // exhausted mid-scenario (which is what activeCharacters would do).
+        let playerCount = max(2, game.characters.filter { !$0.absent }.count)
 
         // Spawn monsters from room — elites first so they get lowest standee numbers
         if let standees = room.monster {
@@ -352,7 +355,10 @@ final class ScenarioManager {
             // For sections, open all initial rooms
             if let rooms = data.rooms {
                 for room in rooms where room.isInitial {
-                    let playerCount = max(2, game.activeCharacters.count)
+                    // Player count for monster scaling is fixed at scenario setup by the number of
+        // participating (non-absent) characters; it must NOT shrink when a character is
+        // exhausted mid-scenario (which is what activeCharacters would do).
+        let playerCount = max(2, game.characters.filter { !$0.absent }.count)
                     scenario.revealedRooms.append(room.roomNumber)
                     if let standees = room.monster {
                         let activeStandees = standees.compactMap { standee -> (MonsterStandeeData, MonsterType)? in

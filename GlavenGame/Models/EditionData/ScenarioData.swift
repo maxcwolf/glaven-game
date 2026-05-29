@@ -102,19 +102,22 @@ struct MonsterStandeeData: Codable, Hashable {
     var number: Int?        // specific standee number
 
     func monsterType(forPlayerCount playerCount: Int) -> MonsterType? {
+        // An explicit `type` always spawns regardless of player count.
         if let type = type {
             return MonsterType(rawValue: type)
         }
-        if playerCount >= 4, let p4 = player4 {
-            return MonsterType(rawValue: p4)
+        // Otherwise the standee is present only at its EXACT player count: an absent
+        // field means the standee does not spawn at that count (no cascade). This
+        // matches BoardBuilder.monsterTypeForPlayerCount and the scenario JSON data,
+        // where e.g. a `{player2: "elite"}` body must not appear at 3 or 4 players.
+        let raw: String?
+        switch playerCount {
+        case ...2: raw = player2
+        case 3:    raw = player3
+        default:   raw = player4   // 4+
         }
-        if playerCount >= 3, let p3 = player3 {
-            return MonsterType(rawValue: p3)
-        }
-        if playerCount >= 2, let p2 = player2 {
-            return MonsterType(rawValue: p2)
-        }
-        return nil
+        guard let raw = raw else { return nil }
+        return MonsterType(rawValue: raw)  // unknown value (e.g. "none") -> nil, no spawn
     }
 }
 
