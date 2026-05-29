@@ -17,27 +17,37 @@ enum Pathfinder {
     ) -> [HexCoord]? {
         if from == to { return [from] }
 
-        var visited: [HexCoord: HexCoord] = [from: from] // child → parent
+        // Cost-relaxing search (mirrors reachableHexes/pathCost): difficult terrain
+        // costs 2 to enter, so a path must be chosen by accumulated movement cost,
+        // not hop count, or it can exceed the figure's movement budget.
+        var parents: [HexCoord: HexCoord] = [from: from] // child → parent
+        var costs: [HexCoord: Int] = [from: 0]
         var queue: [(coord: HexCoord, cost: Int)] = [(from, 0)]
         var head = 0
 
         while head < queue.count {
-            let (current, _) = queue[head]
+            let (current, currentCost) = queue[head]
             head += 1
 
-            if current == to {
-                return reconstructPath(from: from, to: to, parents: visited)
-            }
+            // Skip stale queue entries superseded by a cheaper relaxation.
+            if let known = costs[current], currentCost > known { continue }
 
             for neighbor in current.neighbors {
-                guard visited[neighbor] == nil else { continue }
                 guard canTraverse(neighbor, board: board, flying: flying, jumping: jumping,
                                   avoidTraps: avoidTraps, occupiedByEnemy: occupiedByEnemy,
                                   destination: to) else { continue }
 
-                visited[neighbor] = current
-                queue.append((neighbor, 0))
+                let newCost = currentCost + movementCost(neighbor, board: board, flying: flying)
+                if let existing = costs[neighbor], existing <= newCost { continue }
+
+                costs[neighbor] = newCost
+                parents[neighbor] = current
+                queue.append((neighbor, newCost))
             }
+        }
+
+        if costs[to] != nil {
+            return reconstructPath(from: from, to: to, parents: parents)
         }
 
         // If avoiding traps failed, try again allowing traps
@@ -175,8 +185,10 @@ enum Pathfinder {
             let (current, currentCost) = queue[head]
             head += 1
 
-            if current == to { return currentCost }
-
+            // Do NOT early-return on first reaching `to`: this is a FIFO label-correcting
+            // search, so the first arrival is the fewest-hops route, not the cheapest one
+            // when difficult terrain (cost 2) is involved. Relax the whole frontier and
+            // read off costs[to] at the end.
             if let known = costs[current], currentCost > known { continue }
 
             for neighbor in current.neighbors {
@@ -194,7 +206,7 @@ enum Pathfinder {
             }
         }
 
-        return nil
+        return costs[to]
     }
 
     // MARK: - Private
