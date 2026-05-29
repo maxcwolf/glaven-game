@@ -7,6 +7,11 @@ final class ActionsManager {
     private let monsterManager: MonsterManager
     var onBeforeMutate: (() -> Void)?
 
+    /// Conditions a Heal ability removes from its target (per GH rules / long-rest):
+    /// Poison and Wound (and their stacking variants). Other negative conditions
+    /// (immobilize, stun, disarm, muddle, …) are NOT cleared by a heal.
+    static let healClearable: Set<ConditionName> = [.poison, .wound, .poison_x, .wound_x]
+
     init(game: GameState, monsterManager: MonsterManager) {
         self.game = game
         self.monsterManager = monsterManager
@@ -197,9 +202,9 @@ final class ActionsManager {
 
         switch action.type {
         case .heal:
-            // Can heal if health < max, or conditions can be removed
+            // Can heal if health < max, or there is a heal-clearable condition present.
             return entity.health < entity.maxHealth ||
-                   entity.entityConditions.contains(where: { $0.name.isNegative && !$0.permanent })
+                   entity.entityConditions.contains(where: { Self.healClearable.contains($0.name) && !$0.permanent })
         case .condition:
             let condName = action.value?.stringValue ?? ""
             guard let cond = ConditionName(rawValue: condName) else { return false }
@@ -251,6 +256,10 @@ final class ActionsManager {
         case .heal:
             let amount = action.value?.intValue ?? 0
             entity.health = min(entity.maxHealth, entity.health + amount)
+            // A Heal removes the conditions it can clear (Poison/Wound). It does NOT
+            // clear conditions like immobilize/stun/disarm/muddle, which expire on
+            // their own timing. (Matches RoundManager long-rest and the GH Heal rule.)
+            entity.entityConditions.removeAll { Self.healClearable.contains($0.name) && !$0.permanent }
             // Apply heal-related conditions from subactions
             for sub in action.subActions ?? [] {
                 if sub.type == .condition, let condName = sub.value?.stringValue,
@@ -288,12 +297,22 @@ final class ActionsManager {
 
         case .element:
             let values = getValues(action)
-            for val in values {
-                if let elemType = ElementType(rawValue: val) {
-                    let isConsume = action.valueType == .minus || action.valueType == .subtract
-                    if isConsume {
-                        consumeElement(elemType)
-                    } else {
+            let isConsume = action.valueType == .minus || action.valueType == .subtract
+            if isConsume {
+                // A colon-separated consume ("fire:earth") means consume ONE of the
+                // listed elements (the actor's choice), not all of them. Consume the
+                // first listed element that is currently active on the board.
+                let candidates = values.compactMap { ElementType(rawValue: $0) }
+                if let chosen = candidates.first(where: { type in
+                    game.elementBoard.first(where: { $0.type == type })
+                        .map { $0.state == .strong || $0.state == .waning } ?? false
+                }) {
+                    consumeElement(chosen)
+                }
+            } else {
+                // Infusing a colon list infuses each listed element.
+                for val in values {
+                    if let elemType = ElementType(rawValue: val) {
                         infuseElement(elemType)
                     }
                 }
