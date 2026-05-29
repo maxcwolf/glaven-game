@@ -60,6 +60,7 @@ enum MonsterAI {
         }
 
         let isDisarmed = entity.entityConditions.contains(where: { $0.name == .disarm && !$0.expired })
+        let isImmobilized = entity.entityConditions.contains(where: { $0.name == .immobilize && !$0.expired })
 
         // Get stat card values
         let stat = monster.stat(for: entity.type)
@@ -74,7 +75,8 @@ enum MonsterAI {
         let chillReduction = entity.entityConditions
             .filter { $0.name == .chill && !$0.expired }
             .reduce(0) { $0 + max(1, $1.value) }
-        let totalMove = max(0, baseMove + moveModifier - chillReduction)
+        // Immobilize (GH p.23): the figure cannot move this turn (it may still attack).
+        let totalMove = isImmobilized ? 0 : max(0, baseMove + moveModifier - chillReduction)
         let totalAttack = baseAttack + attackModifier
         let totalRange = max(baseRange + rangeModifier, totalAttack > 0 ? 1 : 0) // melee has range 1
         let isMelee = (baseRange + rangeModifier) <= 0
@@ -144,9 +146,17 @@ enum MonsterAI {
         // Determine movement
         var movePath: [HexCoord] = []
         if let path = path, path.count > 1 {
-            // Move along the path, limited by movement points
-            let maxSteps = min(totalMove, path.count - 1)
-            movePath = Array(path.prefix(maxSteps + 1))
+            // Walk the path accumulating movement-point cost (difficult terrain costs 2)
+            // and include hexes only while the running total stays within the budget.
+            // Truncating by hop count would overshoot when the path crosses difficult terrain.
+            movePath = [path[0]]
+            var spent = 0
+            for hex in path.dropFirst() {
+                let stepCost = (board.cells[hex]?.isDifficultTerrain == true) ? 2 : 1
+                if spent + stepCost > totalMove { break }
+                spent += stepCost
+                movePath.append(hex)
+            }
             // Can't stop on ally-occupied hex — step back until we find an empty hex
             while movePath.count > 1 && allyPositions.contains(movePath.last!) {
                 movePath.removeLast()
