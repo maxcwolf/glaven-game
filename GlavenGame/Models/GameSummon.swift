@@ -29,15 +29,21 @@ final class GameSummon: Entity {
     var shieldPersistent: ActionModel?
     var retaliate: [ActionModel] = []
     var retaliatePersistent: [ActionModel] = []
+    /// Effects added to every attack the summon makes (e.g. Rat Swarm's Poison, Shadow Wolf's Pierce 2).
+    var attackEffects: [ActionModel] = []
 
     var effectiveAttack: Int {
-        evaluateEntityValue(attack, level: level)
+        // Values such as "2 %game.element.fire%" carry an icon after the number.
+        if case .string(let raw) = attack, let number = raw.split(separator: " ").first.flatMap({ Int($0) }) {
+            return number
+        }
+        return evaluateEntityValue(attack, level: level)
     }
 
-    init(name: String, cardId: String = "", number: Int = 0, color: SummonColor = .blue,
+    init(uuid: UUID = UUID(), name: String, cardId: String = "", number: Int = 0, color: SummonColor = .blue,
          health: Int = 0, maxHealth: Int = 0, level: Int = 0,
          attack: IntOrString = .int(0), movement: Int = 0, range: Int = 0, flying: Bool = false) {
-        self.uuid = UUID()
+        self.uuid = uuid
         self.name = name
         self.cardId = cardId
         self.number = number

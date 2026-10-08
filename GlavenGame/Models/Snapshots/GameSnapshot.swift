@@ -206,6 +206,8 @@ struct CharacterSnapshot: Codable {
     // Scenario item states (optional for backward compatibility)
     var spentItems: [String]?
     var consumedItems: [String]?
+    var roundBonusCards: [Int]?
+    var lostWhenRemoved: [Int]?
 
     init(name: String, edition: String, level: Int, off: Bool, active: Bool,
          number: Int, health: Int, maxHealth: Int,
@@ -225,7 +227,8 @@ struct CharacterSnapshot: Codable {
          retired: Bool = false,
          handCards: [Int] = [], discardedCards: [Int] = [], lostCards: [Int] = [], activeCards: [Int] = [],
          resources: [String: Int] = [:], enhancements: [Enhancement] = [],
-         spentItems: [String]? = nil, consumedItems: [String]? = nil) {
+         spentItems: [String]? = nil, consumedItems: [String]? = nil,
+         roundBonusCards: [Int]? = nil, lostWhenRemoved: [Int]? = nil) {
         self.name = name; self.edition = edition; self.level = level
         self.off = off; self.active = active; self.number = number
         self.health = health; self.maxHealth = maxHealth
@@ -255,6 +258,8 @@ struct CharacterSnapshot: Codable {
         self.enhancements = enhancements
         self.spentItems = spentItems
         self.consumedItems = consumedItems
+        self.roundBonusCards = roundBonusCards
+        self.lostWhenRemoved = lostWhenRemoved
     }
 
     init(from decoder: Decoder) throws {
@@ -305,6 +310,8 @@ struct CharacterSnapshot: Codable {
         enhancements = try container.decodeIfPresent([Enhancement].self, forKey: .enhancements) ?? []
         spentItems = try container.decodeIfPresent([String].self, forKey: .spentItems)
         consumedItems = try container.decodeIfPresent([String].self, forKey: .consumedItems)
+        roundBonusCards = try container.decodeIfPresent([Int].self, forKey: .roundBonusCards)
+        lostWhenRemoved = try container.decodeIfPresent([Int].self, forKey: .lostWhenRemoved)
     }
 }
 
@@ -318,6 +325,8 @@ struct MonsterSnapshot: Codable {
     var active: Bool
     var ability: Int
     var abilities: [Int]
+    /// Optional for backward compatibility: older saves reset `ability` to -1 between rounds.
+    var abilityDrawn: Bool?
     var entities: [MonsterEntitySnapshot]
     var isAlly: Bool
     var isAllied: Bool
@@ -422,6 +431,7 @@ struct SummonSnapshot: Codable {
     var shieldPersistent: ActionModel?
     var retaliate: [ActionModel]
     var retaliatePersistent: [ActionModel]
+    var attackEffects: [ActionModel]?
 }
 
 // MARK: - Scenario Snapshot

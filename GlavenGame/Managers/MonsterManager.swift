@@ -36,10 +36,15 @@ final class MonsterManager {
         onBeforeMutate?()
         let resolvedType = monster.isBoss ? .boss : type
         guard let stat = monster.stat(for: resolvedType) else { return }
-        let standeeNumber = number ?? nextStandeeNumber(for: monster, type: resolvedType)
+        // Only as many monsters as there are standees can be on the board (p.17).
+        guard let standeeNumber = number ?? availableStandeeNumbers(for: monster).first else { return }
         // Prevent duplicate numbers
         guard !monster.entities.contains(where: { !$0.dead && $0.number == standeeNumber }) else { return }
-        let charCount = game.activeCharacters.count
+        // A standee number freed by a dead monster is reused: drop the old record so lookups by
+        // number find the new monster.
+        monster.entities.removeAll { $0.dead && $0.number == standeeNumber }
+        // C counts every character in the scenario, including exhausted ones.
+        let charCount = game.characters.filter { !$0.absent }.count
         var hp = evaluateEntityValue(stat.health ?? .int(0), level: monster.level, characterCount: charCount)
         // Apply scenario stat-effect health override
         if let healthExpr = monster.statEffectHealthExpr {
@@ -62,9 +67,11 @@ final class MonsterManager {
         monster.entities.append(entity)
     }
 
+    /// Standee numbers not currently in use. Empty when every standee of the type is on the
+    /// board — no more of that monster can be placed (GH p.15).
     func availableStandeeNumbers(for monster: GameMonster) -> [Int] {
         let used = Set(monster.entities.filter { !$0.dead }.map(\.number))
-        return (1...monster.maxCount).filter { !used.contains($0) }
+        return (1...max(1, monster.maxCount)).filter { !used.contains($0) }
     }
 
     func removeEntity(_ entity: GameMonsterEntity, from monster: GameMonster) {
@@ -82,7 +89,7 @@ final class MonsterManager {
         for entity in monster.entities where !entity.dead {
             if let stat = monster.stat(for: entity.type) {
                 let newMax = evaluateEntityValue(stat.health ?? .int(0), level: monster.level,
-                                                   characterCount: game.activeCharacters.count)
+                                                   characterCount: game.characters.filter { !$0.absent }.count)
                 entity.maxHealth = newMax
                 entity.health = min(entity.health, newMax)
             }
@@ -95,7 +102,8 @@ final class MonsterManager {
     }
 
     func currentAbility(for monster: GameMonster) -> AbilityModel? {
-        guard monster.ability >= 0, monster.ability < monster.abilities.count else { return nil }
+        guard monster.abilityDrawn,
+              monster.ability >= 0, monster.ability < monster.abilities.count else { return nil }
         let abilityIndex = monster.abilities[monster.ability]
         let allAbilities = abilities(for: monster)
         guard abilityIndex >= 0, abilityIndex < allAbilities.count else { return nil }
@@ -105,7 +113,8 @@ final class MonsterManager {
     /// Returns the zero-based index of the currently drawn ability card within the ordered deck array.
     /// Use this with `ImageLoader.monsterAbilityCardURL(deckName:cardIndex:)` to get the card image URL.
     func currentAbilityCardIndex(for monster: GameMonster) -> Int? {
-        guard monster.ability >= 0, monster.ability < monster.abilities.count else { return nil }
+        guard monster.abilityDrawn,
+              monster.ability >= 0, monster.ability < monster.abilities.count else { return nil }
         return monster.abilities[monster.ability]
     }
 
@@ -114,11 +123,18 @@ final class MonsterManager {
     }
 
     func drawAbility(for monster: GameMonster) {
+        // One card per type per round.
+        guard !monster.abilityDrawn else { return }
+        if monster.abilities.isEmpty {
+            shuffleAbilities(for: monster)
+        }
         monster.ability += 1
         if monster.ability >= monster.abilities.count {
             shuffleAbilities(for: monster)
             monster.ability = 0
         }
+        monster.abilityDrawn = true
+        monster.drawnInitiative = currentAbilityInitiative(for: monster)
         // Cache initiative for sorting
         if let init_ = currentAbilityInitiative(for: monster) {
             abilityInitiatives[monster.id] = init_
@@ -131,12 +147,44 @@ final class MonsterManager {
         monster.ability = -1
     }
 
+    /// End-of-round cleanup for a monster type's ability deck: if the card drawn this round has
+    /// the shuffle icon, shuffle the discards back into the deck (GH p.18). The draw position is
+    /// otherwise kept, so next round reveals the next card.
+    func finishRound(for monster: GameMonster) {
+        if monster.abilityDrawn, currentAbility(for: monster)?.shuffle == true {
+            shuffleAbilities(for: monster)
+        }
+        monster.abilityDrawn = false
+        monster.drawnInitiative = nil
+    }
+
+    /// Switch a monster type to a different ability deck. A no-op if it already uses that deck;
+    /// if a card was already drawn this round, draw the replacement card immediately.
+    private func switchDeck(of monster: GameMonster, to deckName: String) {
+        guard monster.deckOverride != deckName else { return }
+        let deckAbilities = editionStore.abilities(forDeck: deckName, edition: monster.edition)
+        guard !deckAbilities.isEmpty else { return }
+        monster.deckOverride = deckName
+        monster.abilities = Array(0..<deckAbilities.count).shuffled()
+        monster.ability = -1
+        if monster.abilityDrawn {
+            monster.abilityDrawn = false
+            drawAbility(for: monster)
+        }
+    }
+
     /// Apply stat effects (shield, retaliate) from drawn ability card, base stats, and scenario overrides to all alive entities
     func applyStatEffects(for monster: GameMonster) {
         guard let ability = currentAbility(for: monster) else { return }
         let allActions = (ability.actions ?? []) + (ability.bottomActions ?? [])
 
         for entity in monster.aliveEntities {
+            // Rebuild from scratch every round so stat/scenario bonuses don't accumulate.
+            entity.shield = nil
+            entity.shieldPersistent = nil
+            entity.retaliate = []
+            entity.retaliatePersistent = []
+
             // Apply base stat actions (permanent effects from monster stat card)
             if let stat = monster.stat(for: entity.type), let statActions = stat.actions {
                 for action in statActions {
@@ -162,23 +210,13 @@ final class MonsterManager {
         if let name = effect.name {
             monster.displayName = name
             if effect.deck == nil {
-                let altAbilities = editionStore.abilities(forDeck: name, edition: monster.edition)
-                if !altAbilities.isEmpty {
-                    monster.deckOverride = name
-                    monster.abilities = Array(0..<altAbilities.count).shuffled()
-                    monster.ability = -1
-                }
+                switchDeck(of: monster, to: name)
             }
         }
 
         // 2. Explicit deck override
         if let deck = effect.deck {
-            monster.deckOverride = deck
-            let deckAbilities = editionStore.abilities(forDeck: deck, edition: monster.edition)
-            if !deckAbilities.isEmpty {
-                monster.abilities = Array(0..<deckAbilities.count).shuffled()
-                monster.ability = -1
-            }
+            switchDeck(of: monster, to: deck)
         }
 
         // 3. Additional stat actions (replace so re-applying is idempotent)
@@ -224,10 +262,11 @@ final class MonsterManager {
     private func applyStatAction(_ action: ActionModel, to entity: GameMonsterEntity, persistent: Bool) {
         switch action.type {
         case .shield:
+            // Multiple shield bonuses stack (GH p.24).
             if persistent {
-                entity.shieldPersistent = action
+                entity.shieldPersistent = Self.stackedShield(entity.shieldPersistent, action)
             } else {
-                entity.shield = action
+                entity.shield = Self.stackedShield(entity.shield, action)
             }
         case .retaliate:
             if persistent {
@@ -238,6 +277,11 @@ final class MonsterManager {
         default:
             break
         }
+    }
+
+    private static func stackedShield(_ existing: ActionModel?, _ added: ActionModel) -> ActionModel {
+        guard let existing, let a = existing.value?.intValue, let b = added.value?.intValue else { return added }
+        return ActionModel(type: .shield, value: .int(a + b))
     }
 
     func nextStandeeNumber(for monster: GameMonster, type: MonsterType) -> Int {

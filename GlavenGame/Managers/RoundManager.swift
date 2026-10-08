@@ -8,8 +8,15 @@ final class RoundManager {
     private let attackModifierManager: AttackModifierManager
     var onBeforeMutate: (() -> Void)?
 
-    /// Called after round advances — used by ScenarioRulesManager to evaluate rules
+    /// Called when a round starts, before monster ability cards are drawn — used by
+    /// ScenarioRulesManager to evaluate start-of-round rules (spawns there still draw a card).
     var onRoundAdvanced: (() -> Void)?
+    /// Called at the end of a round, before elements wane — evaluates end-of-round rules.
+    var onRoundEnding: (() -> Void)?
+    /// On the board, each summon and each monster standee takes its own turn, and the turn
+    /// controllers tick their conditions; in the companion tracker summons are processed with
+    /// their summoner and monsters as a group.
+    var figuresTakeOwnTurns = false
 
     init(game: GameState, entityManager: EntityManager,
          monsterManager: MonsterManager, attackModifierManager: AttackModifierManager) {
@@ -40,14 +47,14 @@ final class RoundManager {
             }
         }
 
+        // Evaluate start-of-round scenario rules (spawns, stat changes) before drawing cards.
+        onRoundAdvanced?()
+
         // Draw monster abilities and apply stat effects
         for monster in game.monsters where !monster.off && monster.aliveEntities.count > 0 {
             monsterManager.drawAbility(for: monster)
             monsterManager.applyStatEffects(for: monster)
         }
-
-        // Evaluate scenario rules for this round
-        onRoundAdvanced?()
 
         // Sort figures by initiative
         game.figures.sort { a, b in
@@ -62,6 +69,8 @@ final class RoundManager {
     }
 
     private func transitionToDraw() {
+        // End-of-round scenario rules see the round that is ending, before elements wane.
+        onRoundEnding?()
         game.state = .draw
         game.totalSeconds += game.playSeconds
         game.playSeconds = 0
@@ -83,6 +92,8 @@ final class RoundManager {
                 c.active = false
                 c.initiative = 0
                 c.longRest = false
+                // Round bonus cards leave the active area at the end of the round (p.24).
+                for cardId in c.roundBonusCards { c.removeFromActiveArea(cardId) }
                 // Reset shield/retaliate
                 c.shield = nil
                 c.retaliate = []
@@ -93,9 +104,11 @@ final class RoundManager {
                 }
             case .monster(let m):
                 m.active = false
-                m.ability = -1
+                monsterManager.finishRound(for: m)
                 for entity in m.entities {
                     entity.active = false
+                    // Monsters summoned this round act from the next round on.
+                    if entity.summonState == .new { entity.summonState = .active }
                     // Reset shield/retaliate
                     entity.shield = nil
                     entity.retaliate = []
@@ -132,11 +145,15 @@ final class RoundManager {
             }
         case .monster(let m):
             if m.active {
-                for entity in m.aliveEntities { afterTurnEntity(entity) }
+                if !figuresTakeOwnTurns {
+                    for entity in m.aliveEntities { afterTurnEntity(entity) }
+                }
                 m.active = false
             } else {
                 m.active = true
-                for entity in m.aliveEntities { beforeTurnEntity(entity) }
+                if !figuresTakeOwnTurns {
+                    for entity in m.aliveEntities { beforeTurnEntity(entity) }
+                }
             }
         case .objective(let o):
             o.active.toggle()
@@ -154,26 +171,29 @@ final class RoundManager {
     }
 
     private func beforeTurn(character: GameCharacter) {
-        // Long rest: heal 2, remove wound and poison
-        if character.longRest {
-            entityManager.changeHealth(character, amount: 2)
-            entityManager.removeCondition(.wound, from: character)
-            entityManager.removeCondition(.poison, from: character)
-        }
-
         entityManager.restoreConditions(character)
         entityManager.applyConditionsTurn(character)
-        for summon in character.summons where !summon.dead {
-            entityManager.restoreConditions(summon)
-            entityManager.applyConditionsTurn(summon)
+        if !figuresTakeOwnTurns {
+            for summon in character.summons where !summon.dead {
+                entityManager.restoreConditions(summon)
+                entityManager.applyConditionsTurn(summon)
+            }
+        }
+
+        // Long rest: "Heal 2, Self" as part of the resting turn, after start-of-turn wound damage.
+        // Healing follows the normal rules (poison blocks it; it removes poison and wound).
+        if character.longRest && character.health > 0 {
+            entityManager.heal(character, amount: 2)
+            character.spentItems.removeAll()
         }
     }
 
     private func afterTurn(character: GameCharacter) {
         entityManager.expireConditions(character)
-        for summon in character.summons where !summon.dead {
-            entityManager.expireConditions(summon)
-            if summon.state == .new { summon.state = .active }
+        if !figuresTakeOwnTurns {
+            for summon in character.summons where !summon.dead {
+                entityManager.expireConditions(summon)
+            }
         }
     }
 

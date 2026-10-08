@@ -74,6 +74,10 @@ final class EntityManager {
             let types = Condition.conditionTypes(for: conditionName)
             if types.contains(.stack) || types.contains(.stackable) {
                 entity.entityConditions[idx].value += max(1, value)
+            } else {
+                // Reapplying a condition refreshes its duration (GH p.22).
+                entity.entityConditions[idx].state = .new
+                entity.entityConditions[idx].expired = false
             }
             if permanent { entity.entityConditions[idx].permanent = true }
             return
@@ -92,6 +96,19 @@ final class EntityManager {
         if let charName = characterName(for: entity) {
             scenarioStatsManager?.recordConditionReceived(by: charName)
         }
+    }
+
+    /// Heal a figure (GH p.23). Poison is removed and blocks the healing entirely; Wound is
+    /// removed and the heal continues normally. Returns the hit points actually restored.
+    @discardableResult
+    func heal(_ entity: any Entity, amount: Int) -> Int {
+        onBeforeMutate?()
+        let poisoned = hasCondition(.poison, on: entity)
+        entity.entityConditions.removeAll { ($0.name == .poison || $0.name == .wound) && !$0.permanent }
+        guard !poisoned, amount > 0 else { return 0 }
+        let before = entity.health
+        changeHealth(entity, amount: amount)
+        return entity.health - before
     }
 
     func removeCondition(_ conditionName: ConditionName, from entity: any Entity) {

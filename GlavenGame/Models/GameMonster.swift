@@ -13,8 +13,14 @@ final class GameMonster: Figure {
     var id: String { "\(edition)-\(name)" }
 
     // Monster-specific
+    /// Position of the current card in `abilities` (the shuffled draw order). Persists across
+    /// rounds so each round reveals the next card; reset to -1 when the deck is reshuffled.
     var ability: Int = -1
     var abilities: [Int] = []
+    /// Whether an ability card has been drawn for the current round.
+    var abilityDrawn: Bool = false
+    /// Initiative of the card drawn this round (nil between rounds).
+    var drawnInitiative: Int?
     var entities: [GameMonsterEntity] = []
     var isAlly: Bool = false
     var isAllied: Bool = false
@@ -72,6 +78,16 @@ final class GameMonster: Figure {
 
     func stat(for type: MonsterType) -> MonsterStatModel? {
         monsterData?.stat(for: type, at: level)
+    }
+
+    /// The stat card used for attacks: including actions a scenario rule added (e.g. "Cave Bears
+    /// add Poison to their attacks").
+    func attackStat(for type: MonsterType) -> MonsterStatModel? {
+        guard var stat = stat(for: type) else { return nil }
+        if !additionalStatActions.isEmpty {
+            stat.actions = (stat.actions ?? []) + additionalStatActions
+        }
+        return stat
     }
 }
 

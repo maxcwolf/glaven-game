@@ -147,7 +147,9 @@ extension GameCharacter {
             resources: resources,
             enhancements: enhancements,
             spentItems: spentItems.isEmpty ? nil : Array(spentItems),
-            consumedItems: consumedItems.isEmpty ? nil : Array(consumedItems)
+            consumedItems: consumedItems.isEmpty ? nil : Array(consumedItems),
+            roundBonusCards: roundBonusCards.isEmpty ? nil : roundBonusCards,
+            lostWhenRemoved: lostWhenRemoved.isEmpty ? nil : lostWhenRemoved
         )
     }
 }
@@ -199,6 +201,8 @@ extension CharacterSnapshot {
         c.enhancements = enhancements
         c.spentItems = Set(spentItems ?? [])
         c.consumedItems = Set(consumedItems ?? [])
+        c.roundBonusCards = roundBonusCards ?? []
+        c.lostWhenRemoved = lostWhenRemoved ?? []
         return c
     }
 }
@@ -209,7 +213,7 @@ extension GameMonster {
     func toSnapshot() -> MonsterSnapshot {
         MonsterSnapshot(
             name: name, edition: edition, level: level, off: off, active: active,
-            ability: ability, abilities: abilities,
+            ability: ability, abilities: abilities, abilityDrawn: abilityDrawn,
             entities: entities.map { $0.toSnapshot() },
             isAlly: isAlly, isAllied: isAllied, tags: tags, drawExtra: drawExtra,
             displayName: displayName, deckOverride: deckOverride,
@@ -229,6 +233,7 @@ extension MonsterSnapshot {
         m.active = active
         m.ability = ability
         m.abilities = abilities
+        m.abilityDrawn = abilityDrawn ?? (ability >= 0)
         m.entities = entities.map { $0.toRuntime() }
         m.isAlly = isAlly
         m.isAllied = isAllied
@@ -354,15 +359,17 @@ extension GameSummon {
             entityConditions: entityConditions, immunities: immunities,
             markers: markers, tags: tags,
             shield: shield, shieldPersistent: shieldPersistent,
-            retaliate: retaliate, retaliatePersistent: retaliatePersistent
+            retaliate: retaliate, retaliatePersistent: retaliatePersistent,
+            attackEffects: attackEffects.isEmpty ? nil : attackEffects
         )
     }
 }
 
 extension SummonSnapshot {
     func toRuntime() -> GameSummon {
+        // Keep the summon's identity so its board piece (keyed by id) still matches after undo.
         let s = GameSummon(
-            name: name, cardId: cardId, number: number, color: color,
+            uuid: uuid, name: name, cardId: cardId, number: number, color: color,
             health: health, maxHealth: maxHealth, level: level,
             attack: attack, movement: movement, range: range, flying: flying
         )
@@ -379,6 +386,7 @@ extension SummonSnapshot {
         s.shieldPersistent = shieldPersistent
         s.retaliate = retaliate
         s.retaliatePersistent = retaliatePersistent
+        s.attackEffects = attackEffects ?? []
         return s
     }
 }

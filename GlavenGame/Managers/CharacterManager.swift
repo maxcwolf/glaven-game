@@ -153,6 +153,22 @@ final class CharacterManager {
             range: data.range?.intValue ?? 0,
             flying: data.flying ?? false
         )
+        // The summon card's printed traits: flying, permanent shield/retaliate, and effects
+        // added to each of its attacks.
+        for action in [data.action, data.additionalAction].compactMap({ $0 }) {
+            switch action.type {
+            case .fly:
+                summon.flying = true
+            case .shield:
+                summon.shieldPersistent = action
+            case .retaliate:
+                summon.retaliatePersistent.append(action)
+            case .condition, .pierce, .push, .pull, .target, .specialTarget:
+                summon.attackEffects.append(action)
+            default:
+                break
+            }
+        }
         character.summons.append(summon)
     }
 

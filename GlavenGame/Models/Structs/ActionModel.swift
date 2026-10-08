@@ -36,6 +36,8 @@ struct ActionModel: Codable, Hashable, Identifiable {
     var enhancementTypes: [EnhancementSlotType]?
     /// Embedded summon stats from `valueObject` JSON key (character summon cards).
     var summonValueObject: SummonValueObject?
+    /// Monsters summoned by a monster ability (`valueObject: [{"monster": {...}}]`).
+    var monsterSummons: [MonsterSummonSpec]?
 
     enum CodingKeys: String, CodingKey {
         case type, value, valueType, subActions, small, hidden, enhancementTypes, valueObject
@@ -63,6 +65,8 @@ struct ActionModel: Codable, Hashable, Identifiable {
         // Decode valueObject as SummonValueObject (single object for character summons).
         // Silently ignore arrays (monster summon format) or missing keys.
         summonValueObject = try? container.decodeIfPresent(SummonValueObject.self, forKey: .valueObject)
+        monsterSummons = (try? container.decodeIfPresent([MonsterSummonSpec.Wrapper].self, forKey: .valueObject))?
+            .map(\.monster)
     }
 
     func encode(to encoder: Encoder) throws {
@@ -74,6 +78,33 @@ struct ActionModel: Codable, Hashable, Identifiable {
         try container.encodeIfPresent(small, forKey: .small)
         try container.encodeIfPresent(hidden, forKey: .hidden)
         try container.encodeIfPresent(enhancementTypes, forKey: .enhancementTypes)
-        try container.encodeIfPresent(summonValueObject, forKey: .valueObject)
+        if let monsterSummons {
+            try container.encode(monsterSummons.map(MonsterSummonSpec.Wrapper.init), forKey: .valueObject)
+        } else {
+            try container.encodeIfPresent(summonValueObject, forKey: .valueObject)
+        }
+    }
+}
+
+/// A monster placed by a monster's Summon ability (e.g. Cultist → Living Bones).
+struct MonsterSummonSpec: Codable, Hashable {
+    var name: String
+    var type: MonsterType?
+    var player2: MonsterType?
+    var player3: MonsterType?
+    var player4: MonsterType?
+    var health: IntOrString?
+
+    struct Wrapper: Codable, Hashable {
+        var monster: MonsterSummonSpec
+    }
+
+    /// Normal/elite for the given character count (2-player setup for fewer than 2).
+    func type(forPlayerCount count: Int) -> MonsterType {
+        switch count {
+        case ...2: return player2 ?? type ?? .normal
+        case 3: return player3 ?? type ?? .normal
+        default: return player4 ?? type ?? .normal
+        }
     }
 }
