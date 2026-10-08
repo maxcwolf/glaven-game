@@ -33,7 +33,7 @@ final class CharacterManager {
         game.figures.append(.character(character))
         game.campaignLog.append(CampaignLogEntry(
             type: .characterAdded,
-            message: "\(name.replacingOccurrences(of: "-", with: " ").capitalized) joined the party",
+            message: "\(GameText.className(name, edition: edition, labels: editionStore)) joined the party",
             details: "Level \(clampedLevel)"
         ))
     }
@@ -59,8 +59,8 @@ final class CharacterManager {
                 game.unlockedCharacters.insert("\(character.edition)-\(unlock)")
                 game.campaignLog.append(CampaignLogEntry(
                     type: .characterUnlocked,
-                    message: "\(unlock.replacingOccurrences(of: "-", with: " ").capitalized) unlocked",
-                    details: "Via retirement of \(character.name.replacingOccurrences(of: "-", with: " ").capitalized)"
+                    message: "\(GameText.className(unlock, edition: character.edition, labels: editionStore)) unlocked",
+                    details: "Via retirement of \(GameText.characterName(character, labels: editionStore))"
                 ))
             }
         }
@@ -69,13 +69,11 @@ final class CharacterManager {
         game.partyProsperity += 1
         game.campaignLog.append(CampaignLogEntry(
             type: .prosperityGained,
-            message: "+1 Prosperity from retirement"
+            message: "Prosperity +1 from a retirement"
         ))
 
         // Log retirement
-        let displayName = character.title.isEmpty
-            ? character.name.replacingOccurrences(of: "-", with: " ").capitalized
-            : character.title
+        let displayName = GameText.characterName(character, labels: editionStore)
         game.campaignLog.append(CampaignLogEntry(
             type: .characterRetired,
             message: "\(displayName) retired",
@@ -139,6 +137,9 @@ final class CharacterManager {
         guard canLevelUp(character) else { return false }
         setLevel(character.level + 1, for: character)
         character.health = character.maxHealth
+        game.campaignLog.append(CampaignLogEntry(
+            type: .levelUp,
+            message: "\(GameText.characterName(character, labels: editionStore)) reached level \(character.level)"))
         return true
     }
 

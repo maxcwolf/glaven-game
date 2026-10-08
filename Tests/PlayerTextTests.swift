@@ -14,8 +14,9 @@ final class PlayerTextTests: XCTestCase {
             (#"\b(gh|fh|jotl|cs|toa|bb|gh2e)-[a-z]"#, "edition-prefixed id"),
             (#"\b(char|summon|monster|objective)\("#, "PieceID description"),
             (#"[a-z]+-[a-z]+ #?\d"#, "monster slug"),
-            // "Bandit Guard #2"; scenarios ("#1 Black Barrow", "#15 or #17") are fine.
-            (#"\b(?!or\b|and\b)[A-Za-z]+ #\d"#, "standee written as #n"),
+            // "Bandit Guard #2 attacks"; a scenario number comes before its title ("Completed
+            // #1 Black Barrow", "#15 or #17 Lost Island") and is fine.
+            (#"[A-Za-z] #\d+(?!\d|\s+[A-Z#])"#, "standee written as #n"),
             (#"\(-?\d+, ?-?\d+\)"#, "grid coordinate"),
             (#"\.\.\."#, "three dots instead of …"),
             (#"\b[a-z]+[A-Z][a-z]+"#, "camelCase identifier"),

@@ -195,7 +195,7 @@ final class EventCardManager {
 
         game.campaignLog.append(CampaignLogEntry(
             type: .eventResolved,
-            message: "\(deck == .city ? "City" : "Road") event \(event.cardId): option \(label)",
+            message: "\(deck == .city ? "City" : "Road") event \(event.cardId), option \(label)",
             details: lines.isEmpty ? nil : lines.joined(separator: "; ")))
         return Resolution(narrative: narrative, effects: lines.isEmpty ? ["No effect."] : lines)
     }

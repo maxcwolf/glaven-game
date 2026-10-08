@@ -122,7 +122,7 @@ final class ScenarioManager {
                 if complete {
                     game.campaignLog.append(CampaignLogEntry(
                         type: .characterRetired,
-                        message: "\(character.name) completed their personal quest and is ready to retire"
+                        message: "\(GameText.characterName(character, labels: editionStore)) completed their personal quest and can retire"
                     ))
                 }
             }
@@ -130,7 +130,7 @@ final class ScenarioManager {
             // Campaign log
             game.campaignLog.append(CampaignLogEntry(
                 type: .scenarioCompleted,
-                message: "Completed Scenario #\(data.index): \(data.name)",
+                message: "Completed #\(data.index) \(data.name)",
                 details: "Round \(game.round)"
             ))
         } else {
@@ -138,7 +138,7 @@ final class ScenarioManager {
             // and money they collected (GH p.47).
             game.campaignLog.append(CampaignLogEntry(
                 type: .scenarioFailed,
-                message: "Failed Scenario #\(data.index): \(data.name)",
+                message: "Failed #\(data.index) \(data.name)",
                 details: "Round \(game.round)"
             ))
         }

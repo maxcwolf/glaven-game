@@ -89,7 +89,7 @@ extension ScenarioManager {
                     takers[copy].items.append(key)
                     game.campaignLog.append(CampaignLogEntry(
                         type: .itemAcquired,
-                        message: "\(takers[copy].name.replacingOccurrences(of: "-", with: " ").capitalized) gained \(itemName)"
+                        message: "\(GameText.characterName(takers[copy], labels: editionStore)) gained \(itemName)"
                     ))
                 } else {
                     game.unlockedItems.insert(key)
@@ -123,7 +123,7 @@ extension ScenarioManager {
         game.unlockedCharacters.insert(key)
         game.campaignLog.append(CampaignLogEntry(
             type: .characterUnlocked,
-            message: "\(name.replacingOccurrences(of: "-", with: " ").capitalized) unlocked",
+            message: "\(GameText.className(name, edition: edition, labels: editionStore)) unlocked",
             details: "Scenario reward"
         ))
     }

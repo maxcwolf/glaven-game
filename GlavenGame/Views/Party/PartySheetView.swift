@@ -22,8 +22,7 @@ struct PartySheetView: View {
                         value: game.partyReputation,
                         range: -20...20,
                         icon: "person.2.circle",
-                        color: reputationColor,
-                        onChange: { gameManager.game.partyReputation = $0 }
+                        color: reputationColor
                     )
 
                     // Prosperity Track
@@ -32,8 +31,7 @@ struct PartySheetView: View {
                         value: game.partyProsperity,
                         range: 0...64,
                         icon: "building.2.crop.circle",
-                        color: .green,
-                        onChange: { gameManager.game.partyProsperity = $0 }
+                        color: .green
                     )
 
                     // Prosperity Level
@@ -64,11 +62,16 @@ struct PartySheetView: View {
 
                     // Characters Summary
                     charactersSummarySection
+
+                    // What happened, newest first
+                    if !game.campaignLog.isEmpty {
+                        campaignLogSection
+                    }
                 }
                 .padding()
             }
             .background(GlavenTheme.background)
-            .navigationTitle("Party")
+            .navigationTitle("Campaign")
             #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
             #endif
@@ -135,7 +138,8 @@ struct PartySheetView: View {
     // MARK: - Track Section
 
     @ViewBuilder
-    private func trackSection(title: String, value: Int, range: ClosedRange<Int>, icon: String, color: Color, onChange: @escaping (Int) -> Void) -> some View {
+    /// Reputation and prosperity are earned in scenarios and events, so they're shown, not edited.
+    private func trackSection(title: String, value: Int, range: ClosedRange<Int>, icon: String, color: Color) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
                 Image(systemName: icon)
@@ -148,43 +152,21 @@ struct PartySheetView: View {
                     .foregroundStyle(color)
             }
 
-            HStack(spacing: 12) {
-                Button {
-                    let newVal = max(range.lowerBound, value - 1)
-                    onChange(newVal)
-                } label: {
-                    Image(systemName: "minus.circle.fill")
-                        .font(.system(size: 28))
-                        .foregroundStyle(color.opacity(value > range.lowerBound ? 1 : 0.3))
+            // Visual track
+            GeometryReader { geo in
+                let fraction = Double(value - range.lowerBound) / Double(range.upperBound - range.lowerBound)
+                ZStack(alignment: .leading) {
+                    RoundedRectangle(cornerRadius: 4)
+                        .fill(GlavenTheme.primaryText.opacity(0.1))
+                    RoundedRectangle(cornerRadius: 4)
+                        .fill(color.opacity(0.7))
+                        .frame(width: max(0, geo.size.width * fraction))
                 }
-                .buttonStyle(.plain)
-                .disabled(value <= range.lowerBound)
-
-                // Visual track
-                GeometryReader { geo in
-                    let fraction = Double(value - range.lowerBound) / Double(range.upperBound - range.lowerBound)
-                    ZStack(alignment: .leading) {
-                        RoundedRectangle(cornerRadius: 4)
-                            .fill(GlavenTheme.primaryText.opacity(0.1))
-                        RoundedRectangle(cornerRadius: 4)
-                            .fill(color.opacity(0.7))
-                            .frame(width: max(0, geo.size.width * fraction))
-                    }
-                }
-                .frame(height: 8)
-
-                Button {
-                    let newVal = min(range.upperBound, value + 1)
-                    onChange(newVal)
-                } label: {
-                    Image(systemName: "plus.circle.fill")
-                        .font(.system(size: 28))
-                        .foregroundStyle(color.opacity(value < range.upperBound ? 1 : 0.3))
-                }
-                .buttonStyle(.plain)
-                .disabled(value >= range.upperBound)
             }
+            .frame(height: 8)
         }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("\(title) \(value)")
         .padding()
         .background(GlavenTheme.cardBackground)
         .clipShape(RoundedRectangle(cornerRadius: 12))
@@ -369,6 +351,60 @@ struct PartySheetView: View {
     }
 
     // MARK: - Characters Summary
+
+    // MARK: - Campaign Log
+
+    private var campaignLogSection: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Label("Campaign Log", systemImage: "book.closed")
+                .font(.headline)
+                .foregroundStyle(GlavenTheme.primaryText)
+            ForEach(game.campaignLog.reversed()) { entry in
+                HStack(alignment: .firstTextBaseline, spacing: 10) {
+                    Image(systemName: Self.logIcon(entry.type))
+                        .foregroundStyle(GlavenTheme.accentText)
+                        .frame(width: 20)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(entry.message)
+                            .font(.subheadline)
+                            .foregroundStyle(GlavenTheme.primaryText)
+                        if let details = entry.details {
+                            Text(details)
+                                .font(.caption)
+                                .foregroundStyle(GlavenTheme.secondaryText)
+                        }
+                    }
+                    Spacer(minLength: 8)
+                    Text(entry.timestamp, format: .dateTime.month(.abbreviated).day())
+                        .font(.caption)
+                        .foregroundStyle(GlavenTheme.secondaryText)
+                }
+                .accessibilityElement(children: .combine)
+            }
+        }
+        .padding()
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(GlavenTheme.cardBackground)
+        .clipShape(RoundedRectangle(cornerRadius: 12))
+    }
+
+    static func logIcon(_ type: CampaignLogType) -> String {
+        switch type {
+        case .scenarioCompleted: return "checkmark.seal"
+        case .scenarioFailed: return "xmark.seal"
+        case .characterAdded: return "person.badge.plus"
+        case .characterRetired: return "figure.walk.departure"
+        case .characterExhausted: return "bed.double"
+        case .achievementGained: return "flag"
+        case .prosperityGained: return "building.2"
+        case .reputationChanged: return "person.2"
+        case .treasureLooted: return "shippingbox"
+        case .itemAcquired: return "bag"
+        case .levelUp: return "arrow.up.circle"
+        case .characterUnlocked: return "lock.open"
+        case .eventResolved: return "scroll"
+        }
+    }
 
     @ViewBuilder
     private var charactersSummarySection: some View {

@@ -27,7 +27,7 @@ extension ScenarioManager {
         game.lootedTreasures.insert(key)
         game.campaignLog.append(CampaignLogEntry(
             type: .treasureLooted,
-            message: "Treasure #\(index) looted in Scenario #\(scenario.data.index)"
+            message: "Looted treasure \(index) in #\(scenario.data.index) \(scenario.data.name)"
         ))
 
         guard let reward = editionStore.treasureReward(index: number, edition: edition) else { return nil }
