@@ -140,7 +140,8 @@ enum BattleGoalEvaluator {
 
         let anyExhausted = game.characters.contains { $0.exhausted }
 
-        for character in game.activeCharacters {
+        // Exhausted characters can still complete their battle goal on a success (GH p.47).
+        for character in game.characters where !character.absent {
             guard let selectedIndex = character.selectedBattleGoal,
                   selectedIndex < character.battleGoalCardIds.count else { continue }
 

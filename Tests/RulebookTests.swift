@@ -787,9 +787,9 @@ final class RB_ScenarioTests: XCTestCase {
         }
     }
 
-    // p.34: "When a scenario is failed, all gold and items collected during
-    //        the scenario are lost. Experience is kept."
-    func testDefeatLosesGoldKeepsXP() {
+    // p.47: experience and money gained are tallied whether or not the scenario succeeded;
+    //       a failure only skips battle goals, bonus XP and scenario rewards.
+    func testDefeatKeepsGoldAndXP() {
         let t = TestGame()
         let char = t.addCharacter()
         char.experience = 50
@@ -802,12 +802,13 @@ final class RB_ScenarioTests: XCTestCase {
                                   monsterManager: t.monsterManager, levelManager: t.levelManager)
         sm.finishScenario(success: false)
 
-        XCTAssertEqual(char.experience, 50, "p.34: XP kept on defeat")
-        XCTAssertEqual(char.loot, 0, "p.34: Gold lost on defeat")
+        XCTAssertEqual(char.experience, 50, "p.47: XP kept on defeat")
+        XCTAssertEqual(char.loot, 15, "p.47: Gold kept on defeat")
     }
 
-    // p.34: Exhausted characters do NOT receive bonus XP
-    func testExhaustedNoBonusXP() {
+    // p.47: "Even if a character is exhausted, as long as the scenario was successfully
+    //        completed, they can still ... earn scenario rewards"
+    func testExhaustedStillGetsBonusXP() {
         let t = TestGame()
         let alive = t.addCharacter(name: "alive", pos: HexCoord(2, 2))
         let dead = t.addCharacter(name: "dead", pos: HexCoord(3, 3))
@@ -824,7 +825,7 @@ final class RB_ScenarioTests: XCTestCase {
         sm.finishScenario(success: true)
 
         XCTAssertEqual(alive.experience, 6, "Alive character gets bonus XP")
-        XCTAssertEqual(dead.experience, 0, "Exhausted character gets NO bonus XP")
+        XCTAssertEqual(dead.experience, 6, "Exhausted character still gets bonus XP")
     }
 }
 

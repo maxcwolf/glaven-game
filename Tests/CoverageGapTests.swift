@@ -124,8 +124,8 @@ final class MonsterTrapAvoidanceFallbackTests: XCTestCase {
 
 final class ScenarioFinishEdgeCaseTests: XCTestCase {
 
-    /// Verify gold is lost on defeat but XP is kept.
-    func testDefeat_goldLost_xpKept() {
+    /// Verify gold and XP are kept on defeat (GH p.47).
+    func testDefeat_goldAndXPKept() {
         let t = TestGame()
         let char = t.addCharacter()
         char.loot = 25
@@ -138,13 +138,13 @@ final class ScenarioFinishEdgeCaseTests: XCTestCase {
                                       monsterManager: t.monsterManager, levelManager: t.levelManager)
             sm.finishScenario(success: false)
 
-            XCTAssertEqual(char.loot, 0, "Gold lost on defeat")
+            XCTAssertEqual(char.loot, 25, "Gold kept on defeat")
             XCTAssertEqual(char.experience, 50, "XP kept on defeat")
         }
     }
 
-    /// Verify absent characters are not affected by defeat gold loss.
-    func testDefeat_absentCharacter_notAffected() {
+    /// Verify a defeat leaves every character's gold alone.
+    func testDefeat_goldUntouched() {
         let t = TestGame()
         let active = t.addCharacter(name: "active", pos: HexCoord(2, 2))
         let absent = t.addCharacter(name: "absent", pos: HexCoord(3, 3))
@@ -159,9 +159,8 @@ final class ScenarioFinishEdgeCaseTests: XCTestCase {
                                       monsterManager: t.monsterManager, levelManager: t.levelManager)
             sm.finishScenario(success: false)
 
-            XCTAssertEqual(active.loot, 0, "Active character loses gold")
-            // Absent characters are still in game.characters but marked absent
-            // The code iterates `where !character.absent`, so absent keeps gold
+            XCTAssertEqual(active.loot, 10, "Active character keeps gold")
+            XCTAssertEqual(absent.loot, 20, "Absent character keeps gold")
         }
     }
 

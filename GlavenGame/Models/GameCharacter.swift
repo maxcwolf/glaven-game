@@ -65,6 +65,23 @@ final class GameCharacter: Figure, Entity {
     var discardedCards: [Int] = []  // Cards in discard pile (recoverable)
     var lostCards: [Int] = []       // Cards permanently lost this scenario
     var activeCards: [Int] = []     // Persistent cards in the active area (ongoing effects)
+    /// Active-area cards holding a round bonus: they leave the active area at the end of the round.
+    var roundBonusCards: [Int] = []
+    /// Active-area cards whose used half had the lost icon: they go to the lost pile, not the
+    /// discard pile, when they leave the active area.
+    var lostWhenRemoved: [Int] = []
+
+    /// Move a card out of the active area to the lost or discard pile, as its icon requires.
+    func removeFromActiveArea(_ cardId: Int) {
+        activeCards.removeAll { $0 == cardId }
+        roundBonusCards.removeAll { $0 == cardId }
+        if lostWhenRemoved.contains(cardId) {
+            lostWhenRemoved.removeAll { $0 == cardId }
+            lostCards.append(cardId)
+        } else {
+            discardedCards.append(cardId)
+        }
+    }
 
     // Character-level resources (FH: lumber, metal, hide, herbs)
     var resources: [String: Int] = [:]

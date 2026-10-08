@@ -2,8 +2,8 @@ import Foundation
 
 @Observable
 final class ScenarioManager {
-    private let game: GameState
-    private let editionStore: EditionDataStore
+    let game: GameState
+    let editionStore: EditionDataStore
     private let monsterManager: MonsterManager
     private let levelManager: LevelManager
     var onBeforeMutate: (() -> Void)?
@@ -34,6 +34,7 @@ final class ScenarioManager {
         }
 
         applyScenarioData(scenarioData)
+        addItemPenaltyCards()
 
         // Solo scenario: mark all other characters absent
         if let soloChar = scenarioData.solo, scenarioData.spotlight != true {
@@ -47,8 +48,31 @@ final class ScenarioManager {
         }
     }
 
+    /// Equipped items with a −1 penalty add that many −1 cards to the character's attack modifier
+    /// deck for the scenario, unless a perk ignores negative item effects (GH p.11).
+    private func addItemPenaltyCards() {
+        for character in game.characters where !character.absent {
+            guard !character.hasCustomPerk("ignoreNegativeItem") else { continue }
+            for key in character.items {
+                let parts = key.split(separator: "-")
+                guard let id = parts.last.flatMap({ Int($0) }),
+                      let item = editionStore.itemData(id: id, edition: parts.dropLast().joined(separator: "-")),
+                      item.minusOne > 0 else { continue }
+                for _ in 0..<item.minusOne {
+                    character.attackModifierDeck.addCard(type: .minus1)
+                }
+            }
+        }
+    }
+
     func cancelScenario() {
         onBeforeMutate?()
+        // Scenario-only modifier cards (item penalties, curses, scenario effects) leave the decks.
+        for character in game.characters {
+            character.attackModifierDeck.removeScenarioCards()
+        }
+        game.monsterAttackModifierDeck.removeScenarioCards()
+        game.allyAttackModifierDeck.removeScenarioCards()
         // Remove all scenario-added monsters
         game.figures.removeAll { figure in
             if case .monster = figure { return true }
@@ -67,9 +91,10 @@ final class ScenarioManager {
             // Record completion
             game.completedScenarios.insert(data.id)
 
-            // Level-based bonus XP for all non-exhausted characters (GH rulebook p.34)
+            // Bonus XP (4 + 2L) for every character in the scenario — an exhausted character still
+            // earns it, along with rewards and battle goals, on a success (GH p.47).
             let bonusXP = levelManager.experience()
-            for character in game.activeCharacters where !character.exhausted {
+            for character in game.characters where !character.absent {
                 character.experience += bonusXP
             }
 
@@ -96,7 +121,7 @@ final class ScenarioManager {
             }
 
             // Update personal quest progress for all characters
-            for character in game.activeCharacters where !character.exhausted {
+            for character in game.characters where !character.absent {
                 let complete = PersonalQuestEvaluator.updateProgress(
                     character: character, game: game, editionStore: editionStore
                 )
@@ -115,13 +140,8 @@ final class ScenarioManager {
                 details: "Round \(game.round)"
             ))
         } else {
-            // Per Gloomhaven rules: gold/loot collected during a failed scenario is lost.
-            // Experience is kept.
-            for character in game.characters where !character.absent {
-                character.loot = 0
-                character.lootCards = []
-            }
-
+            // A failed scenario gives no rewards or bonus XP, but characters keep the experience
+            // and money they collected (GH p.47).
             game.campaignLog.append(CampaignLogEntry(
                 type: .scenarioFailed,
                 message: "Failed Scenario #\(data.index): \(data.name)",
@@ -142,10 +162,17 @@ final class ScenarioManager {
             character.longRest = false
             character.health = character.maxHealth
             character.entityConditions.removeAll { !$0.permanent }
+            // Players recover all lost and discarded ability cards (GH p.47).
             character.handCards.append(contentsOf: character.discardedCards)
             character.handCards.append(contentsOf: character.activeCards)
+            character.handCards.append(contentsOf: character.lostCards)
             character.discardedCards.removeAll()
             character.activeCards.removeAll()
+            character.lostCards.removeAll()
+            character.roundBonusCards.removeAll()
+            character.lostWhenRemoved.removeAll()
+            // Bless, Curse and scenario-added cards leave the attack modifier deck.
+            character.attackModifierDeck.removeScenarioCards()
             character.shield = nil
             character.shieldPersistent = nil
             character.retaliate = []
@@ -154,6 +181,9 @@ final class ScenarioManager {
             character.spentItems.removeAll()
             character.consumedItems.removeAll()
         }
+
+        game.monsterAttackModifierDeck.removeScenarioCards()
+        game.allyAttackModifierDeck.removeScenarioCards()
 
         // Clear scenario state
         game.figures.removeAll { figure in
@@ -322,7 +352,10 @@ final class ScenarioManager {
 
         // Add monsters to game (creates the figure slots, not entities yet)
         if let monsterNames = data.monsters {
-            for name in monsterNames {
+            for rawName in monsterNames {
+                // "living-corpse:+2" = the monster at scenario level + 2
+                let spec = MonsterNameSpec(rawName)
+                let name = spec.name
                 // Don't add duplicate monsters
                 if game.monsters.contains(where: { $0.name == name && $0.edition == edition }) { continue }
 
@@ -332,6 +365,7 @@ final class ScenarioManager {
 
                 monsterManager.addMonster(name: name, edition: edition)
                 if let monster = game.monsters.last(where: { $0.name == name && $0.edition == edition }) {
+                    monster.level = spec.level(forScenarioLevel: game.level)
                     monster.isAlly = isAlly
                     monster.isAllied = isAllied
                     if let drawExtra = data.drawExtra, drawExtra.contains(name) {
@@ -381,31 +415,36 @@ final class ScenarioManager {
 
     // MARK: - Private: Monster Spawning
 
-    private func spawnMonster(name: String, type: MonsterType, edition: String,
+    private func spawnMonster(name rawName: String, type: MonsterType, edition: String,
                               number: Int? = nil, marker: String? = nil, health: String? = nil) {
+        let spec = MonsterNameSpec(rawName)
+        let name = spec.name
         // Ensure the monster figure exists
         var monster = game.monsters.first(where: { $0.name == name && $0.edition == edition })
         if monster == nil {
             monsterManager.addMonster(name: name, edition: edition)
             monster = game.monsters.last(where: { $0.name == name && $0.edition == edition })
+            monster?.level = spec.level(forScenarioLevel: game.level)
         }
         guard let monster = monster else { return }
 
         // Turn on the monster if it was off
         monster.off = false
 
-        // Add entity
+        // Add entity — refused when every standee of the type is already in use
+        let existing = Set(monster.entities.map(ObjectIdentifier.init))
         monsterManager.addEntity(type: type, to: monster)
+        guard let entity = monster.entities.first(where: { !existing.contains(ObjectIdentifier($0)) }) else { return }
 
         // Apply marker to newly created entity
-        if let marker = marker, let entity = monster.entities.last {
+        if let marker = marker {
             entity.markers.append(marker)
         }
 
-        // Override health if specified
-        if let healthExpr = health, let entity = monster.entities.last {
+        // Override health if specified (C counts every character in the scenario)
+        if let healthExpr = health {
             let hp = evaluateEntityValue(.string(healthExpr), level: game.level,
-                                          characterCount: game.activeCharacters.count)
+                                          characterCount: game.characters.filter { !$0.absent }.count)
             entity.health = hp
             entity.maxHealth = hp
         }
@@ -429,7 +468,7 @@ final class ScenarioManager {
         let entityCount = objData.resolvedCount
         if let healthValue = objData.health {
             let hp = evaluateEntityValue(healthValue, level: game.level,
-                                          characterCount: game.activeCharacters.count)
+                                          characterCount: game.characters.filter { !$0.absent }.count)
             for i in 0..<entityCount {
                 let entity = GameObjectiveEntity(number: index + i, health: hp, maxHealth: hp)
                 if let marker = objData.marker {
@@ -607,13 +646,13 @@ final class ScenarioManager {
         }
         if let gold = rewards.gold {
             let amount = resolveRewardInt(gold)
-            for character in game.activeCharacters {
+            for character in game.characters where !character.absent {
                 character.loot += amount
             }
         }
         if let xp = rewards.experience {
             let amount = resolveRewardInt(xp)
-            for character in game.activeCharacters {
+            for character in game.characters where !character.absent {
                 character.experience += amount
             }
         }

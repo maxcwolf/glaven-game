@@ -523,7 +523,7 @@ final class E2EScenarioFinishTests: XCTestCase {
                         "Should gain bonus XP (4 + level*2) on victory")
     }
 
-    func testScenarioDefeat_keepsXPButLosesGold() {
+    func testScenarioDefeat_keepsXPAndGold() {
         let t = TestGame()
         let char = t.addCharacter()
         char.experience = 10
@@ -538,11 +538,12 @@ final class E2EScenarioFinishTests: XCTestCase {
 
         scenarioManager.finishScenario(success: false)
 
+        // GH p.47: experience and looted money are kept; only the success rewards are skipped.
         XCTAssertEqual(char.experience, 10, "XP should be kept on defeat")
-        XCTAssertEqual(char.loot, 0, "Gold should be lost on defeat")
+        XCTAssertEqual(char.loot, 5, "Looted gold should be kept on defeat")
     }
 
-    func testExhaustedCharacter_noBonusXP() {
+    func testExhaustedCharacter_stillGetsBonusXP() {
         let t = TestGame()
         let char = t.addCharacter()
         char.experience = 10
@@ -557,7 +558,9 @@ final class E2EScenarioFinishTests: XCTestCase {
 
         scenarioManager.finishScenario(success: true)
 
-        XCTAssertEqual(char.experience, 10, "Exhausted character should NOT get bonus XP")
+        // GH p.47: an exhausted character still earns scenario rewards on a success.
+        XCTAssertEqual(char.experience, 10 + t.levelManager.experience(),
+                       "Exhausted character still gets the bonus XP")
     }
 }
 

@@ -60,8 +60,9 @@ final class PersistentAbilityTests: XCTestCase {
         // Discard also returned
         XCTAssertTrue(char.handCards.contains(4), "Discarded card returned to hand")
         XCTAssertTrue(char.handCards.contains(5), "Discarded card returned to hand")
-        // Lost cards stay lost
-        XCTAssertTrue(char.lostCards.contains(8), "Lost cards remain lost")
+        // GH p.47: lost cards are recovered too
+        XCTAssertTrue(char.lostCards.isEmpty, "Lost pile emptied after scenario")
+        XCTAssertTrue(char.handCards.contains(8), "Lost card recovered to hand")
     }
 
     func testScenarioDefeat_returnsActiveCardsToHand() {
