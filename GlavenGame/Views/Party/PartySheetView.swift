@@ -192,13 +192,7 @@ struct PartySheetView: View {
 
     // MARK: - Prosperity Level
 
-    private var prosperityLevel: Int {
-        let thresholds = [0, 4, 9, 15, 22, 30, 39, 49, 64]
-        for i in stride(from: thresholds.count - 1, through: 0, by: -1) {
-            if game.partyProsperity >= thresholds[i] { return i + 1 }
-        }
-        return 1
-    }
+    private var prosperityLevel: Int { game.prosperityLevel }
 
     @ViewBuilder
     private var prosperityLevelSection: some View {

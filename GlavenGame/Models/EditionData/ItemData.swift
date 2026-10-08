@@ -77,9 +77,10 @@ struct ItemData: Codable, Hashable, Identifiable {
         "\(edition)-\(id)"
     }
 
-    /// Whether this item is available at a given prosperity level
+    /// Whether this item is available at a given prosperity level. Items without a prosperity
+    /// level (scenario rewards, treasures, designs) only reach the supply when unlocked.
     func availableAtProsperity(_ level: Int) -> Bool {
-        !random && unlockProsperity <= level && unlockScenario == nil
+        !random && unlockProsperity > 0 && unlockProsperity <= level && unlockScenario == nil
     }
 
     /// Whether this is a brewable item (requires alchemist building).
