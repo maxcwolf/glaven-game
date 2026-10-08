@@ -67,6 +67,19 @@ final class BoardState {
         cells[coord]?.passable ?? false
     }
 
+    /// Whether a closed (unopened) door sits on this hex. Characters may enter it (which
+    /// opens the door); monsters and summons treat it as a wall.
+    func isClosedDoor(_ coord: HexCoord) -> Bool {
+        doors.contains { $0.coord == coord && !$0.isOpen }
+    }
+
+    /// Whether this hex is a "negative hex" for movement: an active trap or hazardous
+    /// terrain (monster AI treats these as obstacles unless no other route exists).
+    func isNegativeHex(_ coord: HexCoord) -> Bool {
+        guard let cell = cells[coord] else { return false }
+        return cell.isTrap || cell.isHazard
+    }
+
     /// Whether a figure can move into this hex (passable + not occupied by enemy).
     /// `allies` determines which pieces are friendly (can pass through but not stop on).
     func canEnter(_ coord: HexCoord, flying: Bool = false) -> Bool {
