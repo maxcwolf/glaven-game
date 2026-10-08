@@ -88,6 +88,7 @@
 		51FAA98A4315A08DCD4AAF88 /* GameBoardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2DCD6E622ADAFAA13D8D936F /* GameBoardView.swift */; };
 		52B180966383A6C7FF8C8A45 /* PartyTreasuresSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2EBB792CA3175EA209873B2E /* PartyTreasuresSheet.swift */; };
 		52C1E021DEDA110B8DD4391A /* GameRandom.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2D9D8344A9522FB4BC90880C /* GameRandom.swift */; };
+		52DA5D989F9BC0E2A5309318 /* MovePlan.swift in Sources */ = {isa = PBXBuildFile; fileRef = E007CE4699064C661EBFDCB7 /* MovePlan.swift */; };
 		52E0ADA8BFFF3AAD6661D81C /* ScenarioHeaderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 62B50F3E4F848C40ED27A3A6 /* ScenarioHeaderView.swift */; };
 		536F0F1A04CE1A7B9631044C /* InitiativeToolSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACD0296E9F2F457629B8CC13 /* InitiativeToolSheet.swift */; };
 		55B0274BFF5C9D9F6695BF55 /* AttackModifierDeckView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9AACECDE0618EDE4BA3C17E /* AttackModifierDeckView.swift */; };
@@ -464,6 +465,7 @@
 		DD9B9D4203B3CFD7D307E4EE /* PieceSpriteNode.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PieceSpriteNode.swift; sourceTree = "<group>"; };
 		DE6924302112D3289A7BD212 /* LootApplySheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LootApplySheet.swift; sourceTree = "<group>"; };
 		DFC1E01834BD13B87726B39E /* FigureProtocol.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FigureProtocol.swift; sourceTree = "<group>"; };
+		E007CE4699064C661EBFDCB7 /* MovePlan.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MovePlan.swift; sourceTree = "<group>"; };
 		E0A5A39A4A7174364A7FEFEF /* ScenarioConclusionSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScenarioConclusionSheet.swift; sourceTree = "<group>"; };
 		E27EBD6725F30431BE4E7FA3 /* ImageLoader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageLoader.swift; sourceTree = "<group>"; };
 		E3D72B6EC5F59987FCB0636A /* EventCardManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EventCardManager.swift; sourceTree = "<group>"; };
@@ -909,6 +911,7 @@
 				18D02F667561B11569B262B7 /* ModifierTrayView.swift */,
 				D2399EDB7F011E68F62A5F2F /* MonsterAbilityStripView.swift */,
 				CEBB2CD9E70D5ABFA126923B /* MonsterTurnController.swift */,
+				E007CE4699064C661EBFDCB7 /* MovePlan.swift */,
 				DD9B9D4203B3CFD7D307E4EE /* PieceSpriteNode.swift */,
 				8A2BBA0188C2D10D81CAC68B /* PlayerTurnController.swift */,
 				5E6E7163EA81B6FEA0C1F76D /* SummonTurnController.swift */,
@@ -1251,6 +1254,7 @@
 				5F89475755C4F71171E0D9DD /* MonsterTurnController.swift in Sources */,
 				3E4E5CEA405BD2D43F7D1F26 /* MonsterType.swift in Sources */,
 				972557E3BC18B52A485C5487 /* MonsterView.swift in Sources */,
+				52DA5D989F9BC0E2A5309318 /* MovePlan.swift in Sources */,
 				3526967A1B1504E38CA78A61 /* MoveResourcesSheet.swift in Sources */,
 				ADFC789951F452BCB2FBCA67 /* NumberPickerSheet.swift in Sources */,
 				C7467AA4D366288E22593174 /* ObjectiveContainerView.swift in Sources */,

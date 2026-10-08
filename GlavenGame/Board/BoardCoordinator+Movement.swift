@@ -35,7 +35,7 @@ extension BoardCoordinator {
 
             guard hitsTrap || hitsHazard || opensDoor || isLast else { continue }
 
-            await animateMove(pieceID, along: Array(path[segmentStart...index]))
+            await animateMove(pieceID, along: Array(path[segmentStart...index]), as: MoveAnimation(style))
             segmentStart = index
             if !boardState.isOccupied(hex) || boardState.piecePositions[pieceID] == hex {
                 boardState.movePiece(pieceID, to: hex)
@@ -64,10 +64,10 @@ extension BoardCoordinator {
     }
 
     /// Animate a piece along a path (skipped when no scene is attached, e.g. in tests).
-    @MainActor func animateMove(_ pieceID: PieceID, along path: [HexCoord]) async {
+    @MainActor func animateMove(_ pieceID: PieceID, along path: [HexCoord], as animation: MoveAnimation = .walk) async {
         guard path.count > 1, let scene = boardScene else { return }
         await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
-            scene.movePiece(id: pieceID, along: path, offsetCol: offsetCol, offsetRow: offsetRow) {
+            scene.movePiece(id: pieceID, along: path, animation: animation, offsetCol: offsetCol, offsetRow: offsetRow) {
                 continuation.resume()
             }
         }

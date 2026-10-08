@@ -1398,7 +1398,7 @@ final class BoardCoordinator {
         interactionMode = .idle
         let turn = activePlayerTurn
         Task { @MainActor in
-            await self.animateMove(pieceID, along: [pos, target])
+            await self.animateMove(pieceID, along: [pos, target], as: .teleport)
             self.boardState.movePiece(pieceID, to: target)
             self.log("\(self.name(pieceID)) teleports", category: .move, trace: "to \(target)")
             turn?.advanceAfterAsyncAction()

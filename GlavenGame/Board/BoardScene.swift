@@ -600,35 +600,114 @@ class BoardScene: SKScene {
         }
     }
 
-    /// Animate a piece moving along a path.
-    func movePiece(id: PieceID, along path: [HexCoord], offsetCol: Int = 0, offsetRow: Int = 0, completion: @escaping () -> Void) {
+    /// The last kind of move each piece made (for tests).
+    private(set) var lastMoveAnimation: [PieceID: MoveAnimation] = [:]
+
+    /// Animate a piece moving along a path, the way its kind of move looks. With no view
+    /// showing the scene (headless play), the piece goes straight to its hex.
+    func movePiece(id: PieceID, along path: [HexCoord], animation: MoveAnimation = .walk,
+                   offsetCol: Int = 0, offsetRow: Int = 0, completion: @escaping () -> Void) {
         guard let node = pieceNodes[id], path.count > 1 else {
             completion()
             return
         }
+        lastMoveAnimation[id] = animation
+        let points = path.map { hexCenterInScene(col: $0.col - offsetCol, row: $0.row - offsetRow) }
+        let plan = MovePlan.plan(animation, through: points, reduceMotion: reduceMotion)
+        let end = points[points.count - 1]
 
-        var actions: [SKAction] = []
-        let steps = Array(path.dropFirst())
-        for (index, hex) in steps.enumerated() {
-            let target = hexCenterInScene(col: hex.col - offsetCol, row: hex.row - offsetRow)
-            let step = SKAction.move(to: target, duration: 0.2)
-            // Ease into the first step and out of the last, so a move starts and stops naturally.
-            if steps.count == 1 { step.timingMode = .easeInEaseOut }
-            else if index == 0 { step.timingMode = .easeIn }
-            else if index == steps.count - 1 { step.timingMode = .easeOut }
-            actions.append(step)
+        guard view != nil else {
+            node.position = end
+            if actingPieceID == id { actingRing.position = end }
+            completion()
+            return
         }
 
+        // Keep the destination on screen as the figure gets there.
+        keepInView(end)
+        let travel = SKAction.sequence(plan.legs.map { leg in
+            let step = SKAction.move(to: leg.to, duration: leg.duration)
+            step.timingMode = leg.timing.spriteKit
+            return step
+        })
         if actingPieceID == id {
-            actingRing.run(SKAction.sequence(actions.map { $0.copy() as! SKAction }), withKey: "follow")
+            actingRing.run(plan.fades ? .sequence([.wait(forDuration: MovePlan.fadeDuration), travel.copy() as! SKAction])
+                                      : travel.copy() as! SKAction, withKey: "follow")
         }
-        // Keep the destination on screen as the figure walks there.
-        if let last = steps.last {
-            keepInView(hexCenterInScene(col: last.col - offsetCol, row: last.row - offsetRow))
+
+        var parts: [SKAction] = []
+        if plan.fades {
+            // Teleport: a flash where the figure leaves and where it arrives.
+            sparkle(at: points[0])
+            sparkle(at: end, after: MovePlan.fadeDuration)
+            parts.append(.group([.fadeOut(withDuration: MovePlan.fadeDuration),
+                                 .scale(to: 0.6, duration: MovePlan.fadeDuration)]))
+            parts.append(travel)
+            parts.append(.group([.fadeIn(withDuration: MovePlan.fadeDuration),
+                                 .scale(to: 1, duration: MovePlan.fadeDuration)]))
+        } else if plan.lift > 1 {
+            let total = plan.legs.reduce(0) { $0 + $1.duration }
+            let lift: SKAction
+            if plan.holdsLift {
+                let up = SKAction.scale(to: plan.lift, duration: min(0.15, total / 3))
+                let down = SKAction.scale(to: 1, duration: min(0.15, total / 3))
+                lift = .sequence([up, .wait(forDuration: max(0, total - up.duration - down.duration)), down])
+            } else {
+                let up = SKAction.scale(to: plan.lift, duration: total / 2)
+                up.timingMode = .easeOut
+                let down = SKAction.scale(to: 1, duration: total / 2)
+                down.timingMode = .easeIn
+                lift = .sequence([up, down])
+            }
+            parts.append(.group([travel, lift]))
+            castShadow(under: node, plan: plan, from: points[0])
+        } else {
+            parts.append(travel)
         }
-        node.run(SKAction.sequence(actions)) {
+        if animation == .forced, !reduceMotion {
+            // A shove ends with a jolt.
+            parts.append(.sequence([.scaleX(to: 1.12, y: 0.9, duration: 0.05), .scale(to: 1, duration: 0.08)]))
+        }
+        node.run(.sequence(parts)) {
+            node.setScale(1)
+            node.alpha = 1
             completion()
         }
+    }
+
+    /// A shadow on the floor under a lifted figure, following it and fading as it lands.
+    private func castShadow(under node: SKNode, plan: MovePlan, from start: CGPoint) {
+        let drop = HexMath.cellStepX * 0.32
+        let shadow = SKShapeNode(ellipseOf: CGSize(width: HexMath.cellStepX * 0.7, height: HexMath.cellStepX * 0.3))
+        shadow.fillColor = SKColor(white: 0, alpha: 0.35)
+        shadow.strokeColor = .clear
+        shadow.position = CGPoint(x: start.x, y: start.y - drop)
+        shadow.zPosition = node.zPosition - 0.5
+        pieceLayer.addChild(shadow)
+        let legs = plan.legs.map { leg -> SKAction in
+            let step = SKAction.move(to: CGPoint(x: leg.to.x, y: leg.to.y - drop), duration: leg.duration)
+            step.timingMode = leg.timing.spriteKit
+            return step
+        }
+        shadow.run(.sequence(legs + [.fadeOut(withDuration: 0.1), .removeFromParent()]))
+    }
+
+    /// A ring of light that flashes out from a point (where a figure teleports from or to).
+    private func sparkle(at point: CGPoint, after delay: TimeInterval = 0) {
+        let ring = SKShapeNode(circleOfRadius: HexMath.cellStepX * 0.25)
+        ring.strokeColor = SKColor(red: 0.62, green: 0.85, blue: 1, alpha: 1)
+        ring.lineWidth = 3
+        ring.glowWidth = 4
+        ring.fillColor = .clear
+        ring.position = point
+        ring.alpha = 0
+        effectsLayer.addChild(ring)
+        ring.run(.sequence([
+            .wait(forDuration: delay),
+            .group([.fadeIn(withDuration: 0.05), .scale(to: 2.2, duration: 0.35)]),
+            .fadeOut(withDuration: 0.2),
+            .removeFromParent(),
+        ]))
     }
 
     // MARK: - Highlights
@@ -958,6 +1037,17 @@ class BoardScene: SKScene {
                 turnAxis: (refPoint: doorRefPoint, origin: doorOrigin),
                 tiles: &tiles
             )
+        }
+    }
+}
+
+extension MovePlan.Timing {
+    var spriteKit: SKActionTimingMode {
+        switch self {
+        case .linear: return .linear
+        case .easeIn: return .easeIn
+        case .easeOut: return .easeOut
+        case .easeInEaseOut: return .easeInEaseOut
         }
     }
 }
