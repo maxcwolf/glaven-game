@@ -242,7 +242,7 @@ Phase VI — the rest of Gloomhaven's town rules
 - [ ] Items can't be used on the board (only marked used from the character sheet), so Professional can't be met and Purist always is; add item use during turns
 - [x] Personal quests: two dealt on recruiting, one kept; a campaign record per character (wins, kills by monster, elite kills, exhaustions) counts every requirement the game can see, after wins and losses; progress in town and on the sheet; by-hand counting only for map-region, enhancement and Skullbane requirements (`PersonalQuestTests`, `PersonalQuestAutotrackTests`)
 - [x] Retirement from town when the quest is complete (unlock, prosperity, log); a new recruit takes the slot
-- [ ] Sanctuary donation in town: 10 gold for two blessings in the next scenario (GH p.48), counted toward prosperity
+- [x] Sanctuary donation in town: 10 gold once per visit for two blessings in the next scenario; prosperity +1 per 100 gold given; counts for Piety in All Things (`TownTests`)
 - [ ] Enhancements in town (EnhancementsManager exists; the old companion sheet was deleted, see git 718ed50)
 - [ ] Unlocking or retiring a class adds its city and road events to the decks
 - [ ] VoiceOver play on the board (accessible hexes for moves and targets); the remaining menus on the board theme; drop the unused Majalla font

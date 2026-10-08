@@ -13,6 +13,7 @@ struct GameSetupView: View {
     @State private var handCharacter: GameCharacter?
     @State private var questCharacter: GameCharacter?
     @State private var retiringCharacter: GameCharacter?
+    @State private var showSanctuary = false
     @State private var showWorldMap = false
     @State private var showCampaign = false
     /// Events to resolve before setting out, in order; the first is showing.
@@ -96,6 +97,12 @@ struct GameSetupView: View {
                         .tint(BoardTheme.brass)
                         .fixedSize()
                 }
+                if inTown {
+                    Button("Sanctuary", systemImage: "sun.max") { showSanctuary = true }
+                        .buttonStyle(.bordered)
+                        .tint(BoardTheme.brass)
+                        .fixedSize()
+                }
                 Button("Campaign", systemImage: "book.closed.fill") { showCampaign = true }
                     .buttonStyle(.bordered)
                     .tint(BoardTheme.brass)
@@ -144,6 +151,12 @@ struct GameSetupView: View {
             ParchmentBackground(edition: edition)
                 .overlay(Color(red: 0.12, green: 0.14, blue: 0.18).opacity(GlavenTheme.isLight ? 0.15 : 0.75))
                 .ignoresSafeArea()
+        }
+        .overlay {
+            if showSanctuary {
+                SanctuarySheet { showSanctuary = false }
+                    .transition(.opacity)
+            }
         }
         .overlay {
             if let character = questCharacter {

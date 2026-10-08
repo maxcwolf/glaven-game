@@ -37,6 +37,45 @@ struct ScenarioPartyStats: Codable, Equatable {
     var roundStartedWithoutMonsters = false
 }
 
+extension ScenarioCharacterStats {
+
+    /// Every field is optional in a save, so saves from before a field existed still load.
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        damageDealt = try c.decodeIfPresent(Int.self, forKey: .damageDealt) ?? 0
+        damageTaken = try c.decodeIfPresent(Int.self, forKey: .damageTaken) ?? 0
+        healsGiven = try c.decodeIfPresent(Int.self, forKey: .healsGiven) ?? 0
+        kills = try c.decodeIfPresent(Int.self, forKey: .kills) ?? 0
+        coinsLooted = try c.decodeIfPresent(Int.self, forKey: .coinsLooted) ?? 0
+        roundsSurvived = try c.decodeIfPresent(Int.self, forKey: .roundsSurvived) ?? 0
+        exhausted = try c.decodeIfPresent(Bool.self, forKey: .exhausted) ?? false
+        conditionsApplied = try c.decodeIfPresent(Int.self, forKey: .conditionsApplied) ?? 0
+        conditionsReceived = try c.decodeIfPresent(Int.self, forKey: .conditionsReceived) ?? 0
+        cardsLost = try c.decodeIfPresent(Int.self, forKey: .cardsLost) ?? 0
+        trapsTriggered = try c.decodeIfPresent(Int.self, forKey: .trapsTriggered) ?? 0
+        treasuresLooted = try c.decodeIfPresent(Int.self, forKey: .treasuresLooted) ?? 0
+        doorsOpened = try c.decodeIfPresent(Int.self, forKey: .doorsOpened) ?? 0
+        eliteKills = try c.decodeIfPresent(Int.self, forKey: .eliteKills) ?? 0
+        itemUses = try c.decodeIfPresent(Int.self, forKey: .itemUses) ?? 0
+        largestOverkill = try c.decodeIfPresent(Int.self, forKey: .largestOverkill) ?? 0
+        executions = try c.decodeIfPresent(Int.self, forKey: .executions) ?? 0
+        droppedBelowHalf = try c.decodeIfPresent(Bool.self, forKey: .droppedBelowHalf) ?? false
+        shortRests = try c.decodeIfPresent(Int.self, forKey: .shortRests) ?? 0
+        longRests = try c.decodeIfPresent(Int.self, forKey: .longRests) ?? 0
+        killsByMonster = try c.decodeIfPresent([String: Int].self, forKey: .killsByMonster) ?? [:]
+    }
+}
+
+extension ScenarioPartyStats {
+
+    /// Every field is optional in a save, so saves from before a field existed still load.
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        firstKiller = try c.decodeIfPresent(String.self, forKey: .firstKiller)
+        roundStartedWithoutMonsters = try c.decodeIfPresent(Bool.self, forKey: .roundStartedWithoutMonsters) ?? false
+    }
+}
+
 /// Records what happens in a scenario. The tallies live on the scenario, so they start fresh
 /// with each one and are saved with it.
 @Observable

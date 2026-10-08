@@ -80,3 +80,31 @@ extension CharacterManager {
         PersonalQuestEvaluator.isComplete(character: character, editionStore: editionStore)
     }
 }
+
+/// The Sanctuary of the Great Oak (GH p.48): in town, each character may donate 10 gold once per
+/// visit for two blessings in their next scenario; every 100 gold the party gives raises
+/// prosperity by one.
+extension CharacterManager {
+    static let donation = 10
+
+    func canDonate(_ character: GameCharacter) -> Bool {
+        character.loot >= Self.donation && !game.events.donatedThisVisit.contains(character.id)
+    }
+
+    @discardableResult
+    func donate(_ character: GameCharacter) -> Bool {
+        guard canDonate(character) else { return false }
+        onBeforeMutate?()
+        character.loot -= Self.donation
+        character.record.donatedGold += Self.donation
+        game.events.donatedThisVisit.insert(character.id)
+        game.events.nextScenario.blessings[character.id, default: 0] += 2
+        game.events.sanctuaryGold += Self.donation
+        if game.events.sanctuaryGold % 100 == 0 {
+            game.partyProsperity += 1
+            game.campaignLog.append(CampaignLogEntry(type: .prosperityGained,
+                message: "Prosperity +1 from \(game.events.sanctuaryGold) gold given to the sanctuary"))
+        }
+        return true
+    }
+}

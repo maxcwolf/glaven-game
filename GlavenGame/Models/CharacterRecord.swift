@@ -14,6 +14,18 @@ struct CharacterRecord: Codable, Equatable {
     var partyExhaustions = 0
     var donatedGold = 0
 
+    init() {}
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        scenariosCompleted = try c.decodeIfPresent(Set<String>.self, forKey: .scenariosCompleted) ?? []
+        kills = try c.decodeIfPresent([String: Int].self, forKey: .kills) ?? [:]
+        eliteKills = try c.decodeIfPresent(Int.self, forKey: .eliteKills) ?? 0
+        timesExhausted = try c.decodeIfPresent(Int.self, forKey: .timesExhausted) ?? 0
+        partyExhaustions = try c.decodeIfPresent(Int.self, forKey: .partyExhaustions) ?? 0
+        donatedGold = try c.decodeIfPresent(Int.self, forKey: .donatedGold) ?? 0
+    }
+
     /// "cultist-scenario-78" → "cultist"; "bandit-guard-music-note-solo" → "bandit-guard".
     static func baseMonsterName(_ name: String) -> String {
         var base = name

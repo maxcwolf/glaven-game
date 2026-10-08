@@ -227,6 +227,7 @@ final class GameManager {
     /// What road and city events left for this scenario (GH p.38): each character starts with
     /// the damage, conditions, −1 cards and discarded cards the events gave them.
     func applyEventEffectsAtScenarioStart() {
+        game.events.donatedThisVisit = []   // the party has left town
         let effects = game.events.nextScenario
         guard !effects.isEmpty else { return }
         for character in game.activeCharacters {
@@ -241,6 +242,10 @@ final class GameManager {
             }
             for _ in 0..<(effects.minusOneCards[character.id] ?? 0) {
                 character.attackModifierDeck.addCard(type: .minus1)
+            }
+            if let count = effects.blessings[character.id], count > 0 {
+                for _ in 0..<count { character.attackModifierDeck.addCard(type: .bless) }
+                boardCoordinator.log("\(name) starts with \(count) blessings from the sanctuary", category: .setup)
             }
             if let count = effects.minusOneCards[character.id], count > 0 {
                 boardCoordinator.log("\(name) adds \(count) \u{2212}1 card\(count == 1 ? "" : "s") from an event", category: .setup)

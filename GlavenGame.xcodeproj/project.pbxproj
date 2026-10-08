@@ -158,6 +158,7 @@
 		C48F34F6664799A0111E1C46 /* FigureProtocol.swift in Sources */ = {isa = PBXBuildFile; fileRef = DFC1E01834BD13B87726B39E /* FigureProtocol.swift */; };
 		C4B13C1F7E443D08F6CDB37E /* LootManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6B4DA2419C815421AF728C58 /* LootManager.swift */; };
 		C52021D67688A4B393246402 /* ScenarioStatsManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8DC43DEE8B38C661B7401300 /* ScenarioStatsManager.swift */; };
+		C52F441575A9B4779E09B7F6 /* SanctuarySheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = AABF17B34BECDFBAFC515C72 /* SanctuarySheet.swift */; };
 		C63E594BE14FCFD5BC84865A /* EscortAI.swift in Sources */ = {isa = PBXBuildFile; fileRef = EC67D8214EC555D0D3D36DA1 /* EscortAI.swift */; };
 		C649244AA1729CC191971BD6 /* Pathfinder.swift in Sources */ = {isa = PBXBuildFile; fileRef = D8D120B1CEE8FA85B7939897 /* Pathfinder.swift */; };
 		C7914CE29166A711DD59D56B /* EntityProtocol.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4A36D7C42F715C8F0B91A909 /* EntityProtocol.swift */; };
@@ -322,6 +323,7 @@
 		A61085FE2C898425387309FD /* AttackModifierType.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AttackModifierType.swift; sourceTree = "<group>"; };
 		A6B11F82C5E44D977254134D /* BoardCoordinator+Combat.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "BoardCoordinator+Combat.swift"; sourceTree = "<group>"; };
 		A7E2165E5E511B9078052C55 /* BoardSound.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BoardSound.swift; sourceTree = "<group>"; };
+		AABF17B34BECDFBAFC515C72 /* SanctuarySheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SanctuarySheet.swift; sourceTree = "<group>"; };
 		AB1B617FED39015D1033829C /* CharacterItemsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CharacterItemsView.swift; sourceTree = "<group>"; };
 		AC4BEBEF0D48AC6F54D3F19F /* Condition.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Condition.swift; sourceTree = "<group>"; };
 		AD2078C38F909FF5A2F71A7B /* GameSetupView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameSetupView.swift; sourceTree = "<group>"; };
@@ -576,6 +578,7 @@
 				4840A613B6DC796BF25638E0 /* MainMenuView.swift */,
 				975066D59FC5616F167806B8 /* MenuKeyArt.swift */,
 				D9D1DCB6F2E36C85EC7CA983 /* QuestPicker.swift */,
+				AABF17B34BECDFBAFC515C72 /* SanctuarySheet.swift */,
 				D86B71BFEEBD99C00C1AF649 /* TownPartyRow.swift */,
 				227A3064E6D684967F7C3C60 /* Dialogs */,
 				FFE5F7E058CB9F9443DB1BC5 /* Figures */,
@@ -1054,6 +1057,7 @@
 				93A57D1AE8095C6238BBB1D3 /* RemoteEditionData.swift in Sources */,
 				BC3BC6A84314049CE3D9E374 /* RewardChoicesView.swift in Sources */,
 				4B2BA4139D0D27B42EE7818E /* RoundManager.swift in Sources */,
+				C52F441575A9B4779E09B7F6 /* SanctuarySheet.swift in Sources */,
 				4F40225C0F9D5F6D5493EAB0 /* SaveSlotsSheet.swift in Sources */,
 				C8BEF4631B318047240E63F6 /* SavedGameModel.swift in Sources */,
 				2B48DDA61518A823F10A6611 /* Scenario.swift in Sources */,

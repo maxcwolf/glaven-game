@@ -23,4 +23,6 @@ the game does now; change any of them and I'll follow.
    hand on the character sheet. I can add a region table for the 95 scenarios if you want it.
 9. **"Exhausted party members"** (A Study of Anatomy): does the character's own exhaustion count?
    Now: yes, every exhaustion in the party in scenarios they played.
+10. **Sanctuary and prosperity.** Every 100 gold the party donates raises prosperity by one. Is
+    that the threshold you play with? Now: 100.
 
