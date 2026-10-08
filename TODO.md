@@ -234,6 +234,19 @@ Phase IV — the game around the board
 
 - [x] Compact turn panel: only the half of the card being played (top or bottom), so the panel is ~40% shorter and the board bigger during a turn (`BoardLayoutTests`)
 
+Phase V — the campaign around the scenarios (done 2026-10-08)
+- [x] Town between scenarios, level-up card choice and hands, city and road events, campaign log, scenario rewards, compact turn panel (see the items above)
+
+Phase VI — the rest of Gloomhaven's town rules
+- [ ] Battle goals: deal two to each character as a scenario starts, keep one; checkmarks on a success (the evaluator exists, nothing deals the cards)
+- [ ] Personal quests: deal two when a character is recruited, keep one; show progress in town
+- [ ] Retirement: when a personal quest is complete, retire from town (unlock the class, prosperity, log); a new character replaces them
+- [ ] Sanctuary donation in town: 10 gold for two blessings in the next scenario (GH p.48), counted toward prosperity
+- [ ] Enhancements in town (EnhancementsManager exists; the old companion sheet was deleted, see git 718ed50)
+- [ ] Unlocking or retiring a class adds its city and road events to the decks
+- [ ] VoiceOver play on the board (accessible hexes for moves and targets); the remaining menus on the board theme; drop the unused Majalla font
+- Open questions for the user: docs/open-questions.md
+
 Found along the way
 - [x] Scenario rewards the game never granted: items, character unlocks, collective gold, item designs (feat/scenario-rewards), and events shuffled into the decks (`EventCardTests`); envelopes remain below
 
