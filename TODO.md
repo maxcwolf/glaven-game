@@ -216,7 +216,7 @@ Phase III — game feel
 - [ ] Condition pops when a condition is gained or wears off
 - [ ] Distinct jump, fly, teleport and forced-move animations (moves already ease in and out)
 - [x] Modifier draws in a docked tray (real card art); monster draws resolve without a modal (setting to draw them by hand); damage choice as a docked sheet with card scans, select-then-confirm and an exhaustion warning (`ModifierDrawTests`, `DamageChoiceTests`)
-- [ ] Camera: fit to board, clamp, anchored zoom, follow the acting figure; macOS click-vs-drag
+- [x] Camera: frames the board in the largest gap between the HUD panels (reframes when a panel grows over it, and when a door opens), can't be dragged off the board, zooms where the fingers or pointer are, follows the acting figure; "show whole board" button; trackpad scroll pans (`BoardCameraTests`)
 - [ ] Room reveal without rebuilding the scene; board sound effects
 
 Phase IV — the game around the board

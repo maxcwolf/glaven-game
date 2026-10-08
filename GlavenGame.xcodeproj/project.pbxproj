@@ -66,6 +66,7 @@
 		3FBCF26F0423909E5CEE6891 /* DecksViewerSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = DAB7109B2A99838DA4616059 /* DecksViewerSheet.swift */; };
 		4120712738BDF3001B571449 /* ConditionsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F504B60F3ECB989CA47A55AE /* ConditionsView.swift */; };
 		4270F50EFBD54ADD461ECF50 /* AttackModifier.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3E998CE7344F97D1E3E79A74 /* AttackModifier.swift */; };
+		428795E432235765EB962529 /* BoardCamera.swift in Sources */ = {isa = PBXBuildFile; fileRef = 84AAD1A669303376EFE4AB19 /* BoardCamera.swift */; };
 		43170E8E4353FA170EAEF8D5 /* EnhancementsManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3477ACD63A2C3231A799AB39 /* EnhancementsManager.swift */; };
 		46B94503244BB10D9E14A9F0 /* TreasureRewardParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = 773EDD0EFA56B12B34CB32AB /* TreasureRewardParser.swift */; };
 		46C7E8752AD96F15E7F9AF89 /* Condition.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC4BEBEF0D48AC6F54D3F19F /* Condition.swift */; };
@@ -370,6 +371,7 @@
 		83845896587772B83CB3E6B8 /* Loot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Loot.swift; sourceTree = "<group>"; };
 		83EB9921D52AC61A5ADD3F0A /* TurnRailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TurnRailView.swift; sourceTree = "<group>"; };
 		843CD4A48C04247D50F3C39A /* AttackModifierDeckDialog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AttackModifierDeckDialog.swift; sourceTree = "<group>"; };
+		84AAD1A669303376EFE4AB19 /* BoardCamera.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BoardCamera.swift; sourceTree = "<group>"; };
 		851B045DDF55EA0BAE7BC954 /* WelcomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WelcomeView.swift; sourceTree = "<group>"; };
 		85444C8330CF135ED8080DFA /* HighlightStyle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HighlightStyle.swift; sourceTree = "<group>"; };
 		8631B220635598C0A14D982C /* BoardBuilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BoardBuilder.swift; sourceTree = "<group>"; };
@@ -891,6 +893,7 @@
 			isa = PBXGroup;
 			children = (
 				14ABB7C34DDD57BF9162EA76 /* AbilityCardView.swift */,
+				84AAD1A669303376EFE4AB19 /* BoardCamera.swift */,
 				06273638779D4902224E1602 /* BoardCoordinator.swift */,
 				A6B11F82C5E44D977254134D /* BoardCoordinator+Combat.swift */,
 				B6C9F8BE9CC7A895A0360304 /* BoardCoordinator+Movement.swift */,
@@ -1121,6 +1124,7 @@
 				9458CF11BD646363D1E12D72 /* BattleGoalEvaluator.swift in Sources */,
 				725EB803E644190074A0CB60 /* BattleGoalSheet.swift in Sources */,
 				916FFE7F8E38E482DBC83A94 /* BoardBuilder.swift in Sources */,
+				428795E432235765EB962529 /* BoardCamera.swift in Sources */,
 				B8BA0DCB5F22292931347410 /* BoardCoordinator+Combat.swift in Sources */,
 				BF775F0114B6F567A1A74F92 /* BoardCoordinator+Movement.swift in Sources */,
 				F8B7262AB904EB81CB8E0AB3 /* BoardCoordinator+Rules.swift in Sources */,

@@ -10,6 +10,8 @@ struct BoardView: View {
     /// The side columns (party, monsters, battle log) can be hidden to see the whole board.
     @State private var showSidePanels = true
     @State private var logExpanded = true
+    /// Where the board and the HUD's panels sit, so the board is framed in the clear part.
+    @State private var hudFrames = HUDFrames()
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
@@ -18,8 +20,13 @@ struct BoardView: View {
             if let scene = coordinator.boardScene {
                 SpriteView(scene: scene)
                     .ignoresSafeArea()
-                    .onAppear { scene.reduceMotion = reduceMotion }
+                    .reportFrame { hudFrames.board = $0 }
+                    .onAppear {
+                        scene.reduceMotion = reduceMotion
+                        scene.setHUDObstacles(hudObstacles)
+                    }
                     .onChange(of: reduceMotion) { _, value in scene.reduceMotion = value }
+                    .onChange(of: hudObstacles) { _, obstacles in scene.setHUDObstacles(obstacles) }
             } else {
                 Color.black
                     .overlay {
@@ -31,9 +38,11 @@ struct BoardView: View {
             // HUD overlays
             VStack(spacing: 0) {
                 boardHUD
+                    .reportFrame { hudFrames.hud = $0 }
                 let rail = coordinator.turnRail
                 if !rail.isEmpty {
                     TurnRailView(entries: rail)
+                        .reportFrame { hudFrames.rail = $0 }
                         .padding(.horizontal)
                         .padding(.bottom, 6)
                 }
@@ -46,6 +55,7 @@ struct BoardView: View {
                                 ModifierTrayView(coordinator: coordinator)
                             }
                         }
+                        .reportFrame { hudFrames.left = $0 }
                         Spacer(minLength: 0)
                         // Right: monster info + battle log, each capped so the board stays visible
                         VStack(spacing: 4) {
@@ -53,6 +63,7 @@ struct BoardView: View {
                                 .layoutPriority(1)   // the log shrinks before the monsters do
                             turnLogPanel
                         }
+                        .reportFrame { hudFrames.right = $0 }
                     }
                     .transition(.opacity)
                 }
@@ -118,6 +129,33 @@ struct BoardView: View {
         }
     }
 
+    // MARK: - Board framing
+
+    /// Frames (global, y down) of the board and the panels over it.
+    struct HUDFrames: Equatable {
+        var board: CGRect = .zero
+        var hud: CGRect = .zero
+        var rail: CGRect = .zero
+        var left: CGRect = .zero
+        var right: CGRect = .zero
+        var bottomLeading: CGRect = .zero
+        var bottomTrailing: CGRect = .zero
+
+        /// The panels over the board, in board view points. The side panels count as whole
+        /// columns: they grow and shrink as the turn goes on, and the board shouldn't chase them.
+        func obstacles(showingSidePanels: Bool) -> [CGRect] {
+            func column(_ frame: CGRect) -> CGRect {
+                guard showingSidePanels, !frame.isEmpty else { return .zero }
+                return CGRect(x: frame.minX, y: frame.minY, width: frame.width,
+                              height: max(frame.height, board.maxY - frame.minY))
+            }
+            return BoardViewport.obstacles([hud, rail, column(left), column(right), bottomLeading, bottomTrailing],
+                                           over: board)
+        }
+    }
+
+    private var hudObstacles: [CGRect] { hudFrames.obstacles(showingSidePanels: showSidePanels) }
+
     // MARK: - Top HUD
 
     @ViewBuilder
@@ -152,8 +190,23 @@ struct BoardView: View {
                     .clipShape(Capsule())
             }
 
+            // Frame the whole board again after panning and zooming.
+            Button {
+                coordinator.boardScene?.fitCamera(animated: true)
+            } label: {
+                Image(systemName: "viewfinder")
+                    .font(.headline)
+                    .foregroundStyle(.white)
+                    .frame(width: 44, height: 44)
+                    .background(.black.opacity(0.6))
+                    .clipShape(Circle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Show the whole board")
+
             // Show or hide the side columns to see the whole board.
             Button {
+                coordinator.boardScene?.refitWhenHUDChanges()
                 withAnimation(.snappy) { showSidePanels.toggle() }
             } label: {
                 Image(systemName: showSidePanels ? "sidebar.squares.leading" : "rectangle.split.3x1")
@@ -210,6 +263,9 @@ struct BoardView: View {
             HStack(spacing: 12) {
                 if coordinator.boardPhase == .setup {
                     setupBottomBar
+                        .padding(10)
+                        .background(.black.opacity(0.45), in: RoundedRectangle(cornerRadius: 14))
+                        .reportFrame { hudFrames.bottomLeading = $0 }
                 } else if coordinator.boardPhase == .execution {
                     executionBottomBar
                 } else {
@@ -222,10 +278,12 @@ struct BoardView: View {
             // Monster ability cards — natural content width, pinned to the right
             if coordinator.boardPhase == .execution {
                 MonsterAbilityStripView(coordinator: coordinator, cardWidth: 140)
+                    .background(.black.opacity(0.45), in: RoundedRectangle(cornerRadius: 12))
+                    .reportFrame { hudFrames.bottomTrailing = $0 }
                     .padding(.trailing, 8)
+                    .padding(.vertical, 8)
             }
         }
-        .background(.black.opacity(0.4))
     }
 
     @ViewBuilder
@@ -320,105 +378,111 @@ struct BoardView: View {
     private var executionBottomBar: some View {
         if let playerTurn = coordinator.activePlayerTurn {
             HStack(spacing: 0) {
-                // Active card display
-                activeCardDisplay(playerTurn: playerTurn)
+                HStack(spacing: 0) {
+                    // Active card display
+                    activeCardDisplay(playerTurn: playerTurn)
 
-                // Action buttons
-                VStack(alignment: .leading, spacing: 8) {
-                    if playerTurn.phase == .executeTopAction || playerTurn.phase == .executeBottomAction {
-                        let actions = playerTurn.phase == .executeTopAction ? playerTurn.topActions : playerTurn.bottomActions
-                        let idx = playerTurn.currentActionIndex
+                    // Action buttons
+                    VStack(alignment: .leading, spacing: 8) {
+                        if playerTurn.phase == .executeTopAction || playerTurn.phase == .executeBottomAction {
+                            let actions = playerTurn.phase == .executeTopAction ? playerTurn.topActions : playerTurn.bottomActions
+                            let idx = playerTurn.currentActionIndex
 
-                        if idx < actions.count {
-                            let action = actions[idx]
-                            Button {
-                                playerTurn.executeCurrentAction()
-                            } label: {
-                                Label(GameText.actionTitle(action), systemImage: "play.fill")
-                            }
-                            .buttonStyle(.borderedProminent)
-                            .tint(.blue)
-                        } else {
-                            Button {
-                                playerTurn.executeCurrentAction()
-                            } label: {
-                                Label(playerTurn.phase == .executeTopAction && !playerTurn.bottomFirst
-                                      ? "Continue to Bottom Half" : "Continue", systemImage: "forward.fill")
-                            }
-                            .buttonStyle(.bordered)
-                            .tint(.gray)
-                        }
-
-                        if !playerTurn.hasActed {
-                            // Either card may provide the top half, and either half may go first.
-                            HStack(spacing: 8) {
-                                Button("Swap Cards") {
-                                    playerTurn.swapCards()
+                            if idx < actions.count {
+                                let action = actions[idx]
+                                Button {
+                                    playerTurn.executeCurrentAction()
+                                } label: {
+                                    Label(GameText.actionTitle(action), systemImage: "play.fill")
+                                }
+                                .buttonStyle(.borderedProminent)
+                                .tint(.blue)
+                            } else {
+                                Button {
+                                    playerTurn.executeCurrentAction()
+                                } label: {
+                                    Label(playerTurn.phase == .executeTopAction && !playerTurn.bottomFirst
+                                          ? "Continue to Bottom Half" : "Continue", systemImage: "forward.fill")
                                 }
                                 .buttonStyle(.bordered)
+                                .tint(.gray)
+                            }
+
+                            if !playerTurn.hasActed {
+                                // Either card may provide the top half, and either half may go first.
+                                HStack(spacing: 8) {
+                                    Button("Swap Cards") {
+                                        playerTurn.swapCards()
+                                    }
+                                    .buttonStyle(.bordered)
+                                    .controlSize(.small)
+                                    .help("Use the other card's top half and this card's bottom half")
+
+                                    Toggle("Bottom first", isOn: Binding(
+                                        get: { playerTurn.bottomFirst },
+                                        set: { playerTurn.setBottomFirst($0) }
+                                    ))
+                                    .toggleStyle(.button)
+                                    .controlSize(.small)
+                                }
+                            }
+
+                            HStack(spacing: 8) {
+                                let defaultLabel = playerTurn.phase == .executeTopAction ? "Use Basic Attack 2" : "Use Basic Move 2"
+                                Button(defaultLabel) {
+                                    playerTurn.useDefaultAction()
+                                }
+                                .buttonStyle(.bordered)
+                                .tint(.cyan)
                                 .controlSize(.small)
-                                .help("Use the other card's top half and this card's bottom half")
 
-                                Toggle("Bottom first", isOn: Binding(
-                                    get: { playerTurn.bottomFirst },
-                                    set: { playerTurn.setBottomFirst($0) }
-                                ))
-                                .toggleStyle(.button)
+                                Button("Skip Rest of Half") {
+                                    playerTurn.skipRemainingActions()
+                                }
+                                .buttonStyle(.bordered)
+                                .tint(.orange)
                                 .controlSize(.small)
                             }
                         }
 
-                        HStack(spacing: 8) {
-                            let defaultLabel = playerTurn.phase == .executeTopAction ? "Use Basic Attack 2" : "Use Basic Move 2"
-                            Button(defaultLabel) {
-                                playerTurn.useDefaultAction()
-                            }
-                            .buttonStyle(.bordered)
-                            .tint(.cyan)
-                            .controlSize(.small)
-
-                            Button("Skip Rest of Half") {
-                                playerTurn.skipRemainingActions()
-                            }
-                            .buttonStyle(.bordered)
-                            .tint(.orange)
-                            .controlSize(.small)
-                        }
-                    }
-
-                    if playerTurn.phase == .turnComplete {
-                        Button {
-                            coordinator.finishPlayerTurn()
-                        } label: {
-                            Label("End Turn", systemImage: "checkmark.circle.fill")
-                        }
-                        .buttonStyle(.borderedProminent)
-                        .tint(.green)
-                        .controlSize(.large)
-                    }
-                }
-                .padding(.horizontal, 16)
-
-                // Multi-target confirmation
-                if case .selectingMultiAttackTargets(_, _, _, let targetCount, let selected) = coordinator.interactionMode {
-                    VStack(spacing: 4) {
-                        if !selected.isEmpty {
-                            Button("Confirm \(selected.count) Target\(selected.count == 1 ? "" : "s")") {
-                                coordinator.confirmMultiAttack()
+                        if playerTurn.phase == .turnComplete {
+                            Button {
+                                coordinator.finishPlayerTurn()
+                            } label: {
+                                Label("End Turn", systemImage: "checkmark.circle.fill")
                             }
                             .buttonStyle(.borderedProminent)
-                            .tint(.red)
-                            .controlSize(.small)
+                            .tint(.green)
+                            .controlSize(.large)
                         }
                     }
-                    .padding(.horizontal, 8)
-                }
+                    .padding(.horizontal, 16)
 
-                instructionBanner
+                    // Multi-target confirmation
+                    if case .selectingMultiAttackTargets(_, _, _, let targetCount, let selected) = coordinator.interactionMode {
+                        VStack(spacing: 4) {
+                            if !selected.isEmpty {
+                                Button("Confirm \(selected.count) Target\(selected.count == 1 ? "" : "s")") {
+                                    coordinator.confirmMultiAttack()
+                                }
+                                .buttonStyle(.borderedProminent)
+                                .tint(.red)
+                                .controlSize(.small)
+                            }
+                        }
+                        .padding(.horizontal, 8)
+                    }
+
+                    instructionBanner
+                }
+                .padding(.trailing, 8)
+                .background(.black.opacity(0.45), in: RoundedRectangle(cornerRadius: 14))
+                .reportFrame { hudFrames.bottomLeading = $0 }
                 Spacer()
             }
         } else {
             instructionBanner
+                .reportFrame { hudFrames.bottomLeading = $0 }
             Spacer()
         }
     }
@@ -1598,5 +1662,13 @@ struct DiscardCardPicker: View {
                 }
             }
         }
+    }
+}
+
+private extension View {
+    /// Report this view's frame (global, y down) as it changes, and an empty frame once it's gone.
+    func reportFrame(_ report: @escaping (CGRect) -> Void) -> some View {
+        onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { report($0) }
+            .onDisappear { report(.zero) }
     }
 }

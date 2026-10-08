@@ -25,9 +25,18 @@ class BoardScene: SKScene {
     /// Camera node for pan/zoom.
     private let cameraNode = SKCameraNode()
     private var lastPanPoint: CGPoint?
-    private var currentZoom: CGFloat = 1.0
-    private let minZoom: CGFloat = 0.3
-    private let maxZoom: CGFloat = 3.0
+    /// The board's extent in scene units (every revealed hex), which the camera frames and
+    /// keeps in view.
+    private(set) var boardContentRect: CGRect = .null
+    /// The centre of every revealed hex, so the camera never ends up over empty floor.
+    private var hexCenters: [CGPoint] = []
+    /// The HUD's panels over the board (view points, y down); the board is framed around them.
+    private(set) var hudObstacles: [CGRect] = []
+    private var hudReported = false
+    /// The board still needs framing once the view and the HUD's insets are known.
+    private var framingPending = true
+    /// The player has panned or zoomed since the board was last framed.
+    private(set) var userMovedCamera = false
 
     /// Map from piece ID to its sprite node.
     private var pieceNodes: [PieceID: PieceSpriteNode] = [:]
@@ -100,6 +109,16 @@ class BoardScene: SKScene {
             pinchRecognizer = pinch
         }
         #endif
+        if framingPending { fitCamera() }
+        frameIfNeeded()
+    }
+
+    override func didChangeSize(_ oldSize: CGSize) {
+        super.didChangeSize(oldSize)
+        guard !boardContentRect.isNull, size != oldSize else { return }
+        // A rotation or resize reframes the board unless the player has set their own view.
+        if userMovedCamera { cameraState = clamped(cameraState) }
+        else { fitCamera() }
     }
 
     override func willMove(from view: SKView) {
@@ -170,10 +189,115 @@ class BoardScene: SKScene {
             addLootSprite(at: coord, offsetCol: offsetCol, offsetRow: offsetRow)
         }
 
-        // Center camera on the visible board cells
-        let centerCol = (board.bounds.minCol + board.bounds.maxCol) / 2 - offsetCol
-        let centerRow = (board.bounds.minRow + board.bounds.maxRow) / 2 - offsetRow
-        cameraNode.position = hexCenterInScene(col: centerCol, row: centerRow)
+        // Frame a new board; a rebuilt one (undo, a revealed room) keeps the player's view.
+        let isFirstBuild = boardContentRect.isNull
+        boardContentRect = contentRect(of: board)
+        hexCenters = board.cells.keys.sorted().map { sceneCenter(of: $0) }
+        if isFirstBuild { fitCamera() } else { cameraState = clamped(cameraState) }
+    }
+
+    /// Every revealed hex, edge to edge, in scene units.
+    private func contentRect(of board: BoardState) -> CGRect {
+        var rect = CGRect.null
+        for hex in board.cells.keys {
+            let center = sceneCenter(of: hex)
+            rect = rect.union(CGRect(x: center.x - HexMath.cellStepX / 2, y: center.y - HexMath.cellSize / 2,
+                                     width: HexMath.cellStepX, height: HexMath.cellSize))
+        }
+        return rect
+    }
+
+    // MARK: - Camera
+
+    /// The view the board is seen through: the scene's size (it fills the view) and the HUD.
+    var viewport: BoardViewport {
+        BoardViewport(size: size, obstacles: hudObstacles,
+                      contentSize: boardContentRect.isNull ? nil : boardContentRect.size)
+    }
+
+    /// Where the camera looks and how far it's zoomed.
+    var cameraState: BoardCamera {
+        get { BoardCamera(position: cameraNode.position, scale: cameraNode.xScale) }
+        set {
+            cameraNode.removeAction(forKey: "camera")
+            cameraNode.position = newValue.position
+            cameraNode.setScale(newValue.scale)
+        }
+    }
+
+    /// Move the camera, gliding there when the board is on screen and motion is allowed.
+    private func moveCamera(to camera: BoardCamera, animated: Bool) {
+        guard camera != cameraState else { return }
+        guard animated, !reduceMotion, view != nil else {
+            cameraState = camera
+            return
+        }
+        cameraNode.removeAction(forKey: "camera")
+        let move = SKAction.move(to: camera.position, duration: 0.35)
+        let zoom = SKAction.scale(to: camera.scale, duration: 0.35)
+        move.timingMode = .easeInEaseOut
+        zoom.timingMode = .easeInEaseOut
+        cameraNode.run(.group([move, zoom]), withKey: "camera")
+    }
+
+    /// Show the whole board in the part of the view the HUD leaves clear.
+    func fitCamera(animated: Bool = false) {
+        guard !boardContentRect.isNull else { return }
+        userMovedCamera = false
+        moveCamera(to: BoardCamera.fitting(boardContentRect, in: viewport), animated: animated)
+    }
+
+    /// The HUD's panels moved or resized. The first report frames the board. After that, a
+    /// panel that grows over the board reframes it, unless the player has set their own view;
+    /// a panel that shrinks doesn't, so the board doesn't zoom in and out every round.
+    func setHUDObstacles(_ obstacles: [CGRect]) {
+        let changed = obstacles != hudObstacles
+        hudObstacles = obstacles
+        if !hudReported { hudReported = true; framingPending = true }
+        if changed, !framingPending, !userMovedCamera, !boardContentRect.isNull,
+           !cameraState.shows(boardContentRect, in: viewport) {
+            framingPending = true
+        }
+        if changed || framingPending { frameIfNeeded() }
+    }
+
+    /// Reframe the board when the HUD next changes (after the side panels are shown or hidden).
+    func refitWhenHUDChanges() { framingPending = true }
+
+    private func frameIfNeeded() {
+        guard framingPending, view != nil, hudReported, !boardContentRect.isNull else { return }
+        framingPending = false
+        fitCamera(animated: true)
+    }
+
+    /// Pan, if needed, so a point (a figure about to act or move) is well inside the clear area.
+    /// Leaves the camera alone while the player's finger is on the board.
+    func keepInView(_ point: CGPoint) {
+        guard lastPanPoint == nil, !boardContentRect.isNull else { return }
+        moveCamera(to: cameraState.showing(point, in: viewport), animated: true)
+    }
+
+    /// Zoom by `factor` (2 = twice as close) keeping the scene point under `anchor` (a view
+    /// point, y down) where it is.
+    func zoom(by factor: CGFloat, around anchor: CGPoint) {
+        guard factor > 0 else { return }
+        userMovedCamera = true
+        cameraState = clamped(cameraState.zoomed(to: cameraState.scale / factor, around: anchor, in: viewport))
+    }
+
+    /// Pan by a drag of `translation` view points (y down): the board follows the finger.
+    func pan(by translation: CGVector) {
+        userMovedCamera = true
+        var camera = cameraState
+        camera.position.x -= translation.dx * camera.scale
+        camera.position.y += translation.dy * camera.scale
+        cameraState = clamped(camera)
+    }
+
+    /// A camera kept on the board: some of it, and at least one hex, in the clear area.
+    private func clamped(_ camera: BoardCamera) -> BoardCamera {
+        guard !boardContentRect.isNull else { return camera }
+        return camera.clamped(to: boardContentRect, hexes: hexCenters, in: viewport)
     }
 
     // MARK: - Tile Sprites
@@ -450,6 +574,7 @@ class BoardScene: SKScene {
         }
         actingRing.isHidden = false
         actingRing.position = node.position
+        keepInView(node.position)
         actingRing.setScale(1)
         actingRing.alpha = 1
         if !reduceMotion {
@@ -496,6 +621,10 @@ class BoardScene: SKScene {
 
         if actingPieceID == id {
             actingRing.run(SKAction.sequence(actions.map { $0.copy() as! SKAction }), withKey: "follow")
+        }
+        // Keep the destination on screen as the figure walks there.
+        if let last = steps.last {
+            keepInView(hexCenterInScene(col: last.col - offsetCol, row: last.row - offsetRow))
         }
         node.run(SKAction.sequence(actions)) {
             completion()
@@ -650,18 +779,16 @@ class BoardScene: SKScene {
         hexCenterInScene(col: hex.col - offsetCol, row: hex.row - offsetRow)
     }
 
+    /// Pan from the last drag point to `location` (both in scene space).
     private func pan(to location: CGPoint) {
-        if let last = lastPanPoint {
-            cameraNode.position = CGPoint(
-                x: cameraNode.position.x - (location.x - last.x),
-                y: cameraNode.position.y - (location.y - last.y)
-            )
-        }
+        guard let last = lastPanPoint else { return }
+        let scale = cameraState.scale
+        pan(by: CGVector(dx: (location.x - last.x) / scale, dy: -(location.y - last.y) / scale))
     }
 
-    private func zoom(by delta: CGFloat) {
-        currentZoom = max(minZoom, min(maxZoom, currentZoom + delta))
-        cameraNode.setScale(1.0 / currentZoom)
+    /// The view point (y down) over a scene point.
+    private func viewAnchor(of scenePoint: CGPoint) -> CGPoint {
+        cameraState.viewPoint(of: scenePoint, in: viewport)
     }
 
     #if os(macOS)
@@ -671,6 +798,7 @@ class BoardScene: SKScene {
     private var clickDragged = false
 
     override func mouseDown(with event: NSEvent) {
+        cameraNode.removeAction(forKey: "camera")
         clickStart = event.locationInWindow
         clickDragged = false
         lastPanPoint = event.location(in: self)
@@ -693,8 +821,18 @@ class BoardScene: SKScene {
         lastPanPoint = nil
     }
 
+    /// A trackpad's two-finger scroll pans; a mouse wheel zooms where the pointer is.
     override func scrollWheel(with event: NSEvent) {
-        zoom(by: event.deltaY * 0.05)
+        if event.hasPreciseScrollingDeltas {
+            pan(by: CGVector(dx: event.scrollingDeltaX, dy: event.scrollingDeltaY))
+        } else {
+            zoom(by: 1 + event.scrollingDeltaY * 0.05, around: viewAnchor(of: event.location(in: self)))
+        }
+    }
+
+    /// A trackpad pinch zooms where the pointer is.
+    override func magnify(with event: NSEvent) {
+        zoom(by: 1 + event.magnification, around: viewAnchor(of: event.location(in: self)))
     }
     #else
     /// Where the current touch started, to tell a tap from a pan. The threshold is measured in
@@ -705,6 +843,7 @@ class BoardScene: SKScene {
 
     override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
         guard let touch = touches.first else { return }
+        cameraNode.removeAction(forKey: "camera")
         let location = touch.location(in: self)
         touchStart = location
         touchStartInView = touch.location(in: view)
@@ -740,8 +879,11 @@ class BoardScene: SKScene {
         lastPanPoint = nil
     }
 
+    /// Pinch zooms where the fingers are.
     @objc private func handlePinch(_ recognizer: UIPinchGestureRecognizer) {
-        zoom(by: (recognizer.scale - 1) * 0.5)
+        guard let view else { return }
+        let anchor = viewAnchor(of: convertPoint(fromView: recognizer.location(in: view)))
+        zoom(by: recognizer.scale, around: anchor)
         recognizer.scale = 1
     }
     #endif

@@ -1818,10 +1818,11 @@ final class BoardCoordinator {
         offsetCol = boardState.bounds.minCol - padding
         offsetRow = boardState.bounds.minRow - padding
 
-        // Rebuild the visual board to include the new room
+        // Rebuild the visual board to include the new room, and frame it so the room is seen
         boardScene?.buildBoard(from: boardState, scenario: scenario, offsetCol: offsetCol, offsetRow: offsetRow,
                                characterAppearances: buildCharacterAppearances())
         syncPieceVisuals()
+        boardScene?.fitCamera(animated: true)
 
         boardPhase = .execution
         log("A door opens and a new room is revealed", category: .door, trace: door.childTileRef)
