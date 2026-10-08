@@ -43,3 +43,25 @@ final class BoardLayoutTests: XCTestCase {
         assertFits(gm, "setup, four characters")
     }
 }
+
+/// The party screen keeps its rows still as characters are added.
+@MainActor
+final class PartyScreenLayoutTests: XCTestCase {
+
+    /// Regression: adding the first character inserted the scenario-level line, shifting every
+    /// class row down so the next tap hit the wrong class.
+    func testAddingTheFirstCharacterDoesNotMoveTheClassList() throws {
+        let gm = try SaveAndContinueTestsSupport.manager()
+        func lineHeight() -> CGFloat {
+            let line = ScenarioLevelLine(text: GameSetupView.difficultyHint(for: gm))
+            return NSHostingController(rootView: line).sizeThatFits(in: CGSize(width: 400, height: 200)).height
+        }
+        let empty = GameSetupView.difficultyHint(for: gm)
+        let before = lineHeight()
+        XCTAssertGreaterThan(before, 8, "the line takes space before any character is added")
+        gm.characterManager.addCharacter(name: "brute", edition: "gh")
+        XCTAssertNotEqual(GameSetupView.difficultyHint(for: gm), empty)
+        XCTAssertEqual(PlayerTextTests.lint(GameSetupView.difficultyHint(for: gm)), [])
+        XCTAssertEqual(lineHeight(), before, accuracy: 0.5, "and the same space after")
+    }
+}

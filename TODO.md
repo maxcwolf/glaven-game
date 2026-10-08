@@ -202,13 +202,14 @@ Phase I — safety & words (done)
 - [x] No `NSSound.beep()` on the Mac; haptics follow their own toggle; launch sting respects the sound setting
 - [x] Settings trimmed to what works; Animation Speed drives the board's animations and turn pauses (`SettingsWiringTests`)
 
-Phase II — readable board
-- [ ] Monster tokens from thumbnails with standee badge and elite plate; HP bar and condition chips on every token
-- [ ] Initiative rail and an instruction banner for every selecting mode (with Skip action / Cancel)
-- [ ] Multi-hex and rotated overlays drawn on every cell (~330 in the scenario maps)
-- [ ] Hex hit-testing via `pixelToHex`; tapping a highlighted hex targets the figure on it
-- [ ] Content-sized, collapsible side panels; layout doesn't shift between phases or when a character is added on the party screen
-- [ ] `HighlightStyle` per interaction with colour-blind-safe hues and shape cues
+Phase II — readable board (done)
+- [x] Monster tokens from thumbnails with standee badge and elite rim; HP bar and condition icons on every token (`BoardTokenTests`)
+- [x] Initiative rail and an instruction banner for every selecting mode, with Skip This Action (`TurnGuidanceTests`)
+- [ ] Cancel a target choice (needs snapshot undo: some abilities apply effects before their target is chosen)
+- [x] Multi-hex overlays drawn on every cell (~330 in the scenario maps) (`BoardOverlayTests`)
+- [x] Taps resolve to the nearest hex; tapping a hex targets the figure on it; macOS click-vs-drag; iOS threshold in screen points (`BoardTapTests`)
+- [x] Content-sized side panels, collapsible log, hide-panels button; HUD fits iPad Pro and iPad mini; party screen rows don't shift (`BoardLayoutTests`)
+- [x] `HighlightStyle` per interaction with colour-blind-safe hues and shape cues (`HighlightStyleTests`)
 
 Phase III — game feel
 - [ ] Effects layer: attack lines/lunges, outlined damage/heal/miss text that survives a death, condition pops

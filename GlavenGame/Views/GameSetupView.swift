@@ -235,16 +235,17 @@ struct GameSetupView: View {
         .buttonStyle(.plain)
     }
 
-    @ViewBuilder
+    /// Always present, so adding the first character doesn't push the rows below it down
+    /// (a second tap would land on the wrong character).
     private var difficultyHint: some View {
-        if !gameManager.game.characters.isEmpty {
-            let scenLevel = gameManager.levelManager.scenarioLevel()
-            Text("Scenario level: \(scenLevel) · \(gameManager.game.difficulty.description)")
-                .font(.caption2)
-                .foregroundStyle(GlavenTheme.secondaryText)
-                .padding(.horizontal, 16)
-                .padding(.bottom, 8)
+        ScenarioLevelLine(text: Self.difficultyHint(for: gameManager))
+    }
+
+    static func difficultyHint(for gameManager: GameManager) -> String {
+        guard !gameManager.game.characters.isEmpty else {
+            return "Add characters to set the scenario level"
         }
+        return "Scenario level \(gameManager.levelManager.scenarioLevel()) · \(gameManager.game.difficulty.description)"
     }
 
     private func difficultyColor(_ mode: DifficultyMode) -> Color {
@@ -468,5 +469,20 @@ struct GameSetupView: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+    }
+}
+
+/// The line under the difficulty buttons. It always takes one line of space, so adding the first
+/// character doesn't push the class list down.
+struct ScenarioLevelLine: View {
+    let text: String
+
+    var body: some View {
+        Text(text)
+            .font(.caption2)
+            .foregroundStyle(GlavenTheme.secondaryText)
+            .lineLimit(1)
+            .padding(.horizontal, 16)
+            .padding(.bottom, 8)
     }
 }
