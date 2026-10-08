@@ -42,4 +42,19 @@ enum IntOrString: Codable, Hashable {
         if case .string(let s) = self { return s.contains("[") }
         return false
     }
+
+    /// True for any non-integer string value, bracketed or not (`"8xC"`, `"1+C"`, `"3+X"`).
+    /// Such values must go through `evaluated(...)`; `intValue` returns 0 for them.
+    var isFormula: Bool {
+        if case .string(let s) = self { return Int(s) == nil }
+        return false
+    }
+
+    /// Evaluates the value with `evaluateEntityValue` (C = max(2, characterCount), L = level,
+    /// card-specific letters from `variables`, unknown letters = 0, result rounded down).
+    func evaluated(level: Int = 1, characterCount: Int = 2, round: Int = 0, prosperity: Int = 0,
+                   variables: [String: Int] = [:]) -> Int {
+        evaluateEntityValue(self, level: level, characterCount: characterCount, round: round,
+                            prosperity: prosperity, variables: variables)
+    }
 }
