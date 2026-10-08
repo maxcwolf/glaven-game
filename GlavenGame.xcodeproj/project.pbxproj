@@ -20,6 +20,7 @@
 		0919DBA057F7F5E67358F0DB /* ElementState.swift in Sources */ = {isa = PBXBuildFile; fileRef = C27216A8BF9D29A97C3B588D /* ElementState.swift */; };
 		092AB5BE3CCA94A1BDF57E91 /* ScenarioExpression.swift in Sources */ = {isa = PBXBuildFile; fileRef = F3E688CD5DBDBC4114FCA3F4 /* ScenarioExpression.swift */; };
 		09CA0023236EE4715652F858 /* TreasuresToolSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7EBC365D268B4E38F018A1A1 /* TreasuresToolSheet.swift */; };
+		0C1677F77D3A230F0485CB53 /* BoardSound.swift in Sources */ = {isa = PBXBuildFile; fileRef = A7E2165E5E511B9078052C55 /* BoardSound.swift */; };
 		0EACFB0AB8BDFFCC7F591795 /* PieceID.swift in Sources */ = {isa = PBXBuildFile; fileRef = 33CE037572CCD1CC45F5F131 /* PieceID.swift */; };
 		0ED8F49AA66E6EFF394D74FB /* RoomRevealSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = C71E84426D2ABC0169A5F5B5 /* RoomRevealSheet.swift */; };
 		15D2951A77CC1C086296F86D /* ScenarioMarkerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7050B86E677EE171AD0A3573 /* ScenarioMarkerView.swift */; };
@@ -402,6 +403,7 @@
 		A30E472AAD62BB67AE83169C /* ActionsManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActionsManager.swift; sourceTree = "<group>"; };
 		A61085FE2C898425387309FD /* AttackModifierType.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AttackModifierType.swift; sourceTree = "<group>"; };
 		A6B11F82C5E44D977254134D /* BoardCoordinator+Combat.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "BoardCoordinator+Combat.swift"; sourceTree = "<group>"; };
+		A7E2165E5E511B9078052C55 /* BoardSound.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BoardSound.swift; sourceTree = "<group>"; };
 		A84E6B64709515FDF720A62E /* MonsterEditorSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MonsterEditorSheet.swift; sourceTree = "<group>"; };
 		A9AACECDE0618EDE4BA3C17E /* AttackModifierDeckView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AttackModifierDeckView.swift; sourceTree = "<group>"; };
 		AB1B617FED39015D1033829C /* CharacterItemsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CharacterItemsView.swift; sourceTree = "<group>"; };
@@ -684,6 +686,7 @@
 		45867543A9804613CA71D357 /* Utilities */ = {
 			isa = PBXGroup;
 			children = (
+				A7E2165E5E511B9078052C55 /* BoardSound.swift */,
 				52347FEF6FA67664FBF7BF1A /* BundleHelper.swift */,
 				EFAF7312A61CA28A484AE10E /* EntityValueFunction.swift */,
 				F4B2AAB322CBC33EEE910FBB /* FontLoader.swift */,
@@ -1136,6 +1139,7 @@
 				24867CD051F861D7479B3148 /* BoardCoordinator.swift in Sources */,
 				593ED53896934CF7F83863D3 /* BoardScene.swift in Sources */,
 				34E52CCA39FF59F3296B5135 /* BoardSnapshot.swift in Sources */,
+				0C1677F77D3A230F0485CB53 /* BoardSound.swift in Sources */,
 				9B0C1F1811587190DFECF3B7 /* BoardState.swift in Sources */,
 				DC76BF79136B777FBBE43EED /* BoardView.swift in Sources */,
 				3D70D4B36FC1C27F8205C998 /* BundleHelper.swift in Sources */,

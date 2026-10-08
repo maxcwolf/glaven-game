@@ -195,6 +195,7 @@ extension BoardCoordinator {
     /// were not summoned or spawned), summons are removed, characters become exhausted.
     func handleDeath(of pieceID: PieceID, killer: PieceID? = nil) {
         guard let gameManager else { return }
+        boardScene?.play(.death)
         switch pieceID {
         case .character(let id):
             if let character = gameManager.game.characters.first(where: { $0.id == id }) {

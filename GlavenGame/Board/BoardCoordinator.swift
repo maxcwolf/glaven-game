@@ -705,6 +705,7 @@ final class BoardCoordinator {
             self?.pieceAppearance(piece) ?? PieceAppearance.fallback(for: piece)
         }
         scene.statusProvider = { [weak self] piece in self?.pieceStatus(piece) }
+        scene.playSound = { BoardSoundPlayer.play($0) }
         boardScene = scene
 
         (offsetCol, offsetRow) = Self.sceneOffsets(for: boardState)

@@ -60,7 +60,7 @@ struct ModifierTrayView: View {
 
     private func drawPrompt(_ pending: BoardCoordinator.PendingModifierDraw) -> some View {
         Button {
-            SoundPlayer.play(.cardFlip)
+            BoardSoundPlayer.play(.card)
             coordinator.drawPendingModifiers()
         } label: {
             HStack(spacing: 12) {

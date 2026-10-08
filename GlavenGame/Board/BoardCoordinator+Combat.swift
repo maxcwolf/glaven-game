@@ -99,7 +99,7 @@ extension BoardCoordinator {
         }
 
         if result.damage == 0 {
-            boardScene?.floatText(result.isMiss ? "Miss" : "Blocked", over: target, style: .info)
+            boardScene?.pieceUnharmed(id: target, missed: result.isMiss)
         }
 
         var died = false

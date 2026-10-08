@@ -82,6 +82,7 @@ extension BoardCoordinator {
 
         boardState.removeTrap(at: hex)
         boardScene?.removeOverlaySprite(at: hex, offsetCol: offsetCol, offsetRow: offsetRow)
+        boardScene?.play(.trap)
         log("\(name(pieceID)) springs a trap and suffers \(damage) damage", category: .damage, trace: subType)
 
         if await sufferDamageWithMitigation(damage, to: pieceID, source: "a trap") {

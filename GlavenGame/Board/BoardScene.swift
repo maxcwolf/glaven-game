@@ -17,6 +17,15 @@ class BoardScene: SKScene {
     /// The ring under the figure whose turn it is.
     private let actingRing = SKShapeNode(circleOfRadius: HexMath.cellStepX * 0.48)
 
+    /// Plays a board sound; the coordinator sets it, tests record into it. The scene stays
+    /// silent while no view shows it (headless play).
+    var playSound: (@MainActor (BoardSound) -> Void)?
+
+    func play(_ sound: BoardSound) {
+        guard view != nil else { return }
+        playSound?(sound)
+    }
+
     /// Callback when a hex is clicked.
     var onHexTap: ((HexCoord) -> Void)?
     /// Callback when a piece is clicked.
@@ -174,6 +183,7 @@ class BoardScene: SKScene {
     /// leave the rest of the board alone: effects in flight, the ring and the camera carry on.
     func revealRooms(from board: BoardState, scenario: VGBScenario) {
         let added = drawNewlyVisible(from: board, scenario: scenario)
+        if !added.isEmpty { play(.door) }
         boardContentRect = contentRect(of: board)
         hexCenters = board.cells.keys.sorted().map { sceneCenter(of: $0) }
         guard view != nil, !reduceMotion else { return }
@@ -505,7 +515,10 @@ class BoardScene: SKScene {
     /// "Stun ends" as it wears off.
     func announce(_ condition: ConditionName, on id: PieceID, gained: Bool) {
         let name = GameText.conditionName(condition)
-        if gained { floatText(name, over: id, style: condition.isPositive ? .boon : .harm) }
+        if gained {
+            floatText(name, over: id, style: condition.isPositive ? .boon : .harm)
+            play(condition.isPositive ? .boon : .harm)
+        }
         else { floatText("\(name) ends", over: id, style: .info) }
     }
 
@@ -577,6 +590,7 @@ class BoardScene: SKScene {
     /// Show a damage number floating up from a piece.
     func pieceDamage(id: PieceID, amount: Int) {
         floatText("\u{2212}\(amount)", over: id, style: .damage)
+        play(amount >= 4 ? .heavyHit : .hit)
         guard let node = pieceNodes[id] else { return }
         // A short shake so the hit registers even out of the corner of the eye.
         node.run(.sequence([.moveBy(x: 4, y: 0, duration: 0.04), .moveBy(x: -8, y: 0, duration: 0.06),
@@ -586,11 +600,19 @@ class BoardScene: SKScene {
     /// Show a gold/loot pickup floating up from a piece.
     func pieceLoot(id: PieceID, text: String) {
         floatText(text, over: id, style: .gold)
+        play(.loot)
     }
 
     /// Show healing floating up from a piece.
     func pieceHeal(id: PieceID, amount: Int) {
         floatText("+\(amount)", over: id, style: .heal)
+        play(.heal)
+    }
+
+    /// An attack that did no damage: "Miss" with a swish, or "Blocked" with a clang.
+    func pieceUnharmed(id: PieceID, missed: Bool) {
+        floatText(missed ? "Miss" : "Blocked", over: id, style: .info)
+        play(missed ? .miss : .blocked)
     }
 
     /// Show an attack from one piece to another: a line between them for a moment, and a lunge
@@ -684,6 +706,21 @@ class BoardScene: SKScene {
             step.timingMode = leg.timing.spriteKit
             return step
         })
+        // Footsteps for a walk or a shove; a thud as a jump lands; a shimmer for a teleport.
+        switch animation {
+        case .walk, .forced:
+            var time = 0.0
+            for leg in plan.legs {
+                run(.sequence([.wait(forDuration: time), .run { [weak self] in self?.play(.step) }]))
+                time += leg.duration
+            }
+        case .jump:
+            run(.sequence([.wait(forDuration: plan.duration), .run { [weak self] in self?.play(.land) }]))
+        case .teleport:
+            play(.teleport)
+        case .fly:
+            break
+        }
         if actingPieceID == id {
             actingRing.run(plan.fades ? .sequence([.wait(forDuration: MovePlan.fadeDuration), travel.copy() as! SKAction])
                                       : travel.copy() as! SKAction, withKey: "follow")

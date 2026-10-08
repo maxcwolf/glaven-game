@@ -182,6 +182,7 @@ extension BoardCoordinator {
     func setActing(_ piece: PieceID?) {
         actingPiece = piece
         boardScene?.setActingPiece(piece)
+        if case .character = piece { boardScene?.play(.turn) }
     }
 
     /// Bring every token on the board up to date (health, conditions, invisibility).
