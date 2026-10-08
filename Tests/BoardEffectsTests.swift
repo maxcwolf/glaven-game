@@ -88,6 +88,56 @@ final class BoardEffectsTests: XCTestCase {
         coord.setActing(nil)
         XCTAssertNil(coord.actingPiece)
     }
+
+    // MARK: - Conditions
+
+    /// A condition landing says so over the figure and its icon appears; wearing off says so too.
+    func testConditionsAreAnnouncedAsTheyComeAndGo() throws {
+        let monster = aMonster
+        coord.applyCondition(.stun, to: monster)
+        XCTAssertEqual(floatTexts(over: monster), ["Stun"])
+        XCTAssertTrue(scene.pieceNode(for: monster)?.shownConditions.contains(.stun) == true)
+
+        let entity = try XCTUnwrap(coord.entity(for: monster))
+        gm.entityManager.removeCondition(.stun, from: entity)
+        coord.syncPieceVisuals()
+        XCTAssertEqual(floatTexts(over: monster), ["Stun", "Stun ends"])
+    }
+
+    /// Curse and bless go into a deck, not onto the token, so the label is the only sign on the board.
+    func testCurseAndBlessAreAnnouncedThoughTheyHaveNoIcon() {
+        let monster = aMonster
+        let brute = PieceID.character(gm.game.characters[0].id)
+        coord.applyCondition(.curse, to: monster)
+        coord.applyCondition(.bless, to: brute)
+        XCTAssertEqual(floatTexts(over: monster), ["Curse"])
+        XCTAssertEqual(floatTexts(over: brute), ["Bless"])
+    }
+
+    func testImmunityIsShown() throws {
+        let monster = aMonster
+        let entity = try XCTUnwrap(coord.entity(for: monster))
+        entity.immunities.append(.poison)
+        coord.applyCondition(.poison, to: monster)
+        XCTAssertEqual(floatTexts(over: monster), ["Immune"])
+    }
+
+    /// A rebuilt board (undo, a revealed room) doesn't announce the conditions figures already have.
+    func testARebuiltBoardAnnouncesNothing() throws {
+        let monster = aMonster
+        gm.entityManager.addCondition(.poison, to: try XCTUnwrap(coord.entity(for: monster)))
+        coord.restore(from: coord.snapshot())
+        XCTAssertTrue(scene.pieceNode(for: monster)?.shownConditions.contains(.poison) == true, "the icon shows")
+        for piece in coord.boardState.piecePositions.keys {
+            XCTAssertEqual(floatTexts(over: piece), [], "\(piece)")
+        }
+    }
+
+    func testConditionLabelsReadCleanly() {
+        for condition in ConditionName.allCases {
+            XCTAssertEqual(PlayerTextTests.lint(GameText.conditionName(condition)), [], "\(condition)")
+        }
+    }
 }
 
 /// The scene survives being put on screen, which runs `didMove(to:)` after the board is built.

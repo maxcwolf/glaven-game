@@ -454,9 +454,28 @@ class BoardScene: SKScene {
     }
 
     /// Bring one token up to date from `statusProvider`.
+    /// A token that already showed a status announces the conditions it gains and loses; a
+    /// token's first status (a new board, a spawn) announces nothing.
     func refreshStatus(of id: PieceID) {
         guard let node = pieceNodes[id], let status = statusProvider?(id) else { return }
+        let before = node.status?.conditions
         node.apply(status: status)
+        guard let before else { return }
+        for condition in status.conditions where !before.contains(condition) {
+            announce(condition, on: id, gained: true)
+            node.popCondition(condition)
+        }
+        for condition in before where !status.conditions.contains(condition) {
+            announce(condition, on: id, gained: false)
+        }
+    }
+
+    /// "Stun" in the colour of a hindrance (or a boon) as a condition lands; a quieter
+    /// "Stun ends" as it wears off.
+    func announce(_ condition: ConditionName, on id: PieceID, gained: Bool) {
+        let name = GameText.conditionName(condition)
+        if gained { floatText(name, over: id, style: condition.isPositive ? .boon : .harm) }
+        else { floatText("\(name) ends", over: id, style: .info) }
     }
 
     /// Bring every token up to date from `statusProvider`.
@@ -483,6 +502,8 @@ class BoardScene: SKScene {
 
     enum FloatStyle {
         case damage, heal, gold, info
+        /// A condition that hinders (stun, poison, curse…) or helps (strengthen, bless…).
+        case harm, boon
 
         var color: SKColor {
             switch self {
@@ -490,6 +511,8 @@ class BoardScene: SKScene {
             case .heal: return SKColor(red: 0.45, green: 0.86, blue: 0.45, alpha: 1)
             case .gold: return SKColor(red: 1.0, green: 0.85, blue: 0.25, alpha: 1)
             case .info: return SKColor(white: 0.95, alpha: 1)
+            case .harm: return SKColor(red: 0.84, green: 0.56, blue: 1.0, alpha: 1)
+            case .boon: return SKColor(red: 0.42, green: 0.85, blue: 1.0, alpha: 1)
             }
         }
     }

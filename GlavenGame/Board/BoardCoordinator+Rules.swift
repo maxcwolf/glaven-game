@@ -89,6 +89,7 @@ extension BoardCoordinator {
     func applyCondition(_ condition: ConditionName, to pieceID: PieceID) {
         guard let gameManager, let entity = entity(for: pieceID) else { return }
         guard !entity.immunities.contains(condition) else {
+            boardScene?.floatText("Immune", over: pieceID, style: .info)
             log("\(name(pieceID)) is immune to \(GameText.conditionName(condition))", category: .condition)
             return
         }
@@ -108,6 +109,8 @@ extension BoardCoordinator {
             case .objective:
                 gameManager.game.allyAttackModifierDeck.addCard(type: type)
             }
+            // Curse and bless go into a deck, not onto the token: say so over the figure.
+            boardScene?.announce(condition, on: pieceID, gained: true)
         } else {
             gameManager.entityManager.addCondition(condition, to: entity)
         }

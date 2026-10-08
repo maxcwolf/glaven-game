@@ -213,7 +213,7 @@ Phase II — readable board (done)
 
 Phase III — game feel
 - [x] Effects layer: a ring on the acting figure, attack lines and melee lunges, outlined damage/heal/Miss/Blocked/Prevented text that outlives a killing blow (`BoardEffectsTests`)
-- [ ] Condition pops when a condition is gained or wears off
+- [x] Condition pops: a gained condition floats its name (hindrance purple, boon blue) and its icon pops; "… ends" as it wears off; curse, bless and immunity are announced too (`BoardEffectsTests`)
 - [x] Distinct move animations: walks step and ease, jumps arc over (lift and shadow), flyers stay lifted, teleports vanish and reappear with a flash, pushes and pulls shove with a jolt; reduced motion drops the lifting (`MoveAnimationTests`)
 - [x] Modifier draws in a docked tray (real card art); monster draws resolve without a modal (setting to draw them by hand); damage choice as a docked sheet with card scans, select-then-confirm and an exhaustion warning (`ModifierDrawTests`, `DamageChoiceTests`)
 - [x] Camera: frames the board in the largest gap between the HUD panels (reframes when a panel grows over it, and when a door opens), can't be dragged off the board, zooms where the fingers or pointer are, follows the acting figure; "show whole board" button; trackpad scroll pans (`BoardCameraTests`)

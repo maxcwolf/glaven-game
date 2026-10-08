@@ -168,6 +168,17 @@ class PieceSpriteNode: SKNode {
     // MARK: - Updates
 
     /// Show the figure's health and conditions.
+    /// Make a just-gained condition's icon pop, so the eye finds it.
+    func popCondition(_ condition: ConditionName) {
+        guard let chip = conditionLayer.childNode(withName: "condition-\(condition.rawValue)") else { return }
+        chip.setScale(0.2)
+        let grow = SKAction.scale(to: 1.5, duration: 0.14)
+        grow.timingMode = .easeOut
+        let settle = SKAction.scale(to: 1, duration: 0.16)
+        settle.timingMode = .easeIn
+        chip.run(.sequence([grow, settle]))
+    }
+
     func apply(status newStatus: PieceStatus) {
         guard newStatus != status else { return }
         status = newStatus
