@@ -1816,12 +1816,9 @@ final class BoardCoordinator {
             for piece in placed { pendingRevealedStandees[piece.name, default: []].insert(piece.standee) }
         }
 
-        // Recalculate offsets from the expanded bounds.
-        (offsetCol, offsetRow) = Self.sceneOffsets(for: boardState)
-
-        // Rebuild the visual board to include the new room, and frame it so the room is seen
-        boardScene?.buildBoard(from: boardState, scenario: scenario, offsetCol: offsetCol, offsetRow: offsetRow,
-                               characterAppearances: buildCharacterAppearances())
+        // Draw the new room into the board as it stands (the grid offset stays put, so nothing
+        // already drawn moves), and frame the board so the room is seen.
+        boardScene?.revealRooms(from: boardState, scenario: scenario)
         syncPieceVisuals()
         boardScene?.fitCamera(animated: true)
 

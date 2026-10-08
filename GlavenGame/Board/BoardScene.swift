@@ -30,6 +30,10 @@ class BoardScene: SKScene {
     private(set) var boardContentRect: CGRect = .null
     /// The centre of every revealed hex, so the camera never ends up over empty floor.
     private var hexCenters: [CGPoint] = []
+    /// The map tiles drawn so far, so a revealed room only adds its own.
+    private(set) var drawnRooms: Set<String> = []
+    /// The hexes whose overlays have been drawn.
+    private var overlaysDrawn: Set<HexCoord> = []
     /// The HUD's panels over the board (view points, y down); the board is framed around them.
     private(set) var hudObstacles: [CGRect] = []
     private var hudReported = false
@@ -154,46 +158,67 @@ class BoardScene: SKScene {
         effectsLayer.removeAllChildren()
         pieceNodes.removeAll()
         highlightNodes.removeAll()
-
-        // Collect all tile data from the scenario tree
-        let uniqueTiles = collectUniqueTiles(from: scenario.mapTileData)
-
-        // Place tile images — only for visible rooms
-        for tile in uniqueTiles {
-            guard board.visibleRooms.contains(tile.ref) else { continue }
-            placeTileSprite(tile: tile, offsetCol: offsetCol, offsetRow: offsetRow)
-        }
-
-        // Place overlay sprites — only for hexes that exist in the board state (visible rooms)
-        let result = ScenarioMapBuilder.build(from: scenario)
-        let visibleCoords = Set(board.cells.keys)
-        for overlay in result.overlays {
-            let overlayCoord = HexCoord(overlay.col, overlay.row)
-            guard visibleCoords.contains(overlayCoord) else { continue }
-            // Traps that have sprung and treasure that has been looted are gone from the board.
-            let name = overlay.imageName.lowercased()
-            if name.contains("trap") && board.cells[overlayCoord]?.isTrap != true { continue }
-            if (name.contains("treasure") || name.contains("coin") || name.contains("chest"))
-                && board.cells[overlayCoord]?.overlay != .treasure { continue }
-            placeOverlaySprite(overlay: overlay, offsetCol: offsetCol, offsetRow: offsetRow)
-        }
-
-        // Place pieces
+        drawnRooms = []
+        overlaysDrawn = []
         self.storedAppearances = characterAppearances
-        for (pieceID, coord) in board.piecePositions {
-            addPieceSprite(id: pieceID, at: coord, offsetCol: offsetCol, offsetRow: offsetRow)
-        }
-
-        // Restore loot tokens
-        for (coord, _) in board.lootTokens {
-            addLootSprite(at: coord, offsetCol: offsetCol, offsetRow: offsetRow)
-        }
+        drawNewlyVisible(from: board, scenario: scenario)
 
         // Frame a new board; a rebuilt one (undo, a revealed room) keeps the player's view.
         let isFirstBuild = boardContentRect.isNull
         boardContentRect = contentRect(of: board)
         hexCenters = board.cells.keys.sorted().map { sceneCenter(of: $0) }
         if isFirstBuild { fitCamera() } else { cameraState = clamped(cameraState) }
+    }
+
+    /// Add what a revealed room brings — its tiles, overlays, figures and loot — fading in, and
+    /// leave the rest of the board alone: effects in flight, the ring and the camera carry on.
+    func revealRooms(from board: BoardState, scenario: VGBScenario) {
+        let added = drawNewlyVisible(from: board, scenario: scenario)
+        boardContentRect = contentRect(of: board)
+        hexCenters = board.cells.keys.sorted().map { sceneCenter(of: $0) }
+        guard view != nil, !reduceMotion else { return }
+        for node in added {
+            let alpha = node.alpha
+            node.alpha = 0
+            node.run(.fadeAlpha(to: alpha, duration: 0.5))
+        }
+    }
+
+    /// Draw every tile, overlay, figure and loot token of `board` not already drawn; returns
+    /// the new nodes.
+    @discardableResult
+    private func drawNewlyVisible(from board: BoardState, scenario: VGBScenario) -> [SKNode] {
+        var added: [SKNode] = []
+        for tile in collectUniqueTiles(from: scenario.mapTileData)
+        where board.visibleRooms.contains(tile.ref) && !drawnRooms.contains(tile.ref) {
+            if let sprite = placeTileSprite(tile: tile, offsetCol: offsetCol, offsetRow: offsetRow) { added.append(sprite) }
+            drawnRooms.insert(tile.ref)
+        }
+
+        // Overlays only for hexes on the board (visible rooms), and only once.
+        let visibleCoords = Set(board.cells.keys)
+        for overlay in ScenarioMapBuilder.build(from: scenario).overlays {
+            let overlayCoord = HexCoord(overlay.col, overlay.row)
+            guard visibleCoords.contains(overlayCoord), !overlaysDrawn.contains(overlayCoord) else { continue }
+            // Traps that have sprung and treasure that has been looted are gone from the board.
+            let name = overlay.imageName.lowercased()
+            if name.contains("trap") && board.cells[overlayCoord]?.isTrap != true { continue }
+            if (name.contains("treasure") || name.contains("coin") || name.contains("chest"))
+                && board.cells[overlayCoord]?.overlay != .treasure { continue }
+            added += placeOverlaySprite(overlay: overlay, offsetCol: offsetCol, offsetRow: offsetRow)
+        }
+        overlaysDrawn.formUnion(visibleCoords)
+
+        for (pieceID, coord) in board.piecePositions.sorted(by: { $0.key < $1.key }) where pieceNodes[pieceID] == nil {
+            addPieceSprite(id: pieceID, at: coord, offsetCol: offsetCol, offsetRow: offsetRow)
+            if let node = pieceNodes[pieceID] { added.append(node) }
+        }
+        for coord in board.lootTokens.keys.sorted()
+        where lootLayer.childNode(withName: "loot_\(coord.col)_\(coord.row)") == nil {
+            addLootSprite(at: coord, offsetCol: offsetCol, offsetRow: offsetRow)
+            if let node = lootLayer.childNode(withName: "loot_\(coord.col)_\(coord.row)") { added.append(node) }
+        }
+        return added
     }
 
     /// Every revealed hex, edge to edge, in scene units.
@@ -302,10 +327,11 @@ class BoardScene: SKScene {
 
     // MARK: - Tile Sprites
 
-    private func placeTileSprite(tile: UniqueTile, offsetCol: Int, offsetRow: Int) {
+    @discardableResult
+    private func placeTileSprite(tile: UniqueTile, offsetCol: Int, offsetRow: Int) -> SKNode? {
         let imgOffset = TileImageOffsets.offset(for: tile.ref)
 
-        guard let image = MapImageCache.shared.image(named: "map-tiles/\(tile.ref)") else { return }
+        guard let image = MapImageCache.shared.image(named: "map-tiles/\(tile.ref)") else { return nil }
         let texture = SKTexture(cgImage: image)
         let imgW = texture.size().width
         let imgH = texture.size().height
@@ -328,6 +354,7 @@ class BoardScene: SKScene {
         sprite.zRotation = -CGFloat(tile.turns) * .pi / 3.0 // negative for SpriteKit's CCW convention
         sprite.zPosition = 0
         tileLayer.addChild(sprite)
+        return sprite
     }
 
     // MARK: - Overlay Sprites
@@ -336,9 +363,11 @@ class BoardScene: SKScene {
     /// sections) ship one image per hex — `obstacle-boulder-3`, `-3-2`, `-3-3` — drawn with the
     /// second piece to the right of the first, so each piece is turned by the direction from the
     /// overlay's first hex to its second.
-    private func placeOverlaySprite(overlay: PositionedOverlay, offsetCol: Int, offsetRow: Int) {
+    @discardableResult
+    private func placeOverlaySprite(overlay: PositionedOverlay, offsetCol: Int, offsetRow: Int) -> [SKNode] {
         let centers = overlay.cells.map { hexCenterInScene(col: $0.0 - offsetCol, row: $0.1 - offsetRow) }
-        guard let first = centers.first else { return }
+        guard let first = centers.first else { return [] }
+        var placed: [SKNode] = []
         var rotation: CGFloat = 0
         if centers.count > 1 {
             rotation = atan2(centers[1].y - first.y, centers[1].x - first.x)
@@ -356,7 +385,9 @@ class BoardScene: SKScene {
             sprite.zPosition = 1
             sprite.name = "overlay_\(cell.0)_\(cell.1)"
             overlayLayer.addChild(sprite)
+            placed.append(sprite)
         }
+        return placed
     }
 
     /// The image for one hex of a multi-hex overlay: the base image for the first hex, then the
