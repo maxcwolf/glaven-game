@@ -561,28 +561,51 @@ class BoardScene: SKScene {
         }
     }
 
-    /// A short label rising from a piece: "−3", "+2", "Miss", "Blocked". Outlined so it reads over
-    /// any art, and drawn on the effects layer so it stays even if the piece dies.
+    /// A short label rising from a piece: "−3", "+2", "Miss", "Blocked", "Stun". Each sits on a
+    /// dark pill edged in its colour so it reads over any art, keeps the same size on screen at
+    /// any zoom, stacks above the others over the same piece, and is drawn on the effects layer
+    /// so it stays even if the piece dies.
     func floatText(_ text: String, over id: PieceID, style: FloatStyle) {
         guard let node = pieceNodes[id] else { return }
         let label = SKLabelNode()
+        let size: CGFloat = style == .damage ? 26 : 19
         label.attributedText = NSAttributedString(string: text, attributes: [
-            .font: PlatformFont.boldSystemFont(ofSize: style == .damage ? 30 : 22),
+            .font: PlatformFont.systemFont(ofSize: size, weight: .heavy),
             .foregroundColor: style.color,
-            .strokeColor: SKColor.black,
-            .strokeWidth: -4.0,
         ])
         label.verticalAlignmentMode = .center
-        // Several labels at once (an attack and a retaliate) stack instead of overlapping.
-        let stacked = effectsLayer.children.filter { ($0.userData?["piece"] as? String) == "\(id)" }.count
-        label.position = CGPoint(x: node.position.x, y: node.position.y + HexMath.cellStepX * 0.45 + CGFloat(stacked) * 26)
-        label.userData = ["piece": "\(id)"]
-        label.setScale(0.6)
-        effectsLayer.addChild(label)
-        label.run(.sequence([
-            .group([.scale(to: 1, duration: 0.12), .moveBy(x: 0, y: 8, duration: 0.12)]),
-            .moveBy(x: 0, y: 26, duration: 0.7),
-            .group([.moveBy(x: 0, y: 10, duration: 0.35), .fadeOut(withDuration: 0.35)]),
+        label.horizontalAlignmentMode = .center
+        label.zPosition = 1
+
+        let textSize = label.frame.size
+        let pillSize = CGSize(width: textSize.width + 14, height: max(textSize.height, size) + 6)
+        let pill = SKShapeNode(rectOf: pillSize, cornerRadius: pillSize.height / 2)
+        pill.fillColor = SKColor(white: 0.06, alpha: 0.82)
+        pill.strokeColor = style.color.withAlphaComponent(0.9)
+        pill.lineWidth = 2
+
+        let badge = SKNode()
+        badge.name = "float"
+        badge.addChild(pill)
+        badge.addChild(label)
+        // Scene units per screen point, so the label is as big on screen however far out the board is.
+        let restScale = min(max(cameraState.scale, 0.75), 2.5)
+        badge.userData = ["piece": "\(id)", "text": text, "restScale": restScale]
+
+        // Several labels at once (an attack, its condition, a retaliate) stack upward.
+        let below = effectsLayer.children.filter { ($0.userData?["piece"] as? String) == "\(id)" }.count
+        let lift = (pillSize.height + 4) * restScale
+        badge.position = CGPoint(x: node.position.x,
+                                 y: node.position.y + HexMath.cellStepX * 0.42 + pillSize.height / 2 * restScale
+                                    + CGFloat(below) * lift)
+        badge.setScale(restScale * 0.6)
+        effectsLayer.addChild(badge)
+        let pop = SKAction.scale(to: restScale, duration: 0.15)
+        pop.timingMode = .easeOut
+        badge.run(.sequence([
+            pop,
+            .moveBy(x: 0, y: 14 * restScale, duration: 1.2),
+            .group([.moveBy(x: 0, y: 6 * restScale, duration: 0.4), .fadeOut(withDuration: 0.4)]),
             .removeFromParent(),
         ]))
     }
@@ -668,11 +691,27 @@ class BoardScene: SKScene {
     /// Number of effects currently showing (for tests).
     var activeEffectCount: Int { effectsLayer.children.count }
 
+    /// Freeze the effects in their resting state, for a snapshot (an unrendered view never runs
+    /// their actions).
+    func settleEffectsForSnapshot() {
+        for node in effectsLayer.children {
+            node.removeAllActions()
+            node.setScale(node.userData?["restScale"] as? CGFloat ?? 1)
+            node.alpha = 1
+        }
+    }
+
+    /// How tall each floating label over a piece stands on screen, in view points (for tests).
+    func floatingTextHeights(over id: PieceID) -> [CGFloat] {
+        effectsLayer.children.filter { $0.name == "float" && ($0.userData?["piece"] as? String) == "\(id)" }
+            .map { $0.calculateAccumulatedFrame().height / cameraState.scale }
+    }
+
     /// The floating texts currently showing over a piece, oldest first (for tests).
     func floatingTexts(over id: PieceID) -> [String] {
         effectsLayer.children.compactMap { node in
-            guard let label = node as? SKLabelNode, (label.userData?["piece"] as? String) == "\(id)" else { return nil }
-            return label.attributedText?.string
+            guard node.name == "float", (node.userData?["piece"] as? String) == "\(id)" else { return nil }
+            return node.userData?["text"] as? String
         }
     }
 

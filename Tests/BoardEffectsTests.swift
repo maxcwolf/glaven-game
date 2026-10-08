@@ -89,6 +89,48 @@ final class BoardEffectsTests: XCTestCase {
         XCTAssertNil(coord.actingPiece)
     }
 
+    /// Regression: labels were drawn at a fixed size in board space, so with the board zoomed
+    /// out to fit around the turn's panel "Miss" shrank to about 14 points. They now keep the
+    /// same, readable size on screen at any zoom.
+    func testLabelsStayReadableAtAnyZoom() {
+        let monster = aMonster
+        var heights: [CGFloat] = []
+        for scale: CGFloat in [1, 1.6, 2.2] {
+            scene.cameraState = BoardCamera(position: .zero, scale: scale)
+            scene.pieceUnharmed(id: monster, missed: true)
+            scene.settleEffectsForSnapshot()
+            heights.append(scene.floatingTextHeights(over: monster).last!)
+        }
+        for height in heights {
+            XCTAssertGreaterThanOrEqual(height, 24, "a label stands at least 24 points tall on screen")
+            XCTAssertEqual(height, heights[0], accuracy: 0.5, "and the same at every zoom: \(heights)")
+        }
+    }
+
+    /// Renders an attack's labels at the zoom the board has during a turn, for review:
+    /// `FLOAT_RENDER_OUT=/tmp/floats.png swift test --filter testRenderFloatingText`
+    func testRenderFloatingText() throws {
+        guard let out = ProcessInfo.processInfo.environment["FLOAT_RENDER_OUT"] else {
+            throw XCTSkip("set FLOAT_RENDER_OUT to render the labels")
+        }
+        let brute = PieceID.character(gm.game.characters[0].id)
+        let monsters = coord.boardState.piecePositions.keys.filter { if case .monster = $0 { return true }; return false }.sorted()
+        let view = SKView(frame: CGRect(x: 0, y: 0, width: 1376, height: 1032))
+        view.presentScene(scene)
+        scene.cameraState = BoardCamera(position: scene.sceneCenter(of: coord.boardState.piecePositions[monsters[0]]!),
+                                        scale: 1.6)
+        scene.pieceDamage(id: monsters[0], amount: 3)
+        scene.pieceUnharmed(id: monsters[1], missed: true)
+        scene.pieceUnharmed(id: monsters[2], missed: false)
+        coord.applyCondition(.stun, to: monsters[0])
+        scene.pieceHeal(id: brute, amount: 2)
+        scene.pieceLoot(id: brute, text: "+2g")
+        scene.settleEffectsForSnapshot()
+        let image = try XCTUnwrap(view.texture(from: scene)).cgImage()
+        try XCTUnwrap(NSBitmapImageRep(cgImage: image).representation(using: .png, properties: [:]))
+            .write(to: URL(fileURLWithPath: out))
+    }
+
     // MARK: - Conditions
 
     /// A condition landing says so over the figure and its icon appears; wearing off says so too.
