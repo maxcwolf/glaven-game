@@ -43,6 +43,12 @@ extension ScenarioManager {
         if let name = rewards.unlockCharacter {
             unlockRewardCharacter(name, edition: edition)
         }
+        // "city:78": shuffle that event into its deck.
+        for entry in rewards.events ?? [] {
+            let parts = entry.split(separator: ":").map(String.init)
+            guard parts.count == 2, ["city", "road"].contains(parts[0]) else { continue }
+            game.events.add(parts[1], to: parts[0])
+        }
         if let locations = rewards.chooseLocation, !locations.isEmpty {
             let pick = choices.location.flatMap { locations.contains($0) ? $0 : nil } ?? locations[0]
             game.manualScenarios.insert("\(edition)-\(pick)")

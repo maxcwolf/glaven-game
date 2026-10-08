@@ -43,25 +43,13 @@ final class EventCardManager {
 
     // MARK: - Decks
 
-    static let startingCards = (1...30).map { String(format: "%02d", $0) }
-
     /// The deck, top card first.
     func deck(_ deck: Deck) -> [String] {
-        switch deck {
-        case .city:
-            if game.events.cityDeck == nil { game.events.cityDeck = Self.startingCards.shuffled(using: &GameRandom.shared) }
-            return game.events.cityDeck ?? []
-        case .road:
-            if game.events.roadDeck == nil { game.events.roadDeck = Self.startingCards.shuffled(using: &GameRandom.shared) }
-            return game.events.roadDeck ?? []
-        }
+        game.events.cards(deck.rawValue)
     }
 
     private func setDeck(_ deck: Deck, _ cards: [String]) {
-        switch deck {
-        case .city: game.events.cityDeck = cards
-        case .road: game.events.roadDeck = cards
-        }
+        game.events.setCards(deck.rawValue, cards)
     }
 
     /// The card on top of the deck (it stays there until it's resolved).
@@ -76,10 +64,8 @@ final class EventCardManager {
 
     /// Add a card to a deck and shuffle it in (an event's "add event" effect).
     func addCard(_ deck: Deck, _ id: String) {
-        var cards = self.deck(deck)
-        guard !cards.contains(id), card(deck, id) != nil else { return }
-        cards.append(id)
-        setDeck(deck, cards.shuffled(using: &GameRandom.shared))
+        guard card(deck, id) != nil else { return }
+        game.events.add(id, to: deck.rawValue)
     }
 
     // MARK: - When events happen

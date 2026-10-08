@@ -10,6 +10,32 @@ struct EventState: Codable, Equatable {
     var cityEventDue = false
     /// Effects of road and city events that apply as the next scenario starts.
     var nextScenario = ScenarioStartEffects()
+
+    static let startingCards = (1...30).map { String(format: "%02d", $0) }
+
+    /// A deck, top card first, starting it (cards 01–30, shuffled) on first use.
+    mutating func cards(_ deck: String) -> [String] {
+        switch deck {
+        case "city":
+            if cityDeck == nil { cityDeck = Self.startingCards.shuffled(using: &GameRandom.shared) }
+            return cityDeck ?? []
+        default:
+            if roadDeck == nil { roadDeck = Self.startingCards.shuffled(using: &GameRandom.shared) }
+            return roadDeck ?? []
+        }
+    }
+
+    mutating func setCards(_ deck: String, _ cards: [String]) {
+        if deck == "city" { cityDeck = cards } else { roadDeck = cards }
+    }
+
+    /// Shuffle a card into a deck (an event's or a scenario's "add event").
+    mutating func add(_ id: String, to deck: String) {
+        var current = cards(deck)
+        guard !current.contains(id) else { return }
+        current.append(id)
+        setCards(deck, current.shuffled(using: &GameRandom.shared))
+    }
 }
 
 /// What every character starts the next scenario with, from events (GH p.38): damage, conditions,

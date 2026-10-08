@@ -164,6 +164,19 @@ final class EventCardTests: XCTestCase {
         XCTAssertTrue(game.events.nextScenario.isEmpty, "applied once")
     }
 
+    /// GH 51's rewards add city event 81 and road event 69 to the decks.
+    func testAScenarioRewardShufflesEventsIntoTheDecks() throws {
+        let scenario = try XCTUnwrap(gm.editionStore.scenarios(for: "gh").first { $0.index == "51" && $0.solo == nil })
+        XCTAssertFalse(events.deck(.city).contains("81"))
+        gm.startScenarioOnBoard(scenario)
+        gm.boardCoordinator.scenarioResult = .victory
+        XCTAssertEqual(gm.boardCoordinator.scenarioOutcome()?.rewards.filter { $0.contains("event joins the deck") }.count, 2)
+        gm.boardCoordinator.confirmScenarioEnd()
+        XCTAssertTrue(events.deck(.city).contains("81"))
+        XCTAssertTrue(events.deck(.road).contains("69"))
+        XCTAssertEqual(events.deck(.city).count, 31)
+    }
+
     func testFinishingAScenarioOwesACityEvent() throws {
         let scenario = try XCTUnwrap(gm.editionStore.scenarios(for: "gh").first { $0.index == "1" && $0.solo == nil })
         XCTAssertFalse(game.events.cityEventDue)

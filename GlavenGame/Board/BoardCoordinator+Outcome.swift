@@ -110,6 +110,10 @@ extension BoardCoordinator {
             if let name = rewards.unlockCharacter {
                 lines.append("New class: \(GameText.className(name, edition: edition, labels: labels))")
             }
+            for entry in rewards.events ?? [] {
+                let parts = entry.split(separator: ":")
+                if parts.count == 2 { lines.append("A new \(parts[0]) event joins the deck") }
+            }
             if let locations = rewards.chooseLocation, !locations.isEmpty {
                 let names = locations.compactMap { labels.scenarioData(index: $0, edition: edition) }
                     .map { ScenarioBrief.make(for: $0, labels: labels).title }

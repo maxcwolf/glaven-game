@@ -235,7 +235,7 @@ Phase IV — the game around the board
 - [x] Compact turn panel: only the half of the card being played (top or bottom), so the panel is ~40% shorter and the board bigger during a turn (`BoardLayoutTests`)
 
 Found along the way
-- [ ] Scenario rewards the game never grants: items (26 GH scenarios), character unlocks, collective gold, item designs, events, envelopes (`ScenarioManager.applyRewards`)
+- [x] Scenario rewards the game never granted: items, character unlocks, collective gold, item designs (feat/scenario-rewards), and events shuffled into the decks (`EventCardTests`); envelopes remain below
 
 ## Standalone Tools
 
@@ -362,7 +362,8 @@ Scenario rewards (2026-10-08)
 
 ### Remaining gaps
 
-- [ ] **Scenario reward: add events** (GH 21, 35, 36, 51, 54: `events` like `city:78`) — the city and road decks aren't modelled by composition: every one of the 81 city and 69 road events can be drawn from the start, and a drawn card never returns to the deck. Needs the starting decks (1–30), cards added by scenarios, class unlocks and retirements, and return-to-bottom vs. remove-from-game on resolution before the reward can add a card
+- [x] **Scenario reward: add events** (GH 21, 35, 36, 51, 54) — the decks now start as cards 01–30 and scenario rewards shuffle cards in
+- [ ] **Events from class unlocks and retirements** — unlocking or retiring a class should add its city and road events to the decks
 - [ ] **Scenario reward: envelopes** (GH 58, 60: envelope X) — there's no envelope or sealed-content state to open
 - [ ] **Scenario reward: custom text** (GH 54, 56, 58, 60, 62) — personal-quest outcomes ("immediately retire the Seeker of Xorn", "'Vengeance' quest complete") that depend on whose quest it is; shown on the conclusion sheet but not applied
 
