@@ -247,68 +247,10 @@ class PieceSpriteNode: SKNode {
 
     // MARK: - Animations
 
-    /// Animate an attack lunge toward a target position.
-    func animateAttack(toward target: CGPoint, completion: @escaping () -> Void) {
-        let origin = position
-        let direction = CGPoint(
-            x: (target.x - origin.x) * 0.3,
-            y: (target.y - origin.y) * 0.3
-        )
-        let lunge = SKAction.moveBy(x: direction.x, y: direction.y, duration: 0.15)
-        let returnAction = SKAction.move(to: origin, duration: 0.15)
-        run(SKAction.sequence([lunge, returnAction])) {
-            completion()
-        }
-    }
-
-    /// Animate damage number floating up.
-    func animateDamage(amount: Int) {
-        let damageLabel = SKLabelNode(fontNamed: "Helvetica-Bold")
-        damageLabel.text = "-\(amount)"
-        damageLabel.fontSize = 16
-        damageLabel.fontColor = .red
-        damageLabel.position = CGPoint(x: 0, y: effectiveSize / 2 + 5)
-        damageLabel.zPosition = 20
-        addChild(damageLabel)
-
-        let fadeUp = SKAction.group([
-            SKAction.moveBy(x: 0, y: 30, duration: 0.8),
-            SKAction.sequence([
-                SKAction.wait(forDuration: 0.4),
-                SKAction.fadeOut(withDuration: 0.4)
-            ])
-        ])
-        damageLabel.run(fadeUp) {
-            damageLabel.removeFromParent()
-        }
-    }
-
     /// Animate alpha to translucent (invisible condition) or back to full opacity.
     func setInvisible(_ invisible: Bool) {
         let targetAlpha: CGFloat = invisible ? 0.35 : 1.0
         run(SKAction.fadeAlpha(to: targetAlpha, duration: 0.3))
-    }
-
-    /// Animate a gold/loot pickup floating up from the piece.
-    func animateLoot(text: String) {
-        let label = SKLabelNode(fontNamed: "Helvetica-Bold")
-        label.text = text
-        label.fontSize = 15
-        label.fontColor = SKColor(red: 1.0, green: 0.85, blue: 0.1, alpha: 1.0) // gold
-        label.position = CGPoint(x: 0, y: effectiveSize / 2 + 5)
-        label.zPosition = 20
-        addChild(label)
-
-        let rise = SKAction.group([
-            SKAction.moveBy(x: 0, y: 32, duration: 1.0),
-            SKAction.sequence([
-                SKAction.wait(forDuration: 0.5),
-                SKAction.fadeOut(withDuration: 0.5)
-            ])
-        ])
-        label.run(rise) {
-            label.removeFromParent()
-        }
     }
 
     /// Animate death (fade + shrink).

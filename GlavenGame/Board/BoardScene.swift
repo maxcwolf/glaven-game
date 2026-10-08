@@ -11,6 +11,11 @@ class BoardScene: SKScene {
     private let lootLayer = SKNode()
     private let pieceLayer = SKNode()
     private let highlightLayer = SKNode()
+    /// Floating numbers, attack lines and other short-lived effects, above every piece. Effects
+    /// live here rather than on the piece, so a killing blow's number outlives the piece.
+    private let effectsLayer = SKNode()
+    /// The ring under the figure whose turn it is.
+    private let actingRing = SKShapeNode(circleOfRadius: HexMath.cellStepX * 0.48)
 
     /// Callback when a hex is clicked.
     var onHexTap: ((HexCoord) -> Void)?
@@ -47,20 +52,62 @@ class BoardScene: SKScene {
 
     // MARK: - Setup
 
-    override func didMove(to view: SKView) {
+    override init(size: CGSize) {
+        super.init(size: size)
+        setUpLayers()
+    }
+
+    required init?(coder aDecoder: NSCoder) {
+        super.init(coder: aDecoder)
+        setUpLayers()
+    }
+
+    /// Build the layer tree once, when the scene is created. (Doing it in `didMove(to:)` added
+    /// everything again each time the scene was shown, and SpriteKit throws on that.)
+    private func setUpLayers() {
         backgroundColor = SKColor(red: 0.12, green: 0.1, blue: 0.09, alpha: 1.0)
-
-        addChild(tileLayer)
-        addChild(overlayLayer)
-        addChild(lootLayer)
-        addChild(pieceLayer)
-        addChild(highlightLayer)
-
+        for layer in [tileLayer, overlayLayer, lootLayer, pieceLayer, highlightLayer, effectsLayer] {
+            addChild(layer)
+        }
+        effectsLayer.zPosition = 30
+        // Gold on a dark band, so the ring reads on warm floors as well as dark ones.
+        actingRing.strokeColor = SKColor(red: 0.98, green: 0.80, blue: 0.30, alpha: 1)
+        actingRing.lineWidth = 4
+        actingRing.glowWidth = 2
+        actingRing.fillColor = .clear
+        actingRing.zPosition = 9
+        let band = SKShapeNode(circleOfRadius: HexMath.cellStepX * 0.48)
+        band.strokeColor = SKColor(white: 0, alpha: 0.75)
+        band.lineWidth = 10
+        band.fillColor = .clear
+        band.zPosition = -0.1
+        actingRing.addChild(band)
+        actingRing.isHidden = true
+        pieceLayer.addChild(actingRing)
         camera = cameraNode
         addChild(cameraNode)
+    }
 
+    #if os(iOS)
+    private var pinchRecognizer: UIPinchGestureRecognizer?
+    #endif
+
+    override func didMove(to view: SKView) {
         #if os(iOS)
-        view.addGestureRecognizer(UIPinchGestureRecognizer(target: self, action: #selector(handlePinch(_:))))
+        if pinchRecognizer == nil {
+            let pinch = UIPinchGestureRecognizer(target: self, action: #selector(handlePinch(_:)))
+            view.addGestureRecognizer(pinch)
+            pinchRecognizer = pinch
+        }
+        #endif
+    }
+
+    override func willMove(from view: SKView) {
+        #if os(iOS)
+        if let pinch = pinchRecognizer {
+            view.removeGestureRecognizer(pinch)
+            pinchRecognizer = nil
+        }
         #endif
     }
 
@@ -83,7 +130,9 @@ class BoardScene: SKScene {
         overlayLayer.removeAllChildren()
         lootLayer.removeAllChildren()
         pieceLayer.removeAllChildren()
+        if actingRing.parent == nil { pieceLayer.addChild(actingRing) }
         highlightLayer.removeAllChildren()
+        effectsLayer.removeAllChildren()
         pieceNodes.removeAll()
         highlightNodes.removeAll()
 
@@ -306,16 +355,124 @@ class BoardScene: SKScene {
         node.setInvisible(invisible)
     }
 
+    // MARK: - Effects
+
+    enum FloatStyle {
+        case damage, heal, gold, info
+
+        var color: SKColor {
+            switch self {
+            case .damage: return SKColor(red: 1.0, green: 0.36, blue: 0.30, alpha: 1)
+            case .heal: return SKColor(red: 0.45, green: 0.86, blue: 0.45, alpha: 1)
+            case .gold: return SKColor(red: 1.0, green: 0.85, blue: 0.25, alpha: 1)
+            case .info: return SKColor(white: 0.95, alpha: 1)
+            }
+        }
+    }
+
+    /// A short label rising from a piece: "−3", "+2", "Miss", "Blocked". Outlined so it reads over
+    /// any art, and drawn on the effects layer so it stays even if the piece dies.
+    func floatText(_ text: String, over id: PieceID, style: FloatStyle) {
+        guard let node = pieceNodes[id] else { return }
+        let label = SKLabelNode()
+        label.attributedText = NSAttributedString(string: text, attributes: [
+            .font: PlatformFont.boldSystemFont(ofSize: style == .damage ? 30 : 22),
+            .foregroundColor: style.color,
+            .strokeColor: SKColor.black,
+            .strokeWidth: -4.0,
+        ])
+        label.verticalAlignmentMode = .center
+        // Several labels at once (an attack and a retaliate) stack instead of overlapping.
+        let stacked = effectsLayer.children.filter { ($0.userData?["piece"] as? String) == "\(id)" }.count
+        label.position = CGPoint(x: node.position.x, y: node.position.y + HexMath.cellStepX * 0.45 + CGFloat(stacked) * 26)
+        label.userData = ["piece": "\(id)"]
+        label.setScale(0.6)
+        effectsLayer.addChild(label)
+        label.run(.sequence([
+            .group([.scale(to: 1, duration: 0.12), .moveBy(x: 0, y: 8, duration: 0.12)]),
+            .moveBy(x: 0, y: 26, duration: 0.7),
+            .group([.moveBy(x: 0, y: 10, duration: 0.35), .fadeOut(withDuration: 0.35)]),
+            .removeFromParent(),
+        ]))
+    }
+
     /// Show a damage number floating up from a piece.
     func pieceDamage(id: PieceID, amount: Int) {
+        floatText("\u{2212}\(amount)", over: id, style: .damage)
         guard let node = pieceNodes[id] else { return }
-        node.animateDamage(amount: amount)
+        // A short shake so the hit registers even out of the corner of the eye.
+        node.run(.sequence([.moveBy(x: 4, y: 0, duration: 0.04), .moveBy(x: -8, y: 0, duration: 0.06),
+                            .moveBy(x: 4, y: 0, duration: 0.04)]), withKey: "shake")
     }
 
     /// Show a gold/loot pickup floating up from a piece.
     func pieceLoot(id: PieceID, text: String) {
-        guard let node = pieceNodes[id] else { return }
-        node.animateLoot(text: text)
+        floatText(text, over: id, style: .gold)
+    }
+
+    /// Show healing floating up from a piece.
+    func pieceHeal(id: PieceID, amount: Int) {
+        floatText("+\(amount)", over: id, style: .heal)
+    }
+
+    /// Show an attack from one piece to another: a line between them for a moment, and a lunge
+    /// toward the target for a melee attack.
+    func showAttack(from attacker: PieceID, to target: PieceID, ranged: Bool) {
+        guard let from = pieceNodes[attacker], let to = pieceNodes[target] else { return }
+        let path = CGMutablePath()
+        path.move(to: from.position)
+        path.addLine(to: to.position)
+        let line = SKShapeNode(path: path.copy(dashingWithPhase: 0, lengths: ranged ? [10, 7] : [16, 4]))
+        line.strokeColor = SKColor(red: 0.89, green: 0.33, blue: 0.29, alpha: 0.9)
+        line.lineWidth = 4
+        line.lineCap = .round
+        line.zPosition = -1
+        effectsLayer.addChild(line)
+        line.run(.sequence([.wait(forDuration: 0.6), .fadeOut(withDuration: 0.25), .removeFromParent()]))
+
+        if !ranged {
+            let dx = (to.position.x - from.position.x) * 0.3
+            let dy = (to.position.y - from.position.y) * 0.3
+            let lunge = SKAction.moveBy(x: dx, y: dy, duration: 0.12)
+            lunge.timingMode = .easeOut
+            let back = SKAction.moveBy(x: -dx, y: -dy, duration: 0.16)
+            back.timingMode = .easeIn
+            from.run(.sequence([lunge, back]), withKey: "lunge")
+        }
+    }
+
+    /// Ring the figure whose turn it is (nil hides the ring).
+    func setActingPiece(_ id: PieceID?) {
+        actingRing.removeAllActions()
+        guard let id, let node = pieceNodes[id] else {
+            actingRing.isHidden = true
+            return
+        }
+        actingRing.isHidden = false
+        actingRing.position = node.position
+        actingRing.setScale(1)
+        actingRing.alpha = 1
+        if !reduceMotion {
+            actingRing.run(.repeatForever(.sequence([
+                .group([.scale(to: 1.08, duration: 0.7), .fadeAlpha(to: 0.65, duration: 0.7)]),
+                .group([.scale(to: 1.0, duration: 0.7), .fadeAlpha(to: 1.0, duration: 0.7)]),
+            ])))
+        }
+        actingPieceID = id
+    }
+
+    /// The figure the ring is on (for tests and to follow it as it moves).
+    private(set) var actingPieceID: PieceID?
+
+    /// Number of effects currently showing (for tests).
+    var activeEffectCount: Int { effectsLayer.children.count }
+
+    /// The floating texts currently showing over a piece, oldest first (for tests).
+    func floatingTexts(over id: PieceID) -> [String] {
+        effectsLayer.children.compactMap { node in
+            guard let label = node as? SKLabelNode, (label.userData?["piece"] as? String) == "\(id)" else { return nil }
+            return label.attributedText?.string
+        }
     }
 
     /// Animate a piece moving along a path.
@@ -326,11 +483,20 @@ class BoardScene: SKScene {
         }
 
         var actions: [SKAction] = []
-        for hex in path.dropFirst() {
+        let steps = Array(path.dropFirst())
+        for (index, hex) in steps.enumerated() {
             let target = hexCenterInScene(col: hex.col - offsetCol, row: hex.row - offsetRow)
-            actions.append(SKAction.move(to: target, duration: 0.2))
+            let step = SKAction.move(to: target, duration: 0.2)
+            // Ease into the first step and out of the last, so a move starts and stops naturally.
+            if steps.count == 1 { step.timingMode = .easeInEaseOut }
+            else if index == 0 { step.timingMode = .easeIn }
+            else if index == steps.count - 1 { step.timingMode = .easeOut }
+            actions.append(step)
         }
 
+        if actingPieceID == id {
+            actingRing.run(SKAction.sequence(actions.map { $0.copy() as! SKAction }), withKey: "follow")
+        }
         node.run(SKAction.sequence(actions)) {
             completion()
         }

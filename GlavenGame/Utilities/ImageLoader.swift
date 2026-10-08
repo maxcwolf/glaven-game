@@ -3,9 +3,11 @@ import SwiftUI
 #if os(macOS)
 import AppKit
 typealias PlatformImage = NSImage
+typealias PlatformFont = NSFont
 #else
 import UIKit
 typealias PlatformImage = UIImage
+typealias PlatformFont = UIFont
 #endif
 
 enum ImageLoader {

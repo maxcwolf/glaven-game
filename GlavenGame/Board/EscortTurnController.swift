@@ -21,6 +21,7 @@ final class EscortTurnController {
 
         for entity in container.entities where !entity.dead && entity.health > 0 && !entity.off {
             let pieceID = PieceID.objective(id: entity.number)
+            coordinator.setActing(pieceID)
             guard coordinator.isOnBoard(pieceID) else { continue }
 
             // Start of turn: conditions become active and tick (wound, regenerate).

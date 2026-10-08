@@ -76,7 +76,7 @@ extension BoardCoordinator {
     func heal(_ pieceID: PieceID, amount: Int, source: PieceID? = nil) -> Int {
         guard let gameManager, let entity = entity(for: pieceID) else { return 0 }
         let healed = gameManager.entityManager.heal(entity, amount: amount)
-        if healed > 0 { boardScene?.pieceLoot(id: pieceID, text: "+\(healed) HP") }
+        if healed > 0 { boardScene?.pieceHeal(id: pieceID, amount: healed) }
         boardScene?.refreshStatus(of: pieceID)
         return healed
     }
@@ -144,6 +144,7 @@ extension BoardCoordinator {
         if case .character(let id) = pieceID,
            let character = gameManager?.game.characters.first(where: { $0.id == id }),
            await promptDamageMitigation(character: character, damage: amount, source: source) {
+            boardScene?.floatText("Prevented", over: pieceID, style: .info)
             return false
         }
         return sufferDamage(amount, to: pieceID, killer: killer)

@@ -23,6 +23,7 @@ final class SummonTurnController {
 
         for summon in character.summons where !summon.dead {
             let pieceID = PieceID.summon(id: summon.id)
+            coordinator.setActing(pieceID)
             guard coordinator.isOnBoard(pieceID) else { continue }
 
             if summon.state == .new {

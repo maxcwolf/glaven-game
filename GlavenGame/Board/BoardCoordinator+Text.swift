@@ -178,6 +178,12 @@ extension BoardCoordinator {
                            conditions: ConditionName.allCases.filter(active.contains))
     }
 
+    /// Mark whose turn it is: a ring on the board, and `actingPiece` for anything that asks.
+    func setActing(_ piece: PieceID?) {
+        actingPiece = piece
+        boardScene?.setActingPiece(piece)
+    }
+
     /// Bring every token on the board up to date (health, conditions, invisibility).
     func syncPieceVisuals() {
         boardScene?.refreshAllStatuses()

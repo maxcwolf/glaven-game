@@ -126,6 +126,8 @@ final class BoardCoordinator {
     var boardPhase: BoardPhase = .setup
     var interactionMode: InteractionMode = .idle
     var selectedPiece: PieceID?
+    /// The figure whose turn it is, ringed on the board (nil between turns).
+    var actingPiece: PieceID?
     var turnLog: [TurnLogEntry] = []
 
     /// The SpriteKit scene.
@@ -1005,6 +1007,7 @@ final class BoardCoordinator {
         currentTurnIndex += 1
 
         if currentTurnIndex >= turnOrder.count {
+            setActing(nil)
             endRound()
             return
         }
@@ -1019,6 +1022,7 @@ final class BoardCoordinator {
                 return
             }
             selectedPiece = .character(character.id)
+            setActing(.character(character.id))
 
             // A summon's turn comes directly before its summoner's — even a resting one (p.26).
             let livingSummons = character.summons.filter { !$0.dead && isOnBoard(.summon(id: $0.id)) }

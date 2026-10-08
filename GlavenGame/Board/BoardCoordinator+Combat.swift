@@ -66,6 +66,12 @@ extension BoardCoordinator {
             disadvantage = CombatResolver.hasDisadvantage(attacker: attackerEntity, isRangedAdjacent: disadvantage)
         }
 
+        // Show who attacks whom before the cards are drawn.
+        if let scene = boardScene {
+            scene.showAttack(from: attacker, to: target, ranged: attack.isRanged || distance > 1)
+            if turnDelayNanoseconds > 0 { try? await Task.sleep(nanoseconds: turnDelayNanoseconds / 2) }
+        }
+
         let preDrawn = await performModifierDraw(
             attacker: attacker, defender: target, baseAttack: attack.value,
             advantage: advantage, disadvantage: disadvantage,
@@ -90,6 +96,10 @@ extension BoardCoordinator {
         log("\(name(attacker)) attacks \(name(target)): \(sum)", category: .attack, trace: breakdown)
         if lastModifierReveal?.attacker == attacker, lastModifierReveal?.defender == target, lastModifierReveal?.sum == nil {
             lastModifierReveal?.sum = sum
+        }
+
+        if result.damage == 0 {
+            boardScene?.floatText(result.isMiss ? "Miss" : "Blocked", over: target, style: .info)
         }
 
         var died = false

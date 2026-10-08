@@ -52,6 +52,7 @@ final class MonsterTurnController {
         for entity in sortedEntities {
             let pieceID = PieceID.monster(name: monster.name, standee: entity.number)
             guard !entity.dead, coordinator.isOnBoard(pieceID) else { continue }
+            coordinator.setActing(pieceID)
 
             // Start of this monster's turn: its conditions become active and tick (wound).
             gameManager.entityManager.restoreConditions(entity)
