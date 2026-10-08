@@ -707,9 +707,7 @@ final class BoardCoordinator {
         scene.statusProvider = { [weak self] piece in self?.pieceStatus(piece) }
         boardScene = scene
 
-        let padding = 2
-        offsetCol = boardState.bounds.minCol - padding
-        offsetRow = boardState.bounds.minRow - padding
+        (offsetCol, offsetRow) = Self.sceneOffsets(for: boardState)
 
         scene.buildBoard(from: boardState, scenario: scenario, offsetCol: offsetCol, offsetRow: offsetRow,
                          characterAppearances: buildCharacterAppearances())
@@ -1389,6 +1387,11 @@ final class BoardCoordinator {
         }
     }
 
+    /// Where the board's grid starts in the scene (see `HexMath.gridOrigin`).
+    static func sceneOffsets(for board: BoardState) -> (col: Int, row: Int) {
+        HexMath.gridOrigin(minCol: board.bounds.minCol, minRow: board.bounds.minRow)
+    }
+
     /// Execute a teleport to a target hex — direct placement, no pathfinding.
     /// Teleporting bypasses traps, hazards, and obstacles.
     func executeTeleport(pieceID: PieceID, to target: HexCoord) {
@@ -1814,9 +1817,7 @@ final class BoardCoordinator {
         }
 
         // Recalculate offsets from the expanded bounds.
-        let padding = 2
-        offsetCol = boardState.bounds.minCol - padding
-        offsetRow = boardState.bounds.minRow - padding
+        (offsetCol, offsetRow) = Self.sceneOffsets(for: boardState)
 
         // Rebuild the visual board to include the new room, and frame it so the room is seen
         boardScene?.buildBoard(from: boardState, scenario: scenario, offsetCol: offsetCol, offsetRow: offsetRow,

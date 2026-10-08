@@ -64,6 +64,14 @@ enum HexMath {
     // MARK: - Pixel Positioning
 
     /// Convert hex grid coordinate to pixel position.
+    /// Where a drawn grid starts: `padding` hexes in from the board's top-left. The row is kept
+    /// even, because `hexToPixel` staggers rows by parity — an odd row offset would shift every
+    /// other row half a hex off the tile art.
+    static func gridOrigin(minCol: Int, minRow: Int, padding: Int = 2) -> (col: Int, row: Int) {
+        let row = minRow - padding
+        return (minCol - padding, row - (row & 1))
+    }
+
     static func hexToPixel(col: Int, row: Int) -> CGPoint {
         let x = CGFloat(col) * cellStepX + (row & 1 == 1 ? cellStepX / 2 : 0)
         let y = CGFloat(row) * cellStepY

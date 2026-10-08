@@ -46,6 +46,54 @@ final class BoardOverlayTests: XCTestCase {
         }
     }
 
+    /// Regression: the scene's row offset was odd for over half the scenarios (GH 2 starts at
+    /// −5), which flipped the hex rows' stagger, so figures, obstacles and highlights sat half a
+    /// hex off the tile art on every other row. However a board is offset, two hexes must sit
+    /// as far apart on screen as they do on the map the tiles are drawn from — at the start
+    /// and after every door opens.
+    func testHexesLineUpWithTheTileArtInEveryScenario() throws {
+        for number in 1...95 {
+            let index = String(number)
+            guard ScenarioMapStore.shared.scenarioMap(for: index) != nil else { continue }
+            let gm = try SaveAndContinueTestsSupport.manager()
+            gm.characterManager.addCharacter(name: "brute", edition: "gh")
+            guard let scenario = gm.editionStore.scenarios(for: "gh").first(where: { $0.index == index && $0.solo == nil })
+            else { continue }
+            gm.startScenarioOnBoard(scenario)
+            let coord = gm.boardCoordinator
+            coord.autoResolvePrompts = true
+            coord.turnDelayNanoseconds = 0
+            var opened = 0
+            repeat {
+                let scene = try XCTUnwrap(coord.boardScene)
+                let hexes = coord.boardState.cells.keys.sorted()
+                let origin = try XCTUnwrap(hexes.first)
+                let originOnScreen = scene.sceneCenter(of: origin)
+                let originOnMap = HexMath.hexToPixel(col: origin.col, row: origin.row)
+                for hex in hexes {
+                    let onScreen = scene.sceneCenter(of: hex)
+                    let onMap = HexMath.hexToPixel(col: hex.col, row: hex.row)
+                    // Map y runs down, scene y up.
+                    let misfit = hypot((onScreen.x - originOnScreen.x) - (onMap.x - originOnMap.x),
+                                       (onScreen.y - originOnScreen.y) + (onMap.y - originOnMap.y))
+                    if misfit > 0.5 {
+                        return XCTFail("scenario \(index), after \(opened) doors: \(hex) is \(misfit) off the tile art")
+                    }
+                }
+                guard let door = coord.boardState.doors.first(where: { !$0.isOpen }), opened < 30 else { break }
+                coord.openDoor(at: door.coord)
+                opened += 1
+            } while true
+        }
+    }
+
+    func testGridOriginsKeepTheRowStagger() {
+        for minRow in -7...7 {
+            XCTAssertEqual(HexMath.gridOrigin(minCol: 0, minRow: minRow).row & 1, 0, "minRow \(minRow)")
+            XCTAssertLessThanOrEqual(HexMath.gridOrigin(minCol: 0, minRow: minRow).row, minRow - 2, "at least the padding")
+        }
+    }
+
     func testPiecesUseTheirOwnArtWhenItExists() {
         XCTAssertEqual(BoardScene.overlayPieceName("obstacle-boulder-3", index: 0), "obstacle-boulder-3")
         XCTAssertEqual(BoardScene.overlayPieceName("obstacle-boulder-3", index: 1), "obstacle-boulder-3-2")

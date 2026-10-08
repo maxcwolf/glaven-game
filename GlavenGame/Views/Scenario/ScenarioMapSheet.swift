@@ -48,8 +48,7 @@ struct ScenarioMapSheet: View {
     private var mapContent: some View {
         // Add padding around the bounds
         let padding = 2
-        let minCol = bounds.minCol - padding
-        let minRow = bounds.minRow - padding
+        let (minCol, minRow) = HexMath.gridOrigin(minCol: bounds.minCol, minRow: bounds.minRow, padding: padding)
         let maxCol = bounds.maxCol + padding
         let maxRow = bounds.maxRow + padding
 
