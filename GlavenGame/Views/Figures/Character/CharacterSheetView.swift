@@ -125,23 +125,11 @@ struct CharacterSheetView: View {
                 .font(.subheadline.weight(.semibold))
                 .foregroundStyle(GlavenTheme.secondaryText)
 
-            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 6), count: 9), spacing: 6) {
-                ForEach(1...9, id: \.self) { lvl in
-                    Button {
-                        gameManager.characterManager.setLevel(lvl, for: character)
-                    } label: {
-                        Text("\(lvl)")
-                            .font(.system(size: 16, weight: lvl == character.level ? .bold : .regular))
-                            .monospacedDigit()
-                            .frame(maxWidth: .infinity)
-                            .frame(height: 36)
-                            .background(lvl == character.level ? characterColor : GlavenTheme.primaryText.opacity(0.08))
-                            .foregroundStyle(lvl == character.level ? .white : GlavenTheme.secondaryText)
-                            .clipShape(RoundedRectangle(cornerRadius: 6))
-                    }
-                    .buttonStyle(.plain)
-                }
-            }
+            // Levels are earned with experience and taken in town, not picked here.
+            Text("Level \(character.level) · \(character.experience) XP")
+                .font(.title3.weight(.semibold))
+                .monospacedDigit()
+                .foregroundStyle(GlavenTheme.primaryText)
 
             if character.level < 9 {
                 let nextThreshold = GameCharacter.xpThresholds[character.level]

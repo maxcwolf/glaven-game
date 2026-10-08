@@ -6,6 +6,16 @@ struct GameSetupView: View {
     @State private var selectedLevel = 1
     @State private var selectedScenario: ScenarioData?
     @State private var scenarioSearch = ""
+    @State private var sheetCharacter: GameCharacter?
+    @State private var shopCharacter: GameCharacter?
+    @State private var levelUpCharacter: GameCharacter?
+    @State private var showWorldMap = false
+    @State private var showCampaign = false
+
+    /// Once the party has played, this is the town between scenarios.
+    private var inTown: Bool {
+        !gameManager.game.completedScenarios.isEmpty || !gameManager.game.campaignLog.isEmpty
+    }
 
     private var edition: String { gameManager.game.edition ?? "gh" }
 
@@ -87,9 +97,9 @@ struct GameSetupView: View {
             }
             .padding(.horizontal, 32)
 
-            // Floating back button — top-left, below title bar
+            // Top bar: back to the menu, the town and its standing, the campaign
             VStack {
-                HStack {
+                HStack(spacing: 12) {
                     Button {
                         gameManager.returnToMainMenu()
                     } label: {
@@ -108,12 +118,65 @@ struct GameSetupView: View {
                     }
                     .buttonStyle(.plain)
                     Spacer()
+                    if inTown {
+                        Text("Gloomhaven")
+                            .font(theme.titleFont(size: 28))
+                            .foregroundStyle(BoardTheme.text)
+                        townChip("Prosperity \(prosperityLevel)", icon: "building.columns.fill")
+                        townChip("Reputation \(gameManager.game.partyReputation)", icon: "shield.lefthalf.filled")
+                    }
+                    Button("Campaign", systemImage: "book.closed.fill") { showCampaign = true }
+                        .buttonStyle(.bordered)
+                        .tint(BoardTheme.brass)
+                        .fixedSize()
                 }
-                .padding(.leading, 20)
+                .padding(.horizontal, 20)
+                .padding(.top, 12)
                 .padding(.top, 8)
                 Spacer()
             }
         }
+        .sheet(item: $sheetCharacter) { character in
+            CharacterSheetView(character: character)
+        }
+        .sheet(item: $shopCharacter) { character in
+            ItemShopSheet(character: character)
+        }
+        .sheet(isPresented: $showWorldMap) {
+            WorldMapView { scenario in selectedScenario = scenario }
+        }
+        .sheet(isPresented: $showCampaign) {
+            PartySheetView()
+        }
+        .confirmationDialog(levelUpTitle, isPresented: Binding(
+            get: { levelUpCharacter != nil }, set: { if !$0 { levelUpCharacter = nil } }
+        ), titleVisibility: .visible) {
+            Button("Level Up") {
+                if let character = levelUpCharacter { gameManager.characterManager.levelUp(character) }
+            }
+            Button("Not Yet", role: .cancel) {}
+        } message: {
+            Text("More hit points, a perk to take, and the next level's ability cards.")
+        }
+    }
+
+    private var levelUpTitle: String {
+        guard let character = levelUpCharacter else { return "" }
+        return "\(GameText.characterName(character, labels: gameManager.editionStore)) to level \(character.level + 1)?"
+    }
+
+    private var prosperityLevel: Int {
+        let thresholds = [0, 4, 9, 15, 22, 30, 39, 49, 64]
+        return (thresholds.lastIndex { gameManager.game.partyProsperity >= $0 } ?? 0) + 1
+    }
+
+    private func townChip(_ text: String, icon: String) -> some View {
+        Label(text, systemImage: icon)
+            .font(.subheadline.weight(.semibold))
+            .foregroundStyle(BoardTheme.text)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 6)
+            .background(BoardTheme.panel, in: Capsule())
     }
 
     // MARK: - Character Panel
@@ -177,9 +240,24 @@ struct GameSetupView: View {
 
             Divider().opacity(0.2)
 
-            // Character list
+            // The party, then the classes to recruit from
             ScrollView {
                 LazyVStack(spacing: 2) {
+                    ForEach(gameManager.game.characters.filter { !$0.absent }, id: \.id) { character in
+                        TownPartyRow(character: character,
+                                     onSheet: { sheetCharacter = character },
+                                     onShop: { shopCharacter = character },
+                                     onLevelUp: { levelUpCharacter = character })
+                            .padding(.bottom, 6)
+                    }
+                    if !gameManager.game.characters.isEmpty {
+                        Text("RECRUIT")
+                            .font(.caption.weight(.bold))
+                            .foregroundStyle(BoardTheme.brass)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(.horizontal, 8)
+                            .padding(.top, 6)
+                    }
                     ForEach(allCharacters) { character in
                         characterRow(character)
                     }
@@ -339,6 +417,10 @@ struct GameSetupView: View {
                 Text("Scenario")
                     .font(theme.titleFont(size: 18))
                     .foregroundStyle(GlavenTheme.primaryText)
+                Button("World Map", systemImage: "map") { showWorldMap = true }
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
+                    .tint(BoardTheme.brass)
                 Spacer()
                 if let s = selectedScenario {
                     Text(s.name)

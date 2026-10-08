@@ -79,7 +79,7 @@ final class SaveAndContinueTests: XCTestCase {
         let xpBefore = sim.gm.game.characters.map(\.experience)
 
         sim.gm.completeScenario(success: true)
-        XCTAssertEqual(sim.gm.appPhase, .mainMenu)
+        XCTAssertEqual(sim.gm.appPhase, .gameSetup, "back to town")
         XCTAssertNil(sim.gm.roundCheckpoint)
         XCTAssertNil(sim.gm.autosaveSummary?.scenario, "nothing left to resume on the board")
 

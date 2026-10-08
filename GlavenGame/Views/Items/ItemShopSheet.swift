@@ -37,8 +37,9 @@ struct ItemShopSheet: View {
         character.items.contains(item.itemKey)
     }
 
+    /// Whether the character can buy it now: affordable, in stock and not already theirs.
     private func canAfford(_ item: ItemData) -> Bool {
-        character.loot >= item.cost
+        gameManager.itemManager.purchaseProblem(item, for: character) == nil
     }
 
     var body: some View {
@@ -75,19 +76,10 @@ struct ItemShopSheet: View {
                 List {
                     ForEach(availableItems) { item in
                         ItemRow(item: item, isOwned: isOwned(item), canAfford: canAfford(item)) {
-                            if isOwned(item) {
-                                // Sell
-                                SoundPlayer.play(.coin)
-                                gameManager.pushUndoState()
-                                character.items.removeAll { $0 == item.itemKey }
-                                character.loot += item.cost / 2
-                            } else if canAfford(item) {
-                                // Buy
-                                SoundPlayer.play(.coin)
-                                gameManager.pushUndoState()
-                                character.items.append(item.itemKey)
-                                character.loot -= item.cost
-                            }
+                            let traded = isOwned(item)
+                                ? gameManager.itemManager.sell(item, for: character)
+                                : gameManager.itemManager.buy(item, for: character)
+                            if traded { BoardSoundPlayer.play(.loot) }
                         }
                         .contentShape(Rectangle())
                         .onTapGesture { selectedItem = item }

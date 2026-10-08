@@ -86,6 +86,20 @@ final class CharacterManager {
         game.figures.removeAll { $0.id == "char-\(character.edition)-\(character.name)" }
     }
 
+    /// Whether a character has the experience for their next level (levels top out at 9).
+    func canLevelUp(_ character: GameCharacter) -> Bool {
+        character.level < 9 && GameCharacter.levelForXP(character.experience) > character.level
+    }
+
+    /// Go up a level between scenarios: more hit points, the next level's cards, and a perk.
+    @discardableResult
+    func levelUp(_ character: GameCharacter) -> Bool {
+        guard canLevelUp(character) else { return false }
+        setLevel(character.level + 1, for: character)
+        character.health = character.maxHealth
+        return true
+    }
+
     func setLevel(_ level: Int, for character: GameCharacter) {
         onBeforeMutate?()
         let newLevel = max(1, min(9, level))
@@ -192,12 +206,21 @@ final class CharacterManager {
         character.battleGoalProgress = max(0, min(18, progress))
     }
 
+    /// Perks a character has earned but not taken: one for each level after the first and one
+    /// for every three battle-goal checkmarks (p.44, p.46).
+    func perksAvailable(for character: GameCharacter) -> Int {
+        let earned = (character.level - 1) + character.battleGoalProgress / 3
+        return max(0, earned - character.selectedPerks.reduce(0, +))
+    }
+
+    /// Take one more of a perk (if one is earned and the perk has more), or, once it's full or
+    /// no perk is left to take, give that perk's marks back.
     func togglePerk(at index: Int, for character: GameCharacter) {
         onBeforeMutate?()
         guard let perks = character.characterData?.perks, index < perks.count else { return }
         while character.selectedPerks.count <= index { character.selectedPerks.append(0) }
         let perk = perks[index]
-        character.selectedPerks[index] = character.selectedPerks[index] < perk.count
+        character.selectedPerks[index] = character.selectedPerks[index] < perk.count && perksAvailable(for: character) > 0
             ? character.selectedPerks[index] + 1 : 0
         attackModifierManager.buildCharacterDeck(for: character)
     }

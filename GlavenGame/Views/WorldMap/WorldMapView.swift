@@ -7,6 +7,8 @@ struct WorldMapView: View {
     @State private var zoom: CGFloat = 1.0
     @State private var selectedScenario: ScenarioData?
     @State private var initialZoomApplied = false
+    /// In town, choosing a scenario on the map picks it for the party to start.
+    var onChoose: ((ScenarioData) -> Void)? = nil
 
     private var edition: String { gameManager.game.edition ?? "gh" }
 
@@ -78,9 +80,13 @@ struct WorldMapView: View {
                     isAvailable: gameManager.scenarioManager.isAvailable(scenario),
                     isBlocked: gameManager.scenarioManager.isBlocked(scenario),
                     isLocked: gameManager.scenarioManager.isLocked(scenario),
-                    canStartScenario: !hasActiveScenario,
+                    canStartScenario: onChoose != nil || !hasActiveScenario,
                     onStart: {
-                        gameManager.scenarioManager.setScenario(scenario)
+                        if let onChoose {
+                            onChoose(scenario)
+                        } else {
+                            gameManager.scenarioManager.setScenario(scenario)
+                        }
                         dismiss()
                     }
                 )

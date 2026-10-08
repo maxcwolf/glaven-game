@@ -342,6 +342,8 @@ final class GameManager {
         scenarioManager.finishScenario(success: success)
         roundCheckpoint = nil
         boardCoordinator.exitBoard()
+        // Back to town: spend gold, level up, pick the next scenario.
+        appPhase = .gameSetup
         saveGame()
     }
 

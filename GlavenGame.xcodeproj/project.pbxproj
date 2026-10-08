@@ -24,6 +24,7 @@
 		0C9F28E05371C2CD265A5572 /* ScenarioResultsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF546B2E6909F44E7930DB07 /* ScenarioResultsView.swift */; };
 		0EACFB0AB8BDFFCC7F591795 /* PieceID.swift in Sources */ = {isa = PBXBuildFile; fileRef = 33CE037572CCD1CC45F5F131 /* PieceID.swift */; };
 		0ED8F49AA66E6EFF394D74FB /* RoomRevealSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = C71E84426D2ABC0169A5F5B5 /* RoomRevealSheet.swift */; };
+		14511DEB8C59B9436FC95253 /* TownPartyRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = D86B71BFEEBD99C00C1AF649 /* TownPartyRow.swift */; };
 		15D2951A77CC1C086296F86D /* ScenarioMarkerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7050B86E677EE171AD0A3573 /* ScenarioMarkerView.swift */; };
 		1CAA59210BA9710EE520B253 /* ScenarioSetupView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1A7ABCB8A94A25F4373E580 /* ScenarioSetupView.swift */; };
 		1CC69FD5D69AB9E38536A39E /* EntityValueFunction.swift in Sources */ = {isa = PBXBuildFile; fileRef = EFAF7312A61CA28A484AE10E /* EntityValueFunction.swift */; };
@@ -467,6 +468,7 @@
 		D509FC90D805FC2585C9C743 /* AttackModifierEffectType.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AttackModifierEffectType.swift; sourceTree = "<group>"; };
 		D5883A3D9378A826BF8AA541 /* ConditionType.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConditionType.swift; sourceTree = "<group>"; };
 		D8061256B05214AFDCC77E42 /* RetirementSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RetirementSheet.swift; sourceTree = "<group>"; };
+		D86B71BFEEBD99C00C1AF649 /* TownPartyRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TownPartyRow.swift; sourceTree = "<group>"; };
 		D8D120B1CEE8FA85B7939897 /* Pathfinder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Pathfinder.swift; sourceTree = "<group>"; };
 		D904BC0B3126218EAF6115AE /* RoundButtonView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RoundButtonView.swift; sourceTree = "<group>"; };
 		D9682A31C9693AB6DADDC9F6 /* AppPhase.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppPhase.swift; sourceTree = "<group>"; };
@@ -729,6 +731,7 @@
 				AD2078C38F909FF5A2F71A7B /* GameSetupView.swift */,
 				4840A613B6DC796BF25638E0 /* MainMenuView.swift */,
 				975066D59FC5616F167806B8 /* MenuKeyArt.swift */,
+				D86B71BFEEBD99C00C1AF649 /* TownPartyRow.swift */,
 				851B045DDF55EA0BAE7BC954 /* WelcomeView.swift */,
 				227A3064E6D684967F7C3C60 /* Dialogs */,
 				C641B4FBC49E70B2D7FE83EA /* Editors */,
@@ -1349,6 +1352,7 @@
 				A73BC3A80E80682370D626C6 /* SupportedLocale.swift in Sources */,
 				4D8A855BF0C689D5ED706822 /* TileGrids.swift in Sources */,
 				C52908C35A1F17E2655A08FB /* TimerView.swift in Sources */,
+				14511DEB8C59B9436FC95253 /* TownPartyRow.swift in Sources */,
 				DD322F609614BE62080CCF73 /* TreasureLootSheet.swift in Sources */,
 				46B94503244BB10D9E14A9F0 /* TreasureRewardParser.swift in Sources */,
 				09CA0023236EE4715652F858 /* TreasuresToolSheet.swift in Sources */,

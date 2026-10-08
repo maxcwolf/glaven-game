@@ -95,6 +95,39 @@ final class ItemManager {
         ownedCount(item) < item.count
     }
 
+    // MARK: - Buying and Selling
+
+    /// Why a character can't buy an item, or nil when they can.
+    enum PurchaseProblem: Equatable { case alreadyOwned, soldOut, tooExpensive }
+
+    func purchaseProblem(_ item: ItemData, for character: GameCharacter) -> PurchaseProblem? {
+        if character.items.contains(item.itemKey) { return .alreadyOwned }
+        if !inStock(item) { return .soldOut }
+        if character.loot < item.cost { return .tooExpensive }
+        return nil
+    }
+
+    /// Buy an item from the shop: a character owns one copy at most, the shop holds only as
+    /// many copies as the item's count, and it costs its price in gold. Returns whether it sold.
+    @discardableResult
+    func buy(_ item: ItemData, for character: GameCharacter) -> Bool {
+        guard purchaseProblem(item, for: character) == nil else { return false }
+        onBeforeMutate?()
+        character.items.append(item.itemKey)
+        character.loot -= item.cost
+        return true
+    }
+
+    /// Sell an item back to the shop for half its price, rounded down (p.47).
+    @discardableResult
+    func sell(_ item: ItemData, for character: GameCharacter) -> Bool {
+        guard let index = character.items.firstIndex(of: item.itemKey) else { return false }
+        onBeforeMutate?()
+        character.items.remove(at: index)
+        character.loot += item.cost / 2
+        return true
+    }
+
     // MARK: - Random Item Draw
 
     /// Draw a random item that hasn't been unlocked yet.

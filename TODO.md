@@ -224,7 +224,9 @@ Phase IV — the game around the board
 - [x] Main menu key art (the world map, drifting under a vignette; still under Reduce Motion), Load Game and Credits on the menu (the mascot moved there), jingles for a scenario's start, victory and defeat (`MainMenuTests`)
 - [ ] Menu music: needs a looping track (Kenney has no CC0 loops)
 - [x] Scenario intro card (goal, how it's lost, special rules — described from the data; reopened from a Goal chip) and a results screen (why it ended, XP gained plus the success bonus, gold, level-ups, rewards, unlocks) (`ScenarioFramingTests`)
-- [ ] Town hub from the existing party, shop, perk and world-map views; delete the remaining companion leftovers
+- [x] Town between scenarios: finishing (or abandoning) a scenario returns to town; party roster with level, XP to next level and gold; Level Up when the XP is there (no more free level picker); perks limited to those earned; shop through `ItemManager.buy/sell` (one copy each, stock, half-price sales); world map to pick the next scenario; campaign sheet (`TownTests`)
+- [ ] Level-up ability card choice (pick one card of the new level or lower); city/road events (`EventCardManager` exists but is never created); a campaign log view
+- [ ] Delete the companion leftovers: `GameBoardView` and the ~85 views only it reaches (about 18,000 lines), keeping the ones the town now uses
 - [x] Board theme tokens (`BoardTheme`: surfaces, brass, radii, display type) and an 11 pt text floor (31 sizes of 7–10 pt raised; HUD still fits both iPads); every board control has text or a VoiceOver label; tokens on the board are spoken ("Bandit Guard 1, 4 of 6 health, Stun"); source checks guard the floor and the labels (`BoardAccessibilityTests`)
 - [ ] VoiceOver play on the board: choosing hexes (move, attack targets) needs accessible hex elements; GlavenTheme in the remaining menus; drop the unused Majalla font (288 KB)
 
