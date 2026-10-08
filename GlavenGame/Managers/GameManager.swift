@@ -21,6 +21,7 @@ final class GameManager {
     let objectiveManager: ObjectiveManager
     let enhancementsManager: EnhancementsManager
     let itemManager: ItemManager
+    let eventCardManager: EventCardManager
     let actionsManager: ActionsManager
     let boardCoordinator: BoardCoordinator
 
@@ -90,6 +91,8 @@ final class GameManager {
         self.objectiveManager = objMgr
         self.enhancementsManager = enhMgr
         self.itemManager = itemMgr
+        self.eventCardManager = EventCardManager(game: game, editionStore: editionStore,
+                                                 scenarioManager: scenarioMgr, itemManager: itemMgr)
         self.actionsManager = actMgr
         self.boardCoordinator = BoardCoordinator()
 
@@ -210,7 +213,40 @@ final class GameManager {
 
         let playerCount = max(2, game.characters.filter { !$0.absent }.count)
         boardCoordinator.startScenario(scenario: vgbScenario, playerCount: playerCount)
+        applyEventEffectsAtScenarioStart()
         appPhase = .board
+    }
+
+    /// What road and city events left for this scenario (GH p.38): each character starts with
+    /// the damage, conditions, −1 cards and discarded cards the events gave them.
+    func applyEventEffectsAtScenarioStart() {
+        let effects = game.events.nextScenario
+        guard !effects.isEmpty else { return }
+        for character in game.activeCharacters {
+            let name = GameText.characterName(character, labels: editionStore)
+            if effects.damage > 0 {
+                character.health = max(1, character.health - effects.damage)
+                boardCoordinator.log("\(name) starts with \(effects.damage) damage from an event", category: .damage)
+            }
+            for condition in effects.conditions {
+                entityManager.addCondition(condition, to: character)
+                boardCoordinator.log("\(name) starts with \(GameText.conditionName(condition)) from an event", category: .condition)
+            }
+            for _ in 0..<(effects.minusOneCards[character.id] ?? 0) {
+                character.attackModifierDeck.addCard(type: .minus1)
+            }
+            if let count = effects.minusOneCards[character.id], count > 0 {
+                boardCoordinator.log("\(name) adds \(count) \u{2212}1 card\(count == 1 ? "" : "s") from an event", category: .setup)
+            }
+            let discards = (effects.discards[character.id] ?? []).filter(character.handCards.contains)
+            if !discards.isEmpty {
+                character.handCards.removeAll(where: discards.contains)
+                character.discardedCards += discards
+                boardCoordinator.log("\(name) starts with \(discards.count) card\(discards.count == 1 ? "" : "s") discarded from an event", category: .setup)
+            }
+        }
+        game.events.nextScenario = ScenarioStartEffects()
+        boardCoordinator.syncPieceVisuals()
     }
 
     func setEdition(_ edition: String) {
@@ -314,7 +350,8 @@ final class GameManager {
         scenarioManager.finishScenario(success: success, choices: choices)
         roundCheckpoint = nil
         boardCoordinator.exitBoard()
-        // Back to town: spend gold, level up, pick the next scenario.
+        // Back to town: spend gold, level up, pick the next scenario — after a city event.
+        game.events.cityEventDue = true
         appPhase = .gameSetup
         saveGame()
     }

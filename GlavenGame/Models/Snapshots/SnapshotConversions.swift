@@ -4,7 +4,7 @@ import Foundation
 
 extension GameState {
     func toSnapshot(boardCoordinator: BoardCoordinator? = nil) -> GameSnapshot {
-        GameSnapshot(
+        var snapshot = GameSnapshot(
             edition: edition,
             conditions: conditions,
             figures: figures.map { $0.toSnapshot() },
@@ -40,6 +40,8 @@ extension GameState {
             unlockedItems: unlockedItems,
             boardSnapshot: boardCoordinator?.boardScene != nil ? boardCoordinator?.snapshot() : nil
         )
+        snapshot.events = events
+        return snapshot
     }
 
     func restore(from snapshot: GameSnapshot, editionStore: EditionDataStore, boardCoordinator: BoardCoordinator? = nil) {
@@ -74,6 +76,7 @@ extension GameState {
         campaignLog = snapshot.campaignLog
         unlockedCharacters = snapshot.unlockedCharacters
         unlockedItems = snapshot.unlockedItems
+        events = snapshot.events ?? EventState()
 
         // Restore figures
         figures = snapshot.figures.map { $0.toRuntime(editionStore: editionStore) }

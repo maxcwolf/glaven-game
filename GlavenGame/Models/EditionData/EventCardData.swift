@@ -18,6 +18,7 @@ struct EventOption: Codable, Hashable {
     var label: String?
     var narrative: String?
     var returnToDeck: Bool?
+    var removeFromDeck: Bool?
     var outcomes: [EventOutcome]?
 }
 
@@ -25,6 +26,8 @@ struct EventOutcome: Codable, Hashable {
     var narrative: String?
     var effects: [EventEffect]?
     var condition: EventCondition?
+    var returnToDeck: Bool?
+    var removeFromDeck: Bool?
 }
 
 struct EventEffect: Codable, Hashable {
@@ -33,14 +36,21 @@ struct EventEffect: Codable, Hashable {
     // For simplicity, store raw JSON and parse on demand
     var values: [IntOrString]?
     var subEffects: [EventEffect]?
+    /// Some effects only apply when a condition holds ("+5 gold if reputation is below -4").
+    var condition: EventCondition?
 
     enum CodingKeys: String, CodingKey {
-        case type, values
+        case type, values, condition
+    }
+
+    init(type: String, values: [IntOrString]? = nil, subEffects: [EventEffect]? = nil, condition: EventCondition? = nil) {
+        self.type = type; self.values = values; self.subEffects = subEffects; self.condition = condition
     }
 
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         type = try container.decode(String.self, forKey: .type)
+        condition = try container.decodeIfPresent(EventCondition.self, forKey: .condition)
 
         // Try decoding values as [IntOrString] first, fall back to [EventEffect]
         if let intValues = try? container.decode([IntOrString].self, forKey: .values) {
@@ -63,10 +73,41 @@ struct EventEffect: Codable, Hashable {
         } else if let subEffects = subEffects {
             try container.encode(subEffects, forKey: .values)
         }
+        try container.encodeIfPresent(condition, forKey: .condition)
     }
 }
 
+/// When an outcome (or an effect) applies: "otherwise", a class in the party, a reputation, or
+/// a price the party can pay. A condition can carry a cost paid when it holds ("effect").
 struct EventCondition: Codable, Hashable {
-    var type: String?
-    var value: IntOrString?
+    var type: String
+    var values: [IntOrString]?
+    /// Alternatives, for "payCollectiveGoldConditional" (the price depends on reputation).
+    var alternatives: [EventCondition]?
+    /// A cost paid when the condition holds (0 or 1 effect; an array so the types can nest).
+    var effects: [EventEffect] = []
+
+    enum CodingKeys: String, CodingKey { case type, values, effect }
+
+    init(type: String, values: [IntOrString]? = nil, alternatives: [EventCondition]? = nil, effects: [EventEffect] = []) {
+        self.type = type; self.values = values; self.alternatives = alternatives; self.effects = effects
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        type = try c.decode(String.self, forKey: .type)
+        if let plain = try? c.decode([IntOrString].self, forKey: .values) {
+            values = plain
+        } else {
+            alternatives = try? c.decode([EventCondition].self, forKey: .values)
+        }
+        if let effect = try c.decodeIfPresent(EventEffect.self, forKey: .effect) { effects = [effect] }
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(type, forKey: .type)
+        if let values { try c.encode(values, forKey: .values) } else { try c.encodeIfPresent(alternatives, forKey: .values) }
+        try c.encodeIfPresent(effects.first, forKey: .effect)
+    }
 }

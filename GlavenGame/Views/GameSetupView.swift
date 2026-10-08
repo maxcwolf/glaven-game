@@ -13,6 +13,10 @@ struct GameSetupView: View {
     @State private var handCharacter: GameCharacter?
     @State private var showWorldMap = false
     @State private var showCampaign = false
+    /// Events to resolve before setting out, in order; the first is showing.
+    @State private var events: [EventCardManager.Deck] = []
+    /// Set out for this scenario once the events are resolved.
+    @State private var settingOutFor: ScenarioData?
 
     /// Once the party has played, this is the town between scenarios.
     private var inTown: Bool {
@@ -82,6 +86,12 @@ struct GameSetupView: View {
                     townChip("Prosperity \(prosperityLevel)", icon: "building.columns.fill")
                     townChip("Reputation \(gameManager.game.partyReputation)", icon: "shield.lefthalf.filled")
                 }
+                if gameManager.game.events.cityEventDue {
+                    Button("City Event", systemImage: "building.2.fill") { events = [.city] }
+                        .buttonStyle(.borderedProminent)
+                        .tint(BoardTheme.brass)
+                        .fixedSize()
+                }
                 Button("Campaign", systemImage: "book.closed.fill") { showCampaign = true }
                     .buttonStyle(.bordered)
                     .tint(BoardTheme.brass)
@@ -104,9 +114,7 @@ struct GameSetupView: View {
 
                     // Start button
                     Button {
-                        if let scenario = selectedScenario {
-                            gameManager.startScenarioOnBoard(scenario)
-                        }
+                        if let scenario = selectedScenario { setOut(for: scenario) }
                     } label: {
                         HStack(spacing: 8) {
                             Image(systemName: "play.fill")
@@ -132,6 +140,13 @@ struct GameSetupView: View {
             ParchmentBackground(edition: edition)
                 .overlay(Color(red: 0.12, green: 0.14, blue: 0.18).opacity(GlavenTheme.isLight ? 0.15 : 0.75))
                 .ignoresSafeArea()
+        }
+        .overlay {
+            if let deck = events.first {
+                EventSheet(deck: deck) { finishEvent(deck) }
+                    .id("\(deck)-\(events.count)")
+                    .transition(.opacity)
+            }
         }
         .sheet(item: $sheetCharacter) { character in
             CharacterSheetView(character: character)
@@ -162,6 +177,26 @@ struct GameSetupView: View {
             Button("Not Yet", role: .cancel) {}
         } message: {
             Text("More hit points, a perk to take, and a new ability card to choose.")
+        }
+    }
+
+    /// Before setting out: the city event owed for this visit, then a road event if the way to the
+    /// scenario is by road (GH p.38).
+    private func setOut(for scenario: ScenarioData) {
+        var queue: [EventCardManager.Deck] = []
+        if gameManager.game.events.cityEventDue { queue.append(.city) }
+        if gameManager.eventCardManager.needsRoadEvent(for: scenario) { queue.append(.road) }
+        settingOutFor = scenario
+        if queue.isEmpty { gameManager.startScenarioOnBoard(scenario) } else { events = queue }
+    }
+
+    private func finishEvent(_ deck: EventCardManager.Deck) {
+        if deck == .city { gameManager.game.events.cityEventDue = false }
+        events.removeFirst()
+        if events.isEmpty, let scenario = settingOutFor {
+            settingOutFor = nil
+            gameManager.saveGame()
+            gameManager.startScenarioOnBoard(scenario)
         }
     }
 

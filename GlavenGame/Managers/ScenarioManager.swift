@@ -25,15 +25,6 @@ final class ScenarioManager {
         game.scenario = scenario
         recordStartingTallies()
 
-        // Determine if an event should be drawn before this scenario
-        if scenarioData.eventType == "road" {
-            game.pendingEventType = "road"
-        } else if !scenarioData.isInitial {
-            game.pendingEventType = "city"
-        } else {
-            game.pendingEventType = nil
-        }
-
         applyScenarioData(scenarioData)
         addItemPenaltyCards()
 

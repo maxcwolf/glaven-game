@@ -52,11 +52,8 @@ final class GameState {
     // Unlocked items: "{edition}-{id}"
     var unlockedItems: Set<String> = []
 
-    // Event card decks: track which cards have been drawn (by cardId)
-    var drawnCityEvents: Set<String> = []
-    var drawnRoadEvents: Set<String> = []
-    /// Pending event to show before the next scenario starts (set by ScenarioManager)
-    var pendingEventType: String?  // "city" or "road" or nil
+    /// City and road event decks, and what events leave for the next scenario.
+    var events = EventState()
 
     // MARK: - Computed helpers
 

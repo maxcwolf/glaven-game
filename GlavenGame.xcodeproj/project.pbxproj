@@ -21,6 +21,7 @@
 		0C1677F77D3A230F0485CB53 /* BoardSound.swift in Sources */ = {isa = PBXBuildFile; fileRef = A7E2165E5E511B9078052C55 /* BoardSound.swift */; };
 		0C9F28E05371C2CD265A5572 /* ScenarioResultsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF546B2E6909F44E7930DB07 /* ScenarioResultsView.swift */; };
 		0EACFB0AB8BDFFCC7F591795 /* PieceID.swift in Sources */ = {isa = PBXBuildFile; fileRef = 33CE037572CCD1CC45F5F131 /* PieceID.swift */; };
+		0F5AC7D8BA68483550C50180 /* EventState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7175CB1F50A54A84F38423F7 /* EventState.swift */; };
 		14511DEB8C59B9436FC95253 /* TownPartyRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = D86B71BFEEBD99C00C1AF649 /* TownPartyRow.swift */; };
 		15D2951A77CC1C086296F86D /* ScenarioMarkerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7050B86E677EE171AD0A3573 /* ScenarioMarkerView.swift */; };
 		1CC69FD5D69AB9E38536A39E /* EntityValueFunction.swift in Sources */ = {isa = PBXBuildFile; fileRef = EFAF7312A61CA28A484AE10E /* EntityValueFunction.swift */; };
@@ -117,6 +118,7 @@
 		9BBD35DFA813946BF409C447 /* VGBScenarioData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46C86055EE9207207274F6C6 /* VGBScenarioData.swift */; };
 		9BF3482C20F2CC41F462F7AC /* CharacterClass.swift in Sources */ = {isa = PBXBuildFile; fileRef = DAF0FC6C2F01CFD4173515AC /* CharacterClass.swift */; };
 		9C9D5EFFC2948351C051B6E8 /* EscortTurnController.swift in Sources */ = {isa = PBXBuildFile; fileRef = BA5C6A163BDEB897E9993360 /* EscortTurnController.swift */; };
+		9CFCF599FEA3B71C8906C9EA /* EventSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 28320BFD439C596F3CD2DDEA /* EventSheet.swift */; };
 		9E4A518A086C85001C78A09B /* MonsterData.swift in Sources */ = {isa = PBXBuildFile; fileRef = FBB6CC6422C046711137938C /* MonsterData.swift */; };
 		9F4D69204E0728BBCBE1D5A0 /* SummonDataModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A1B2D12EE16E139A1784E2B /* SummonDataModel.swift */; };
 		A2F0171C14292FA97E954CDA /* AbilityCardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 14ABB7C34DDD57BF9162EA76 /* AbilityCardView.swift */; };
@@ -217,6 +219,7 @@
 		1BFD0B71E6987E420B5CBA91 /* DeckData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeckData.swift; sourceTree = "<group>"; };
 		1E5BE6C620EBFDD27F7F98C0 /* BoardScene.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BoardScene.swift; sourceTree = "<group>"; };
 		1ED388D23F2EFC9F14DE5E4F /* BoardTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BoardTheme.swift; sourceTree = "<group>"; };
+		28320BFD439C596F3CD2DDEA /* EventSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EventSheet.swift; sourceTree = "<group>"; };
 		2A627A875740C74A642DC8E7 /* ScenarioManager+Treasure.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ScenarioManager+Treasure.swift"; sourceTree = "<group>"; };
 		2A76D126F0BA77D9B298FE07 /* ScenarioRule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScenarioRule.swift; sourceTree = "<group>"; };
 		2B612F3F758BA3A91D1CEACF /* ActionHex.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActionHex.swift; sourceTree = "<group>"; };
@@ -271,6 +274,7 @@
 		6DC0AE3639F6C6E004323D24 /* ObjectiveManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ObjectiveManager.swift; sourceTree = "<group>"; };
 		6DD7C9704EEC9D2DBAB09937 /* LevelManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LevelManager.swift; sourceTree = "<group>"; };
 		7050B86E677EE171AD0A3573 /* ScenarioMarkerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScenarioMarkerView.swift; sourceTree = "<group>"; };
+		7175CB1F50A54A84F38423F7 /* EventState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EventState.swift; sourceTree = "<group>"; };
 		731574AB55168285AE451F48 /* PartyStatisticsSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PartyStatisticsSheet.swift; sourceTree = "<group>"; };
 		75C223FE093334EB47476FA0 /* UIScale.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UIScale.swift; sourceTree = "<group>"; };
 		773EDD0EFA56B12B34CB32AB /* TreasureRewardParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TreasureRewardParser.swift; sourceTree = "<group>"; };
@@ -556,6 +560,7 @@
 			children = (
 				D0F512D593B3AEA9F219C2FC /* AbilityCardChoiceViews.swift */,
 				BC02E40BD390F740C8CA66B1 /* CreditsSheet.swift */,
+				28320BFD439C596F3CD2DDEA /* EventSheet.swift */,
 				AD2078C38F909FF5A2F71A7B /* GameSetupView.swift */,
 				4840A613B6DC796BF25638E0 /* MainMenuView.swift */,
 				975066D59FC5616F167806B8 /* MenuKeyArt.swift */,
@@ -612,6 +617,7 @@
 			isa = PBXGroup;
 			children = (
 				B1F121B39DF61999A92908F6 /* CardPool.swift */,
+				7175CB1F50A54A84F38423F7 /* EventState.swift */,
 				CB48D739CDC747D7E15DB194 /* GameCharacter.swift */,
 				AE4FE04C5C22C618D1AB2170 /* GameMonster.swift */,
 				5C3F8355E887FAF9952D826E /* GameObjectiveContainer.swift */,
@@ -959,6 +965,8 @@
 				9C9D5EFFC2948351C051B6E8 /* EscortTurnController.swift in Sources */,
 				FA8FF36A45244A7C4E7A4A97 /* EventCardData.swift in Sources */,
 				878AB4F2AE1E85720DFA5775 /* EventCardManager.swift in Sources */,
+				9CFCF599FEA3B71C8906C9EA /* EventSheet.swift in Sources */,
+				0F5AC7D8BA68483550C50180 /* EventState.swift in Sources */,
 				C48F34F6664799A0111E1C46 /* FigureProtocol.swift in Sources */,
 				295E3CA5EBFC6DCBD0A3E8BB /* FigureType.swift in Sources */,
 				46059AF5E70FF155875D9176 /* FlowLayout.swift in Sources */,

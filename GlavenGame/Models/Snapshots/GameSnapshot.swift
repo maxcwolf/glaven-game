@@ -37,6 +37,7 @@ struct GameSnapshot: Codable {
     var unlockedCharacters: Set<String>
     var unlockedItems: Set<String>
     var boardSnapshot: BoardSnapshot?
+    var events: EventState?
 
     init(edition: String?, conditions: [ConditionName], figures: [FigureSnapshot],
          state: GamePhase, round: Int, level: Int, levelCalculation: Bool,
@@ -71,6 +72,7 @@ struct GameSnapshot: Codable {
         self.unlockedCharacters = unlockedCharacters
         self.unlockedItems = unlockedItems
         self.boardSnapshot = boardSnapshot
+        self.events = nil
     }
 
     init(from decoder: Decoder) throws {
@@ -108,6 +110,7 @@ struct GameSnapshot: Codable {
         campaignLog = try c.decodeIfPresent([CampaignLogEntry].self, forKey: .campaignLog) ?? []
         unlockedCharacters = try c.decodeIfPresent(Set<String>.self, forKey: .unlockedCharacters) ?? []
         unlockedItems = try c.decodeIfPresent(Set<String>.self, forKey: .unlockedItems) ?? []
+        events = try c.decodeIfPresent(EventState.self, forKey: .events)
         boardSnapshot = try c.decodeIfPresent(BoardSnapshot.self, forKey: .boardSnapshot)
     }
 }
