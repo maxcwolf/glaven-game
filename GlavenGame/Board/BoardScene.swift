@@ -154,18 +154,53 @@ class BoardScene: SKScene {
 
     // MARK: - Overlay Sprites
 
+    /// Draw an overlay on every hex it covers. Multi-hex overlays (boulders, tables, logs, wall
+    /// sections) ship one image per hex — `obstacle-boulder-3`, `-3-2`, `-3-3` — drawn with the
+    /// second piece to the right of the first, so each piece is turned by the direction from the
+    /// overlay's first hex to its second.
     private func placeOverlaySprite(overlay: PositionedOverlay, offsetCol: Int, offsetRow: Int) {
-        guard let image = MapImageCache.shared.image(named: "overlays/\(overlay.imageName)") else { return }
+        let centers = overlay.cells.map { hexCenterInScene(col: $0.0 - offsetCol, row: $0.1 - offsetRow) }
+        guard let first = centers.first else { return }
+        var rotation: CGFloat = 0
+        if centers.count > 1 {
+            rotation = atan2(centers[1].y - first.y, centers[1].x - first.x)
+        }
+        for (index, cell) in overlay.cells.enumerated() {
+            let name = Self.overlayPieceName(overlay.imageName, index: index)
+            guard let image = MapImageCache.shared.image(named: "overlays/\(name)") else { continue }
+            let texture = Self.overlayTexture(name, image: image)
+            let sprite = SKSpriteNode(texture: texture)
+            sprite.anchorPoint = CGPoint(x: 0.5, y: 0.5)
+            // Scale to cell size
+            sprite.setScale(HexMath.cellSize / max(texture.size().width, texture.size().height))
+            sprite.position = centers[index]
+            sprite.zRotation = rotation
+            sprite.zPosition = 1
+            sprite.name = "overlay_\(cell.0)_\(cell.1)"
+            overlayLayer.addChild(sprite)
+        }
+    }
+
+    /// The image for one hex of a multi-hex overlay: the base image for the first hex, then the
+    /// `-2`, `-3` pieces when the art has them.
+    static func overlayPieceName(_ base: String, index: Int) -> String {
+        guard index > 0 else { return base }
+        let piece = "\(base)-\(index + 1)"
+        return MapImageCache.shared.image(named: "overlays/\(piece)") != nil ? piece : base
+    }
+
+    private static var overlayTextures: [String: SKTexture] = [:]
+
+    private static func overlayTexture(_ name: String, image: CGImage) -> SKTexture {
+        if let cached = overlayTextures[name] { return cached }
         let texture = SKTexture(cgImage: image)
-        let sprite = SKSpriteNode(texture: texture)
-        sprite.anchorPoint = CGPoint(x: 0.5, y: 0.5)
-        // Scale to cell size
-        let scale = HexMath.cellSize / max(texture.size().width, texture.size().height)
-        sprite.setScale(scale)
-        sprite.position = hexCenterInScene(col: overlay.col - offsetCol, row: overlay.row - offsetRow)
-        sprite.zPosition = 1
-        sprite.name = "overlay_\(overlay.col)_\(overlay.row)"
-        overlayLayer.addChild(sprite)
+        overlayTextures[name] = texture
+        return texture
+    }
+
+    /// Names of the overlay sprites drawn on the board (for tests).
+    var overlaySpriteNames: [String] {
+        overlayLayer.children.compactMap(\.name)
     }
 
     /// Remove an overlay sprite at a given hex coordinate (e.g., after a trap triggers).
