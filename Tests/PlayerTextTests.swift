@@ -14,7 +14,8 @@ final class PlayerTextTests: XCTestCase {
             (#"\b(gh|fh|jotl|cs|toa|bb|gh2e)-[a-z]"#, "edition-prefixed id"),
             (#"\b(char|summon|monster|objective)\("#, "PieceID description"),
             (#"[a-z]+-[a-z]+ #?\d"#, "monster slug"),
-            (#"[A-Za-z] #\d"#, "standee written as #n"),   // "Bandit Guard #2"; "#1 Black Barrow" is a scenario
+            // "Bandit Guard #2"; scenarios ("#1 Black Barrow", "#15 or #17") are fine.
+            (#"\b(?!or\b|and\b)[A-Za-z]+ #\d"#, "standee written as #n"),
             (#"\(-?\d+, ?-?\d+\)"#, "grid coordinate"),
             (#"\.\.\."#, "three dots instead of …"),
             (#"\b[a-z]+[A-Z][a-z]+"#, "camelCase identifier"),
@@ -58,6 +59,9 @@ final class PlayerTextTests: XCTestCase {
         for line in old {
             XCTAssertFalse(Self.lint(line, rawNames: ["tinkerer", "bandit-guard"]).isEmpty, "lint should reject \"\(line)\"")
         }
+        XCTAssertEqual(Self.lint("Bandit Guard #2 attacks"), ["standee written as #n"])
+        XCTAssertEqual(Self.lint("Choose a location: #15 Shrine of Strength or #17 Lost Island"), [],
+                       "scenario numbers are fine")
         let new = [
             "Cragheart takes position",
             "Tinkerer attacks Bandit Guard 1: 1 + 0 − 1 shield = no damage",

@@ -1300,10 +1300,10 @@ final class BoardCoordinator {
     }
 
     /// Apply scenario result and clean up.
-    func confirmScenarioEnd() {
+    func confirmScenarioEnd(choices: ScenarioRewardChoices = ScenarioRewardChoices()) {
         guard let gameManager = gameManager, let result = scenarioResult else { return }
 
-        gameManager.completeScenario(success: result == .victory)
+        gameManager.completeScenario(success: result == .victory, choices: choices)
     }
 
     // MARK: - Turn Execution Actions

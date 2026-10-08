@@ -338,8 +338,8 @@ final class GameManager {
     }
 
     /// Finish the scenario on the board (rewards on a success), leave the board and save.
-    func completeScenario(success: Bool) {
-        scenarioManager.finishScenario(success: success)
+    func completeScenario(success: Bool, choices: ScenarioRewardChoices = ScenarioRewardChoices()) {
+        scenarioManager.finishScenario(success: success, choices: choices)
         roundCheckpoint = nil
         boardCoordinator.exitBoard()
         // Back to town: spend gold, level up, pick the next scenario.

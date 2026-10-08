@@ -4,8 +4,21 @@ import SwiftUI
 /// gained in the scenario plus the success bonus, gold, and any level they can now reach — then
 /// the scenario's rewards. Finish applies them.
 struct ScenarioResultsView: View {
+    @Environment(GameManager.self) private var gameManager
     let outcome: ScenarioOutcome
-    let onFinish: () -> Void
+    let onFinish: (ScenarioRewardChoices) -> Void
+    @State private var choices = ScenarioRewardChoices()
+
+    /// The scenario's rewards when it was won and they need the players to choose.
+    private var rewardsToChoose: (ScenarioRewards, String)? {
+        guard outcome.victory, let data = gameManager.game.scenario?.data, let rewards = data.rewards,
+              RewardChoicesView.needsChoices(rewards) else { return nil }
+        return (rewards, data.edition)
+    }
+
+    private var canFinish: Bool {
+        RewardChoicesView.goldAssigned(choices, rewards: rewardsToChoose?.0, manager: gameManager.scenarioManager)
+    }
 
     private var tint: Color { outcome.victory ? BoardTheme.victory : BoardTheme.defeat }
 
@@ -21,11 +34,15 @@ struct ScenarioResultsView: View {
                 }
                 .fixedSize(horizontal: false, vertical: true)   // cards share the tallest card's height
                 if !outcome.rewards.isEmpty { rewards }
+                if let (rewards, edition) = rewardsToChoose {
+                    RewardChoicesView(rewards: rewards, edition: edition, choices: $choices,
+                                      textColor: BoardTheme.text, surface: BoardTheme.raised)
+                }
                 Text(outcome.note)
                     .font(.footnote)
                     .foregroundStyle(BoardTheme.secondaryText)
                     .multilineTextAlignment(.center)
-                Button(action: onFinish) {
+                Button { onFinish(choices) } label: {
                     Label(outcome.victory ? "Finish Scenario" : "Back to Menu",
                           systemImage: outcome.victory ? "checkmark.circle.fill" : "arrow.uturn.left.circle.fill")
                         .font(.headline)
@@ -34,11 +51,18 @@ struct ScenarioResultsView: View {
                 .buttonStyle(.borderedProminent)
                 .tint(outcome.victory ? BoardTheme.brass : BoardTheme.defeat)
                 .keyboardShortcut(.defaultAction)
+                .disabled(!canFinish)
             }
             .padding(28)
             .frame(maxWidth: 760)
             .boardPanel()
             .padding(24)
+        }
+        .onAppear {
+            if let (rewards, edition) = rewardsToChoose {
+                choices = RewardChoicesView.defaultChoices(for: rewards, edition: edition,
+                                                           manager: gameManager.scenarioManager)
+            }
         }
     }
 

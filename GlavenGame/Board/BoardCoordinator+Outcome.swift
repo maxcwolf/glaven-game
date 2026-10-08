@@ -92,6 +92,29 @@ extension BoardCoordinator {
             for id in rewards.globalAchievements ?? [] {
                 lines.append("Global achievement: \(achievement(id, kind: "globalAchievements", labels: labels, edition: scenario.data.edition))")
             }
+            let edition = scenario.data.edition
+            for grant in ScenarioManager.rewardItemGrants(rewards) {
+                let name = labels.itemData(id: grant.id, edition: edition)?.name ?? "Item \(grant.id)"
+                lines.append(grant.count > 1 ? "Item: \(grant.count) \u{00D7} \(name)" : "Item: \(name)")
+            }
+            for id in rewards.itemDesigns ?? [] {
+                let name = Int(id).flatMap { labels.itemData(id: $0, edition: edition)?.name } ?? "Item \(id)"
+                lines.append("Item design: \(name), now in the shop")
+            }
+            if let value = rewards.collectiveGold {
+                lines.append("\(gameManager.scenarioManager.resolveRewardInt(value)) gold to share")
+            }
+            if let checks = rewards.battleGoals {
+                lines.append(checks == 1 ? "1 battle goal checkmark each" : "\(checks) battle goal checkmarks each")
+            }
+            if let name = rewards.unlockCharacter {
+                lines.append("New class: \(GameText.className(name, edition: edition, labels: labels))")
+            }
+            if let locations = rewards.chooseLocation, !locations.isEmpty {
+                let names = locations.compactMap { labels.scenarioData(index: $0, edition: edition) }
+                    .map { ScenarioBrief.make(for: $0, labels: labels).title }
+                lines.append("Choose a location: \(GameText.list(names).replacingOccurrences(of: " and ", with: " or "))")
+            }
             for id in rewards.lostPartyAchievements ?? [] {
                 lines.append("Party achievement lost: \(achievement(id, kind: "partyAchievements", labels: labels, edition: scenario.data.edition))")
             }

@@ -170,10 +170,10 @@ final class ScenarioFramingTests: XCTestCase {
         gm.game.characters[0].loot += 3
         coord.endReason = .enemiesDefeated
         coord.scenarioResult = .victory
-        try render(ScenarioResultsView(outcome: try XCTUnwrap(coord.scenarioOutcome())) {}, "results-victory")
+        try render(ScenarioResultsView(outcome: try XCTUnwrap(coord.scenarioOutcome())) { _ in }.environment(gm), "results-victory")
         coord.scenarioResult = .defeat
         coord.endReason = .partyExhausted
         gm.game.characters[1].exhausted = true
-        try render(ScenarioResultsView(outcome: try XCTUnwrap(coord.scenarioOutcome())) {}, "results-defeat")
+        try render(ScenarioResultsView(outcome: try XCTUnwrap(coord.scenarioOutcome())) { _ in }.environment(gm), "results-defeat")
     }
 }

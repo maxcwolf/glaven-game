@@ -107,15 +107,7 @@ struct ScenarioConclusionSheet: View {
     /// Start every reward choice on the default the manager would make without one.
     private func setDefaultChoices() {
         guard success, let data = scenario?.data, let rewards = data.rewards else { return }
-        let manager = gameManager.scenarioManager
-        for grant in ScenarioManager.rewardItemGrants(rewards) {
-            let key = "\(data.edition)-\(grant.id)"
-            choices.itemRecipients[key] = manager.eligibleItemRecipients(key).prefix(grant.count).map(\.id)
-        }
-        if let gold = rewards.collectiveGold {
-            choices.collectiveGold = manager.collectiveGoldShares(total: manager.resolveRewardInt(gold))
-        }
-        choices.location = rewards.chooseLocation?.first
+        choices = RewardChoicesView.defaultChoices(for: rewards, edition: data.edition, manager: gameManager.scenarioManager)
     }
 
     /// The whole of the collective gold must be handed out before the rewards are applied.
@@ -170,11 +162,38 @@ struct ScenarioConclusionSheet: View {
 
 /// The picks players make for rewards: who takes each item (GH p.47), how the collective gold
 /// is split, and which location a "choose one" reward unlocks.
-private struct RewardChoicesView: View {
+/// The choices a scenario's rewards need (GH p.47): who takes each item, how the collective gold
+/// is split, which location opens. Used by the results screen on the board and the old sheet.
+struct RewardChoicesView: View {
     @Environment(GameManager.self) private var gameManager
     let rewards: ScenarioRewards
     let edition: String
     @Binding var choices: ScenarioRewardChoices
+    /// Colours, so the view sits on the board's panels as well as the menus'.
+    var textColor: Color = GlavenTheme.primaryText
+    var surface: Color = GlavenTheme.cardBackground
+
+    /// The defaults the choices start from: the first eligible characters take the items, the
+    /// gold is split evenly, the first location opens.
+    static func defaultChoices(for rewards: ScenarioRewards, edition: String,
+                               manager: ScenarioManager) -> ScenarioRewardChoices {
+        var choices = ScenarioRewardChoices()
+        for grant in ScenarioManager.rewardItemGrants(rewards) {
+            let key = "\(edition)-\(grant.id)"
+            choices.itemRecipients[key] = manager.eligibleItemRecipients(key).prefix(grant.count).map(\.id)
+        }
+        if let gold = rewards.collectiveGold {
+            choices.collectiveGold = manager.collectiveGoldShares(total: manager.resolveRewardInt(gold))
+        }
+        choices.location = rewards.chooseLocation?.first
+        return choices
+    }
+
+    /// Whether every coin of the collective gold has been handed out.
+    static func goldAssigned(_ choices: ScenarioRewardChoices, rewards: ScenarioRewards?, manager: ScenarioManager) -> Bool {
+        guard let gold = rewards?.collectiveGold else { return true }
+        return choices.collectiveGold.values.reduce(0, +) == manager.resolveRewardInt(gold)
+    }
 
     static func needsChoices(_ rewards: ScenarioRewards) -> Bool {
         !(rewards.items ?? []).isEmpty || rewards.collectiveGold != nil
@@ -187,7 +206,7 @@ private struct RewardChoicesView: View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Choose Rewards")
                 .font(.headline)
-                .foregroundStyle(GlavenTheme.primaryText)
+                .foregroundStyle(textColor)
 
             ForEach(ScenarioManager.rewardItemGrants(rewards), id: \.id) { grant in
                 itemPicker(id: grant.id, count: grant.count)
@@ -201,12 +220,12 @@ private struct RewardChoicesView: View {
         }
         .padding()
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(GlavenTheme.cardBackground)
+        .background(surface)
         .clipShape(RoundedRectangle(cornerRadius: 12))
     }
 
     private func displayName(_ character: GameCharacter) -> String {
-        character.title.isEmpty ? character.name.replacingOccurrences(of: "-", with: " ").capitalized : character.title
+        GameText.characterName(character, labels: gameManager.editionStore)
     }
 
     @ViewBuilder
@@ -218,11 +237,11 @@ private struct RewardChoicesView: View {
             Text(count > 1 ? "\(count)× \(name)" : name)
                 .font(.subheadline)
                 .fontWeight(.medium)
-                .foregroundStyle(GlavenTheme.primaryText)
+                .foregroundStyle(textColor)
             if eligible.isEmpty {
                 Text("Everyone already owns one — it goes to the city's supply")
-                    .font(.caption)
-                    .foregroundStyle(GlavenTheme.secondaryText)
+                    .font(.subheadline)
+                    .foregroundStyle(textColor.opacity(0.7))
             }
             ForEach(0..<min(count, eligible.count), id: \.self) { copy in
                 Picker(count > 1 ? "Copy \(copy + 1) goes to" : "Goes to", selection: recipient(key, copy: copy)) {
@@ -230,8 +249,8 @@ private struct RewardChoicesView: View {
                         Text(displayName(character)).tag(character.id)
                     }
                 }
-                .font(.caption)
-                .foregroundStyle(GlavenTheme.primaryText)
+                .font(.subheadline)
+                .foregroundStyle(textColor)
             }
         }
     }
@@ -260,18 +279,18 @@ private struct RewardChoicesView: View {
             Text("Split \(total) collective gold")
                 .font(.subheadline)
                 .fontWeight(.medium)
-                .foregroundStyle(GlavenTheme.primaryText)
+                .foregroundStyle(textColor)
             ForEach(manager.rewardParty, id: \.id) { character in
                 let share = choices.collectiveGold[character.id] ?? 0
                 Stepper(value: goldShare(character.id), in: 0...max(0, share + total - assigned)) {
                     Text("\(displayName(character)): \(share) gold")
-                        .font(.caption)
-                        .foregroundStyle(GlavenTheme.primaryText)
+                        .font(.subheadline)
+                        .foregroundStyle(textColor)
                 }
             }
             if assigned != total {
                 Text("\(total - assigned) gold still to hand out")
-                    .font(.caption)
+                    .font(.subheadline)
                     .foregroundStyle(.orange)
             }
         }
@@ -296,7 +315,7 @@ private struct RewardChoicesView: View {
             }
         }
         .font(.subheadline)
-        .foregroundStyle(GlavenTheme.primaryText)
+        .foregroundStyle(textColor)
     }
 }
 
