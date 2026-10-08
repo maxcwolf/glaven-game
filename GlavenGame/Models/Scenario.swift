@@ -12,6 +12,10 @@ final class Scenario {
     var killCounts: [String: Int] = [:]
     /// Set by ScenarioRulesManager when a finish rule fires; checked in BoardCoordinator.checkVictoryDefeat().
     var pendingFinish: String? = nil
+    /// Each character's experience and gold when the scenario began (by character id), so the
+    /// results can show what was gained in it.
+    var startingExperience: [String: Int] = [:]
+    var startingGold: [String: Int] = [:]
 
     init(data: ScenarioData, isCustom: Bool = false) {
         self.data = data

@@ -444,4 +444,8 @@ struct ScenarioSnapshot: Codable {
     var additionalSections: [String]
     var appliedRules: Set<String>
     var disabledRules: Set<Int>
+    // Added later: optional so older saves still load.
+    var killCounts: [String: Int]?
+    var startingExperience: [String: Int]?
+    var startingGold: [String: Int]?
 }

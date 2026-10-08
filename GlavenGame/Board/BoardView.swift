@@ -122,9 +122,20 @@ struct BoardView: View {
                     .animation(.easeInOut(duration: 0.2), value: coordinator.previewCardId)
             }
 
-            // Scenario end overlay
-            if let result = coordinator.scenarioResult {
-                scenarioEndOverlay(result: result)
+            // The scenario's intro, or its goal and rules reopened from the HUD
+            if let presentation = coordinator.briefPresentation, let brief = coordinator.scenarioBrief {
+                ScenarioBriefCard(brief: brief, buttonTitle: presentation == .intro ? "Begin" : "Close") {
+                    withAnimation(.snappy) { coordinator.briefPresentation = nil }
+                }
+                .transition(.opacity)
+                .zIndex(9)
+            }
+
+            // Results
+            if let outcome = coordinator.scenarioOutcome() {
+                ScenarioResultsView(outcome: outcome) { coordinator.confirmScenarioEnd() }
+                    .transition(.opacity)
+                    .zIndex(10)
             }
         }
     }
@@ -169,6 +180,24 @@ struct BoardView: View {
                 .padding(.vertical, 6)
                 .background(.black.opacity(0.6))
                 .clipShape(Capsule())
+
+            // The scenario's goal and special rules, any time.
+            if coordinator.scenarioBrief != nil {
+                Button {
+                    withAnimation(.snappy) { coordinator.briefPresentation = .reminder }
+                } label: {
+                    Label("Goal", systemImage: "scope")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(BoardTheme.text)
+                        .padding(.horizontal, 12)
+                        .frame(minHeight: 44)
+                        .background(.black.opacity(0.6))
+                        .clipShape(Capsule())
+                        .overlay(Capsule().stroke(BoardTheme.brass.opacity(0.7), lineWidth: 1))
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Scenario goal and rules")
+            }
 
             Spacer()
 
@@ -976,183 +1005,6 @@ struct BoardView: View {
             .padding(.horizontal, 8)
             .padding(.vertical, 2)
         }
-    }
-
-    // MARK: - Scenario End Overlay
-
-    @ViewBuilder
-    private func scenarioEndOverlay(result: BoardCoordinator.ScenarioResult) -> some View {
-        let isVictory = result == .victory
-        let accentColor: Color = isVictory ? .yellow : .red
-        let characters = gameManager.game.characters.filter { !$0.absent }
-
-        Color.black.opacity(0.75)
-            .ignoresSafeArea()
-            .overlay {
-                VStack(spacing: 0) {
-                    // Header
-                    VStack(spacing: 8) {
-                        Image(systemName: isVictory ? "checkmark.seal.fill" : "xmark.seal.fill")
-                            .font(.system(size: 56))
-                            .foregroundStyle(accentColor)
-
-                        Text(isVictory ? "Scenario Complete" : "Scenario Failed")
-                            .font(.system(size: 32, weight: .bold, design: .serif))
-                            .foregroundStyle(.white)
-
-                        Text(isVictory
-                             ? "All enemies have been defeated."
-                             : "All characters are exhausted.")
-                            .font(.subheadline)
-                            .foregroundStyle(.white.opacity(0.65))
-
-                        Text("Round \(gameManager.game.round)")
-                            .font(.caption)
-                            .foregroundStyle(.white.opacity(0.4))
-                    }
-                    .padding(.bottom, 20)
-
-                    Divider().overlay(accentColor.opacity(0.3))
-                        .padding(.horizontal, -24)
-
-                    // Rules reminder (defeat only)
-                    if !isVictory {
-                        HStack(spacing: 8) {
-                            Image(systemName: "info.circle.fill")
-                                .foregroundStyle(.orange.opacity(0.8))
-                                .font(.system(size: 13))
-                            Text("Gold collected this scenario is lost. Experience is kept.")
-                                .font(.caption)
-                                .foregroundStyle(.white.opacity(0.6))
-                        }
-                        .padding(.vertical, 12)
-                    } else {
-                        Spacer().frame(height: 16)
-                    }
-
-                    // Character summary cards
-                    HStack(alignment: .top, spacing: 12) {
-                        ForEach(characters, id: \.id) { character in
-                            scenarioResultCharacterCard(character, isVictory: isVictory)
-                        }
-                    }
-                    .padding(.bottom, 20)
-
-                    Divider().overlay(accentColor.opacity(0.3))
-                        .padding(.horizontal, -24)
-                        .padding(.bottom, 20)
-
-                    // Action button
-                    Button {
-                        coordinator.confirmScenarioEnd()
-                    } label: {
-                        Label(
-                            isVictory ? "Finish Scenario" : "Back to Menu",
-                            systemImage: isVictory ? "checkmark.circle.fill" : "arrow.uturn.left.circle.fill"
-                        )
-                        .font(.system(size: 17, weight: .semibold))
-                        .foregroundStyle(.white)
-                        .padding(.horizontal, 28)
-                        .padding(.vertical, 14)
-                        .background(isVictory ? Color.green : Color.orange)
-                        .clipShape(RoundedRectangle(cornerRadius: 12))
-                    }
-                    .buttonStyle(.plain)
-
-                    if !isVictory {
-                        Text("The scenario remains available to attempt again.")
-                            .font(.caption2)
-                            .foregroundStyle(.white.opacity(0.35))
-                            .padding(.top, 8)
-                    }
-                }
-                .padding(32)
-                .frame(maxWidth: 640)
-                .background(
-                    RoundedRectangle(cornerRadius: 20)
-                        .fill(.black.opacity(0.92))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 20)
-                                .stroke(accentColor.opacity(0.35), lineWidth: 1.5)
-                        )
-                )
-                .padding(40)
-            }
-    }
-
-    @ViewBuilder
-    private func scenarioResultCharacterCard(_ character: GameCharacter, isVictory: Bool) -> some View {
-        let charColor = Color(hex: character.color) ?? .blue
-        let isExhausted = character.exhausted || character.health <= 0
-
-        VStack(spacing: 8) {
-            // Avatar / icon
-            BundledImage(ImageLoader.characterIcon(edition: character.edition, name: character.name), size: 32, systemName: "person.fill")
-                .foregroundStyle(charColor)
-                .opacity(isExhausted && !isVictory ? 0.5 : 1.0)
-
-            // Name
-            Text(character.title.isEmpty
-                 ? character.name.replacingOccurrences(of: "-", with: " ").capitalized
-                 : character.title)
-                .font(.system(size: 11, weight: .bold))
-                .foregroundStyle(.white)
-                .lineLimit(1)
-                .multilineTextAlignment(.center)
-
-            Divider().overlay(charColor.opacity(0.3))
-
-            // XP gained (kept on both win and loss)
-            HStack(spacing: 4) {
-                Image(systemName: "star.fill")
-                    .font(.system(size: 9))
-                    .foregroundStyle(.yellow)
-                Text("\(character.experience) XP")
-                    .font(.system(size: 10, weight: .medium))
-                    .foregroundStyle(.yellow.opacity(0.9))
-            }
-
-            // Gold / loot
-            if isVictory {
-                HStack(spacing: 4) {
-                    Image(systemName: "circlebadge.fill")
-                        .font(.system(size: 9))
-                        .foregroundStyle(.yellow.opacity(0.8))
-                    Text("\(character.loot)g")
-                        .font(.system(size: 10, weight: .medium))
-                        .foregroundStyle(.yellow.opacity(0.8))
-                }
-            } else {
-                // Defeat: gold is lost — show it crossed out
-                HStack(spacing: 4) {
-                    Image(systemName: "circlebadge.slash.fill")
-                        .font(.system(size: 9))
-                        .foregroundStyle(.red.opacity(0.6))
-                    Text("\(character.loot)g lost")
-                        .font(.system(size: 10, weight: .medium))
-                        .foregroundStyle(.red.opacity(0.6))
-                }
-            }
-
-            // Status badge
-            if isExhausted && !isVictory {
-                Text("EXHAUSTED")
-                    .font(.system(size: 7, weight: .heavy))
-                    .foregroundStyle(.white)
-                    .padding(.horizontal, 6)
-                    .padding(.vertical, 2)
-                    .background(.red.opacity(0.7))
-                    .clipShape(Capsule())
-            }
-        }
-        .padding(12)
-        .frame(minWidth: 90)
-        .background(charColor.opacity(0.12))
-        .clipShape(RoundedRectangle(cornerRadius: 10))
-        .overlay(
-            RoundedRectangle(cornerRadius: 10)
-                .stroke(isExhausted && !isVictory ? .red.opacity(0.4) : charColor.opacity(0.3), lineWidth: 1)
-        )
     }
 
     // MARK: - Damage Mitigation Overlay

@@ -23,6 +23,7 @@ final class ScenarioManager {
         onBeforeMutate?()
         let scenario = Scenario(data: scenarioData)
         game.scenario = scenario
+        recordStartingTallies()
 
         // Determine if an event should be drawn before this scenario
         if scenarioData.eventType == "road" {
@@ -658,7 +659,17 @@ final class ScenarioManager {
         }
     }
 
-    private func resolveRewardInt(_ value: IntOrString) -> Int {
+    /// Note each character's experience and gold as the scenario begins (characters added
+    /// after the scenario was chosen are noted when the board is entered).
+    func recordStartingTallies() {
+        guard let scenario = game.scenario else { return }
+        for character in game.characters where scenario.startingExperience[character.id] == nil {
+            scenario.startingExperience[character.id] = character.experience
+            scenario.startingGold[character.id] = character.loot
+        }
+    }
+
+    func resolveRewardInt(_ value: IntOrString) -> Int {
         switch value {
         case .int(let v): return v
         case .string(let s): return evaluateEntityValue(.string(s), level: game.level,

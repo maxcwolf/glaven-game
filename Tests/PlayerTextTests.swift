@@ -14,7 +14,7 @@ final class PlayerTextTests: XCTestCase {
             (#"\b(gh|fh|jotl|cs|toa|bb|gh2e)-[a-z]"#, "edition-prefixed id"),
             (#"\b(char|summon|monster|objective)\("#, "PieceID description"),
             (#"[a-z]+-[a-z]+ #?\d"#, "monster slug"),
-            (#"#\d"#, "standee written as #n"),
+            (#"[A-Za-z] #\d"#, "standee written as #n"),   // "Bandit Guard #2"; "#1 Black Barrow" is a scenario
             (#"\(-?\d+, ?-?\d+\)"#, "grid coordinate"),
             (#"\.\.\."#, "three dots instead of …"),
             (#"\b[a-z]+[A-Z][a-z]+"#, "camelCase identifier"),

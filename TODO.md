@@ -222,9 +222,12 @@ Phase III — game feel
 
 Phase IV — the game around the board
 - [ ] Main menu key art, music and credits
-- [ ] Scenario intro card and a results screen (reason, XP gained, rewards, unlocks)
+- [x] Scenario intro card (goal, how it's lost, special rules — described from the data; reopened from a Goal chip) and a results screen (why it ended, XP gained plus the success bonus, gold, level-ups, rewards, unlocks) (`ScenarioFramingTests`)
 - [ ] Town hub from the existing party, shop, perk and world-map views; delete the remaining companion leftovers
 - [ ] Theme tokens and type scale for the board HUD; 11 pt minimum text; VoiceOver labels; snapshot and accessibility-audit tests
+
+Found along the way
+- [ ] Scenario rewards the game never grants: items (26 GH scenarios), character unlocks, collective gold, item designs, events, envelopes (`ScenarioManager.applyRewards`)
 
 ## Standalone Tools
 

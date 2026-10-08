@@ -21,6 +21,7 @@
 		092AB5BE3CCA94A1BDF57E91 /* ScenarioExpression.swift in Sources */ = {isa = PBXBuildFile; fileRef = F3E688CD5DBDBC4114FCA3F4 /* ScenarioExpression.swift */; };
 		09CA0023236EE4715652F858 /* TreasuresToolSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7EBC365D268B4E38F018A1A1 /* TreasuresToolSheet.swift */; };
 		0C1677F77D3A230F0485CB53 /* BoardSound.swift in Sources */ = {isa = PBXBuildFile; fileRef = A7E2165E5E511B9078052C55 /* BoardSound.swift */; };
+		0C9F28E05371C2CD265A5572 /* ScenarioResultsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF546B2E6909F44E7930DB07 /* ScenarioResultsView.swift */; };
 		0EACFB0AB8BDFFCC7F591795 /* PieceID.swift in Sources */ = {isa = PBXBuildFile; fileRef = 33CE037572CCD1CC45F5F131 /* PieceID.swift */; };
 		0ED8F49AA66E6EFF394D74FB /* RoomRevealSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = C71E84426D2ABC0169A5F5B5 /* RoomRevealSheet.swift */; };
 		15D2951A77CC1C086296F86D /* ScenarioMarkerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7050B86E677EE171AD0A3573 /* ScenarioMarkerView.swift */; };
@@ -45,6 +46,7 @@
 		2F5F780EA637CDD97D941E26 /* EditionEditorSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = C75AAD9571D2AFCF48AB0DA9 /* EditionEditorSheet.swift */; };
 		2F807259DA42BCE506285C72 /* HexGridView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6BB5848795BA4ADF8305822D /* HexGridView.swift */; };
 		310D2CC3F25CF06B8BC2B77C /* ScenarioChartSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 99F03C82524246E2BEF40702 /* ScenarioChartSheet.swift */; };
+		33FD3A501A143207CF670827 /* BoardCoordinator+Outcome.swift in Sources */ = {isa = PBXBuildFile; fileRef = 509EFE74015D273EBFFE3C19 /* BoardCoordinator+Outcome.swift */; };
 		344011EC30AA402F4F4FE2DD /* HighlightStyle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 85444C8330CF135ED8080DFA /* HighlightStyle.swift */; };
 		348B45E0F8996A22336E276D /* ActionValueType.swift in Sources */ = {isa = PBXBuildFile; fileRef = C03684D92E27E6D64CDEF9C0 /* ActionValueType.swift */; };
 		34E52CCA39FF59F3296B5135 /* BoardSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = 33A6C1188659B67AC3B2FFC8 /* BoardSnapshot.swift */; };
@@ -65,6 +67,7 @@
 		3EB5A309C4C479EFF33646F6 /* ConditionType.swift in Sources */ = {isa = PBXBuildFile; fileRef = D5883A3D9378A826BF8AA541 /* ConditionType.swift */; };
 		3F3056CF40C9CDCC92CD35F4 /* LevelDisplayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2F55692096B1C438FC27495E /* LevelDisplayView.swift */; };
 		3FBCF26F0423909E5CEE6891 /* DecksViewerSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = DAB7109B2A99838DA4616059 /* DecksViewerSheet.swift */; };
+		408F1DFBED7FF00698975ED0 /* BoardTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1ED388D23F2EFC9F14DE5E4F /* BoardTheme.swift */; };
 		4120712738BDF3001B571449 /* ConditionsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F504B60F3ECB989CA47A55AE /* ConditionsView.swift */; };
 		4270F50EFBD54ADD461ECF50 /* AttackModifier.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3E998CE7344F97D1E3E79A74 /* AttackModifier.swift */; };
 		428795E432235765EB962529 /* BoardCamera.swift in Sources */ = {isa = PBXBuildFile; fileRef = 84AAD1A669303376EFE4AB19 /* BoardCamera.swift */; };
@@ -224,6 +227,7 @@
 		DC76BF79136B777FBBE43EED /* BoardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 972A40BE4DE4A8FA037B3C54 /* BoardView.swift */; };
 		DCA52BAE9A3FFEBFDF0B09A1 /* LootApplySheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = DE6924302112D3289A7BD212 /* LootApplySheet.swift */; };
 		DD322F609614BE62080CCF73 /* TreasureLootSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = F392142C72301A9031A7BCDB /* TreasureLootSheet.swift */; };
+		DE9E85706CDE6761D44747CE /* ScenarioBrief.swift in Sources */ = {isa = PBXBuildFile; fileRef = 428BCB13DD817E6D115A502D /* ScenarioBrief.swift */; };
 		DFC9D0F4426EF99D1676F45D /* ScenarioSelectionSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = C13507E0E83D6C7F041CC9EA /* ScenarioSelectionSheet.swift */; };
 		E01C9ECF3DF99F10CE9CA044 /* SnapshotConversions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0DDDFB389ED2AF2B57163276 /* SnapshotConversions.swift */; };
 		E19F2D8A9AF73489894C30F3 /* SettingsManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 61565EFB4C520E3836D050C4 /* SettingsManager.swift */; };
@@ -250,6 +254,7 @@
 		F8B7262AB904EB81CB8E0AB3 /* BoardCoordinator+Rules.swift in Sources */ = {isa = PBXBuildFile; fileRef = 784104537FFDD30F2652C01D /* BoardCoordinator+Rules.swift */; };
 		F8EF92F34C6388C428209DFF /* AbilityCardsSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0EA8798471A1F92D1345582E /* AbilityCardsSheet.swift */; };
 		FA8FF36A45244A7C4E7A4A97 /* EventCardData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 19BA4A9C5EF312918BD519DA /* EventCardData.swift */; };
+		FE92425182B68DD26BBBD627 /* ScenarioBriefCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = B97936FE7C6DC6879E3A5861 /* ScenarioBriefCard.swift */; };
 		FF3BE9A379F14D0429881C64 /* LootDeckSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 47B5D11910EE81B42CCBF0C3 /* LootDeckSheet.swift */; };
 /* End PBXBuildFile section */
 
@@ -281,6 +286,7 @@
 		1A6A55C02339D884EA81120B /* PersonalQuestEvaluator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PersonalQuestEvaluator.swift; sourceTree = "<group>"; };
 		1BFD0B71E6987E420B5CBA91 /* DeckData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeckData.swift; sourceTree = "<group>"; };
 		1E5BE6C620EBFDD27F7F98C0 /* BoardScene.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BoardScene.swift; sourceTree = "<group>"; };
+		1ED388D23F2EFC9F14DE5E4F /* BoardTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BoardTheme.swift; sourceTree = "<group>"; };
 		2128F7307DB50A597FD504DB /* MonsterAbilityView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MonsterAbilityView.swift; sourceTree = "<group>"; };
 		269E644840BF690712FCF429 /* ScenarioStatsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScenarioStatsView.swift; sourceTree = "<group>"; };
 		2A627A875740C74A642DC8E7 /* ScenarioManager+Treasure.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ScenarioManager+Treasure.swift"; sourceTree = "<group>"; };
@@ -305,6 +311,7 @@
 		41D94C91FCB1BF3FC44B5F95 /* BoardCoordinator+Text.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "BoardCoordinator+Text.swift"; sourceTree = "<group>"; };
 		422B96003824AE1E41CF473C /* SaveSlotsSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SaveSlotsSheet.swift; sourceTree = "<group>"; };
 		42374DD85E631755D52BD747 /* AttackModifierCardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AttackModifierCardView.swift; sourceTree = "<group>"; };
+		428BCB13DD817E6D115A502D /* ScenarioBrief.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScenarioBrief.swift; sourceTree = "<group>"; };
 		42FD5AE1094742574DC0C0B9 /* LootDeck.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LootDeck.swift; sourceTree = "<group>"; };
 		4476120A6229F3C2DAD4CF5C /* SummonAI.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SummonAI.swift; sourceTree = "<group>"; };
 		46C86055EE9207207274F6C6 /* VGBScenarioData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VGBScenarioData.swift; sourceTree = "<group>"; };
@@ -317,6 +324,7 @@
 		4C2B76831C29EEA9CE98F5A8 /* CardSelectionPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CardSelectionPanel.swift; sourceTree = "<group>"; };
 		4CC400C04C45823B038513D4 /* LootCardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LootCardView.swift; sourceTree = "<group>"; };
 		50767A7BE617A46073BD3099 /* ItemBrowserSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ItemBrowserSheet.swift; sourceTree = "<group>"; };
+		509EFE74015D273EBFFE3C19 /* BoardCoordinator+Outcome.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "BoardCoordinator+Outcome.swift"; sourceTree = "<group>"; };
 		52347FEF6FA67664FBF7BF1A /* BundleHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BundleHelper.swift; sourceTree = "<group>"; };
 		524F8A9CD2904FC63166A232 /* EditionInfo.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EditionInfo.swift; sourceTree = "<group>"; };
 		52913A04AE6B4D7BDB9D8416 /* HeaderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HeaderView.swift; sourceTree = "<group>"; };
@@ -423,6 +431,7 @@
 		B84551835BADF4DA5F602FA6 /* MonsterStatModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MonsterStatModel.swift; sourceTree = "<group>"; };
 		B881C2715E0BC0457CC00B37 /* SavedGameModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SavedGameModel.swift; sourceTree = "<group>"; };
 		B90AB17781FA04ADADF656EB /* PreferencesSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreferencesSheet.swift; sourceTree = "<group>"; };
+		B97936FE7C6DC6879E3A5861 /* ScenarioBriefCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScenarioBriefCard.swift; sourceTree = "<group>"; };
 		BA5C6A163BDEB897E9993360 /* EscortTurnController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EscortTurnController.swift; sourceTree = "<group>"; };
 		BA81DDD9366A51A3A52F3C1B /* PerkType.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PerkType.swift; sourceTree = "<group>"; };
 		BCA279443E59250573E9D370 /* LogoView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LogoView.swift; sourceTree = "<group>"; };
@@ -499,6 +508,7 @@
 		FBE537F6F81289C6EEB5CDAD /* SummonColor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SummonColor.swift; sourceTree = "<group>"; };
 		FC6052E53C0E7221AF076DF1 /* NumberPickerSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NumberPickerSheet.swift; sourceTree = "<group>"; };
 		FC8D6BF7B24F45BABD529CA7 /* FigureType.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FigureType.swift; sourceTree = "<group>"; };
+		FF546B2E6909F44E7930DB07 /* ScenarioResultsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScenarioResultsView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -848,6 +858,7 @@
 				D8D120B1CEE8FA85B7939897 /* Pathfinder.swift */,
 				1A6A55C02339D884EA81120B /* PersonalQuestEvaluator.swift */,
 				33CE037572CCD1CC45F5F131 /* PieceID.swift */,
+				428BCB13DD817E6D115A502D /* ScenarioBrief.swift */,
 				F3E688CD5DBDBC4114FCA3F4 /* ScenarioExpression.swift */,
 				4476120A6229F3C2DAD4CF5C /* SummonAI.swift */,
 			);
@@ -902,10 +913,12 @@
 				06273638779D4902224E1602 /* BoardCoordinator.swift */,
 				A6B11F82C5E44D977254134D /* BoardCoordinator+Combat.swift */,
 				B6C9F8BE9CC7A895A0360304 /* BoardCoordinator+Movement.swift */,
+				509EFE74015D273EBFFE3C19 /* BoardCoordinator+Outcome.swift */,
 				784104537FFDD30F2652C01D /* BoardCoordinator+Rules.swift */,
 				82764E21991595370066BD2F /* BoardCoordinator+Spawning.swift */,
 				41D94C91FCB1BF3FC44B5F95 /* BoardCoordinator+Text.swift */,
 				1E5BE6C620EBFDD27F7F98C0 /* BoardScene.swift */,
+				1ED388D23F2EFC9F14DE5E4F /* BoardTheme.swift */,
 				972A40BE4DE4A8FA037B3C54 /* BoardView.swift */,
 				4C2B76831C29EEA9CE98F5A8 /* CardSelectionPanel.swift */,
 				EA732C1B11B1FD79F496753D /* DamageChoiceSheet.swift */,
@@ -917,6 +930,8 @@
 				E007CE4699064C661EBFDCB7 /* MovePlan.swift */,
 				DD9B9D4203B3CFD7D307E4EE /* PieceSpriteNode.swift */,
 				8A2BBA0188C2D10D81CAC68B /* PlayerTurnController.swift */,
+				B97936FE7C6DC6879E3A5861 /* ScenarioBriefCard.swift */,
+				FF546B2E6909F44E7930DB07 /* ScenarioResultsView.swift */,
 				5E6E7163EA81B6FEA0C1F76D /* SummonTurnController.swift */,
 				83EB9921D52AC61A5ADD3F0A /* TurnRailView.swift */,
 			);
@@ -1133,6 +1148,7 @@
 				428795E432235765EB962529 /* BoardCamera.swift in Sources */,
 				B8BA0DCB5F22292931347410 /* BoardCoordinator+Combat.swift in Sources */,
 				BF775F0114B6F567A1A74F92 /* BoardCoordinator+Movement.swift in Sources */,
+				33FD3A501A143207CF670827 /* BoardCoordinator+Outcome.swift in Sources */,
 				F8B7262AB904EB81CB8E0AB3 /* BoardCoordinator+Rules.swift in Sources */,
 				69153077728453EBEE92D7D4 /* BoardCoordinator+Spawning.swift in Sources */,
 				4CF3E8304E25558244E5481A /* BoardCoordinator+Text.swift in Sources */,
@@ -1141,6 +1157,7 @@
 				34E52CCA39FF59F3296B5135 /* BoardSnapshot.swift in Sources */,
 				0C1677F77D3A230F0485CB53 /* BoardSound.swift in Sources */,
 				9B0C1F1811587190DFECF3B7 /* BoardState.swift in Sources */,
+				408F1DFBED7FF00698975ED0 /* BoardTheme.swift in Sources */,
 				DC76BF79136B777FBBE43EED /* BoardView.swift in Sources */,
 				3D70D4B36FC1C27F8205C998 /* BundleHelper.swift in Sources */,
 				000550603398D6EC31B12E45 /* CampaignLogEntry.swift in Sources */,
@@ -1290,6 +1307,8 @@
 				4F40225C0F9D5F6D5493EAB0 /* SaveSlotsSheet.swift in Sources */,
 				C8BEF4631B318047240E63F6 /* SavedGameModel.swift in Sources */,
 				2B48DDA61518A823F10A6611 /* Scenario.swift in Sources */,
+				DE9E85706CDE6761D44747CE /* ScenarioBrief.swift in Sources */,
+				FE92425182B68DD26BBBD627 /* ScenarioBriefCard.swift in Sources */,
 				310D2CC3F25CF06B8BC2B77C /* ScenarioChartSheet.swift in Sources */,
 				3763EEB34ECABDBEA5739822 /* ScenarioConclusionSheet.swift in Sources */,
 				CC34ABA4C68311665619E8E3 /* ScenarioData.swift in Sources */,
@@ -1302,6 +1321,7 @@
 				7565ABBD5A2540499AF54879 /* ScenarioMapSheet.swift in Sources */,
 				8D637BC2C5EC03235144944A /* ScenarioMapStore.swift in Sources */,
 				15D2951A77CC1C086296F86D /* ScenarioMarkerView.swift in Sources */,
+				0C9F28E05371C2CD265A5572 /* ScenarioResultsView.swift in Sources */,
 				C2B13B3624B6F7A6EBA5D808 /* ScenarioRule.swift in Sources */,
 				0385D2502165BEC876DC27BD /* ScenarioRulesManager.swift in Sources */,
 				5D7C86C8790EF56EC97B4BDE /* ScenarioRulesView.swift in Sources */,

@@ -164,6 +164,18 @@ final class BoardCoordinator {
 
     /// A scenario result triggered this round; it takes effect at the end of the round (p.47).
     var pendingResult: ScenarioResult?
+    /// Why the scenario ended (or will, at the end of the round).
+    var endReason: ScenarioEndReason?
+
+    /// How the scenario's brief is showing: as its intro, or reopened from the Goal chip.
+    enum BriefPresentation { case intro, reminder }
+    var briefPresentation: BriefPresentation?
+
+    /// The goal, ways to lose and special rules of the scenario on the board.
+    var scenarioBrief: ScenarioBrief? {
+        guard let gameManager, let scenario = gameManager.game.scenario else { return nil }
+        return ScenarioBrief.make(for: scenario.data, labels: gameManager.editionStore)
+    }
 
     /// The active player turn controller (nil when monster/no turn).
     var activePlayerTurn: PlayerTurnController?
@@ -606,6 +618,7 @@ final class BoardCoordinator {
     /// Initialize the board for a scenario.
     func startScenario(scenario: VGBScenario, playerCount: Int) {
         resetForScenario(scenario)
+        briefPresentation = .intro
         let initialRefs = (gameManager?.game.scenario?.data.rooms ?? []).filter(\.isInitial).compactMap(\.ref)
         let (board, startingRoom) = BoardBuilder.buildStartingRoom(from: scenario, initialRoomRefs: initialRefs)
         self.boardState = board
@@ -667,6 +680,7 @@ final class BoardCoordinator {
     /// Clear everything left over from a previous scenario or turn.
     private func resetForScenario(_ scenario: VGBScenario) {
         scenarioData = scenario
+        briefPresentation = nil
         boardGeneration += 1
         pendingShortRest = nil
         pendingLongRest = nil
@@ -679,6 +693,7 @@ final class BoardCoordinator {
         interactionMode = .idle
         scenarioResult = nil
         pendingResult = nil
+        endReason = nil
         pendingRevealedStandees = [:]
         currentTurnToggled = false
         lastAttackTarget = nil
@@ -750,6 +765,7 @@ final class BoardCoordinator {
         cardSelectingCharacterID = nil
         scenarioResult = nil
         pendingResult = nil
+        endReason = nil
     }
 
     // MARK: - Character Placement (Setup Phase)
@@ -1225,6 +1241,7 @@ final class BoardCoordinator {
         // Defeat: every character is exhausted — nobody is left to act, so it's immediate.
         let allChars = gameManager.game.characters.filter { !$0.absent }
         if !allChars.isEmpty && allChars.allSatisfy({ $0.exhausted }) {
+            endReason = .partyExhausted
             endScenario(.defeat, message: "DEFEAT! All characters exhausted.")
             return
         }
@@ -1234,11 +1251,14 @@ final class BoardCoordinator {
         guard pendingResult == nil else { return }
 
         if let finish = gameManager.game.scenario?.pendingFinish {
+            let brief = gameManager.game.scenario.map { ScenarioBrief.make(for: $0.data, labels: gameManager.editionStore) }
             if finish == "won" {
                 pendingResult = .victory
+                endReason = .goalMet(brief?.goal ?? "The scenario's goal is met.")
                 log("Scenario goal achieved — the scenario ends at the end of this round.", category: .round)
             } else if finish == "lost" {
                 pendingResult = .defeat
+                endReason = .ruleLost(brief?.defeat.dropFirst().first ?? "A special rule is triggered.")
                 log("Scenario failed — the scenario ends at the end of this round.", category: .death)
             }
             return
@@ -1255,6 +1275,7 @@ final class BoardCoordinator {
         if !hasOwnWinCondition && enemiesHaveAppeared && allEnemiesDead && allRoomsRevealed
             && gameManager.game.round > 0 {
             pendingResult = .victory
+            endReason = .enemiesDefeated
             log("All enemies defeated — the scenario ends at the end of this round.", category: .round)
         }
     }

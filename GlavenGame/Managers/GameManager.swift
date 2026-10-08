@@ -197,6 +197,7 @@ final class GameManager {
         guard let scenario = game.scenario else { return }
         guard !game.activeCharacters.isEmpty else { return }
         guard boardCoordinator.boardScene == nil else { return } // already on board
+        scenarioManager.recordStartingTallies()
 
         let mapStore = ScenarioMapStore.shared
         guard let vgbScenario = mapStore.scenarioMap(for: scenario.data.index) else { return }

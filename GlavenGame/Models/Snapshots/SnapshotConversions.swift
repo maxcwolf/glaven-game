@@ -402,7 +402,10 @@ extension Scenario {
             revealedRooms: revealedRooms,
             additionalSections: additionalSections,
             appliedRules: appliedRules,
-            disabledRules: disabledRules
+            disabledRules: disabledRules,
+            killCounts: killCounts,
+            startingExperience: startingExperience,
+            startingGold: startingGold
         )
     }
 }
@@ -417,6 +420,9 @@ extension ScenarioSnapshot {
         scenario.additionalSections = additionalSections
         scenario.appliedRules = appliedRules
         scenario.disabledRules = disabledRules
+        scenario.killCounts = killCounts ?? [:]
+        scenario.startingExperience = startingExperience ?? [:]
+        scenario.startingGold = startingGold ?? [:]
         return scenario
     }
 }
