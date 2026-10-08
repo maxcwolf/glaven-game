@@ -228,6 +228,7 @@
 		E6E25B46F9DD8E50E5312036 /* MonsterAI.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8C9B002AD05945036550A91 /* MonsterAI.swift */; };
 		EA1E225C5D5505E47DB137D2 /* StandeeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8FCE30544909B82F328FB715 /* StandeeView.swift */; };
 		EA239D8884EBEB95DD674EA6 /* AddMonsterSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 880CE3020A2D75F0D0F81B01 /* AddMonsterSheet.swift */; };
+		ED9D3F8E14B8D7CFBE91954D /* TurnRailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 83EB9921D52AC61A5ADD3F0A /* TurnRailView.swift */; };
 		EDCEEF6D8D554CC027BD3467 /* MonsterStatsSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = EAE86DAD4E6E4F72291C7DEC /* MonsterStatsSheet.swift */; };
 		EE8A5ED34D7EB4585DBC98DD /* OverlayStickerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CF6C0E1CF27A9ECC9CFC529E /* OverlayStickerView.swift */; };
 		EEA4E83E55E0054C52800227 /* CardImages in Resources */ = {isa = PBXBuildFile; fileRef = 59BB047B07D1F118633A3DAF /* CardImages */; };
@@ -364,6 +365,7 @@
 		82764E21991595370066BD2F /* BoardCoordinator+Spawning.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "BoardCoordinator+Spawning.swift"; sourceTree = "<group>"; };
 		82F3F558C6B05ACE0A4DFB1F /* EntityConditionState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EntityConditionState.swift; sourceTree = "<group>"; };
 		83845896587772B83CB3E6B8 /* Loot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Loot.swift; sourceTree = "<group>"; };
+		83EB9921D52AC61A5ADD3F0A /* TurnRailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TurnRailView.swift; sourceTree = "<group>"; };
 		843CD4A48C04247D50F3C39A /* AttackModifierDeckDialog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AttackModifierDeckDialog.swift; sourceTree = "<group>"; };
 		851B045DDF55EA0BAE7BC954 /* WelcomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WelcomeView.swift; sourceTree = "<group>"; };
 		8631B220635598C0A14D982C /* BoardBuilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BoardBuilder.swift; sourceTree = "<group>"; };
@@ -901,6 +903,7 @@
 				DD9B9D4203B3CFD7D307E4EE /* PieceSpriteNode.swift */,
 				8A2BBA0188C2D10D81CAC68B /* PlayerTurnController.swift */,
 				5E6E7163EA81B6FEA0C1F76D /* SummonTurnController.swift */,
+				83EB9921D52AC61A5ADD3F0A /* TurnRailView.swift */,
 			);
 			path = Board;
 			sourceTree = "<group>";
@@ -1305,6 +1308,7 @@
 				DD322F609614BE62080CCF73 /* TreasureLootSheet.swift in Sources */,
 				46B94503244BB10D9E14A9F0 /* TreasureRewardParser.swift in Sources */,
 				09CA0023236EE4715652F858 /* TreasuresToolSheet.swift in Sources */,
+				ED9D3F8E14B8D7CFBE91954D /* TurnRailView.swift in Sources */,
 				6DB6AB6ED57EBE6DBFCC2A33 /* UIScale.swift in Sources */,
 				9BBD35DFA813946BF409C447 /* VGBScenarioData.swift in Sources */,
 				96F6AD9C57E22A6ABF4609D7 /* WelcomeView.swift in Sources */,

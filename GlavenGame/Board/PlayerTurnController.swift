@@ -167,6 +167,35 @@ final class PlayerTurnController {
         advancePhase()
     }
 
+    /// Skip just the current ability of this half (any ability may be skipped, GH p.16) and go
+    /// on to the next one. A pending target or hex selection for it is cancelled; an attack that
+    /// is already resolving must finish first.
+    func skipCurrentAction() {
+        guard let coordinator else { return }
+        if defaultAttackPending {
+            skipRemainingActions()
+            return
+        }
+        if awaitingAsync {
+            switch coordinator.interactionMode {
+            case .idle, .watchingMonsterTurn, .selectingPushPullHex:
+                return
+            default:
+                coordinator.interactionMode = .idle
+                coordinator.boardScene?.clearHighlights()
+                awaitingAsync = false
+            }
+        }
+        let count = phase == .executeTopAction ? topActions.count : bottomActions.count
+        guard phase == .executeTopAction || phase == .executeBottomAction else { return }
+        hasActed = true
+        if currentActionIndex + 1 < count {
+            currentActionIndex += 1
+        } else {
+            advancePhase()
+        }
+    }
+
     /// Use the default action for the current half instead of the printed one:
     /// Attack 2 on the top half, Move 2 on the bottom half.
     func useDefaultAction() {

@@ -25,6 +25,12 @@ struct BoardView: View {
             // HUD overlays
             VStack(spacing: 0) {
                 boardHUD
+                let rail = coordinator.turnRail
+                if !rail.isEmpty {
+                    TurnRailView(entries: rail)
+                        .padding(.horizontal)
+                        .padding(.bottom, 6)
+                }
                 HStack(alignment: .top, spacing: 0) {
                     // Left: character info cards
                     characterInfoPanel
@@ -348,7 +354,7 @@ struct BoardView: View {
                             .tint(.cyan)
                             .controlSize(.small)
 
-                            Button("Skip Half") {
+                            Button("Skip Rest of Half") {
                                 playerTurn.skipRemainingActions()
                             }
                             .buttonStyle(.bordered)
@@ -373,9 +379,6 @@ struct BoardView: View {
                 // Multi-target confirmation
                 if case .selectingMultiAttackTargets(_, _, _, let targetCount, let selected) = coordinator.interactionMode {
                     VStack(spacing: 4) {
-                        Text("Selecting targets: \(selected.count)/\(targetCount)")
-                            .font(.caption.weight(.bold))
-                            .foregroundStyle(.red)
                         if !selected.isEmpty {
                             Button("Confirm \(selected.count) Target\(selected.count == 1 ? "" : "s")") {
                                 coordinator.confirmMultiAttack()
@@ -388,35 +391,24 @@ struct BoardView: View {
                     .padding(.horizontal, 8)
                 }
 
+                instructionBanner
                 Spacer()
             }
-        } else if case .placingSummon(_, _, _) = coordinator.interactionMode,
-                  let pending = coordinator.pendingSummonPlacement {
-            HStack(spacing: 10) {
-                Image(systemName: "sparkles")
-                    .font(.title3)
-                    .foregroundStyle(.green)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("Place \(pending.summonName)")
-                        .font(.subheadline.weight(.bold))
-                        .foregroundStyle(.green)
-                    Text("Tap a green hex")
-                        .font(.caption)
-                        .foregroundStyle(.white.opacity(0.7))
-                }
-            }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 8)
-            .background(.green.opacity(0.15))
-            .clipShape(RoundedRectangle(cornerRadius: 8))
-            Spacer()
-        } else if case .watchingMonsterTurn = coordinator.interactionMode {
-            Text(coordinator.currentTurnEntry.map { "\(coordinator.figureName($0.figure)) acting\u{2026}" } ?? "Monsters acting\u{2026}")
-                .font(.subheadline)
-                .foregroundStyle(.white)
-            Spacer()
         } else {
+            instructionBanner
             Spacer()
+        }
+    }
+
+    /// What the board is waiting for, beside the action buttons so it never covers the board.
+    @ViewBuilder
+    private var instructionBanner: some View {
+        if let instruction = coordinator.instruction(for: coordinator.interactionMode) {
+            InstructionBanner(instruction: instruction, onSkip: coordinator.activePlayerTurn.map { turn in
+                { turn.skipCurrentAction() }
+            })
+            .transition(.opacity)
+            .animation(.easeInOut(duration: 0.2), value: instruction)
         }
     }
 

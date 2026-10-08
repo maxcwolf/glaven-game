@@ -33,6 +33,96 @@ extension BoardCoordinator {
         }
     }
 
+    /// One figure in the turn-order rail.
+    struct TurnRailEntry: Identifiable, Equatable {
+        enum State: Equatable { case done, current, upcoming }
+        enum Kind: Equatable { case character(edition: String, name: String), monster(edition: String, name: String), objective }
+        let id: String
+        let name: String
+        let initiative: Int
+        let state: State
+        let kind: Kind
+        /// A long-resting character acts at initiative 99.
+        let isLongRest: Bool
+    }
+
+    /// The round's turn order for the HUD rail: who has acted, who is acting, who is next.
+    var turnRail: [TurnRailEntry] {
+        guard boardPhase == .execution || boardPhase == .roomReveal else { return [] }
+        return turnOrder.enumerated().map { index, entry in
+            let state: TurnRailEntry.State = index == currentTurnIndex ? .current
+                : (entry.completed || index < currentTurnIndex ? .done : .upcoming)
+            let kind: TurnRailEntry.Kind
+            var longRest = false
+            switch entry.figure {
+            case .character(let c):
+                kind = .character(edition: c.edition, name: c.name)
+                longRest = c.longRest
+            case .monster(let m): kind = .monster(edition: m.edition, name: m.name)
+            case .objective: kind = .objective
+            }
+            return TurnRailEntry(id: entry.id.uuidString, name: figureName(entry.figure),
+                                 initiative: Int(entry.initiative.rounded(.up)), state: state, kind: kind,
+                                 isLongRest: longRest)
+        }
+    }
+
+    /// What the player is being asked to do on the board, for the instruction banner.
+    struct Instruction: Equatable {
+        /// The ability being resolved: "Attack 3, Range 2", "Move 4".
+        let title: String
+        /// What to tap: "Tap a ringed enemy to attack".
+        let detail: String
+        /// Whether "Skip this action" applies (the player's own ability is waiting for a choice).
+        let canSkip: Bool
+    }
+
+    /// The banner for the current interaction. Every mode has wording (the switch has no
+    /// default), so a new kind of choice can't appear on the board without telling the player.
+    func instruction(for mode: InteractionMode) -> Instruction? {
+        let ownTurn = activePlayerTurn != nil
+        switch mode {
+        case .idle:
+            return nil
+        case .placingCharacter(let id):
+            return Instruction(title: "Place \(characterName(id))", detail: "Tap a highlighted starting hex",
+                               canSkip: false)
+        case .selectingMove(_, let range, _, let teleport, let moveMode):
+            let verb = teleport ? "Teleport" : (moveMode == .jump ? "Jump" : (moveMode == .fly ? "Fly" : "Move"))
+            return Instruction(title: "\(verb) \(range)", detail: "Tap a highlighted hex to move there",
+                               canSkip: ownTurn)
+        case .selectingAttackTarget(_, let range, _):
+            let value = activePlayerTurn?.currentAttackValue()
+            let title = value.map { "Attack \($0), Range \(range)" } ?? "Attack, Range \(range)"
+            return Instruction(title: title, detail: "Tap a highlighted enemy to attack", canSkip: ownTurn)
+        case .selectingMultiAttackTargets(_, let range, _, let count, let selected):
+            let value = activePlayerTurn?.currentAttackValue()
+            let title = value.map { "Attack \($0), Range \(range)" } ?? "Attack, Range \(range)"
+            return Instruction(title: title,
+                               detail: "Tap up to \(count) enemies, then Confirm (\(selected.count) of \(count) chosen)",
+                               canSkip: ownTurn)
+        case .placingSummon(let summonID, _, _):
+            return Instruction(title: "Place \(name(.summon(id: summonID)))",
+                               detail: "Tap a highlighted hex next to your character", canSkip: false)
+        case .selectingPushPullHex(let target, _, _, let remaining, let isPush):
+            return Instruction(title: "\(isPush ? "Push" : "Pull") \(name(target))",
+                               detail: "Tap the hex to \(isPush ? "push" : "pull") them into (\(remaining) left)",
+                               canSkip: false)
+        case .selectingConditionTarget(_, let condition, _):
+            return Instruction(title: GameText.conditionName(condition),
+                               detail: "Tap a highlighted figure to apply it", canSkip: ownTurn)
+        case .selectingHealTarget(_, let value, _):
+            return Instruction(title: "Heal \(value)", detail: "Tap a highlighted ally to heal", canSkip: ownTurn)
+        case .selectingForcedMoveTarget(_, let steps, let isPush, _):
+            return Instruction(title: "\(isPush ? "Push" : "Pull") \(steps)",
+                               detail: "Tap a highlighted enemy to \(isPush ? "push" : "pull")", canSkip: ownTurn)
+        case .watchingMonsterTurn:
+            let actor = currentTurnEntry.map { figureName($0.figure) } ?? "The monsters"
+            return Instruction(title: "\(actor) \(currentTurnEntry == nil ? "are" : "is") acting",
+                               detail: "Monsters and summons take their turns on their own", canSkip: false)
+        }
+    }
+
     /// The round to show in the HUD, or nil before the first round. During card selection this is
     /// the round the cards are being chosen for (the game's round counter moves on when play starts).
     var displayedRound: Int? {
