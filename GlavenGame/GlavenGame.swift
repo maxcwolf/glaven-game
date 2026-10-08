@@ -78,8 +78,8 @@ public struct GlavenGameApp: App {
         }
         .commands {
             CommandGroup(after: .newItem) {
-                Button("New Game") {
-                    gameManager.newGame()
+                Button("New Campaign…") {
+                    gameManager.requestNewGame()
                 }
                 .keyboardShortcut("n", modifiers: [.command, .shift])
             }

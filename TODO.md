@@ -188,6 +188,41 @@ Tracking features needed for parity with [Gloomhaven Secretariat](https://github
 - [x] Responsive layout (sidebar on wide screens)
 - [x] Accessibility (VoiceOver, Dynamic Type)
 
+Most of the items above belong to the companion-app views, which the game itself no longer
+reaches; `ContentView` only shows the main menu, the party screen and the board.
+
+### Look & feel audit 2026-10-08 (`docs/audits/2026-10-08-ux-audit.pdf`)
+
+Phase I — safety & words (done)
+- [x] Autosave at the start of every round, at scenario end and on Save & Quit; Continue resumes the board at the saved round (`SaveAndContinueTests`)
+- [x] Exit replaced by a game menu (Save & Quit, Abandon with confirmation); "‹ Menu" no longer wipes the campaign; New Game confirms and tears down the board
+- [x] Player-facing names everywhere (`GameText`): no ids, coordinates or enum names in the log, HUD or buttons; coordinates kept as log traces for transcripts (`PlayerTextTests`)
+- [x] HUD heading names whose turn it is; no "Round 0"; action buttons read "Attack 3, Range 2"; card selection says Lead / Second
+- [x] Board elements are display-only, with a distinct "infused this turn" look
+- [x] No `NSSound.beep()` on the Mac; haptics follow their own toggle; launch sting respects the sound setting
+- [x] Settings trimmed to what works; Animation Speed drives the board's animations and turn pauses (`SettingsWiringTests`)
+
+Phase II — readable board
+- [ ] Monster tokens from thumbnails with standee badge and elite plate; HP bar and condition chips on every token
+- [ ] Initiative rail and an instruction banner for every selecting mode (with Skip action / Cancel)
+- [ ] Multi-hex and rotated overlays drawn on every cell (~330 in the scenario maps)
+- [ ] Hex hit-testing via `pixelToHex`; tapping a highlighted hex targets the figure on it
+- [ ] Content-sized, collapsible side panels; layout doesn't shift between phases or when a character is added on the party screen
+- [ ] `HighlightStyle` per interaction with colour-blind-safe hues and shape cues
+
+Phase III — game feel
+- [ ] Effects layer: attack lines/lunges, outlined damage/heal/miss text that survives a death, condition pops
+- [ ] Eased movement; distinct jump, fly, teleport and forced-move animations
+- [ ] Modifier draws in a docked tray (real card art); monster draws resolve without a modal; damage choice as select-then-confirm
+- [ ] Camera: fit to board, clamp, anchored zoom, follow the acting figure; macOS click-vs-drag
+- [ ] Room reveal without rebuilding the scene; board sound effects
+
+Phase IV — the game around the board
+- [ ] Main menu key art, music and credits
+- [ ] Scenario intro card and a results screen (reason, XP gained, rewards, unlocks)
+- [ ] Town hub from the existing party, shop, perk and world-map views; delete the remaining companion leftovers
+- [ ] Theme tokens and type scale for the board HUD; 11 pt minimum text; VoiceOver labels; snapshot and accessibility-audit tests
+
 ## Standalone Tools
 
 - [x] Attack modifier tool (standalone deck builder)

@@ -25,13 +25,13 @@ final class MonsterTurnController {
         guard !monster.off, !monster.aliveEntities.isEmpty else { return }
 
         guard let ability = gameManager.monsterManager.currentAbility(for: monster) else {
-            coordinator.log("\(monster.name): No ability card drawn", category: .info)
+            coordinator.log("\(coordinator.monsterTypeName(monster.name)) has no ability card", category: .info)
             return
         }
 
         isExecuting = true
         defer { isExecuting = false }
-        coordinator.log("\(monster.name) — \(ability.name ?? "ability") (initiative \(ability.initiative))", category: .round)
+        coordinator.log("\(coordinator.monsterTypeName(monster.name))\u{2019}s turn: \(ability.name ?? "ability card") (\(ability.initiative))", category: .round)
 
         let actions = ability.actions ?? []
 
@@ -60,7 +60,7 @@ final class MonsterTurnController {
             guard !entity.dead, coordinator.isOnBoard(pieceID) else { continue }
 
             if MonsterAI.isActive(.stun, on: entity) {
-                coordinator.log("  \(coordinator.pieceLabel(pieceID)): Stunned — no actions", category: .condition)
+                coordinator.log("\(coordinator.name(pieceID)) is stunned and loses the turn", category: .condition)
             } else {
                 anyActed = true
                 if consumed == nil { consumed = consumeElements(in: actions) }
@@ -81,7 +81,7 @@ final class MonsterTurnController {
         if anyActed {
             for element in MonsterAbility.elementInfusions(in: actions, consumed: consumed ?? []) {
                 gameManager.game.infuseElement(element)
-                coordinator.log("  \(monster.name): Infused \(element.rawValue)", category: .element)
+                coordinator.log("\(coordinator.monsterTypeName(monster.name)) infuses \(GameText.elementName(element))", category: .element)
             }
         }
     }
@@ -93,7 +93,7 @@ final class MonsterTurnController {
         for action in MonsterAbility.elementConsumes(in: actions) {
             if let used = game.consumeElements(MonsterAbility.elements(of: action)) {
                 paid.insert(action.id)
-                coordinator.log("  Consumed \(used.map(\.rawValue).joined(separator: " + "))", category: .element)
+                coordinator.log("\(GameText.list(used.map(GameText.elementName))) consumed", category: .element)
             }
         }
         return paid
@@ -136,7 +136,7 @@ final class MonsterTurnController {
             state.focusChosen = true
             state.focus = currentTurn().focusTarget
             if state.focus == nil && (MonsterAbility.hasAttack(actions) || actions.contains { $0.type == .move }) {
-                coordinator.log("  \(coordinator.pieceLabel(pieceID)): No focus", category: .info)
+                coordinator.log("\(coordinator.name(pieceID)) finds no enemy to focus on", category: .info)
             }
         }
 
@@ -147,14 +147,15 @@ final class MonsterTurnController {
             case .move:
                 guard state.focus != nil else { continue }
                 if MonsterAI.isActive(.immobilize, on: entity) {
-                    coordinator.log("  \(coordinator.pieceLabel(pieceID)): Immobilized", category: .condition)
+                    coordinator.log("\(coordinator.name(pieceID)) is immobilized and can\u{2019}t move", category: .condition)
                     continue
                 }
                 let plan = currentTurn()
                 if let newFocus = plan.focusTarget { state.focus = newFocus }
                 guard plan.movementPath.count > 1 else { continue }
-                coordinator.log("  \(coordinator.pieceLabel(pieceID)): Move \(plan.movementPath.count - 1) to \(plan.movementPath.last!)",
-                                category: .move)
+                let steps = plan.movementPath.count - 1
+                coordinator.log("\(coordinator.name(pieceID)) moves \(steps) hex\(steps == 1 ? "" : "es")",
+                                category: .move, trace: "to \(plan.movementPath.last!)")
                 let style: MovementStyle = monster.monsterData?.flying == true ? .fly : (plan.jumping ? .jump : .normal)
                 await coordinator.moveAlong(pieceID, path: plan.movementPath, style: style)
                 state.hexesMoved += plan.movementPath.count - 1
@@ -162,7 +163,7 @@ final class MonsterTurnController {
             case .attack:
                 if MonsterAI.isActive(.disarm, on: entity) {
                     if !state.reportedDisarm {
-                        coordinator.log("  \(coordinator.pieceLabel(pieceID)): Disarmed — no attack", category: .condition)
+                        coordinator.log("\(coordinator.name(pieceID)) is disarmed and can\u{2019}t attack", category: .condition)
                         state.reportedDisarm = true
                     }
                     continue
@@ -178,7 +179,7 @@ final class MonsterTurnController {
                 let targets = MonsterAI.targets(for: spec, from: position, focus: target, focusPos: focusPos,
                                                 enemies: enemies, board: coordinator.boardState, gameState: game)
                 if targets.isEmpty {
-                    coordinator.log("  \(coordinator.pieceLabel(pieceID)): Focus out of reach", category: .move)
+                    coordinator.log("\(coordinator.name(pieceID)) can\u{2019}t reach its focus", category: .move)
                     continue
                 }
                 for victim in targets {
@@ -219,7 +220,7 @@ final class MonsterTurnController {
 
             case .sufferDamage, .suffer:
                 let amount = action.value?.intValue ?? 0
-                coordinator.log("  \(coordinator.pieceLabel(pieceID)): Suffers \(amount) damage", category: .damage)
+                coordinator.log("\(coordinator.name(pieceID)) suffers \(amount) damage", category: .damage)
                 coordinator.sufferDamage(amount, to: pieceID)
 
             case .loot:
@@ -234,9 +235,9 @@ final class MonsterTurnController {
                 // resolved by the players.
                 let index = (action.value?.intValue ?? 1) - 1
                 guard let special = stat?.special, index >= 0, index < special.count else { continue }
-                coordinator.log("  \(coordinator.pieceLabel(pieceID)): Special \(index + 1)", category: .info)
+                coordinator.log("\(coordinator.name(pieceID)) uses special ability \(index + 1)", category: .info)
                 if special[index].contains(where: { $0.type == .custom }) {
-                    coordinator.log("  Resolve the boss's special ability \(index + 1) as printed on its stat card",
+                    coordinator.log("Resolve the boss\u{2019}s special ability \(index + 1) as printed on its stat card",
                                     category: .info)
                 }
                 let specialActions = special[index].filter { $0.type != .custom }
@@ -301,8 +302,8 @@ final class MonsterTurnController {
             return lostA < lostB
         } ?? pieceID
         let healed = coordinator.heal(target, amount: amount, source: pieceID)
-        coordinator.log("  \(coordinator.pieceLabel(pieceID)) → \(coordinator.pieceLabel(target)): Heal \(amount) (+\(healed))",
-                        category: .heal)
+        coordinator.log("\(coordinator.name(pieceID)) heals \(coordinator.name(target)) for \(healed)",
+                        category: .heal, trace: "Heal \(amount)")
     }
 
     /// Conditions, push or pull applied to the figures named by a `specialTarget`
@@ -373,7 +374,7 @@ final class MonsterTurnController {
                                                      offsetRow: coordinator.offsetRow)
         }
         if taken > 0 {
-            coordinator.log("  \(coordinator.pieceLabel(pieceID)): Looted \(taken) money token(s)", category: .loot)
+            coordinator.log("\(coordinator.name(pieceID)) loots \(taken) money token\(taken == 1 ? "" : "s")", category: .loot)
         }
     }
 
@@ -386,7 +387,7 @@ final class MonsterTurnController {
         for spec in specs {
             let type = spec.type(forPlayerCount: characterCount)
             if !coordinator.summonMonster(name: spec.name, type: type, near: pieceID) {
-                coordinator.log("  \(coordinator.pieceLabel(pieceID)): Summon \(spec.name) failed", category: .info)
+                coordinator.log("\(coordinator.name(pieceID)) can\u{2019}t summon \(coordinator.monsterTypeName(spec.name)): no room", category: .info)
             }
         }
     }

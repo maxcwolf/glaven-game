@@ -32,12 +32,12 @@ extension BoardCoordinator {
             }
         }
         guard let monster = game.monsters.first(where: { $0.name == spec.name }) else {
-            log("Unknown monster \(rawName)", category: .info)
+            log("A monster could not be placed", category: .info, trace: "unknown monster \(rawName)")
             return nil
         }
 
         guard let number = gameManager.monsterManager.availableStandeeNumbers(for: monster).first else {
-            log("No \(spec.name) standee available — none placed", category: .setup)
+            log("No \(monsterTypeName(spec.name)) standee is left, so none is placed", category: .setup)
             return nil
         }
         let destination = !boardState.isOccupied(coord) && boardState.isPassable(coord)
@@ -92,7 +92,7 @@ extension BoardCoordinator {
             return da == db ? (a.col, a.row) < (b.col, b.row) : da < db
         }) else { return false }
         guard let pieceID = spawnMonster(name: name, type: type, at: spot, origin: .summoned) else { return false }
-        log("\(pieceLabel(summoner)): Summoned \(pieceLabel(pieceID))", category: .setup)
+        log("\(self.name(summoner)) summons \(self.name(pieceID))", category: .setup)
         return true
     }
 

@@ -197,6 +197,39 @@ enum CombatResolver {
         return parts.joined(separator: " ") + " = \(finalDamage)"
     }
 
+    /// The same sum in the battle log's words: "2 + 1 − 1 shield = 2 damage", "miss".
+    static func readableBreakdown(
+        base: Int,
+        isPoisoned: Bool,
+        preDrawnCards: [AttackModifier],
+        shield: Int,
+        pierce: Int = 0,
+        isMiss: Bool,
+        finalDamage: Int
+    ) -> String {
+        if isMiss || preDrawnCards.contains(where: { $0.valueType == .multiply && $0.value == 0 }) {
+            return "miss"
+        }
+        var text = "\(base)"
+        if isPoisoned { text += " + 1 poison" }
+        for card in preDrawnCards {
+            if card.valueType == .multiply {
+                text += " ×\(card.value)"
+            } else {
+                text += card.value >= 0 ? " + \(card.value)" : " − \(-card.value)"
+            }
+        }
+        let totalPierce = pierce + preDrawnCards.flatMap(\.effects)
+            .filter { $0.type == .pierce }
+            .compactMap { $0.value?.intValue }
+            .reduce(0, +)
+        let effectiveShield = max(0, shield - totalPierce)
+        if effectiveShield > 0 {
+            text += " − \(effectiveShield) shield"
+        }
+        return text + " = " + (finalDamage == 0 ? "no damage" : "\(finalDamage) damage")
+    }
+
     // MARK: - Advantage / Disadvantage
 
     /// Draw the modifier cards for one attack and return the cards that apply.

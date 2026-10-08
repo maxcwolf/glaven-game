@@ -379,7 +379,7 @@ final class BoardRulesRegressionTests: XCTestCase {
         turn.setBottomFirst(true)
         turn.executeCurrentAction() // Attack 1, Range 2, Stun: no target
         turn.executeCurrentAction() // ice, +1 XP
-        XCTAssertEqual(coord.turnLog.filter { $0.message.hasSuffix("Infused ice") }.count, 1)
+        XCTAssertEqual(coord.turnLog.filter { $0.message.hasSuffix("infuses Ice") }.count, 1)
         XCTAssertEqual(mindthief.experience, 1)
     }
 

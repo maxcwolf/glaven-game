@@ -88,7 +88,7 @@ extension BoardCoordinator {
     func applyCondition(_ condition: ConditionName, to pieceID: PieceID) {
         guard let gameManager, let entity = entity(for: pieceID) else { return }
         guard !entity.immunities.contains(condition) else {
-            log("  \(pieceLabel(pieceID)): immune to \(condition.rawValue)", category: .condition)
+            log("\(name(pieceID)) is immune to \(GameText.conditionName(condition))", category: .condition)
             return
         }
         if condition == .curse || condition == .bless {
@@ -110,7 +110,7 @@ extension BoardCoordinator {
         } else {
             gameManager.entityManager.addCondition(condition, to: entity)
         }
-        log("  \(pieceLabel(pieceID)): \(condition.rawValue) applied", category: .condition)
+        log("\(name(pieceID)) gains \(GameText.conditionName(condition))", category: .condition)
     }
 
     // MARK: - Damage & Death
@@ -172,14 +172,14 @@ extension BoardCoordinator {
             guard losableHandCards(of: character).contains(cardId),
                   let index = character.handCards.firstIndex(of: cardId) else { return false }
             character.lostCards.append(character.handCards.remove(at: index))
-            log("  \(character.id): Lost a hand card to negate \(damage) damage", category: .damage)
+            log("\(characterName(character.id)) loses a card from hand to prevent \(damage) damage", category: .damage)
             return true
         case .loseDiscardCards(let indices):
             guard indices.count >= 2 else { return false }
             for idx in indices.sorted(by: >) where idx < character.discardedCards.count {
                 character.lostCards.append(character.discardedCards.remove(at: idx))
             }
-            log("  \(character.id): Lost 2 discarded cards to negate \(damage) damage", category: .damage)
+            log("\(characterName(character.id)) loses 2 discarded cards to prevent \(damage) damage", category: .damage)
             return true
         }
     }
@@ -201,7 +201,7 @@ extension BoardCoordinator {
                 return
             }
             entity.dead = true
-            log("\(pieceLabel(pieceID)): Killed!", category: .death)
+            log("\(self.name(pieceID)) dies", category: .death)
             // GH p.19: a money token drops where a monster dies unless it was summoned or spawned;
             // bosses and named monsters drop none either.
             if entity.summonState == nil && entity.type != .boss && !monster.isBoss {
@@ -217,7 +217,7 @@ extension BoardCoordinator {
             if let owner = summonOwner(of: pieceID),
                let summon = owner.summons.first(where: { $0.id == id }) {
                 summon.dead = true
-                log("\(summon.name): Killed!", category: .death)
+                log("\(name(pieceID)) dies", category: .death)
             }
             removePieceFromBoard(pieceID)
         case .objective(let number):
@@ -226,7 +226,7 @@ extension BoardCoordinator {
                     entity.dead = true
                 }
             }
-            log("\(pieceLabel(pieceID)): Destroyed!", category: .death)
+            log("\(name(pieceID)) is destroyed", category: .death)
             removePieceFromBoard(pieceID)
             gameManager.scenarioRulesManager.evaluateRules()
         }
@@ -244,7 +244,7 @@ extension BoardCoordinator {
         character.activeCards = []
         character.roundBonusCards = []
         character.lostWhenRemoved = []
-        log("\(character.id): Exhausted (\(reason))", category: .death)
+        log("\(characterName(character.id)) is exhausted", category: .death, trace: reason)
         gameManager?.scenarioStatsManager.recordExhausted(character.name)
         removePieceFromBoard(.character(character.id))
         if let turn = activePlayerTurn, turn.characterID == character.id {

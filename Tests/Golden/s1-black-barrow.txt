@@ -1,9 +1,9 @@
 Scenario 1: Black Barrow
 7 starting locations available
-Placed gh-brute at (3, 1)
-Placed gh-spellweaver at (4, 2)
-Placed gh-cragheart at (3, 2)
-Placed gh-scoundrel at (3, 4)
+Brute takes position [at (3,1)]
+Spellweaver takes position [at (4,2)]
+Cragheart takes position [at (3,2)]
+Scoundrel takes position [at (3,4)]
 === Round 1 ===
 --- state after round 0 ---
 elements: none
@@ -18,56 +18,56 @@ bandit-guard #4 normal (0,2) hp 6/6
 bandit-guard #5 normal (0,4) hp 6/6
 bandit-guard #6 normal (0,6) hp 6/6
 doors open: 0/1
-gh-brute: TOP Leaping Cleave (init 54) / BTM Overwhelming Assault
-gh-spellweaver: TOP Flame Strike (init 36) / BTM Fire Orbs
-gh-cragheart: TOP Rumbling Advance (init 29) / BTM Avalanche
-gh-scoundrel: TOP Flanking Strike (init 4) / BTM Special Mixture
-bandit-guard: drew ability (initiative 35)
-Turn order: scoundrel(4), cragheart(29), bandit-guard(35), spellweaver(36), brute(54)
-gh-scoundrel: Turn begins — TOP: Flanking Strike / BTM: Special Mixture
-gh-scoundrel: Move 3
-char(gh-scoundrel): Moved to (1, 5)
-gh-scoundrel: poison — select target
-char(gh-scoundrel): poison → bandit-guard#2
-  bandit-guard #2: poison applied
-gh-scoundrel: Attack 3, Range 1
-scoundrel → bandit-guard #2: 3 +1(poison) +1(mod) -1(shield) = 4
-gh-scoundrel: Turn complete
-gh-cragheart: Turn begins — TOP: Rumbling Advance / BTM: Avalanche
-gh-cragheart: Top from Avalanche, bottom from Rumbling Advance
-gh-cragheart: Move 2
-char(gh-cragheart): Moved to (1, 1)
-gh-cragheart: Infused earth
-gh-cragheart: Attack 4, Range 1
-gh-cragheart: +1 XP
-char(gh-cragheart): Area attack hits 1 enemy
-cragheart → bandit-guard #1: 4 +0(mod) -1(shield) = 3
-gh-cragheart: Turn complete
-bandit-guard — ability (initiative 35)
-bandit-guard #1 → cragheart: 3 -1(mod) = 2
-bandit-guard #2 → scoundrel: MISS
-bandit-guard #3 → cragheart: 2 +0(mod) = 2
-bandit-guard #4 → cragheart: 2 +2(mod) = 4
-bandit-guard #5 → scoundrel: 2 ×2(mod) = 4
-bandit-guard #6 → scoundrel: 2 -1(mod) = 1
-gh-spellweaver: Turn begins — TOP: Flame Strike / BTM: Fire Orbs
-gh-spellweaver: Top from Fire Orbs, bottom from Flame Strike
-gh-spellweaver: Attack 3, Range 3, Target 3
-char(gh-spellweaver): No valid targets in range 3
-gh-spellweaver: Infused fire
-gh-spellweaver: Attack 2, Range 2
-char(gh-spellweaver): No valid targets in range 2
-gh-spellweaver: Turn complete
-gh-brute: Turn begins — TOP: Leaping Cleave / BTM: Overwhelming Assault
-gh-brute: Top from Overwhelming Assault, bottom from Leaping Cleave
-gh-brute: Jump 3
-char(gh-brute): Moved to (1, 0)
-gh-brute: Infused air
-gh-brute: Attack 6, Range 1
-brute → bandit-guard #1: 6 +0(mod) -1(shield) = 5
-gh-brute: +2 XP
-gh-brute: Turn complete
-gh-scoundrel: Skipped short rest
+Brute plays Leaping Cleave (54) and Overwhelming Assault
+Spellweaver plays Flame Strike (36) and Fire Orbs
+Cragheart plays Rumbling Advance (29) and Avalanche
+Scoundrel plays Flanking Strike (4) and Special Mixture
+Bandit Guard draws an ability card (35)
+Turn order: Scoundrel 4, Cragheart 29, Bandit Guard 35, Spellweaver 36, Brute 54
+Scoundrel’s turn: Flanking Strike and Special Mixture
+Scoundrel: Move 3
+Scoundrel moves 2 hexes [to (1,5)]
+Scoundrel: Poison. Choose a target
+Scoundrel applies Poison to Bandit Guard 2
+Bandit Guard 2 gains Poison
+Scoundrel: Attack 3, Range 1
+Scoundrel attacks Bandit Guard 2: 3 + 1 poison + 1 − 1 shield = 4 damage [3 +1(poison) +1(mod) -1(shield) = 4]
+Scoundrel ends the turn
+Cragheart’s turn: Rumbling Advance and Avalanche
+Cragheart takes the top half from Avalanche and the bottom half from Rumbling Advance
+Cragheart: Move 2
+Cragheart moves 2 hexes [to (1,1)]
+Cragheart infuses Earth
+Cragheart: Attack 4, Range 1
+Cragheart gains 1 XP
+Cragheart’s area attack hits 1 enemy
+Cragheart attacks Bandit Guard 1: 4 + 0 − 1 shield = 3 damage [4 +0(mod) -1(shield) = 3]
+Cragheart ends the turn
+Bandit Guard’s turn: ability card (35)
+Bandit Guard 1 attacks Cragheart: 3 − 1 = 2 damage [3 -1(mod) = 2]
+Bandit Guard 2 attacks Scoundrel: miss [MISS]
+Bandit Guard 3 attacks Cragheart: 2 + 0 = 2 damage [2 +0(mod) = 2]
+Bandit Guard 4 attacks Cragheart: 2 + 2 = 4 damage [2 +2(mod) = 4]
+Bandit Guard 5 attacks Scoundrel: 2 ×2 = 4 damage [2 ×2(mod) = 4]
+Bandit Guard 6 attacks Scoundrel: 2 − 1 = 1 damage [2 -1(mod) = 1]
+Spellweaver’s turn: Flame Strike and Fire Orbs
+Spellweaver takes the top half from Fire Orbs and the bottom half from Flame Strike
+Spellweaver: Attack 3, Range 3, Target 3
+Spellweaver has no target within range 3
+Spellweaver infuses Fire
+Spellweaver: Attack 2, Range 2
+Spellweaver has no target within range 2
+Spellweaver ends the turn
+Brute’s turn: Leaping Cleave and Overwhelming Assault
+Brute takes the top half from Overwhelming Assault and the bottom half from Leaping Cleave
+Brute: Jump 3
+Brute moves 3 hexes [to (1,0)]
+Brute infuses Air
+Brute: Attack 6, Range 1
+Brute attacks Bandit Guard 1: 6 + 0 − 1 shield = 5 damage [6 +0(mod) -1(shield) = 5]
+Brute gains 2 XP
+Brute ends the turn
+Scoundrel skips the short rest
 Round 1 complete
 === Round 2 ===
 --- state after round 1 ---
@@ -83,61 +83,61 @@ bandit-guard #4 normal (0,2) hp 6/6
 bandit-guard #5 normal (0,4) hp 6/6
 bandit-guard #6 normal (0,6) hp 6/6
 doors open: 0/1
-gh-scoundrel: TOP Backstab (init 6) / BTM Thief's Knack
-gh-cragheart: TOP Earthen Clod (init 38) / BTM Massive Boulder
-gh-spellweaver: TOP Mana Bolt (init 7) / BTM Impaling Eruption
-gh-brute: TOP Spare Dagger (init 27) / BTM Trample
-bandit-guard: drew ability (initiative 50)
-Turn order: scoundrel(6), spellweaver(7), brute(27), cragheart(38), bandit-guard(50)
-gh-scoundrel: Turn begins — TOP: Backstab / BTM: Thief's Knack
-gh-scoundrel: Attack 3, Range 1
-scoundrel → bandit-guard #2: 3 +1(poison) +0(mod) -1(shield) = 3
-gh-scoundrel: Attack 3, Range 1
-gh-scoundrel: +1 XP
-scoundrel → bandit-guard #2: 3 +1(poison) -2(mod) -1(shield) = 1
-gh-scoundrel: Turn complete
-gh-spellweaver: Turn begins — TOP: Mana Bolt / BTM: Impaling Eruption
-gh-spellweaver: Top from Impaling Eruption, bottom from Mana Bolt
-gh-spellweaver: Attack 3, Range 4
-spellweaver → bandit-guard #1: 3 +0(mod) -1(shield) = 2
-bandit-guard #1: Killed!
-Loot token dropped at (0, 1)
-gh-spellweaver: Infused earth
-gh-spellweaver: Heal 3, Range 1 — select target
-char(gh-spellweaver) → char(gh-spellweaver): Heal 3 (+0)
-gh-spellweaver: Turn complete
-gh-brute: Turn begins — TOP: Spare Dagger / BTM: Trample
-gh-brute: Attack 3, Range 3
-brute → bandit-guard #3: MISS
-gh-brute: +1 XP
-gh-brute: Jump 4
-char(gh-brute): Moved to (1, 2)
-gh-brute: Attack 2, Range 1
-brute → bandit-guard #4: 2 -1(mod) = 1
-gh-brute: +2 XP
-gh-brute: Turn complete
-gh-cragheart: Turn begins — TOP: Earthen Clod / BTM: Massive Boulder
-gh-cragheart: Top from Massive Boulder, bottom from Earthen Clod
-gh-cragheart: Attack 3, Range 3
-cragheart → bandit-guard #4: 3 +1(mod) = 4
-gh-cragheart: Infused earth
-gh-cragheart: Heal 2, Range 3 — select target
-char(gh-cragheart) → char(gh-cragheart): Heal 2 (+2)
-gh-cragheart: Turn complete
-bandit-guard — ability (initiative 50)
-bandit-guard #2 → scoundrel: 3 -1(mod) = 2
-  bandit-guard #3: Move 1 to (0,1)
-bandit-guard #3 → brute: 2 +0(mod) = 2
-bandit-guard #4 → brute: 2 -1(mod) = 1
-  bandit-guard #5: Move 1 to (1,4)
-bandit-guard #5 → scoundrel: 2 ×2(mod) = 4
-  gh-scoundrel: Lost 2 discarded cards to negate 4 damage
-  bandit-guard #6: Move 1 to (1,6)
-bandit-guard #6 → scoundrel: 2 +0(mod) = 2
-  gh-scoundrel: Lost a hand card to negate 2 damage
-gh-spellweaver: Skipped short rest
-gh-brute: Skipped short rest
-gh-cragheart: Skipped short rest
+Scoundrel plays Backstab (6) and Thief's Knack
+Cragheart plays Earthen Clod (38) and Massive Boulder
+Spellweaver plays Mana Bolt (7) and Impaling Eruption
+Brute plays Spare Dagger (27) and Trample
+Bandit Guard draws an ability card (50)
+Turn order: Scoundrel 6, Spellweaver 7, Brute 27, Cragheart 38, Bandit Guard 50
+Scoundrel’s turn: Backstab and Thief's Knack
+Scoundrel: Attack 3, Range 1
+Scoundrel attacks Bandit Guard 2: 3 + 1 poison + 0 − 1 shield = 3 damage [3 +1(poison) +0(mod) -1(shield) = 3]
+Scoundrel: Attack 3, Range 1
+Scoundrel gains 1 XP
+Scoundrel attacks Bandit Guard 2: 3 + 1 poison − 2 − 1 shield = 1 damage [3 +1(poison) -2(mod) -1(shield) = 1]
+Scoundrel ends the turn
+Spellweaver’s turn: Mana Bolt and Impaling Eruption
+Spellweaver takes the top half from Impaling Eruption and the bottom half from Mana Bolt
+Spellweaver: Attack 3, Range 4
+Spellweaver attacks Bandit Guard 1: 3 + 0 − 1 shield = 2 damage [3 +0(mod) -1(shield) = 2]
+Bandit Guard 1 dies
+A money token drops [at (0,1)]
+Spellweaver infuses Earth
+Spellweaver: Heal 3, Range 1. Choose who to heal
+Spellweaver heals Spellweaver for 0 [Heal 3]
+Spellweaver ends the turn
+Brute’s turn: Spare Dagger and Trample
+Brute: Attack 3, Range 3
+Brute attacks Bandit Guard 3: miss [MISS]
+Brute gains 1 XP
+Brute: Jump 4
+Brute moves 2 hexes [to (1,2)]
+Brute: Attack 2, Range 1
+Brute attacks Bandit Guard 4: 2 − 1 = 1 damage [2 -1(mod) = 1]
+Brute gains 2 XP
+Brute ends the turn
+Cragheart’s turn: Earthen Clod and Massive Boulder
+Cragheart takes the top half from Massive Boulder and the bottom half from Earthen Clod
+Cragheart: Attack 3, Range 3
+Cragheart attacks Bandit Guard 4: 3 + 1 = 4 damage [3 +1(mod) = 4]
+Cragheart infuses Earth
+Cragheart: Heal 2, Range 3. Choose who to heal
+Cragheart heals Cragheart for 2 [Heal 2]
+Cragheart ends the turn
+Bandit Guard’s turn: ability card (50)
+Bandit Guard 2 attacks Scoundrel: 3 − 1 = 2 damage [3 -1(mod) = 2]
+Bandit Guard 3 moves 1 hex [to (0,1)]
+Bandit Guard 3 attacks Brute: 2 + 0 = 2 damage [2 +0(mod) = 2]
+Bandit Guard 4 attacks Brute: 2 − 1 = 1 damage [2 -1(mod) = 1]
+Bandit Guard 5 moves 1 hex [to (1,4)]
+Bandit Guard 5 attacks Scoundrel: 2 ×2 = 4 damage [2 ×2(mod) = 4]
+Scoundrel loses 2 discarded cards to prevent 4 damage
+Bandit Guard 6 moves 1 hex [to (1,6)]
+Bandit Guard 6 attacks Scoundrel: 2 + 0 = 2 damage [2 +0(mod) = 2]
+Scoundrel loses a card from hand to prevent 2 damage
+Spellweaver skips the short rest
+Brute skips the short rest
+Cragheart skips the short rest
 Round 2 complete
 === Round 3 ===
 --- state after round 2 ---
@@ -153,58 +153,58 @@ bandit-guard #5 normal (1,4) hp 6/6
 bandit-guard #6 normal (1,6) hp 6/6
 money tokens: (0,1)x1
 doors open: 0/1
-gh-scoundrel: TOP Throwing Knives (init 10) / BTM Quick Hands
-gh-spellweaver: TOP Frost Armor (init 20) / BTM Reviving Ether
-gh-brute: TOP Eye for an Eye (init 18) / BTM Warding Strength
-gh-cragheart: TOP Crushing Grasp (init 35) / BTM Opposing Strike
-bandit-guard: drew ability (initiative 50)
-Turn order: scoundrel(10), brute(18), spellweaver(20), cragheart(35), bandit-guard(50)
-gh-scoundrel: Turn begins — TOP: Throwing Knives / BTM: Quick Hands
-gh-scoundrel: Top from Quick Hands, bottom from Throwing Knives
-gh-scoundrel: Move 2
-char(gh-scoundrel): Moved to (2, 4)
-gh-scoundrel: Attack 2, Range 1
-scoundrel → bandit-guard #5: 2 +0(mod) = 2
-gh-scoundrel: Default Move 2
-char(gh-scoundrel): Moved to (3, 2)
-gh-scoundrel: Turn complete
-gh-brute: Turn begins — TOP: Eye for an Eye / BTM: Warding Strength
-gh-brute: Top from Warding Strength, bottom from Eye for an Eye
-gh-brute: Attack 3, Range 1, Push 2
-brute → bandit-guard #4: 3 +1(mod) = 4
-bandit-guard #4: Killed!
-Loot token dropped at (0, 2)
-gh-brute: Heal 2, Range 1 — select target
-char(gh-brute) → char(gh-cragheart): Heal 2 (+2)
-gh-brute: Infused earth
-gh-brute: Turn complete
-gh-spellweaver: Turn begins — TOP: Frost Armor / BTM: Reviving Ether
-gh-spellweaver: Jump 4
-char(gh-spellweaver): Moved to (3, 1)
-gh-spellweaver: Consumed earth
-gh-spellweaver: Attack 3, Range 3
-gh-spellweaver: +1 XP
-spellweaver → bandit-guard #3: 3 -2(mod) = 1
-gh-spellweaver: Turn complete
-gh-cragheart: Turn begins — TOP: Crushing Grasp / BTM: Opposing Strike
-gh-cragheart: Attack 3, Range 1, Immobilize
-gh-cragheart: Infused earth
-cragheart → bandit-guard #3: 3 +0(mod) = 3
-  bandit-guard #3: immobilize applied
-gh-cragheart: Turn complete
-bandit-guard — ability (initiative 50)
-  bandit-guard #2: Move 2 to (0,3)
-bandit-guard #2 → brute: 3 +1(mod) = 4
-  bandit-guard #3: Immobilized
-bandit-guard #3 → brute: 2 +1(mod) = 3
-  gh-brute: Lost 2 discarded cards to negate 3 damage
-  bandit-guard #5: Move 1 to (1,3)
-bandit-guard #5 → brute: 2 +0(mod) = 2
-  bandit-guard #6: Move 3 to (2,3)
-bandit-guard #6 → scoundrel: 2 +1(mod) = 3
-gh-scoundrel: Exhausted (0 HP)
-gh-brute: Skipped short rest
-gh-spellweaver: Skipped short rest
-gh-cragheart: Skipped short rest
+Scoundrel plays Throwing Knives (10) and Quick Hands
+Spellweaver plays Frost Armor (20) and Reviving Ether
+Brute plays Eye for an Eye (18) and Warding Strength
+Cragheart plays Crushing Grasp (35) and Opposing Strike
+Bandit Guard draws an ability card (50)
+Turn order: Scoundrel 10, Brute 18, Spellweaver 20, Cragheart 35, Bandit Guard 50
+Scoundrel’s turn: Throwing Knives and Quick Hands
+Scoundrel takes the top half from Quick Hands and the bottom half from Throwing Knives
+Scoundrel: Move 2
+Scoundrel moves 1 hex [to (2,4)]
+Scoundrel: Attack 2, Range 1
+Scoundrel attacks Bandit Guard 5: 2 + 0 = 2 damage [2 +0(mod) = 2]
+Scoundrel uses the basic Move 2
+Scoundrel moves 2 hexes [to (3,2)]
+Scoundrel ends the turn
+Brute’s turn: Eye for an Eye and Warding Strength
+Brute takes the top half from Warding Strength and the bottom half from Eye for an Eye
+Brute: Attack 3, Range 1, Push 2
+Brute attacks Bandit Guard 4: 3 + 1 = 4 damage [3 +1(mod) = 4]
+Bandit Guard 4 dies
+A money token drops [at (0,2)]
+Brute: Heal 2, Range 1. Choose who to heal
+Brute heals Cragheart for 2 [Heal 2]
+Brute infuses Earth
+Brute ends the turn
+Spellweaver’s turn: Frost Armor and Reviving Ether
+Spellweaver: Jump 4
+Spellweaver moves 1 hex [to (3,1)]
+Spellweaver consumes Earth
+Spellweaver: Attack 3, Range 3
+Spellweaver gains 1 XP
+Spellweaver attacks Bandit Guard 3: 3 − 2 = 1 damage [3 -2(mod) = 1]
+Spellweaver ends the turn
+Cragheart’s turn: Crushing Grasp and Opposing Strike
+Cragheart: Attack 3, Range 1, Immobilize
+Cragheart infuses Earth
+Cragheart attacks Bandit Guard 3: 3 + 0 = 3 damage [3 +0(mod) = 3]
+Bandit Guard 3 gains Immobilize
+Cragheart ends the turn
+Bandit Guard’s turn: ability card (50)
+Bandit Guard 2 moves 2 hexes [to (0,3)]
+Bandit Guard 2 attacks Brute: 3 + 1 = 4 damage [3 +1(mod) = 4]
+Bandit Guard 3 is immobilized and can’t move
+Bandit Guard 3 attacks Brute: 2 + 1 = 3 damage [2 +1(mod) = 3]
+Brute loses 2 discarded cards to prevent 3 damage
+Bandit Guard 5 moves 1 hex [to (1,3)]
+Bandit Guard 5 attacks Brute: 2 + 0 = 2 damage [2 +0(mod) = 2]
+Bandit Guard 6 moves 3 hexes [to (2,3)]
+Bandit Guard 6 attacks Scoundrel: 2 + 1 = 3 damage [2 +1(mod) = 3]
+Scoundrel is exhausted [0 HP]
+Brute skips the short rest
+Spellweaver skips the short rest
+Cragheart skips the short rest
 Round 3 complete
 === Round 4 ===

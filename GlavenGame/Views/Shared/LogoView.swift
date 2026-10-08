@@ -27,7 +27,7 @@ struct LogoView: View {
         .contentShape(Rectangle())
         .onTapGesture {
             if playable {
-                SoundPlayer.playGlayvin()
+                SoundPlayer.playGlayvin(replay: true)
             }
         }
     }

@@ -45,18 +45,18 @@ struct CardSelectionPanel: View {
                     .font(.headline)
                     .foregroundStyle(.white)
 
-                Text("— \(character.title.isEmpty ? character.name.replacingOccurrences(of: "-", with: " ").capitalized : character.title)")
+                Text("— \(GameText.characterName(character))")
                     .font(.subheadline)
                     .foregroundStyle(characterColor)
 
                 Spacer()
 
                 if selectedCards.count == 1 {
-                    Text("Pick a second card for its bottom actions")
+                    Text("Pick a second card. The first card sets your initiative.")
                         .font(.caption)
                         .foregroundStyle(.white.opacity(0.6))
                 } else if selectedCards.count == 2 {
-                    Text("Tap a selected card to swap TOP/BTM roles")
+                    Text("Tap a chosen card to make it lead. You pick top and bottom halves on your turn.")
                         .font(.caption)
                         .foregroundStyle(.yellow.opacity(0.8))
                 }
@@ -77,7 +77,7 @@ struct CardSelectionPanel: View {
                             highlight: highlight,
                             width: 130,
                             height: (isTop || isBtm) ? 240 : 220,
-                            roleBadge: isTop ? "TOP — Init \(card.initiative)" : (isBtm ? "BOTTOM" : nil),
+                            roleBadge: isTop ? "LEAD · INITIATIVE \(card.initiative)" : (isBtm ? "SECOND" : nil),
                             roleBadgeColor: isTop ? .yellow : .cyan,
                             labelResolver: labelResolver,
                             onPreview: card.cardId.map { id in { coordinator.showCardPreview(cardId: id) } }

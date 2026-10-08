@@ -45,7 +45,7 @@ extension BoardCoordinator {
                 guard await springTrap(at: hex, on: pieceID) else { return false }
                 // Immobilize takes effect at once (e.g. a bear trap): the rest of the move is lost.
                 if style != .forced && isConditionActive(.immobilize, on: pieceID) {
-                    log("\(pieceLabel(pieceID)): Immobilized — movement ends", category: .condition)
+                    log("\(name(pieceID)) is immobilized and stops", category: .condition)
                     return isOnBoard(pieceID)
                 }
             }
@@ -82,9 +82,9 @@ extension BoardCoordinator {
 
         boardState.removeTrap(at: hex)
         boardScene?.removeOverlaySprite(at: hex, offsetCol: offsetCol, offsetRow: offsetRow)
-        log("\(pieceLabel(pieceID)): Sprang \(subType ?? "a") trap — \(damage) damage", category: .damage)
+        log("\(name(pieceID)) springs a trap and suffers \(damage) damage", category: .damage, trace: subType)
 
-        if await sufferDamageWithMitigation(damage, to: pieceID, source: "\(subType ?? "Trap") trap") {
+        if await sufferDamageWithMitigation(damage, to: pieceID, source: "a trap") {
             return false
         }
         for condition in Self.trapConditions(for: subType) {
@@ -97,8 +97,8 @@ extension BoardCoordinator {
     @MainActor func enterHazard(at hex: HexCoord, on pieceID: PieceID) async -> Bool {
         guard let gameManager else { return true }
         let damage = gameManager.levelManager.terrain()
-        log("\(pieceLabel(pieceID)): Hazardous terrain — \(damage) damage", category: .damage)
-        if await sufferDamageWithMitigation(damage, to: pieceID, source: "Hazardous terrain") {
+        log("\(name(pieceID)) suffers \(damage) damage from hazardous terrain", category: .damage)
+        if await sufferDamageWithMitigation(damage, to: pieceID, source: "hazardous terrain") {
             return false
         }
         return isOnBoard(pieceID)

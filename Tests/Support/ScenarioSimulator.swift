@@ -94,6 +94,20 @@ final class ScenarioSimulator {
         collectLog()
     }
 
+    /// Keep playing a scenario that `gm` resumed from a save (it is on the board, in card selection).
+    init(resuming gm: GameManager, scenario index: String, policy: PlayerPolicy? = nil) {
+        let coord = gm.boardCoordinator
+        coord.boardScene = nil
+        coord.turnDelayNanoseconds = 0
+        self.index = index
+        self.gm = gm
+        self.coord = coord
+        self.policy = policy ?? TacticalPolicy()
+        coord.attackObserver = { [unowned self] attacker, target in self.checkAttack(attacker, target) }
+        coord.moveObserver = { [unowned self] piece, path, style in self.checkMove(piece, path, style) }
+        collectLog()
+    }
+
     // MARK: - Playing
 
     var result: Outcome {
@@ -331,7 +345,8 @@ final class ScenarioSimulator {
     private func collectLog() {
         while logCursor < coord.turnLog.count {
             let entry = coord.turnLog[logCursor]
-            transcript.append(entry.isRoundHeader ? "=== \(entry.message) ===" : entry.message)
+            let line = entry.trace.map { "\(entry.message) [\($0)]" } ?? entry.message
+            transcript.append(entry.isRoundHeader ? "=== \(entry.message) ===" : line)
             logCursor += 1
         }
     }

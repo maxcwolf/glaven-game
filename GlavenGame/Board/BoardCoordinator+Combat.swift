@@ -84,7 +84,10 @@ extension BoardCoordinator {
         let breakdown = CombatResolver.damageBreakdown(
             base: attack.value, isPoisoned: isPoisoned, preDrawnCards: preDrawn,
             shield: shield, pierce: attack.pierce, isMiss: result.isMiss, finalDamage: result.damage)
-        log("\(pieceLabel(attacker)) → \(pieceLabel(target)): \(breakdown)", category: .attack)
+        let sum = CombatResolver.readableBreakdown(
+            base: attack.value, isPoisoned: isPoisoned, preDrawnCards: preDrawn,
+            shield: shield, pierce: attack.pierce, isMiss: result.isMiss, finalDamage: result.damage)
+        log("\(name(attacker)) attacks \(name(target)): \(sum)", category: .attack, trace: breakdown)
 
         var died = false
         if result.damage > 0 {
@@ -112,9 +115,9 @@ extension BoardCoordinator {
 
         // Retaliate: after the attack, only if the retaliating figure survived (p.24).
         if !died && retaliate > 0 && isOnBoard(target) && isOnBoard(attacker) {
-            log("  \(pieceLabel(attacker)): Retaliate \(retaliate)", category: .damage)
+            log("\(name(target)) retaliates for \(retaliate)", category: .damage)
             await sufferDamageWithMitigation(retaliate, to: attacker,
-                                             source: "Retaliate (\(pieceLabel(target)))", killer: target)
+                                             source: "\(name(target))\u{2019}s retaliate", killer: target)
         }
         return died
     }

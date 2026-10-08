@@ -2,12 +2,19 @@ import SwiftUI
 
 struct ElementView: View {
     let element: ElementModel
+    var isEditable = false
     @Environment(GameManager.self) private var gameManager
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var isHovered = false
     @State private var waningPulse = false
 
     private var isStrong: Bool {
-        element.state == .new || element.state == .strong || element.state == .always
+        element.state == .strong || element.state == .always
+    }
+
+    /// Infused this turn: not consumable until the next turn, so it looks different from Strong.
+    private var isNew: Bool {
+        element.state == .new
     }
 
     private var isWaning: Bool {
@@ -24,6 +31,16 @@ struct ElementView: View {
 
                 Circle()
                     .strokeBorder(color, lineWidth: 3)
+                    .frame(width: 46, height: 46)
+            }
+
+            // Infused this turn: dashed ring, no glow yet
+            if isNew {
+                Circle()
+                    .fill(color.opacity(0.2))
+                    .frame(width: 46, height: 46)
+                Circle()
+                    .strokeBorder(color, style: StrokeStyle(lineWidth: 2.5, dash: [4, 3]))
                     .frame(width: 46, height: 46)
             }
 
@@ -55,7 +72,7 @@ struct ElementView: View {
         .animation(.easeInOut(duration: 0.3), value: element.state)
         .animation(.easeInOut(duration: 0.15), value: isHovered)
         .onChange(of: element.state) { _, newState in
-            if newState == .waning {
+            if newState == .waning, !reduceMotion {
                 waningPulse = false
                 withAnimation(.easeInOut(duration: 1.2).repeatForever(autoreverses: true)) {
                     waningPulse = true
@@ -67,16 +84,21 @@ struct ElementView: View {
             }
         }
         .onAppear {
-            if element.state == .waning {
+            if element.state == .waning, !reduceMotion {
                 withAnimation(.easeInOut(duration: 1.2).repeatForever(autoreverses: true)) {
                     waningPulse = true
                 }
             }
         }
         .onTapGesture {
+            guard isEditable else { return }
             SoundPlayer.play(.tap)
             cycleState()
         }
+        .help(GameText.elementStateDescription(element.type, element.state))
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(GameText.elementStateDescription(element.type, element.state))
+        .accessibilityAddTraits(isEditable ? .isButton : [])
         .onHover { hovering in
             isHovered = hovering
         }

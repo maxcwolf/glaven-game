@@ -41,7 +41,7 @@ struct HeaderView: View {
             }
 
             Spacer()
-            ElementBoardView()
+            ElementBoardView(isEditable: true)
             Spacer()
             roundCounter
         }
@@ -73,7 +73,7 @@ struct HeaderView: View {
                 roundCounter
             }
 
-            ElementBoardView()
+            ElementBoardView(isEditable: true)
         }
         .padding(.horizontal, 10)
         .padding(.vertical, 6)

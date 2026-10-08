@@ -91,7 +91,7 @@ struct GameSetupView: View {
             VStack {
                 HStack {
                     Button {
-                        gameManager.newGame()
+                        gameManager.returnToMainMenu()
                     } label: {
                         HStack(spacing: 4) {
                             Image(systemName: "chevron.left")

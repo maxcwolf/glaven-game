@@ -93,11 +93,15 @@ struct TurnLogEntry: Identifiable {
     let timestamp = Date()
     /// If true, this is a round separator header (not a regular entry).
     let isRoundHeader: Bool
+    /// Technical detail kept out of the player's view (grid coordinates, raw values) that test
+    /// transcripts record alongside the message.
+    let trace: String?
 
-    init(message: String, category: TurnLogCategory = .info, isRoundHeader: Bool = false) {
+    init(message: String, category: TurnLogCategory = .info, isRoundHeader: Bool = false, trace: String? = nil) {
         self.message = message
         self.category = category
         self.isRoundHeader = isRoundHeader
+        self.trace = trace
     }
 }
 
@@ -218,8 +222,11 @@ final class BoardCoordinator {
     /// (no player input). Used for headless simulation and tests.
     var autoResolvePrompts = false
 
-    /// Pause between automated figures' turns, for readability.
-    var turnDelayNanoseconds: UInt64 = 400_000_000
+    /// Pause between automated figures' turns at normal animation speed.
+    static let baseTurnDelayNanoseconds: UInt64 = 400_000_000
+
+    /// Pause between automated figures' turns, for readability (scaled by the Animation Speed setting).
+    var turnDelayNanoseconds: UInt64 = BoardCoordinator.baseTurnDelayNanoseconds
 
     /// Called before every attack resolves and every movement starts, with the board as it is at
     /// that moment. The simulation tests use these to check each one against the rules.
@@ -261,21 +268,9 @@ final class BoardCoordinator {
         }
     }
 
-    /// Returns a display label for a piece (e.g. "Brute", "Spider #1").
+    /// Returns a display label for a piece (e.g. "Brute", "Bandit Guard 2").
     func pieceLabel(_ piece: PieceID) -> String {
-        switch piece {
-        case .character(let id):
-            return gameManager?.game.characters.first(where: { $0.id == id })?.name ?? id
-        case .monster(let name, let standee):
-            return "\(name) #\(standee)"
-        case .summon(let id):
-            for char in gameManager?.game.characters ?? [] {
-                if let s = char.summons.first(where: { $0.id == id }) { return s.name }
-            }
-            return "Summon"
-        case .objective(let id):
-            return "Objective \(id)"
-        }
+        name(piece)
     }
 
     // MARK: - Damage Mitigation
@@ -337,7 +332,7 @@ final class BoardCoordinator {
         let deckName = character.characterData?.deck ?? character.name
         let deckData = gameManager.editionStore.deckData(name: deckName, edition: character.edition)
         let cardName = deckData?.abilities.first(where: { $0.cardId == lostCard })?.name ?? "Card \(lostCard)"
-        log("\(characterID): Long Rest — Heal 2, lost \(cardName), recovered \(character.handCards.count) cards", category: .rest)
+        log("\(characterName(characterID)) long rests: loses \(cardName), heals 2 and takes back \(character.handCards.count) cards", category: .rest)
 
         // Continue to next figure
         advanceToNextFigure()
@@ -442,7 +437,7 @@ final class BoardCoordinator {
         let deckName = character.characterData?.deck ?? character.name
         let deckData = gameManager.editionStore.deckData(name: deckName, edition: character.edition)
         let cardName = deckData?.abilities.first(where: { $0.cardId == lostCardId })?.name ?? "Card \(lostCardId)"
-        log("\(character.id): Short Rest — lost \(cardName), recovered \(character.handCards.count) cards to hand", category: .rest)
+        log("\(characterName(character.id)) short rests: loses \(cardName) and takes back \(character.handCards.count) cards", category: .rest)
 
         let charID = pending.characterID
         pendingShortRest = nil
@@ -457,7 +452,7 @@ final class BoardCoordinator {
               let character = gameManager.game.characters.first(where: { $0.id == pending.characterID }) else { return }
 
         // Suffer 1 damage to keep the card and randomly lose a different one (once per rest).
-        log("\(character.id): Short Rest — suffers 1 damage to re-pick", category: .rest)
+        log("\(characterName(character.id)) suffers 1 damage to lose a different card", category: .rest)
         if sufferDamage(1, to: .character(character.id)) {
             // Exhausted by the damage: the rest is over.
             pendingShortRest = nil
@@ -481,7 +476,7 @@ final class BoardCoordinator {
     func skipShortRest() {
         guard let pending = pendingShortRest, !pending.committed else { return }
         let charID = pending.characterID
-        log("\(charID): Skipped short rest", category: .rest)
+        log("\(characterName(charID)) skips the short rest", category: .rest)
         pendingShortRest = nil
         advanceToNextShortRest(startingAfter: charID)
     }
@@ -544,16 +539,7 @@ final class BoardCoordinator {
 
     /// Initialize the board for a scenario.
     func startScenario(scenario: VGBScenario, playerCount: Int) {
-        self.scenarioData = scenario
-        boardGeneration += 1
-        pendingShortRest = nil
-        pendingLongRest = nil
-        pendingDamage = nil
-        pendingModifierDraw = nil
-        pendingSummonPlacement = nil
-        turnOrder = []
-        currentTurnIndex = -1
-        activePlayerTurn = nil
+        resetForScenario(scenario)
         let initialRefs = (gameManager?.game.scenario?.data.rooms ?? []).filter(\.isInitial).compactMap(\.ref)
         let (board, startingRoom) = BoardBuilder.buildStartingRoom(from: scenario, initialRoomRefs: initialRefs)
         self.boardState = board
@@ -578,11 +564,6 @@ final class BoardCoordinator {
             }
             board.startingLocations = extra
         }
-        self.pendingResult = nil
-        self.pendingRevealedStandees = [:]
-        self.currentTurnToggled = false
-        self.lastAttackTarget = nil
-        self.lastAttackerPos = nil
 
         // The starting room's monsters were created from the scenario data; give them the map's
         // positions (or fall back to the map's own monster list if the scenario has none).
@@ -590,37 +571,87 @@ final class BoardCoordinator {
         placeRevealedMonsters(slots: startingRoom.slots, newEntities: unplacedMonsterEntities(),
                               playerCount: playerCount, useMapMonsters: !hasRoomData)
 
+        attachToGame()
+
+        // Reset round state so monster abilities are drawn fresh regardless of how the previous game ended.
+        gameManager?.game.state = .draw
+        gameManager?.game.round = 0
+
+        buildScene(for: scenario)
+        boardPhase = .setup
+        turnLog = []
+        log("Scenario \(scenario.id): \(scenario.title)", category: .setup)
+        log("\(boardState.startingLocations.count) starting locations available", category: .setup)
+    }
+
+    /// Put a saved scenario back on the board at the start of a round. The game (figures, decks,
+    /// elements, round) has already been restored; `board` is the board as it stood then.
+    func resumeScenario(scenario: VGBScenario, board snapshot: BoardSnapshot) {
+        resetForScenario(scenario)
+        let board = BoardState()
+        snapshot.restore(to: board)
+        boardState = board
+        attachToGame()
+        buildScene(for: scenario)
+        turnLog = []
+        log("Scenario \(scenario.id): \(scenario.title)", category: .setup)
+        beginCardSelection()
+    }
+
+    /// Clear everything left over from a previous scenario or turn.
+    private func resetForScenario(_ scenario: VGBScenario) {
+        scenarioData = scenario
+        boardGeneration += 1
+        pendingShortRest = nil
+        pendingLongRest = nil
+        pendingDamage = nil
+        pendingModifierDraw = nil
+        pendingSummonPlacement = nil
+        turnOrder = []
+        currentTurnIndex = -1
+        activePlayerTurn = nil
+        interactionMode = .idle
+        scenarioResult = nil
+        pendingResult = nil
+        pendingRevealedStandees = [:]
+        currentTurnToggled = false
+        lastAttackTarget = nil
+        lastAttackerPos = nil
+    }
+
+    /// Hand round flow and rule-driven spawns over to the board.
+    private func attachToGame() {
         gameManager?.roundManager.figuresTakeOwnTurns = true
 
         // Monsters spawned by scenario rules go onto the board, not only into game state.
         gameManager?.scenarioRulesManager.onSpawnMonster = { [weak self] name, type, marker, health in
             self?.spawnFromScenarioRule(name: name, type: type, marker: marker, health: health) ?? false
         }
+    }
 
-        // Reset round state so monster abilities are drawn fresh regardless of how the previous game ended.
-        gameManager?.game.state = .draw
-        gameManager?.game.round = 0
-
-        // Create the SpriteKit scene
+    /// Create the SpriteKit scene and draw the current board into it.
+    private func buildScene(for scenario: VGBScenario) {
         let scene = BoardScene(size: CGSize(width: 1200, height: 800))
         scene.scaleMode = .resizeFill
         scene.onHexTap = { [weak self] coord in self?.handleHexTap(coord) }
         scene.onPieceTap = { [weak self] piece in self?.handlePieceTap(piece) }
-        self.boardScene = scene
+        boardScene = scene
 
-        // Compute offset
         let padding = 2
         offsetCol = boardState.bounds.minCol - padding
         offsetRow = boardState.bounds.minRow - padding
 
-        // Build the visual board with character appearance data
         scene.buildBoard(from: boardState, scenario: scenario, offsetCol: offsetCol, offsetRow: offsetRow,
                          characterAppearances: buildCharacterAppearances())
+        applyAnimationSpeed(gameManager?.settingsManager.animationSpeed ?? 1)
+    }
 
-        boardPhase = .setup
-        turnLog = []
-        log("Scenario \(scenario.id): \(scenario.title)", category: .setup)
-        log("\(boardState.startingLocations.count) starting locations available", category: .setup)
+    /// Apply the Animation Speed setting (0.5 fast … 2 slow) to the board's animations and to
+    /// the pause between automated turns.
+    func applyAnimationSpeed(_ speed: Double) {
+        let speed = min(max(speed, 0.25), 4)
+        boardScene?.speed = CGFloat(1 / speed)
+        turnDelayNanoseconds = UInt64(Double(Self.baseTurnDelayNanoseconds) * speed)
     }
 
     /// Tear down the board and return to the main menu.
@@ -681,7 +712,7 @@ final class BoardCoordinator {
         boardScene?.addPieceSprite(id: pieceID, at: coord, offsetCol: offsetCol, offsetRow: offsetRow)
         boardScene?.clearHighlights()
         interactionMode = .idle
-        log("Placed \(characterID) at (\(coord.col), \(coord.row))", category: .setup)
+        log("\(characterName(characterID)) takes position", category: .setup, trace: "at \(coord)")
     }
 
     /// Place a summon on a chosen hex during interactive summon placement.
@@ -693,7 +724,7 @@ final class BoardCoordinator {
         let pending = pendingSummonPlacement
         pendingSummonPlacement = nil
         interactionMode = .idle
-        log("\(characterID): Summon placed at (\(coord.col), \(coord.row))", category: .info)
+        log("\(characterName(characterID)) summons \(name(summonPieceID))", category: .info, trace: "at \(coord)")
 
         // Place the next figure of a multi-figure summon, if there is still an empty adjacent hex.
         if let pending, pending.remaining > 0, let data = pending.summonData,
@@ -736,6 +767,9 @@ final class BoardCoordinator {
         cardSelectingCharacterID = nil
         selectedCardPairs = [:]
 
+        // No turn is half-played here: save the round so Continue can resume from it.
+        gameManager.checkpointRound()
+
         logRoundHeader(gameManager.game.round + 1)
 
         // Process exhaustion and auto-rests, then find the first character needing manual selection
@@ -754,7 +788,7 @@ final class BoardCoordinator {
         character.initiative = leading.initiative
         character.longRest = false
         storeSelectedCards(for: characterID, top: leading, bottom: other)
-        log("\(characterID): TOP \(leading.name ?? "?") (init \(leading.initiative)) / BTM \(other.name ?? "?")", category: .round)
+        log("\(characterName(characterID)) plays \(leading.name ?? "a card") (\(leading.initiative)) and \(other.name ?? "a card")", category: .round)
         completeCardSelection(for: characterID)
     }
 
@@ -764,7 +798,7 @@ final class BoardCoordinator {
               character.discardedCards.count >= 2 else { return }
         character.initiative = 99
         character.longRest = true
-        log("\(characterID): Long rest selected", category: .rest)
+        log("\(characterName(characterID)) will long rest", category: .rest)
         completeCardSelection(for: characterID)
     }
 
@@ -794,7 +828,7 @@ final class BoardCoordinator {
                 // Forced long rest: not enough hand cards but can rest
                 character.initiative = 99
                 character.longRest = true
-                log("\(character.id): Forced long rest (only \(handCount) hand card\(handCount == 1 ? "" : "s"))", category: .rest)
+                log("\(characterName(character.id)) must long rest (only \(handCount) card\(handCount == 1 ? "" : "s") in hand)", category: .rest)
                 cardSelectionsComplete.insert(character.id)
                 // Continue to next character
             } else {
@@ -834,7 +868,7 @@ final class BoardCoordinator {
         // Log monster ability draws
         for monster in gameManager.game.monsters where !monster.off && !monster.aliveEntities.isEmpty {
             if let ability = gameManager.monsterManager.currentAbility(for: monster) {
-                log("\(monster.name): drew \(ability.name ?? "ability") (initiative \(ability.initiative))")
+                log("\(monsterTypeName(monster.name)) draws \(ability.name ?? "an ability card") (\(ability.initiative))")
             }
         }
 
@@ -866,11 +900,11 @@ final class BoardCoordinator {
         let orderDesc = turnOrder.map { entry in
             let name: String
             switch entry.figure {
-            case .character(let c): name = c.title.isEmpty ? c.name : c.title
-            case .monster(let m): name = m.name
+            case .character(let c): name = characterName(c.id)
+            case .monster(let m): name = monsterTypeName(m.name)
             case .objective(let o): name = o.name
             }
-            return "\(name)(\(Int(entry.initiative.rounded(.up))))"
+            return "\(name) \(Int(entry.initiative.rounded(.up)))"
         }.joined(separator: ", ")
         log("Turn order: \(orderDesc)", category: .round)
         advanceToNextFigure()
@@ -921,7 +955,7 @@ final class BoardCoordinator {
             let livingSummons = character.summons.filter { !$0.dead && isOnBoard(.summon(id: $0.id)) }
             if !livingSummons.isEmpty {
                 interactionMode = .watchingMonsterTurn
-                log("\(character.id): Summons acting first...", category: .round)
+                log("\(characterName(character.id))\u{2019}s summons act first", category: .round)
                 let controller = SummonTurnController(coordinator: self, gameManager: gameManager)
                 self.summonTurnController = controller
                 let generation = boardGeneration
@@ -963,7 +997,7 @@ final class BoardCoordinator {
             currentTurnToggled = true
             if container.escort && container.hasEscortActions {
                 interactionMode = .watchingMonsterTurn
-                log("\(container.name): Escort turn begins", category: .round)
+                log("\(container.name)\u{2019}s turn", category: .round)
                 let controller = EscortTurnController(coordinator: self, gameManager: gameManager)
                 self.escortTurnController = controller
                 let generation = boardGeneration
@@ -999,13 +1033,13 @@ final class BoardCoordinator {
         if character.longRest {
             if character.discardedCards.count <= 1 {
                 if character.discardedCards.isEmpty {
-                    log("\(character.id): Long rest (no cards to lose)", category: .rest)
+                    log("\(characterName(character.id)) long rests (no cards to lose)", category: .rest)
                     advanceToNextFigure()
                 } else {
                     resolveLongRest(characterID: character.id, discardIndex: 0)
                 }
             } else {
-                log("\(character.id): Long rest — choose a card to lose", category: .rest)
+                log("\(characterName(character.id)) long rests: choose a card to lose", category: .rest)
                 pendingLongRest = PendingLongRest(characterID: character.id)
             }
             return
@@ -1019,7 +1053,7 @@ final class BoardCoordinator {
                     character.discardedCards.append(cardId)
                 }
             }
-            log("\(character.id): Stunned — cards discarded, no actions", category: .condition)
+            log("\(characterName(character.id)) is stunned: no actions, both cards are discarded", category: .condition)
             advanceToNextFigure()
             return
         }
@@ -1080,9 +1114,9 @@ final class BoardCoordinator {
         // Feed in the cards selected during card selection phase
         if let pair = selectedCardPairs[character.id] {
             ptc.selectCards(top: pair.top, bottom: pair.bottom)
-            log("\(character.id): Turn begins — TOP: \(pair.top.name ?? "?") / BTM: \(pair.bottom.name ?? "?")", category: .round)
+            log("\(characterName(character.id))\u{2019}s turn: \(pair.top.name ?? "a card") and \(pair.bottom.name ?? "a card")", category: .round)
         } else {
-            log("\(character.id): Turn begins (no cards selected)", category: .round)
+            log("\(characterName(character.id))\u{2019}s turn (no cards chosen)", category: .round)
         }
         interactionMode = .idle
     }
@@ -1176,8 +1210,7 @@ final class BoardCoordinator {
     func confirmScenarioEnd() {
         guard let gameManager = gameManager, let result = scenarioResult else { return }
 
-        gameManager.scenarioManager.finishScenario(success: result == .victory)
-        exitBoard()
+        gameManager.completeScenario(success: result == .victory)
     }
 
     // MARK: - Turn Execution Actions
@@ -1198,7 +1231,7 @@ final class BoardCoordinator {
         guard let pos = boardState.piecePositions[pieceID] else { return }
 
         if isConditionActive(.immobilize, on: pieceID) {
-            log("\(pieceLabel(pieceID)): Immobilized — cannot move", category: .condition)
+            log("\(name(pieceID)) is immobilized and can\u{2019}t move", category: .condition)
             interactionMode = .idle
             activePlayerTurn?.advanceAfterAsyncAction()
             return
@@ -1213,7 +1246,7 @@ final class BoardCoordinator {
 
         let validHexes = Set(reachable.keys).subtracting([pos])
         if validHexes.isEmpty {
-            log("\(pieceLabel(pieceID)): No hex to move to", category: .move)
+            log("\(name(pieceID)) has nowhere to move", category: .move)
             interactionMode = .idle
             activePlayerTurn?.advanceAfterAsyncAction()
             return
@@ -1238,7 +1271,7 @@ final class BoardCoordinator {
     func beginTeleportAction(pieceID: PieceID, range: Int) {
         guard let pos = boardState.piecePositions[pieceID] else { return }
         if isConditionActive(.immobilize, on: pieceID) {
-            log("\(pieceLabel(pieceID)): Immobilized — cannot move", category: .condition)
+            log("\(name(pieceID)) is immobilized and can\u{2019}t move", category: .condition)
             interactionMode = .idle
             activePlayerTurn?.advanceAfterAsyncAction()
             return
@@ -1275,7 +1308,8 @@ final class BoardCoordinator {
             await self.moveAlong(pieceID, path: path, style: style)
             // The move may end early (a trap that immobilizes, or one that exhausts the figure).
             if let end = self.boardState.piecePositions[pieceID] {
-                self.log("\(pieceID): Moved to (\(end.col), \(end.row))", category: .move)
+                let steps = path.firstIndex(of: end) ?? path.count - 1
+                self.log("\(self.name(pieceID)) moves \(steps) hex\(steps == 1 ? "" : "es")", category: .move, trace: "to \(end)")
             }
             self.checkVictoryDefeat()
             turn?.advanceAfterAsyncAction()
@@ -1293,7 +1327,7 @@ final class BoardCoordinator {
         Task { @MainActor in
             await self.animateMove(pieceID, along: [pos, target])
             self.boardState.movePiece(pieceID, to: target)
-            self.log("\(pieceID): Teleported to (\(target.col), \(target.row))", category: .move)
+            self.log("\(self.name(pieceID)) teleports", category: .move, trace: "to \(target)")
             turn?.advanceAfterAsyncAction()
         }
     }
@@ -1326,7 +1360,7 @@ final class BoardCoordinator {
     /// Attack every visible enemy within `range` (each a separate attack of one action).
     func attackAllEnemies(from pieceID: PieceID, within range: Int, exactly: Bool = false) {
         if isConditionActive(.disarm, on: pieceID) {
-            log("\(pieceLabel(pieceID)): Disarmed — cannot attack", category: .condition)
+            log("\(name(pieceID)) is disarmed and can\u{2019}t attack", category: .condition)
             activePlayerTurn?.advanceAfterAsyncAction()
             return
         }
@@ -1360,7 +1394,7 @@ final class BoardCoordinator {
     /// Begin a player's attack action.
     func beginAttackAction(pieceID: PieceID, range: Int, targetCount: Int = 1) {
         if isConditionActive(.disarm, on: pieceID) {
-            log("\(pieceLabel(pieceID)): Disarmed — cannot attack", category: .condition)
+            log("\(name(pieceID)) is disarmed and can\u{2019}t attack", category: .condition)
             interactionMode = .idle
             activePlayerTurn?.advanceAfterAsyncAction()
             return
@@ -1374,7 +1408,7 @@ final class BoardCoordinator {
             })
         }
         if validTargets.isEmpty {
-            log("\(pieceID): No valid targets in range \(range)", category: .attack)
+            log("\(name(pieceID)) has no target within range \(range)", category: .attack)
             interactionMode = .idle
             activePlayerTurn?.advanceAfterAsyncAction()
             return
@@ -1385,7 +1419,7 @@ final class BoardCoordinator {
                 pieceID: pieceID, range: range, validTargets: validTargets,
                 targetCount: targetCount, selected: []
             )
-            log("\(pieceID): Select up to \(targetCount) targets", category: .attack)
+            log("\(name(pieceID)): choose up to \(targetCount) targets", category: .attack)
         } else {
             interactionMode = .selectingAttackTarget(pieceID: pieceID, range: range, validTargets: validTargets)
         }
@@ -1397,7 +1431,7 @@ final class BoardCoordinator {
     func beginConditionAction(pieceID: PieceID, condition: ConditionName, range: Int) {
         let validTargets = targetableEnemies(of: pieceID, range: range)
         if validTargets.isEmpty {
-            log("\(pieceID): No valid targets in range \(range) for \(condition.rawValue)", category: .condition)
+            log("\(name(pieceID)) has no target within range \(range) for \(GameText.conditionName(condition))", category: .condition)
             interactionMode = .idle
             activePlayerTurn?.advanceAfterAsyncAction()
             return
@@ -1422,7 +1456,7 @@ final class BoardCoordinator {
         let targets = targetableEnemies(of: pieceID, range: range)
         for target in targets { applyCondition(condition, to: target) }
         if targets.isEmpty {
-            log("\(pieceID): No enemies in range \(range) for \(condition.rawValue)", category: .condition)
+            log("\(name(pieceID)) has no enemy within range \(range) for \(GameText.conditionName(condition))", category: .condition)
         }
     }
 
@@ -1473,7 +1507,7 @@ final class BoardCoordinator {
     func beginForcedMoveTarget(pieceID: PieceID, range: Int, steps: Int, isPush: Bool) {
         let targets = targetableEnemies(of: pieceID, range: range)
         guard !targets.isEmpty else {
-            log("\(pieceLabel(pieceID)): No enemy in range \(range) to \(isPush ? "push" : "pull")", category: .move)
+            log("\(name(pieceID)) has no enemy within range \(range) to \(isPush ? "push" : "pull")", category: .move)
             activePlayerTurn?.advanceAfterAsyncAction()
             return
         }
@@ -1517,7 +1551,7 @@ final class BoardCoordinator {
 
         if valid.isEmpty {
             let label = isPush ? "Push" : "Pull"
-            log("  \(target): No room to \(label) further", category: .move)
+            log("\(name(target)) can\u{2019}t be \(isPush ? "pushed" : "pulled") any further", category: .move, trace: label)
             interactionMode = .idle
             completePushPullAction()
             return
@@ -1549,7 +1583,7 @@ final class BoardCoordinator {
                 self.beginPushPull(target: target, attackerPos: attackerPos, remainingSteps: stepsLeft, isPush: isPush)
             } else {
                 let label = isPush ? "Push" : "Pull"
-                self.log("  \(target): \(label) to (\(destination.col), \(destination.row))", category: .move)
+                self.log("\(self.name(target)) is \(isPush ? "pushed" : "pulled")", category: .move, trace: "\(label) to \(destination)")
                 self.completePushPullAction()
             }
         }
@@ -1584,7 +1618,7 @@ final class BoardCoordinator {
               let pos = boardState.piecePositions[pieceID] else { return }
         boardState.placeLoot(at: pos)
         boardScene?.addLootSprite(at: pos, offsetCol: offsetCol, offsetRow: offsetRow)
-        log("Loot token dropped at (\(pos.col), \(pos.row))", category: .loot)
+        log("A money token drops", category: .loot, trace: "at \(pos)")
     }
 
     /// Loot X: pick up every money token and treasure tile within range X and line of sight,
@@ -1596,7 +1630,7 @@ final class BoardCoordinator {
             return coord == pos || LineOfSight.hasLOS(from: pos, to: coord, board: boardState)
         }
         if coords.isEmpty {
-            log("\(pieceID): Loot \(range) — nothing within range \(range)", category: .loot)
+            log("\(name(pieceID)) finds nothing to loot within range \(range)", category: .loot)
             return
         }
         lootHexes(for: pieceID, coords: coords.sorted())
@@ -1631,7 +1665,7 @@ final class BoardCoordinator {
                 tokens += max(1, cell.treasureAmount ?? 1)
             } else if let id = cell.treasureID {
                 let reward = gameManager.scenarioManager.lootTreasure(id, by: character)
-                log("\(charID): Looted treasure #\(id)\(reward.map { " — \($0)" } ?? "")", category: .loot)
+                log("\(characterName(charID)) loots treasure \(id)\(reward.map { ": \($0)" } ?? "")", category: .loot)
             }
             boardState.removeTreasure(at: coord)
             boardScene?.removeOverlaySprite(at: coord, offsetCol: offsetCol, offsetRow: offsetRow)
@@ -1652,7 +1686,7 @@ final class BoardCoordinator {
         }
         if tokens > 0 {
             gameManager.scenarioStatsManager.recordCoinsLooted(by: character.name, amount: tokens)
-            log("\(charID): Looted \(tokens) money token\(tokens == 1 ? "" : "s") (+\(gold)g)", category: .loot)
+            log("\(characterName(charID)) loots \(tokens) money token\(tokens == 1 ? "" : "s") (\(gold) gold)", category: .loot)
             boardScene?.pieceLoot(id: pieceID, text: "+\(gold)g")
         }
         // Treasure can deal damage (e.g. a trapped chest).
@@ -1716,11 +1750,11 @@ final class BoardCoordinator {
                                characterAppearances: buildCharacterAppearances())
 
         boardPhase = .execution
-        log("Door opened — \(door.childTileRef) revealed", category: .door)
+        log("A door opens and a new room is revealed", category: .door, trace: door.childTileRef)
         for piece in placed {
             let id = PieceID.monster(name: piece.name, standee: piece.standee)
             if let pos = boardState.piecePositions[id] {
-                log("Revealed \(pieceLabel(id)) at (\(pos.col), \(pos.row))", category: .setup)
+                log("\(name(id)) appears", category: .setup, trace: "at \(pos)")
             }
         }
         // Rules gated on revealed rooms can fire now.
@@ -1824,7 +1858,7 @@ final class BoardCoordinator {
                 coord = nearestEmptyHex(to: c)
             }
             guard let destination = coord else {
-                log("No room to place \(monster.name) \(entity.number)", category: .setup)
+                log("No room to place \(name(.monster(name: monster.name, standee: entity.number)))", category: .setup)
                 continue
             }
             let pieceID = PieceID.monster(name: monster.name, standee: entity.number)
@@ -1856,7 +1890,7 @@ final class BoardCoordinator {
             gameManager.game.monsters.first { $0.name == monsterName }?
                 .entities.last { $0.number == standee }?.markers.append(marker)
         }
-        log("Scenario spawn: \(pieceLabel(piece))\(marker.map { " (marker \($0))" } ?? "")", category: .setup)
+        log("\(self.name(piece)) appears", category: .setup, trace: marker.map { "marker \($0)" })
         return true
     }
 
@@ -1903,7 +1937,7 @@ final class BoardCoordinator {
                     let targets = areaTargets(pattern: pattern, attacker: attackerID, primary: piece, range: range)
                     let ranged = !AoEResolver.isMeleePattern(pattern)
                     interactionMode = .idle
-                    log("\(attackerID): Area attack hits \(targets.count) enem\(targets.count == 1 ? "y" : "ies")", category: .attack)
+                    log("\(name(attackerID))\u{2019}s area attack hits \(targets.count) enem\(targets.count == 1 ? "y" : "ies")", category: .attack)
                     Task { @MainActor in
                         for target in targets where self.isOnBoard(target) && self.isOnBoard(attackerID) {
                             await self.resolvePlayerAttack(attacker: attackerID, target: target, attackValue: attackValue,
@@ -1922,7 +1956,7 @@ final class BoardCoordinator {
         case .selectingMultiAttackTargets(let attackerID, let range, let validTargets, let targetCount, var selected):
             if validTargets.contains(piece) && !selected.contains(piece) {
                 selected.append(piece)
-                log("\(attackerID): Target \(selected.count)/\(targetCount) — \(piece)", category: .attack)
+                log("\(name(attackerID)) targets \(name(piece)) (\(selected.count) of \(targetCount))", category: .attack)
 
                 if selected.count >= targetCount || selected.count >= validTargets.count {
                     // All targets selected — resolve each attack in turn (each a separate attack)
@@ -1950,7 +1984,7 @@ final class BoardCoordinator {
 
         case .selectingConditionTarget(let attackerID, let condition, let validTargets):
             if validTargets.contains(piece) {
-                log("\(attackerID): \(condition.rawValue) → \(piece)", category: .condition)
+                log("\(name(attackerID)) applies \(GameText.conditionName(condition)) to \(name(piece))", category: .condition)
                 applyCondition(condition, to: piece)
                 boardScene?.clearHighlights()
                 interactionMode = .idle
@@ -1971,7 +2005,7 @@ final class BoardCoordinator {
         case .selectingHealTarget(let healerID, let healValue, let validTargets):
             if validTargets.contains(piece) {
                 let healed = heal(piece, amount: healValue, source: healerID)
-                log("\(healerID) → \(piece): Heal \(healValue) (+\(healed))", category: .heal)
+                log("\(name(healerID)) heals \(name(piece)) for \(healed)", category: .heal, trace: "Heal \(healValue)")
                 boardScene?.clearHighlights()
                 interactionMode = .idle
                 activePlayerTurn?.advanceAfterAsyncAction()
@@ -2052,8 +2086,26 @@ final class BoardCoordinator {
 
     // MARK: - Logging
 
-    func log(_ message: String, category: TurnLogCategory = .info) {
-        turnLog.append(TurnLogEntry(message: message, category: category))
+    /// Add a line to the battle log. `message` is what the player reads, so it uses display names
+    /// (`name(_:)`); grid coordinates and other technical detail go in `trace`.
+    func log(_ message: String, category: TurnLogCategory = .info, trace: String? = nil) {
+        turnLog.append(TurnLogEntry(message: message, category: category, trace: trace))
+    }
+
+    /// The player-facing name of a piece: "Brute", "Bandit Guard 2", "Harmless Contraption".
+    func name(_ piece: PieceID) -> String {
+        GameText.pieceName(piece, game: gameManager?.game, labels: gameManager?.editionStore)
+    }
+
+    /// The player-facing name of a character, from its id.
+    func characterName(_ id: String) -> String {
+        name(.character(id))
+    }
+
+    /// The name of a monster type, e.g. "Bandit Guard".
+    func monsterTypeName(_ name: String) -> String {
+        let edition = gameManager?.game.monsters.first { $0.name == name }?.edition ?? gameManager?.game.edition
+        return GameText.monsterName(name, edition: edition, labels: gameManager?.editionStore)
     }
 
     func logRoundHeader(_ round: Int) {

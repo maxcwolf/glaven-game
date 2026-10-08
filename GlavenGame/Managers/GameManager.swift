@@ -24,21 +24,19 @@ final class GameManager {
     let actionsManager: ActionsManager
     let boardCoordinator: BoardCoordinator
 
-    private let modelContainer: ModelContainer
+    let modelContainer: ModelContainer
     private var modelContext: ModelContext
 
-    /// Whether an autosave with figures exists.
-    var hasAutosave: Bool {
-        let fetchDescriptor = FetchDescriptor<SavedGameModel>(
-            predicate: #Predicate { $0.name == "autosave" }
-        )
-        guard let saved = try? modelContext.fetch(fetchDescriptor).first,
-              let data = saved.snapshotData,
-              let snapshot = try? JSONDecoder().decode(GameSnapshot.self, from: data) else {
-            return false
-        }
-        return !snapshot.figures.isEmpty
-    }
+    /// What the autosave holds (nil when there is nothing to continue), kept up to date by
+    /// `saveGame` so the main menu doesn't decode the save on every render.
+    private(set) var autosaveSummary: AutosaveSummary?
+
+    /// Whether an autosave with a party exists.
+    var hasAutosave: Bool { autosaveSummary != nil }
+
+    /// The game as it stood at the start of the current round on the board. While a scenario is
+    /// in progress this is what the autosave holds, and Continue resumes there.
+    private(set) var roundCheckpoint: GameSnapshot?
 
     // Undo/Redo snapshots
     private var undoStack: [Data] = []
@@ -141,6 +139,8 @@ final class GameManager {
         itemMgr.onBeforeMutate = beforeMutate
         actMgr.onBeforeMutate = beforeMutate
 
+        autosaveSummary = loadAutosaveSummary()
+
         // Remove summon pieces from board when a character is exhausted
         charMgr.onCharacterExhausted = { [weak self] character in
             guard let self else { return }
@@ -152,7 +152,10 @@ final class GameManager {
         }
     }
 
+    /// Start over with an empty party. The autosave is replaced the next time the game saves.
     func newGame() {
+        if boardCoordinator.scenarioData != nil { boardCoordinator.exitBoard() }
+        roundCheckpoint = nil
         appPhase = .mainMenu
         game.edition = nil
         game.figures = []
@@ -180,6 +183,7 @@ final class GameManager {
         // Scenario level (and so monster level, trap damage, gold and bonus XP) is fixed at the
         // start of the scenario from the party's levels and difficulty (p.15).
         levelManager.calculateAndApplyLevel()
+        roundCheckpoint = nil
 
         // Set the scenario in game state
         scenarioManager.setScenario(scenarioData)
@@ -267,8 +271,10 @@ final class GameManager {
 
     // MARK: - Persistence
 
+    /// Save the game to the autosave. While a scenario is in progress the autosave holds the
+    /// round checkpoint, so a save in the middle of a round never records a half-played turn.
     func saveGame() {
-        let snapshot = game.toSnapshot(boardCoordinator: boardCoordinator)
+        let snapshot = roundCheckpoint ?? game.toSnapshot()
         guard let data = try? JSONEncoder().encode(snapshot) else { return }
 
         let fetchDescriptor = FetchDescriptor<SavedGameModel>(
@@ -283,18 +289,117 @@ final class GameManager {
             modelContext.insert(model)
         }
         try? modelContext.save()
+        autosaveSummary = AutosaveSummary(snapshot, savedAt: Date(), labels: editionStore)
     }
 
-    func restoreGame() {
+    /// Record the start of a round on the board and save it. Called as each round's card
+    /// selection begins, the one point where no turn is half-played.
+    func checkpointRound() {
+        var snapshot = game.toSnapshot()
+        snapshot.boardSnapshot = boardCoordinator.snapshot()
+        roundCheckpoint = snapshot
+        saveGame()
+    }
+
+    /// Load the autosave into the game. A save made during a scenario becomes the round
+    /// checkpoint again, for `continueGame` to resume the board from.
+    @discardableResult
+    func restoreGame() -> Bool {
+        guard let snapshot = loadAutosave() else { return false }
+        if boardCoordinator.scenarioData != nil { boardCoordinator.exitBoard() }
+        undoStack.removeAll()
+        redoStack.removeAll()
+        game.restore(from: snapshot, editionStore: editionStore)
+        roundCheckpoint = snapshot.boardSnapshot != nil && game.scenario != nil ? snapshot : nil
+        return true
+    }
+
+    /// Continue the saved game: back onto the board at the start of the saved round if a scenario
+    /// was in progress, otherwise to the party and scenario screen.
+    func continueGame() {
+        guard restoreGame() else { return }
+        if resumeScenarioFromCheckpoint() {
+            appPhase = .board
+        } else {
+            appPhase = .gameSetup
+        }
+    }
+
+    private func resumeScenarioFromCheckpoint() -> Bool {
+        guard let checkpoint = roundCheckpoint, let board = checkpoint.boardSnapshot,
+              let scenario = game.scenario,
+              let map = ScenarioMapStore.shared.scenarioMap(for: scenario.data.index) else {
+            roundCheckpoint = nil
+            return false
+        }
+        boardCoordinator.resumeScenario(scenario: map, board: board)
+        return true
+    }
+
+    /// Finish the scenario on the board (rewards on a success), leave the board and save.
+    func completeScenario(success: Bool) {
+        scenarioManager.finishScenario(success: success)
+        roundCheckpoint = nil
+        boardCoordinator.exitBoard()
+        saveGame()
+    }
+
+    /// Shows the main menu's "Start a new campaign?" confirmation.
+    var confirmingNewGame = false
+
+    /// Start a new campaign from scratch and go to the party screen.
+    func beginNewGame() {
+        newGame()
+        saveGame()
+        setEdition("gh")
+        appPhase = .gameSetup
+    }
+
+    /// New Campaign from the app menu: save and go to the main menu, which asks before
+    /// replacing a saved party.
+    func requestNewGame() {
+        guard hasAutosave || !game.characters.isEmpty else {
+            beginNewGame()
+            return
+        }
+        if boardCoordinator.scenarioData != nil {
+            saveAndQuitScenario()
+        } else {
+            returnToMainMenu()
+        }
+        confirmingNewGame = true
+    }
+
+    /// Go back to the main menu from the party screen, saving the party on the way.
+    func returnToMainMenu() {
+        saveGame()
+        appPhase = .mainMenu
+    }
+
+    /// Leave the board for the main menu. The scenario stays saved at the start of the current
+    /// round, and Continue resumes it there.
+    func saveAndQuitScenario() {
+        saveGame()
+        boardCoordinator.exitBoard()
+    }
+
+    private func loadAutosave() -> GameSnapshot? {
+        let fetchDescriptor = FetchDescriptor<SavedGameModel>(
+            predicate: #Predicate { $0.name == "autosave" }
+        )
+        guard let saved = try? modelContext.fetch(fetchDescriptor).first,
+              let data = saved.snapshotData else { return nil }
+        return try? JSONDecoder().decode(GameSnapshot.self, from: data)
+    }
+
+    private func loadAutosaveSummary() -> AutosaveSummary? {
         let fetchDescriptor = FetchDescriptor<SavedGameModel>(
             predicate: #Predicate { $0.name == "autosave" }
         )
         guard let saved = try? modelContext.fetch(fetchDescriptor).first,
               let data = saved.snapshotData,
-              let snapshot = try? JSONDecoder().decode(GameSnapshot.self, from: data) else {
-            return
-        }
-        game.restore(from: snapshot, editionStore: editionStore, boardCoordinator: boardCoordinator)
+              let snapshot = try? JSONDecoder().decode(GameSnapshot.self, from: data) else { return nil }
+        return AutosaveSummary(snapshot, savedAt: saved.updatedAt, labels: editionStore)
     }
 
     // MARK: - Save Slots
@@ -328,6 +433,7 @@ final class GameManager {
         }
         undoStack.removeAll()
         redoStack.removeAll()
+        roundCheckpoint = nil
         game.restore(from: snapshot, editionStore: editionStore, boardCoordinator: boardCoordinator)
     }
 
@@ -428,4 +534,32 @@ final class GameManager {
 
     /// Current position in the timeline (0-based)
     var historyIndex: Int { undoStack.count }
+}
+
+/// What the autosave holds, in the words the main menu shows ("Brute, Tinkerer · #1 Black
+/// Barrow · Round 2").
+struct AutosaveSummary: Equatable {
+    var characterNames: [String]
+    /// "#1 Black Barrow" while a scenario is in progress.
+    var scenario: String?
+    /// The round Continue resumes at, while a scenario is in progress.
+    var round: Int?
+    var savedAt: Date
+
+    init?(_ snapshot: GameSnapshot, savedAt: Date, labels: EditionDataStore?) {
+        let characters: [CharacterSnapshot] = snapshot.figures.compactMap {
+            if case .character(let c) = $0, !c.absent { return c }
+            return nil
+        }
+        guard !characters.isEmpty else { return nil }
+        characterNames = characters.map {
+            $0.title.isEmpty ? GameText.className($0.name, edition: $0.edition, labels: labels) : $0.title
+        }.sorted()
+        if let scenario = snapshot.scenario, snapshot.boardSnapshot != nil {
+            let name = labels?.scenarios(for: scenario.edition).first { $0.index == scenario.index }?.name
+            self.scenario = name.map { "#\(scenario.index) \($0)" } ?? "#\(scenario.index)"
+            round = snapshot.round + 1
+        }
+        self.savedAt = savedAt
+    }
 }

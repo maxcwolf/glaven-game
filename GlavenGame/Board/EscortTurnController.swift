@@ -45,15 +45,16 @@ final class EscortTurnController {
     @MainActor private func executeEscortTurn(result: EscortTurnResult, container: GameObjectiveContainer,
                                    entity: GameObjectiveEntity, pieceID: PieceID) async {
         guard let coordinator, let gameManager else { return }
-        let name = "\(container.name)#\(entity.number)"
+        let name = coordinator.name(pieceID)
 
         if result.stunned {
-            coordinator.log("  \(name): Stunned — skipped", category: .condition)
+            coordinator.log("\(name) is stunned and loses the turn", category: .condition)
             return
         }
 
         if result.movementPath.count > 1 {
-            coordinator.log("  \(name): Move \(result.movementPath.count - 1)", category: .move)
+            let steps = result.movementPath.count - 1
+            coordinator.log("\(name) moves \(steps) hex\(steps == 1 ? "" : "es")", category: .move, trace: "to \(result.movementPath.last!)")
             guard await coordinator.moveAlong(pieceID, path: result.movementPath, style: .normal) else { return }
         }
 

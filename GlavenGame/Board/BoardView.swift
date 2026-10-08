@@ -6,6 +6,7 @@ struct BoardView: View {
     @Environment(GameManager.self) private var gameManager
     @Bindable var coordinator: BoardCoordinator
     @State private var previewMonsterAbility: (GameMonster, AbilityModel)?
+    @State private var confirmingAbandon = false
 
     var body: some View {
         ZStack {
@@ -107,28 +108,14 @@ struct BoardView: View {
     @ViewBuilder
     private var boardHUD: some View {
         HStack(spacing: 16) {
-            // Phase indicator
-            Text(phaseLabel)
+            // What is happening: "Place Your Characters", "Brute’s Turn · 20"
+            Text(coordinator.phaseTitle)
                 .font(.headline)
                 .foregroundStyle(.white)
                 .padding(.horizontal, 12)
                 .padding(.vertical, 6)
                 .background(.black.opacity(0.6))
                 .clipShape(Capsule())
-
-            // Current figure info
-            if coordinator.boardPhase == .execution,
-               coordinator.currentTurnIndex >= 0,
-               coordinator.currentTurnIndex < coordinator.turnOrder.count {
-                let entry = coordinator.turnOrder[coordinator.currentTurnIndex]
-                Text("Turn: \(figureName(entry.figure)) (\(Int(entry.initiative.rounded(.up))))")
-                    .font(.subheadline)
-                    .foregroundStyle(.yellow)
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 4)
-                    .background(.black.opacity(0.6))
-                    .clipShape(Capsule())
-            }
 
             Spacer()
 
@@ -139,42 +126,49 @@ struct BoardView: View {
                 .background(.black.opacity(0.5))
                 .clipShape(RoundedRectangle(cornerRadius: 8))
 
-            // Round counter
-            Text("Round \(gameManager.game.round)")
-                .font(.subheadline.monospaced())
-                .foregroundStyle(.white)
-                .padding(.horizontal, 10)
-                .padding(.vertical, 4)
-                .background(.black.opacity(0.6))
-                .clipShape(Capsule())
-
-            // Exit button
-            Button {
-                coordinator.exitBoard()
-            } label: {
-                HStack(spacing: 4) {
-                    Image(systemName: "xmark.circle.fill")
-                    Text("Exit")
-                        .font(.caption.weight(.medium))
-                }
-                .foregroundStyle(.white)
-                .padding(.horizontal, 10)
-                .padding(.vertical, 6)
-                .background(.red.opacity(0.6))
-                .clipShape(Capsule())
+            // Round counter (hidden while placing characters, before round 1)
+            if let round = coordinator.displayedRound {
+                Text("Round \(round)")
+                    .font(.subheadline.monospacedDigit())
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 4)
+                    .background(.black.opacity(0.6))
+                    .clipShape(Capsule())
             }
+
+            // Game menu: leaving the scenario never happens on a single stray tap.
+            Menu {
+                Button {
+                    gameManager.saveAndQuitScenario()
+                } label: {
+                    Label("Save & Quit to Menu", systemImage: "square.and.arrow.down")
+                }
+                Button(role: .destructive) {
+                    confirmingAbandon = true
+                } label: {
+                    Label("Abandon Scenario…", systemImage: "flag.slash")
+                }
+            } label: {
+                Image(systemName: "line.3.horizontal")
+                    .font(.headline)
+                    .foregroundStyle(.white)
+                    .frame(width: 44, height: 44)
+                    .background(.black.opacity(0.6))
+                    .clipShape(Circle())
+            }
+            .menuStyle(.button)
             .buttonStyle(.plain)
+            .accessibilityLabel("Game menu")
         }
         .padding()
-    }
-
-    private var phaseLabel: String {
-        switch coordinator.boardPhase {
-        case .setup: return "Place Characters"
-        case .cardSelection: return "Select Cards"
-        case .execution: return "Turn in Progress"
-        case .roomReveal: return "Room Revealed"
-        case .scenarioEnd: return "Scenario Complete"
+        .confirmationDialog("Abandon this scenario?", isPresented: $confirmingAbandon, titleVisibility: .visible) {
+            Button("Abandon Scenario", role: .destructive) {
+                gameManager.completeScenario(success: false)
+            }
+            Button("Keep Playing", role: .cancel) {}
+        } message: {
+            Text("It counts as a loss. Your characters keep the experience and gold they've collected.")
         }
     }
 
@@ -311,7 +305,7 @@ struct BoardView: View {
                             Button {
                                 playerTurn.executeCurrentAction()
                             } label: {
-                                Label("Execute: \(action.type.rawValue.capitalized)", systemImage: "play.fill")
+                                Label(GameText.actionTitle(action), systemImage: "play.fill")
                             }
                             .buttonStyle(.borderedProminent)
                             .tint(.blue)
@@ -319,7 +313,8 @@ struct BoardView: View {
                             Button {
                                 playerTurn.executeCurrentAction()
                             } label: {
-                                Label("Next Phase", systemImage: "forward.fill")
+                                Label(playerTurn.phase == .executeTopAction && !playerTurn.bottomFirst
+                                      ? "Continue to Bottom Half" : "Continue", systemImage: "forward.fill")
                             }
                             .buttonStyle(.bordered)
                             .tint(.gray)
@@ -345,7 +340,7 @@ struct BoardView: View {
                         }
 
                         HStack(spacing: 8) {
-                            let defaultLabel = playerTurn.phase == .executeTopAction ? "Default: Attack 2" : "Default: Move 2"
+                            let defaultLabel = playerTurn.phase == .executeTopAction ? "Use Basic Attack 2" : "Use Basic Move 2"
                             Button(defaultLabel) {
                                 playerTurn.useDefaultAction()
                             }
@@ -416,7 +411,7 @@ struct BoardView: View {
             .clipShape(RoundedRectangle(cornerRadius: 8))
             Spacer()
         } else if case .watchingMonsterTurn = coordinator.interactionMode {
-            Text("Monsters acting...")
+            Text(coordinator.currentTurnEntry.map { "\(coordinator.figureName($0.figure)) acting\u{2026}" } ?? "Monsters acting\u{2026}")
                 .font(.subheadline)
                 .foregroundStyle(.white)
             Spacer()
@@ -436,7 +431,7 @@ struct BoardView: View {
 
         if let card {
             let highlight: CardHighlight = isTop ? .top : .bottom
-            let badge = isTop ? "TOP — Init \(card.initiative)" : "BOTTOM"
+            let badge = isTop ? "TOP · INITIATIVE \(card.initiative)" : "BOTTOM"
             let badgeColor: Color = isTop ? .yellow : .cyan
 
             BoardAbilityCardView(
@@ -577,7 +572,7 @@ struct BoardView: View {
                     HStack(spacing: 3) {
                         ForEach(conditions, id: \.name) { cond in
                             BundledImage(ImageLoader.conditionIcon(cond.name.rawValue), size: 12, systemName: "bolt.fill")
-                                .help(cond.name.rawValue.capitalized)
+                                .help(GameText.conditionName(cond.name))
                         }
                     }
                 }
@@ -659,7 +654,7 @@ struct BoardView: View {
                 HStack(spacing: 3) {
                     ForEach(summonConditions, id: \.name) { cond in
                         BundledImage(ImageLoader.conditionIcon(cond.name.rawValue), size: 10, systemName: "bolt.fill")
-                            .help(cond.name.rawValue.capitalized)
+                            .help(GameText.conditionName(cond.name))
                     }
                 }
             }
@@ -785,7 +780,7 @@ struct BoardView: View {
             let conditions = entity.entityConditions.filter { !$0.expired }
             ForEach(conditions, id: \.name) { cond in
                 BundledImage(ImageLoader.conditionIcon(cond.name.rawValue), size: 10, systemName: "bolt.fill")
-                    .help(cond.name.rawValue.capitalized)
+                    .help(GameText.conditionName(cond.name))
             }
         }
         .frame(height: 16)
@@ -907,7 +902,7 @@ struct BoardView: View {
                             .font(.system(size: 56))
                             .foregroundStyle(accentColor)
 
-                        Text(isVictory ? "Scenario Complete!" : "Scenario Failed")
+                        Text(isVictory ? "Scenario Complete" : "Scenario Failed")
                             .font(.system(size: 32, weight: .bold, design: .serif))
                             .foregroundStyle(.white)
 
@@ -958,7 +953,7 @@ struct BoardView: View {
                         coordinator.confirmScenarioEnd()
                     } label: {
                         Label(
-                            isVictory ? "Complete Scenario" : "Return to Campaign",
+                            isVictory ? "Finish Scenario" : "Back to Menu",
                             systemImage: isVictory ? "checkmark.circle.fill" : "arrow.uturn.left.circle.fill"
                         )
                         .font(.system(size: 17, weight: .semibold))
@@ -1089,7 +1084,7 @@ struct BoardView: View {
                                 .font(.system(size: 36))
                                 .foregroundStyle(.red)
 
-                            Text("\(character.title.isEmpty ? character.name : character.title)")
+                            Text(GameText.characterName(character, labels: gameManager.editionStore))
                                 .font(.title3.weight(.bold))
                                 .foregroundStyle(charColor)
 
@@ -1621,17 +1616,6 @@ struct BoardView: View {
 
     private func labelResolver(for edition: String) -> (String) -> String? {
         { gameManager.editionStore.resolveCustomText($0, edition: edition) }
-    }
-
-    private func figureName(_ figure: AnyFigure) -> String {
-        switch figure {
-        case .character(let c):
-            return c.title.isEmpty ? c.name : c.title
-        case .monster(let m):
-            return m.name.replacingOccurrences(of: "-", with: " ").capitalized
-        case .objective(let o):
-            return o.name
-        }
     }
 
     private func playerTurnPhaseLabel(_ phase: PlayerTurnPhase) -> String {

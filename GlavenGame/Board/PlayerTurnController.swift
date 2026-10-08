@@ -17,6 +17,11 @@ enum PlayerTurnPhase {
 final class PlayerTurnController {
     var phase: PlayerTurnPhase = .selectTopCard
     var characterID: String
+
+    /// The character's name as the battle log shows it.
+    private var who: String {
+        coordinator?.characterName(characterID) ?? GameText.titleCased(characterID)
+    }
     var topCard: AbilityModel?
     var bottomCard: AbilityModel?
     var topActions: [ActionModel] = []
@@ -76,7 +81,7 @@ final class PlayerTurnController {
     func swapCards() {
         guard !hasActed, let top = topCard, let bottom = bottomCard else { return }
         selectCards(top: bottom, bottom: top)
-        coordinator?.log("\(characterID): Top from \(bottom.name ?? "?"), bottom from \(top.name ?? "?")", category: .round)
+        coordinator?.log("\(who) takes the top half from \(bottom.name ?? "the other card") and the bottom half from \(top.name ?? "the first card")", category: .round)
     }
 
     /// Choose whether to perform the bottom half first (allowed until the first action).
@@ -179,12 +184,12 @@ final class PlayerTurnController {
             topUsedAsDefault = true
             resetPendingAttack(value: 2, range: 1)
             defaultAttackPending = true
-            coordinator.log("\(characterID): Default Attack 2", category: .attack)
+            coordinator.log("\(who) uses the basic Attack 2", category: .attack)
             coordinator.beginAttackAction(pieceID: pieceID, range: 1)
         case .executeBottomAction:
             bottomUsedAsDefault = true
             defaultAttackPending = true // ends the half once the move resolves
-            coordinator.log("\(characterID): Default Move 2", category: .move)
+            coordinator.log("\(who) uses the basic Move 2", category: .move)
             coordinator.beginMoveAction(pieceID: pieceID, moveRange: 2)
         default:
             break
@@ -243,7 +248,7 @@ final class PlayerTurnController {
         for sub in action.subActions ?? [] where MonsterAbility.isConsume(sub) {
             let elements = MonsterAbility.elements(of: sub)
             guard let used = game.consumeElements(elements) else { continue }
-            coordinator?.log("\(characterID): Consumed \(used.map(\.rawValue).joined(separator: " + "))", category: .element)
+            coordinator?.log("\(who) consumes \(GameText.list(used.map(GameText.elementName)))", category: .element)
             for effect in sub.subActions ?? [] {
                 if effect.type == .concatenation {
                     bonus.append(contentsOf: effect.subActions ?? [])
@@ -276,7 +281,7 @@ final class PlayerTurnController {
     private func grantExperience(_ xp: Int) {
         guard let character, xp > 0 else { return }
         character.experience += xp
-        coordinator?.log("\(characterID): +\(xp) XP", category: .info)
+        coordinator?.log("\(who) gains \(xp) XP", category: .info)
     }
 
     /// Execute one action. Returns true if it waits for player input (and advances later).
@@ -296,13 +301,13 @@ final class PlayerTurnController {
             }
             grantBonusExperience(bonus)
             let label = mode == .jump ? "Jump" : (mode == .fly ? "Fly" : "Move")
-            coordinator.log("\(characterID): \(label) \(moveValue)", category: .move)
+            coordinator.log("\(who): \(label) \(moveValue)", category: .move)
             coordinator.beginMoveAction(pieceID: pieceID, moveRange: moveValue, mode: mode)
             return true
 
         case .teleport:
             let teleportValue = action.value?.intValue ?? 2
-            coordinator.log("\(characterID): Teleport \(teleportValue)", category: .move)
+            coordinator.log("\(who): Teleport \(teleportValue)", category: .move)
             coordinator.beginTeleportAction(pieceID: pieceID, range: teleportValue)
             return true
 
@@ -357,7 +362,7 @@ final class PlayerTurnController {
                 let reach: Int = spec.hasPrefix("enemiesadjacent")
                     ? 1 : Int(spec.split(separator: ":").last ?? "") ?? range
                 let exact = spec.hasPrefix("enemiesrangeexact")
-                coordinator.log("\(characterID): Attack \(pendingAttackValue) — all enemies within \(reach)", category: .attack)
+                coordinator.log("\(who): Attack \(pendingAttackValue) on every enemy within \(reach)", category: .attack)
                 applyPerformedEffects()
                 coordinator.attackAllEnemies(from: pieceID, within: reach, exactly: exact)
                 return true
@@ -369,7 +374,7 @@ final class PlayerTurnController {
             if pendingPull > 0 { extras.append("Pull \(pendingPull)") }
             for cond in pendingConditions { extras.append(cond.rawValue.capitalized) }
             let extrasStr = extras.isEmpty ? "" : ", " + extras.joined(separator: ", ")
-            coordinator.log("\(characterID): Attack \(pendingAttackValue), Range \(range)\(extrasStr)", category: .attack)
+            coordinator.log("\(who): Attack \(pendingAttackValue), Range \(range)\(extrasStr)", category: .attack)
             applyPerformedEffects()
             coordinator.beginAttackAction(pieceID: pieceID, range: range, targetCount: targetCount)
             return true
@@ -384,12 +389,12 @@ final class PlayerTurnController {
             }
             grantBonusExperience(bonus)
             if range > 0 {
-                coordinator.log("\(characterID): Heal \(healValue), Range \(range) — select target", category: .heal)
+                coordinator.log("\(who): Heal \(healValue), Range \(range). Choose who to heal", category: .heal)
                 coordinator.beginHealAction(pieceID: pieceID, healValue: healValue, range: range)
                 return true
             }
             let healed = coordinator.heal(pieceID, amount: healValue, source: pieceID)
-            coordinator.log("\(characterID): Heal \(healValue), self (+\(healed))", category: .heal)
+            coordinator.log("\(who) heals for \(healed)", category: .heal, trace: "Heal \(healValue), self")
 
         case .condition:
             guard let condName = action.value?.stringValue,
@@ -397,14 +402,14 @@ final class PlayerTurnController {
             switch conditionTargetSpec(action) {
             case .singleEnemy(let range):
                 coordinator.beginConditionAction(pieceID: pieceID, condition: cond, range: range)
-                coordinator.log("\(characterID): \(cond.rawValue) — select target", category: .condition)
+                coordinator.log("\(who): \(GameText.conditionName(cond)). Choose a target", category: .condition)
                 return true
             case .allEnemies(let range):
                 coordinator.applyConditionToAllEnemies(from: pieceID, condition: cond, range: range ?? 1)
-                coordinator.log("\(characterID): \(cond.rawValue) → all enemies (range \(range ?? 1))", category: .condition)
+                coordinator.log("\(who) applies \(GameText.conditionName(cond)) to every enemy within range \(range ?? 1)", category: .condition)
             case .allAllies(let range):
                 coordinator.applyConditionToAllAllies(from: pieceID, condition: cond, range: range ?? 999)
-                coordinator.log("\(characterID): \(cond.rawValue) → all allies", category: .condition)
+                coordinator.log("\(who) applies \(GameText.conditionName(cond)) to every ally", category: .condition)
             case .selfAndAllAllies(let range):
                 coordinator.applyCondition(cond, to: pieceID)
                 coordinator.applyConditionToAllAllies(from: pieceID, condition: cond, range: range ?? 999)
@@ -420,7 +425,7 @@ final class PlayerTurnController {
 
         case .loot:
             let lootRange = action.value?.intValue ?? 1
-            coordinator.log("\(characterID): Loot \(lootRange)", category: .loot)
+            coordinator.log("\(who): Loot \(lootRange)", category: .loot)
             coordinator.collectLootInRange(pieceID: pieceID, range: lootRange)
 
         case .summon:
@@ -431,7 +436,7 @@ final class PlayerTurnController {
             let isPush = action.type == .push
             let spec = action.subActions?.first { $0.type == .specialTarget }?.value?.stringValue.lowercased()
             let range = action.subActions?.first { $0.type == .range }?.value?.intValue
-            coordinator.log("\(characterID): \(isPush ? "Push" : "Pull") \(steps)", category: .move)
+            coordinator.log("\(who): \(isPush ? "Push" : "Pull") \(steps)", category: .move)
             if spec?.hasPrefix("enemiesadjacent") == true {
                 coordinator.forceMoveAllEnemies(from: pieceID, within: 1, steps: steps, isPush: isPush)
             } else if spec?.hasPrefix("enemyadjacent") == true || range != nil {
@@ -443,24 +448,24 @@ final class PlayerTurnController {
 
         case .suffer, .sufferDamage:
             let sufferValue = action.value?.intValue ?? 1
-            coordinator.log("\(characterID): Suffer \(sufferValue) damage", category: .damage)
+            coordinator.log("\(who) suffers \(sufferValue) damage", category: .damage)
             coordinator.sufferDamage(sufferValue, to: pieceID)
 
         case .element:
             applyElementAction(action, coordinator: coordinator)
 
         case .refreshItem, .refreshSpent, .forceRefresh:
-            coordinator.log("\(characterID): Refresh items", category: .info)
+            coordinator.log("\(who) refreshes items", category: .info)
 
         case .removeNegativeConditions:
             character?.entityConditions.removeAll { $0.name.isNegative && !$0.permanent }
-            coordinator.log("\(characterID): Remove negative conditions", category: .condition)
+            coordinator.log("\(who) removes negative conditions", category: .condition)
 
         case .immune:
             if let condName = action.value?.stringValue, let cond = ConditionName(rawValue: condName),
                let character, !character.immunities.contains(cond) {
                 character.immunities.append(cond)
-                coordinator.log("\(characterID): Immune to \(condName)", category: .condition)
+                coordinator.log("\(who) becomes immune to \(GameText.conditionName(cond))", category: .condition)
             }
 
         case .box, .concatenation, .grid:
@@ -524,14 +529,14 @@ final class PlayerTurnController {
             let total = (existing?.value?.intValue ?? 0) + value
             let stacked = ActionModel(type: .shield, value: .int(total))
             if persistent { character.shieldPersistent = stacked } else { character.shield = stacked }
-            coordinator.log("\(characterID): Shield \(value)", category: .condition)
+            coordinator.log("\(who): Shield \(value)", category: .condition)
         } else {
             var range = 1
             for sub in action.subActions ?? [] where sub.type == .range { range = sub.value?.intValue ?? 1 }
             let bonus = ActionModel(type: .retaliate, value: .int(value),
                                     subActions: range > 1 ? [ActionModel(type: .range, value: .int(range))] : nil)
             if persistent { character.retaliatePersistent.append(bonus) } else { character.retaliate.append(bonus) }
-            coordinator.log("\(characterID): Retaliate \(value)\(range > 1 ? ", Range \(range)" : "")", category: .condition)
+            coordinator.log("\(who): Retaliate \(value)\(range > 1 ? ", Range \(range)" : "")", category: .condition)
         }
     }
 
@@ -595,7 +600,7 @@ final class PlayerTurnController {
 
         let summonName = action.summonValueObject?.name ?? action.value?.stringValue
         guard let summonName else {
-            coordinator.log("\(characterID): Summon (unknown)", category: .info)
+            coordinator.log("\(who)\u{2019}s summon could not be found", category: .info, trace: "no summon name")
             return false
         }
 
@@ -605,7 +610,7 @@ final class PlayerTurnController {
         } else if let embedded = action.summonValueObject {
             summonData = embedded.toSummonData()
         } else {
-            coordinator.log("\(characterID): Summon \(summonName) — not found in character data", category: .info)
+            coordinator.log("\(who)\u{2019}s summon could not be found", category: .info, trace: summonName)
             return false
         }
 
@@ -615,7 +620,7 @@ final class PlayerTurnController {
         // Summons are placed in an empty hex adjacent to the summoner (p.26).
         let emptyNeighbors = charPos.neighbors.filter { coordinator.isEmptyHex($0) }
         guard !emptyNeighbors.isEmpty else {
-            coordinator.log("\(characterID): Summon \(summonName) failed — no empty adjacent hex", category: .info)
+            coordinator.log("\(who) can\u{2019}t summon \(GameText.titleCased(summonName)): no empty hex next to them", category: .info)
             return false
         }
 
@@ -637,7 +642,7 @@ final class PlayerTurnController {
             validHexes: validHexes
         )
         coordinator.boardScene?.highlightHexes(validHexes, color: .green, offsetCol: coordinator.offsetCol, offsetRow: coordinator.offsetRow)
-        coordinator.log("\(characterID): Summoned \(summonName) — choose placement hex", category: .info)
+        coordinator.log("\(who) summons \(GameText.titleCased(summonName)). Choose a hex next to them", category: .info)
         return true
     }
 
@@ -648,13 +653,13 @@ final class PlayerTurnController {
         guard !elements.isEmpty else { return }
         if MonsterAbility.isConsume(action) {
             if let used = game.consumeElements(elements) {
-                coordinator.log("\(characterID): Consumed \(used.map(\.rawValue).joined(separator: " + "))", category: .element)
+                coordinator.log("\(who) consumes \(GameText.list(used.map(GameText.elementName)))", category: .element)
             }
         } else {
             // Becomes strong at the end of this turn (it can't be consumed by this turn's actions).
             for element in elements where element != .wild {
                 game.infuseElement(element)
-                coordinator.log("\(characterID): Infused \(element.rawValue)", category: .element)
+                coordinator.log("\(who) infuses \(GameText.elementName(element))", category: .element)
             }
         }
     }
@@ -687,7 +692,7 @@ final class PlayerTurnController {
                 character: character)
         putAway(bottomCard, half: bottomActions, lostFlag: bottomCard?.bottomLost == true,
                 usedAsDefault: bottomUsedAsDefault, character: character)
-        coordinator?.log("\(characterID): Turn complete", category: .round)
+        coordinator?.log("\(who) ends the turn", category: .round)
     }
 
     private func putAway(_ card: AbilityModel?, half: [ActionModel], lostFlag: Bool, usedAsDefault: Bool,
