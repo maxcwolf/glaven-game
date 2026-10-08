@@ -940,15 +940,60 @@ final class RB_LevelTests: XCTestCase {
         }
     }
 
-    // p.15: Hazardous terrain = 1 + ceil(L/3)
+    // GH p.13: Hazardous terrain inflicts half the damage of a trap, rounded down
     func testHazardousTerrain() {
         let game = GameState()
         let lm = LevelManager(game: game)
-        // 1 + ceil(L/3): L=0→1, L=1→2, L=2→2, L=3→2, L=4→3, L=5→3, L=6→3, L=7→4
+        // floor((2 + L) / 2): L=0→1, L=1→1, L=2→2, L=3→2, L=4→3, L=5→3, L=6→4, L=7→4
+        let expected = [1, 1, 2, 2, 3, 3, 4, 4] // levels 0-7
+        for (level, exp) in expected.enumerated() {
+            game.level = level
+            XCTAssertEqual(lm.terrain(), exp, "p.13: Hazard damage at level \(level)")
+        }
+    }
+
+    // FH: Hazardous terrain = 1 + ceil(L/3)
+    func testHazardousTerrain_frosthaven() {
+        let game = GameState()
+        game.edition = "fh"
+        let lm = LevelManager(game: game)
         let expected = [1, 2, 2, 2, 3, 3, 3, 4] // levels 0-7
         for (level, exp) in expected.enumerated() {
             game.level = level
-            XCTAssertEqual(lm.terrain(), exp, "p.15: Hazard damage at level \(level)")
+            XCTAssertEqual(lm.terrain(), exp, "FH hazard damage at level \(level)")
         }
+    }
+
+    // p.15 table: gold per money token 2,2,3,3,4,4,5,6
+    func testGoldConversion() {
+        let game = GameState()
+        let lm = LevelManager(game: game)
+        let expected = [2, 2, 3, 3, 4, 4, 5, 6]
+        for (level, exp) in expected.enumerated() {
+            game.level = level
+            XCTAssertEqual(lm.loot(), exp, "p.15: Gold conversion at level \(level)")
+        }
+    }
+
+    // p.15: recommended level = average character level / 2, rounded UP
+    func testScenarioLevelRoundsUp() {
+        let game = GameState()
+        let lm = LevelManager(game: game)
+        for level in [1, 1, 1, 1] {
+            game.figures.append(.character(GameCharacter(name: "c\(game.figures.count)", edition: "gh",
+                                                          level: level, characterData: nil)))
+        }
+        XCTAssertEqual(lm.scenarioLevel(), 1, "avg 1 / 2 = 0.5 → rounds up to 1")
+
+        game.figures = []
+        for level in [2, 3, 3] {
+            game.figures.append(.character(GameCharacter(name: "c\(game.figures.count)", edition: "gh",
+                                                          level: level, characterData: nil)))
+        }
+        // avg 2.67 / 2 = 1.33 → 2
+        XCTAssertEqual(lm.scenarioLevel(), 2)
+
+        game.difficulty = .hard
+        XCTAssertEqual(lm.scenarioLevel(), 3, "Hard adds +1")
     }
 }
