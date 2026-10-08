@@ -112,13 +112,15 @@ extension BoardCoordinator {
 
     /// Breadth-first search outward for the nearest empty hex.
     func nearestEmptyHex(to coord: HexCoord) -> HexCoord? {
+        // During setup the starting hexes are kept free for the party.
+        let reserved = boardPhase == .setup ? Set(boardState.startingLocations) : []
         var visited: Set<HexCoord> = [coord]
         var queue = [coord]
         var head = 0
         while head < queue.count {
             let current = queue[head]
             head += 1
-            if isEmptyHex(current) { return current }
+            if isEmptyHex(current) && !reserved.contains(current) { return current }
             for neighbor in current.neighbors where !visited.contains(neighbor) && boardState.cells[neighbor] != nil {
                 visited.insert(neighbor)
                 queue.append(neighbor)

@@ -221,6 +221,11 @@ final class BoardCoordinator {
     /// Pause between automated figures' turns, for readability.
     var turnDelayNanoseconds: UInt64 = 400_000_000
 
+    /// Called before every attack resolves and every movement starts, with the board as it is at
+    /// that moment. The simulation tests use these to check each one against the rules.
+    var attackObserver: ((_ attacker: PieceID, _ target: PieceID) -> Void)?
+    var moveObserver: ((_ piece: PieceID, _ path: [HexCoord], _ style: MovementStyle) -> Void)?
+
     /// Non-nil when a monster push/pull is in progress and the async caller is suspended.
     private var pendingPushPullContinuation: CheckedContinuation<Void, Never>?
 
@@ -232,7 +237,7 @@ final class BoardCoordinator {
     }
 
     /// Presents the interactive modifier draw overlay and suspends until the player confirms.
-    func performModifierDraw(
+    @MainActor func performModifierDraw(
         attacker: PieceID,
         defender: PieceID,
         baseAttack: Int,
@@ -278,7 +283,7 @@ final class BoardCoordinator {
     /// How the player chose to handle incoming damage.
     enum DamageMitigationChoice {
         case takeDamage
-        case loseHandCard(cardIndex: Int)     // Lose 1 card from hand → negate all
+        case loseHandCard(cardId: Int)        // Lose 1 card from hand → negate all
         case loseDiscardCards(indices: [Int])  // Lose 2 cards from discard → negate all
     }
 
@@ -404,7 +409,7 @@ final class BoardCoordinator {
             guard character.discardedCards.count >= 2 else { continue }
 
             // Pick a random card from the discard pile
-            let randomCardId = character.discardedCards.randomElement()!
+            let randomCardId = character.discardedCards.randomElement(using: &GameRandom.shared)!
             pendingShortRest = PendingShortRest(
                 characterID: character.id,
                 randomCardId: randomCardId
@@ -464,7 +469,7 @@ final class BoardCoordinator {
 
         // Pick a new random card, different from the current one if possible
         let candidates = character.discardedCards.filter { $0 != pending.randomCardId }
-        if let newCard = candidates.randomElement() {
+        if let newCard = candidates.randomElement(using: &GameRandom.shared) {
             pending.randomCardId = newCard
         }
         // If no other candidates exist, keep the same card (only 1 unique card ID scenario — unlikely with >=2 cards)
@@ -558,7 +563,7 @@ final class BoardCoordinator {
         let partySize = gameManager?.game.characters.filter { !$0.absent }.count ?? 0
         if board.startingLocations.count < partySize {
             var extra = board.startingLocations
-            var frontier = board.startingLocations.isEmpty ? Array(board.cells.keys.prefix(1)) : board.startingLocations
+            var frontier = board.startingLocations.isEmpty ? Array(board.cells.keys.min().map { [$0] } ?? []) : board.startingLocations
             var visited = Set(frontier)
             while extra.count < partySize, !frontier.isEmpty {
                 let next = frontier.removeFirst()
@@ -740,6 +745,27 @@ final class BoardCoordinator {
     /// Store the selected card pair for a character during card selection.
     func storeSelectedCards(for characterID: String, top: AbilityModel, bottom: AbilityModel) {
         selectedCardPairs[characterID] = (top: top, bottom: bottom)
+    }
+
+    /// A character plays two cards this round. The first card leads: its initiative is the
+    /// character's initiative (p.16). Either card can still supply the top half during the turn.
+    func chooseCards(for characterID: String, leading: AbilityModel, other: AbilityModel) {
+        guard let character = gameManager?.game.characters.first(where: { $0.id == characterID }) else { return }
+        character.initiative = leading.initiative
+        character.longRest = false
+        storeSelectedCards(for: characterID, top: leading, bottom: other)
+        log("\(characterID): TOP \(leading.name ?? "?") (init \(leading.initiative)) / BTM \(other.name ?? "?")", category: .round)
+        completeCardSelection(for: characterID)
+    }
+
+    /// A character declares a long rest instead of playing cards (initiative 99, p.27).
+    func chooseLongRest(for characterID: String) {
+        guard let character = gameManager?.game.characters.first(where: { $0.id == characterID }),
+              character.discardedCards.count >= 2 else { return }
+        character.initiative = 99
+        character.longRest = true
+        log("\(characterID): Long rest selected", category: .rest)
+        completeCardSelection(for: characterID)
     }
 
     /// Mark a character's card selection as complete and advance to the next.
@@ -1013,7 +1039,7 @@ final class BoardCoordinator {
             ? turnOrder[currentTurnIndex].initiative : -1
         var immediate: [TurnOrderEntry] = []
 
-        for (name, standees) in revealed {
+        for (name, standees) in revealed.sorted(by: { $0.key < $1.key }) {
             guard let monster = gameManager.game.monsters.first(where: { $0.name == name }),
                   let initiative = gameManager.monsterManager.currentAbilityInitiative(for: monster).map(Double.init)
             else { continue }
@@ -1247,7 +1273,10 @@ final class BoardCoordinator {
         let turn = activePlayerTurn
         Task { @MainActor in
             await self.moveAlong(pieceID, path: path, style: style)
-            self.log("\(pieceID): Moved to (\(target.col), \(target.row))", category: .move)
+            // The move may end early (a trap that immobilizes, or one that exhausts the figure).
+            if let end = self.boardState.piecePositions[pieceID] {
+                self.log("\(pieceID): Moved to (\(end.col), \(end.row))", category: .move)
+            }
             self.checkVictoryDefeat()
             turn?.advanceAfterAsyncAction()
         }
@@ -1321,7 +1350,7 @@ final class BoardCoordinator {
     /// Enemies hit by an area attack aimed at `primary` (pattern oriented to hit the most others).
     func areaTargets(pattern: String, attacker: PieceID, primary: PieceID, range: Int) -> [PieceID] {
         guard let pos = boardState.piecePositions[attacker] else { return [] }
-        let enemies = boardState.piecePositions.keys.filter { id in
+        let enemies = boardState.piecePositions.keys.sorted().filter { id in
             id != attacker && areEnemies(attacker, id) && entity(for: id) != nil && !isConditionActive(.invisible, on: id)
         }
         return AoEResolver.resolveTargets(pattern: pattern, attackerPos: pos, focusTarget: primary,
@@ -1407,7 +1436,7 @@ final class BoardCoordinator {
     /// Resolve a player attack on a single target. Called once per target.
     /// When `advanceAction` is true (default), calls `advanceAfterAsyncAction()` when done.
     /// Pass false when resolving multiple targets — the caller advances after all are resolved.
-    func resolvePlayerAttack(attacker: PieceID, target: PieceID, attackValue: Int, range: Int, advanceAction: Bool = true) async {
+    @MainActor func resolvePlayerAttack(attacker: PieceID, target: PieceID, attackValue: Int, range: Int, advanceAction: Bool = true) async {
         let turn = activePlayerTurn
         lastAttackTarget = target
         lastAttackerPos = boardState.piecePositions[attacker]
@@ -1538,7 +1567,7 @@ final class BoardCoordinator {
 
     /// Asynchronously execute a push/pull. Suspends until the push/pull is fully resolved
     /// (either auto-executed or after the player selects the direction).
-    func performPushPull(target: PieceID, attackerPos: HexCoord, steps: Int, isPush: Bool) async {
+    @MainActor func performPushPull(target: PieceID, attackerPos: HexCoord, steps: Int, isPush: Bool) async {
         guard steps > 0, boardState.piecePositions[target] != nil else { return }
         await withCheckedContinuation { [weak self] continuation in
             self?.pendingPushPullContinuation = continuation
@@ -1570,7 +1599,7 @@ final class BoardCoordinator {
             log("\(pieceID): Loot \(range) — nothing within range \(range)", category: .loot)
             return
         }
-        lootHexes(for: pieceID, coords: Array(coords))
+        lootHexes(for: pieceID, coords: coords.sorted())
     }
 
     /// Whether a hex holds a money token or an unlooted treasure tile.
@@ -1777,7 +1806,7 @@ final class BoardCoordinator {
             if a.1.type != b.1.type { return a.1.type == .boss || (a.1.type == .elite && b.1.type == .normal) }
             return a.1.number < b.1.number
         }
-        let anchor = slots.first?.coord ?? boardState.startingLocations.first ?? boardState.cells.keys.first
+        let anchor = slots.first?.coord ?? boardState.startingLocations.first ?? boardState.cells.keys.min()
 
         for (monster, entity) in ordered {
             func pick(_ predicate: (MonsterSlot) -> Bool) -> Int? {
@@ -1811,14 +1840,14 @@ final class BoardCoordinator {
     /// spawn markers). Spawned monsters act this round if spawned during it and drop no money.
     func spawnFromScenarioRule(name: String, type: MonsterType, marker: String?, health: String?) -> Bool {
         guard let gameManager, boardScene != nil || !boardState.cells.isEmpty else { return false }
-        let monsterPositions = boardState.piecePositions.compactMap { id, coord -> HexCoord? in
+        let monsterPositions = boardState.piecePositions.sorted { $0.key < $1.key }.compactMap { id, coord -> HexCoord? in
             if case .monster = id, !isPlayerSide(id) { return coord }
             return nil
         }
         let anchor = monsterPositions.first ?? boardState.cells.keys.max { a, b in
             let da = boardState.startingLocations.map { a.distance(to: $0) }.min() ?? 0
             let db = boardState.startingLocations.map { b.distance(to: $0) }.min() ?? 0
-            return da < db
+            return da == db ? a > b : da < db
         }
         guard let anchor,
               let piece = spawnMonster(name: name, type: type, at: anchor, origin: .spawned,
@@ -1875,7 +1904,7 @@ final class BoardCoordinator {
                     let ranged = !AoEResolver.isMeleePattern(pattern)
                     interactionMode = .idle
                     log("\(attackerID): Area attack hits \(targets.count) enem\(targets.count == 1 ? "y" : "ies")", category: .attack)
-                    Task {
+                    Task { @MainActor in
                         for target in targets where self.isOnBoard(target) && self.isOnBoard(attackerID) {
                             await self.resolvePlayerAttack(attacker: attackerID, target: target, attackValue: attackValue,
                                                            range: ranged ? max(2, range) : 1, advanceAction: false)
@@ -1884,7 +1913,9 @@ final class BoardCoordinator {
                     }
                 } else {
                     interactionMode = .idle
-                    Task { await self.resolvePlayerAttack(attacker: attackerID, target: piece, attackValue: attackValue, range: range) }
+                    Task { @MainActor in
+                        await self.resolvePlayerAttack(attacker: attackerID, target: piece, attackValue: attackValue, range: range)
+                    }
                 }
             }
 
@@ -1899,7 +1930,7 @@ final class BoardCoordinator {
                     let attackRange = activePlayerTurn?.currentAttackRange() ?? 1
                     let targets = selected
                     interactionMode = .idle
-                    Task {
+                    Task { @MainActor in
                         for target in targets {
                             await self.resolvePlayerAttack(attacker: attackerID, target: target, attackValue: attackValue, range: attackRange, advanceAction: false)
                         }
@@ -1960,7 +1991,7 @@ final class BoardCoordinator {
         let attackRange = activePlayerTurn?.currentAttackRange() ?? 1
         let targets = selected
         interactionMode = .idle
-        Task {
+        Task { @MainActor in
             for target in targets {
                 await self.resolvePlayerAttack(attacker: attackerID, target: target, attackValue: attackValue, range: attackRange, advanceAction: false)
             }

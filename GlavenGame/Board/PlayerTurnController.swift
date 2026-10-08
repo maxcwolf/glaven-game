@@ -166,6 +166,10 @@ final class PlayerTurnController {
     /// Attack 2 on the top half, Move 2 on the bottom half.
     func useDefaultAction() {
         guard let coordinator = coordinator, !hasActed || currentActionIndex == 0, !defaultAttackPending else { return }
+        if character?.exhausted ?? true {
+            endForExhaustion()
+            return
+        }
         hasActed = true
 
         let pieceID = PieceID.character(characterID)
@@ -185,6 +189,14 @@ final class PlayerTurnController {
         default:
             break
         }
+    }
+
+    /// The character was exhausted during its own turn (e.g. by retaliate): it takes no further
+    /// actions, and its cards are already in the lost pile (GH p.27).
+    func endForExhaustion() {
+        defaultAttackPending = false
+        awaitingAsync = false
+        phase = .turnComplete
     }
 
     // MARK: - Queries
@@ -255,6 +267,12 @@ final class PlayerTurnController {
         }
     }
 
+    /// XP printed as "card experience:N".
+    static func experience(in action: ActionModel) -> Int? {
+        guard action.type == .card, let value = action.value?.stringValue, value.hasPrefix("experience:") else { return nil }
+        return Int(value.dropFirst("experience:".count))
+    }
+
     private func grantExperience(_ xp: Int) {
         guard let character, xp > 0 else { return }
         character.experience += xp
@@ -318,8 +336,20 @@ final class PlayerTurnController {
                 default: break
                 }
             }
-            if hasTarget { grantBonusExperience(bonus) }
             pendingAttackRange = range
+            // XP and infusions printed on the attack itself (e.g. Crushing Grasp's earth, Thief's
+            // Knack's XP) and on paid augments come with performing it, which needs a target.
+            func applyPerformedEffects() {
+                guard hasTarget else { return }
+                grantBonusExperience(bonus)
+                for sub in action.subActions ?? [] {
+                    if sub.type == .element && !MonsterAbility.isConsume(sub) {
+                        applyElementAction(sub, coordinator: coordinator)
+                    } else if let xp = Self.experience(in: sub) {
+                        grantExperience(xp)
+                    }
+                }
+            }
 
             // "Attack all adjacent enemies" / "all enemies within range N": every such enemy is
             // a separate attack of the same action.
@@ -328,6 +358,7 @@ final class PlayerTurnController {
                     ? 1 : Int(spec.split(separator: ":").last ?? "") ?? range
                 let exact = spec.hasPrefix("enemiesrangeexact")
                 coordinator.log("\(characterID): Attack \(pendingAttackValue) — all enemies within \(reach)", category: .attack)
+                applyPerformedEffects()
                 coordinator.attackAllEnemies(from: pieceID, within: reach, exactly: exact)
                 return true
             }
@@ -339,6 +370,7 @@ final class PlayerTurnController {
             for cond in pendingConditions { extras.append(cond.rawValue.capitalized) }
             let extrasStr = extras.isEmpty ? "" : ", " + extras.joined(separator: ", ")
             coordinator.log("\(characterID): Attack \(pendingAttackValue), Range \(range)\(extrasStr)", category: .attack)
+            applyPerformedEffects()
             coordinator.beginAttackAction(pieceID: pieceID, range: range, targetCount: targetCount)
             return true
 
@@ -450,16 +482,16 @@ final class PlayerTurnController {
             break
         }
 
-        // Infusions printed inside a non-element action happen when the action is performed;
-        // conditions on self-targeted actions apply to the character.
-        if action.type != .element && action.type != .attack {
-            for sub in action.subActions ?? [] where sub.type == .element && !MonsterAbility.isConsume(sub) {
-                applyElementAction(sub, coordinator: coordinator)
-            }
-        }
-        if action.type == .attack {
-            for sub in action.subActions ?? [] where sub.type == .element && !MonsterAbility.isConsume(sub) {
-                applyElementAction(sub, coordinator: coordinator)
+        // Infusions and XP printed inside an action happen when the action is performed (block
+        // actions already ran their sub-actions, and attacks apply theirs once they have a
+        // target); conditions on self-targeted actions apply to the character.
+        if ![.element, .attack, .box, .concatenation, .grid].contains(action.type) {
+            for sub in action.subActions ?? [] {
+                if sub.type == .element && !MonsterAbility.isConsume(sub) {
+                    applyElementAction(sub, coordinator: coordinator)
+                } else if let xp = Self.experience(in: sub) {
+                    grantExperience(xp)
+                }
             }
         }
         if hasSpecialTargetSelf(action) && action.type != .condition {
@@ -660,8 +692,8 @@ final class PlayerTurnController {
 
     private func putAway(_ card: AbilityModel?, half: [ActionModel], lostFlag: Bool, usedAsDefault: Bool,
                          character: GameCharacter) {
-        guard let cardId = card?.cardId else { return }
-        character.handCards.removeAll { $0 == cardId }
+        guard let cardId = card?.cardId, let index = character.handCards.firstIndex(of: cardId) else { return }
+        character.handCards.remove(at: index)
 
         if usedAsDefault {
             character.discardedCards.append(cardId)

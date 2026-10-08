@@ -30,7 +30,7 @@ final class EventCardManager {
             }
         }
 
-        guard let event = available.randomElement() else { return nil }
+        guard let event = available.randomElement(using: &GameRandom.shared) else { return nil }
 
         // Mark as drawn
         switch type {

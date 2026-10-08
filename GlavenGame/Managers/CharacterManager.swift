@@ -142,6 +142,7 @@ final class CharacterManager {
         onBeforeMutate?()
         let hp = evaluateEntityValue(data.health, level: character.level)
         let summon = GameSummon(
+            uuid: GameRandom.uuid(),
             name: data.name,
             cardId: data.cardId ?? "",
             number: nextSummonNumber(for: character),

@@ -18,8 +18,9 @@ extension BoardCoordinator {
     /// terrain and — for characters — closed doors on every hex actually entered.
     /// Returns false if the figure died (or became exhausted) along the way.
     @discardableResult
-    func moveAlong(_ pieceID: PieceID, path: [HexCoord], style: MovementStyle) async -> Bool {
+    @MainActor func moveAlong(_ pieceID: PieceID, path: [HexCoord], style: MovementStyle) async -> Bool {
         guard path.count > 1 else { return isOnBoard(pieceID) }
+        moveObserver?(pieceID, path, style)
         let opensDoors: Bool = { if case .character = pieceID { return true }; return false }()
 
         var segmentStart = 0
@@ -42,6 +43,11 @@ extension BoardCoordinator {
 
             if hitsTrap {
                 guard await springTrap(at: hex, on: pieceID) else { return false }
+                // Immobilize takes effect at once (e.g. a bear trap): the rest of the move is lost.
+                if style != .forced && isConditionActive(.immobilize, on: pieceID) {
+                    log("\(pieceLabel(pieceID)): Immobilized — movement ends", category: .condition)
+                    return isOnBoard(pieceID)
+                }
             }
             if hitsHazard {
                 guard await enterHazard(at: hex, on: pieceID) else { return false }
@@ -58,7 +64,7 @@ extension BoardCoordinator {
     }
 
     /// Animate a piece along a path (skipped when no scene is attached, e.g. in tests).
-    func animateMove(_ pieceID: PieceID, along path: [HexCoord]) async {
+    @MainActor func animateMove(_ pieceID: PieceID, along path: [HexCoord]) async {
         guard path.count > 1, let scene = boardScene else { return }
         await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
             scene.movePiece(id: pieceID, along: path, offsetCol: offsetCol, offsetRow: offsetRow) {
@@ -69,7 +75,7 @@ extension BoardCoordinator {
 
     /// Spring the trap on `hex` (GH p.13): damage traps inflict 2 + L, sub-types add their
     /// conditions, and the trap is removed. Returns false if the figure died.
-    func springTrap(at hex: HexCoord, on pieceID: PieceID) async -> Bool {
+    @MainActor func springTrap(at hex: HexCoord, on pieceID: PieceID) async -> Bool {
         guard let gameManager, let cell = boardState.cells[hex], cell.isTrap else { return true }
         let damage = cell.trapDamage ?? gameManager.levelManager.trap()
         let subType = cell.overlaySubType
@@ -88,7 +94,7 @@ extension BoardCoordinator {
     }
 
     /// Enter hazardous terrain: damage on entering, the terrain stays. Returns false if the figure died.
-    func enterHazard(at hex: HexCoord, on pieceID: PieceID) async -> Bool {
+    @MainActor func enterHazard(at hex: HexCoord, on pieceID: PieceID) async -> Bool {
         guard let gameManager else { return true }
         let damage = gameManager.levelManager.terrain()
         log("\(pieceLabel(pieceID)): Hazardous terrain — \(damage) damage", category: .damage)

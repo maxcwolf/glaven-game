@@ -440,7 +440,7 @@ enum MonsterAI {
     /// cannot be focused on or targeted, but they still block movement).
     static func gatherEnemies(board: BoardState, monster: GameMonster, gameState: GameState, includeInvisible: Bool = false) -> [PieceID] {
         let allyFaction = isAllyFaction(monster)
-        return board.piecePositions.keys.filter { id in
+        return board.piecePositions.keys.sorted().filter { id in
             switch id {
             case .character(let charID):
                 guard !allyFaction,

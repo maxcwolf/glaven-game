@@ -1,0 +1,238 @@
+Scenario 2: Barrow Lair
+5 starting locations available
+Placed gh-brute at (-2, -2)
+Placed gh-spellweaver at (-3, -3)
+Placed gh-cragheart at (-1, -2)
+Placed gh-scoundrel at (-2, -3)
+=== Round 1 ===
+--- state after round 0 ---
+elements: none
+brute (-2,-2) hp 10/10 hand 10 discard 0 lost 0 active 0 xp 0 gold 0
+spellweaver (-3,-3) hp 6/6 hand 8 discard 0 lost 0 active 0 xp 0 gold 0
+cragheart (-1,-2) hp 10/10 hand 11 discard 0 lost 0 active 0 xp 0 gold 0
+scoundrel (-2,-3) hp 8/8 hand 9 discard 0 lost 0 active 0 xp 0 gold 0
+bandit-archer #1 normal (0,0) hp 5/5
+bandit-archer #2 normal (-1,0) hp 5/5
+bandit-archer #3 normal (-2,0) hp 5/5
+bandit-archer #4 normal (-3,0) hp 5/5
+doors open: 0/1
+gh-brute: TOP Leaping Cleave (init 54) / BTM Overwhelming Assault
+gh-spellweaver: TOP Flame Strike (init 36) / BTM Fire Orbs
+gh-cragheart: TOP Rumbling Advance (init 29) / BTM Avalanche
+gh-scoundrel: TOP Flanking Strike (init 4) / BTM Special Mixture
+bandit-archer: drew ability (initiative 16)
+Turn order: scoundrel(4), bandit-archer(16), cragheart(29), spellweaver(36), brute(54)
+gh-scoundrel: Turn begins — TOP: Flanking Strike / BTM: Special Mixture
+gh-scoundrel: Move 3
+char(gh-scoundrel): Moved to (-2, -1)
+gh-scoundrel: poison — select target
+char(gh-scoundrel): poison → bandit-archer#2
+  bandit-archer #2: poison applied
+gh-scoundrel: Attack 3, Range 1
+scoundrel → bandit-archer #2: 3 +1(poison) +0(mod) = 4
+gh-scoundrel: Turn complete
+bandit-archer — ability (initiative 16)
+bandit-archer #1 → scoundrel: 1 +0(mod) = 1
+bandit-archer #2 → scoundrel: 1 -1(mod) = 0
+bandit-archer #3 → scoundrel: 1 +0(mod) = 1
+bandit-archer #4 → scoundrel: 1 +0(mod) = 1
+gh-cragheart: Turn begins — TOP: Rumbling Advance / BTM: Avalanche
+gh-cragheart: Top from Avalanche, bottom from Rumbling Advance
+gh-cragheart: Move 2
+char(gh-cragheart): Moved to (-3, -2)
+gh-cragheart: Infused earth
+gh-cragheart: Attack 4, Range 1
+char(gh-cragheart): No valid targets in range 1
+gh-cragheart: Turn complete
+gh-spellweaver: Turn begins — TOP: Flame Strike / BTM: Fire Orbs
+gh-spellweaver: Top from Fire Orbs, bottom from Flame Strike
+gh-spellweaver: Attack 3, Range 3, Target 3
+char(gh-spellweaver): Select up to 3 targets
+char(gh-spellweaver): Target 1/3 — bandit-archer#2
+char(gh-spellweaver): Target 2/3 — bandit-archer#3
+char(gh-spellweaver): Target 3/3 — bandit-archer#4
+spellweaver → bandit-archer #2: 3 +1(poison) ×2(mod) = 8
+bandit-archer #2: Killed!
+Loot token dropped at (-1, 0)
+spellweaver → bandit-archer #3: 3 -2(mod) = 1
+spellweaver → bandit-archer #4: 3 +1(mod) = 4
+gh-spellweaver: Infused fire
+gh-spellweaver: Attack 2, Range 2
+char(gh-spellweaver): No valid targets in range 2
+gh-spellweaver: Turn complete
+gh-brute: Turn begins — TOP: Leaping Cleave / BTM: Overwhelming Assault
+gh-brute: Top from Overwhelming Assault, bottom from Leaping Cleave
+gh-brute: Jump 3
+Door opened — m1a revealed
+Revealed bandit-commander #1 at (-2, 7)
+Revealed bandit-archer #2 at (-1, 7)
+Revealed bandit-archer #5 at (-3, 7)
+char(gh-brute): Moved to (-2, 1)
+gh-brute: Infused air
+gh-brute: Attack 6, Range 1
+brute → bandit-archer #3: 6 -1(mod) = 5
+bandit-archer #3: Killed!
+Loot token dropped at (-2, 0)
+gh-brute: +2 XP
+gh-brute: Turn complete
+bandit-commander — ability (initiative 14)
+  bandit-commander #1: Special 2
+bandit-commander #1: Summoned living-bones #1
+bandit-archer — ability (initiative 16)
+  bandit-archer #2: Move 1 to (0,6)
+bandit-archer #2 → brute: 2 +0(mod) = 2
+  bandit-archer #5: Move 1 to (-3,6)
+bandit-archer #5 → brute: 2 ×2(mod) = 4
+gh-scoundrel: Skipped short rest
+Round 1 complete
+=== Round 2 ===
+--- state after round 1 ---
+elements: fire waning, air waning, earth waning
+scoundrel (-2,-1) hp 5/8 hand 7 discard 2 lost 0 active 0 xp 0 gold 0
+cragheart (-3,-2) hp 10/10 hand 9 discard 1 lost 1 active 0 xp 0 gold 0
+spellweaver (-3,-3) hp 6/6 hand 6 discard 1 lost 1 active 0 xp 0 gold 0
+brute (-2,1) hp 4/10 hand 8 discard 1 lost 1 active 0 xp 2 gold 0
+bandit-archer #1 normal (0,0) hp 5/5
+bandit-archer #2 elite (0,6) hp 7/7
+bandit-archer #4 normal (-3,0) hp 1/5
+bandit-archer #5 elite (-3,6) hp 7/7
+bandit-commander #1 boss (-2,7) hp 40/40
+living-bones #1 elite (-2,8) hp 6/6
+money tokens: (-2,0)x1 (-1,0)x1
+doors open: 1/5
+gh-scoundrel: TOP Backstab (init 6) / BTM Single Out
+gh-cragheart: TOP Crushing Grasp (init 35) / BTM Massive Boulder
+gh-spellweaver: TOP Mana Bolt (init 7) / BTM Impaling Eruption
+gh-brute: TOP Eye for an Eye (init 18) / BTM Spare Dagger
+bandit-archer: drew ability (initiative 14)
+bandit-commander: drew ability (initiative 17)
+living-bones: drew ability (initiative 64)
+Turn order: scoundrel(6), spellweaver(7), bandit-archer(14), bandit-commander(17), brute(18), cragheart(35), living-bones(64)
+gh-scoundrel: Turn begins — TOP: Backstab / BTM: Single Out
+gh-scoundrel: Top from Single Out, bottom from Backstab
+gh-scoundrel: Move 6
+char(gh-scoundrel): Moved to (-2, 0)
+gh-scoundrel: Attack 3, Range 1
+scoundrel → bandit-archer #4: 3 +0(mod) = 3
+bandit-archer #4: Killed!
+Loot token dropped at (-3, 0)
+gh-scoundrel: Turn complete
+gh-scoundrel: Looted 1 money token (+2g)
+gh-spellweaver: Turn begins — TOP: Mana Bolt / BTM: Impaling Eruption
+gh-spellweaver: Top from Impaling Eruption, bottom from Mana Bolt
+gh-spellweaver: Attack 3, Range 4
+spellweaver → bandit-archer #1: 3 -2(mod) = 1
+gh-spellweaver: Infused earth
+gh-spellweaver: Heal 3, Range 1 — select target
+char(gh-spellweaver) → char(gh-cragheart): Heal 3 (+0)
+gh-spellweaver: Turn complete
+bandit-archer — ability (initiative 14)
+bandit-archer #2 → brute: 2 +0(mod) = 2
+bandit-archer #5 → brute: 2 ×2(mod) = 4
+  gh-brute: Lost a hand card to negate 4 damage
+bandit-archer #1 → scoundrel: MISS
+bandit-commander — ability (initiative 17)
+  bandit-commander #1: Special 2
+bandit-commander #1: Summoned living-bones #2
+gh-brute: Turn begins — TOP: Eye for an Eye / BTM: Spare Dagger
+gh-brute: Top from Spare Dagger, bottom from Eye for an Eye
+gh-brute: Attack 3, Range 3
+brute → bandit-archer #1: 3 -1(mod) = 2
+gh-brute: +1 XP
+gh-brute: Heal 2, Range 1 — select target
+char(gh-brute) → char(gh-brute): Heal 2 (+2)
+gh-brute: Infused earth
+gh-brute: Turn complete
+gh-cragheart: Turn begins — TOP: Crushing Grasp / BTM: Massive Boulder
+gh-cragheart: Move 4
+char(gh-cragheart): Moved to (-1, 0)
+gh-cragheart: Attack 3, Range 1, Immobilize
+gh-cragheart: Infused earth
+cragheart → bandit-archer #1: 3 ×2(mod) = 6
+bandit-archer #1: Killed!
+Loot token dropped at (0, 0)
+gh-cragheart: Turn complete
+gh-cragheart: Looted 1 money token (+2g)
+living-bones — ability (initiative 64)
+  living-bones #1: Move 3 to (-3,5)
+  living-bones #1: Focus out of reach
+gh-scoundrel: Skipped short rest
+gh-spellweaver: Skipped short rest
+gh-brute: Skipped short rest
+gh-cragheart: Skipped short rest
+Round 2 complete
+=== Round 3 ===
+--- state after round 2 ---
+elements: earth waning
+scoundrel (-2,0) hp 5/8 hand 5 discard 4 lost 0 active 0 xp 0 gold 2
+spellweaver (-3,-3) hp 6/6 hand 4 discard 2 lost 2 active 0 xp 0 gold 0
+brute (-2,1) hp 4/10 hand 5 discard 3 lost 2 active 0 xp 3 gold 0
+cragheart (-1,0) hp 10/10 hand 7 discard 3 lost 1 active 0 xp 0 gold 2
+bandit-archer #2 elite (0,6) hp 7/7
+bandit-archer #5 elite (-3,6) hp 7/7
+bandit-commander #1 boss (-2,7) hp 40/40
+living-bones #1 elite (-3,5) hp 6/6
+living-bones #2 elite (-3,7) hp 6/6
+money tokens: (-3,0)x1 (0,0)x1
+doors open: 1/5
+gh-scoundrel: TOP Venom Shiv (init 60) / BTM Quick Hands
+gh-spellweaver: TOP Reviving Ether (init 80) / BTM Ride the Wind
+gh-brute: TOP Warding Strength (init 32) / BTM Sweeping Blow
+gh-cragheart: TOP Crater (init 61) / BTM Backup Ammunition
+bandit-commander: drew ability (initiative 14)
+living-bones: drew ability (initiative 20)
+bandit-archer: drew ability (initiative 31)
+Turn order: bandit-commander(14), living-bones(20), bandit-archer(31), brute(32), scoundrel(60), cragheart(61), spellweaver(80)
+bandit-commander — ability (initiative 14)
+  bandit-commander #1: Special 2
+bandit-commander #1: Summoned living-bones #3
+living-bones — ability (initiative 20)
+  living-bones #1: Move 2 to (-2,3)
+  living-bones #1: Focus out of reach
+  living-bones #1 → living-bones #1: Heal 2 (+0)
+  living-bones #2: Move 2 to (-3,5)
+  living-bones #2: Focus out of reach
+  living-bones #2 → living-bones #2: Heal 2 (+0)
+bandit-archer — ability (initiative 31)
+bandit-archer #2 → brute: 3 +0(mod) = 3
+bandit-archer #5 → brute: 3 -1(mod) = 2
+  gh-brute: Lost 2 discarded cards to negate 2 damage
+gh-brute: Turn begins — TOP: Warding Strength / BTM: Sweeping Blow
+gh-brute: Move 3
+brute: Sprang bear trap — 3 damage
+  gh-brute: Lost a hand card to negate 3 damage
+  brute: immobilize applied
+brute: Immobilized — movement ends
+char(gh-brute): Moved to (-3, -1)
+gh-brute: Push 1
+gh-brute: Attack 3, Range 1, Push 2
+char(gh-brute): No valid targets in range 1
+gh-brute: Turn complete
+gh-scoundrel: Turn begins — TOP: Venom Shiv / BTM: Quick Hands
+gh-scoundrel: Top from Quick Hands, bottom from Venom Shiv
+gh-scoundrel: Move 5
+char(gh-scoundrel): Moved to (-2, 2)
+gh-scoundrel: Move 2
+char(gh-scoundrel): Moved to (-1, 2)
+gh-scoundrel: Attack 2, Range 1
+scoundrel → living-bones #1: 2 +1(mod) -1(shield) = 2
+gh-scoundrel: Turn complete
+gh-cragheart: Turn begins — TOP: Crater / BTM: Backup Ammunition
+gh-cragheart: Consumed earth
+gh-cragheart: Attack 3, Range 3
+cragheart → living-bones #1: 3 ×2(mod) -1(shield) = 5
+living-bones #1: Killed!
+gh-cragheart: Move 3
+char(gh-cragheart): Moved to (-2, 3)
+gh-cragheart: Turn complete
+gh-spellweaver: Turn begins — TOP: Reviving Ether / BTM: Ride the Wind
+gh-spellweaver: Infused dark
+gh-spellweaver: Default Move 2
+char(gh-spellweaver): Moved to (-2, -1)
+gh-spellweaver: Turn complete
+gh-brute: Skipped short rest
+gh-scoundrel: Skipped short rest
+gh-cragheart: Skipped short rest
+gh-spellweaver: Skipped short rest
+Round 3 complete
+=== Round 4 ===

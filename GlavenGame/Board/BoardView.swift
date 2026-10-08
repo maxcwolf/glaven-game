@@ -1132,8 +1132,9 @@ struct BoardView: View {
 
                     // Right side: card choices with full card previews
                     VStack(alignment: .leading, spacing: 12) {
-                        // Lose 1 hand card
-                        if !character.handCards.isEmpty {
+                        // Lose 1 hand card (not one of the two played this round)
+                        let losable = coordinator.losableHandCards(of: character)
+                        if !losable.isEmpty {
                             VStack(alignment: .leading, spacing: 6) {
                                 HStack(spacing: 4) {
                                     Image(systemName: "hand.raised.fill")
@@ -1146,7 +1147,7 @@ struct BoardView: View {
 
                                 ScrollView(.horizontal, showsIndicators: false) {
                                     HStack(spacing: 8) {
-                                        ForEach(Array(character.handCards.enumerated()), id: \.offset) { index, cardId in
+                                        ForEach(losable, id: \.self) { cardId in
                                             if let card = deckData?.abilities.first(where: { $0.cardId == cardId }) {
                                                 BoardAbilityCardView(
                                                     card: card,
@@ -1168,7 +1169,7 @@ struct BoardView: View {
                                                         .padding(.bottom, 6)
                                                 }
                                                 .onTapGesture {
-                                                    coordinator.resolvePendingDamage(choice: .loseHandCard(cardIndex: index))
+                                                    coordinator.resolvePendingDamage(choice: .loseHandCard(cardId: cardId))
                                                 }
                                             }
                                         }

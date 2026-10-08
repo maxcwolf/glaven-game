@@ -22,7 +22,7 @@ final class MonsterManager {
         // Initialize ability deck
         let deckName = data.deck ?? name
         let abilities = editionStore.abilities(forDeck: deckName, edition: edition)
-        monster.abilities = Array(0..<abilities.count).shuffled()
+        monster.abilities = Array(0..<abilities.count).shuffled(using: &GameRandom.shared)
 
         game.figures.append(.monster(monster))
     }
@@ -143,7 +143,7 @@ final class MonsterManager {
 
     func shuffleAbilities(for monster: GameMonster) {
         let allAbilities = abilities(for: monster)
-        monster.abilities = Array(0..<allAbilities.count).shuffled()
+        monster.abilities = Array(0..<allAbilities.count).shuffled(using: &GameRandom.shared)
         monster.ability = -1
     }
 
@@ -165,7 +165,7 @@ final class MonsterManager {
         let deckAbilities = editionStore.abilities(forDeck: deckName, edition: monster.edition)
         guard !deckAbilities.isEmpty else { return }
         monster.deckOverride = deckName
-        monster.abilities = Array(0..<deckAbilities.count).shuffled()
+        monster.abilities = Array(0..<deckAbilities.count).shuffled(using: &GameRandom.shared)
         monster.ability = -1
         if monster.abilityDrawn {
             monster.abilityDrawn = false

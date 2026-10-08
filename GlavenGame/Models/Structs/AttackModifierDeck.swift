@@ -21,7 +21,7 @@ struct AttackModifierDeck: Codable {
 
     static func defaultDeck() -> AttackModifierDeck {
         let mods = AttackModifier.defaultMonsterDeck()
-        return AttackModifierDeck(attackModifiers: mods, cards: mods.shuffled())
+        return AttackModifierDeck(attackModifiers: mods, cards: mods.shuffled(using: &GameRandom.shared))
     }
 
     /// True when a standard ×2 or null card was drawn since the last shuffle, so the deck
@@ -64,7 +64,7 @@ struct AttackModifierDeck: Codable {
         if current + 1 < cards.count {
             newCards.append(contentsOf: cards[(current + 1)...].filter { $0.type.isSpecial })
         }
-        newCards.shuffle()
+        newCards.shuffle(using: &GameRandom.shared)
         cards = newCards
         current = -1
         discards = []
@@ -73,7 +73,7 @@ struct AttackModifierDeck: Codable {
     /// Shuffle a card into the undrawn part of the deck.
     mutating func insertRandomly(_ card: AttackModifier) {
         let insertAt = max(current + 1, 0)
-        let position = insertAt < cards.count ? Int.random(in: insertAt...cards.count) : cards.count
+        let position = insertAt < cards.count ? Int.random(in: insertAt...cards.count, using: &GameRandom.shared) : cards.count
         cards.insert(card, at: position)
     }
 
@@ -81,7 +81,7 @@ struct AttackModifierDeck: Codable {
     /// the deck back to its base composition (GH p.47).
     mutating func removeScenarioCards() {
         attackModifiers.removeAll { $0.type.isSpecial || $0.scenarioAdded }
-        cards = attackModifiers.shuffled()
+        cards = attackModifiers.shuffled(using: &GameRandom.shared)
         current = -1
         discards = []
     }

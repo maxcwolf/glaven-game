@@ -89,3 +89,10 @@ struct HexCoord: Hashable, Codable, Sendable {
 extension HexCoord: CustomStringConvertible {
     var description: String { "(\(col),\(row))" }
 }
+
+/// Row-major order, used to break ties between equally good hexes deterministically.
+extension HexCoord: Comparable {
+    static func < (lhs: HexCoord, rhs: HexCoord) -> Bool {
+        (lhs.row, lhs.col) < (rhs.row, rhs.col)
+    }
+}

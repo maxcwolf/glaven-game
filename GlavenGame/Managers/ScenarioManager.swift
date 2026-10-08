@@ -681,7 +681,7 @@ final class ScenarioManager {
             return true
         }
 
-        return candidates.randomElement()
+        return candidates.randomElement(using: &GameRandom.shared)
     }
 
     /// Unlock a randomly drawn scenario and add it to manual scenarios.

@@ -135,7 +135,7 @@ extension BoardCoordinator {
     /// Damage a character may negate by losing cards (GH p.22). Prompts the player when they have
     /// cards to lose; other figures simply take the damage. Returns true if the figure died.
     @discardableResult
-    func sufferDamageWithMitigation(_ amount: Int, to pieceID: PieceID, source: String,
+    @MainActor func sufferDamageWithMitigation(_ amount: Int, to pieceID: PieceID, source: String,
                                     killer: PieceID? = nil) async -> Bool {
         guard amount > 0 else { return false }
         if case .character(let id) = pieceID,
@@ -146,10 +146,17 @@ extension BoardCoordinator {
         return sufferDamage(amount, to: pieceID, killer: killer)
     }
 
+    /// Hand cards a character can lose to negate damage. The two cards played this round are no
+    /// longer in the hand (GH p.22), even before they are put away at the end of the turn.
+    func losableHandCards(of character: GameCharacter) -> [Int] {
+        let played = selectedCardPairs[character.id].map { [$0.top.cardId, $0.bottom.cardId] } ?? []
+        return character.handCards.filter { !played.contains($0) }
+    }
+
     /// Offer the "lose 1 hand card or 2 discards to negate the damage" choice.
     /// Returns true if the damage was negated.
-    func promptDamageMitigation(character: GameCharacter, damage: Int, source: String) async -> Bool {
-        let canLoseHand = !character.handCards.isEmpty
+    @MainActor func promptDamageMitigation(character: GameCharacter, damage: Int, source: String) async -> Bool {
+        let canLoseHand = !losableHandCards(of: character).isEmpty
         let canLoseDiscard = character.discardedCards.count >= 2
         guard canLoseHand || canLoseDiscard, !autoResolvePrompts else { return false }
 
@@ -161,9 +168,10 @@ extension BoardCoordinator {
         switch choice {
         case .takeDamage:
             return false
-        case .loseHandCard(let cardIndex):
-            guard cardIndex < character.handCards.count else { return false }
-            character.lostCards.append(character.handCards.remove(at: cardIndex))
+        case .loseHandCard(let cardId):
+            guard losableHandCards(of: character).contains(cardId),
+                  let index = character.handCards.firstIndex(of: cardId) else { return false }
+            character.lostCards.append(character.handCards.remove(at: index))
             log("  \(character.id): Lost a hand card to negate \(damage) damage", category: .damage)
             return true
         case .loseDiscardCards(let indices):
@@ -239,6 +247,10 @@ extension BoardCoordinator {
         log("\(character.id): Exhausted (\(reason))", category: .death)
         gameManager?.scenarioStatsManager.recordExhausted(character.name)
         removePieceFromBoard(.character(character.id))
+        if let turn = activePlayerTurn, turn.characterID == character.id {
+            turn.endForExhaustion()
+            interactionMode = .idle
+        }
         for summon in character.summons where !summon.dead {
             summon.dead = true
             removePieceFromBoard(.summon(id: summon.id))
@@ -254,7 +266,7 @@ extension BoardCoordinator {
     /// Resolve any figure that dropped to 0 HP outside an attack (wound, bane, self-damage…).
     func sweepDeadFigures() {
         guard let gameManager else { return }
-        for pieceID in Array(boardState.piecePositions.keys) {
+        for pieceID in boardState.piecePositions.keys.sorted() {
             // Earlier deaths in this sweep may already have removed it (e.g. an exhausted owner's summons).
             guard isOnBoard(pieceID) else { continue }
             switch pieceID {

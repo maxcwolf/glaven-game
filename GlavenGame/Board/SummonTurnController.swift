@@ -16,7 +16,7 @@ final class SummonTurnController {
     }
 
     /// Execute all summon turns for a character.
-    func executeSummonTurns(for character: GameCharacter) async {
+    @MainActor func executeSummonTurns(for character: GameCharacter) async {
         guard let coordinator, let gameManager else { return }
         isExecuting = true
         defer { isExecuting = false }
@@ -45,11 +45,11 @@ final class SummonTurnController {
             }
             coordinator.sweepDeadFigures()
             if coordinator.scenarioResult != nil { return }
-            try? await Task.sleep(nanoseconds: coordinator.turnDelayNanoseconds)
+            if coordinator.turnDelayNanoseconds > 0 { try? await Task.sleep(nanoseconds: coordinator.turnDelayNanoseconds) }
         }
     }
 
-    private func executeSummonTurn(result: SummonTurnResult, summon: GameSummon, pieceID: PieceID) async {
+    @MainActor private func executeSummonTurn(result: SummonTurnResult, summon: GameSummon, pieceID: PieceID) async {
         guard let coordinator else { return }
 
         if result.stunned {

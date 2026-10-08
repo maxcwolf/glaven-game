@@ -20,7 +20,7 @@ final class MonsterTurnController {
 
     /// Execute a monster type's turn. `only` restricts it to specific standees (used when monsters
     /// revealed mid-round must act after their type has already gone).
-    func executeMonsterGroup(_ monster: GameMonster, only: Set<Int>? = nil) async {
+    @MainActor func executeMonsterGroup(_ monster: GameMonster, only: Set<Int>? = nil) async {
         guard let coordinator, let gameManager else { return }
         guard !monster.off, !monster.aliveEntities.isEmpty else { return }
 
@@ -74,7 +74,7 @@ final class MonsterTurnController {
             }
             coordinator.sweepDeadFigures()
             if coordinator.scenarioResult != nil { return }
-            try? await Task.sleep(nanoseconds: coordinator.turnDelayNanoseconds)
+            if coordinator.turnDelayNanoseconds > 0 { try? await Task.sleep(nanoseconds: coordinator.turnDelayNanoseconds) }
         }
 
         // Infusions on the card become strong at the end of the type's turn.
@@ -111,7 +111,7 @@ final class MonsterTurnController {
     }
 
     /// Perform a card's actions, in order, for one monster.
-    private func executeCard(_ actions: [ActionModel], pieceID: PieceID, entity: GameMonsterEntity,
+    @MainActor private func executeCard(_ actions: [ActionModel], pieceID: PieceID, entity: GameMonsterEntity,
                              monster: GameMonster, ability: AbilityModel, consumed: Set<UUID>,
                              turn state: inout MonsterTurnState) async {
         guard let coordinator, let gameManager else { return }
@@ -153,7 +153,8 @@ final class MonsterTurnController {
                 let plan = currentTurn()
                 if let newFocus = plan.focusTarget { state.focus = newFocus }
                 guard plan.movementPath.count > 1 else { continue }
-                coordinator.log("  \(coordinator.pieceLabel(pieceID)): Move \(plan.movementPath.count - 1)", category: .move)
+                coordinator.log("  \(coordinator.pieceLabel(pieceID)): Move \(plan.movementPath.count - 1) to \(plan.movementPath.last!)",
+                                category: .move)
                 let style: MovementStyle = monster.monsterData?.flying == true ? .fly : (plan.jumping ? .jump : .normal)
                 await coordinator.moveAlong(pieceID, path: plan.movementPath, style: style)
                 state.hexesMoved += plan.movementPath.count - 1
@@ -287,7 +288,7 @@ final class MonsterTurnController {
 
         var candidates: [PieceID] = [pieceID]
         if let range, !selfOnly {
-            for (other, coord) in coordinator.boardState.piecePositions where other != pieceID {
+            for (other, coord) in coordinator.boardState.piecePositions.sorted(by: { $0.key < $1.key }) where other != pieceID {
                 guard case .monster = other, !coordinator.areEnemies(pieceID, other),
                       position.distance(to: coord) <= range,
                       LineOfSight.hasLOS(from: position, to: coord, board: coordinator.boardState) else { continue }
@@ -306,7 +307,7 @@ final class MonsterTurnController {
 
     /// Conditions, push or pull applied to the figures named by a `specialTarget`
     /// (self, adjacent enemies, enemies within range N, allies within range N…).
-    private func performTargetedEffect(_ action: ActionModel, pieceID: PieceID, monster: GameMonster,
+    @MainActor private func performTargetedEffect(_ action: ActionModel, pieceID: PieceID, monster: GameMonster,
                                        baseRange: Int) async {
         guard let coordinator else { return }
         let parts = action.type == .concatenation ? (action.subActions ?? []) : [action] + (action.subActions ?? [])
@@ -348,7 +349,7 @@ final class MonsterTurnController {
         }()
         let pool: [PieceID] = wantsEnemies
             ? MonsterAI.gatherEnemies(board: coordinator.boardState, monster: monster, gameState: game)
-            : coordinator.boardState.piecePositions.keys.filter {
+            : coordinator.boardState.piecePositions.keys.sorted().filter {
                 $0 != pieceID && !coordinator.areEnemies(pieceID, $0)
             }
         let inRange = pool.filter { id in

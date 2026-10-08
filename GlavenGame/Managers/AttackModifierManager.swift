@@ -69,7 +69,7 @@ final class AttackModifierManager {
 
         character.attackModifierDeck = AttackModifierDeck(
             attackModifiers: baseDeck,
-            cards: baseDeck.shuffled()
+            cards: baseDeck.shuffled(using: &GameRandom.shared)
         )
     }
 

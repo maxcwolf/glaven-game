@@ -51,8 +51,19 @@ enum BoardBuilder {
         let start = startingPlacement(in: scenario.mapTileData, initialRoomRefs: initialRoomRefs)
         addRoom(start.tile, path: start.path, root: scenario.mapTileData, to: board,
                 turnAxis: start.axis, reveal: &reveal)
+        // Some scenarios split the party between separate starting tiles (e.g. GH 50, 58, 85: the
+        // scenario's first room covers both). Every tile with starting hexes is revealed at setup.
+        for placement in findPlacements(in: scenario.mapTileData)
+        where hasStartingLocations(placement.tile) && !reveal.visited.contains(placement.path) {
+            addRoom(placement.tile, path: placement.path, root: scenario.mapTileData, to: board,
+                    turnAxis: placement.axis, reveal: &reveal)
+        }
         recomputeBounds(board)
         return (board, reveal)
+    }
+
+    private static func hasStartingLocations(_ tile: VGBMapTileData) -> Bool {
+        tile.overlays.contains { $0.ref.type == "starting-location" }
     }
 
     /// Reveal a room behind a door. Returns the newly spawned monster positions.

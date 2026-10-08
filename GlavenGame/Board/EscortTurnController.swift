@@ -14,7 +14,7 @@ final class EscortTurnController {
     }
 
     /// Execute all living escort entity turns for an objective container.
-    func executeEscortTurns(for container: GameObjectiveContainer) async {
+    @MainActor func executeEscortTurns(for container: GameObjectiveContainer) async {
         guard let coordinator, let gameManager else { return }
         isExecuting = true
         defer { isExecuting = false }
@@ -38,11 +38,11 @@ final class EscortTurnController {
             }
             coordinator.sweepDeadFigures()
             if coordinator.scenarioResult != nil { return }
-            try? await Task.sleep(nanoseconds: coordinator.turnDelayNanoseconds)
+            if coordinator.turnDelayNanoseconds > 0 { try? await Task.sleep(nanoseconds: coordinator.turnDelayNanoseconds) }
         }
     }
 
-    private func executeEscortTurn(result: EscortTurnResult, container: GameObjectiveContainer,
+    @MainActor private func executeEscortTurn(result: EscortTurnResult, container: GameObjectiveContainer,
                                    entity: GameObjectiveEntity, pieceID: PieceID) async {
         guard let coordinator, let gameManager else { return }
         let name = "\(container.name)#\(entity.number)"

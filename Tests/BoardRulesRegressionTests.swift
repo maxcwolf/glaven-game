@@ -270,6 +270,164 @@ final class BoardRulesRegressionTests: XCTestCase {
             XCTAssertTrue(guardEntity.entityConditions.contains { $0.name == .disarm }, "the target is disarmed")
         }
     }
+
+    // MARK: - Found by the scenario simulator
+
+    private func card(_ name: String, of deck: String) throws -> AbilityModel {
+        try XCTUnwrap(gm.editionStore.abilities(forDeck: deck, edition: "gh").first { $0.name == name }, name)
+    }
+
+    /// The two cards played this round are no longer in the hand (p.22): they can't be lost to
+    /// negate damage. Losing one used to put the card in two piles at the end of the turn.
+    func testDamageNegationCannotLoseACardPlayedThisRound() async throws {
+        let character = addCharacter(at: HexCoord(3, 3))
+        let played = [try card("Trample", of: "brute"), try card("Eye for an Eye", of: "brute")]
+        character.handCards = [played[0].cardId!, played[1].cardId!, 3, 4]
+        coord.storeSelectedCards(for: character.id, top: played[0], bottom: played[1])
+        XCTAssertEqual(coord.losableHandCards(of: character), [3, 4])
+
+        coord.autoResolvePrompts = false
+        let hp = character.health
+        let refused = Task { await self.coord.sufferDamageWithMitigation(2, to: .character(character.id), source: "test") }
+        _ = await waitUntil { self.coord.pendingDamage != nil }
+        coord.resolvePendingDamage(choice: .loseHandCard(cardId: played[0].cardId!))
+        _ = await refused.value
+        XCTAssertEqual(character.health, hp - 2, "a played card can't pay for the damage")
+        XCTAssertTrue(character.lostCards.isEmpty)
+
+        let negated = Task { await self.coord.sufferDamageWithMitigation(2, to: .character(character.id), source: "test") }
+        _ = await waitUntil { self.coord.pendingDamage != nil }
+        coord.resolvePendingDamage(choice: .loseHandCard(cardId: 4))
+        _ = await negated.value
+        XCTAssertEqual(character.health, hp - 2, "losing a hand card negates the damage")
+        XCTAssertEqual(character.lostCards, [4])
+    }
+
+    /// A character exhausted during its own turn (e.g. by retaliate) takes no further actions:
+    /// its turn ends instead of waiting for input that can never come.
+    func testCharacterExhaustedDuringItsTurnEndsTheTurn() throws {
+        let character = addCharacter(at: HexCoord(3, 3))
+        let turn = PlayerTurnController(characterID: character.id, coordinator: coord, gameManager: gm)
+        coord.activePlayerTurn = turn
+        turn.selectCards(top: try card("Shield Bash", of: "brute"), bottom: try card("Trample", of: "brute"))
+        coord.exhaust(character, reason: "test")
+        XCTAssertEqual(turn.phase, .turnComplete)
+        turn.useDefaultAction()
+        XCTAssertEqual(turn.phase, .turnComplete, "no default action after exhaustion")
+        if case .selectingMove = coord.interactionMode { XCTFail("no move for an exhausted character") }
+    }
+
+    /// Infusions and XP printed on an attack come with performing it (Crushing Grasp: Attack 3,
+    /// Immobilize, earth).
+    func testAttackInfusionNeedsATargetAndHappensWithIt() async throws {
+        let character = addCharacter("cragheart", at: HexCoord(3, 3))
+        let grasp = try card("Crushing Grasp", of: "cragheart")
+        let other = try card("Rumbling Advance", of: "cragheart")
+        func earth() -> ElementState { gm.game.elementBoard.first { $0.type == .earth }!.state }
+
+        let lonely = PlayerTurnController(characterID: character.id, coordinator: coord, gameManager: gm)
+        coord.activePlayerTurn = lonely
+        lonely.selectCards(top: grasp, bottom: other)
+        lonely.executeCurrentAction()
+        XCTAssertEqual(earth(), .inert, "no target: the attack isn't performed, so no infusion")
+
+        addMonster("bandit-guard", at: HexCoord(4, 3))
+        let turn = PlayerTurnController(characterID: character.id, coordinator: coord, gameManager: gm)
+        coord.activePlayerTurn = turn
+        turn.selectCards(top: grasp, bottom: other)
+        turn.executeCurrentAction()
+        guard case .selectingAttackTarget(_, _, let targets) = coord.interactionMode, let target = targets.first else {
+            return XCTFail("attack waits for a target")
+        }
+        XCTAssertNotEqual(earth(), .inert, "performing the attack infuses earth")
+        coord.handlePieceTap(target)
+        _ = await waitUntil { turn.currentActionIndex > 0 }
+    }
+
+    /// XP printed on an attack (Thief's Knack bottom: Attack 3, +1 XP) and on a loot action (Hook
+    /// Gun bottom: Loot 2, +1 XP) is gained.
+    func testExperiencePrintedInsideAnActionIsGained() async throws {
+        let scoundrel = addCharacter("scoundrel", at: HexCoord(3, 3))
+        addMonster("bandit-guard", at: HexCoord(4, 3))
+        let knack = PlayerTurnController(characterID: scoundrel.id, coordinator: coord, gameManager: gm)
+        coord.activePlayerTurn = knack
+        knack.selectCards(top: try card("Quick Hands", of: "scoundrel"), bottom: try card("Thief's Knack", of: "scoundrel"))
+        knack.setBottomFirst(true)
+        knack.executeCurrentAction()
+        guard case .selectingAttackTarget(_, _, let targets) = coord.interactionMode, let target = targets.first else {
+            return XCTFail("attack waits for a target")
+        }
+        coord.handlePieceTap(target)
+        _ = await waitUntil { knack.currentActionIndex > 0 }
+        XCTAssertEqual(scoundrel.experience, 1)
+
+        let tinkerer = addCharacter("tinkerer", at: HexCoord(6, 6))
+        let hook = PlayerTurnController(characterID: tinkerer.id, coordinator: coord, gameManager: gm)
+        coord.activePlayerTurn = hook
+        hook.selectCards(top: try card("Stun Shot", of: "tinkerer"), bottom: try card("Hook Gun", of: "tinkerer"))
+        hook.setBottomFirst(true)
+        hook.executeCurrentAction()
+        XCTAssertEqual(tinkerer.experience, 1)
+    }
+
+    /// An element inside a block of the card (Perverse Edge bottom: "ice, +1 XP") is infused once.
+    func testBlockInfusionIsAppliedOnce() throws {
+        let mindthief = addCharacter("mindthief", at: HexCoord(3, 3))
+        let turn = PlayerTurnController(characterID: mindthief.id, coordinator: coord, gameManager: gm)
+        coord.activePlayerTurn = turn
+        turn.selectCards(top: try card("Scurry", of: "mindthief"), bottom: try card("Perverse Edge", of: "mindthief"))
+        turn.setBottomFirst(true)
+        turn.executeCurrentAction() // Attack 1, Range 2, Stun: no target
+        turn.executeCurrentAction() // ice, +1 XP
+        XCTAssertEqual(coord.turnLog.filter { $0.message.hasSuffix("Infused ice") }.count, 1)
+        XCTAssertEqual(mindthief.experience, 1)
+    }
+
+    /// Immobilize takes effect at once: a figure caught in a bear trap stops moving. A push is not
+    /// a move ability and continues.
+    func testBearTrapImmobilizeEndsTheMoveButNotAPush() async {
+        let character = addCharacter(at: HexCoord(1, 3))
+        character.maxHealth = 30
+        character.health = 30
+        coord.boardState.cells[HexCoord(2, 3)]?.overlay = .trap
+        coord.boardState.cells[HexCoord(2, 3)]?.overlaySubType = "bear"
+        await coord.moveAlong(.character(character.id), path: [HexCoord(1, 3), HexCoord(2, 3), HexCoord(3, 3)],
+                              style: .normal)
+        XCTAssertEqual(coord.boardState.piecePositions[.character(character.id)], HexCoord(2, 3))
+        XCTAssertTrue(coord.isConditionActive(.immobilize, on: .character(character.id)))
+
+        let guardEntity = addMonster("bandit-guard", at: HexCoord(5, 5))
+        guardEntity.maxHealth = 30
+        guardEntity.health = 30
+        coord.boardState.cells[HexCoord(6, 5)]?.overlay = .trap
+        coord.boardState.cells[HexCoord(6, 5)]?.overlaySubType = "bear"
+        let piece = PieceID.monster(name: "bandit-guard", standee: 1)
+        await coord.moveAlong(piece, path: [HexCoord(5, 5), HexCoord(6, 5), HexCoord(7, 5)], style: .forced)
+        XCTAssertEqual(coord.boardState.piecePositions[piece], HexCoord(7, 5), "the push continues")
+    }
+
+    /// Every attack and every movement runs on the main actor, like the UI that observes them.
+    /// Player attacks used to resolve on a background thread.
+    func testAttacksAndMovesRunOnTheMainThread() async throws {
+        var offMain: [String] = []
+        coord.attackObserver = { attacker, _ in if !Thread.isMainThread { offMain.append("attack by \(attacker)") } }
+        coord.moveObserver = { piece, _, _ in if !Thread.isMainThread { offMain.append("move of \(piece)") } }
+        let character = addCharacter(at: HexCoord(3, 3))
+        addMonster("bandit-guard", at: HexCoord(4, 3))
+        let turn = PlayerTurnController(characterID: character.id, coordinator: coord, gameManager: gm)
+        coord.activePlayerTurn = turn
+        turn.selectCards(top: try card("Spare Dagger", of: "brute"), bottom: try card("Trample", of: "brute"))
+        turn.executeCurrentAction()
+        guard case .selectingAttackTarget(_, _, let targets) = coord.interactionMode, let target = targets.first else {
+            return XCTFail("attack waits for a target")
+        }
+        coord.handlePieceTap(target)
+        _ = await waitUntil { turn.currentActionIndex > 0 }
+        let monster = gm.game.monsters.first { $0.name == "bandit-guard" }!
+        gm.monsterManager.drawAbility(for: monster)
+        await MonsterTurnController(coordinator: coord, gameManager: gm).executeMonsterGroup(monster)
+        XCTAssertEqual(offMain, [])
+    }
 }
 
 @MainActor

@@ -94,10 +94,7 @@ struct CardSelectionPanel: View {
             HStack(spacing: 16) {
                 if character.discardedCards.count >= 2 {
                     Button("Long Rest") {
-                        character.initiative = 99
-                        character.longRest = true
-                        coordinator.log("\(character.id): Long rest selected", category: .rest)
-                        coordinator.completeCardSelection(for: character.id)
+                        coordinator.chooseLongRest(for: character.id)
                     }
                     .buttonStyle(.bordered)
                     .tint(.orange)
@@ -162,16 +159,7 @@ struct CardSelectionPanel: View {
 
         guard topIdx < cards.count, btmIdx < cards.count else { return }
 
-        let topCard = cards[topIdx]
-        let bottomCard = cards[btmIdx]
-
-        // Initiative comes from the TOP card
-        character.initiative = topCard.initiative
-
-        // Store the selected pair so PlayerTurnController can use them
-        coordinator.storeSelectedCards(for: character.id, top: topCard, bottom: bottomCard)
-
-        coordinator.log("\(character.id): TOP \(topCard.name ?? "?") (init \(topCard.initiative)) / BTM \(bottomCard.name ?? "?")", category: .round)
-        coordinator.completeCardSelection(for: character.id)
+        // The first selected card leads (its initiative is used).
+        coordinator.chooseCards(for: character.id, leading: cards[topIdx], other: cards[btmIdx])
     }
 }

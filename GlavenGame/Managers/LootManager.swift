@@ -39,7 +39,7 @@ final class LootManager {
     }
 
     func shuffleDeck() {
-        game.lootDeck.cards.shuffle()
+        game.lootDeck.cards.shuffle(using: &GameRandom.shared)
         game.lootDeck.current = -1
     }
 }

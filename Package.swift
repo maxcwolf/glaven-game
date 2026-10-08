@@ -34,7 +34,9 @@ let package = Package(
         .testTarget(
             name: "GlavenGameTests",
             dependencies: ["GlavenGameLib"],
-            path: "Tests"
+            path: "Tests",
+            // Golden transcripts are read from the source tree, not bundled.
+            exclude: ["Golden"]
         )
     ]
 )

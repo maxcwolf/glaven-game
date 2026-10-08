@@ -124,7 +124,7 @@ final class ItemManager {
         }
 
         guard !candidates.isEmpty else { return nil }
-        return candidates.randomElement()
+        return candidates.randomElement(using: &GameRandom.shared)
     }
 
     /// Unlock a randomly drawn item and return it.

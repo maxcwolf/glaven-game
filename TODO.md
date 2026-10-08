@@ -216,7 +216,11 @@ Tracking features needed for parity with [Gloomhaven Secretariat](https://github
 - [x] iPadOS 17+
 - [x] App icon and branding
 - [x] iPhone layout (compact width adaptations)
-- [x] Unit tests (470 tests: unit, e2e, rulebook verification, headless scenario simulation)
+- [x] Unit tests (480+ tests: unit, e2e, rulebook verification, headless scenario simulation)
+- [x] **Deterministic simulation** — every shuffle and random draw goes through the seedable `GameRandom`; seeded games replay identically across processes
+- [x] **Golden turn logs** — seeded games (GH 1, 2, 4) compared turn by turn against hand-checked transcripts in `Tests/Golden/` (`GOLDEN_RECORD=1` re-records)
+- [x] **Full playthroughs** — `ScenarioSimulator` plays scenarios to the end with a tactical policy, checking every attack (LOS, enemies, visibility), every move (adjacency, walls, obstacles, doors, end hex) and the board after each step; outcomes must be a legitimate victory or defeat
+- [x] **CI** — `.github/workflows/tests.yml`: the suite on push/PR; nightly, every main GH scenario to the end with 4 seeds
 
 ---
 
@@ -281,6 +285,15 @@ Scenario
 - [x] **Doors reveal their own room** (map files repeat tile names; the first copy was often an empty stub — 33 doors in 22 maps); re-entering a revealed room doesn't respawn monsters or re-arm traps
 - [x] **Starting room** from the scenario data when the map is rooted elsewhere (GH 12); starting hexes padded when a map has fewer than the party size
 
+Found by the scenario simulator (2026-10-08)
+- [x] **Split starting areas** (GH 36, 50, 58, 85): every tile with starting hexes is revealed at setup — the party, and room 1's monsters, were squeezed into one tile with monsters standing on starting hexes; setup never puts a monster on a starting hex
+- [x] **Turn engine ran off the main actor** — player attacks and every async turn function (monster/summon/escort turns, attacks, moves) now run on the main actor; they raced the UI and made games non-deterministic
+- [x] **Damage negation could lose a card played this round** (duplicating it at the end of the turn); only hand cards not played this round can be lost (p.22)
+- [x] **Exhausted during its own turn** (e.g. by retaliate) ends the character's turn instead of wedging it on a default action
+- [x] **Infusions and XP printed on an attack** (Crushing Grasp's earth, Thief's Knack's XP) were never applied; XP inside other actions (Hook Gun's loot) too; block infusions were applied twice
+- [x] **Immobilize gained mid-move** (bear trap) ends the move; pushes continue
+- [x] Fixed iteration order wherever figures or hexes are visited one by one (focus ties, heal targets, death sweeps, revealed monsters, area targets), so equal choices don't depend on dictionary order
+
 Monsters (review pass)
 - [x] Boss special abilities drive movement/attacks; element-consume blocks apply heal/self-damage/retaliate/infusions; consumption only when a monster acts
 - [x] "Attack all adjacent enemies" / "all attacks on one enemy"; melee area reach; Dark Rider X / Overseer V stats; scenario stat-effect attack actions; "attackers gain disadvantage"; monster initiative in focus tie-breaks
@@ -294,7 +307,7 @@ Turn flow (review pass)
 - [ ] **Objectives/escorts aren't placed on the board** — the map data has no objective positions (22 scenarios use objectives)
 - [ ] **Scenario spawn markers** — map data has no marker positions, so rule spawns are placed near the other monsters
 - [ ] **Scenario-specific goals** beyond "kill all enemies" are only modelled where the scenario data has a `finish` rule
-- [ ] **"Enemies moved through" attacks** (e.g. Brute's Trample) and other custom-text abilities need manual resolution
+- [ ] **"Enemies moved through" attacks** (e.g. Brute's Trample) and other custom-text abilities (e.g. Reviving Ether's "recover all lost cards", Flanking Strike's bonus) need manual resolution — on the board they have no effect
 - [ ] **Persistent bonus charges** (e.g. "next 3 attacks") aren't tracked; persistent cards stay in the active area until the scenario ends
 - [ ] **Items during board turns** (use/spend from the turn panel)
 - [ ] **Icy terrain** — no forced-movement mechanic
@@ -302,3 +315,4 @@ Turn flow (review pass)
 - [ ] **Multi-hex obstacles** — one overlay per hex
 - [ ] **Random dungeon mode**
 - [ ] **Pathfinding visualization** — no debug overlay for monster movement decisions
+- [ ] **Simulator party rarely wins** — the tactical test policy wins ~2% of full playthroughs (mostly on Easy), so victory paths in late rooms and boss fights get little realistic coverage; a stronger policy (coordinated focus fire, card planning) would exercise them
