@@ -17,16 +17,3 @@ struct ContentView: View {
         .frame(minWidth: 800, minHeight: 600)
     }
 }
-
-// MARK: - Sidebar Environment Key (used by GameBoardView)
-
-private struct ShowSidebarKey: EnvironmentKey {
-    static let defaultValue: Binding<Bool>? = nil
-}
-
-extension EnvironmentValues {
-    var showSidebar: Binding<Bool>? {
-        get { self[ShowSidebarKey.self] }
-        set { self[ShowSidebarKey.self] = newValue }
-    }
-}

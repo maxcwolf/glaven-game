@@ -83,36 +83,3 @@ struct AttackModifierCardView: View {
     }
 }
 
-/// A card-back view for face-down AM cards
-struct AttackModifierCardBack: View {
-    var size: CGFloat = 50
-
-    @Environment(\.uiScale) private var scale
-    private var scaledSize: CGFloat { size * scale }
-
-    var body: some View {
-        if let img = ImageLoader.amCardBack() {
-            #if os(macOS)
-            Image(nsImage: img)
-                .resizable()
-                .aspectRatio(contentMode: .fit)
-                .frame(height: scaledSize)
-                .clipShape(RoundedRectangle(cornerRadius: 3 * scale))
-            #else
-            Image(uiImage: img)
-                .resizable()
-                .aspectRatio(contentMode: .fit)
-                .frame(height: scaledSize)
-                .clipShape(RoundedRectangle(cornerRadius: 3 * scale))
-            #endif
-        } else {
-            RoundedRectangle(cornerRadius: 3 * scale)
-                .fill(Color(red: 0.3, green: 0.2, blue: 0.1))
-                .frame(width: scaledSize * 0.7, height: scaledSize)
-                .overlay(
-                    Image(systemName: "rectangle.stack.fill")
-                        .foregroundStyle(.white.opacity(0.5))
-                )
-        }
-    }
-}

@@ -1,54 +1,5 @@
 import SwiftUI
 
-struct PerkSheet: View {
-    @Bindable var character: GameCharacter
-    @Environment(GameManager.self) private var gameManager
-    @Environment(\.dismiss) private var dismiss
-
-    var body: some View {
-        NavigationStack {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 12) {
-                    deckSummary
-                    if let perks = character.characterData?.perks {
-                        ForEach(Array(perks.enumerated()), id: \.offset) { index, perk in
-                            PerkRow(
-                                perk: perk,
-                                selected: index < character.selectedPerks.count ? character.selectedPerks[index] : 0
-                            ) {
-                                gameManager.characterManager.togglePerk(at: index, for: character)
-                            }
-                        }
-                    }
-                }
-                .padding()
-            }
-            .background(GlavenTheme.background)
-            .navigationTitle("Perks")
-            #if os(iOS)
-            .navigationBarTitleDisplayMode(.inline)
-            #endif
-            .toolbar {
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Done") { dismiss() }
-                }
-            }
-        }
-    }
-
-    @ViewBuilder
-    private var deckSummary: some View {
-        let count = character.attackModifierDeck.attackModifiers.count
-        HStack {
-            Text("Deck: \(count) cards")
-                .font(.subheadline)
-                .foregroundStyle(GlavenTheme.secondaryText)
-            Spacer()
-        }
-        .padding(.bottom, 4)
-    }
-}
-
 struct PerkRow: View {
     let perk: PerkModel
     let selected: Int
