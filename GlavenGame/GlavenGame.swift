@@ -66,12 +66,14 @@ public struct GlavenGameApp: App {
                 .environment(gameManager)
                 .modelContainer(modelContainer)
                 .onAppear {
+                    #if os(macOS)
                     // Maximize the window to fill the screen on launch
                     if let window = NSApplication.shared.windows.first {
                         if let screen = window.screen ?? NSScreen.main {
                             window.setFrame(screen.visibleFrame, display: true)
                         }
                     }
+                    #endif
                 }
         }
         .commands {

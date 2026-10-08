@@ -49,6 +49,10 @@ class BoardScene: SKScene {
 
         camera = cameraNode
         addChild(cameraNode)
+
+        #if os(iOS)
+        view.addGestureRecognizer(UIPinchGestureRecognizer(target: self, action: #selector(handlePinch(_:))))
+        #endif
     }
 
     // MARK: - Board Building
@@ -290,42 +294,52 @@ class BoardScene: SKScene {
 
     // MARK: - Input
 
-    override func mouseDown(with event: NSEvent) {
-        let location = event.location(in: self)
-
-        // Check piece hit first
+    /// Handle a tap/click: a piece first, then a highlighted hex. Returns true if handled.
+    @discardableResult
+    private func handleTap(at location: CGPoint) -> Bool {
         let pieceHits = pieceLayer.nodes(at: location)
         if let pieceNode = pieceHits.first(where: { $0 is PieceSpriteNode }) as? PieceSpriteNode {
             onPieceTap?(pieceNode.pieceID)
-            return
+            return true
         }
 
-        // Check highlight hit (for hex taps during move/attack selection)
+        // Highlighted hexes (move/attack/summon/push selection)
         let highlightHits = highlightLayer.nodes(at: location)
         if !highlightHits.isEmpty {
-            // Find which hex coordinate was tapped
-            for (coord, node) in highlightNodes {
-                if highlightHits.contains(where: { $0 === node }) {
-                    onHexTap?(coord)
-                    return
-                }
+            for (coord, node) in highlightNodes where highlightHits.contains(where: { $0 === node }) {
+                onHexTap?(coord)
+                return true
             }
         }
+        return false
+    }
 
+    private func pan(to location: CGPoint) {
+        if let last = lastPanPoint {
+            cameraNode.position = CGPoint(
+                x: cameraNode.position.x - (location.x - last.x),
+                y: cameraNode.position.y - (location.y - last.y)
+            )
+        }
+    }
+
+    private func zoom(by delta: CGFloat) {
+        currentZoom = max(minZoom, min(maxZoom, currentZoom + delta))
+        cameraNode.setScale(1.0 / currentZoom)
+    }
+
+    #if os(macOS)
+    override func mouseDown(with event: NSEvent) {
+        let location = event.location(in: self)
+        if handleTap(at: location) { return }
         // Otherwise, start panning
         lastPanPoint = location
     }
 
     override func mouseDragged(with event: NSEvent) {
         let location = event.location(in: self)
-        if let last = lastPanPoint {
-            let delta = CGPoint(x: location.x - last.x, y: location.y - last.y)
-            cameraNode.position = CGPoint(
-                x: cameraNode.position.x - delta.x,
-                y: cameraNode.position.y - delta.y
-            )
-        }
-        lastPanPoint = location
+        pan(to: location)
+        lastPanPoint = event.location(in: self)
     }
 
     override func mouseUp(with event: NSEvent) {
@@ -333,10 +347,51 @@ class BoardScene: SKScene {
     }
 
     override func scrollWheel(with event: NSEvent) {
-        let zoomDelta = event.deltaY * 0.05
-        currentZoom = max(minZoom, min(maxZoom, currentZoom + zoomDelta))
-        cameraNode.setScale(1.0 / currentZoom)
+        zoom(by: event.deltaY * 0.05)
     }
+    #else
+    /// Where the current touch started, to tell a tap from a pan.
+    private var touchStart: CGPoint?
+    private var touchMoved = false
+
+    override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
+        guard let touch = touches.first else { return }
+        let location = touch.location(in: self)
+        touchStart = location
+        lastPanPoint = location
+        touchMoved = false
+    }
+
+    override func touchesMoved(_ touches: Set<UITouch>, with event: UIEvent?) {
+        guard let touch = touches.first else { return }
+        let location = touch.location(in: self)
+        if let start = touchStart, hypot(location.x - start.x, location.y - start.y) > 8 {
+            touchMoved = true
+        }
+        if touchMoved {
+            pan(to: location)
+            lastPanPoint = touch.location(in: self)
+        }
+    }
+
+    override func touchesEnded(_ touches: Set<UITouch>, with event: UIEvent?) {
+        if !touchMoved, let start = touchStart {
+            handleTap(at: start)
+        }
+        touchStart = nil
+        lastPanPoint = nil
+    }
+
+    override func touchesCancelled(_ touches: Set<UITouch>, with event: UIEvent?) {
+        touchStart = nil
+        lastPanPoint = nil
+    }
+
+    @objc private func handlePinch(_ recognizer: UIPinchGestureRecognizer) {
+        zoom(by: (recognizer.scale - 1) * 0.5)
+        recognizer.scale = 1
+    }
+    #endif
 
     // MARK: - Geometry Helpers
 
