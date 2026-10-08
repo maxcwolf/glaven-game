@@ -86,6 +86,48 @@ final class CharacterManager {
         game.figures.removeAll { $0.id == "char-\(character.edition)-\(character.name)" }
     }
 
+    // MARK: - Ability cards
+
+    func abilities(for character: GameCharacter) -> [AbilityModel] {
+        editionStore.abilities(forDeck: character.characterData?.deck ?? character.name, edition: character.edition)
+    }
+
+    /// The cards the character can bring into a scenario.
+    func cardPool(for character: GameCharacter) -> [AbilityModel] {
+        CardPool.pool(abilities(for: character), chosen: character.chosenCards)
+    }
+
+    func pendingCardChoices(for character: GameCharacter) -> Int {
+        CardPool.pendingChoices(level: character.level, chosen: character.chosenCards)
+    }
+
+    func choosableCards(for character: GameCharacter) -> [AbilityModel] {
+        CardPool.choosable(abilities(for: character), level: character.level, chosen: character.chosenCards)
+    }
+
+    /// Add a level-up card to the character's pool, and to their hand if it has room.
+    @discardableResult
+    func chooseCard(_ cardId: Int, for character: GameCharacter) -> Bool {
+        guard pendingCardChoices(for: character) > 0,
+              choosableCards(for: character).contains(where: { $0.cardId == cardId }) else { return false }
+        onBeforeMutate?()
+        character.chosenCards.append(cardId)
+        if character.handCards.count < character.handSize { character.handCards.append(cardId) }
+        return true
+    }
+
+    /// Set the hand the character brings into the next scenario: cards from their pool, as many
+    /// as their hand size (or the whole pool, if it's smaller).
+    @discardableResult
+    func setHand(_ cardIds: [Int], for character: GameCharacter) -> Bool {
+        let pool = Set(cardPool(for: character).compactMap(\.cardId))
+        let size = min(character.handSize, pool.count)
+        guard cardIds.count == size, Set(cardIds).count == size, Set(cardIds).isSubset(of: pool) else { return false }
+        onBeforeMutate?()
+        character.handCards = cardIds
+        return true
+    }
+
     /// Whether a character has the experience for their next level (levels top out at 9).
     func canLevelUp(_ character: GameCharacter) -> Bool {
         character.level < 9 && GameCharacter.levelForXP(character.experience) > character.level

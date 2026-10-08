@@ -202,38 +202,10 @@ final class GameManager {
         let mapStore = ScenarioMapStore.shared
         guard let vgbScenario = mapStore.scenarioMap(for: scenario.data.index) else { return }
 
-        // Auto-fill empty hands with starting ability cards
-        for character in game.activeCharacters {
-            guard character.handCards.isEmpty else { continue }
-            let deckName = character.characterData?.deck ?? character.name
-            let allAbilities = editionStore.abilities(forDeck: deckName, edition: character.edition)
-
-            // Available cards: level 1 + level X + any up to character level
-            let available = allAbilities.filter { ability in
-                guard let level = ability.level else { return false }
-                switch level {
-                case .string(let s): return s.uppercased() == "X"
-                case .int(let l): return l >= 1 && l <= character.level
-                }
-            }
-
-            // Fill hand: level 1 cards first, then level X, then higher levels
-            let level1 = available.filter { $0.level?.intValue == 1 }
-            let levelX = available.filter {
-                if case .string(let s) = $0.level { return s.uppercased() == "X" }
-                return false
-            }
-            let higherLevel = available.filter {
-                guard let l = $0.level?.intValue else { return false }
-                return l > 1 && l <= character.level
-            }
-
-            var hand: [Int] = level1.compactMap(\.cardId)
-            for card in levelX + higherLevel {
-                if hand.count >= character.handSize { break }
-                if let cardId = card.cardId { hand.append(cardId) }
-            }
-            character.handCards = Array(hand.prefix(character.handSize))
+        // A character who hasn't chosen a hand brings the default one from their card pool.
+        for character in game.activeCharacters where character.handCards.isEmpty {
+            character.handCards = CardPool.defaultHand(characterManager.abilities(for: character),
+                                                       chosen: character.chosenCards, handSize: character.handSize)
         }
 
         let playerCount = max(2, game.characters.filter { !$0.absent }.count)

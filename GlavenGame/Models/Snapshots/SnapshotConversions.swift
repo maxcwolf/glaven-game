@@ -149,7 +149,8 @@ extension GameCharacter {
             spentItems: spentItems.isEmpty ? nil : Array(spentItems),
             consumedItems: consumedItems.isEmpty ? nil : Array(consumedItems),
             roundBonusCards: roundBonusCards.isEmpty ? nil : roundBonusCards,
-            lostWhenRemoved: lostWhenRemoved.isEmpty ? nil : lostWhenRemoved
+            lostWhenRemoved: lostWhenRemoved.isEmpty ? nil : lostWhenRemoved,
+            chosenCards: chosenCards
         )
     }
 }
@@ -203,6 +204,14 @@ extension CharacterSnapshot {
         c.consumedItems = Set(consumedItems ?? [])
         c.roundBonusCards = roundBonusCards ?? []
         c.lostWhenRemoved = lostWhenRemoved ?? []
+        if let chosenCards {
+            c.chosenCards = chosenCards
+        } else {
+            // An older save: the higher-level cards the character carries are their choices.
+            let abilities = editionStore.abilities(forDeck: charData?.deck ?? name, edition: edition)
+            c.chosenCards = CardPool.adoptedChoices(abilities, level: level,
+                                                    carried: handCards + discardedCards + lostCards + activeCards)
+        }
         return c
     }
 }

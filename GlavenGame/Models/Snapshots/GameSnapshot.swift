@@ -208,6 +208,8 @@ struct CharacterSnapshot: Codable {
     var consumedItems: [String]?
     var roundBonusCards: [Int]?
     var lostWhenRemoved: [Int]?
+    /// Nil in saves from before cards were chosen on levelling up.
+    var chosenCards: [Int]?
 
     init(name: String, edition: String, level: Int, off: Bool, active: Bool,
          number: Int, health: Int, maxHealth: Int,
@@ -228,7 +230,7 @@ struct CharacterSnapshot: Codable {
          handCards: [Int] = [], discardedCards: [Int] = [], lostCards: [Int] = [], activeCards: [Int] = [],
          resources: [String: Int] = [:], enhancements: [Enhancement] = [],
          spentItems: [String]? = nil, consumedItems: [String]? = nil,
-         roundBonusCards: [Int]? = nil, lostWhenRemoved: [Int]? = nil) {
+         roundBonusCards: [Int]? = nil, lostWhenRemoved: [Int]? = nil, chosenCards: [Int]? = nil) {
         self.name = name; self.edition = edition; self.level = level
         self.off = off; self.active = active; self.number = number
         self.health = health; self.maxHealth = maxHealth
@@ -260,6 +262,7 @@ struct CharacterSnapshot: Codable {
         self.consumedItems = consumedItems
         self.roundBonusCards = roundBonusCards
         self.lostWhenRemoved = lostWhenRemoved
+        self.chosenCards = chosenCards
     }
 
     init(from decoder: Decoder) throws {
@@ -312,6 +315,7 @@ struct CharacterSnapshot: Codable {
         consumedItems = try container.decodeIfPresent([String].self, forKey: .consumedItems)
         roundBonusCards = try container.decodeIfPresent([Int].self, forKey: .roundBonusCards)
         lostWhenRemoved = try container.decodeIfPresent([Int].self, forKey: .lostWhenRemoved)
+        chosenCards = try container.decodeIfPresent([Int].self, forKey: .chosenCards)
     }
 }
 

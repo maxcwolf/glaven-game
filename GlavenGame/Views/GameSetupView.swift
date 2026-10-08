@@ -9,6 +9,8 @@ struct GameSetupView: View {
     @State private var sheetCharacter: GameCharacter?
     @State private var shopCharacter: GameCharacter?
     @State private var levelUpCharacter: GameCharacter?
+    @State private var cardChoiceCharacter: GameCharacter?
+    @State private var handCharacter: GameCharacter?
     @State private var showWorldMap = false
     @State private var showCampaign = false
 
@@ -142,6 +144,12 @@ struct GameSetupView: View {
         .sheet(item: $shopCharacter) { character in
             ItemShopSheet(character: character)
         }
+        .sheet(item: $cardChoiceCharacter) { character in
+            LevelUpCardSheet(character: character)
+        }
+        .sheet(item: $handCharacter) { character in
+            HandSheet(character: character)
+        }
         .sheet(isPresented: $showWorldMap) {
             WorldMapView { scenario in selectedScenario = scenario }
         }
@@ -152,11 +160,13 @@ struct GameSetupView: View {
             get: { levelUpCharacter != nil }, set: { if !$0 { levelUpCharacter = nil } }
         ), titleVisibility: .visible) {
             Button("Level Up") {
-                if let character = levelUpCharacter { gameManager.characterManager.levelUp(character) }
+                if let character = levelUpCharacter, gameManager.characterManager.levelUp(character) {
+                    cardChoiceCharacter = character   // then pick the new level's card
+                }
             }
             Button("Not Yet", role: .cancel) {}
         } message: {
-            Text("More hit points, a perk to take, and the next level's ability cards.")
+            Text("More hit points, a perk to take, and a new ability card to choose.")
         }
     }
 
@@ -244,7 +254,9 @@ struct GameSetupView: View {
                         TownPartyRow(character: character,
                                      onSheet: { sheetCharacter = character },
                                      onShop: { shopCharacter = character },
-                                     onLevelUp: { levelUpCharacter = character })
+                                     onLevelUp: { levelUpCharacter = character },
+                                     onChooseCard: { cardChoiceCharacter = character },
+                                     onHand: { handCharacter = character })
                             .padding(.bottom, 6)
                     }
                     if !gameManager.game.characters.isEmpty {

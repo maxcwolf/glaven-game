@@ -39,6 +39,8 @@ final class GameCharacter: Figure, Entity {
     var attackModifierDeck: AttackModifierDeck = .defaultDeck()
     var summons: [GameSummon] = []
     var selectedPerks: [Int] = []
+    /// Ability cards chosen on levelling up, one per level above 1 (see `CardPool`).
+    var chosenCards: [Int] = []
 
     // Battle goal state
     var battleGoalCardIds: [String] = []

@@ -78,7 +78,9 @@
 		58B78A9C18B111E273D6FB08 /* SpriteKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D179B38E24E3F8EE01027D33 /* SpriteKit.framework */; };
 		5936AD0A4AD401DF4B97D987 /* EntityConditionState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 82F3F558C6B05ACE0A4DFB1F /* EntityConditionState.swift */; };
 		593ED53896934CF7F83863D3 /* BoardScene.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1E5BE6C620EBFDD27F7F98C0 /* BoardScene.swift */; };
+		5B13B2FCD96C798F2DF93DE9 /* CardPool.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1F121B39DF61999A92908F6 /* CardPool.swift */; };
 		5BBB61E7EDF1269CF6D4BA28 /* PersonalQuestView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F6788E5A9839E00B97E24EDB /* PersonalQuestView.swift */; };
+		5C5298E665D4DFFC39A68DEF /* AbilityCardChoiceViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = D0F512D593B3AEA9F219C2FC /* AbilityCardChoiceViews.swift */; };
 		5F89475755C4F71171E0D9DD /* MonsterTurnController.swift in Sources */ = {isa = PBXBuildFile; fileRef = CEBB2CD9E70D5ABFA126923B /* MonsterTurnController.swift */; };
 		613E1571F485E87A36D138D1 /* SoundPlayer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 192975CBA7A72969B78836A7 /* SoundPlayer.swift */; };
 		61FC834EB8188A9159AB2ACC /* GameState+Elements.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2F82064F5AB4E5914334FEA9 /* GameState+Elements.swift */; };
@@ -311,6 +313,7 @@
 		ADC60986430A5DFFAA4EEAC9 /* PartySheetView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PartySheetView.swift; sourceTree = "<group>"; };
 		AE4FE04C5C22C618D1AB2170 /* GameMonster.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameMonster.swift; sourceTree = "<group>"; };
 		B1ACB336DBBEBE992BE2288A /* SupportedLocale.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SupportedLocale.swift; sourceTree = "<group>"; };
+		B1F121B39DF61999A92908F6 /* CardPool.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CardPool.swift; sourceTree = "<group>"; };
 		B2E660BE81DE1921DF78A167 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		B336093B187D6833D7EF5868 /* BattleGoalData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BattleGoalData.swift; sourceTree = "<group>"; };
 		B600B1213ADD3BA7A385CA3F /* GlavenGame.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GlavenGame.swift; sourceTree = "<group>"; };
@@ -341,6 +344,7 @@
 		CF6C0E1CF27A9ECC9CFC529E /* OverlayStickerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OverlayStickerView.swift; sourceTree = "<group>"; };
 		CF8DD0E2645A4142BBD870E7 /* AbilityModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AbilityModel.swift; sourceTree = "<group>"; };
 		CFAA9E252523C44A71593CDF /* ItemShopSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ItemShopSheet.swift; sourceTree = "<group>"; };
+		D0F512D593B3AEA9F219C2FC /* AbilityCardChoiceViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AbilityCardChoiceViews.swift; sourceTree = "<group>"; };
 		D179B38E24E3F8EE01027D33 /* SpriteKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SpriteKit.framework; path = System/Library/Frameworks/SpriteKit.framework; sourceTree = SDKROOT; };
 		D1EA85C028A0AFE294D1CD52 /* Scenario.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Scenario.swift; sourceTree = "<group>"; };
 		D2399EDB7F011E68F62A5F2F /* MonsterAbilityStripView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MonsterAbilityStripView.swift; sourceTree = "<group>"; };
@@ -548,6 +552,7 @@
 		64A0D40F873AFB63942E5D4D /* Views */ = {
 			isa = PBXGroup;
 			children = (
+				D0F512D593B3AEA9F219C2FC /* AbilityCardChoiceViews.swift */,
 				BC02E40BD390F740C8CA66B1 /* CreditsSheet.swift */,
 				AD2078C38F909FF5A2F71A7B /* GameSetupView.swift */,
 				4840A613B6DC796BF25638E0 /* MainMenuView.swift */,
@@ -604,6 +609,7 @@
 		87CB9AB1F821566DCFE8075D /* Models */ = {
 			isa = PBXGroup;
 			children = (
+				B1F121B39DF61999A92908F6 /* CardPool.swift */,
 				CB48D739CDC747D7E15DB194 /* GameCharacter.swift */,
 				AE4FE04C5C22C618D1AB2170 /* GameMonster.swift */,
 				5C3F8355E887FAF9952D826E /* GameObjectiveContainer.swift */,
@@ -874,6 +880,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				5C5298E665D4DFFC39A68DEF /* AbilityCardChoiceViews.swift in Sources */,
 				A2F0171C14292FA97E954CDA /* AbilityCardView.swift in Sources */,
 				CF2FDBA6BAD0B1C947FEAB87 /* AbilityModel.swift in Sources */,
 				CD303BDC62AA852B959A42D1 /* AchievementStickerView.swift in Sources */,
@@ -911,6 +918,7 @@
 				DC76BF79136B777FBBE43EED /* BoardView.swift in Sources */,
 				3D70D4B36FC1C27F8205C998 /* BundleHelper.swift in Sources */,
 				000550603398D6EC31B12E45 /* CampaignLogEntry.swift in Sources */,
+				5B13B2FCD96C798F2DF93DE9 /* CardPool.swift in Sources */,
 				264672DD5FA11BF550313E8D /* CardSelectionPanel.swift in Sources */,
 				9BF3482C20F2CC41F462F7AC /* CharacterClass.swift in Sources */,
 				0417E8BE5AF938F0EB4F01DB /* CharacterData.swift in Sources */,

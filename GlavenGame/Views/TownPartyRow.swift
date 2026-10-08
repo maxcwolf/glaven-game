@@ -8,6 +8,8 @@ struct TownPartyRow: View {
     var onSheet: () -> Void
     var onShop: () -> Void
     var onLevelUp: () -> Void
+    var onChooseCard: () -> Void
+    var onHand: () -> Void
 
     private var nextThreshold: Int? {
         character.level < 9 ? GameCharacter.xpThresholds[character.level] : nil
@@ -16,6 +18,7 @@ struct TownPartyRow: View {
     var body: some View {
         let manager = gameManager.characterManager
         let perks = manager.perksAvailable(for: character)
+        let cardChoices = manager.pendingCardChoices(for: character)
         VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 10) {
                 portrait
@@ -48,7 +51,15 @@ struct TownPartyRow: View {
                     Button("Level Up", systemImage: "arrow.up.circle.fill", action: onLevelUp)
                         .buttonStyle(.borderedProminent)
                         .tint(BoardTheme.gain)
+                } else if cardChoices > 0 {
+                    Button(cardChoices == 1 ? "Choose a Card" : "Choose \(cardChoices) Cards",
+                           systemImage: "rectangle.stack.badge.plus", action: onChooseCard)
+                        .buttonStyle(.borderedProminent)
+                        .tint(BoardTheme.brass)
                 }
+                Button("Hand", systemImage: "rectangle.stack", action: onHand)
+                    .buttonStyle(.bordered)
+                    .tint(.gray)
                 Button(perks > 0 ? "\(perks) Perk\(perks == 1 ? "" : "s")" : "Sheet",
                        systemImage: perks > 0 ? "star.circle.fill" : "person.text.rectangle", action: onSheet)
                     .buttonStyle(.bordered)
