@@ -96,7 +96,7 @@ final class JumpFlyMovementTests: XCTestCase {
         // Verify the normal, jump, fly, and teleport methods all exist as distinct methods
         let coord = BoardCoordinator()
         // These methods exist (compilation test)
-        _ = coord.beginMoveAction as (PieceID, Int) -> Void
+        _ = coord.beginMoveAction as (PieceID, Int, MoveMode) -> Void
         _ = coord.beginJumpMoveAction as (PieceID, Int) -> Void
         _ = coord.beginFlyMoveAction as (PieceID, Int) -> Void
         _ = coord.beginTeleportAction as (PieceID, Int) -> Void

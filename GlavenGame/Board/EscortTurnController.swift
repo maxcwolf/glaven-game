@@ -15,267 +15,56 @@ final class EscortTurnController {
 
     /// Execute all living escort entity turns for an objective container.
     func executeEscortTurns(for container: GameObjectiveContainer) async {
-        guard let coordinator = coordinator,
-              let gameManager = gameManager else { return }
-
+        guard let coordinator, let gameManager else { return }
         isExecuting = true
+        defer { isExecuting = false }
 
-        let livingEntities = container.entities.filter { !$0.dead && $0.health > 0 && !$0.off }
+        for entity in container.entities where !entity.dead && entity.health > 0 && !entity.off {
+            let pieceID = PieceID.objective(id: entity.number)
+            guard coordinator.isOnBoard(pieceID) else { continue }
 
-        for entity in livingEntities {
-            // Apply start-of-turn conditions (wound, regenerate)
+            // Start of turn: conditions become active and tick (wound, regenerate).
+            gameManager.entityManager.restoreConditions(entity)
             gameManager.entityManager.applyConditionsTurn(entity)
+            coordinator.sweepDeadFigures()
+            guard !entity.dead, coordinator.isOnBoard(pieceID) else { continue }
 
-            // Check if escort died from wound damage
-            if entity.dead || entity.health <= 0 {
-                coordinator.log("  \(container.name)#\(entity.number): Died from conditions", category: .death)
-                let pieceID = PieceID.objective(id: entity.number)
-                coordinator.boardState.removePiece(pieceID)
-                coordinator.boardScene?.removePieceSprite(id: pieceID)
-                entity.dead = true
-                continue
+            let result = EscortAI.computeTurn(escort: container, entity: entity,
+                                              board: coordinator.boardState, gameState: gameManager.game)
+            await executeEscortTurn(result: result, container: container, entity: entity, pieceID: pieceID)
+
+            if !entity.dead {
+                gameManager.entityManager.expireConditions(entity)
             }
-
-            // Only compute AI turn if the escort has actions
-            if container.hasEscortActions {
-                let result = EscortAI.computeTurn(
-                    escort: container,
-                    entity: entity,
-                    board: coordinator.boardState,
-                    gameState: gameManager.game
-                )
-
-                await executeEscortTurn(result: result, container: container, entity: entity)
-            }
-
-            // Expire end-of-turn conditions
-            gameManager.entityManager.expireConditions(entity)
-
-            // Pause between entities
-            if livingEntities.count > 1 {
-                try? await Task.sleep(nanoseconds: 400_000_000)
-            }
+            coordinator.sweepDeadFigures()
+            if coordinator.scenarioResult != nil { return }
+            try? await Task.sleep(nanoseconds: coordinator.turnDelayNanoseconds)
         }
-
-        isExecuting = false
     }
 
-    // MARK: - Single Escort Turn
-
-    private func executeEscortTurn(
-        result: EscortTurnResult,
-        container: GameObjectiveContainer,
-        entity: GameObjectiveEntity
-    ) async {
-        guard let coordinator = coordinator,
-              let gameManager = gameManager else { return }
+    private func executeEscortTurn(result: EscortTurnResult, container: GameObjectiveContainer,
+                                   entity: GameObjectiveEntity, pieceID: PieceID) async {
+        guard let coordinator, let gameManager else { return }
+        let name = "\(container.name)#\(entity.number)"
 
         if result.stunned {
-            coordinator.log("  \(container.name)#\(entity.number): Stunned — skipped", category: .condition)
+            coordinator.log("  \(name): Stunned — skipped", category: .condition)
             return
         }
 
-        // Movement
         if result.movementPath.count > 1 {
-            let path = result.movementPath
-            coordinator.log("  \(container.name)#\(entity.number): Move \(path.count - 1) hexes", category: .move)
-
-            await withCheckedContinuation { continuation in
-                coordinator.boardScene?.movePiece(
-                    id: result.escortPieceID, along: path,
-                    offsetCol: coordinator.offsetCol, offsetRow: coordinator.offsetRow
-                ) {
-                    coordinator.boardState.movePiece(result.escortPieceID, to: path.last!)
-                    continuation.resume()
-                }
-            }
-
-            // Check for traps (escorts are not flying)
-            coordinator.checkForTrap(
-                pieceID: result.escortPieceID,
-                at: path.last!,
-                flying: false
-            )
-
-            // Check for hazardous terrain
-            coordinator.checkForHazard(
-                pieceID: result.escortPieceID,
-                at: path.last!,
-                flying: false
-            )
-
-            // If escort died from trap/hazard, stop
-            if entity.dead || entity.health <= 0 { return }
+            coordinator.log("  \(name): Move \(result.movementPath.count - 1)", category: .move)
+            guard await coordinator.moveAlong(pieceID, path: result.movementPath, style: .normal) else { return }
         }
 
-        // Attack
-        if let target = result.attackTarget {
-            guard !entity.dead else { return }
-            guard let targetPos = coordinator.boardState.piecePositions[target],
-                  let attackerPos = coordinator.boardState.piecePositions[result.escortPieceID] else { return }
-
-            let (defenderHealth, defenderShield, retInfo) = getDefenderInfo(target: target, gameManager: gameManager)
-            let isPoisoned = isConditionActive(.poison, on: target, gameManager: gameManager)
-            let isRangedAdjacent = result.attackRange > 1 && attackerPos.isAdjacent(to: targetPos)
-            // Escorts don't have conditions that give advantage/disadvantage typically,
-            // but check entity conditions for correctness
-            let hasAdvantage = entity.entityConditions.contains(where: { $0.name == .strengthen && !$0.expired })
-            let hasDisadvantage = entity.entityConditions.contains(where: { $0.name == .muddle && !$0.expired }) || isRangedAdjacent
-
-            // Draw from ally deck or monster deck
-            let drawCard: () -> AttackModifier? = {
-                if container.useAllyDeck {
-                    return gameManager.attackModifierManager.drawAllyCard()
-                } else {
-                    return gameManager.attackModifierManager.drawMonsterCard()
-                }
-            }
-
-            let preDrawnCards = await coordinator.performModifierDraw(
-                attacker: result.escortPieceID,
-                defender: target,
-                baseAttack: result.attackValue,
-                advantage: hasAdvantage,
-                disadvantage: hasDisadvantage,
-                drawCard: drawCard
-            )
-
-            let attackResult = CombatResolver.resolveAttack(
-                attacker: result.escortPieceID,
-                defender: target,
-                baseAttack: result.attackValue,
-                advantage: hasAdvantage,
-                disadvantage: hasDisadvantage,
-                isPoisoned: isPoisoned,
-                shield: defenderShield,
-                retaliateValue: retInfo.value,
-                retaliateRange: retInfo.range,
-                attackerDefenderDistance: attackerPos.distance(to: targetPos),
-                preDrawnCards: preDrawnCards,
-                drawModifier: { nil },
-                defenderHealth: defenderHealth
-            )
-
-            let breakdown = CombatResolver.damageBreakdown(
-                base: result.attackValue, isPoisoned: isPoisoned,
-                preDrawnCards: preDrawnCards, shield: defenderShield,
-                isMiss: attackResult.isMiss, finalDamage: attackResult.damage)
-            coordinator.log("  \(container.name)#\(entity.number) → \(target): \(breakdown)", category: .attack)
-
-            // Apply damage
-            if attackResult.damage > 0 {
-                coordinator.boardScene?.pieceDamage(id: target, amount: attackResult.damage)
-                applyDamage(attackResult.damage, to: target, gameManager: gameManager)
-            }
-
-            // Apply conditions to target
-            for condition in attackResult.appliedConditions {
-                applyConditionToTarget(condition, target: target, gameManager: gameManager)
-                coordinator.log("  \(target): \(condition.rawValue) applied", category: .condition)
-            }
-
-            // Check if target was killed
-            if attackResult.killed || isTargetDead(target, gameManager: gameManager) {
-                coordinator.log("  \(target): Killed!", category: .death)
-                coordinator.boardState.removePiece(target)
-                coordinator.boardScene?.removePieceSprite(id: target)
-                markDead(target: target, gameManager: gameManager)
-            }
-
-            // Retaliate damage back to escort
-            if attackResult.retaliateDamage > 0 {
-                coordinator.log("  \(container.name)#\(entity.number): Takes \(attackResult.retaliateDamage) retaliate damage", category: .damage)
-                gameManager.entityManager.changeHealth(entity, amount: -attackResult.retaliateDamage)
-                if entity.health <= 0 {
-                    entity.dead = true
-                    coordinator.boardState.removePiece(result.escortPieceID)
-                    coordinator.boardScene?.removePieceSprite(id: result.escortPieceID)
-                    coordinator.log("  \(container.name)#\(entity.number): Killed by retaliate!", category: .death)
-                }
-            }
-        } else if result.focusTarget != nil {
-            coordinator.log("  \(container.name)#\(entity.number): Can't reach focus — moved closer", category: .move)
-        } else {
-            coordinator.log("  \(container.name)#\(entity.number): No focus found", category: .info)
-        }
-    }
-
-    // MARK: - Helpers
-
-    private func getDefenderInfo(target: PieceID, gameManager: GameManager) -> (health: Int, shield: Int, retaliate: (value: Int, range: Int)) {
-        switch target {
-        case .monster(let name, let standee):
-            if let monster = gameManager.game.monsters.first(where: { $0.name == name }),
-               let entity = monster.entities.first(where: { $0.number == standee }) {
-                let shield = CombatResolver.totalShield(shield: entity.shield, shieldPersistent: entity.shieldPersistent)
-                let ret = CombatResolver.retaliateInfo(retaliate: entity.retaliate, retaliatePersistent: entity.retaliatePersistent)
-                return (entity.health, shield, ret)
-            }
-        default:
-            break
-        }
-        return (0, 0, (0, 1))
-    }
-
-    private func isConditionActive(_ condition: ConditionName, on target: PieceID, gameManager: GameManager) -> Bool {
-        switch target {
-        case .monster(let name, let standee):
-            if let monster = gameManager.game.monsters.first(where: { $0.name == name }),
-               let entity = monster.entities.first(where: { $0.number == standee }) {
-                return entity.entityConditions.contains(where: { $0.name == condition && !$0.expired })
-            }
-        default:
-            break
-        }
-        return false
-    }
-
-    private func applyDamage(_ damage: Int, to target: PieceID, gameManager: GameManager) {
-        switch target {
-        case .monster(let name, let standee):
-            if let monster = gameManager.game.monsters.first(where: { $0.name == name }),
-               let entity = monster.entities.first(where: { $0.number == standee }) {
-                gameManager.entityManager.changeHealth(entity, amount: -damage)
-            }
-        default:
-            break
-        }
-    }
-
-    private func applyConditionToTarget(_ condition: ConditionName, target: PieceID, gameManager: GameManager) {
-        switch target {
-        case .monster(let name, let standee):
-            if let monster = gameManager.game.monsters.first(where: { $0.name == name }),
-               let entity = monster.entities.first(where: { $0.number == standee }) {
-                gameManager.entityManager.addCondition(condition, to: entity)
-            }
-        default:
-            break
-        }
-    }
-
-    private func isTargetDead(_ target: PieceID, gameManager: GameManager) -> Bool {
-        switch target {
-        case .monster(let name, let standee):
-            if let monster = gameManager.game.monsters.first(where: { $0.name == name }),
-               let entity = monster.entities.first(where: { $0.number == standee }) {
-                return entity.health <= 0
-            }
-        default:
-            break
-        }
-        return false
-    }
-
-    private func markDead(target: PieceID, gameManager: GameManager) {
-        switch target {
-        case .monster(let name, let standee):
-            if let monster = gameManager.game.monsters.first(where: { $0.name == name }),
-               let entity = monster.entities.first(where: { $0.number == standee }) {
-                entity.dead = true
-            }
-        default:
-            break
-        }
+        guard let attack = result.attack, let target = result.attackTarget else { return }
+        let am = gameManager.attackModifierManager
+        // Escorts draw from the ally deck or the monster deck as the scenario specifies.
+        let draw: () -> AttackModifier? = container.useAllyDeck ? { am.drawAllyCard() } : { am.drawMonsterCard() }
+        await coordinator.performAttack(
+            attacker: pieceID, target: target,
+            attack: AttackParameters(value: attack.value, isRanged: attack.isRanged, pierce: attack.pierce,
+                                     conditions: attack.conditions, push: attack.push, pull: attack.pull),
+            drawCard: draw)
     }
 }

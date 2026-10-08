@@ -15,7 +15,8 @@ enum BoardPhase: String {
 enum InteractionMode {
     case idle
     case placingCharacter(characterID: String)
-    case selectingMove(pieceID: PieceID, range: Int, validHexes: Set<HexCoord>, teleport: Bool = false)
+    case selectingMove(pieceID: PieceID, range: Int, validHexes: Set<HexCoord>, teleport: Bool = false,
+                       mode: MoveMode = .normal)
     /// Single-target attack selection (targetCount == 1).
     case selectingAttackTarget(pieceID: PieceID, range: Int, validTargets: Set<PieceID>)
     /// Multi-target attack selection (targetCount > 1). Player picks targets one by one.
@@ -26,6 +27,8 @@ enum InteractionMode {
     case selectingConditionTarget(pieceID: PieceID, condition: ConditionName, validTargets: Set<PieceID>)
     /// Player selects an ally (or self) within range to heal.
     case selectingHealTarget(pieceID: PieceID, healValue: Int, validTargets: Set<PieceID>)
+    /// Player selects an enemy to push or pull.
+    case selectingForcedMoveTarget(pieceID: PieceID, steps: Int, isPush: Bool, validTargets: Set<PieceID>)
     case watchingMonsterTurn
 }
 
@@ -104,6 +107,8 @@ struct TurnOrderEntry: Identifiable {
     let figure: AnyFigure
     let initiative: Double
     var completed: Bool = false
+    /// For a monster type that already acted this round: only these newly revealed standees act.
+    var onlyStandees: Set<Int>? = nil
 }
 
 /// Bridge between SpriteKit scene and SwiftUI state.
@@ -140,6 +145,20 @@ final class BoardCoordinator {
     /// Index of the currently active figure in turnOrder.
     var currentTurnIndex: Int = -1
 
+    /// Whether the current turn-order entry's figure was toggled active (start-of-turn processed).
+    var currentTurnToggled: Bool = false
+
+    /// Incremented whenever a board starts or is torn down; turn tasks started for an earlier
+    /// board stop instead of advancing the new one.
+    private(set) var boardGeneration = 0
+
+    /// Monster standees that entered play during the current turn, by monster name; they are
+    /// scheduled to act this round when the turn ends.
+    var pendingRevealedStandees: [String: Set<Int>] = [:]
+
+    /// A scenario result triggered this round; it takes effect at the end of the round (p.47).
+    var pendingResult: ScenarioResult?
+
     /// The active player turn controller (nil when monster/no turn).
     var activePlayerTurn: PlayerTurnController?
 
@@ -158,6 +177,9 @@ final class BoardCoordinator {
         let characterID: String
         let summonName: String
         let validHexes: Set<HexCoord>
+        /// More figures of the same summon still to place (e.g. "Summon two Shadow Wolves").
+        var remaining: Int = 0
+        var summonData: SummonDataModel? = nil
     }
     var pendingSummonPlacement: PendingSummonPlacement?
 
@@ -192,6 +214,13 @@ final class BoardCoordinator {
     /// Non-nil when an attack is waiting for the player to draw modifier card(s).
     var pendingModifierDraw: PendingModifierDraw?
 
+    /// Resolve modifier draws, damage-negation prompts and forced-movement choices automatically
+    /// (no player input). Used for headless simulation and tests.
+    var autoResolvePrompts = false
+
+    /// Pause between automated figures' turns, for readability.
+    var turnDelayNanoseconds: UInt64 = 400_000_000
+
     /// Non-nil when a monster push/pull is in progress and the async caller is suspended.
     private var pendingPushPullContinuation: CheckedContinuation<Void, Never>?
 
@@ -211,6 +240,9 @@ final class BoardCoordinator {
         disadvantage: Bool,
         drawCard: @escaping () -> AttackModifier?
     ) async -> [AttackModifier] {
+        if autoResolvePrompts {
+            return CombatResolver.drawModifiers(advantage: advantage, disadvantage: disadvantage, draw: drawCard)
+        }
         return await withCheckedContinuation { continuation in
             pendingModifierDraw = PendingModifierDraw(
                 attackerPiece: attacker,
@@ -286,19 +318,16 @@ final class BoardCoordinator {
         guard let gameManager = gameManager,
               let character = gameManager.game.characters.first(where: { $0.id == characterID }) else { return }
 
-        pendingLongRest = nil
-
         // Lose the chosen card
-        guard discardIndex < character.discardedCards.count else { return }
+        guard discardIndex >= 0, discardIndex < character.discardedCards.count else { return }
+        pendingLongRest = nil
         let lostCard = character.discardedCards.remove(at: discardIndex)
         character.lostCards.append(lostCard)
 
-        // Recover remaining discard to hand
+        // Recover remaining discard to hand. (Heal 2 and refreshing spent items happen when the
+        // resting turn starts — RoundManager.beforeTurn.)
         character.handCards.append(contentsOf: character.discardedCards)
         character.discardedCards.removeAll()
-
-        // Heal 2
-        gameManager.entityManager.changeHealth(character, amount: 2)
 
         let deckName = character.characterData?.deck ?? character.name
         let deckData = gameManager.editionStore.deckData(name: deckName, edition: character.edition)
@@ -319,6 +348,16 @@ final class BoardCoordinator {
         var randomCardId: Int
         /// Whether the player already used the re-pick option (costs 1 HP).
         var rerollUsed: Bool = false
+        /// The player chose to rest; the randomly lost card is now revealed and the rest can no
+        /// longer be declined.
+        var committed: Bool = false
+    }
+
+    /// The player decides to short rest: reveal the randomly chosen card.
+    func commitShortRest() {
+        guard var pending = pendingShortRest else { return }
+        pending.committed = true
+        pendingShortRest = pending
     }
 
     /// Non-nil when a character is being offered a short rest at end of round.
@@ -326,6 +365,8 @@ final class BoardCoordinator {
 
     /// Characters that performed a long rest this round (skip short rest for them).
     private var longRestedCharacterIDs: Set<String> = []
+    /// Characters already offered a short rest this round.
+    private var shortRestOffered: Set<String> = []
 
     /// Begin offering short rests to eligible characters at end of round.
     private func offerShortRests() {
@@ -334,6 +375,7 @@ final class BoardCoordinator {
             return
         }
 
+        shortRestOffered = []
         // Record which characters long-rested this round
         longRestedCharacterIDs = Set(
             gameManager.game.activeCharacters
@@ -351,17 +393,11 @@ final class BoardCoordinator {
             return
         }
 
+        if let characterID { shortRestOffered.insert(characterID) }
         let active = gameManager.game.activeCharacters.filter { !$0.exhausted && !$0.absent }
-        let startIndex: Int
-        if let afterID = characterID,
-           let idx = active.firstIndex(where: { $0.id == afterID }) {
-            startIndex = idx + 1
-        } else {
-            startIndex = 0
-        }
 
-        for i in startIndex..<active.count {
-            let character = active[i]
+        for character in active where !shortRestOffered.contains(character.id) {
+            shortRestOffered.insert(character.id)
             // Skip characters that long-rested (they already recovered)
             guard !longRestedCharacterIDs.contains(character.id) else { continue }
             // Need at least 2 discarded cards to short rest
@@ -412,12 +448,17 @@ final class BoardCoordinator {
     func rerollShortRest() {
         guard let gameManager = gameManager,
               var pending = pendingShortRest,
-              !pending.rerollUsed,
+              pending.committed, !pending.rerollUsed,
               let character = gameManager.game.characters.first(where: { $0.id == pending.characterID }) else { return }
 
-        // Apply 1 damage
-        gameManager.entityManager.changeHealth(character, amount: -1)
-        log("\(character.id): Short Rest — took 1 damage to re-pick", category: .rest)
+        // Suffer 1 damage to keep the card and randomly lose a different one (once per rest).
+        log("\(character.id): Short Rest — suffers 1 damage to re-pick", category: .rest)
+        if sufferDamage(1, to: .character(character.id)) {
+            // Exhausted by the damage: the rest is over.
+            pendingShortRest = nil
+            advanceToNextShortRest(startingAfter: pending.characterID)
+            return
+        }
 
         pending.rerollUsed = true
 
@@ -433,7 +474,7 @@ final class BoardCoordinator {
 
     /// Player declines the short rest — cards stay as-is.
     func skipShortRest() {
-        guard let pending = pendingShortRest else { return }
+        guard let pending = pendingShortRest, !pending.committed else { return }
         let charID = pending.characterID
         log("\(charID): Skipped short rest", category: .rest)
         pendingShortRest = nil
@@ -446,11 +487,12 @@ final class BoardCoordinator {
 
         longRestedCharacterIDs = []
 
-        // Original endRound() cleanup
+        // End-of-round cleanup (end-of-round scenario rules, elements wane, decks reshuffle)
         gameManager.roundManager.nextGameState()
         log("Round \(gameManager.game.round) complete", category: .round)
+        sweepDeadFigures()
 
-        checkVictoryDefeat()
+        resolvePendingResult()
         if scenarioResult != nil { return }
 
         beginCardSelection()
@@ -498,8 +540,57 @@ final class BoardCoordinator {
     /// Initialize the board for a scenario.
     func startScenario(scenario: VGBScenario, playerCount: Int) {
         self.scenarioData = scenario
-        self.boardState = BoardBuilder.build(from: scenario, playerCount: playerCount)
+        boardGeneration += 1
+        pendingShortRest = nil
+        pendingLongRest = nil
+        pendingDamage = nil
+        pendingModifierDraw = nil
+        pendingSummonPlacement = nil
+        turnOrder = []
+        currentTurnIndex = -1
+        activePlayerTurn = nil
+        let initialRefs = (gameManager?.game.scenario?.data.rooms ?? []).filter(\.isInitial).compactMap(\.ref)
+        let (board, startingRoom) = BoardBuilder.buildStartingRoom(from: scenario, initialRoomRefs: initialRefs)
+        self.boardState = board
         self.scenarioResult = nil
+        // Some maps mark fewer starting hexes than there are characters; add the nearest empty
+        // hexes of the starting room so everyone can be placed.
+        let partySize = gameManager?.game.characters.filter { !$0.absent }.count ?? 0
+        if board.startingLocations.count < partySize {
+            var extra = board.startingLocations
+            var frontier = board.startingLocations.isEmpty ? Array(board.cells.keys.prefix(1)) : board.startingLocations
+            var visited = Set(frontier)
+            while extra.count < partySize, !frontier.isEmpty {
+                let next = frontier.removeFirst()
+                if !extra.contains(next), board.isPassable(next), !board.isOccupied(next),
+                   board.cells[next]?.overlay == nil {
+                    extra.append(next)
+                }
+                for neighbor in next.neighbors where board.cells[neighbor] != nil && !visited.contains(neighbor) {
+                    visited.insert(neighbor)
+                    frontier.append(neighbor)
+                }
+            }
+            board.startingLocations = extra
+        }
+        self.pendingResult = nil
+        self.pendingRevealedStandees = [:]
+        self.currentTurnToggled = false
+        self.lastAttackTarget = nil
+        self.lastAttackerPos = nil
+
+        // The starting room's monsters were created from the scenario data; give them the map's
+        // positions (or fall back to the map's own monster list if the scenario has none).
+        let hasRoomData = !(gameManager?.game.scenario?.data.rooms ?? []).isEmpty
+        placeRevealedMonsters(slots: startingRoom.slots, newEntities: unplacedMonsterEntities(),
+                              playerCount: playerCount, useMapMonsters: !hasRoomData)
+
+        gameManager?.roundManager.figuresTakeOwnTurns = true
+
+        // Monsters spawned by scenario rules go onto the board, not only into game state.
+        gameManager?.scenarioRulesManager.onSpawnMonster = { [weak self] name, type, marker, health in
+            self?.spawnFromScenarioRule(name: name, type: type, marker: marker, health: health) ?? false
+        }
 
         // Reset round state so monster abilities are drawn fresh regardless of how the previous game ended.
         gameManager?.game.state = .draw
@@ -529,6 +620,12 @@ final class BoardCoordinator {
 
     /// Tear down the board and return to the main menu.
     func exitBoard() {
+        boardGeneration += 1
+        pendingLongRest = nil
+        pendingDamage = nil
+        pendingModifierDraw = nil
+        gameManager?.scenarioRulesManager.onSpawnMonster = nil
+        gameManager?.roundManager.figuresTakeOwnTurns = false
         gameManager?.appPhase = .mainMenu
         boardScene = nil
         scenarioData = nil
@@ -546,6 +643,7 @@ final class BoardCoordinator {
         cardSelectionsComplete = []
         cardSelectingCharacterID = nil
         scenarioResult = nil
+        pendingResult = nil
     }
 
     // MARK: - Character Placement (Setup Phase)
@@ -587,9 +685,28 @@ final class BoardCoordinator {
         boardState.placePiece(summonPieceID, at: coord)
         boardScene?.addPieceSprite(id: summonPieceID, at: coord, offsetCol: offsetCol, offsetRow: offsetRow)
         boardScene?.clearHighlights()
+        let pending = pendingSummonPlacement
         pendingSummonPlacement = nil
         interactionMode = .idle
         log("\(characterID): Summon placed at (\(coord.col), \(coord.row))", category: .info)
+
+        // Place the next figure of a multi-figure summon, if there is still an empty adjacent hex.
+        if let pending, pending.remaining > 0, let data = pending.summonData,
+           let gameManager, let character = gameManager.game.characters.first(where: { $0.id == characterID }),
+           let charPos = boardState.piecePositions[.character(characterID)] {
+            let hexes = Set(charPos.neighbors.filter { isEmptyHex($0) })
+            if !hexes.isEmpty {
+                gameManager.characterManager.addSummon(from: data, for: character)
+                if let next = character.summons.last {
+                    pendingSummonPlacement = PendingSummonPlacement(
+                        summonID: next.id, characterID: characterID, summonName: pending.summonName,
+                        validHexes: hexes, remaining: pending.remaining - 1, summonData: data)
+                    interactionMode = .placingSummon(summonID: next.id, characterID: characterID, validHexes: hexes)
+                    boardScene?.highlightHexes(hexes, color: .green, offsetCol: offsetCol, offsetRow: offsetRow)
+                    return
+                }
+            }
+        }
 
         // Advance the player turn controller past the async summon action
         activePlayerTurn?.advanceAfterAsyncAction()
@@ -600,7 +717,6 @@ final class BoardCoordinator {
         guard boardPhase == .setup else { return }
         boardScene?.clearHighlights()
         interactionMode = .idle
-        logRoundHeader(1)
         beginCardSelection()
     }
 
@@ -656,17 +772,10 @@ final class BoardCoordinator {
                 cardSelectionsComplete.insert(character.id)
                 // Continue to next character
             } else {
-                // Exhausted: fewer than 2 hand cards AND fewer than 2 discard cards
-                character.exhausted = true
-                log("\(character.id): Exhausted! (\(handCount) hand, \(discardCount) discard)", category: .death)
-
-                // Remove from board
-                let pieceID = PieceID.character(character.id)
-                boardState.removePiece(pieceID)
-                boardScene?.removePieceSprite(id: pieceID)
-
+                // Exhausted: can't play two cards and can't rest (p.27). HP is unaffected.
+                exhaust(character, reason: "\(handCount) hand, \(discardCount) discard")
                 cardSelectionsComplete.insert(character.id)
-                // Continue to next character
+                if scenarioResult != nil { return }
             }
         }
 
@@ -689,8 +798,10 @@ final class BoardCoordinator {
     private func beginExecution() {
         guard let gameManager = gameManager else { return }
 
-        // Advance the round (draws monster abilities, sorts by initiative)
+        // Advance the round (start-of-round rules, monster ability draws, initiative order)
         gameManager.roundManager.nextGameState()
+        sweepDeadFigures()
+        if scenarioResult != nil { return }
 
         boardPhase = .execution
 
@@ -707,9 +818,12 @@ final class BoardCoordinator {
             case .character(let c) where c.exhausted || c.absent:
                 return nil
             case .character(let c) where c.longRest:
-                return TurnOrderEntry(figure: figure, initiative: 99)
+                // Initiative 99; a character goes before a monster type on a tie (p.16).
+                return TurnOrderEntry(figure: figure, initiative: 99 - 0.9)
             case .character(let c):
-                return TurnOrderEntry(figure: figure, initiative: c.effectiveInitiative)
+                // Ties between characters are broken by their second card's initiative (p.16).
+                let secondCard = Double(selectedCardPairs[c.id]?.bottom.initiative ?? 99) / 1000
+                return TurnOrderEntry(figure: figure, initiative: c.effectiveInitiative + secondCard)
             case .monster(let m) where !m.off && !m.aliveEntities.isEmpty:
                 // Use monsterManager to get the real initiative from the drawn ability card
                 let init_ = gameManager.monsterManager.currentAbilityInitiative(for: m)
@@ -730,7 +844,7 @@ final class BoardCoordinator {
             case .monster(let m): name = m.name
             case .objective(let o): name = o.name
             }
-            return "\(name)(\(Int(entry.initiative)))"
+            return "\(name)(\(Int(entry.initiative.rounded(.up))))"
         }.joined(separator: ", ")
         log("Turn order: \(orderDesc)", category: .round)
         advanceToNextFigure()
@@ -741,17 +855,26 @@ final class BoardCoordinator {
         guard let gameManager = gameManager else { return }
         refreshInvisibility()
 
-        // Mark current as completed
+        // End the current figure's turn (conditions expire), then resolve anything that died.
         if currentTurnIndex >= 0 && currentTurnIndex < turnOrder.count {
             turnOrder[currentTurnIndex].completed = true
-            // Toggle off the current figure
-            gameManager.roundManager.toggleFigure(turnOrder[currentTurnIndex].figure)
+            if currentTurnToggled, case .character(let character) = turnOrder[currentTurnIndex].figure {
+                gameManager.scenarioRulesManager.evaluateTurnRules(.turnEnd, for: character)
+            }
+            if currentTurnToggled {
+                gameManager.roundManager.toggleFigure(turnOrder[currentTurnIndex].figure)
+                currentTurnToggled = false
+            }
+            sweepDeadFigures()
+            if scenarioResult != nil { return }
         }
+
+        // Monsters revealed or spawned during the turn that just ended act this round (p.32).
+        scheduleRevealedMonsters()
 
         activePlayerTurn = nil
         currentTurnIndex += 1
 
-        // Check if we're done
         if currentTurnIndex >= turnOrder.count {
             endRound()
             return
@@ -761,61 +884,48 @@ final class BoardCoordinator {
 
         switch entry.figure {
         case .character(let character):
-            if character.longRest {
-                // Long rest — player must choose which discard card to lose
-                gameManager.roundManager.toggleFigure(entry.figure) // toggle on
+            // Exhausted (or removed) characters take no further part in the scenario.
+            guard !character.exhausted, !character.absent, isOnBoard(.character(character.id)) else {
+                advanceToNextFigure()
+                return
+            }
+            selectedPiece = .character(character.id)
 
-                if character.discardedCards.isEmpty {
-                    // No discard cards (shouldn't happen, but safety)
-                    log("\(character.id): Long rest (no cards to lose)", category: .rest)
-                    advanceToNextFigure()
-                } else if character.discardedCards.count == 1 {
-                    // Only 1 discard card — auto-choose it
-                    resolveLongRest(characterID: character.id, discardIndex: 0)
-                } else {
-                    // Show prompt for player to choose which card to lose
-                    log("\(character.id): Long rest — choose a card to lose", category: .rest)
-                    pendingLongRest = PendingLongRest(characterID: character.id)
+            // A summon's turn comes directly before its summoner's — even a resting one (p.26).
+            let livingSummons = character.summons.filter { !$0.dead && isOnBoard(.summon(id: $0.id)) }
+            if !livingSummons.isEmpty {
+                interactionMode = .watchingMonsterTurn
+                log("\(character.id): Summons acting first...", category: .round)
+                let controller = SummonTurnController(coordinator: self, gameManager: gameManager)
+                self.summonTurnController = controller
+                let generation = boardGeneration
+                Task { @MainActor in
+                    await controller.executeSummonTurns(for: character)
+                    self.summonTurnController = nil
+                    guard self.scenarioResult == nil, self.boardGeneration == generation else { return }
+                    self.beginCharacterTurn(character, entry: entry)
                 }
             } else {
-                // Player turn — toggle on
-                gameManager.roundManager.toggleFigure(entry.figure) // toggle on
-                selectedPiece = .character(character.id)
-
-                // Check if character has living summons that need to act first
-                let livingSummons = character.summons.filter { !$0.dead && $0.health > 0 }
-                if !livingSummons.isEmpty {
-                    interactionMode = .watchingMonsterTurn
-                    log("\(character.id): Summons acting first...", category: .round)
-
-                    let controller = SummonTurnController(coordinator: self, gameManager: gameManager)
-                    self.summonTurnController = controller
-
-                    Task { @MainActor in
-                        await controller.executeSummonTurns(for: character)
-                        self.summonTurnController = nil
-                        self.checkVictoryDefeat()
-                        if self.scenarioResult == nil {
-                            self.beginPlayerTurnAfterSummons(character: character)
-                        }
-                    }
-                } else {
-                    beginPlayerTurnAfterSummons(character: character)
-                }
+                beginCharacterTurn(character, entry: entry)
             }
 
         case .monster(let monster):
-            // Monster turn — automated
-            gameManager.roundManager.toggleFigure(entry.figure) // toggle on
+            guard !monster.off, !monster.aliveEntities.isEmpty else {
+                advanceToNextFigure()
+                return
+            }
+            // Each monster's conditions tick at the start of its own turn (MonsterTurnController).
+            gameManager.roundManager.toggleFigure(entry.figure)
+            currentTurnToggled = true
             interactionMode = .watchingMonsterTurn
-            log("\(monster.name): Monster turn begins", category: .round)
 
             let controller = MonsterTurnController(coordinator: self, gameManager: gameManager)
             self.monsterTurnController = controller
-
+            let generation = boardGeneration
             Task { @MainActor in
-                await controller.executeMonsterGroup(monster)
+                await controller.executeMonsterGroup(monster, only: entry.onlyStandees)
                 self.monsterTurnController = nil
+                guard self.boardGeneration == generation else { return }
                 self.checkVictoryDefeat()
                 if self.scenarioResult == nil {
                     self.advanceToNextFigure()
@@ -823,40 +933,113 @@ final class BoardCoordinator {
             }
 
         case .objective(let container):
+            gameManager.roundManager.toggleFigure(entry.figure)
+            currentTurnToggled = true
             if container.escort && container.hasEscortActions {
-                // Escort turn — automated AI
-                gameManager.roundManager.toggleFigure(entry.figure) // toggle on
                 interactionMode = .watchingMonsterTurn
                 log("\(container.name): Escort turn begins", category: .round)
-
                 let controller = EscortTurnController(coordinator: self, gameManager: gameManager)
                 self.escortTurnController = controller
-
+                let generation = boardGeneration
                 Task { @MainActor in
                     await controller.executeEscortTurns(for: container)
                     self.escortTurnController = nil
+                    guard self.boardGeneration == generation else { return }
                     self.checkVictoryDefeat()
                     if self.scenarioResult == nil {
                         self.advanceToNextFigure()
                     }
                 }
             } else {
-                // Non-escort objectives or passive escorts — skip
-                gameManager.roundManager.toggleFigure(entry.figure) // toggle on
                 advanceToNextFigure()
             }
         }
     }
 
+    /// Start a character's own turn (after its summons acted): conditions tick, then it either
+    /// long rests, loses its turn to Stun, or plays its two cards.
+    private func beginCharacterTurn(_ character: GameCharacter, entry: TurnOrderEntry) {
+        guard let gameManager = gameManager else { return }
+        gameManager.roundManager.toggleFigure(entry.figure)
+        currentTurnToggled = true
+        gameManager.scenarioRulesManager.evaluateTurnRules(.turnStart, for: character)
+        sweepDeadFigures()
+        if scenarioResult != nil { return }
+        guard !character.exhausted, isOnBoard(.character(character.id)) else {
+            advanceToNextFigure()
+            return
+        }
+
+        if character.longRest {
+            if character.discardedCards.count <= 1 {
+                if character.discardedCards.isEmpty {
+                    log("\(character.id): Long rest (no cards to lose)", category: .rest)
+                    advanceToNextFigure()
+                } else {
+                    resolveLongRest(characterID: character.id, discardIndex: 0)
+                }
+            } else {
+                log("\(character.id): Long rest — choose a card to lose", category: .rest)
+                pendingLongRest = PendingLongRest(characterID: character.id)
+            }
+            return
+        }
+
+        // Stun: no abilities and no items; the two played cards are simply discarded (p.22).
+        if character.entityConditions.contains(where: { $0.name == .stun && !$0.expired }) {
+            if let pair = selectedCardPairs[character.id] {
+                for cardId in [pair.top.cardId, pair.bottom.cardId].compactMap({ $0 }) {
+                    character.handCards.removeAll { $0 == cardId }
+                    character.discardedCards.append(cardId)
+                }
+            }
+            log("\(character.id): Stunned — cards discarded, no actions", category: .condition)
+            advanceToNextFigure()
+            return
+        }
+
+        beginPlayerTurnAfterSummons(character: character)
+    }
+
+    /// Insert monsters that entered play during the last turn into this round's turn order.
+    /// A type that hasn't acted yet just acts at its initiative; a type whose initiative already
+    /// passed acts right after the turn in which it was revealed (p.32).
+    private func scheduleRevealedMonsters() {
+        guard let gameManager, !pendingRevealedStandees.isEmpty else { return }
+        let revealed = pendingRevealedStandees
+        pendingRevealedStandees = [:]
+
+        let currentInitiative = (currentTurnIndex >= 0 && currentTurnIndex < turnOrder.count)
+            ? turnOrder[currentTurnIndex].initiative : -1
+        var immediate: [TurnOrderEntry] = []
+
+        for (name, standees) in revealed {
+            guard let monster = gameManager.game.monsters.first(where: { $0.name == name }),
+                  let initiative = gameManager.monsterManager.currentAbilityInitiative(for: monster).map(Double.init)
+            else { continue }
+
+            let pendingIndex = turnOrder.indices.first { index in
+                index > currentTurnIndex && !turnOrder[index].completed && turnOrder[index].onlyStandees == nil &&
+                    { if case .monster(let m) = turnOrder[index].figure { return m === monster }; return false }()
+            }
+            if pendingIndex != nil { continue } // its whole type still acts later this round
+
+            let entry = TurnOrderEntry(figure: .monster(monster), initiative: initiative, onlyStandees: standees)
+            if initiative < currentInitiative {
+                immediate.append(entry)
+            } else {
+                let insertAt = turnOrder.indices.first { $0 > currentTurnIndex && turnOrder[$0].initiative > initiative }
+                    ?? turnOrder.count
+                turnOrder.insert(entry, at: insertAt)
+            }
+        }
+        immediate.sort { $0.initiative < $1.initiative }
+        turnOrder.insert(contentsOf: immediate, at: min(currentTurnIndex + 1, turnOrder.count))
+    }
+
     /// Create the PlayerTurnController after summon turns complete.
     private func beginPlayerTurnAfterSummons(character: GameCharacter) {
         guard let gameManager = gameManager else { return }
-
-        // Start-of-turn hazardous terrain damage (if character begins their turn on a hazard)
-        let charPieceID = PieceID.character(character.id)
-        if let startPos = boardState.piecePositions[charPieceID] {
-            checkForHazard(pieceID: charPieceID, at: startPos, flying: false)
-        }
 
         let ptc = PlayerTurnController(
             characterID: character.id,
@@ -864,6 +1047,9 @@ final class BoardCoordinator {
             gameManager: gameManager
         )
         activePlayerTurn = ptc
+        // A standalone push/pull can only follow an attack made this turn.
+        lastAttackTarget = nil
+        lastAttackerPos = nil
 
         // Feed in the cards selected during card selection phase
         if let pair = selectedCardPairs[character.id] {
@@ -877,12 +1063,13 @@ final class BoardCoordinator {
 
     /// Called when the player finishes their turn (all actions done or skipped).
     func finishPlayerTurn() {
-        // End-of-turn auto-loot: pick up any loot on the character's current hex
-        if let ptc = activePlayerTurn {
-            let pieceID = PieceID.character(ptc.characterID)
-            if let pos = boardState.piecePositions[pieceID] {
-                checkForLoot(pieceID: pieceID, at: pos)
-            }
+        // Ignore a second End Turn for the same turn.
+        guard let ptc = activePlayerTurn, ptc.phase == .turnComplete else { return }
+        activePlayerTurn = nil
+        // End-of-turn looting: money tokens and treasure in the character's hex (p.28).
+        let pieceID = PieceID.character(ptc.characterID)
+        if let pos = boardState.piecePositions[pieceID] {
+            lootHexes(for: pieceID, coords: [pos])
         }
 
         checkVictoryDefeat()
@@ -903,48 +1090,59 @@ final class BoardCoordinator {
     func checkVictoryDefeat() {
         guard let gameManager = gameManager, scenarioResult == nil else { return }
 
-        // Check scenario rule-triggered finish conditions first (escort loss, kill count win, timed scenarios, etc.)
+        // Defeat: every character is exhausted — nobody is left to act, so it's immediate.
+        let allChars = gameManager.game.characters.filter { !$0.absent }
+        if !allChars.isEmpty && allChars.allSatisfy({ $0.exhausted }) {
+            endScenario(.defeat, message: "DEFEAT! All characters exhausted.")
+            return
+        }
+
+        // Other results resolve at the end of the round (p.47): "Once a scenario's success or
+        // failure conditions are triggered, play out the remainder of the round."
+        guard pendingResult == nil else { return }
+
         if let finish = gameManager.game.scenario?.pendingFinish {
             if finish == "won" {
-                scenarioResult = .victory
-                boardPhase = .scenarioEnd
-                interactionMode = .idle
-                log("VICTORY! Scenario win condition met.", category: .round)
+                pendingResult = .victory
+                log("Scenario goal achieved — the scenario ends at the end of this round.", category: .round)
             } else if finish == "lost" {
-                scenarioResult = .defeat
-                boardPhase = .scenarioEnd
-                interactionMode = .idle
-                log("DEFEAT! Scenario loss condition triggered.", category: .death)
+                pendingResult = .defeat
+                log("Scenario failed — the scenario ends at the end of this round.", category: .death)
             }
             return
         }
 
-        // Victory: all monsters dead and all rooms revealed
-        let allMonstersDead = gameManager.game.monsters.allSatisfy { monster in
-            monster.off || monster.aliveEntities.isEmpty
-        }
+        // Default goal: every enemy killed, with every room revealed — unless the scenario defines
+        // its own win condition (e.g. survive until round 10), and only once enemies have been
+        // in play (some scenarios start empty and spawn monsters every round).
+        let hasOwnWinCondition = gameManager.game.scenario?.data.rules?.contains { $0.finish == "won" } ?? false
+        let hostile = gameManager.game.monsters.filter { !MonsterAI.isAllyFaction($0) }
+        let enemiesHaveAppeared = hostile.contains { !$0.entities.isEmpty }
+        let allEnemiesDead = hostile.allSatisfy { monster in monster.off || monster.aliveEntities.isEmpty }
         let allRoomsRevealed = boardState.doors.allSatisfy { $0.isOpen }
-
-        if allMonstersDead && allRoomsRevealed && gameManager.game.round > 0 {
-            scenarioResult = .victory
-            boardPhase = .scenarioEnd
-            interactionMode = .idle
-            log("VICTORY! All enemies defeated.", category: .round)
-            return
-        }
-
-        // Defeat: all non-absent characters are exhausted.
-        let allChars = gameManager.game.characters.filter { !$0.absent }
-        if !allChars.isEmpty && allChars.allSatisfy({ $0.exhausted }) {
-            scenarioResult = .defeat
-            boardPhase = .scenarioEnd
-            interactionMode = .idle
-            log("DEFEAT! All characters exhausted.", category: .death)
+        if !hasOwnWinCondition && enemiesHaveAppeared && allEnemiesDead && allRoomsRevealed
+            && gameManager.game.round > 0 {
+            pendingResult = .victory
+            log("All enemies defeated — the scenario ends at the end of this round.", category: .round)
         }
     }
 
+    /// Resolve a result triggered during the round once the round is over.
+    private func resolvePendingResult() {
+        checkVictoryDefeat()
+        guard scenarioResult == nil, let result = pendingResult else { return }
+        endScenario(result, message: result == .victory ? "VICTORY! Scenario complete." : "DEFEAT! Scenario failed.")
+    }
+
+    private func endScenario(_ result: ScenarioResult, message: String) {
+        scenarioResult = result
+        boardPhase = .scenarioEnd
+        interactionMode = .idle
+        log(message, category: result == .victory ? .round : .death)
+    }
+
     /// Increment the kill count for a monster name in the current scenario.
-    private func recordMonsterKill(name: String) {
+    func recordMonsterKill(name: String) {
         gameManager?.game.scenario?.killCounts[name, default: 0] += 1
     }
 
@@ -958,89 +1156,71 @@ final class BoardCoordinator {
 
     // MARK: - Turn Execution Actions
 
-    /// Begin a player's move action.
-    func beginMoveAction(pieceID: PieceID, moveRange: Int) {
-        guard let pos = boardState.piecePositions[pieceID] else { return }
-
-        let enemyPositions = Set(boardState.piecePositions.compactMap { id, coord -> HexCoord? in
-            if case .monster = id { return coord }
-            return nil
-        })
-        let allyPositions = Set(boardState.piecePositions.compactMap { id, coord -> HexCoord? in
-            if case .character = id, id != pieceID { return coord }
-            return nil
-        })
-
-        let reachable = Pathfinder.reachableHexes(
-            board: boardState, from: pos, range: moveRange,
-            occupiedByEnemy: enemyPositions, occupiedByAlly: allyPositions
-        )
-
-        let validHexes = Set(reachable.keys)
-        interactionMode = .selectingMove(pieceID: pieceID, range: moveRange, validHexes: validHexes)
-        boardScene?.highlightHexes(validHexes, color: .cyan, offsetCol: offsetCol, offsetRow: offsetRow)
+    /// Board positions of a character's enemies (block movement) and allies (can be passed
+    /// through but not stopped on).
+    func movementSets(for pieceID: PieceID) -> (enemies: Set<HexCoord>, allies: Set<HexCoord>) {
+        var enemies = Set<HexCoord>()
+        var allies = Set<HexCoord>()
+        for (id, coord) in boardState.piecePositions where id != pieceID {
+            if areEnemies(pieceID, id) { enemies.insert(coord) } else { allies.insert(coord) }
+        }
+        return (enemies, allies)
     }
 
-    /// Begin a jump move action — ignores traps and difficult terrain for intermediate hexes.
+    /// Begin a player's move action (normal, jump or flying movement, GH p.17).
+    func beginMoveAction(pieceID: PieceID, moveRange: Int, mode: MoveMode = .normal) {
+        guard let pos = boardState.piecePositions[pieceID] else { return }
+
+        if isConditionActive(.immobilize, on: pieceID) {
+            log("\(pieceLabel(pieceID)): Immobilized — cannot move", category: .condition)
+            interactionMode = .idle
+            activePlayerTurn?.advanceAfterAsyncAction()
+            return
+        }
+
+        let (enemies, allies) = movementSets(for: pieceID)
+        let reachable = Pathfinder.reachableHexes(
+            board: boardState, from: pos, range: moveRange, mode: mode,
+            avoidTraps: false, canOpenDoors: true,
+            occupiedByEnemy: enemies, occupiedByAlly: allies
+        )
+
+        let validHexes = Set(reachable.keys).subtracting([pos])
+        if validHexes.isEmpty {
+            log("\(pieceLabel(pieceID)): No hex to move to", category: .move)
+            interactionMode = .idle
+            activePlayerTurn?.advanceAfterAsyncAction()
+            return
+        }
+        interactionMode = .selectingMove(pieceID: pieceID, range: moveRange, validHexes: validHexes, mode: mode)
+        let color: SKColor = mode == .jump ? .green : (mode == .fly ? .yellow : .cyan)
+        boardScene?.highlightHexes(validHexes, color: color, offsetCol: offsetCol, offsetRow: offsetRow)
+    }
+
+    /// Begin a jump move action — ignores figures and terrain except on the last hex.
     func beginJumpMoveAction(pieceID: PieceID, moveRange: Int) {
-        guard let pos = boardState.piecePositions[pieceID] else { return }
-
-        let enemyPositions = Set(boardState.piecePositions.compactMap { id, coord -> HexCoord? in
-            if case .monster = id { return coord }
-            return nil
-        })
-        let allyPositions = Set(boardState.piecePositions.compactMap { id, coord -> HexCoord? in
-            if case .character = id, id != pieceID { return coord }
-            return nil
-        })
-
-        let reachable = Pathfinder.reachableHexes(
-            board: boardState, from: pos, range: moveRange,
-            jumping: true,
-            occupiedByEnemy: enemyPositions, occupiedByAlly: allyPositions
-        )
-
-        let validHexes = Set(reachable.keys)
-        interactionMode = .selectingMove(pieceID: pieceID, range: moveRange, validHexes: validHexes)
-        boardScene?.highlightHexes(validHexes, color: .green, offsetCol: offsetCol, offsetRow: offsetRow)
+        beginMoveAction(pieceID: pieceID, moveRange: moveRange, mode: .jump)
     }
 
-    /// Begin a fly move action — ignores obstacles and terrain costs.
+    /// Begin a fly move action — ignores figures and terrain for the whole move.
     func beginFlyMoveAction(pieceID: PieceID, moveRange: Int) {
-        guard let pos = boardState.piecePositions[pieceID] else { return }
-
-        let enemyPositions = Set(boardState.piecePositions.compactMap { id, coord -> HexCoord? in
-            if case .monster = id { return coord }
-            return nil
-        })
-        let allyPositions = Set(boardState.piecePositions.compactMap { id, coord -> HexCoord? in
-            if case .character = id, id != pieceID { return coord }
-            return nil
-        })
-
-        let reachable = Pathfinder.reachableHexes(
-            board: boardState, from: pos, range: moveRange,
-            flying: true,
-            occupiedByEnemy: enemyPositions, occupiedByAlly: allyPositions
-        )
-
-        let validHexes = Set(reachable.keys)
-        interactionMode = .selectingMove(pieceID: pieceID, range: moveRange, validHexes: validHexes)
-        boardScene?.highlightHexes(validHexes, color: .yellow, offsetCol: offsetCol, offsetRow: offsetRow)
+        beginMoveAction(pieceID: pieceID, moveRange: moveRange, mode: .fly)
     }
 
-    /// Begin a teleport action — can move to any unoccupied revealed hex within range,
+    /// Begin a teleport action — can move to any empty revealed hex within range,
     /// ignoring obstacles, figures, traps, and terrain along the way.
     func beginTeleportAction(pieceID: PieceID, range: Int) {
         guard let pos = boardState.piecePositions[pieceID] else { return }
+        if isConditionActive(.immobilize, on: pieceID) {
+            log("\(pieceLabel(pieceID)): Immobilized — cannot move", category: .condition)
+            interactionMode = .idle
+            activePlayerTurn?.advanceAfterAsyncAction()
+            return
+        }
 
-        let occupiedHexes = Set(boardState.piecePositions.values)
-
-        // Any passable hex on the board within range that isn't occupied by another figure
         var validHexes = Set<HexCoord>()
         for (coord, cell) in boardState.cells {
-            guard cell.passable else { continue }
-            guard !occupiedHexes.contains(coord) || coord == pos else { continue }
+            guard cell.passable, !boardState.isOccupied(coord) else { continue }
             guard pos.distance(to: coord) <= range else { continue }
             validHexes.insert(coord)
         }
@@ -1049,35 +1229,27 @@ final class BoardCoordinator {
         boardScene?.highlightHexes(validHexes, color: .purple, offsetCol: offsetCol, offsetRow: offsetRow)
     }
 
-    /// Execute a move to a target hex.
-    func executeMove(pieceID: PieceID, to target: HexCoord) {
+    /// Execute a move to a target hex: the path that avoids traps and hazards when one fits the
+    /// movement, otherwise the cheapest. Terrain and doors resolve on every hex entered.
+    func executeMove(pieceID: PieceID, to target: HexCoord, range: Int, mode: MoveMode = .normal) {
         guard let pos = boardState.piecePositions[pieceID] else { return }
-
-        let enemyPositions = Set(boardState.piecePositions.compactMap { id, coord -> HexCoord? in
-            if case .monster = id { return coord }
-            return nil
-        })
+        let (enemies, allies) = movementSets(for: pieceID)
 
         guard let path = Pathfinder.findPath(
-            board: boardState, from: pos, to: target,
-            occupiedByEnemy: enemyPositions
+            board: boardState, from: pos, to: target, mode: mode,
+            canOpenDoors: true, maxCost: range,
+            occupiedByEnemy: enemies, occupiedByAlly: allies
         ) else { return }
 
         boardScene?.clearHighlights()
-        boardScene?.movePiece(id: pieceID, along: path, offsetCol: offsetCol, offsetRow: offsetRow) { [weak self] in
-            self?.boardState.movePiece(pieceID, to: target)
-            self?.interactionMode = .idle
-            self?.log("\(pieceID): Moved to (\(target.col), \(target.row))", category: .move)
-
-            // Check if character stepped on a trap or hazardous terrain
-            self?.checkForTrap(pieceID: pieceID, at: target, flying: false)
-            self?.checkForHazard(pieceID: pieceID, at: target, flying: false)
-
-            // Check if character stepped on a closed door
-            self?.checkForDoorReveal(from: target)
-
-            // Check if character stepped on a loot token
-            self?.checkForLoot(pieceID: pieceID, at: target)
+        interactionMode = .idle
+        let style: MovementStyle = mode == .jump ? .jump : (mode == .fly ? .fly : .normal)
+        let turn = activePlayerTurn
+        Task { @MainActor in
+            await self.moveAlong(pieceID, path: path, style: style)
+            self.log("\(pieceID): Moved to (\(target.col), \(target.row))", category: .move)
+            self.checkVictoryDefeat()
+            turn?.advanceAfterAsyncAction()
         }
     }
 
@@ -1087,41 +1259,95 @@ final class BoardCoordinator {
         guard let pos = boardState.piecePositions[pieceID] else { return }
 
         boardScene?.clearHighlights()
-        boardScene?.movePiece(id: pieceID, along: [pos, target], offsetCol: offsetCol, offsetRow: offsetRow) { [weak self] in
-            self?.boardState.movePiece(pieceID, to: target)
-            self?.interactionMode = .idle
-            self?.log("\(pieceID): Teleported to (\(target.col), \(target.row))", category: .move)
-
-            // Teleport does NOT trigger traps or hazards (you bypass them)
-            // But do check for door reveals and loot
-            self?.checkForDoorReveal(from: target)
-            self?.checkForLoot(pieceID: pieceID, at: target)
+        interactionMode = .idle
+        let turn = activePlayerTurn
+        Task { @MainActor in
+            await self.animateMove(pieceID, along: [pos, target])
+            self.boardState.movePiece(pieceID, to: target)
+            self.log("\(pieceID): Teleported to (\(target.col), \(target.row))", category: .move)
+            turn?.advanceAfterAsyncAction()
         }
+    }
+
+    /// Enemies of `pieceID` that it may target: in range, in line of sight, not invisible (p.21).
+    func targetableEnemies(of pieceID: PieceID, range: Int) -> Set<PieceID> {
+        guard let pos = boardState.piecePositions[pieceID] else { return [] }
+        var targets = Set<PieceID>()
+        for (id, coord) in boardState.piecePositions where id != pieceID && areEnemies(pieceID, id) {
+            guard entity(for: id) != nil, !isConditionActive(.invisible, on: id) else { continue }
+            guard pos.distance(to: coord) <= max(1, range),
+                  LineOfSight.hasLOS(from: pos, to: coord, board: boardState) else { continue }
+            targets.insert(id)
+        }
+        return targets
+    }
+
+    /// Allies of `pieceID` within range and line of sight (optionally including itself).
+    func alliesInRange(of pieceID: PieceID, range: Int, includeSelf: Bool) -> Set<PieceID> {
+        guard let pos = boardState.piecePositions[pieceID] else { return [] }
+        var allies: Set<PieceID> = includeSelf ? [pieceID] : []
+        for (id, coord) in boardState.piecePositions where id != pieceID && !areEnemies(pieceID, id) {
+            guard entity(for: id) != nil, pos.distance(to: coord) <= max(1, range),
+                  LineOfSight.hasLOS(from: pos, to: coord, board: boardState) else { continue }
+            allies.insert(id)
+        }
+        return allies
+    }
+
+    /// Attack every visible enemy within `range` (each a separate attack of one action).
+    func attackAllEnemies(from pieceID: PieceID, within range: Int, exactly: Bool = false) {
+        if isConditionActive(.disarm, on: pieceID) {
+            log("\(pieceLabel(pieceID)): Disarmed — cannot attack", category: .condition)
+            activePlayerTurn?.advanceAfterAsyncAction()
+            return
+        }
+        guard let pos = boardState.piecePositions[pieceID] else {
+            activePlayerTurn?.advanceAfterAsyncAction()
+            return
+        }
+        let targets = targetableEnemies(of: pieceID, range: range)
+            .filter { !exactly || boardState.piecePositions[$0].map { pos.distance(to: $0) == range } == true }
+            .sorted { $0.description < $1.description }
+        let value = activePlayerTurn?.currentAttackValue() ?? 2
+        Task { @MainActor in
+            for target in targets where self.isOnBoard(target) && self.isOnBoard(pieceID) {
+                await self.resolvePlayerAttack(attacker: pieceID, target: target, attackValue: value,
+                                               range: range, advanceAction: false)
+            }
+            self.activePlayerTurn?.advanceAfterAsyncAction()
+        }
+    }
+
+    /// Enemies hit by an area attack aimed at `primary` (pattern oriented to hit the most others).
+    func areaTargets(pattern: String, attacker: PieceID, primary: PieceID, range: Int) -> [PieceID] {
+        guard let pos = boardState.piecePositions[attacker] else { return [] }
+        let enemies = boardState.piecePositions.keys.filter { id in
+            id != attacker && areEnemies(attacker, id) && entity(for: id) != nil && !isConditionActive(.invisible, on: id)
+        }
+        return AoEResolver.resolveTargets(pattern: pattern, attackerPos: pos, focusTarget: primary,
+                                          enemies: Array(enemies), board: boardState, range: range)
     }
 
     /// Begin a player's attack action.
     func beginAttackAction(pieceID: PieceID, range: Int, targetCount: Int = 1) {
-        guard let pos = boardState.piecePositions[pieceID] else { return }
-
-        var validTargets = Set<PieceID>()
-        for (id, coord) in boardState.piecePositions {
-            if case .monster(let name, let standee) = id {
-                // Exclude invisible monsters
-                if let monster = gameManager?.game.monsters.first(where: { $0.name == name }),
-                   let entity = monster.entities.first(where: { $0.number == standee }),
-                   entity.entityConditions.contains(where: { $0.name == .invisible && !$0.expired }) {
-                    continue
-                }
-                if pos.distance(to: coord) <= range &&
-                   LineOfSight.hasLOS(from: pos, to: coord, board: boardState) {
-                    validTargets.insert(id)
-                }
-            }
+        if isConditionActive(.disarm, on: pieceID) {
+            log("\(pieceLabel(pieceID)): Disarmed — cannot attack", category: .condition)
+            interactionMode = .idle
+            activePlayerTurn?.advanceAfterAsyncAction()
+            return
         }
 
+        var validTargets = targetableEnemies(of: pieceID, range: range)
+        if let pattern = activePlayerTurn?.pendingAreaPattern {
+            // Area attack: any enemy the pattern can cover is a valid primary target.
+            validTargets = Set(boardState.piecePositions.keys.filter { id in
+                areEnemies(pieceID, id) && !areaTargets(pattern: pattern, attacker: pieceID, primary: id, range: range).isEmpty
+            })
+        }
         if validTargets.isEmpty {
             log("\(pieceID): No valid targets in range \(range)", category: .attack)
             interactionMode = .idle
+            activePlayerTurn?.advanceAfterAsyncAction()
             return
         }
 
@@ -1140,18 +1366,7 @@ final class BoardCoordinator {
 
     /// Begin an interactive condition-apply action (player taps a single enemy target).
     func beginConditionAction(pieceID: PieceID, condition: ConditionName, range: Int) {
-        guard let pos = boardState.piecePositions[pieceID] else { return }
-
-        var validTargets = Set<PieceID>()
-        for (id, coord) in boardState.piecePositions {
-            if case .monster = id {
-                if pos.distance(to: coord) <= range &&
-                   LineOfSight.hasLOS(from: pos, to: coord, board: boardState) {
-                    validTargets.insert(id)
-                }
-            }
-        }
-
+        let validTargets = targetableEnemies(of: pieceID, range: range)
         if validTargets.isEmpty {
             log("\(pieceID): No valid targets in range \(range) for \(condition.rawValue)", category: .condition)
             interactionMode = .idle
@@ -1164,26 +1379,10 @@ final class BoardCoordinator {
         boardScene?.highlightHexes(targetHexes, color: .yellow, offsetCol: offsetCol, offsetRow: offsetRow)
     }
 
-    /// Begin an interactive heal action — player selects an ally (or self) within range to heal.
+    /// Begin an interactive heal action — the player picks themself or an ally (character or
+    /// summon) within range and line of sight (p.25).
     func beginHealAction(pieceID: PieceID, healValue: Int, range: Int) {
-        guard let pos = boardState.piecePositions[pieceID] else { return }
-
-        var validTargets = Set<PieceID>()
-        for (id, coord) in boardState.piecePositions {
-            if case .character = id {
-                if pos.distance(to: coord) <= range {
-                    validTargets.insert(id)
-                }
-            }
-        }
-
-        if validTargets.isEmpty {
-            log("\(pieceID): No allies in range \(range) to heal", category: .heal)
-            interactionMode = .idle
-            activePlayerTurn?.advanceAfterAsyncAction()
-            return
-        }
-
+        let validTargets = alliesInRange(of: pieceID, range: range, includeSelf: true)
         interactionMode = .selectingHealTarget(pieceID: pieceID, healValue: healValue, validTargets: validTargets)
         let targetHexes = Set(validTargets.compactMap { boardState.piecePositions[$0] })
         boardScene?.highlightHexes(targetHexes, color: .green, offsetCol: offsetCol, offsetRow: offsetRow)
@@ -1191,38 +1390,17 @@ final class BoardCoordinator {
 
     /// Apply a condition to all enemies within range from the acting piece (auto, no target selection).
     func applyConditionToAllEnemies(from pieceID: PieceID, condition: ConditionName, range: Int) {
-        guard let gameManager = gameManager,
-              let pos = boardState.piecePositions[pieceID] else { return }
-
-        var applied = 0
-        for (id, coord) in boardState.piecePositions {
-            guard case .monster(let name, let standee) = id else { continue }
-            guard pos.distance(to: coord) <= range else { continue }
-            guard LineOfSight.hasLOS(from: pos, to: coord, board: boardState) else { continue }
-            if let monster = gameManager.game.monsters.first(where: { $0.name == name }),
-               let entity = monster.entities.first(where: { $0.number == standee }) {
-                gameManager.entityManager.addCondition(condition, to: entity)
-                log("  \(id): \(condition.rawValue) applied", category: .condition)
-                applied += 1
-            }
-        }
-        if applied == 0 {
+        let targets = targetableEnemies(of: pieceID, range: range)
+        for target in targets { applyCondition(condition, to: target) }
+        if targets.isEmpty {
             log("\(pieceID): No enemies in range \(range) for \(condition.rawValue)", category: .condition)
         }
     }
 
     /// Apply a condition to all allies within range from the acting piece (auto, no target selection).
     func applyConditionToAllAllies(from pieceID: PieceID, condition: ConditionName, range: Int) {
-        guard let gameManager = gameManager,
-              let pos = boardState.piecePositions[pieceID] else { return }
-
-        for (id, coord) in boardState.piecePositions {
-            guard case .character(let charID) = id else { continue }
-            guard pos.distance(to: coord) <= range else { continue }
-            if let character = gameManager.game.characters.first(where: { $0.id == charID }) {
-                gameManager.entityManager.addCondition(condition, to: character)
-                log("  \(id): \(condition.rawValue) applied", category: .condition)
-            }
+        for ally in alliesInRange(of: pieceID, range: range, includeSelf: false) {
+            applyCondition(condition, to: ally)
         }
     }
 
@@ -1230,159 +1408,53 @@ final class BoardCoordinator {
     /// When `advanceAction` is true (default), calls `advanceAfterAsyncAction()` when done.
     /// Pass false when resolving multiple targets — the caller advances after all are resolved.
     func resolvePlayerAttack(attacker: PieceID, target: PieceID, attackValue: Int, range: Int, advanceAction: Bool = true) async {
-        guard let gameManager = gameManager,
-              let attackerPos = boardState.piecePositions[attacker],
-              let targetPos = boardState.piecePositions[target] else { return }
-
-        // Track last attack target for standalone push/pull actions
+        let turn = activePlayerTurn
         lastAttackTarget = target
-        lastAttackerPos = attackerPos
-
-        // Read pierce/conditions from the active player turn
-        let pierce = activePlayerTurn?.pendingPierce ?? 0
-        let conditions = activePlayerTurn?.pendingConditions ?? []
-
-        // Get defender info
-        var defenderHealth = 0
-        var defenderShield = 0
-        var retInfo: (value: Int, range: Int) = (0, 1)
-        var isPoisoned = false
-
-        if case .monster(let name, let standee) = target,
-           let monster = gameManager.game.monsters.first(where: { $0.name == name }),
-           let entity = monster.entities.first(where: { $0.number == standee }) {
-            defenderHealth = entity.health
-            defenderShield = CombatResolver.totalShield(shield: entity.shield, shieldPersistent: entity.shieldPersistent)
-            retInfo = CombatResolver.retaliateInfo(retaliate: entity.retaliate, retaliatePersistent: entity.retaliatePersistent)
-            isPoisoned = entity.entityConditions.contains(where: { $0.name == .poison && !$0.expired })
-        }
-
-        // Determine advantage/disadvantage (including attacker conditions)
-        let isRangedAdjacent = range > 1 && attackerPos.isAdjacent(to: targetPos)
-        var advantage = false
-        var disadvantage = isRangedAdjacent
-
-        // Build draw closure and check conditions
-        var drawModifier: () -> AttackModifier? = { nil }
-        if case .character(let charID) = attacker,
-           let character = gameManager.game.characters.first(where: { $0.id == charID }) {
-            drawModifier = { gameManager.attackModifierManager.drawCharacterCard(for: character) }
-            advantage = CombatResolver.hasAdvantage(attacker: character)
-            disadvantage = disadvantage || CombatResolver.hasDisadvantage(attacker: character, isRangedAdjacent: isRangedAdjacent)
-        }
-
-        // Interactive modifier draw — player physically draws card(s)
-        let preDrawnCards = await performModifierDraw(
-            attacker: attacker,
-            defender: target,
-            baseAttack: attackValue,
-            advantage: advantage,
-            disadvantage: disadvantage,
-            drawCard: drawModifier
-        )
-
-        let result = CombatResolver.resolveAttack(
-            attacker: attacker,
-            defender: target,
-            baseAttack: attackValue,
-            advantage: advantage,
-            disadvantage: disadvantage,
-            isPoisoned: isPoisoned,
-            shield: defenderShield,
-            pierce: pierce,
-            conditions: conditions,
-            retaliateValue: retInfo.value,
-            retaliateRange: retInfo.range,
-            attackerDefenderDistance: attackerPos.distance(to: targetPos),
-            preDrawnCards: preDrawnCards,
-            drawModifier: { nil },
-            defenderHealth: defenderHealth
-        )
-
-        let breakdown = CombatResolver.damageBreakdown(
-            base: attackValue, isPoisoned: isPoisoned,
-            preDrawnCards: preDrawnCards, shield: defenderShield, pierce: pierce,
-            isMiss: result.isMiss, finalDamage: result.damage)
-        log("\(attacker) → \(target): \(breakdown)", category: .attack)
-
-        // Apply damage
-        if result.damage > 0 {
-            if case .monster(let name, let standee) = target,
-               let monster = gameManager.game.monsters.first(where: { $0.name == name }),
-               let entity = monster.entities.first(where: { $0.number == standee }) {
-                gameManager.entityManager.changeHealth(entity, amount: -result.damage)
-                boardScene?.pieceDamage(id: target, amount: result.damage)
-            }
-        }
-
-        // Apply conditions to target
-        if !result.appliedConditions.isEmpty {
-            if case .monster(let name, let standee) = target,
-               let monster = gameManager.game.monsters.first(where: { $0.name == name }),
-               let entity = monster.entities.first(where: { $0.number == standee }) {
-                for condition in result.appliedConditions {
-                    gameManager.entityManager.addCondition(condition, to: entity)
-                    log("  \(target): \(condition.rawValue) applied", category: .condition)
-                }
-            }
-        }
-
-        // Retaliate (happens even if target dies or gets pushed)
-        if result.retaliateDamage > 0 {
-            log("\(attacker): Takes \(result.retaliateDamage) retaliate damage", category: .damage)
-            if case .character(let charID) = attacker,
-               let character = gameManager.game.characters.first(where: { $0.id == charID }) {
-                gameManager.entityManager.changeHealth(character, amount: -result.retaliateDamage)
-            }
-        }
-
-        if result.killed {
-            log("\(target): Killed!", category: .death)
-            dropLoot(for: target)
-            boardState.removePiece(target)
-            boardScene?.removePieceSprite(id: target)
-            if case .monster(let name, let standee) = target,
-               let monster = gameManager.game.monsters.first(where: { $0.name == name }),
-               let entity = monster.entities.first(where: { $0.number == standee }) {
-                entity.dead = true
-                recordMonsterKill(name: name)
-            }
-            // Re-evaluate scenario rules so figure-based triggers (killed count, etc.) fire immediately.
-            gameManager.scenarioRulesManager.evaluateRules()
-            checkVictoryDefeat()
-            boardScene?.clearHighlights()
-            interactionMode = .idle
-            if advanceAction { activePlayerTurn?.advanceAfterAsyncAction() }
-            return
-        }
-
-        // Push/Pull: if target survived and attacker has pending push or pull, begin the flow.
-        if advanceAction {
-            let pushSteps = activePlayerTurn?.pendingPush ?? 0
-            let pullSteps = activePlayerTurn?.pendingPull ?? 0
-
-            if pushSteps > 0 {
-                boardScene?.clearHighlights()
-                beginPushPull(target: target, attackerPos: attackerPos, remainingSteps: pushSteps, isPush: true)
-                return
-            }
-
-            if pullSteps > 0 {
-                boardScene?.clearHighlights()
-                beginPushPull(target: target, attackerPos: attackerPos, remainingSteps: pullSteps, isPush: false)
-                return
-            }
-        }
-
+        lastAttackerPos = boardState.piecePositions[attacker]
         boardScene?.clearHighlights()
+
+        await performAttack(
+            attacker: attacker, target: target,
+            attack: AttackParameters(value: attackValue, isRanged: range > 1,
+                                     pierce: turn?.pendingPierce ?? 0,
+                                     conditions: turn?.pendingConditions ?? [],
+                                     push: turn?.pendingPush ?? 0,
+                                     pull: turn?.pendingPull ?? 0))
+
         interactionMode = .idle
-        if advanceAction { activePlayerTurn?.advanceAfterAsyncAction() }
+        if advanceAction { turn?.advanceAfterAsyncAction() }
     }
 
     // MARK: - Push / Pull
 
+    /// "Push/Pull X, all adjacent enemies": each enemy within reach is moved in turn.
+    func forceMoveAllEnemies(from pieceID: PieceID, within reach: Int, steps: Int, isPush: Bool) {
+        let targets = targetableEnemies(of: pieceID, range: reach).sorted { $0.description < $1.description }
+        let turn = activePlayerTurn
+        Task { @MainActor in
+            for target in targets {
+                guard let origin = self.boardState.piecePositions[pieceID], self.isOnBoard(target) else { continue }
+                await self.performPushPull(target: target, attackerPos: origin, steps: steps, isPush: isPush)
+            }
+            turn?.advanceAfterAsyncAction()
+        }
+    }
+
+    /// "Push/Pull X" on one enemy within range: the player picks the target.
+    func beginForcedMoveTarget(pieceID: PieceID, range: Int, steps: Int, isPush: Bool) {
+        let targets = targetableEnemies(of: pieceID, range: range)
+        guard !targets.isEmpty else {
+            log("\(pieceLabel(pieceID)): No enemy in range \(range) to \(isPush ? "push" : "pull")", category: .move)
+            activePlayerTurn?.advanceAfterAsyncAction()
+            return
+        }
+        interactionMode = .selectingForcedMoveTarget(pieceID: pieceID, steps: steps, isPush: isPush, validTargets: targets)
+        let hexes = Set(targets.compactMap { boardState.piecePositions[$0] })
+        boardScene?.highlightHexes(hexes, color: isPush ? .orange : .cyan, offsetCol: offsetCol, offsetRow: offsetRow)
+    }
+
     /// Begin a standalone push/pull action (top-level action, not attack sub-action).
-    /// Uses the last attack target to determine who to push/pull.
+    /// Applies to the target of the attack just made this turn.
     func beginStandalonePushPull(steps: Int, isPush: Bool) {
         guard let target = lastAttackTarget,
               let attackerPos = lastAttackerPos,
@@ -1395,27 +1467,23 @@ final class BoardCoordinator {
         beginPushPull(target: target, attackerPos: attackerPos, remainingSteps: steps, isPush: isPush)
     }
 
-    /// Start the interactive push/pull flow for a target after an attack.
+    /// Start the interactive push/pull flow for a target.
     func beginPushPull(target: PieceID, attackerPos: HexCoord, remainingSteps: Int, isPush: Bool) {
         guard remainingSteps > 0,
               let targetPos = boardState.piecePositions[target] else {
-            // Done — restore idle and advance turn
             interactionMode = .idle
             completePushPullAction()
             return
         }
 
-        // Compute candidate hexes
-        let candidates: [HexCoord]
-        if isPush {
-            candidates = targetPos.pushCandidates(awayFrom: attackerPos)
-        } else {
-            candidates = targetPos.pullCandidates(toward: attackerPos)
-        }
+        let candidates = isPush
+            ? targetPos.pushCandidates(awayFrom: attackerPos)
+            : targetPos.pullCandidates(toward: attackerPos)
 
-        // Filter to passable + unoccupied (push/pull ignores difficult terrain but needs passable hex)
+        // Each step must be into an empty-of-figures, passable hex; figures can't be forced
+        // through a closed door. Difficult terrain doesn't matter (p.20, p.42).
         let valid = candidates.filter { coord in
-            boardState.isPassable(coord) && !boardState.isOccupied(coord)
+            boardState.isPassable(coord) && !boardState.isOccupied(coord) && !boardState.isClosedDoor(coord)
         }
 
         if valid.isEmpty {
@@ -1426,11 +1494,9 @@ final class BoardCoordinator {
             return
         }
 
-        if valid.count == 1 {
-            // Auto-move (only one option)
+        if valid.count == 1 || autoResolvePrompts {
             executePushPullStep(target: target, to: valid[0], attackerPos: attackerPos, remainingSteps: remainingSteps, isPush: isPush)
         } else {
-            // Multiple options — let the player choose
             let validSet = Set(valid)
             interactionMode = .selectingPushPullHex(
                 target: target, attackerPos: attackerPos, validHexes: validSet,
@@ -1440,38 +1506,27 @@ final class BoardCoordinator {
         }
     }
 
-    /// Execute one step of a push/pull: move the target, then recurse or finish.
+    /// Execute one step of a push/pull. Traps and hazardous terrain trigger on every hex the
+    /// target is forced into.
     func executePushPullStep(target: PieceID, to destination: HexCoord, attackerPos: HexCoord, remainingSteps: Int, isPush: Bool) {
         guard let currentPos = boardState.piecePositions[target] else { return }
-
         boardScene?.clearHighlights()
+        interactionMode = .idle
 
-        // Move in board state
-        boardState.movePiece(target, to: destination)
-
-        // Animate the move
-        let path = [currentPos, destination]
-        boardScene?.movePiece(id: target, along: path, offsetCol: offsetCol, offsetRow: offsetRow) { [weak self] in
-            guard let self = self else { return }
-
+        Task { @MainActor in
+            let alive = await self.moveAlong(target, path: [currentPos, destination], style: .forced)
             let stepsLeft = remainingSteps - 1
-            let label = isPush ? "Push" : "Pull"
-
-            if stepsLeft > 0 {
-                // More steps remaining — recurse
+            if alive && stepsLeft > 0 {
                 self.beginPushPull(target: target, attackerPos: attackerPos, remainingSteps: stepsLeft, isPush: isPush)
             } else {
-                // All steps done — check for traps/hazards at final position, then finish
+                let label = isPush ? "Push" : "Pull"
                 self.log("  \(target): \(label) to (\(destination.col), \(destination.row))", category: .move)
-                self.checkForTrap(pieceID: target, at: destination, flying: false)
-                self.checkForHazard(pieceID: target, at: destination, flying: false)
-                self.interactionMode = .idle
                 self.completePushPullAction()
             }
         }
     }
 
-    /// Resume the active player turn OR the pending monster-turn push/pull continuation.
+    /// Resume the active player turn OR the pending push/pull continuation.
     private func completePushPullAction() {
         if let cont = pendingPushPullContinuation {
             pendingPushPullContinuation = nil
@@ -1481,8 +1536,8 @@ final class BoardCoordinator {
         }
     }
 
-    /// Asynchronously execute a push/pull for a monster turn. Suspends until the push/pull is fully
-    /// resolved (either auto-executed or after the player selects the direction).
+    /// Asynchronously execute a push/pull. Suspends until the push/pull is fully resolved
+    /// (either auto-executed or after the player selects the direction).
     func performPushPull(target: PieceID, attackerPos: HexCoord, steps: Int, isPush: Bool) async {
         guard steps > 0, boardState.piecePositions[target] != nil else { return }
         await withCheckedContinuation { [weak self] continuation in
@@ -1503,224 +1558,79 @@ final class BoardCoordinator {
         log("Loot token dropped at (\(pos.col), \(pos.row))", category: .loot)
     }
 
-    /// Check if a character ended movement on a hex with loot and pick it up (movement looting).
-    func checkForLoot(pieceID: PieceID, at coord: HexCoord) {
-        guard case .character = pieceID,
-              (boardState.lootTokens[coord] ?? 0) > 0 else { return }
-        collectLootAt(pieceID: pieceID, coords: [coord])
-    }
-
-    /// Execute a Loot ability action — collect all tokens within `range` hexes of the character.
-    /// Per Gloomhaven rules, "Loot X" picks up loot from any hex within X distance.
+    /// Loot X: pick up every money token and treasure tile within range X and line of sight,
+    /// regardless of monsters or obstacles in between (GH p.28).
     func collectLootInRange(pieceID: PieceID, range: Int) {
         guard let pos = boardState.piecePositions[pieceID] else { return }
-
-        let coords = boardState.lootTokens.keys.filter { coord in
-            (boardState.lootTokens[coord] ?? 0) > 0 && pos.distance(to: coord) <= range
+        let coords = boardState.cells.keys.filter { coord in
+            guard pos.distance(to: coord) <= range, hasLoot(at: coord) else { return false }
+            return coord == pos || LineOfSight.hasLOS(from: pos, to: coord, board: boardState)
         }
-
         if coords.isEmpty {
-            log("\(pieceID): Loot \(range) — no tokens within range \(range)", category: .loot)
+            log("\(pieceID): Loot \(range) — nothing within range \(range)", category: .loot)
             return
         }
-        collectLootAt(pieceID: pieceID, coords: Array(coords))
+        lootHexes(for: pieceID, coords: Array(coords))
     }
 
-    /// Collect loot tokens at specific coordinates and apply them to the character.
-    /// Shows a floating animation on the character piece.
-    private func collectLootAt(pieceID: PieceID, coords: [HexCoord]) {
+    /// Whether a hex holds a money token or an unlooted treasure tile.
+    func hasLoot(at coord: HexCoord) -> Bool {
+        (boardState.lootTokens[coord] ?? 0) > 0 || boardState.cells[coord]?.overlay == .treasure
+    }
+
+    /// Loot every money token and treasure tile in `coords` for a character. Money tokens are
+    /// worth the scenario level's gold conversion; numbered treasures give their reward from the
+    /// treasure index. Summons and monsters never loot this way.
+    func lootHexes(for pieceID: PieceID, coords: [HexCoord]) {
         guard case .character(let charID) = pieceID,
               let gameManager = gameManager,
               let character = gameManager.game.characters.first(where: { $0.id == charID }) else { return }
 
-        var totalValue = 0
-
+        var gold = 0
+        var tokens = 0
         for coord in coords {
-            let count = boardState.takeLoot(at: coord)
-            guard count > 0 else { continue }
-            boardScene?.removeLootSprite(at: coord, offsetCol: offsetCol, offsetRow: offsetRow)
-
-            for _ in 0..<count {
-                if let loot = gameManager.lootManager.drawCard() {
-                    let value = gameManager.lootManager.getValue(for: loot)
-                    gameManager.lootManager.applyLoot(loot, to: character)
-                    totalValue += value
-                    log("\(charID): Looted \(loot.type.rawValue) (+\(value)g)", category: .loot)
-                } else {
-                    character.loot += 1
-                    totalValue += 1
-                    log("\(charID): Looted gold (+1g)", category: .loot)
-                }
+            // Money tokens dropped by monsters
+            let dropped = boardState.takeLoot(at: coord)
+            if dropped > 0 {
+                boardScene?.removeLootSprite(at: coord, offsetCol: offsetCol, offsetRow: offsetRow)
+                tokens += dropped
             }
+
+            // Scenario treasure tiles: coins, or numbered/goal treasure chests
+            guard let cell = boardState.cells[coord], cell.overlay == .treasure else { continue }
+            if cell.overlaySubType == "coin" || cell.treasureID == nil {
+                tokens += max(1, cell.treasureAmount ?? 1)
+            } else if let id = cell.treasureID {
+                let reward = gameManager.scenarioManager.lootTreasure(id, by: character)
+                log("\(charID): Looted treasure #\(id)\(reward.map { " — \($0)" } ?? "")", category: .loot)
+            }
+            boardState.removeTreasure(at: coord)
+            boardScene?.removeOverlaySprite(at: coord, offsetCol: offsetCol, offsetRow: offsetRow)
         }
 
-        // Floating animation on the character sprite
-        let animText = totalValue > 0 ? "+\(totalValue)g" : "Loot!"
-        boardScene?.pieceLoot(id: pieceID, text: animText)
-    }
-
-    // MARK: - Trap Triggering
-
-    /// Check if a piece landed on a trap and trigger it.
-    /// Flying figures are immune to traps. Jumping figures trigger traps on the destination only
-    /// (handled by the caller — intermediate hexes are skipped by Pathfinder).
-    /// Check if a piece is on hazardous terrain and apply damage. Hazards persist (not removed).
-    func checkForHazard(pieceID: PieceID, at coord: HexCoord, flying: Bool) {
-        guard !flying else { return }
-        guard let cell = boardState.cells[coord], cell.isHazard else { return }
-        guard let gameManager = gameManager else { return }
-
-        let damage = gameManager.levelManager.terrain()
-        applyTrapDamage(damage, to: pieceID, gameManager: gameManager)
-        boardScene?.pieceDamage(id: pieceID, amount: damage)
-        log("\(pieceID): Hazardous terrain — \(damage) damage", category: .damage)
-        checkTrapDeath(pieceID: pieceID, gameManager: gameManager)
-    }
-
-    func checkForTrap(pieceID: PieceID, at coord: HexCoord, flying: Bool) {
-        guard !flying else { return }
-        guard let cell = boardState.cells[coord], cell.isTrap else { return }
-        guard let gameManager = gameManager else { return }
-
-        let damage = cell.trapDamage ?? 2
-        let subType = cell.overlaySubType
-
-        // Apply damage
-        applyTrapDamage(damage, to: pieceID, gameManager: gameManager)
-
-        // Apply conditions based on trap sub-type
-        if let conditions = trapConditions(for: subType) {
-            for condition in conditions {
-                applyTrapCondition(condition, to: pieceID, gameManager: gameManager)
+        for _ in 0..<tokens {
+            if let card = gameManager.lootManager.drawCard() {
+                // Frosthaven loot deck
+                let value = gameManager.lootManager.getValue(for: card)
+                gameManager.lootManager.applyLoot(card, to: character)
+                gold += value
+            } else {
+                // GH money token: worth the scenario level's gold conversion value.
+                let value = gameManager.levelManager.loot()
+                character.loot += value
+                gold += value
             }
         }
-
-        // Visual feedback
-        boardScene?.pieceDamage(id: pieceID, amount: damage)
-        log("\(pieceID): Triggered \(subType ?? "trap") trap for \(damage) damage", category: .damage)
-
-        // Remove the trap from board state
-        boardState.removeTrap(at: coord)
-
-        // Remove the trap sprite visually
-        boardScene?.removeOverlaySprite(at: coord, offsetCol: offsetCol, offsetRow: offsetRow)
-
-        // Check if figure died
-        checkTrapDeath(pieceID: pieceID, gameManager: gameManager)
-    }
-
-    /// Apply trap damage to the entity behind a PieceID.
-    private func applyTrapDamage(_ damage: Int, to pieceID: PieceID, gameManager: GameManager) {
-        switch pieceID {
-        case .character(let charID):
-            if let character = gameManager.game.characters.first(where: { $0.id == charID }) {
-                gameManager.entityManager.changeHealth(character, amount: -damage)
-            }
-        case .monster(let name, let standee):
-            if let monster = gameManager.game.monsters.first(where: { $0.name == name }),
-               let entity = monster.entities.first(where: { $0.number == standee }) {
-                gameManager.entityManager.changeHealth(entity, amount: -damage)
-            }
-        case .summon(let summonID):
-            for char in gameManager.game.characters {
-                if let summon = char.summons.first(where: { $0.id == summonID }) {
-                    gameManager.entityManager.changeHealth(summon, amount: -damage)
-                    break
-                }
-            }
-        default:
-            break
+        if tokens > 0 {
+            gameManager.scenarioStatsManager.recordCoinsLooted(by: character.name, amount: tokens)
+            log("\(charID): Looted \(tokens) money token\(tokens == 1 ? "" : "s") (+\(gold)g)", category: .loot)
+            boardScene?.pieceLoot(id: pieceID, text: "+\(gold)g")
         }
-    }
-
-    /// Apply a condition from a trap to the entity behind a PieceID.
-    private func applyTrapCondition(_ condition: ConditionName, to pieceID: PieceID, gameManager: GameManager) {
-        switch pieceID {
-        case .character(let charID):
-            if let character = gameManager.game.characters.first(where: { $0.id == charID }) {
-                gameManager.entityManager.addCondition(condition, to: character)
-                log("  \(pieceID): \(condition.rawValue) applied", category: .condition)
-            }
-        case .monster(let name, let standee):
-            if let monster = gameManager.game.monsters.first(where: { $0.name == name }),
-               let entity = monster.entities.first(where: { $0.number == standee }) {
-                gameManager.entityManager.addCondition(condition, to: entity)
-                log("  \(pieceID): \(condition.rawValue) applied", category: .condition)
-            }
-        case .summon(let summonID):
-            for char in gameManager.game.characters {
-                if let summon = char.summons.first(where: { $0.id == summonID }) {
-                    gameManager.entityManager.addCondition(condition, to: summon)
-                    log("  \(pieceID): \(condition.rawValue) applied", category: .condition)
-                    break
-                }
-            }
-        default:
-            break
-        }
-    }
-
-    /// Map trap sub-types to conditions they apply (in addition to damage).
-    private func trapConditions(for subType: String?) -> [ConditionName]? {
-        switch subType {
-        case "poison": return [.poison]
-        case "bear": return [.immobilize]
-        case "thorns": return [.wound]
-        default: return nil
-        }
-    }
-
-    /// Check if a figure died from trap damage and clean up.
-    private func checkTrapDeath(pieceID: PieceID, gameManager: GameManager) {
-        switch pieceID {
-        case .character(let charID):
-            if let character = gameManager.game.characters.first(where: { $0.id == charID }),
-               character.health <= 0 {
-                log("\(pieceID): Killed by trap!", category: .death)
-                boardState.removePiece(pieceID)
-                boardScene?.removePieceSprite(id: pieceID)
-                checkVictoryDefeat()
-            }
-        case .monster(let name, let standee):
-            if let monster = gameManager.game.monsters.first(where: { $0.name == name }),
-               let entity = monster.entities.first(where: { $0.number == standee }),
-               entity.health <= 0 {
-                entity.dead = true
-                recordMonsterKill(name: name)
-                log("\(pieceID): Killed by trap!", category: .death)
-                dropLoot(for: pieceID)
-                boardState.removePiece(pieceID)
-                boardScene?.removePieceSprite(id: pieceID)
-                gameManager.scenarioRulesManager.evaluateRules()
-                checkVictoryDefeat()
-            }
-        case .summon(let summonID):
-            for char in gameManager.game.characters {
-                if let summon = char.summons.first(where: { $0.id == summonID }),
-                   summon.health <= 0 {
-                    summon.dead = true
-                    log("\(pieceID): Killed by trap!", category: .death)
-                    boardState.removePiece(pieceID)
-                    boardScene?.removePieceSprite(id: pieceID)
-                    break
-                }
-            }
-        default:
-            break
-        }
+        // Treasure can deal damage (e.g. a trapped chest).
+        sweepDeadFigures()
     }
 
     // MARK: - Room Reveal
-
-    /// Check if the character moved onto a closed door hex — if so, open it automatically.
-    /// Per Gloomhaven rules: "if [a character] enters a tile with a closed door, flip the door
-    /// tile to the opened side and immediately reveal the adjacent room."
-    private func checkForDoorReveal(from coord: HexCoord) {
-        // Check if the character is standing ON a closed door
-        if let door = boardState.doors.first(where: { $0.coord == coord && !$0.isOpen }) {
-            openDoor(at: door.coord)
-        }
-    }
 
     /// Get adjacent unopened doors for a position.
     func adjacentDoors(from coord: HexCoord) -> [DoorInfo] {
@@ -1734,40 +1644,40 @@ final class BoardCoordinator {
               let gameManager = gameManager else { return }
 
         boardPhase = .roomReveal
-        let newMonsters = BoardBuilder.revealRoom(
-            door: door, scenario: scenario,
-            board: boardState, playerCount: max(2, gameManager.game.activeCharacters.count)
-        )
-
-        // Add monster figures to GameState — group + individual entities
-        for (pieceID, _) in newMonsters {
-            guard case .monster(let name, let standee) = pieceID else { continue }
-            let edition = gameManager.game.edition ?? "gh"
-
-            // Ensure the monster group exists
-            if !gameManager.game.monsters.contains(where: { $0.name == name }) {
-                gameManager.monsterManager.addMonster(name: name, edition: edition)
-            }
-
-            // Create the individual entity with correct type (normal vs elite) and HP
-            if let monster = gameManager.game.monsters.first(where: { $0.name == name }) {
-                let isElite = boardState.eliteStandees.contains(pieceID)
-                gameManager.monsterManager.addEntity(
-                    type: isElite ? .elite : .normal,
-                    to: monster,
-                    number: standee
-                )
-
-                // Draw ability card for the current round if this group hasn't drawn yet
-                if gameManager.monsterManager.currentAbility(for: monster) == nil {
-                    gameManager.monsterManager.drawAbility(for: monster)
-                }
-            }
+        guard let reveal = BoardBuilder.revealRoomSlots(door: door, scenario: scenario, board: boardState) else {
+            boardPhase = .execution
+            return
         }
 
-        // Recalculate offsets from the expanded bounds — boardState.bounds was updated
-        // by BoardBuilder.revealRoom → recomputeBounds, but offsetCol/offsetRow were set
-        // at startScenario from the initial (room-1 only) bounds and are now stale.
+        // Monsters come from the scenario's room data, counted for every character in the
+        // scenario including exhausted ones (p.17); the map supplies their positions.
+        let playerCount = max(2, gameManager.game.characters.filter { !$0.absent }.count)
+        let refs = Set(reveal.tileRefs.map { $0.lowercased() })
+        let rooms = (gameManager.game.scenario?.data.rooms ?? []).filter { room in
+            refs.contains((room.ref ?? "").lowercased())
+                && !(gameManager.game.scenario?.revealedRooms.contains(room.roomNumber) ?? true)
+        }
+        for room in rooms {
+            gameManager.scenarioManager.openRoom(room)
+        }
+        // Everything not yet on the board goes into this room — including monsters of a room a
+        // scenario rule opened before its door was reached.
+        let hasRoomData = !(gameManager.game.scenario?.data.rooms ?? []).isEmpty
+        let placed = placeRevealedMonsters(slots: reveal.slots, newEntities: unplacedMonsterEntities(),
+                                           playerCount: playerCount, useMapMonsters: !hasRoomData)
+
+        // New monster types draw an ability card this round; all get their stat bonuses.
+        for monster in gameManager.game.monsters where placed.contains(where: { $0.name == monster.name }) {
+            if isMidRound, !monster.abilityDrawn {
+                gameManager.monsterManager.drawAbility(for: monster)
+            }
+            gameManager.monsterManager.applyStatEffects(for: monster)
+        }
+        if isMidRound {
+            for piece in placed { pendingRevealedStandees[piece.name, default: []].insert(piece.standee) }
+        }
+
+        // Recalculate offsets from the expanded bounds.
         let padding = 2
         offsetCol = boardState.bounds.minCol - padding
         offsetRow = boardState.bounds.minRow - padding
@@ -1778,9 +1688,147 @@ final class BoardCoordinator {
 
         boardPhase = .execution
         log("Door opened — \(door.childTileRef) revealed", category: .door)
-        for (id, pos) in newMonsters {
-            log("Spawned \(id) at (\(pos.col), \(pos.row))", category: .setup)
+        for piece in placed {
+            let id = PieceID.monster(name: piece.name, standee: piece.standee)
+            if let pos = boardState.piecePositions[id] {
+                log("Revealed \(pieceLabel(id)) at (\(pos.col), \(pos.row))", category: .setup)
+            }
         }
+        // Rules gated on revealed rooms can fire now.
+        gameManager.scenarioRulesManager.evaluateRules(phase: .figureChange)
+        sweepDeadFigures()
+    }
+
+    /// Reveal rooms opened by a scenario rule: through the door leading to the room's tile, or —
+    /// if no door leads there — by opening the room's data and placing its monsters nearby.
+    func openScenarioRooms(_ roomNumbers: [Int]) {
+        guard let gameManager, let scenario = gameManager.game.scenario else { return }
+        for number in roomNumbers {
+            guard let room = scenario.data.rooms?.first(where: { $0.roomNumber == number }),
+                  !scenario.revealedRooms.contains(number) else { continue }
+            let ref = (room.ref ?? "").lowercased()
+            if let door = boardState.doors.first(where: { !$0.isOpen && $0.childTileRef.lowercased() == ref }) {
+                openDoor(at: door.coord)
+            } else {
+                gameManager.scenarioManager.openRoom(room)
+                let playerCount = max(2, gameManager.game.characters.filter { !$0.absent }.count)
+                let placed = placeRevealedMonsters(slots: [], newEntities: unplacedMonsterEntities(),
+                                                   playerCount: playerCount)
+                for monster in gameManager.game.monsters where placed.contains(where: { $0.name == monster.name }) {
+                    if isMidRound, !monster.abilityDrawn {
+                        gameManager.monsterManager.drawAbility(for: monster)
+                    }
+                    gameManager.monsterManager.applyStatEffects(for: monster)
+                }
+                if isMidRound {
+                    for piece in placed { pendingRevealedStandees[piece.name, default: []].insert(piece.standee) }
+                }
+            }
+        }
+    }
+
+    /// Whether figures are taking turns right now (not card selection, round start or round end).
+    var isMidRound: Bool {
+        boardPhase != .cardSelection && boardPhase != .setup && gameManager?.game.state == .next
+            && currentTurnIndex >= 0 && currentTurnIndex < turnOrder.count
+    }
+
+    /// Alive monster entities that have no piece on the board yet.
+    func unplacedMonsterEntities() -> [(GameMonster, GameMonsterEntity)] {
+        guard let game = gameManager?.game else { return [] }
+        var result: [(GameMonster, GameMonsterEntity)] = []
+        for monster in game.monsters {
+            for entity in monster.entities where !entity.dead {
+                if boardState.piecePositions[.monster(name: monster.name, standee: entity.number)] == nil {
+                    result.append((monster, entity))
+                }
+            }
+        }
+        return result
+    }
+
+    /// Place newly revealed monsters on the map's monster positions. Map positions are matched by
+    /// monster name (preferring the same normal/elite marking); a scenario boss takes an unused
+    /// position of a monster that isn't in the room (the map data uses stand-ins for bosses).
+    /// With `useMapMonsters` (the scenario has no room data for these tiles) the map's own
+    /// monster list is used instead. Returns the pieces placed.
+    @discardableResult
+    func placeRevealedMonsters(slots: [MonsterSlot], newEntities: [(GameMonster, GameMonsterEntity)],
+                               playerCount: Int, useMapMonsters: Bool = false) -> [(name: String, standee: Int)] {
+        guard gameManager != nil else { return [] }
+        var placed: [(name: String, standee: Int)] = []
+
+        if useMapMonsters && newEntities.isEmpty {
+            for slot in slots {
+                let type = slot.type(forPlayerCount: playerCount)
+                guard type != "none" else { continue }
+                if let piece = spawnMonster(name: slot.name, type: type == "elite" ? .elite : .normal,
+                                            at: slot.coord, origin: .placed),
+                   case .monster(let name, let standee) = piece {
+                    placed.append((name, standee))
+                }
+            }
+            return placed
+        }
+
+        var used = Set<Int>()
+        let names = Set(newEntities.map { $0.0.name })
+        let ordered = newEntities.sorted { a, b in
+            if a.1.type != b.1.type { return a.1.type == .boss || (a.1.type == .elite && b.1.type == .normal) }
+            return a.1.number < b.1.number
+        }
+        let anchor = slots.first?.coord ?? boardState.startingLocations.first ?? boardState.cells.keys.first
+
+        for (monster, entity) in ordered {
+            func pick(_ predicate: (MonsterSlot) -> Bool) -> Int? {
+                slots.indices.first { !used.contains($0) && predicate(slots[$0]) }
+            }
+            let wanted = entity.type == .elite ? "elite" : "normal"
+            let index = pick { $0.name == monster.name && $0.type(forPlayerCount: playerCount) == wanted }
+                ?? pick { $0.name == monster.name && $0.type(forPlayerCount: playerCount) != "none" }
+                ?? pick { $0.name == monster.name }
+                ?? pick { !names.contains($0.name) && $0.type(forPlayerCount: playerCount) != "none" }
+                ?? pick { !names.contains($0.name) }
+            var coord = index.map { slots[$0].coord } ?? anchor
+            if let index { used.insert(index) }
+            if let c = coord, boardState.isOccupied(c) || !boardState.isPassable(c) {
+                coord = nearestEmptyHex(to: c)
+            }
+            guard let destination = coord else {
+                log("No room to place \(monster.name) \(entity.number)", category: .setup)
+                continue
+            }
+            let pieceID = PieceID.monster(name: monster.name, standee: entity.number)
+            boardState.placePiece(pieceID, at: destination)
+            if entity.type == .elite { boardState.eliteStandees.insert(pieceID) }
+            boardScene?.addPieceSprite(id: pieceID, at: destination, offsetCol: offsetCol, offsetRow: offsetRow)
+            placed.append((monster.name, entity.number))
+        }
+        return placed
+    }
+
+    /// A monster spawned by a scenario rule: placed near the other monsters (the map data has no
+    /// spawn markers). Spawned monsters act this round if spawned during it and drop no money.
+    func spawnFromScenarioRule(name: String, type: MonsterType, marker: String?, health: String?) -> Bool {
+        guard let gameManager, boardScene != nil || !boardState.cells.isEmpty else { return false }
+        let monsterPositions = boardState.piecePositions.compactMap { id, coord -> HexCoord? in
+            if case .monster = id, !isPlayerSide(id) { return coord }
+            return nil
+        }
+        let anchor = monsterPositions.first ?? boardState.cells.keys.max { a, b in
+            let da = boardState.startingLocations.map { a.distance(to: $0) }.min() ?? 0
+            let db = boardState.startingLocations.map { b.distance(to: $0) }.min() ?? 0
+            return da < db
+        }
+        guard let anchor,
+              let piece = spawnMonster(name: name, type: type, at: anchor, origin: .spawned,
+                                       health: health.map { .string($0) }) else { return false }
+        if let marker, case .monster(let monsterName, let standee) = piece {
+            gameManager.game.monsters.first { $0.name == monsterName }?
+                .entities.last { $0.number == standee }?.markers.append(marker)
+        }
+        log("Scenario spawn: \(pieceLabel(piece))\(marker.map { " (marker \($0))" } ?? "")", category: .setup)
+        return true
     }
 
     // MARK: - Input Handling
@@ -1790,12 +1838,12 @@ final class BoardCoordinator {
         case .placingCharacter(let charID):
             placeCharacter(characterID: charID, at: coord)
 
-        case .selectingMove(let pieceID, _, let validHexes, let isTeleport):
+        case .selectingMove(let pieceID, let range, let validHexes, let isTeleport, let mode):
             if validHexes.contains(coord) {
                 if isTeleport {
                     executeTeleport(pieceID: pieceID, to: coord)
                 } else {
-                    executeMove(pieceID: pieceID, to: coord)
+                    executeMove(pieceID: pieceID, to: coord, range: range, mode: mode)
                 }
             }
 
@@ -1810,19 +1858,8 @@ final class BoardCoordinator {
             }
 
         default:
-            // Check if tapping a door
-            if let door = boardState.doors.first(where: { $0.coord == coord && !$0.isOpen }) {
-                // Check if any character is adjacent
-                let charAdjacentToDoor = boardState.piecePositions.contains { id, pos in
-                    if case .character = id {
-                        return pos.isAdjacent(to: door.coord) || pos == door.coord
-                    }
-                    return false
-                }
-                if charAdjacentToDoor {
-                    openDoor(at: coord)
-                }
-            }
+            // Doors open only when a character enters the door hex during its movement (p.17).
+            break
         }
     }
 
@@ -1832,7 +1869,23 @@ final class BoardCoordinator {
             if validTargets.contains(piece) {
                 let attackValue = activePlayerTurn?.currentAttackValue() ?? 2
                 let range = activePlayerTurn?.currentAttackRange() ?? 1
-                Task { await self.resolvePlayerAttack(attacker: attackerID, target: piece, attackValue: attackValue, range: range) }
+                if let pattern = activePlayerTurn?.pendingAreaPattern {
+                    // Area attack: every enemy in the pattern is a separate attack.
+                    let targets = areaTargets(pattern: pattern, attacker: attackerID, primary: piece, range: range)
+                    let ranged = !AoEResolver.isMeleePattern(pattern)
+                    interactionMode = .idle
+                    log("\(attackerID): Area attack hits \(targets.count) enem\(targets.count == 1 ? "y" : "ies")", category: .attack)
+                    Task {
+                        for target in targets where self.isOnBoard(target) && self.isOnBoard(attackerID) {
+                            await self.resolvePlayerAttack(attacker: attackerID, target: target, attackValue: attackValue,
+                                                           range: ranged ? max(2, range) : 1, advanceAction: false)
+                        }
+                        self.activePlayerTurn?.advanceAfterAsyncAction()
+                    }
+                } else {
+                    interactionMode = .idle
+                    Task { await self.resolvePlayerAttack(attacker: attackerID, target: piece, attackValue: attackValue, range: range) }
+                }
             }
 
         case .selectingMultiAttackTargets(let attackerID, let range, let validTargets, let targetCount, var selected):
@@ -1841,10 +1894,11 @@ final class BoardCoordinator {
                 log("\(attackerID): Target \(selected.count)/\(targetCount) — \(piece)", category: .attack)
 
                 if selected.count >= targetCount || selected.count >= validTargets.count {
-                    // All targets selected — resolve each attack sequentially (no push/pull for multi-target)
+                    // All targets selected — resolve each attack in turn (each a separate attack)
                     let attackValue = activePlayerTurn?.currentAttackValue() ?? 2
                     let attackRange = activePlayerTurn?.currentAttackRange() ?? 1
                     let targets = selected
+                    interactionMode = .idle
                     Task {
                         for target in targets {
                             await self.resolvePlayerAttack(attacker: attackerID, target: target, attackValue: attackValue, range: attackRange, advanceAction: false)
@@ -1865,26 +1919,28 @@ final class BoardCoordinator {
 
         case .selectingConditionTarget(let attackerID, let condition, let validTargets):
             if validTargets.contains(piece) {
-                guard let gameManager = gameManager else { return }
-                if case .monster(let name, let standee) = piece,
-                   let monster = gameManager.game.monsters.first(where: { $0.name == name }),
-                   let entity = monster.entities.first(where: { $0.number == standee }) {
-                    gameManager.entityManager.addCondition(condition, to: entity)
-                    log("\(attackerID): \(condition.rawValue) → \(piece)", category: .condition)
-                }
+                log("\(attackerID): \(condition.rawValue) → \(piece)", category: .condition)
+                applyCondition(condition, to: piece)
                 boardScene?.clearHighlights()
                 interactionMode = .idle
                 activePlayerTurn?.advanceAfterAsyncAction()
             }
 
+        case .selectingForcedMoveTarget(let moverID, let steps, let isPush, let validTargets):
+            if validTargets.contains(piece), let origin = boardState.piecePositions[moverID] {
+                boardScene?.clearHighlights()
+                interactionMode = .idle
+                let turn = activePlayerTurn
+                Task { @MainActor in
+                    await self.performPushPull(target: piece, attackerPos: origin, steps: steps, isPush: isPush)
+                    turn?.advanceAfterAsyncAction()
+                }
+            }
+
         case .selectingHealTarget(let healerID, let healValue, let validTargets):
             if validTargets.contains(piece) {
-                guard let gameManager = gameManager else { return }
-                if case .character(let charID) = piece,
-                   let character = gameManager.game.characters.first(where: { $0.id == charID }) {
-                    gameManager.entityManager.changeHealth(character, amount: healValue)
-                    log("\(healerID) → \(piece): Heal \(healValue)", category: .heal)
-                }
+                let healed = heal(piece, amount: healValue, source: healerID)
+                log("\(healerID) → \(piece): Heal \(healValue) (+\(healed))", category: .heal)
                 boardScene?.clearHighlights()
                 interactionMode = .idle
                 activePlayerTurn?.advanceAfterAsyncAction()
@@ -1903,6 +1959,7 @@ final class BoardCoordinator {
         let attackValue = activePlayerTurn?.currentAttackValue() ?? 2
         let attackRange = activePlayerTurn?.currentAttackRange() ?? 1
         let targets = selected
+        interactionMode = .idle
         Task {
             for target in targets {
                 await self.resolvePlayerAttack(attacker: attackerID, target: target, attackValue: attackValue, range: attackRange, advanceAction: false)

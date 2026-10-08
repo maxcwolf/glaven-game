@@ -105,13 +105,21 @@ final class GameManager {
 
         // Wire scenario rules to round advancement
         roundMgr.onRoundAdvanced = { [weak self] in
-            self?.scenarioRulesManager.evaluateRules()
+            self?.scenarioRulesManager.evaluateRules(phase: .roundStart)
             self?.scenarioStatsManager.advanceRound()
+        }
+        roundMgr.onRoundEnding = { [weak self] in
+            self?.scenarioRulesManager.evaluateRules(phase: .roundEnd)
         }
 
         // Wire room-reveal effect from scenario rules back into ScenarioManager
         rulesManager.onOpenRooms = { [weak self] roomNumbers in
             guard let self = self, let scenario = self.game.scenario else { return }
+            // On the board, a room opened by a scenario rule is revealed through its door.
+            if self.appPhase == .board, self.boardCoordinator.scenarioData != nil {
+                self.boardCoordinator.openScenarioRooms(roomNumbers)
+                return
+            }
             for num in roomNumbers {
                 if let room = scenario.data.rooms?.first(where: { $0.roomNumber == num }) {
                     self.scenarioManager.openRoom(room)
@@ -169,6 +177,10 @@ final class GameManager {
 
     /// Set scenario and initialize the game board.
     func startScenarioOnBoard(_ scenarioData: ScenarioData) {
+        // Scenario level (and so monster level, trap damage, gold and bonus XP) is fixed at the
+        // start of the scenario from the party's levels and difficulty (p.15).
+        levelManager.calculateAndApplyLevel()
+
         // Set the scenario in game state
         scenarioManager.setScenario(scenarioData)
 
@@ -219,7 +231,7 @@ final class GameManager {
             character.handCards = Array(hand.prefix(character.handSize))
         }
 
-        let playerCount = max(2, game.activeCharacters.count)
+        let playerCount = max(2, game.characters.filter { !$0.absent }.count)
         boardCoordinator.startScenario(scenario: vgbScenario, playerCount: playerCount)
         appPhase = .board
     }

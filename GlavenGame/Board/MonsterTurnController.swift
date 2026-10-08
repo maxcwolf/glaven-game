@@ -1,6 +1,9 @@
 import Foundation
 
-/// Controls the automated execution of all monster turns.
+/// Controls the automated execution of monster turns (GH p.29–31).
+///
+/// Each monster of a type performs the actions on its type's drawn ability card, in order:
+/// elites first, then normals, in ascending standee order.
 @Observable
 final class MonsterTurnController {
 
@@ -13,466 +16,377 @@ final class MonsterTurnController {
         self.gameManager = gameManager
     }
 
-    // MARK: - Execute All Monster Turns
+    // MARK: - Group Turn
 
-    /// Execute all monster turns for the current round.
-    /// Each monster group acts in initiative order, entities within a group act
-    /// in order: elites first (ascending standee), then normals (ascending standee).
-    func executeAllMonsterTurns() async {
-        guard let coordinator = coordinator,
-              let gameManager = gameManager else { return }
+    /// Execute a monster type's turn. `only` restricts it to specific standees (used when monsters
+    /// revealed mid-round must act after their type has already gone).
+    func executeMonsterGroup(_ monster: GameMonster, only: Set<Int>? = nil) async {
+        guard let coordinator, let gameManager else { return }
+        guard !monster.off, !monster.aliveEntities.isEmpty else { return }
 
-        isExecuting = true
-        coordinator.interactionMode = .watchingMonsterTurn
-
-        // Get all monster groups sorted by initiative
-        let monsters = gameManager.game.monsters.sorted { a, b in
-            a.effectiveInitiative < b.effectiveInitiative
-        }
-
-        for monster in monsters {
-            await executeMonsterGroup(monster)
-        }
-
-        isExecuting = false
-        coordinator.interactionMode = .idle
-        coordinator.log("All monster turns complete", category: .round)
-    }
-
-    /// Execute a single monster group's turn.
-    func executeMonsterGroup(_ monster: GameMonster) async {
-        guard let coordinator = coordinator,
-              let gameManager = gameManager else { return }
-
-        guard !monster.off else { return }
-        guard !monster.aliveEntities.isEmpty else { return }
-
-        isExecuting = true
-
-        // Get the drawn ability card
-        let abilityIndex = monster.ability
-        guard let deckData = gameManager.editionStore.deckData(name: monster.monsterData?.deck ?? monster.name, edition: monster.edition),
-              abilityIndex >= 0 && abilityIndex < deckData.abilities.count else {
+        guard let ability = gameManager.monsterManager.currentAbility(for: monster) else {
             coordinator.log("\(monster.name): No ability card drawn", category: .info)
-            isExecuting = false
             return
         }
-        let ability = deckData.abilities[abilityIndex]
-        coordinator.log("\(monster.name) — Initiative \(ability.initiative)", category: .round)
 
-        // Sort entities: elites first (ascending standee), then normals (ascending standee)
-        let sortedEntities = monster.aliveEntities.sorted { a, b in
-            if a.type != b.type {
-                return a.type == .elite // elites first
+        isExecuting = true
+        defer { isExecuting = false }
+        coordinator.log("\(monster.name) — \(ability.name ?? "ability") (initiative \(ability.initiative))", category: .round)
+
+        let actions = ability.actions ?? []
+
+        // Monsters always consume elements if they can, and every monster of the type activated
+        // this turn gains the benefit (p.24) — paid when the first monster performs the card.
+        var consumed: Set<UUID>?
+
+        let sortedEntities = monster.aliveEntities
+            .filter { only?.contains($0.number) ?? true }
+            // Monsters summoned this round don't act until the next round (p.31).
+            .filter { $0.summonState != .new }
+            .sorted { a, b in
+                if a.type != b.type { return a.type == .elite || a.type == .boss }
+                return a.number < b.number
             }
-            return a.number < b.number
-        }
 
+        var anyActed = false
         for entity in sortedEntities {
             let pieceID = PieceID.monster(name: monster.name, standee: entity.number)
-            guard coordinator.boardState.piecePositions[pieceID] != nil else { continue }
+            guard !entity.dead, coordinator.isOnBoard(pieceID) else { continue }
 
-            let result = MonsterAI.computeTurn(
-                pieceID: pieceID,
-                monster: monster,
-                entity: entity,
-                ability: ability,
-                board: coordinator.boardState,
-                gameState: gameManager.game
-            )
+            // Start of this monster's turn: its conditions become active and tick (wound).
+            gameManager.entityManager.restoreConditions(entity)
+            gameManager.entityManager.applyConditionsTurn(entity)
+            coordinator.sweepDeadFigures()
+            guard !entity.dead, coordinator.isOnBoard(pieceID) else { continue }
 
-            await executeMonsterTurn(result: result, entity: entity, monster: monster)
-
-            // Stop if all characters were killed this turn
+            if MonsterAI.isActive(.stun, on: entity) {
+                coordinator.log("  \(coordinator.pieceLabel(pieceID)): Stunned — no actions", category: .condition)
+            } else {
+                anyActed = true
+                if consumed == nil { consumed = consumeElements(in: actions) }
+                var turn = MonsterTurnState()
+                await executeCard(actions, pieceID: pieceID, entity: entity, monster: monster,
+                                  ability: ability, consumed: consumed ?? [], turn: &turn)
+            }
+            // End of this monster's turn: conditions that last "until the end of its next turn" expire.
+            if !entity.dead {
+                gameManager.entityManager.expireConditions(entity)
+            }
+            coordinator.sweepDeadFigures()
             if coordinator.scenarioResult != nil { return }
-
-            // Pause between entities
-            try? await Task.sleep(nanoseconds: 400_000_000) // 400ms
+            try? await Task.sleep(nanoseconds: coordinator.turnDelayNanoseconds)
         }
 
-        isExecuting = false
+        // Infusions on the card become strong at the end of the type's turn.
+        if anyActed {
+            for element in MonsterAbility.elementInfusions(in: actions, consumed: consumed ?? []) {
+                gameManager.game.infuseElement(element)
+                coordinator.log("  \(monster.name): Infused \(element.rawValue)", category: .element)
+            }
+        }
     }
 
-    // MARK: - Single Monster Turn
-
-    private func executeMonsterTurn(result: MonsterTurnResult, entity: GameMonsterEntity, monster: GameMonster) async {
-        guard let coordinator = coordinator,
-              let gameManager = gameManager else { return }
-
-        if result.stunned {
-            coordinator.log("  \(result.entityID): Stunned — skipped", category: .condition)
-            return
-        }
-
-        // Start-of-turn hazardous terrain damage (if monster begins on a hazard)
-        if let currentPos = coordinator.boardState.piecePositions[result.entityID] {
-            coordinator.checkForHazard(pieceID: result.entityID, at: currentPos,
-                                        flying: monster.monsterData?.flying ?? false)
-            if entity.dead || entity.health <= 0 { return }
-        }
-
-        // Movement
-        if result.movementPath.count > 1 {
-            let path = result.movementPath
-            coordinator.log("  \(result.entityID): Move \(path.count - 1) hexes", category: .move)
-
-            await withCheckedContinuation { continuation in
-                coordinator.boardScene?.movePiece(
-                    id: result.entityID, along: path,
-                    offsetCol: coordinator.offsetCol, offsetRow: coordinator.offsetRow
-                ) {
-                    coordinator.boardState.movePiece(result.entityID, to: path.last!)
-                    continuation.resume()
-                }
+    /// Consume every element the card asks for that is available; returns the paid-for actions.
+    private func consumeElements(in actions: [ActionModel]) -> Set<UUID> {
+        guard let coordinator, let game = gameManager?.game else { return [] }
+        var paid = Set<UUID>()
+        for action in MonsterAbility.elementConsumes(in: actions) {
+            if let used = game.consumeElements(MonsterAbility.elements(of: action)) {
+                paid.insert(action.id)
+                coordinator.log("  Consumed \(used.map(\.rawValue).joined(separator: " + "))", category: .element)
             }
-
-            let isFlying = monster.monsterData?.flying ?? false
-            // Check if monster stepped on a trap or hazardous terrain
-            coordinator.checkForTrap(pieceID: result.entityID, at: path.last!, flying: isFlying)
-            coordinator.checkForHazard(pieceID: result.entityID, at: path.last!, flying: isFlying)
-
-            // If monster died from trap/hazard, skip the rest of this turn
-            if entity.dead || entity.health <= 0 { return }
         }
-
-        // Attacks (may have multiple targets)
-        if !result.attackTargets.isEmpty {
-            let stat = monster.stat(for: entity.type)
-            let baseAttack = (stat?.attack?.intValue ?? 0)
-            let (_, attackMod, _, abilityConditions) = parseAbilityModifiers(result.abilityActions)
-            let totalAttack = baseAttack + attackMod
-
-            for target in result.attackTargets {
-                // Skip if attacker already died (e.g. from retaliate on a prior target)
-                guard !entity.dead else { break }
-                guard let targetPos = coordinator.boardState.piecePositions[target],
-                      let attackerPos = coordinator.boardState.piecePositions[result.entityID] else { continue }
-
-                let (defenderHealth, defenderShield, retInfo) = getDefenderInfo(target: target, gameManager: gameManager)
-
-                let isPoisoned = isConditionActive(.poison, on: target, gameManager: gameManager)
-                let hasAdvantage = CombatResolver.hasAdvantage(attacker: entity)
-                let isRangedAdjacent = (stat?.range?.intValue ?? 0) > 0 && attackerPos.isAdjacent(to: targetPos)
-                let hasDisadvantage = CombatResolver.hasDisadvantage(attacker: entity, isRangedAdjacent: isRangedAdjacent)
-
-                // Interactive modifier draw — player draws card(s) for this monster attack
-                let preDrawnCards = await coordinator.performModifierDraw(
-                    attacker: result.entityID,
-                    defender: target,
-                    baseAttack: totalAttack,
-                    advantage: hasAdvantage,
-                    disadvantage: hasDisadvantage,
-                    drawCard: { gameManager.attackModifierManager.drawMonsterCard() }
-                )
-
-                // Each target gets its own modifier card draw
-                let attackResult = CombatResolver.resolveAttack(
-                    attacker: result.entityID,
-                    defender: target,
-                    baseAttack: totalAttack,
-                    advantage: hasAdvantage,
-                    disadvantage: hasDisadvantage,
-                    isPoisoned: isPoisoned,
-                    shield: defenderShield,
-                    conditions: abilityConditions,
-                    retaliateValue: retInfo.value,
-                    retaliateRange: retInfo.range,
-                    attackerDefenderDistance: attackerPos.distance(to: targetPos),
-                    preDrawnCards: preDrawnCards,
-                    drawModifier: { nil },
-                    defenderHealth: defenderHealth
-                )
-
-                let breakdown = CombatResolver.damageBreakdown(
-                    base: totalAttack, isPoisoned: isPoisoned,
-                    preDrawnCards: preDrawnCards, shield: defenderShield,
-                    isMiss: attackResult.isMiss, finalDamage: attackResult.damage)
-                coordinator.log("  \(result.entityID) → \(target): \(breakdown)", category: .attack)
-
-                if attackResult.damage > 0 {
-                    coordinator.boardScene?.pieceDamage(id: target, amount: attackResult.damage)
-
-                    if case .character(let charID) = target {
-                        let mitigated = await promptDamageMitigation(
-                            characterID: charID,
-                            damage: attackResult.damage,
-                            source: "\(result.entityID)",
-                            coordinator: coordinator,
-                            gameManager: gameManager
-                        )
-                        if !mitigated {
-                            applyDamage(attackResult.damage, to: target, gameManager: gameManager)
-                        }
-                    } else {
-                        applyDamage(attackResult.damage, to: target, gameManager: gameManager)
-                    }
-                }
-
-                // Check if target was killed
-                let killed: Bool
-                if case .character(let charID) = target,
-                   let char = gameManager.game.characters.first(where: { $0.id == charID }) {
-                    killed = char.health <= 0
-                } else if case .summon(let summonID) = target {
-                    var summonDead = attackResult.killed
-                    for char in gameManager.game.characters {
-                        if let summon = char.summons.first(where: { $0.id == summonID }) {
-                            summonDead = summon.health <= 0
-                            break
-                        }
-                    }
-                    killed = summonDead
-                } else {
-                    killed = attackResult.killed
-                }
-
-                if killed {
-                    coordinator.log("  \(target): Killed!", category: .death)
-                    coordinator.boardState.removePiece(target)
-                    coordinator.boardScene?.removePieceSprite(id: target)
-                    markDead(target: target, gameManager: gameManager)
-                    coordinator.checkVictoryDefeat()
-                    if coordinator.scenarioResult != nil { return }
-                }
-
-                // Push/Pull: if target survived, apply from attack sub-actions
-                if !killed {
-                    guard let attackerPos = coordinator.boardState.piecePositions[result.entityID] else { break }
-                    if result.pendingPush > 0 {
-                        await coordinator.performPushPull(target: target, attackerPos: attackerPos, steps: result.pendingPush, isPush: true)
-                    }
-                    if result.pendingPull > 0 {
-                        await coordinator.performPushPull(target: target, attackerPos: attackerPos, steps: result.pendingPull, isPush: false)
-                    }
-                }
-
-                // Apply conditions to target
-                for condition in attackResult.appliedConditions {
-                    switch target {
-                    case .character(let charID):
-                        if let char = gameManager.game.characters.first(where: { $0.id == charID }) {
-                            gameManager.entityManager.addCondition(condition, to: char)
-                        }
-                    case .summon(let summonID):
-                        for char in gameManager.game.characters {
-                            if let summon = char.summons.first(where: { $0.id == summonID }) {
-                                gameManager.entityManager.addCondition(condition, to: summon)
-                                break
-                            }
-                        }
-                    default:
-                        break
-                    }
-                    coordinator.log("  \(target): \(condition.rawValue) applied", category: .condition)
-                }
-
-                // Retaliate
-                if attackResult.retaliateDamage > 0 {
-                    coordinator.log("  \(result.entityID): Takes \(attackResult.retaliateDamage) retaliate damage", category: .damage)
-                    gameManager.entityManager.changeHealth(entity, amount: -attackResult.retaliateDamage)
-                    if entity.health <= 0 {
-                        entity.dead = true
-                        coordinator.log("  \(result.entityID): Killed by retaliate!", category: .death)
-                        coordinator.dropLoot(for: result.entityID)
-                        coordinator.boardState.removePiece(result.entityID)
-                        coordinator.boardScene?.removePieceSprite(id: result.entityID)
-                    }
-                }
-            }
-        } else if result.disarmed {
-            coordinator.log("  \(result.entityID): Disarmed — moved but can't attack", category: .condition)
-        } else if result.focusTarget != nil {
-            coordinator.log("  \(result.entityID): Can't reach focus — moved closer", category: .move)
-        } else {
-            coordinator.log("  \(result.entityID): No focus found", category: .info)
-        }
-
-        // Apply element infusions from ability card actions
-        applyElementActions(result.abilityActions, coordinator: coordinator, game: gameManager.game)
+        return paid
     }
 
-    /// Infuse elements from monster ability card actions.
-    private func applyElementActions(_ actions: [ActionModel], coordinator: BoardCoordinator, game: GameState) {
+    // MARK: - Single Monster
+
+    /// What a monster has done so far this turn.
+    private struct MonsterTurnState {
+        var focus: PieceID?
+        var focusChosen = false
+        var reportedDisarm = false
+        /// Hexes moved this turn (the "X" in Dark Rider's attack).
+        var hexesMoved = 0
+    }
+
+    /// Perform a card's actions, in order, for one monster.
+    private func executeCard(_ actions: [ActionModel], pieceID: PieceID, entity: GameMonsterEntity,
+                             monster: GameMonster, ability: AbilityModel, consumed: Set<UUID>,
+                             turn state: inout MonsterTurnState) async {
+        guard let coordinator, let gameManager else { return }
+        let game = gameManager.game
+        let stat = monster.attackStat(for: entity.type)
+        let characterCount = max(2, game.characters.filter { !$0.absent }.count)
+        let baseRange = stat?.rangeValue(characterCount: characterCount, level: monster.level) ?? 0
+        func baseAttack() -> Int {
+            stat?.attackValue(characterCount: characterCount, level: monster.level,
+                              variables: MonsterAI.attackVariables(for: monster, gameState: game,
+                                                                   hexesMoved: state.hexesMoved)) ?? 0
+        }
+
+        func currentTurn() -> MonsterTurnResult {
+            MonsterAI.computeTurn(pieceID: pieceID, monster: monster, entity: entity, ability: ability,
+                                  board: coordinator.boardState, gameState: game, consumed: consumed)
+        }
+        func stillHere() -> Bool { !entity.dead && coordinator.isOnBoard(pieceID) }
+
+        // Focus is chosen before performing any action (p.30).
+        if !state.focusChosen {
+            state.focusChosen = true
+            state.focus = currentTurn().focusTarget
+            if state.focus == nil && (MonsterAbility.hasAttack(actions) || actions.contains { $0.type == .move }) {
+                coordinator.log("  \(coordinator.pieceLabel(pieceID)): No focus", category: .info)
+            }
+        }
+
         for action in actions {
-            if action.type == .element, let val = action.value?.stringValue {
-                for elemName in val.split(separator: ":") {
-                    guard let elemType = ElementType(rawValue: String(elemName)) else { continue }
-                    guard let idx = game.elementBoard.firstIndex(where: { $0.type == elemType }) else { continue }
+            guard stillHere(), coordinator.scenarioResult == nil else { return }
 
-                    let isConsume = action.valueType == .minus || action.valueType == .subtract
-                    if isConsume {
-                        if game.elementBoard[idx].state == .strong || game.elementBoard[idx].state == .waning {
-                            game.elementBoard[idx].state = .consumed
-                            coordinator.log("  Consumed \(elemName)", category: .element)
-                        }
-                    } else {
-                        if game.elementBoard[idx].state == .inert || game.elementBoard[idx].state == .consumed {
-                            game.elementBoard[idx].state = .new
-                            coordinator.log("  Infused \(elemName)", category: .element)
-                        }
-                    }
-                }
-            }
-            // Check sub-actions too
-            for sub in action.subActions ?? [] {
-                if sub.type == .element {
-                    applyElementActions([sub], coordinator: coordinator, game: game)
-                }
-            }
-        }
-    }
-
-    // MARK: - Helpers
-
-    private func parseAbilityModifiers(_ actions: [ActionModel]) -> (move: Int, attack: Int, range: Int, conditions: [ConditionName]) {
-        var m = 0, a = 0, r = 0
-        var conditions: [ConditionName] = []
-        for action in actions {
             switch action.type {
-            case .move: m += action.value?.intValue ?? 0
-            case .attack: a += action.value?.intValue ?? 0
-            case .range: r += action.value?.intValue ?? 0
-            case .condition:
-                if let name = action.value?.stringValue, let cond = ConditionName(rawValue: name) {
-                    conditions.append(cond)
+            case .move:
+                guard state.focus != nil else { continue }
+                if MonsterAI.isActive(.immobilize, on: entity) {
+                    coordinator.log("  \(coordinator.pieceLabel(pieceID)): Immobilized", category: .condition)
+                    continue
+                }
+                let plan = currentTurn()
+                if let newFocus = plan.focusTarget { state.focus = newFocus }
+                guard plan.movementPath.count > 1 else { continue }
+                coordinator.log("  \(coordinator.pieceLabel(pieceID)): Move \(plan.movementPath.count - 1)", category: .move)
+                let style: MovementStyle = monster.monsterData?.flying == true ? .fly : (plan.jumping ? .jump : .normal)
+                await coordinator.moveAlong(pieceID, path: plan.movementPath, style: style)
+                state.hexesMoved += plan.movementPath.count - 1
+
+            case .attack:
+                if MonsterAI.isActive(.disarm, on: entity) {
+                    if !state.reportedDisarm {
+                        coordinator.log("  \(coordinator.pieceLabel(pieceID)): Disarmed — no attack", category: .condition)
+                        state.reportedDisarm = true
+                    }
+                    continue
+                }
+                // Re-find the focus if it died or left the board since the last action.
+                if state.focus == nil || !coordinator.isOnBoard(state.focus!) { state.focus = currentTurn().focusTarget }
+                guard let target = state.focus,
+                      let position = coordinator.boardState.piecePositions[pieceID],
+                      let focusPos = coordinator.boardState.piecePositions[target] else { continue }
+                let spec = MonsterAbility.attack(action, stat: stat, baseAttack: baseAttack(),
+                                                 baseRange: baseRange, consumed: consumed)
+                let enemies = MonsterAI.gatherEnemies(board: coordinator.boardState, monster: monster, gameState: game)
+                let targets = MonsterAI.targets(for: spec, from: position, focus: target, focusPos: focusPos,
+                                                enemies: enemies, board: coordinator.boardState, gameState: game)
+                if targets.isEmpty {
+                    coordinator.log("  \(coordinator.pieceLabel(pieceID)): Focus out of reach", category: .move)
+                    continue
+                }
+                for victim in targets {
+                    guard stillHere(), coordinator.scenarioResult == nil else { return }
+                    await coordinator.performAttack(
+                        attacker: pieceID, target: victim,
+                        attack: AttackParameters(value: spec.value, isRanged: spec.isRanged, pierce: spec.pierce,
+                                                 conditions: spec.conditions, push: spec.push, pull: spec.pull,
+                                                 advantage: spec.advantage))
+                }
+
+            case .heal:
+                performHeal(action, pieceID: pieceID, entity: entity, monster: monster, consumed: consumed)
+
+            case .condition, .push, .pull, .concatenation:
+                await performTargetedEffect(action, pieceID: pieceID, monster: monster, baseRange: baseRange)
+
+            case .element where MonsterAbility.isConsume(action):
+                // An element-consume block with its own effects ("Ice: Heal 3", "Earth: Immobilize
+                // all enemies within range 3", "Fire: Retaliate 3"…). Infusions inside it happen
+                // with the type's other infusions after its turn.
+                guard consumed.contains(action.id) else { continue }
+                let block = (action.subActions ?? []).filter { $0.type != .element }
+                if block.contains(where: { $0.type == .specialTarget }) {
+                    await performTargetedEffect(ActionModel(type: .concatenation, subActions: block),
+                                                pieceID: pieceID, monster: monster, baseRange: baseRange)
+                    let others = block.filter { ![.condition, .push, .pull, .specialTarget].contains($0.type) }
+                    await executeCard(others, pieceID: pieceID, entity: entity, monster: monster,
+                                      ability: ability, consumed: consumed, turn: &state)
+                } else {
+                    for bonus in block where bonus.type == .shield || bonus.type == .retaliate {
+                        applyRoundBonus(bonus, to: entity)
+                    }
+                    await executeCard(block.filter { $0.type != .shield && $0.type != .retaliate },
+                                      pieceID: pieceID, entity: entity, monster: monster,
+                                      ability: ability, consumed: consumed, turn: &state)
+                }
+
+            case .sufferDamage, .suffer:
+                let amount = action.value?.intValue ?? 0
+                coordinator.log("  \(coordinator.pieceLabel(pieceID)): Suffers \(amount) damage", category: .damage)
+                coordinator.sufferDamage(amount, to: pieceID)
+
+            case .loot:
+                performLoot(range: action.value?.intValue ?? 1, pieceID: pieceID)
+
+            case .summon:
+                performSummon(action, pieceID: pieceID)
+
+            case .special:
+                // Boss special abilities: run the structured actions as if they were the card
+                // (so their Move/Attack drive focus and movement); scenario-specific text must be
+                // resolved by the players.
+                let index = (action.value?.intValue ?? 1) - 1
+                guard let special = stat?.special, index >= 0, index < special.count else { continue }
+                coordinator.log("  \(coordinator.pieceLabel(pieceID)): Special \(index + 1)", category: .info)
+                if special[index].contains(where: { $0.type == .custom }) {
+                    coordinator.log("  Resolve the boss's special ability \(index + 1) as printed on its stat card",
+                                    category: .info)
+                }
+                let specialActions = special[index].filter { $0.type != .custom }
+                let specialCard = AbilityModel(cardId: ability.cardId, name: ability.name,
+                                               initiative: ability.initiative, actions: specialActions)
+                var specialState = MonsterTurnState(hexesMoved: state.hexesMoved)
+                await executeCard(specialActions, pieceID: pieceID, entity: entity, monster: monster,
+                                  ability: specialCard, consumed: consumed, turn: &specialState)
+                state.hexesMoved = specialState.hexesMoved
+
+            default:
+                // Shield/retaliate are applied for the whole round when the card is revealed;
+                // element infusions happen after the type's turn; hints/custom text are display-only.
+                break
+            }
+        }
+    }
+
+    /// A shield/retaliate gained mid-turn (e.g. from a consumed element) lasts until the end of the round.
+    private func applyRoundBonus(_ action: ActionModel, to entity: GameMonsterEntity) {
+        if action.type == .shield {
+            let total = (entity.shield?.value?.intValue ?? 0) + (action.value?.intValue ?? 0)
+            entity.shield = ActionModel(type: .shield, value: .int(total))
+        } else {
+            entity.retaliate.append(action)
+        }
+    }
+
+    // MARK: - Non-attack actions
+
+    /// Heal X: the monster heals itself or an ally within range, whichever has lost the most HP (p.31).
+    private func performHeal(_ action: ActionModel, pieceID: PieceID, entity: GameMonsterEntity,
+                             monster: GameMonster, consumed: Set<UUID>) {
+        guard let coordinator, let position = coordinator.boardState.piecePositions[pieceID] else { return }
+        var amount = action.value?.intValue ?? 0
+        var range: Int?
+        var selfOnly = false
+        for sub in action.subActions ?? [] {
+            switch sub.type {
+            case .range: range = sub.value?.intValue
+            case .specialTarget: selfOnly = sub.value?.stringValue == "self"
+            case .element where consumed.contains(sub.id):
+                for bonus in sub.subActions ?? [] where bonus.type == .heal {
+                    amount += MonsterAbility.signedValue(bonus)
                 }
             default: break
             }
         }
-        return (m, a, r, conditions)
+
+        var candidates: [PieceID] = [pieceID]
+        if let range, !selfOnly {
+            for (other, coord) in coordinator.boardState.piecePositions where other != pieceID {
+                guard case .monster = other, !coordinator.areEnemies(pieceID, other),
+                      position.distance(to: coord) <= range,
+                      LineOfSight.hasLOS(from: position, to: coord, board: coordinator.boardState) else { continue }
+                candidates.append(other)
+            }
+        }
+        let target = candidates.max { a, b in
+            let lostA = coordinator.entity(for: a).map { $0.maxHealth - $0.health } ?? 0
+            let lostB = coordinator.entity(for: b).map { $0.maxHealth - $0.health } ?? 0
+            return lostA < lostB
+        } ?? pieceID
+        let healed = coordinator.heal(target, amount: amount, source: pieceID)
+        coordinator.log("  \(coordinator.pieceLabel(pieceID)) → \(coordinator.pieceLabel(target)): Heal \(amount) (+\(healed))",
+                        category: .heal)
     }
 
-    private func getDefenderInfo(target: PieceID, gameManager: GameManager) -> (health: Int, shield: Int, retaliate: (value: Int, range: Int)) {
-        switch target {
-        case .character(let charID):
-            if let char = gameManager.game.characters.first(where: { $0.id == charID }) {
-                let shield = CombatResolver.totalShield(shield: char.shield, shieldPersistent: char.shieldPersistent)
-                let ret = CombatResolver.retaliateInfo(retaliate: char.retaliate, retaliatePersistent: char.retaliatePersistent)
-                return (char.health, shield, ret)
-            }
-        case .summon(let summonID):
-            for char in gameManager.game.characters {
-                if let summon = char.summons.first(where: { $0.id == summonID }) {
-                    let shield = CombatResolver.totalShield(shield: summon.shield, shieldPersistent: summon.shieldPersistent)
-                    let ret = CombatResolver.retaliateInfo(retaliate: summon.retaliate, retaliatePersistent: summon.retaliatePersistent)
-                    return (summon.health, shield, ret)
+    /// Conditions, push or pull applied to the figures named by a `specialTarget`
+    /// (self, adjacent enemies, enemies within range N, allies within range N…).
+    private func performTargetedEffect(_ action: ActionModel, pieceID: PieceID, monster: GameMonster,
+                                       baseRange: Int) async {
+        guard let coordinator else { return }
+        let parts = action.type == .concatenation ? (action.subActions ?? []) : [action] + (action.subActions ?? [])
+        let spec = parts.first { $0.type == .specialTarget }?.value?.stringValue
+        let targets = figures(for: spec, from: pieceID, monster: monster, baseRange: baseRange)
+
+        for part in parts {
+            switch part.type {
+            case .condition:
+                guard let name = part.value?.stringValue, let condition = ConditionName(rawValue: name) else { continue }
+                for target in targets where coordinator.isOnBoard(target) {
+                    coordinator.applyCondition(condition, to: target)
                 }
-            }
-        default:
-            break
-        }
-        return (0, 0, (0, 1))
-    }
-
-    private func isConditionActive(_ condition: ConditionName, on target: PieceID, gameManager: GameManager) -> Bool {
-        switch target {
-        case .character(let charID):
-            if let char = gameManager.game.characters.first(where: { $0.id == charID }) {
-                return char.entityConditions.contains(where: { $0.name == condition && !$0.expired })
-            }
-        case .summon(let summonID):
-            for char in gameManager.game.characters {
-                if let summon = char.summons.first(where: { $0.id == summonID }) {
-                    return summon.entityConditions.contains(where: { $0.name == condition && !$0.expired })
+            case .push, .pull:
+                let steps = part.value?.intValue ?? 0
+                guard steps > 0, let origin = coordinator.boardState.piecePositions[pieceID] else { continue }
+                for target in targets where target != pieceID && coordinator.isOnBoard(target) {
+                    await coordinator.performPushPull(target: target, attackerPos: origin, steps: steps,
+                                                      isPush: part.type == .push)
                 }
+            default:
+                break
             }
-        default:
-            break
-        }
-        return false
-    }
-
-    private func applyDamage(_ damage: Int, to target: PieceID, gameManager: GameManager) {
-        switch target {
-        case .character(let charID):
-            if let char = gameManager.game.characters.first(where: { $0.id == charID }) {
-                gameManager.entityManager.changeHealth(char, amount: -damage)
-            }
-        case .summon(let summonID):
-            for char in gameManager.game.characters {
-                if let summon = char.summons.first(where: { $0.id == summonID }) {
-                    gameManager.entityManager.changeHealth(summon, amount: -damage)
-                    break
-                }
-            }
-        default:
-            break
         }
     }
 
-    /// Prompt the player for damage mitigation. Returns true if damage was fully negated.
-    private func promptDamageMitigation(
-        characterID: String,
-        damage: Int,
-        source: String,
-        coordinator: BoardCoordinator,
-        gameManager: GameManager
-    ) async -> Bool {
-        guard let character = gameManager.game.characters.first(where: { $0.id == characterID }) else {
-            return false
-        }
+    /// Resolve a `specialTarget` value to the affected figures.
+    private func figures(for spec: String?, from pieceID: PieceID, monster: GameMonster, baseRange: Int) -> [PieceID] {
+        guard let coordinator, let position = coordinator.boardState.piecePositions[pieceID],
+              let game = gameManager?.game else { return [] }
+        let raw = (spec ?? "self").lowercased()
+        if raw == "self" { return [pieceID] }
 
-        // Check if mitigation is even possible
-        let canLoseHand = !character.handCards.isEmpty
-        let canLoseDiscard = character.discardedCards.count >= 2
-
-        // If no mitigation options, just take the damage
-        guard canLoseHand || canLoseDiscard else { return false }
-
-        // Show the prompt and wait for player choice
-        let choice = await withCheckedContinuation { (continuation: CheckedContinuation<BoardCoordinator.DamageMitigationChoice, Never>) in
-            coordinator.pendingDamage = BoardCoordinator.PendingDamage(
-                characterID: characterID,
-                damage: damage,
-                sourceDescription: source,
-                continuation: continuation
-            )
-        }
-
-        switch choice {
-        case .takeDamage:
-            return false
-
-        case .loseHandCard(let cardIndex):
-            guard cardIndex < character.handCards.count else { return false }
-            let cardId = character.handCards.remove(at: cardIndex)
-            character.lostCards.append(cardId)
-            coordinator.log("  \(characterID): Lost hand card to negate \(damage) damage", category: .damage)
-            return true
-
-        case .loseDiscardCards(let indices):
-            // Remove in reverse order so indices stay valid
-            let sorted = indices.sorted(by: >)
-            for idx in sorted {
-                guard idx < character.discardedCards.count else { continue }
-                let cardId = character.discardedCards.remove(at: idx)
-                character.lostCards.append(cardId)
+        let wantsEnemies = raw.hasPrefix("enem")
+        let range: Int = {
+            if raw.contains("adjacent") { return 1 }
+            if let colon = raw.firstIndex(of: ":"), let n = Int(raw[raw.index(after: colon)...]) { return n }
+            return max(1, baseRange)
+        }()
+        let pool: [PieceID] = wantsEnemies
+            ? MonsterAI.gatherEnemies(board: coordinator.boardState, monster: monster, gameState: game)
+            : coordinator.boardState.piecePositions.keys.filter {
+                $0 != pieceID && !coordinator.areEnemies(pieceID, $0)
             }
-            coordinator.log("  \(characterID): Lost 2 discard cards to negate \(damage) damage", category: .damage)
-            return true
+        let inRange = pool.filter { id in
+            guard let coord = coordinator.boardState.piecePositions[id] else { return false }
+            return position.distance(to: coord) <= range
+                && LineOfSight.hasLOS(from: position, to: coord, board: coordinator.boardState)
+        }
+        if raw.hasPrefix("enemyadjacent") || raw.hasPrefix("allyadjacent") {
+            return Array(inRange.prefix(1))
+        }
+        return inRange
+    }
+
+    /// Monster loot: pick up every money token within range; those tokens are lost (p.31).
+    private func performLoot(range: Int, pieceID: PieceID) {
+        guard let coordinator, let position = coordinator.boardState.piecePositions[pieceID] else { return }
+        var taken = 0
+        for coord in Array(coordinator.boardState.lootTokens.keys) where position.distance(to: coord) <= range {
+            taken += coordinator.boardState.takeLoot(at: coord)
+            coordinator.boardScene?.removeLootSprite(at: coord, offsetCol: coordinator.offsetCol,
+                                                     offsetRow: coordinator.offsetRow)
+        }
+        if taken > 0 {
+            coordinator.log("  \(coordinator.pieceLabel(pieceID)): Looted \(taken) money token(s)", category: .loot)
         }
     }
 
-    private func markDead(target: PieceID, gameManager: GameManager) {
-        switch target {
-        case .character(let charID):
-            if let char = gameManager.game.characters.first(where: { $0.id == charID }) {
-                char.exhausted = true
+    /// Monster summon: place the summoned monster in an empty adjacent hex, as close to an enemy
+    /// as possible. It doesn't act this round and drops no money token (p.31).
+    private func performSummon(_ action: ActionModel, pieceID: PieceID) {
+        guard let coordinator, let game = gameManager?.game,
+              let specs = action.monsterSummons else { return }
+        let characterCount = max(2, game.characters.filter { !$0.absent }.count)
+        for spec in specs {
+            let type = spec.type(forPlayerCount: characterCount)
+            if !coordinator.summonMonster(name: spec.name, type: type, near: pieceID) {
+                coordinator.log("  \(coordinator.pieceLabel(pieceID)): Summon \(spec.name) failed", category: .info)
             }
-        case .monster(let name, let standee):
-            if let monster = gameManager.game.monsters.first(where: { $0.name == name }),
-               let entity = monster.entities.first(where: { $0.number == standee }) {
-                entity.dead = true
-            }
-        case .summon(let summonID):
-            for char in gameManager.game.characters {
-                if let summon = char.summons.first(where: { $0.id == summonID }) {
-                    summon.dead = true
-                    break
-                }
-            }
-        default:
-            break
         }
     }
 }

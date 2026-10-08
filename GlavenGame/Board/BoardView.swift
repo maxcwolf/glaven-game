@@ -121,7 +121,7 @@ struct BoardView: View {
                coordinator.currentTurnIndex >= 0,
                coordinator.currentTurnIndex < coordinator.turnOrder.count {
                 let entry = coordinator.turnOrder[coordinator.currentTurnIndex]
-                Text("Turn: \(figureName(entry.figure)) (\(Int(entry.initiative)))")
+                Text("Turn: \(figureName(entry.figure)) (\(Int(entry.initiative.rounded(.up))))")
                     .font(.subheadline)
                     .foregroundStyle(.yellow)
                     .padding(.horizontal, 10)
@@ -323,6 +323,25 @@ struct BoardView: View {
                             }
                             .buttonStyle(.bordered)
                             .tint(.gray)
+                        }
+
+                        if !playerTurn.hasActed {
+                            // Either card may provide the top half, and either half may go first.
+                            HStack(spacing: 8) {
+                                Button("Swap Cards") {
+                                    playerTurn.swapCards()
+                                }
+                                .buttonStyle(.bordered)
+                                .controlSize(.small)
+                                .help("Use the other card's top half and this card's bottom half")
+
+                                Toggle("Bottom first", isOn: Binding(
+                                    get: { playerTurn.bottomFirst },
+                                    set: { playerTurn.setBottomFirst($0) }
+                                ))
+                                .toggleStyle(.button)
+                                .controlSize(.small)
+                            }
                         }
 
                         HStack(spacing: 8) {
@@ -1296,8 +1315,8 @@ struct BoardView: View {
 
                     Divider().overlay(.white.opacity(0.2))
 
-                    // Show the randomly selected card
-                    if let card = deckData?.abilities.first(where: { $0.cardId == pending.randomCardId }) {
+                    // The random card is only revealed once the player has decided to rest (p.25).
+                    if pending.committed, let card = deckData?.abilities.first(where: { $0.cardId == pending.randomCardId }) {
                         VStack(spacing: 8) {
                             Text("This card will be lost:")
                                 .font(.caption.weight(.medium))
@@ -1329,30 +1348,40 @@ struct BoardView: View {
 
                     // Action buttons
                     HStack(spacing: 12) {
-                        Button {
-                            coordinator.resolveShortRest()
-                        } label: {
-                            Label("Accept", systemImage: "checkmark.circle.fill")
-                        }
-                        .buttonStyle(.borderedProminent)
-                        .tint(.green)
+                        if pending.committed {
+                            Button {
+                                coordinator.resolveShortRest()
+                            } label: {
+                                Label("Accept", systemImage: "checkmark.circle.fill")
+                            }
+                            .buttonStyle(.borderedProminent)
+                            .tint(.green)
 
-                        Button {
-                            coordinator.rerollShortRest()
-                        } label: {
-                            Label("Take 1 Damage to Re-pick", systemImage: "arrow.triangle.2.circlepath")
-                        }
-                        .buttonStyle(.borderedProminent)
-                        .tint(.orange)
-                        .disabled(pending.rerollUsed)
+                            Button {
+                                coordinator.rerollShortRest()
+                            } label: {
+                                Label("Take 1 Damage to Re-pick", systemImage: "arrow.triangle.2.circlepath")
+                            }
+                            .buttonStyle(.borderedProminent)
+                            .tint(.orange)
+                            .disabled(pending.rerollUsed)
+                        } else {
+                            Button {
+                                coordinator.commitShortRest()
+                            } label: {
+                                Label("Short Rest", systemImage: "moon.zzz.fill")
+                            }
+                            .buttonStyle(.borderedProminent)
+                            .tint(.cyan)
 
-                        Button {
-                            coordinator.skipShortRest()
-                        } label: {
-                            Label("Skip Rest", systemImage: "forward.fill")
+                            Button {
+                                coordinator.skipShortRest()
+                            } label: {
+                                Label("Skip Rest", systemImage: "forward.fill")
+                            }
+                            .buttonStyle(.bordered)
+                            .tint(.gray)
                         }
-                        .buttonStyle(.bordered)
-                        .tint(.gray)
                     }
                 }
                 .padding(24)

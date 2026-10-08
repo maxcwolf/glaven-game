@@ -9,6 +9,10 @@ enum PlayerTurnPhase {
 }
 
 /// Controls a single player character's turn on the board.
+///
+/// On their turn a character performs the top action of one of their two cards and the bottom
+/// action of the other, in either order; any card can instead be used for a default Attack 2
+/// (top) or Move 2 (bottom), and is then always discarded (GH p.16).
 @Observable
 final class PlayerTurnController {
     var phase: PlayerTurnPhase = .selectTopCard
@@ -20,11 +24,28 @@ final class PlayerTurnController {
     var currentActionIndex: Int = 0
     var isLongRest: Bool = false
 
+    /// Perform the bottom half before the top half.
+    private(set) var bottomFirst: Bool = false
+    /// Whether any action has been performed yet (cards can only be rearranged before that).
+    private(set) var hasActed: Bool = false
+    /// Halves played as the default Attack 2 / Move 2 — such cards always go to the discard pile.
+    private(set) var topUsedAsDefault = false
+    private(set) var bottomUsedAsDefault = false
+    /// A default Attack 2 / Move 2 is waiting for its target or destination.
+    private var defaultAttackPending = false
+    /// An action is waiting for player input or still resolving (attack, summon placement…).
+    private(set) var awaitingAsync = false
+
     /// Pierce, push, pull, and conditions extracted from the current attack's sub-actions.
     var pendingPierce: Int = 0
     var pendingPush: Int = 0
     var pendingPull: Int = 0
     var pendingConditions: [ConditionName] = []
+    /// Attack value and range of the attack being resolved (including element bonuses).
+    private var pendingAttackValue: Int = 2
+    private var pendingAttackRange: Int = 1
+    /// Area-of-effect pattern of the attack being resolved, if any.
+    private(set) var pendingAreaPattern: String?
 
     private weak var coordinator: BoardCoordinator?
     private weak var gameManager: GameManager?
@@ -35,6 +56,10 @@ final class PlayerTurnController {
         self.gameManager = gameManager
     }
 
+    private var character: GameCharacter? {
+        gameManager?.game.characters.first { $0.id == characterID }
+    }
+
     // MARK: - Card Selection
 
     /// Set the two selected cards and which is used for top/bottom.
@@ -42,16 +67,30 @@ final class PlayerTurnController {
         self.topCard = top
         self.bottomCard = bottom
         self.topActions = top.actions ?? []
-        self.bottomActions = bottom.bottomActions ?? bottom.actions ?? []
-        self.phase = .executeTopAction
+        self.bottomActions = bottom.bottomActions ?? []
+        self.phase = bottomFirst ? .executeBottomAction : .executeTopAction
         self.currentActionIndex = 0
+    }
+
+    /// Use the other card for the top half (allowed until the first action is performed).
+    func swapCards() {
+        guard !hasActed, let top = topCard, let bottom = bottomCard else { return }
+        selectCards(top: bottom, bottom: top)
+        coordinator?.log("\(characterID): Top from \(bottom.name ?? "?"), bottom from \(top.name ?? "?")", category: .round)
+    }
+
+    /// Choose whether to perform the bottom half first (allowed until the first action).
+    func setBottomFirst(_ value: Bool) {
+        guard !hasActed else { return }
+        bottomFirst = value
+        phase = value ? .executeBottomAction : .executeTopAction
+        currentActionIndex = 0
     }
 
     /// Select long rest instead of cards.
     func selectLongRest() {
         isLongRest = true
         phase = .turnComplete
-        executeLongRest()
     }
 
     // MARK: - Action Execution
@@ -59,6 +98,14 @@ final class PlayerTurnController {
     /// Execute the current action in the current phase.
     func executeCurrentAction() {
         guard let coordinator = coordinator else { return }
+        guard !defaultAttackPending, !awaitingAsync else { return }
+
+        // A character exhausted during its own turn (e.g. by retaliate) takes no further actions;
+        // its cards were already moved to the lost pile.
+        if character?.exhausted ?? true {
+            phase = .turnComplete
+            return
+        }
 
         let actions: [ActionModel]
         switch phase {
@@ -72,89 +119,93 @@ final class PlayerTurnController {
             return
         }
 
+        hasActed = true
         let action = actions[currentActionIndex]
-        let isAsync = action.type == .attack || action.type == .summon || action.type == .push || action.type == .pull
-            || (action.type == .condition && conditionNeedsTargetSelection(action))
-            || (action.type == .heal && healNeedsTargetSelection(action))
-        executeAction(action, coordinator: coordinator)
-        // Attack and summon actions are async (player must select a target/hex),
-        // so don't advance the index yet — it's advanced in advanceAfterAsyncAction().
+        // Async actions (target/hex selection) advance in advanceAfterAsyncAction() — which may
+        // already have happened synchronously (e.g. an attack with no valid target).
+        awaitingAsync = true
+        let isAsync = executeAction(action, coordinator: coordinator)
         if !isAsync {
+            awaitingAsync = false
             currentActionIndex += 1
         }
     }
 
-    /// Advance the action index after an async action (attack/summon) resolves.
+    /// Advance the action index after an async action (attack/summon/condition/heal) resolves.
     func advanceAfterAsyncAction() {
+        if defaultAttackPending {
+            defaultAttackPending = false
+            awaitingAsync = false
+            advancePhase()
+            return
+        }
+        guard awaitingAsync else { return }
+        awaitingAsync = false
         currentActionIndex += 1
     }
 
-    /// Skip remaining actions in the current phase.
+    /// Skip remaining actions in the current phase. A pending target/hex selection is
+    /// cancelled; an attack that is already resolving must finish first.
     func skipRemainingActions() {
+        guard let coordinator else { return }
+        if defaultAttackPending || awaitingAsync {
+            switch coordinator.interactionMode {
+            case .idle, .watchingMonsterTurn, .selectingPushPullHex:
+                return
+            default:
+                coordinator.interactionMode = .idle
+                coordinator.boardScene?.clearHighlights()
+                defaultAttackPending = false
+                awaitingAsync = false
+            }
+        }
         advancePhase()
     }
 
-    /// Use default action for the current phase (Attack 2 for top, Move 2 for bottom).
+    /// Use the default action for the current half instead of the printed one:
+    /// Attack 2 on the top half, Move 2 on the bottom half.
     func useDefaultAction() {
-        guard let coordinator = coordinator else { return }
+        guard let coordinator = coordinator, !hasActed || currentActionIndex == 0, !defaultAttackPending else { return }
+        hasActed = true
 
         let pieceID = PieceID.character(characterID)
+        guard !awaitingAsync else { return }
         switch phase {
         case .executeTopAction:
-            // Default top: Attack 2
-            coordinator.beginAttackAction(pieceID: pieceID, range: 1)
+            topUsedAsDefault = true
+            resetPendingAttack(value: 2, range: 1)
+            defaultAttackPending = true
             coordinator.log("\(characterID): Default Attack 2", category: .attack)
+            coordinator.beginAttackAction(pieceID: pieceID, range: 1)
         case .executeBottomAction:
-            // Default bottom: Move 2
-            coordinator.beginMoveAction(pieceID: pieceID, moveRange: 2)
+            bottomUsedAsDefault = true
+            defaultAttackPending = true // ends the half once the move resolves
             coordinator.log("\(characterID): Default Move 2", category: .move)
+            coordinator.beginMoveAction(pieceID: pieceID, moveRange: 2)
         default:
             break
         }
-        advancePhase()
     }
 
     // MARK: - Queries
 
-    /// The current attack value based on the active action.
-    func currentAttackValue() -> Int {
-        let actions: [ActionModel]
-        switch phase {
-        case .executeTopAction: actions = topActions
-        case .executeBottomAction: actions = bottomActions
-        default: return 2
-        }
-        guard currentActionIndex < actions.count else { return 2 }
-        let action = actions[currentActionIndex]
-        return action.type == .attack ? (action.value?.intValue ?? 2) : 2
-    }
+    /// The attack value of the attack currently being resolved.
+    func currentAttackValue() -> Int { pendingAttackValue }
 
-    /// The current attack range based on the active action.
-    func currentAttackRange() -> Int {
-        let actions: [ActionModel]
-        switch phase {
-        case .executeTopAction: actions = topActions
-        case .executeBottomAction: actions = bottomActions
-        default: return 1
-        }
-        guard currentActionIndex < actions.count else { return 1 }
-        let action = actions[currentActionIndex]
-        if action.type == .attack {
-            for sub in action.subActions ?? [] {
-                if sub.type == .range, let r = sub.value?.intValue { return r }
-            }
-        }
-        return 1
-    }
+    /// The range of the attack currently being resolved.
+    func currentAttackRange() -> Int { pendingAttackRange }
 
     // MARK: - Private
 
     private func advancePhase() {
-        switch phase {
-        case .executeTopAction:
+        switch (phase, bottomFirst) {
+        case (.executeTopAction, false):
             phase = .executeBottomAction
             currentActionIndex = 0
-        case .executeBottomAction:
+        case (.executeBottomAction, true):
+            phase = .executeTopAction
+            currentActionIndex = 0
+        case (.executeTopAction, true), (.executeBottomAction, false):
             phase = .turnComplete
             finishTurn()
         default:
@@ -162,61 +213,124 @@ final class PlayerTurnController {
         }
     }
 
-    private func executeAction(_ action: ActionModel, coordinator: BoardCoordinator) {
+    private func resetPendingAttack(value: Int, range: Int) {
+        pendingAttackValue = value
+        pendingAttackRange = range
+        pendingAreaPattern = nil
+        pendingPierce = 0
+        pendingPush = 0
+        pendingPull = 0
+        pendingConditions = []
+    }
+
+    /// Pay for every element-consume augment on the action that can be paid for and return
+    /// their bonus effects (GH p.24: all listed elements are needed for one augment).
+    private func consumeAugments(of action: ActionModel) -> [ActionModel] {
+        guard let game = gameManager?.game else { return [] }
+        var bonus: [ActionModel] = []
+        for sub in action.subActions ?? [] where MonsterAbility.isConsume(sub) {
+            let elements = MonsterAbility.elements(of: sub)
+            guard let used = game.consumeElements(elements) else { continue }
+            coordinator?.log("\(characterID): Consumed \(used.map(\.rawValue).joined(separator: " + "))", category: .element)
+            for effect in sub.subActions ?? [] {
+                if effect.type == .concatenation {
+                    bonus.append(contentsOf: effect.subActions ?? [])
+                } else {
+                    bonus.append(effect)
+                }
+            }
+        }
+        return bonus
+    }
+
+    /// Experience printed in a bonus (e.g. "card experience:1" inside a consume augment).
+    private func grantBonusExperience(_ bonus: [ActionModel]) {
+        for effect in bonus {
+            if effect.type == .experience, let xp = effect.value?.intValue {
+                grantExperience(xp)
+            } else if effect.type == .card, let value = effect.value?.stringValue, value.hasPrefix("experience:"),
+                      let xp = Int(value.dropFirst("experience:".count)) {
+                grantExperience(xp)
+            }
+        }
+    }
+
+    private func grantExperience(_ xp: Int) {
+        guard let character, xp > 0 else { return }
+        character.experience += xp
+        coordinator?.log("\(characterID): +\(xp) XP", category: .info)
+    }
+
+    /// Execute one action. Returns true if it waits for player input (and advances later).
+    @discardableResult
+    private func executeAction(_ action: ActionModel, coordinator: BoardCoordinator) -> Bool {
         let pieceID = PieceID.character(characterID)
 
         switch action.type {
-        case .move:
-            let moveValue = action.value?.intValue ?? 2
-            coordinator.beginMoveAction(pieceID: pieceID, moveRange: moveValue)
-            coordinator.log("\(characterID): Move \(moveValue)", category: .move)
-
-        case .jump:
-            let jumpValue = action.value?.intValue ?? 2
-            coordinator.beginJumpMoveAction(pieceID: pieceID, moveRange: jumpValue)
-            coordinator.log("\(characterID): Jump \(jumpValue)", category: .move)
-
-        case .fly:
-            let flyValue = action.value?.intValue ?? 2
-            coordinator.beginFlyMoveAction(pieceID: pieceID, moveRange: flyValue)
-            coordinator.log("\(characterID): Fly \(flyValue)", category: .move)
+        case .move, .jump, .fly:
+            let bonus = consumeAugments(of: action)
+            var moveValue = action.value?.intValue ?? 2
+            var mode: MoveMode = action.type == .jump ? .jump : (action.type == .fly ? .fly : .normal)
+            for effect in (action.subActions ?? []) + bonus {
+                if effect.type == .jump { mode = .jump }
+                if effect.type == .fly { mode = .fly }
+                if effect.type == .move { moveValue += MonsterAbility.signedValue(effect) }
+            }
+            grantBonusExperience(bonus)
+            let label = mode == .jump ? "Jump" : (mode == .fly ? "Fly" : "Move")
+            coordinator.log("\(characterID): \(label) \(moveValue)", category: .move)
+            coordinator.beginMoveAction(pieceID: pieceID, moveRange: moveValue, mode: mode)
+            return true
 
         case .teleport:
             let teleportValue = action.value?.intValue ?? 2
-            coordinator.beginTeleportAction(pieceID: pieceID, range: teleportValue)
             coordinator.log("\(characterID): Teleport \(teleportValue)", category: .move)
+            coordinator.beginTeleportAction(pieceID: pieceID, range: teleportValue)
+            return true
 
         case .attack:
-            var range = 1 // Default melee
+            var range = 1
             var targetCount = 1
-            pendingPierce = 0
-            pendingPush = 0
-            pendingPull = 0
-            pendingConditions = []
-            for sub in action.subActions ?? [] {
-                if sub.type == .range, let r = sub.value?.intValue {
-                    range = r
-                }
-                if sub.type == .target, let t = sub.value?.intValue, t > 1 {
-                    targetCount = t
-                }
-                if sub.type == .pierce, let p = sub.value?.intValue {
-                    pendingPierce = p
-                }
-                if sub.type == .push, let p = sub.value?.intValue {
-                    pendingPush = p
-                }
-                if sub.type == .pull, let p = sub.value?.intValue {
-                    pendingPull = p
-                }
-                if sub.type == .condition,
-                   let condName = sub.value?.stringValue,
-                   let cond = ConditionName(rawValue: condName) {
-                    pendingConditions.append(cond)
+            var allTargets: String?
+            resetPendingAttack(value: action.value?.intValue ?? 2, range: 1)
+            // Element augments are paid only when the attack has a target.
+            let hasTarget = !coordinator.targetableEnemies(of: pieceID, range: attackRange(of: action)).isEmpty
+            let bonus = hasTarget ? consumeAugments(of: action) : []
+            for sub in (action.subActions ?? []) + bonus {
+                switch sub.type {
+                case .attack: pendingAttackValue += MonsterAbility.signedValue(sub)
+                case .range:
+                    if let r = sub.value?.intValue {
+                        range = sub.valueType == .add || sub.valueType == .plus ? range + r : r
+                    }
+                case .target: if let t = sub.value?.intValue { targetCount = max(targetCount, t) }
+                case .pierce: if let p = sub.value?.intValue { pendingPierce += p }
+                case .push: if let p = sub.value?.intValue { pendingPush += p }
+                case .pull: if let p = sub.value?.intValue { pendingPull += p }
+                case .condition:
+                    if let name = sub.value?.stringValue, let cond = ConditionName(rawValue: name) {
+                        pendingConditions.append(cond)
+                    }
+                case .area:
+                    if let pattern = sub.value?.stringValue, !pattern.isEmpty { pendingAreaPattern = pattern }
+                case .specialTarget:
+                    allTargets = sub.value?.stringValue
+                default: break
                 }
             }
-            let attackValue = action.value?.intValue ?? 2
-            coordinator.beginAttackAction(pieceID: pieceID, range: range, targetCount: targetCount)
+            if hasTarget { grantBonusExperience(bonus) }
+            pendingAttackRange = range
+
+            // "Attack all adjacent enemies" / "all enemies within range N": every such enemy is
+            // a separate attack of the same action.
+            if let spec = allTargets?.lowercased(), spec.hasPrefix("enemiesadjacent") || spec.hasPrefix("enemiesrange") {
+                let reach: Int = spec.hasPrefix("enemiesadjacent")
+                    ? 1 : Int(spec.split(separator: ":").last ?? "") ?? range
+                let exact = spec.hasPrefix("enemiesrangeexact")
+                coordinator.log("\(characterID): Attack \(pendingAttackValue) — all enemies within \(reach)", category: .attack)
+                coordinator.attackAllEnemies(from: pieceID, within: reach, exactly: exact)
+                return true
+            }
             var extras: [String] = []
             if targetCount > 1 { extras.append("Target \(targetCount)") }
             if pendingPierce > 0 { extras.append("Pierce \(pendingPierce)") }
@@ -224,35 +338,35 @@ final class PlayerTurnController {
             if pendingPull > 0 { extras.append("Pull \(pendingPull)") }
             for cond in pendingConditions { extras.append(cond.rawValue.capitalized) }
             let extrasStr = extras.isEmpty ? "" : ", " + extras.joined(separator: ", ")
-            coordinator.log("\(characterID): Attack \(attackValue), Range \(range)\(extrasStr)", category: .attack)
+            coordinator.log("\(characterID): Attack \(pendingAttackValue), Range \(range)\(extrasStr)", category: .attack)
+            coordinator.beginAttackAction(pieceID: pieceID, range: range, targetCount: targetCount)
+            return true
 
         case .heal:
-            let healValue = action.value?.intValue ?? 0
+            let bonus = consumeAugments(of: action)
+            var healValue = action.value?.intValue ?? 0
             var range = 0
-            for sub in action.subActions ?? [] {
+            for sub in (action.subActions ?? []) + bonus {
                 if sub.type == .range, let r = sub.value?.intValue { range = r }
+                if sub.type == .heal { healValue += MonsterAbility.signedValue(sub) }
             }
+            grantBonusExperience(bonus)
             if range > 0 {
-                // Ranged heal: player selects an ally (or self) within range
                 coordinator.log("\(characterID): Heal \(healValue), Range \(range) — select target", category: .heal)
                 coordinator.beginHealAction(pieceID: pieceID, healValue: healValue, range: range)
-            } else {
-                // Self-heal (no range)
-                coordinator.log("\(characterID): Heal \(healValue)", category: .heal)
-                if let character = gameManager?.game.characters.first(where: { $0.id == characterID }) {
-                    gameManager?.entityManager.changeHealth(character, amount: healValue)
-                }
+                return true
             }
+            let healed = coordinator.heal(pieceID, amount: healValue, source: pieceID)
+            coordinator.log("\(characterID): Heal \(healValue), self (+\(healed))", category: .heal)
 
         case .condition:
             guard let condName = action.value?.stringValue,
                   let cond = ConditionName(rawValue: condName) else { break }
-            let spec = conditionTargetSpec(action)
-            switch spec {
+            switch conditionTargetSpec(action) {
             case .singleEnemy(let range):
-                // Async: player selects one enemy in range
                 coordinator.beginConditionAction(pieceID: pieceID, condition: cond, range: range)
                 coordinator.log("\(characterID): \(cond.rawValue) — select target", category: .condition)
+                return true
             case .allEnemies(let range):
                 coordinator.applyConditionToAllEnemies(from: pieceID, condition: cond, range: range ?? 1)
                 coordinator.log("\(characterID): \(cond.rawValue) → all enemies (range \(range ?? 1))", category: .condition)
@@ -260,38 +374,17 @@ final class PlayerTurnController {
                 coordinator.applyConditionToAllAllies(from: pieceID, condition: cond, range: range ?? 999)
                 coordinator.log("\(characterID): \(cond.rawValue) → all allies", category: .condition)
             case .selfAndAllAllies(let range):
-                applyConditionToSelf(cond, coordinator: coordinator)
+                coordinator.applyCondition(cond, to: pieceID)
                 coordinator.applyConditionToAllAllies(from: pieceID, condition: cond, range: range ?? 999)
             case .`self`:
-                applyConditionToSelf(cond, coordinator: coordinator)
+                coordinator.applyCondition(cond, to: pieceID)
             }
 
-        case .shield:
-            let shieldValue = action.value?.intValue ?? 0
-            if let character = gameManager?.game.characters.first(where: { $0.id == characterID }) {
-                character.shield = ActionModel(type: .shield, value: .int(shieldValue))
-                coordinator.log("\(characterID): Shield \(shieldValue)", category: .condition)
-            }
-
-        case .retaliate:
-            let retValue = action.value?.intValue ?? 0
-            var retRange = 1
-            for sub in action.subActions ?? [] {
-                if sub.type == .range, let r = sub.value?.intValue { retRange = r }
-            }
-            if let character = gameManager?.game.characters.first(where: { $0.id == characterID }) {
-                let retAction = ActionModel(type: .retaliate, value: .int(retValue),
-                                            subActions: retRange > 1 ? [ActionModel(type: .range, value: .int(retRange))] : nil)
-                character.retaliate = [retAction]
-                coordinator.log("\(characterID): Retaliate \(retValue)\(retRange > 1 ? ", Range \(retRange)" : "")", category: .condition)
-            }
+        case .shield, .retaliate:
+            applyDefensiveBonus(action)
 
         case .experience:
-            let xpValue = action.value?.intValue ?? 1
-            if let character = gameManager?.game.characters.first(where: { $0.id == characterID }) {
-                character.experience += xpValue
-                coordinator.log("\(characterID): +\(xpValue) XP (total: \(character.experience))", category: .info)
-            }
+            grantExperience(action.value?.intValue ?? 1)
 
         case .loot:
             let lootRange = action.value?.intValue ?? 1
@@ -299,32 +392,27 @@ final class PlayerTurnController {
             coordinator.collectLootInRange(pieceID: pieceID, range: lootRange)
 
         case .summon:
-            executeSummon(action, coordinator: coordinator)
+            return executeSummon(action, coordinator: coordinator)
 
-        case .push:
-            let pushValue = action.value?.intValue ?? 1
-            coordinator.log("\(characterID): Push \(pushValue)", category: .move)
-            coordinator.beginStandalonePushPull(steps: pushValue, isPush: true)
-
-        case .pull:
-            let pullValue = action.value?.intValue ?? 1
-            coordinator.log("\(characterID): Pull \(pullValue)", category: .move)
-            coordinator.beginStandalonePushPull(steps: pullValue, isPush: false)
-
-        case .pierce:
-            let pierceValue = action.value?.intValue ?? 0
-            coordinator.log("\(characterID): Pierce \(pierceValue)", category: .attack)
+        case .push, .pull:
+            let steps = action.value?.intValue ?? 1
+            let isPush = action.type == .push
+            let spec = action.subActions?.first { $0.type == .specialTarget }?.value?.stringValue.lowercased()
+            let range = action.subActions?.first { $0.type == .range }?.value?.intValue
+            coordinator.log("\(characterID): \(isPush ? "Push" : "Pull") \(steps)", category: .move)
+            if spec?.hasPrefix("enemiesadjacent") == true {
+                coordinator.forceMoveAllEnemies(from: pieceID, within: 1, steps: steps, isPush: isPush)
+            } else if spec?.hasPrefix("enemyadjacent") == true || range != nil {
+                coordinator.beginForcedMoveTarget(pieceID: pieceID, range: range ?? 1, steps: steps, isPush: isPush)
+            } else {
+                coordinator.beginStandalonePushPull(steps: steps, isPush: isPush)
+            }
+            return true
 
         case .suffer, .sufferDamage:
             let sufferValue = action.value?.intValue ?? 1
-            if let character = gameManager?.game.characters.first(where: { $0.id == characterID }) {
-                gameManager?.entityManager.changeHealth(character, amount: -sufferValue)
-                coordinator.log("\(characterID): Suffer \(sufferValue) damage", category: .damage)
-            }
-
-        case .damage:
-            let damageValue = action.value?.intValue ?? 1
-            coordinator.log("\(characterID): Damage \(damageValue)", category: .damage)
+            coordinator.log("\(characterID): Suffer \(sufferValue) damage", category: .damage)
+            coordinator.sufferDamage(sufferValue, to: pieceID)
 
         case .element:
             applyElementAction(action, coordinator: coordinator)
@@ -333,70 +421,85 @@ final class PlayerTurnController {
             coordinator.log("\(characterID): Refresh items", category: .info)
 
         case .removeNegativeConditions:
-            if let character = gameManager?.game.characters.first(where: { $0.id == characterID }) {
-                character.entityConditions.removeAll { !$0.name.isPositive && !$0.expired }
-                coordinator.log("\(characterID): Remove negative conditions", category: .condition)
-            }
+            character?.entityConditions.removeAll { $0.name.isNegative && !$0.permanent }
+            coordinator.log("\(characterID): Remove negative conditions", category: .condition)
 
         case .immune:
-            if let condName = action.value?.stringValue, let cond = ConditionName(rawValue: condName) {
-                if let character = gameManager?.game.characters.first(where: { $0.id == characterID }) {
-                    if !character.immunities.contains(cond) {
-                        character.immunities.append(cond)
-                    }
-                    coordinator.log("\(characterID): Immune to \(condName)", category: .condition)
-                }
+            if let condName = action.value?.stringValue, let cond = ConditionName(rawValue: condName),
+               let character, !character.immunities.contains(cond) {
+                character.immunities.append(cond)
+                coordinator.log("\(characterID): Immune to \(condName)", category: .condition)
             }
 
         case .box, .concatenation, .grid:
-            // Container actions: recursively execute their children
             for sub in action.subActions ?? [] {
                 executeAction(sub, coordinator: coordinator)
             }
 
         case .card:
-            // Card sub-actions: extract experience (format "experience:N")
+            // "experience:N" — XP for performing this half; persistent/round/lost markers are
+            // handled when the card is put away.
             if let val = action.value?.stringValue, val.hasPrefix("experience:"),
                let xp = Int(val.dropFirst("experience:".count)) {
-                if let character = gameManager?.game.characters.first(where: { $0.id == characterID }) {
-                    character.experience += xp
-                    coordinator.log("\(characterID): +\(xp) XP", category: .info)
-                }
+                grantExperience(xp)
             }
-
-        case .target, .range, .area, .specialTarget:
-            // These are sub-action modifiers, not standalone — handled when parent action runs
-            break
-
-        case .custom, .hint, .text, .nonCalc:
-            // Display-only types — no game effect
-            break
 
         default:
-            coordinator.log("\(characterID): \(action.type.rawValue)", category: .info)
+            // Range/target/area modifiers belong to their parent action; text and custom
+            // abilities are resolved by the players.
+            break
         }
 
-        // Check sub-actions for element infusions/consumptions and experience
-        for sub in action.subActions ?? [] {
-            if sub.type == .element {
+        // Infusions printed inside a non-element action happen when the action is performed;
+        // conditions on self-targeted actions apply to the character.
+        if action.type != .element && action.type != .attack {
+            for sub in action.subActions ?? [] where sub.type == .element && !MonsterAbility.isConsume(sub) {
                 applyElementAction(sub, coordinator: coordinator)
-            } else if sub.type == .experience {
-                let xpValue = sub.value?.intValue ?? 1
-                if let character = gameManager?.game.characters.first(where: { $0.id == characterID }) {
-                    character.experience += xpValue
-                    coordinator.log("\(characterID): +\(xpValue) XP", category: .info)
-                }
-            } else if sub.type == .condition {
-                // Sub-conditions within non-attack actions that target self only
-                // (attack sub-conditions are handled via pendingConditions → CombatResolver)
-                if let condName = sub.value?.stringValue, let cond = ConditionName(rawValue: condName) {
-                    let parentIsSelfTargeted = sub.subActions == nil ||
-                        sub.subActions?.contains(where: { $0.type == .specialTarget }) == false
-                    if parentIsSelfTargeted {
-                        applyConditionToSelf(cond, coordinator: coordinator)
-                    }
+            }
+        }
+        if action.type == .attack {
+            for sub in action.subActions ?? [] where sub.type == .element && !MonsterAbility.isConsume(sub) {
+                applyElementAction(sub, coordinator: coordinator)
+            }
+        }
+        if hasSpecialTargetSelf(action) && action.type != .condition {
+            for sub in action.subActions ?? [] where sub.type == .condition {
+                if let name = sub.value?.stringValue, let cond = ConditionName(rawValue: name) {
+                    coordinator.applyCondition(cond, to: pieceID)
                 }
             }
+        }
+        return false
+    }
+
+    /// Range of an attack action before augments (melee = 1).
+    private func attackRange(of action: ActionModel) -> Int {
+        action.subActions?.first { $0.type == .range }?.value?.intValue ?? 1
+    }
+
+    private func hasSpecialTargetSelf(_ action: ActionModel) -> Bool {
+        action.subActions?.contains { $0.type == .specialTarget && $0.value?.stringValue == "self" } ?? false
+    }
+
+    /// Shield/Retaliate bonuses stack (GH p.24). A persistent bonus lasts while the card is in
+    /// the active area; a round bonus until the end of the round.
+    private func applyDefensiveBonus(_ action: ActionModel) {
+        guard let character, let coordinator else { return }
+        let value = action.value?.intValue ?? 0
+        let persistent = halfMarkers(for: phase).contains("persistent")
+        if action.type == .shield {
+            let existing = persistent ? character.shieldPersistent : character.shield
+            let total = (existing?.value?.intValue ?? 0) + value
+            let stacked = ActionModel(type: .shield, value: .int(total))
+            if persistent { character.shieldPersistent = stacked } else { character.shield = stacked }
+            coordinator.log("\(characterID): Shield \(value)", category: .condition)
+        } else {
+            var range = 1
+            for sub in action.subActions ?? [] where sub.type == .range { range = sub.value?.intValue ?? 1 }
+            let bonus = ActionModel(type: .retaliate, value: .int(value),
+                                    subActions: range > 1 ? [ActionModel(type: .range, value: .int(range))] : nil)
+            if persistent { character.retaliatePersistent.append(bonus) } else { character.retaliate.append(bonus) }
+            coordinator.log("\(characterID): Retaliate \(value)\(range > 1 ? ", Range \(range)" : "")", category: .condition)
         }
     }
 
@@ -415,11 +518,14 @@ final class PlayerTurnController {
     private func conditionTargetSpec(_ action: ActionModel) -> ConditionTarget {
         guard let specValue = action.subActions?
             .first(where: { $0.type == .specialTarget })?.value?.stringValue else {
+            // A condition with a range targets one enemy in range; otherwise it targets oneself.
+            if let range = action.subActions?.first(where: { $0.type == .range })?.value?.intValue {
+                return .singleEnemy(range: range)
+            }
             return .self
         }
         let lower = specValue.lowercased()
 
-        // Parse embedded range: "enemiesRange:3" → range 3
         func embeddedRange(_ prefix: String) -> Int? {
             guard lower.hasPrefix(prefix) else { return nil }
             let suffix = lower.dropFirst(prefix.count)
@@ -435,60 +541,32 @@ final class PlayerTurnController {
             return .allEnemies(range: 1)
         case "enemies":
             return .allEnemies(range: nil)
-        case "allyadjacent":
-            return .allAllies(range: 1)  // treat as all adjacent allies for now
-        case "alliesadjacent", "alliesadjacentaffect":
+        case "allyadjacent", "alliesadjacent", "alliesadjacentaffect":
             return .allAllies(range: 1)
         case "alliesaffect":
             return .allAllies(range: nil)
         case "selfalliesaffect", "selfalliesadjacentaffect":
             return .selfAndAllAllies(range: lower.contains("adjacent") ? 1 : nil)
         default:
-            // "enemiesRange:N", "alliesRangeAffect:N"
             if let r = embeddedRange("enemiesrange:") { return .allEnemies(range: r) }
             if let r = embeddedRange("alliesrangeaffect:") { return .allAllies(range: r) }
-            // Fallback: if it mentions "enemy" → single enemy; "allies" → allies; else self
             if lower.contains("enemy") || lower.contains("enemies") { return .singleEnemy(range: 1) }
             if lower.contains("allie") || lower.contains("ally") { return .allAllies(range: 1) }
             return .self
         }
     }
 
-    /// Returns true if this condition action requires the player to select a target (async).
-    private func conditionNeedsTargetSelection(_ action: ActionModel) -> Bool {
-        if case .singleEnemy = conditionTargetSpec(action) { return true }
-        return false
-    }
+    /// Execute a summon action: create the summon and enter interactive placement mode.
+    /// Returns true when waiting for the player to place it.
+    private func executeSummon(_ action: ActionModel, coordinator: BoardCoordinator) -> Bool {
+        guard let gameManager = gameManager, let character else { return false }
 
-    /// Returns true if this heal action has a range subaction (requiring interactive target selection).
-    private func healNeedsTargetSelection(_ action: ActionModel) -> Bool {
-        return action.subActions?.contains(where: { $0.type == .range }) ?? false
-    }
-
-    /// Apply a condition to the acting character.
-    private func applyConditionToSelf(_ condition: ConditionName, coordinator: BoardCoordinator) {
-        guard let character = gameManager?.game.characters.first(where: { $0.id == characterID }) else { return }
-
-        // Don't duplicate existing non-expired conditions
-        if !character.entityConditions.contains(where: { $0.name == condition && !$0.expired }) {
-            character.entityConditions.append(EntityCondition(name: condition))
-        }
-        coordinator.log("\(characterID): \(condition.rawValue)", category: .condition)
-    }
-
-    /// Execute a summon action: create the summon entity and enter interactive placement mode.
-    private func executeSummon(_ action: ActionModel, coordinator: BoardCoordinator) {
-        guard let gameManager = gameManager,
-              let character = gameManager.game.characters.first(where: { $0.id == characterID }) else { return }
-
-        // Resolve summon name: prefer valueObject.name, fall back to action.value
         let summonName = action.summonValueObject?.name ?? action.value?.stringValue
         guard let summonName else {
             coordinator.log("\(characterID): Summon (unknown)", category: .info)
-            return
+            return false
         }
 
-        // Look up summon data from character's available summons, or use embedded valueObject stats
         let summonData: SummonDataModel
         if let found = character.characterData?.availableSummons?.first(where: { $0.name == summonName }) {
             summonData = found
@@ -496,36 +574,30 @@ final class PlayerTurnController {
             summonData = embedded.toSummonData()
         } else {
             coordinator.log("\(characterID): Summon \(summonName) — not found in character data", category: .info)
-            return
+            return false
         }
 
-        // Find empty adjacent hexes for placement
         let pieceID = PieceID.character(characterID)
-        guard let charPos = coordinator.boardState.piecePositions[pieceID] else {
-            coordinator.log("\(characterID): Summon \(summonName) — no position found", category: .info)
-            return
-        }
+        guard let charPos = coordinator.boardState.piecePositions[pieceID] else { return false }
 
-        let emptyNeighbors = charPos.neighbors.filter { coord in
-            coordinator.boardState.isPassable(coord) && !coordinator.boardState.isOccupied(coord)
-        }
-
+        // Summons are placed in an empty hex adjacent to the summoner (p.26).
+        let emptyNeighbors = charPos.neighbors.filter { coordinator.isEmptyHex($0) }
         guard !emptyNeighbors.isEmpty else {
             coordinator.log("\(characterID): Summon \(summonName) failed — no empty adjacent hex", category: .info)
-            return
+            return false
         }
 
-        // Create the summon via CharacterManager
         gameManager.characterManager.addSummon(from: summonData, for: character)
-        guard let summon = character.summons.last else { return }
+        guard let summon = character.summons.last else { return false }
 
-        // Enter interactive placement mode
         let validHexes = Set(emptyNeighbors)
         coordinator.pendingSummonPlacement = BoardCoordinator.PendingSummonPlacement(
             summonID: summon.id,
             characterID: characterID,
             summonName: summonName,
-            validHexes: validHexes
+            validHexes: validHexes,
+            remaining: max(0, (summonData.count ?? 1) - 1),
+            summonData: summonData
         )
         coordinator.interactionMode = .placingSummon(
             summonID: summon.id,
@@ -534,83 +606,79 @@ final class PlayerTurnController {
         )
         coordinator.boardScene?.highlightHexes(validHexes, color: .green, offsetCol: coordinator.offsetCol, offsetRow: coordinator.offsetRow)
         coordinator.log("\(characterID): Summoned \(summonName) — choose placement hex", category: .info)
+        return true
     }
 
     /// Infuse or consume an element based on the action's valueType.
     private func applyElementAction(_ action: ActionModel, coordinator: BoardCoordinator) {
         guard let game = gameManager?.game else { return }
-        guard let rawValue = action.value?.stringValue else { return }
-        let values = rawValue.split(separator: ":").map(String.init)
-        let isConsume = action.valueType == .minus || action.valueType == .subtract
-
-        for val in values {
-            guard let elemType = ElementType(rawValue: val) else { continue }
-            guard let idx = game.elementBoard.firstIndex(where: { $0.type == elemType }) else { continue }
-
-            if isConsume {
-                let current = game.elementBoard[idx].state
-                if current == .strong || current == .waning {
-                    game.elementBoard[idx].state = .consumed
-                    coordinator.log("\(characterID): Consumed \(val)", category: .element)
-                }
-            } else {
-                let current = game.elementBoard[idx].state
-                if current == .inert || current == .consumed {
-                    game.elementBoard[idx].state = .new
-                    coordinator.log("\(characterID): Infused \(val)", category: .element)
-                }
+        let elements = MonsterAbility.elements(of: action)
+        guard !elements.isEmpty else { return }
+        if MonsterAbility.isConsume(action) {
+            if let used = game.consumeElements(elements) {
+                coordinator.log("\(characterID): Consumed \(used.map(\.rawValue).joined(separator: " + "))", category: .element)
+            }
+        } else {
+            // Becomes strong at the end of this turn (it can't be consumed by this turn's actions).
+            for element in elements where element != .wild {
+                game.infuseElement(element)
+                coordinator.log("\(characterID): Infused \(element.rawValue)", category: .element)
             }
         }
     }
 
-    private func executeLongRest() {
-        guard let coordinator = coordinator,
-              let character = gameManager?.game.characters.first(where: { $0.id == characterID }) else { return }
+    // MARK: - Putting cards away
 
-        // Heal 2
-        gameManager?.entityManager.changeHealth(character, amount: 2)
-
-        // Lose a random card from discard
-        if !character.discardedCards.isEmpty {
-            let randomIndex = Int.random(in: 0..<character.discardedCards.count)
-            let lostCard = character.discardedCards.remove(at: randomIndex)
-            character.lostCards.append(lostCard)
-        }
-
-        // Refresh spent items (consumed items remain until scenario end)
-        character.longRest = true
-        character.spentItems.removeAll()
-
-        coordinator.log("\(characterID): Long Rest — Heal 2, lose card, refresh items", category: .rest)
+    /// "card" markers (persistent / round / lost) printed on a half, at any nesting depth.
+    private func halfMarkers(for phase: PlayerTurnPhase) -> Set<String> {
+        let actions = phase == .executeBottomAction ? bottomActions : topActions
+        return Self.markers(in: actions)
     }
 
+    static func markers(in actions: [ActionModel]) -> Set<String> {
+        var result = Set<String>()
+        for action in actions {
+            if action.type == .card, let value = action.value?.stringValue, !value.contains(":") {
+                result.insert(value)
+            }
+            result.formUnion(markers(in: action.subActions ?? []))
+        }
+        return result
+    }
+
+    /// Put both played cards away (GH p.16): a card played for a default action is discarded;
+    /// otherwise an active bonus (persistent or round) goes to the active area, a half with the
+    /// lost icon goes to the lost pile, and the rest are discarded.
     private func finishTurn() {
-        // Move cards to appropriate piles (hand → discard/lost/active)
-        guard let character = gameManager?.game.characters.first(where: { $0.id == characterID }) else { return }
-
-        if let top = topCard?.cardId {
-            if topCard?.persistent == true {
-                // Persistent cards go to active area (ongoing effects)
-                character.activeCards.append(top)
-            } else if topCard?.lost == true {
-                character.lostCards.append(top)
-            } else {
-                character.discardedCards.append(top)
-            }
-            character.handCards.removeAll { $0 == top }
-        }
-
-        if let bottom = bottomCard?.cardId {
-            if bottomCard?.persistent == true {
-                character.activeCards.append(bottom)
-            } else if bottomCard?.bottomLost == true {
-                character.lostCards.append(bottom)
-            } else {
-                character.discardedCards.append(bottom)
-            }
-            character.handCards.removeAll { $0 == bottom }
-        }
-
+        guard let character, !character.exhausted else { return }
+        putAway(topCard, half: topActions, lostFlag: topCard?.lost == true, usedAsDefault: topUsedAsDefault,
+                character: character)
+        putAway(bottomCard, half: bottomActions, lostFlag: bottomCard?.bottomLost == true,
+                usedAsDefault: bottomUsedAsDefault, character: character)
         coordinator?.log("\(characterID): Turn complete", category: .round)
+    }
+
+    private func putAway(_ card: AbilityModel?, half: [ActionModel], lostFlag: Bool, usedAsDefault: Bool,
+                         character: GameCharacter) {
+        guard let cardId = card?.cardId else { return }
+        character.handCards.removeAll { $0 == cardId }
+
+        if usedAsDefault {
+            character.discardedCards.append(cardId)
+            return
+        }
+        let markers = Self.markers(in: half)
+        let lost = lostFlag || markers.contains("lost")
+        if markers.contains("persistent") || markers.contains("round") {
+            character.activeCards.append(cardId)
+            if markers.contains("round") && !markers.contains("persistent") {
+                character.roundBonusCards.append(cardId)
+            }
+            if lost { character.lostWhenRemoved.append(cardId) }
+        } else if lost {
+            character.lostCards.append(cardId)
+        } else {
+            character.discardedCards.append(cardId)
+        }
     }
 }

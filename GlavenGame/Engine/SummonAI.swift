@@ -5,7 +5,7 @@ struct SummonTurnResult {
     let summonPieceID: PieceID
     /// The path the summon moves along (empty if no movement).
     let movementPath: [HexCoord]
-    /// The attack target (nil if no attack).
+    /// The first attack target (nil if no attack).
     let attackTarget: PieceID?
     /// The hex to attack from (after movement).
     let attackFromHex: HexCoord?
@@ -17,162 +17,114 @@ struct SummonTurnResult {
     let attackValue: Int
     /// The attack range.
     let attackRange: Int
+    /// Every target of the attack (several for "Target N" summons).
+    var attackTargets: [PieceID] = []
+    /// The resolved attack (nil when the summon has no attack or is disarmed).
+    var attack: MonsterAttackSpec? = nil
+    var flying: Bool = false
 }
 
-/// Computes a summon's turn using monster-like AI with inverted friend/foe sets.
+/// Monster-style AI for figures fighting on the players' side (summons, escorts): they follow
+/// the monster focus and movement rules with friend and foe inverted (GH p.26).
+enum PlayerSideAI {
+
+    struct Plan {
+        var focus: PieceID?
+        var path: [HexCoord] = []
+        var targets: [PieceID] = []
+        var stunned = false
+    }
+
+    /// Compute focus, movement and targets for a player-side figure with fixed Move/Attack values.
+    static func plan(pieceID: PieceID, entity: any Entity, move: Int, attack: MonsterAttackSpec?,
+                     flying: Bool, board: BoardState, gameState: GameState) -> Plan {
+        guard !MonsterAI.isActive(.stun, on: entity) else { return Plan(stunned: true) }
+        guard let position = board.piecePositions[pieceID] else { return Plan() }
+
+        let immobilized = MonsterAI.isActive(.immobilize, on: entity)
+        let chill = entity.entityConditions.filter { $0.name == .chill && !$0.expired }
+            .reduce(0) { $0 + max(1, $1.value) }
+        let totalMove = immobilized ? 0 : max(0, move - chill)
+
+        let enemies = hostileMonsters(board: board, gameState: gameState, includeInvisible: false)
+        let blockers = Set(hostileMonsters(board: board, gameState: gameState, includeInvisible: true)
+            .compactMap { board.piecePositions[$0] })
+        let allies = Set(board.piecePositions.compactMap { id, coord in
+            id != pieceID && !blockers.contains(coord) ? coord : nil
+        })
+
+        let range = attack?.range ?? 1
+        let isRanged = attack?.isRanged ?? false
+        let mode: MoveMode = flying ? .fly : .normal
+        guard let focus = MonsterAI.findFocus(from: position, enemies: enemies, board: board, range: range,
+                                              isRanged: isRanged, enemyPositions: blockers, gameState: gameState,
+                                              mode: mode),
+              let focusPos = board.piecePositions[focus] else { return Plan() }
+
+        var path: [HexCoord] = []
+        if totalMove > 0 {
+            let route = MonsterAI.findBestAttackPosition(
+                from: position, focusPos: focusPos, focus: focus, range: range, moveRange: totalMove,
+                isRanged: isRanged, attack: attack, enemies: enemies, board: board,
+                enemyPositions: blockers, allyPositions: allies, gameState: gameState, mode: mode
+            ).path ?? []
+            path = MonsterAI.truncate(route, toBudget: totalMove, board: board, mode: mode)
+        }
+
+        var targets: [PieceID] = []
+        if let attack, !MonsterAI.isActive(.disarm, on: entity) {
+            targets = MonsterAI.targets(for: attack, from: path.last ?? position, focus: focus, focusPos: focusPos,
+                                        enemies: enemies, board: board, gameState: gameState)
+        }
+        return Plan(focus: focus, path: path, targets: targets)
+    }
+
+    /// Hostile (non-allied) monsters on the board; invisible ones only when asked (they can't be
+    /// focused or targeted, but still block movement).
+    static func hostileMonsters(board: BoardState, gameState: GameState, includeInvisible: Bool) -> [PieceID] {
+        board.piecePositions.keys.filter { id in
+            guard let (group, entity) = MonsterAI.monsterEntity(id, gameState: gameState),
+                  !MonsterAI.isAllyFaction(group) else { return false }
+            return includeInvisible || !MonsterAI.isActive(.invisible, on: entity)
+        }
+    }
+}
+
+/// Computes a summon's turn: summons permanently follow "Move +0, Attack +0" with their own
+/// stats, using their summoner's attack modifier deck (GH p.26).
 enum SummonAI {
 
-    /// Compute a single summon's turn.
-    /// Summons use monster AI but treat monsters as enemies and characters/other summons as allies.
     static func computeTurn(
         summon: GameSummon,
         ownerCharacterID: String,
         board: BoardState,
         gameState: GameState
     ) -> SummonTurnResult {
-        let summonPieceID = PieceID.summon(id: summon.id)
-
-        // Check if stunned
-        if summon.entityConditions.contains(where: { $0.name == .stun && !$0.expired }) {
-            return SummonTurnResult(
-                summonPieceID: summonPieceID,
-                movementPath: [], attackTarget: nil, attackFromHex: nil,
-                focusTarget: nil, stunned: true,
-                attackValue: 0, attackRange: 0
-            )
-        }
-
-        let isDisarmed = summon.entityConditions.contains(where: { $0.name == .disarm && !$0.expired })
-
-        // Use summon's base stats (no ability card modifiers)
-        // Chill (FH): reduce movement by 1 per stack
-        let chillReduction = summon.entityConditions
-            .filter { $0.name == .chill && !$0.expired }
-            .reduce(0) { $0 + max(1, $1.value) }
-        let totalMove = max(0, summon.movement - chillReduction)
-        let totalAttack = summon.effectiveAttack
-        let totalRange = max(summon.range, totalAttack > 0 ? 1 : 0)
-        let isRanged = summon.range > 0
-
-        guard let currentPos = board.piecePositions[summonPieceID] else {
-            return SummonTurnResult(
-                summonPieceID: summonPieceID,
-                movementPath: [], attackTarget: nil, attackFromHex: nil,
-                focusTarget: nil, stunned: false,
-                attackValue: totalAttack, attackRange: totalRange
-            )
-        }
-
-        // Gather enemies = monsters on the board (excluding invisible)
-        let enemies = gatherEnemies(board: board, gameState: gameState)
-        let enemyPositions = Set(enemies.compactMap { board.piecePositions[$0] })
-        // Allies = characters + other summons (excluding self)
-        let allyPositions = gatherAllyPositions(board: board, excluding: summonPieceID)
-
-        // Find focus (nearest monster to attack)
-        guard let focus = MonsterAI.findFocus(
-            from: currentPos,
-            enemies: enemies,
-            board: board,
-            range: totalRange,
-            isRanged: isRanged,
-            enemyPositions: enemyPositions,
-            gameState: gameState
-        ) else {
-            return SummonTurnResult(
-                summonPieceID: summonPieceID,
-                movementPath: [], attackTarget: nil, attackFromHex: nil,
-                focusTarget: nil, stunned: false,
-                attackValue: totalAttack, attackRange: totalRange
-            )
-        }
-
-        guard let focusPos = board.piecePositions[focus] else {
-            return SummonTurnResult(
-                summonPieceID: summonPieceID,
-                movementPath: [], attackTarget: nil, attackFromHex: nil,
-                focusTarget: focus, stunned: false,
-                attackValue: totalAttack, attackRange: totalRange
-            )
-        }
-
-        // Find best attack hex and path
-        let (_, path) = MonsterAI.findBestAttackPosition(
-            from: currentPos,
-            focusPos: focusPos,
-            range: totalRange,
-            moveRange: totalMove,
-            isRanged: isRanged,
-            board: board,
-            enemyPositions: enemyPositions,
-            allyPositions: allyPositions
-        )
-
-        // Determine movement
-        var movePath: [HexCoord] = []
-        if let path = path, path.count > 1 {
-            let maxSteps = min(totalMove, path.count - 1)
-            movePath = Array(path.prefix(maxSteps + 1))
-            while movePath.count > 1 && allyPositions.contains(movePath.last!) {
-                movePath.removeLast()
-            }
-        }
-
-        let finalPos = movePath.last ?? currentPos
-
-        // Determine if we can attack the focus
-        var attackTarget: PieceID? = nil
-        if !isDisarmed && totalAttack > 0 {
-            let canHitFocus = finalPos.distance(to: focusPos) <= totalRange &&
-                              LineOfSight.hasLOS(from: finalPos, to: focusPos, board: board)
-            if canHitFocus {
-                attackTarget = focus
-            }
-        }
-
+        let pieceID = PieceID.summon(id: summon.id)
+        let attack = attackSpec(for: summon)
+        let plan = PlayerSideAI.plan(pieceID: pieceID, entity: summon, move: summon.movement, attack: attack,
+                                     flying: summon.flying, board: board, gameState: gameState)
         return SummonTurnResult(
-            summonPieceID: summonPieceID,
-            movementPath: movePath,
-            attackTarget: attackTarget,
-            attackFromHex: attackTarget != nil ? finalPos : nil,
-            focusTarget: focus,
-            stunned: false,
-            attackValue: totalAttack,
-            attackRange: totalRange
+            summonPieceID: pieceID,
+            movementPath: plan.path,
+            attackTarget: plan.targets.first,
+            attackFromHex: plan.targets.isEmpty ? nil : (plan.path.last ?? board.piecePositions[pieceID]),
+            focusTarget: plan.focus,
+            stunned: plan.stunned,
+            attackValue: attack?.value ?? 0,
+            attackRange: attack?.range ?? 0,
+            attackTargets: plan.targets,
+            attack: attack,
+            flying: summon.flying
         )
     }
 
-    // MARK: - Helpers
-
-    /// Gather all enemy piece IDs for a summon (= all monsters on the board), excluding invisible.
-    private static func gatherEnemies(board: BoardState, gameState: GameState) -> [PieceID] {
-        board.piecePositions.keys.filter { id in
-            guard case .monster(let name, let standee) = id else { return false }
-            let monster = gameState.monsters.first(where: { $0.name == name })
-            // Allied monsters fight WITH the summon — they are not enemies.
-            if let m = monster, m.isAlly || m.isAllied { return false }
-            // Exclude invisible monsters
-            if let monster = monster,
-               let entity = monster.entities.first(where: { $0.number == standee }),
-               entity.entityConditions.contains(where: { $0.name == .invisible && !$0.expired }) {
-                return false
-            }
-            return true
-        }
-    }
-
-    /// Gather ally positions for a summon (= characters + other summons), excluding self.
-    private static func gatherAllyPositions(board: BoardState, excluding: PieceID) -> Set<HexCoord> {
-        var positions = Set<HexCoord>()
-        for (id, coord) in board.piecePositions {
-            guard id != excluding else { continue }
-            switch id {
-            case .character, .summon:
-                positions.insert(coord)
-            default:
-                break
-            }
-        }
-        return positions
+    /// The summon's attack, or nil for summons without one (e.g. Decoy, Monolith).
+    static func attackSpec(for summon: GameSummon) -> MonsterAttackSpec? {
+        if case .int(0) = summon.attack, summon.attackEffects.isEmpty { return nil }
+        let attackAction = ActionModel(type: .attack, value: .int(0), valueType: .plus,
+                                       subActions: summon.attackEffects.filter { $0.type != .specialTarget })
+        return MonsterAbility.attack(attackAction, stat: nil, baseAttack: summon.effectiveAttack,
+                                     baseRange: summon.range)
     }
 }

@@ -1,6 +1,8 @@
 import Foundation
 
-/// Controls the automated execution of summon turns before their owning character acts.
+/// Controls the automated execution of summon turns. A summon's turn comes directly before its
+/// summoner's, summons act in the order they were summoned, and a summon never acts in the
+/// round it was summoned (GH p.26).
 @Observable
 final class SummonTurnController {
 
@@ -14,252 +16,64 @@ final class SummonTurnController {
     }
 
     /// Execute all summon turns for a character.
-    /// New summons (state == .new) skip their first turn and transition to .active.
     func executeSummonTurns(for character: GameCharacter) async {
-        guard let coordinator = coordinator,
-              let gameManager = gameManager else { return }
-
+        guard let coordinator, let gameManager else { return }
         isExecuting = true
+        defer { isExecuting = false }
 
-        let livingSummons = character.summons.filter { !$0.dead && $0.health > 0 }
+        for summon in character.summons where !summon.dead {
+            let pieceID = PieceID.summon(id: summon.id)
+            guard coordinator.isOnBoard(pieceID) else { continue }
 
-        for summon in livingSummons {
-            // New summons skip their first turn
             if summon.state == .new {
-                summon.state = .active
-                coordinator.log("  summon(\(summon.id.prefix(8))): New — skips first turn", category: .info)
+                coordinator.log("  \(summon.name): Summoned this round — no turn", category: .info)
                 continue
             }
 
-            // Apply start-of-turn conditions
+            // Start of the summon's own turn: its conditions tick (wound, regenerate).
+            gameManager.entityManager.restoreConditions(summon)
             gameManager.entityManager.applyConditionsTurn(summon)
+            coordinator.sweepDeadFigures()
+            guard !summon.dead, coordinator.isOnBoard(pieceID) else { continue }
 
-            // Check if summon died from wound damage
-            if summon.dead || summon.health <= 0 {
-                coordinator.log("  summon(\(summon.id.prefix(8))): Died from conditions", category: .death)
-                let pieceID = PieceID.summon(id: summon.id)
-                coordinator.boardState.removePiece(pieceID)
-                coordinator.boardScene?.removePieceSprite(id: pieceID)
-                summon.dead = true
-                continue
+            let result = SummonAI.computeTurn(summon: summon, ownerCharacterID: character.id,
+                                              board: coordinator.boardState, gameState: gameManager.game)
+            await executeSummonTurn(result: result, summon: summon, pieceID: pieceID)
+
+            if !summon.dead {
+                gameManager.entityManager.expireConditions(summon)
             }
-
-            // Compute AI turn
-            let result = SummonAI.computeTurn(
-                summon: summon,
-                ownerCharacterID: character.id,
-                board: coordinator.boardState,
-                gameState: gameManager.game
-            )
-
-            // Execute the turn
-            await executeSummonTurn(result: result, summon: summon, character: character)
-
-            // Expire end-of-turn conditions
-            gameManager.entityManager.expireConditions(summon)
-
-            // Pause between summons
-            try? await Task.sleep(nanoseconds: 400_000_000)
+            coordinator.sweepDeadFigures()
+            if coordinator.scenarioResult != nil { return }
+            try? await Task.sleep(nanoseconds: coordinator.turnDelayNanoseconds)
         }
-
-        isExecuting = false
     }
 
-    // MARK: - Single Summon Turn
-
-    private func executeSummonTurn(result: SummonTurnResult, summon: GameSummon, character: GameCharacter) async {
-        guard let coordinator = coordinator,
-              let gameManager = gameManager else { return }
+    private func executeSummonTurn(result: SummonTurnResult, summon: GameSummon, pieceID: PieceID) async {
+        guard let coordinator else { return }
 
         if result.stunned {
-            coordinator.log("  \(result.summonPieceID): Stunned — skipped", category: .condition)
+            coordinator.log("  \(summon.name): Stunned — skipped", category: .condition)
+            return
+        }
+        guard result.focusTarget != nil else {
+            coordinator.log("  \(summon.name): No focus", category: .info)
             return
         }
 
-        // Movement
         if result.movementPath.count > 1 {
-            let path = result.movementPath
-            coordinator.log("  \(result.summonPieceID): Move \(path.count - 1) hexes", category: .move)
-
-            await withCheckedContinuation { continuation in
-                coordinator.boardScene?.movePiece(
-                    id: result.summonPieceID, along: path,
-                    offsetCol: coordinator.offsetCol, offsetRow: coordinator.offsetRow
-                ) {
-                    coordinator.boardState.movePiece(result.summonPieceID, to: path.last!)
-                    continuation.resume()
-                }
-            }
-
-            // Check if summon stepped on a trap
-            coordinator.checkForTrap(
-                pieceID: result.summonPieceID,
-                at: path.last!,
-                flying: summon.flying
-            )
-
-            // If summon died from trap, skip the rest of this turn
-            if summon.dead || summon.health <= 0 { return }
+            coordinator.log("  \(summon.name): Move \(result.movementPath.count - 1)", category: .move)
+            guard await coordinator.moveAlong(pieceID, path: result.movementPath,
+                                              style: summon.flying ? .fly : .normal) else { return }
         }
 
-        // Attack
-        if let target = result.attackTarget {
-            guard !summon.dead else { return }
-            guard let targetPos = coordinator.boardState.piecePositions[target],
-                  let attackerPos = coordinator.boardState.piecePositions[result.summonPieceID] else { return }
-
-            let (defenderHealth, defenderShield, retInfo) = getDefenderInfo(target: target, gameManager: gameManager)
-            let isPoisoned = isConditionActive(.poison, on: target, gameManager: gameManager)
-            let hasAdvantage = CombatResolver.hasAdvantage(attacker: summon)
-            let isRangedAdjacent = result.attackRange > 1 && attackerPos.isAdjacent(to: targetPos)
-            let hasDisadvantage = CombatResolver.hasDisadvantage(attacker: summon, isRangedAdjacent: isRangedAdjacent)
-
-            // Interactive modifier draw — draw from owner's attack modifier deck
-            let preDrawnCards = await coordinator.performModifierDraw(
-                attacker: result.summonPieceID,
-                defender: target,
-                baseAttack: result.attackValue,
-                advantage: hasAdvantage,
-                disadvantage: hasDisadvantage,
-                drawCard: { gameManager.attackModifierManager.drawCharacterCard(for: character) }
-            )
-
-            let attackResult = CombatResolver.resolveAttack(
-                attacker: result.summonPieceID,
-                defender: target,
-                baseAttack: result.attackValue,
-                advantage: hasAdvantage,
-                disadvantage: hasDisadvantage,
-                isPoisoned: isPoisoned,
-                shield: defenderShield,
-                retaliateValue: retInfo.value,
-                retaliateRange: retInfo.range,
-                attackerDefenderDistance: attackerPos.distance(to: targetPos),
-                preDrawnCards: preDrawnCards,
-                drawModifier: { nil },
-                defenderHealth: defenderHealth
-            )
-
-            let breakdown = CombatResolver.damageBreakdown(
-                base: result.attackValue, isPoisoned: isPoisoned,
-                preDrawnCards: preDrawnCards, shield: defenderShield,
-                isMiss: attackResult.isMiss, finalDamage: attackResult.damage)
-            coordinator.log("  \(result.summonPieceID) → \(target): \(breakdown)", category: .attack)
-
-            // Apply damage
-            if attackResult.damage > 0 {
-                coordinator.boardScene?.pieceDamage(id: target, amount: attackResult.damage)
-                applyDamage(attackResult.damage, to: target, gameManager: gameManager)
-            }
-
-            // Apply conditions to target
-            for condition in attackResult.appliedConditions {
-                applyConditionToTarget(condition, target: target, gameManager: gameManager)
-                coordinator.log("  \(target): \(condition.rawValue) applied", category: .condition)
-            }
-
-            // Check if target was killed
-            if attackResult.killed || isTargetDead(target, gameManager: gameManager) {
-                coordinator.log("  \(target): Killed!", category: .death)
-                coordinator.boardState.removePiece(target)
-                coordinator.boardScene?.removePieceSprite(id: target)
-                markDead(target: target, gameManager: gameManager)
-            }
-
-            // Retaliate
-            if attackResult.retaliateDamage > 0 {
-                coordinator.log("  \(result.summonPieceID): Takes \(attackResult.retaliateDamage) retaliate damage", category: .damage)
-                gameManager.entityManager.changeHealth(summon, amount: -attackResult.retaliateDamage)
-                if summon.health <= 0 {
-                    summon.dead = true
-                    coordinator.boardState.removePiece(result.summonPieceID)
-                    coordinator.boardScene?.removePieceSprite(id: result.summonPieceID)
-                    coordinator.log("  \(result.summonPieceID): Killed by retaliate!", category: .death)
-                }
-            }
-        } else if result.focusTarget != nil {
-            coordinator.log("  \(result.summonPieceID): Can't reach focus — moved closer", category: .move)
-        } else {
-            coordinator.log("  \(result.summonPieceID): No focus found", category: .info)
-        }
-    }
-
-    // MARK: - Helpers
-
-    private func getDefenderInfo(target: PieceID, gameManager: GameManager) -> (health: Int, shield: Int, retaliate: (value: Int, range: Int)) {
-        switch target {
-        case .monster(let name, let standee):
-            if let monster = gameManager.game.monsters.first(where: { $0.name == name }),
-               let entity = monster.entities.first(where: { $0.number == standee }) {
-                let shield = CombatResolver.totalShield(shield: entity.shield, shieldPersistent: entity.shieldPersistent)
-                let ret = CombatResolver.retaliateInfo(retaliate: entity.retaliate, retaliatePersistent: entity.retaliatePersistent)
-                return (entity.health, shield, ret)
-            }
-        default:
-            break
-        }
-        return (0, 0, (0, 1))
-    }
-
-    private func isConditionActive(_ condition: ConditionName, on target: PieceID, gameManager: GameManager) -> Bool {
-        switch target {
-        case .monster(let name, let standee):
-            if let monster = gameManager.game.monsters.first(where: { $0.name == name }),
-               let entity = monster.entities.first(where: { $0.number == standee }) {
-                return entity.entityConditions.contains(where: { $0.name == condition && !$0.expired })
-            }
-        default:
-            break
-        }
-        return false
-    }
-
-    private func applyDamage(_ damage: Int, to target: PieceID, gameManager: GameManager) {
-        switch target {
-        case .monster(let name, let standee):
-            if let monster = gameManager.game.monsters.first(where: { $0.name == name }),
-               let entity = monster.entities.first(where: { $0.number == standee }) {
-                gameManager.entityManager.changeHealth(entity, amount: -damage)
-            }
-        default:
-            break
-        }
-    }
-
-    private func applyConditionToTarget(_ condition: ConditionName, target: PieceID, gameManager: GameManager) {
-        switch target {
-        case .monster(let name, let standee):
-            if let monster = gameManager.game.monsters.first(where: { $0.name == name }),
-               let entity = monster.entities.first(where: { $0.number == standee }) {
-                gameManager.entityManager.addCondition(condition, to: entity)
-            }
-        default:
-            break
-        }
-    }
-
-    private func isTargetDead(_ target: PieceID, gameManager: GameManager) -> Bool {
-        switch target {
-        case .monster(let name, let standee):
-            if let monster = gameManager.game.monsters.first(where: { $0.name == name }),
-               let entity = monster.entities.first(where: { $0.number == standee }) {
-                return entity.health <= 0
-            }
-        default:
-            break
-        }
-        return false
-    }
-
-    private func markDead(target: PieceID, gameManager: GameManager) {
-        switch target {
-        case .monster(let name, let standee):
-            if let monster = gameManager.game.monsters.first(where: { $0.name == name }),
-               let entity = monster.entities.first(where: { $0.number == standee }) {
-                entity.dead = true
-            }
-        default:
-            break
+        guard let attack = result.attack, !result.attackTargets.isEmpty else { return }
+        for target in result.attackTargets {
+            guard !summon.dead, coordinator.isOnBoard(pieceID), coordinator.scenarioResult == nil else { return }
+            await coordinator.performAttack(
+                attacker: pieceID, target: target,
+                attack: AttackParameters(value: attack.value, isRanged: attack.isRanged, pierce: attack.pierce,
+                                         conditions: attack.conditions, push: attack.push, pull: attack.pull))
         }
     }
 }
