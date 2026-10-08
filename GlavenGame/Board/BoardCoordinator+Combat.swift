@@ -88,6 +88,9 @@ extension BoardCoordinator {
             base: attack.value, isPoisoned: isPoisoned, preDrawnCards: preDrawn,
             shield: shield, pierce: attack.pierce, isMiss: result.isMiss, finalDamage: result.damage)
         log("\(name(attacker)) attacks \(name(target)): \(sum)", category: .attack, trace: breakdown)
+        if lastModifierReveal?.attacker == attacker, lastModifierReveal?.defender == target, lastModifierReveal?.sum == nil {
+            lastModifierReveal?.sum = sum
+        }
 
         var died = false
         if result.damage > 0 {

@@ -22,6 +22,9 @@ final class SettingsManager {
     var lightMode: Bool = false
     var excludedConditions: Set<ConditionName> = []
     var animationSpeed: Double = 1.0  // 0.5 = fast, 1.0 = normal, 2.0 = slow
+    /// Draw attack modifier cards by hand for every attack; otherwise monsters and summons draw
+    /// for themselves and only the players' own attacks wait for a tap.
+    var drawAllModifiers: Bool = false
     var hapticFeedback: Bool = true
 
     // FH-specific toggles
@@ -67,6 +70,7 @@ final class SettingsManager {
                 excludedConditions = (try? JSONDecoder().decode(Set<ConditionName>.self, from: data)) ?? []
             }
             animationSpeed = settings.animationSpeed
+            drawAllModifiers = settings.drawAllModifiers
             hapticFeedback = settings.hapticFeedback
             fhPets = settings.fhPets
             fhGarden = settings.fhGarden
@@ -101,6 +105,7 @@ final class SettingsManager {
         settings.lightMode = lightMode
         settings.excludedConditionsData = try? JSONEncoder().encode(excludedConditions)
         settings.animationSpeed = animationSpeed
+        settings.drawAllModifiers = drawAllModifiers
         settings.hapticFeedback = hapticFeedback
         settings.fhPets = fhPets
         settings.fhGarden = fhGarden

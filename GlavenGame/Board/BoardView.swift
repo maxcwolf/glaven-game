@@ -39,12 +39,18 @@ struct BoardView: View {
                 }
                 if showSidePanels {
                     HStack(alignment: .top, spacing: 0) {
-                        // Left: character info cards
-                        characterInfoPanel
+                        // Left: the party, and the modifier tray under it
+                        VStack(alignment: .leading, spacing: 0) {
+                            characterInfoPanel
+                            if coordinator.boardPhase == .execution || coordinator.pendingModifierDraw != nil {
+                                ModifierTrayView(coordinator: coordinator)
+                            }
+                        }
                         Spacer(minLength: 0)
                         // Right: monster info + battle log, each capped so the board stays visible
                         VStack(spacing: 4) {
                             monsterInfoPanel
+                                .layoutPriority(1)   // the log shrinks before the monsters do
                             turnLogPanel
                         }
                     }
@@ -73,7 +79,9 @@ struct BoardView: View {
             // Damage mitigation prompt
             if let pending = coordinator.pendingDamage,
                let character = gameManager.game.characters.first(where: { $0.id == pending.characterID }) {
-                damageMitigationOverlay(pending: pending, character: character)
+                DamageChoiceSheet(pending: pending, character: character, coordinator: coordinator)
+                    .id(pending.id)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
             }
 
             // Long rest card choice prompt
@@ -86,14 +94,6 @@ struct BoardView: View {
             if let pending = coordinator.pendingShortRest,
                let character = gameManager.game.characters.first(where: { $0.id == pending.characterID }) {
                 shortRestOverlay(pending: pending, character: character)
-            }
-
-            // Interactive attack modifier draw overlay
-            if let pending = coordinator.pendingModifierDraw {
-                AttackModifierDrawOverlay(pending: pending, coordinator: coordinator)
-                    .transition(.opacity.combined(with: .scale(scale: 0.97)))
-                    .animation(.easeInOut(duration: 0.2), value: coordinator.pendingModifierDraw?.id)
-                    .zIndex(10)
             }
 
             // Monster ability card preview (tap on monster group in info panel)
@@ -1093,143 +1093,6 @@ struct BoardView: View {
 
     // MARK: - Damage Mitigation Overlay
 
-    @ViewBuilder
-    private func damageMitigationOverlay(pending: BoardCoordinator.PendingDamage, character: GameCharacter) -> some View {
-        let charColor = Color(hex: character.color) ?? .blue
-        let deckName = character.characterData?.deck ?? character.name
-        let deckData = gameManager.editionStore.deckData(
-            name: deckName, edition: character.edition
-        )
-        let resolver = labelResolver(for: character.edition)
-
-        Color.black.opacity(0.5)
-            .ignoresSafeArea()
-            .overlay {
-                HStack(spacing: 0) {
-                    // Left side: damage info + take damage button
-                    VStack(spacing: 16) {
-                        // Header
-                        VStack(spacing: 6) {
-                            Image(systemName: "exclamationmark.shield.fill")
-                                .font(.system(size: 36))
-                                .foregroundStyle(.red)
-
-                            Text(GameText.characterName(character, labels: gameManager.editionStore))
-                                .font(.title3.weight(.bold))
-                                .foregroundStyle(charColor)
-
-                            Text("takes \(pending.damage) damage from \(pending.sourceDescription)")
-                                .font(.subheadline)
-                                .foregroundStyle(.white.opacity(0.8))
-                        }
-
-                        Divider().overlay(.white.opacity(0.2))
-
-                        // Take damage button
-                        Button {
-                            coordinator.resolvePendingDamage(choice: .takeDamage)
-                        } label: {
-                            HStack {
-                                Image(systemName: "heart.slash.fill")
-                                    .foregroundStyle(.red)
-                                VStack(alignment: .leading) {
-                                    Text("Take \(pending.damage) Damage")
-                                        .fontWeight(.medium)
-                                    Text("HP: \(character.health) → \(max(0, character.health - pending.damage))")
-                                        .font(.caption)
-                                        .foregroundStyle(.white.opacity(0.6))
-                                }
-                                Spacer()
-                            }
-                            .padding(.horizontal, 16)
-                            .padding(.vertical, 10)
-                            .background(.red.opacity(0.2))
-                            .clipShape(RoundedRectangle(cornerRadius: 8))
-                        }
-                        .buttonStyle(.plain)
-
-                        Spacer()
-                    }
-                    .frame(width: 260)
-                    .padding(20)
-
-                    Divider().overlay(.white.opacity(0.15))
-
-                    // Right side: card choices with full card previews
-                    VStack(alignment: .leading, spacing: 12) {
-                        // Lose 1 hand card (not one of the two played this round)
-                        let losable = coordinator.losableHandCards(of: character)
-                        if !losable.isEmpty {
-                            VStack(alignment: .leading, spacing: 6) {
-                                HStack(spacing: 4) {
-                                    Image(systemName: "hand.raised.fill")
-                                        .font(.system(size: 10))
-                                        .foregroundStyle(.yellow)
-                                    Text("Lose 1 hand card to negate all damage")
-                                        .font(.caption.weight(.bold))
-                                        .foregroundStyle(.yellow)
-                                }
-
-                                ScrollView(.horizontal, showsIndicators: false) {
-                                    HStack(spacing: 8) {
-                                        ForEach(losable, id: \.self) { cardId in
-                                            if let card = deckData?.abilities.first(where: { $0.cardId == cardId }) {
-                                                BoardAbilityCardView(
-                                                    card: card,
-                                                    characterColor: charColor,
-                                                    highlight: .none,
-                                                    width: 120,
-                                                    height: 200,
-                                                    labelResolver: resolver,
-                                                    onPreview: previewAction(card: card)
-                                                )
-                                                .overlay(alignment: .bottom) {
-                                                    Text("LOSE")
-                                                        .font(.system(size: 10, weight: .heavy))
-                                                        .foregroundStyle(.white)
-                                                        .padding(.horizontal, 12)
-                                                        .padding(.vertical, 4)
-                                                        .background(.red.opacity(0.8))
-                                                        .clipShape(Capsule())
-                                                        .padding(.bottom, 6)
-                                                }
-                                                .onTapGesture {
-                                                    coordinator.resolvePendingDamage(choice: .loseHandCard(cardId: cardId))
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-
-                        // Lose 2 discard cards
-                        if character.discardedCards.count >= 2 {
-                            DiscardCardPicker(
-                                character: character,
-                                deckData: deckData,
-                                characterColor: charColor,
-                                onConfirm: { indices in
-                                    coordinator.resolvePendingDamage(choice: .loseDiscardCards(indices: indices))
-                                },
-                                labelResolver: resolver,
-                                onPreviewCard: { card in self.previewAction(card: card) }
-                            )
-                        }
-                    }
-                    .padding(16)
-                }
-                .frame(maxHeight: 420)
-                .background(.black.opacity(0.92))
-                .clipShape(RoundedRectangle(cornerRadius: 16))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 16)
-                        .stroke(.red.opacity(0.4), lineWidth: 1)
-                )
-                .padding(40)
-            }
-    }
-
     // MARK: - Long Rest Overlay
 
     @ViewBuilder
@@ -1661,7 +1524,7 @@ struct BoardView: View {
 // MARK: - Discard Card Picker
 
 /// Lets the player pick exactly 2 discard cards to lose for damage mitigation.
-private struct DiscardCardPicker: View {
+struct DiscardCardPicker: View {
     let character: GameCharacter
     let deckData: DeckData?
     let characterColor: Color

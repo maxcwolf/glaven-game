@@ -40,7 +40,6 @@
 		2A06E26B553A030414E30208 /* IntOrString.swift in Sources */ = {isa = PBXBuildFile; fileRef = 68C151233315A41E7A116BF5 /* IntOrString.swift */; };
 		2B48DDA61518A823F10A6611 /* Scenario.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1EA85C028A0AFE294D1CD52 /* Scenario.swift */; };
 		2C71220B18F6E20D48AF65A8 /* GameManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1F3360FC927B90953116E2 /* GameManager.swift */; };
-		2E287DF3D58929996375AA0E /* AttackModifierDrawOverlay.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE192D2A55037FB7D4C40BDD /* AttackModifierDrawOverlay.swift */; };
 		2F566A6470A02867165748EC /* Sounds in Resources */ = {isa = PBXBuildFile; fileRef = 5BECAAE9C51B69F316A57166 /* Sounds */; };
 		2F5F780EA637CDD97D941E26 /* EditionEditorSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = C75AAD9571D2AFCF48AB0DA9 /* EditionEditorSheet.swift */; };
 		2F807259DA42BCE506285C72 /* HexGridView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6BB5848795BA4ADF8305822D /* HexGridView.swift */; };
@@ -82,6 +81,7 @@
 		4ED286F837CB531CFA2D0785 /* MonsterNameSpec.swift in Sources */ = {isa = PBXBuildFile; fileRef = 68D02132DEAC7BE0723A08F4 /* MonsterNameSpec.swift */; };
 		4F40225C0F9D5F6D5493EAB0 /* SaveSlotsSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 422B96003824AE1E41CF473C /* SaveSlotsSheet.swift */; };
 		4F5770DEF0EF49285E1A983E /* RandomMonsterCardSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = E586DBAB0A81F185665CA7C7 /* RandomMonsterCardSheet.swift */; };
+		4F5A0445F0366A6E4117202B /* DamageChoiceSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = EA732C1B11B1FD79F496753D /* DamageChoiceSheet.swift */; };
 		4F5DF3D8EB08B61CF06FBBF0 /* AddObjectiveSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5BC05461B308F8C28F386368 /* AddObjectiveSheet.swift */; };
 		50E47414E87590BA5F788F25 /* MonsterAbilityStripView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D2399EDB7F011E68F62A5F2F /* MonsterAbilityStripView.swift */; };
 		51FAA98A4315A08DCD4AAF88 /* GameBoardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2DCD6E622ADAFAA13D8D936F /* GameBoardView.swift */; };
@@ -224,6 +224,7 @@
 		DFC9D0F4426EF99D1676F45D /* ScenarioSelectionSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = C13507E0E83D6C7F041CC9EA /* ScenarioSelectionSheet.swift */; };
 		E01C9ECF3DF99F10CE9CA044 /* SnapshotConversions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0DDDFB389ED2AF2B57163276 /* SnapshotConversions.swift */; };
 		E19F2D8A9AF73489894C30F3 /* SettingsManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 61565EFB4C520E3836D050C4 /* SettingsManager.swift */; };
+		E299D64C11D083EA47EB11E9 /* ModifierTrayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 18D02F667561B11569B262B7 /* ModifierTrayView.swift */; };
 		E64FC53CA3E919734FCCDBF9 /* ElementView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9972ED9B698C56E59CD11765 /* ElementView.swift */; };
 		E6C7F5CFC3EF0AE5E5353ACA /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 889E9E03A546F9863470E6EB /* Assets.xcassets */; };
 		E6E25B46F9DD8E50E5312036 /* MonsterAI.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8C9B002AD05945036550A91 /* MonsterAI.swift */; };
@@ -271,6 +272,7 @@
 		14A76C61DCD182FB32D64AC1 /* FullscreenCardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FullscreenCardView.swift; sourceTree = "<group>"; };
 		14ABB7C34DDD57BF9162EA76 /* AbilityCardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AbilityCardView.swift; sourceTree = "<group>"; };
 		169F364E5167294B011ACEFA /* FooterView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FooterView.swift; sourceTree = "<group>"; };
+		18D02F667561B11569B262B7 /* ModifierTrayView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModifierTrayView.swift; sourceTree = "<group>"; };
 		192975CBA7A72969B78836A7 /* SoundPlayer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SoundPlayer.swift; sourceTree = "<group>"; };
 		19BA4A9C5EF312918BD519DA /* EventCardData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EventCardData.swift; sourceTree = "<group>"; };
 		1A6A55C02339D884EA81120B /* PersonalQuestEvaluator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PersonalQuestEvaluator.swift; sourceTree = "<group>"; };
@@ -466,6 +468,7 @@
 		E586DBAB0A81F185665CA7C7 /* RandomMonsterCardSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RandomMonsterCardSheet.swift; sourceTree = "<group>"; };
 		E76A7095C8D371EF8B0F04D2 /* ScenarioManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScenarioManager.swift; sourceTree = "<group>"; };
 		E8D071F764DE7E9AEA23ABA4 /* CardFlipView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CardFlipView.swift; sourceTree = "<group>"; };
+		EA732C1B11B1FD79F496753D /* DamageChoiceSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DamageChoiceSheet.swift; sourceTree = "<group>"; };
 		EAE86DAD4E6E4F72291C7DEC /* MonsterStatsSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MonsterStatsSheet.swift; sourceTree = "<group>"; };
 		EBA2DD6BC94018062A83C98A /* AttackModifierValueType.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AttackModifierValueType.swift; sourceTree = "<group>"; };
 		EBE9E8D46F66914CB111FEC5 /* Enhancement.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Enhancement.swift; sourceTree = "<group>"; };
@@ -490,7 +493,6 @@
 		FBE537F6F81289C6EEB5CDAD /* SummonColor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SummonColor.swift; sourceTree = "<group>"; };
 		FC6052E53C0E7221AF076DF1 /* NumberPickerSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NumberPickerSheet.swift; sourceTree = "<group>"; };
 		FC8D6BF7B24F45BABD529CA7 /* FigureType.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FigureType.swift; sourceTree = "<group>"; };
-		FE192D2A55037FB7D4C40BDD /* AttackModifierDrawOverlay.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AttackModifierDrawOverlay.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -889,7 +891,6 @@
 			isa = PBXGroup;
 			children = (
 				14ABB7C34DDD57BF9162EA76 /* AbilityCardView.swift */,
-				FE192D2A55037FB7D4C40BDD /* AttackModifierDrawOverlay.swift */,
 				06273638779D4902224E1602 /* BoardCoordinator.swift */,
 				A6B11F82C5E44D977254134D /* BoardCoordinator+Combat.swift */,
 				B6C9F8BE9CC7A895A0360304 /* BoardCoordinator+Movement.swift */,
@@ -899,8 +900,10 @@
 				1E5BE6C620EBFDD27F7F98C0 /* BoardScene.swift */,
 				972A40BE4DE4A8FA037B3C54 /* BoardView.swift */,
 				4C2B76831C29EEA9CE98F5A8 /* CardSelectionPanel.swift */,
+				EA732C1B11B1FD79F496753D /* DamageChoiceSheet.swift */,
 				BA5C6A163BDEB897E9993360 /* EscortTurnController.swift */,
 				85444C8330CF135ED8080DFA /* HighlightStyle.swift */,
+				18D02F667561B11569B262B7 /* ModifierTrayView.swift */,
 				D2399EDB7F011E68F62A5F2F /* MonsterAbilityStripView.swift */,
 				CEBB2CD9E70D5ABFA126923B /* MonsterTurnController.swift */,
 				DD9B9D4203B3CFD7D307E4EE /* PieceSpriteNode.swift */,
@@ -1107,7 +1110,6 @@
 				AF3F2201E31B145FBC2FF948 /* AttackModifierDeck.swift in Sources */,
 				828A6DFBE3E8960CA00A142F /* AttackModifierDeckDialog.swift in Sources */,
 				55B0274BFF5C9D9F6695BF55 /* AttackModifierDeckView.swift in Sources */,
-				2E287DF3D58929996375AA0E /* AttackModifierDrawOverlay.swift in Sources */,
 				F17A476C81A0AF631F04BA09 /* AttackModifierEffect.swift in Sources */,
 				48EF2D85E0A4E375FFF1EAD2 /* AttackModifierEffectType.swift in Sources */,
 				7E83CFF586BC1BDCB1ADFF2A /* AttackModifierManager.swift in Sources */,
@@ -1149,6 +1151,7 @@
 				3EB5A309C4C479EFF33646F6 /* ConditionType.swift in Sources */,
 				4120712738BDF3001B571449 /* ConditionsView.swift in Sources */,
 				6645399904C7D8DEC468F308 /* ContentView.swift in Sources */,
+				4F5A0445F0366A6E4117202B /* DamageChoiceSheet.swift in Sources */,
 				7EA3413FBD0C440E5CE281B6 /* DebugSheet.swift in Sources */,
 				D4E7121201A9D615F5FC0D37 /* DeckData.swift in Sources */,
 				D6FC3C4BEE20DFD5C76C7308 /* DeckEditorSheet.swift in Sources */,
@@ -1229,6 +1232,7 @@
 				C4B13C1F7E443D08F6CDB37E /* LootManager.swift in Sources */,
 				F2423600BC981360B0C9093B /* LootType.swift in Sources */,
 				36769205F2999D17E959C581 /* MainMenuView.swift in Sources */,
+				E299D64C11D083EA47EB11E9 /* ModifierTrayView.swift in Sources */,
 				E6E25B46F9DD8E50E5312036 /* MonsterAI.swift in Sources */,
 				3BA7F9EC1E24B79B3E456175 /* MonsterAbility.swift in Sources */,
 				B99BB3F32DDC19B592DC5DF1 /* MonsterAbilitySheet.swift in Sources */,

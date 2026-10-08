@@ -235,13 +235,22 @@ enum CombatResolver {
     /// Draw the modifier cards for one attack and return the cards that apply.
     static func drawModifiers(advantage: Bool, disadvantage: Bool,
                               draw: () -> AttackModifier?) -> [AttackModifier] {
+        drawModifiersDetailed(advantage: advantage, disadvantage: disadvantage, draw: draw).selected
+    }
+
+    /// Draw the modifier cards for one attack, keeping every card drawn (in draw order) as well as
+    /// the ones that apply, so the board can show both draws of an advantage attack.
+    static func drawModifiersDetailed(advantage: Bool, disadvantage: Bool,
+                                      draw: () -> AttackModifier?) -> (drawn: [AttackModifier], selected: [AttackModifier]) {
         if advantage == disadvantage {
-            return drawChain(draw)
+            let chain = drawChain(draw)
+            return (chain, chain)
         }
         let first = draw().map { [$0] } ?? []
         let second = drawSecond(after: first, draw)
-        return selectModifierCards(first: first, second: second,
-                                   advantage: advantage, disadvantage: disadvantage)
+        let selected = selectModifierCards(first: first, second: second,
+                                           advantage: advantage, disadvantage: disadvantage)
+        return (first + second, selected)
     }
 
     /// Normal draw: keep drawing while the drawn card is rolling (GH p.19).

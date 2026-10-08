@@ -84,6 +84,11 @@ enum ImageLoader {
 
     // MARK: - Card Images
 
+    /// The scanned ability card for a character card, if the edition's scans are bundled.
+    static func abilityCardImage(edition: String, cardId: Int) -> PlatformImage? {
+        loadImage(subdirectory: "CardImages/\(edition)", filename: "\(cardId)", ext: "jpeg")
+    }
+
     static func amCardImage(_ type: String) -> PlatformImage? {
         loadImage(subdirectory: "Images/cards/attackmodifier", filename: type, ext: "png")
     }

@@ -218,6 +218,34 @@ final class BoardCoordinator {
     /// Non-nil when an attack is waiting for the player to draw modifier card(s).
     var pendingModifierDraw: PendingModifierDraw?
 
+    /// The modifier cards of an attack, as the tray beside the board shows them.
+    struct ModifierReveal: Identifiable {
+        let id = UUID()
+        let attacker: PieceID
+        let defender: PieceID
+        /// Every card drawn, in order (both draws of an advantage attack).
+        let drawn: [AttackModifier]
+        /// The cards that apply.
+        let selected: [AttackModifier]
+        let advantage: Bool
+        let disadvantage: Bool
+        /// Drawn by the player's tap, rather than for a monster or summon.
+        let drawnByPlayer: Bool
+        /// The attack's sum once it has resolved: "2 + 1 − 1 shield = 2 damage".
+        var sum: String?
+
+        /// Whether `card` (at `index` in `drawn`) is one of the cards that apply.
+        func applies(at index: Int) -> Bool {
+            guard drawn.indices.contains(index) else { return false }
+            if drawn.count == selected.count { return true }
+            let card = drawn[index]
+            return selected.contains { $0.id == card.id }
+        }
+    }
+
+    /// The most recent attack's modifier cards, shown in the tray until the next attack.
+    var lastModifierReveal: ModifierReveal?
+
     /// Resolve modifier draws, damage-negation prompts and forced-movement choices automatically
     /// (no player input). Used for headless simulation and tests.
     var autoResolvePrompts = false
@@ -236,14 +264,43 @@ final class BoardCoordinator {
     /// Non-nil when a monster push/pull is in progress and the async caller is suspended.
     private var pendingPushPullContinuation: CheckedContinuation<Void, Never>?
 
-    /// Called from the draw overlay UI when the player confirms their drawn cards.
+    /// Finish a pending draw with cards drawn elsewhere (the test policies draw this way).
     func completeModifierDraw(selectedCards: [AttackModifier]) {
-        let cont = pendingModifierDraw?.continuation
+        guard let pending = pendingModifierDraw else { return }
+        lastModifierReveal = ModifierReveal(attacker: pending.attackerPiece, defender: pending.defenderPiece,
+                                            drawn: selectedCards, selected: selectedCards,
+                                            advantage: pending.advantage, disadvantage: pending.disadvantage,
+                                            drawnByPlayer: true)
+        let cont = pending.continuation
         pendingModifierDraw = nil
         cont?.resume(returning: selectedCards)
     }
 
-    /// Presents the interactive modifier draw overlay and suspends until the player confirms.
+    /// The player taps the deck: draw the pending attack's cards (both draws with advantage or
+    /// disadvantage), show them in the tray and resolve the attack.
+    func drawPendingModifiers() {
+        guard let pending = pendingModifierDraw else { return }
+        let draw = CombatResolver.drawModifiersDetailed(advantage: pending.advantage, disadvantage: pending.disadvantage,
+                                                        draw: pending.drawCard)
+        lastModifierReveal = ModifierReveal(attacker: pending.attackerPiece, defender: pending.defenderPiece,
+                                            drawn: draw.drawn, selected: draw.selected,
+                                            advantage: pending.advantage, disadvantage: pending.disadvantage,
+                                            drawnByPlayer: true)
+        let cont = pending.continuation
+        pendingModifierDraw = nil
+        cont?.resume(returning: draw.selected)
+    }
+
+    /// Whether an attack by `attacker` waits for the player to draw its modifier cards: the
+    /// players' own attacks do; monsters and summons draw for themselves unless the player asked
+    /// to draw for every attack.
+    func playerDrawsModifiers(for attacker: PieceID) -> Bool {
+        if case .character = attacker { return true }
+        return gameManager?.settingsManager.drawAllModifiers ?? false
+    }
+
+    /// Draw an attack's modifier cards: by the player's tap for their own attacks, otherwise at
+    /// once, shown in the tray for a moment before the attack resolves.
     @MainActor func performModifierDraw(
         attacker: PieceID,
         defender: PieceID,
@@ -252,8 +309,15 @@ final class BoardCoordinator {
         disadvantage: Bool,
         drawCard: @escaping () -> AttackModifier?
     ) async -> [AttackModifier] {
-        if autoResolvePrompts {
-            return CombatResolver.drawModifiers(advantage: advantage, disadvantage: disadvantage, draw: drawCard)
+        if autoResolvePrompts || !playerDrawsModifiers(for: attacker) {
+            let draw = CombatResolver.drawModifiersDetailed(advantage: advantage, disadvantage: disadvantage, draw: drawCard)
+            lastModifierReveal = ModifierReveal(attacker: attacker, defender: defender, drawn: draw.drawn,
+                                                selected: draw.selected, advantage: advantage,
+                                                disadvantage: disadvantage, drawnByPlayer: false)
+            if turnDelayNanoseconds > 0 {
+                try? await Task.sleep(nanoseconds: turnDelayNanoseconds * 2)
+            }
+            return draw.selected
         }
         return await withCheckedContinuation { continuation in
             pendingModifierDraw = PendingModifierDraw(

@@ -57,6 +57,14 @@ struct PreferencesSheet: View {
                             .font(.caption)
                             .foregroundStyle(GlavenTheme.secondaryText)
                     }
+                    settingsToggle(
+                        binding: Binding(
+                            get: { settingsManager.drawAllModifiers },
+                            set: { settingsManager.drawAllModifiers = $0 }
+                        ),
+                        title: "Draw Modifier Cards for Monsters",
+                        description: "Tap to draw for every attack, not only your own"
+                    )
                 }
 
                 Section("Sound") {

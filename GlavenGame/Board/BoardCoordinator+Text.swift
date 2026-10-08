@@ -184,3 +184,22 @@ extension BoardCoordinator {
         refreshInvisibility()
     }
 }
+
+// MARK: - Damage choice
+
+extension BoardCoordinator {
+
+    /// What taking the pending damage would do to the character.
+    struct DamageOutcome: Equatable {
+        let healthBefore: Int
+        let healthAfter: Int
+        /// Taking it drops the character to 0 hit points: they are exhausted.
+        let exhausts: Bool
+    }
+
+    func damageOutcome(_ pending: PendingDamage) -> DamageOutcome? {
+        guard let character = gameManager?.game.characters.first(where: { $0.id == pending.characterID }) else { return nil }
+        let after = max(0, character.health - pending.damage)
+        return DamageOutcome(healthBefore: character.health, healthAfter: after, exhausts: after == 0)
+    }
+}

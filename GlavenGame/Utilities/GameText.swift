@@ -159,6 +159,29 @@ enum GameText {
         return "\(elementName(element)): \(detail)"
     }
 
+    /// What an attack modifier card adds besides its number: "Poison", "Pierce 2", "Rolling".
+    static func modifierEffects(_ card: AttackModifier) -> [String] {
+        var parts: [String] = card.effects.map { effect in
+            let raw = effect.value?.stringValue ?? ""
+            switch effect.type {
+            case .condition:
+                return ConditionName(rawValue: raw).map(conditionName) ?? titleCased(raw)
+            case .element, .elementHalf:
+                return ElementType(rawValue: raw).map { "Infuse \(elementName($0))" } ?? "Infuse Element"
+            case .elementConsume:
+                return ElementType(rawValue: raw).map { "Consume \(elementName($0))" } ?? "Consume Element"
+            case .or_: return "Choice"
+            case .custom, .specialTarget, .changeType: return "Special"
+            case .sufferDamage: return raw.isEmpty ? "Suffer Damage" : "Suffer \(raw) Damage"
+            default:
+                let name = words(fromCamelCase: effect.type.rawValue)
+                return raw.isEmpty ? name : "\(name) \(raw)"
+            }
+        }
+        if card.rolling { parts.insert("Rolling", at: 0) }
+        return parts
+    }
+
     /// "Fire", "Fire and Ice", "Fire, Ice and Air".
     static func list(_ items: [String]) -> String {
         switch items.count {

@@ -22,6 +22,8 @@ final class SettingsModel {
     var lightMode: Bool = false
     var excludedConditionsData: Data?
     var animationSpeed: Double = 1.0
+    /// Draw attack modifier cards by hand for every attack, not only the player's own.
+    var drawAllModifiers: Bool = false
     var hapticFeedback: Bool = true
 
     // FH-specific toggles

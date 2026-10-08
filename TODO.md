@@ -214,7 +214,7 @@ Phase II — readable board (done)
 Phase III — game feel
 - [ ] Effects layer: attack lines/lunges, outlined damage/heal/miss text that survives a death, condition pops
 - [ ] Eased movement; distinct jump, fly, teleport and forced-move animations
-- [ ] Modifier draws in a docked tray (real card art); monster draws resolve without a modal; damage choice as select-then-confirm
+- [x] Modifier draws in a docked tray (real card art); monster draws resolve without a modal (setting to draw them by hand); damage choice as a docked sheet with card scans, select-then-confirm and an exhaustion warning (`ModifierDrawTests`, `DamageChoiceTests`)
 - [ ] Camera: fit to board, clamp, anchored zoom, follow the acting figure; macOS click-vs-drag
 - [ ] Room reveal without rebuilding the scene; board sound effects
 
