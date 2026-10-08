@@ -10,6 +10,8 @@ struct TownPartyRow: View {
     var onLevelUp: () -> Void
     var onChooseCard: () -> Void
     var onHand: () -> Void
+    var onChooseQuest: () -> Void
+    var onRetire: () -> Void
 
     private var nextThreshold: Int? {
         character.level < 9 ? GameCharacter.xpThresholds[character.level] : nil
@@ -46,6 +48,7 @@ struct TownPartyRow: View {
                     .tint(BoardTheme.brass)
                     .accessibilityLabel("Experience \(character.experience) of \(next)")
             }
+            questLine
             HStack(spacing: 8) {
                 if manager.canLevelUp(character) {
                     Button("Level Up", systemImage: "arrow.up.circle.fill", action: onLevelUp)
@@ -73,6 +76,40 @@ struct TownPartyRow: View {
         }
         .padding(12)
         .background(BoardTheme.raised, in: RoundedRectangle(cornerRadius: BoardTheme.Radius.medium))
+    }
+
+    /// The personal quest: its name and progress, or a button to choose one / to retire.
+    @ViewBuilder
+    private var questLine: some View {
+        let manager = gameManager.characterManager
+        HStack(spacing: 8) {
+            Image(systemName: "scroll").foregroundStyle(BoardTheme.brass)
+            if let id = character.personalQuest, let quest = manager.personalQuest(id, edition: character.edition) {
+                let met = quest.requirements.enumerated().filter { index, req in
+                    (index < character.personalQuestProgress.count ? character.personalQuestProgress[index] : 0) >= req.target
+                }.count
+                Text("\(quest.name) · \(met) of \(quest.requirements.count) done")
+                    .font(.subheadline)
+                    .foregroundStyle(BoardTheme.secondaryText)
+                    .lineLimit(1)
+                Spacer(minLength: 4)
+                if manager.questComplete(character) {
+                    Button("Retire", systemImage: "figure.walk.departure", action: onRetire)
+                        .buttonStyle(.borderedProminent)
+                        .tint(BoardTheme.brass)
+                        .controlSize(.small)
+                }
+            } else {
+                Text("No personal quest")
+                    .font(.subheadline)
+                    .foregroundStyle(BoardTheme.secondaryText)
+                Spacer(minLength: 4)
+                Button("Choose Quest", systemImage: "scroll.fill", action: onChooseQuest)
+                    .buttonStyle(.borderedProminent)
+                    .tint(BoardTheme.brass)
+                    .controlSize(.small)
+            }
+        }
     }
 
     private var levelLine: String {

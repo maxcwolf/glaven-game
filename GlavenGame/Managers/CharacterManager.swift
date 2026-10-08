@@ -2,8 +2,8 @@ import Foundation
 
 @Observable
 final class CharacterManager {
-    private let game: GameState
-    private let editionStore: EditionDataStore
+    let game: GameState
+    let editionStore: EditionDataStore
     private let entityManager: EntityManager
     private let attackModifierManager: AttackModifierManager
     var onBeforeMutate: (() -> Void)?

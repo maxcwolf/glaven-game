@@ -11,6 +11,8 @@ struct GameSetupView: View {
     @State private var levelUpCharacter: GameCharacter?
     @State private var cardChoiceCharacter: GameCharacter?
     @State private var handCharacter: GameCharacter?
+    @State private var questCharacter: GameCharacter?
+    @State private var retiringCharacter: GameCharacter?
     @State private var showWorldMap = false
     @State private var showCampaign = false
     /// Events to resolve before setting out, in order; the first is showing.
@@ -144,6 +146,22 @@ struct GameSetupView: View {
                 .ignoresSafeArea()
         }
         .overlay {
+            if let character = questCharacter {
+                QuestPicker(character: character) { questCharacter = nil }
+                    .transition(.opacity)
+            }
+        }
+        .confirmationDialog(retireTitle, isPresented: Binding(
+            get: { retiringCharacter != nil }, set: { if !$0 { retiringCharacter = nil } }
+        ), titleVisibility: .visible) {
+            Button("Retire", role: .destructive) {
+                if let character = retiringCharacter { gameManager.characterManager.retireCharacter(character) }
+            }
+            Button("Not Yet", role: .cancel) {}
+        } message: {
+            Text("They leave the party for good. Their quest's reward is unlocked, and prosperity rises.")
+        }
+        .overlay {
             if choosingGoals {
                 BattleGoalPicker(onDone: departure)
                     .transition(.opacity)
@@ -216,6 +234,17 @@ struct GameSetupView: View {
         if deck == .city { gameManager.game.events.cityEventDue = false }
         events.removeFirst()
         if events.isEmpty, settingOutFor != nil { chooseGoals() }
+    }
+
+    private var retireTitle: String {
+        guard let character = retiringCharacter else { return "" }
+        return "Retire \(GameText.characterName(character, labels: gameManager.editionStore))?"
+    }
+
+    /// Deal two quests (unless two are waiting already) and let the character keep one.
+    private func chooseQuest(for character: GameCharacter) {
+        if character.questChoices.isEmpty { gameManager.characterManager.dealQuests(to: character) }
+        questCharacter = character
     }
 
     private var levelUpTitle: String {
@@ -304,7 +333,9 @@ struct GameSetupView: View {
                                      onShop: { shopCharacter = character },
                                      onLevelUp: { levelUpCharacter = character },
                                      onChooseCard: { cardChoiceCharacter = character },
-                                     onHand: { handCharacter = character })
+                                     onHand: { handCharacter = character },
+                                     onChooseQuest: { chooseQuest(for: character) },
+                                     onRetire: { retiringCharacter = character })
                             .padding(.bottom, 6)
                     }
                     if !gameManager.game.characters.isEmpty {
@@ -406,6 +437,10 @@ struct GameSetupView: View {
             } else {
                 guard gameManager.game.characters.count < 4 else { return }
                 gameManager.characterManager.addCharacter(name: character.name, edition: edition, level: selectedLevel)
+                // A recruit chooses their personal quest straight away.
+                if let recruit = gameManager.game.characters.first(where: { $0.name == character.name }) {
+                    chooseQuest(for: recruit)
+                }
             }
         } label: {
             HStack(spacing: 10) {

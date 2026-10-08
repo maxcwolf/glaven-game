@@ -41,6 +41,10 @@ final class GameCharacter: Figure, Entity {
     var selectedPerks: [Int] = []
     /// Ability cards chosen on levelling up, one per level above 1 (see `CardPool`).
     var chosenCards: [Int] = []
+    /// What they've done over the campaign, for their personal quest.
+    var record = CharacterRecord()
+    /// The two personal quests dealt on recruiting, until one is kept.
+    var questChoices: [String] = []
 
     // Battle goal state
     var battleGoalCardIds: [String] = []

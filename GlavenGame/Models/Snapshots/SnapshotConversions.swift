@@ -121,7 +121,7 @@ extension FigureSnapshot {
 
 extension GameCharacter {
     func toSnapshot() -> CharacterSnapshot {
-        CharacterSnapshot(
+        var snapshot = CharacterSnapshot(
             name: name, edition: edition, level: level, off: off, active: active,
             number: number, health: health, maxHealth: maxHealth,
             entityConditions: entityConditions, immunities: immunities,
@@ -155,6 +155,9 @@ extension GameCharacter {
             lostWhenRemoved: lostWhenRemoved.isEmpty ? nil : lostWhenRemoved,
             chosenCards: chosenCards
         )
+        snapshot.record = record
+        snapshot.questChoices = questChoices.isEmpty ? nil : questChoices
+        return snapshot
     }
 }
 
@@ -207,6 +210,8 @@ extension CharacterSnapshot {
         c.consumedItems = Set(consumedItems ?? [])
         c.roundBonusCards = roundBonusCards ?? []
         c.lostWhenRemoved = lostWhenRemoved ?? []
+        c.record = record ?? CharacterRecord()
+        c.questChoices = questChoices ?? []
         if let chosenCards {
             c.chosenCards = chosenCards
         } else {

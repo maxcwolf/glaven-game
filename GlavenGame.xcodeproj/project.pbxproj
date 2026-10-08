@@ -110,8 +110,10 @@
 		8CB0FFF5B997D068B2D99954 /* AppPhase.swift in Sources */ = {isa = PBXBuildFile; fileRef = D9682A31C9693AB6DADDC9F6 /* AppPhase.swift */; };
 		8D637BC2C5EC03235144944A /* ScenarioMapStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0449386EC7763E37AF9AB2A4 /* ScenarioMapStore.swift */; };
 		8EE54DF20EAC7C6985AD80B1 /* SummonColor.swift in Sources */ = {isa = PBXBuildFile; fileRef = FBE537F6F81289C6EEB5CDAD /* SummonColor.swift */; };
+		8FC70B94B68CE136535F98DA /* QuestPicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = D9D1DCB6F2E36C85EC7CA983 /* QuestPicker.swift */; };
 		916FFE7F8E38E482DBC83A94 /* BoardBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8631B220635598C0A14D982C /* BoardBuilder.swift */; };
 		926BC6F19A0823894BF09A60 /* DifficultyMode.swift in Sources */ = {isa = PBXBuildFile; fileRef = 108557F63132E1F414535D57 /* DifficultyMode.swift */; };
+		933131649AE3F77A9CE9E824 /* PersonalQuests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00BBEBDEA7AD7385CDCFDF66 /* PersonalQuests.swift */; };
 		93A57D1AE8095C6238BBB1D3 /* RemoteEditionData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 640F58EE8E704179EBE9CF1B /* RemoteEditionData.swift */; };
 		9458CF11BD646363D1E12D72 /* BattleGoalEvaluator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 93D0A3295055885AF38D77C7 /* BattleGoalEvaluator.swift */; };
 		94C095768371C283CC23B948 /* GameSummon.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0429C07F7DA0462F801132A /* GameSummon.swift */; };
@@ -144,6 +146,7 @@
 		BC3BC6A84314049CE3D9E374 /* RewardChoicesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 487FFAE9CF9ACC5FB5742CD6 /* RewardChoicesView.swift */; };
 		BE7EE0EF8DD216ECE92FD5D2 /* PerkRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 94543157EC625CBD08547CDE /* PerkRow.swift */; };
 		BECDE7A9C337E991508726F4 /* GameState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 927D27803802AD81536EA860 /* GameState.swift */; };
+		BEE9E654C2551E67AAF2CBEF /* CharacterRecord.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8BA95AC46998AD48FBDD55E9 /* CharacterRecord.swift */; };
 		BF6BBF8E4D54D670161DA3D0 /* GameText.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5FFE059ED977F411C451EA65 /* GameText.swift */; };
 		BF775F0114B6F567A1A74F92 /* BoardCoordinator+Movement.swift in Sources */ = {isa = PBXBuildFile; fileRef = B6C9F8BE9CC7A895A0360304 /* BoardCoordinator+Movement.swift */; };
 		C0B2D8674061CBC4D28A537D /* ActiveCardHalf.swift in Sources */ = {isa = PBXBuildFile; fileRef = 800796073F61F4C2A69A6408 /* ActiveCardHalf.swift */; };
@@ -200,6 +203,7 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		00BBEBDEA7AD7385CDCFDF66 /* PersonalQuests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PersonalQuests.swift; sourceTree = "<group>"; };
 		0124B0388BD2AA1770320E6B /* BattleGoals.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BattleGoals.swift; sourceTree = "<group>"; };
 		015914F204A6A1A5CD04676F /* ItemManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ItemManager.swift; sourceTree = "<group>"; };
 		01D2EFBD8378EDAFC3F215CF /* ActionType.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActionType.swift; sourceTree = "<group>"; };
@@ -300,6 +304,7 @@
 		889E9E03A546F9863470E6EB /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		8A1F3360FC927B90953116E2 /* GameManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameManager.swift; sourceTree = "<group>"; };
 		8A2BBA0188C2D10D81CAC68B /* PlayerTurnController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerTurnController.swift; sourceTree = "<group>"; };
+		8BA95AC46998AD48FBDD55E9 /* CharacterRecord.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CharacterRecord.swift; sourceTree = "<group>"; };
 		8DC43DEE8B38C661B7401300 /* ScenarioStatsManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScenarioStatsManager.swift; sourceTree = "<group>"; };
 		927D27803802AD81536EA860 /* GameState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameState.swift; sourceTree = "<group>"; };
 		93501E1A8B09C90B3224D4E6 /* BoardState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BoardState.swift; sourceTree = "<group>"; };
@@ -364,6 +369,7 @@
 		D86B71BFEEBD99C00C1AF649 /* TownPartyRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TownPartyRow.swift; sourceTree = "<group>"; };
 		D8D120B1CEE8FA85B7939897 /* Pathfinder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Pathfinder.swift; sourceTree = "<group>"; };
 		D9682A31C9693AB6DADDC9F6 /* AppPhase.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppPhase.swift; sourceTree = "<group>"; };
+		D9D1DCB6F2E36C85EC7CA983 /* QuestPicker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuestPicker.swift; sourceTree = "<group>"; };
 		DA5E6D17711BE40800C3537F /* PersonalQuestData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PersonalQuestData.swift; sourceTree = "<group>"; };
 		DAF0FC6C2F01CFD4173515AC /* CharacterClass.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CharacterClass.swift; sourceTree = "<group>"; };
 		DCC5DD17CCF9E224A30CC1B4 /* ElementType.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ElementType.swift; sourceTree = "<group>"; };
@@ -569,6 +575,7 @@
 				AD2078C38F909FF5A2F71A7B /* GameSetupView.swift */,
 				4840A613B6DC796BF25638E0 /* MainMenuView.swift */,
 				975066D59FC5616F167806B8 /* MenuKeyArt.swift */,
+				D9D1DCB6F2E36C85EC7CA983 /* QuestPicker.swift */,
 				D86B71BFEEBD99C00C1AF649 /* TownPartyRow.swift */,
 				227A3064E6D684967F7C3C60 /* Dialogs */,
 				FFE5F7E058CB9F9443DB1BC5 /* Figures */,
@@ -622,6 +629,7 @@
 			isa = PBXGroup;
 			children = (
 				B1F121B39DF61999A92908F6 /* CardPool.swift */,
+				8BA95AC46998AD48FBDD55E9 /* CharacterRecord.swift */,
 				7175CB1F50A54A84F38423F7 /* EventState.swift */,
 				CB48D739CDC747D7E15DB194 /* GameCharacter.swift */,
 				AE4FE04C5C22C618D1AB2170 /* GameMonster.swift */,
@@ -798,6 +806,7 @@
 				6B4DA2419C815421AF728C58 /* LootManager.swift */,
 				F32D8ED53532637A9DB0B648 /* MonsterManager.swift */,
 				6DC0AE3639F6C6E004323D24 /* ObjectiveManager.swift */,
+				00BBEBDEA7AD7385CDCFDF66 /* PersonalQuests.swift */,
 				794BBAB32F951E4614E23099 /* RoundManager.swift */,
 				E76A7095C8D371EF8B0F04D2 /* ScenarioManager.swift */,
 				3C61D7D6C6A754273EE78F30 /* ScenarioManager+Rewards.swift */,
@@ -942,6 +951,7 @@
 				0417E8BE5AF938F0EB4F01DB /* CharacterData.swift in Sources */,
 				C20C2F095EEAA5871F1BFBF9 /* CharacterItemsView.swift in Sources */,
 				ABF77D86E73182CD257DCEC8 /* CharacterManager.swift in Sources */,
+				BEE9E654C2551E67AAF2CBEF /* CharacterRecord.swift in Sources */,
 				3CA51576B5FF4BF353869396 /* CharacterSheetView.swift in Sources */,
 				F182555B5F77F1B49251EEFE /* CharacterStatModel.swift in Sources */,
 				03A7B62A8C0B7BC75F988E58 /* Color+Hex.swift in Sources */,
@@ -1035,10 +1045,12 @@
 				EF65B14C5A82C7BD01A94907 /* PersonalQuestData.swift in Sources */,
 				B47234E91D6B816CC5EAB984 /* PersonalQuestEvaluator.swift in Sources */,
 				5BBB61E7EDF1269CF6D4BA28 /* PersonalQuestView.swift in Sources */,
+				933131649AE3F77A9CE9E824 /* PersonalQuests.swift in Sources */,
 				0EACFB0AB8BDFFCC7F591795 /* PieceID.swift in Sources */,
 				58612AEA8A8D852B5EEA2FEA /* PieceSpriteNode.swift in Sources */,
 				7E73D0A139DFBE1715DA1F44 /* PlayerTurnController.swift in Sources */,
 				C7A71268D4ED515FDA566884 /* PreferencesSheet.swift in Sources */,
+				8FC70B94B68CE136535F98DA /* QuestPicker.swift in Sources */,
 				93A57D1AE8095C6238BBB1D3 /* RemoteEditionData.swift in Sources */,
 				BC3BC6A84314049CE3D9E374 /* RewardChoicesView.swift in Sources */,
 				4B2BA4139D0D27B42EE7818E /* RoundManager.swift in Sources */,

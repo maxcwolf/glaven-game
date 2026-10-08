@@ -240,8 +240,8 @@ Phase V — the campaign around the scenarios (done 2026-10-08)
 Phase VI — the rest of Gloomhaven's town rules
 - [x] Battle goals: two dealt to each character when setting out, one kept; all 24 judged from tracked stats (traps, doors, treasure, elite kills, overkill, first kill, executions, health, rests, monsters each round) saved with the scenario; shown in the brief and on the results; checkmarks on a success (`BattleGoalPlayTests`, `BattleGoalTests`)
 - [ ] Items can't be used on the board (only marked used from the character sheet), so Professional can't be met and Purist always is; add item use during turns
-- [ ] Personal quests: deal two when a character is recruited, keep one; show progress in town
-- [ ] Retirement: when a personal quest is complete, retire from town (unlock the class, prosperity, log); a new character replaces them
+- [x] Personal quests: two dealt on recruiting, one kept; a campaign record per character (wins, kills by monster, elite kills, exhaustions) counts every requirement the game can see, after wins and losses; progress in town and on the sheet; by-hand counting only for map-region, enhancement and Skullbane requirements (`PersonalQuestTests`, `PersonalQuestAutotrackTests`)
+- [x] Retirement from town when the quest is complete (unlock, prosperity, log); a new recruit takes the slot
 - [ ] Sanctuary donation in town: 10 gold for two blessings in the next scenario (GH p.48), counted toward prosperity
 - [ ] Enhancements in town (EnhancementsManager exists; the old companion sheet was deleted, see git 718ed50)
 - [ ] Unlocking or retiring a class adds its city and road events to the decks

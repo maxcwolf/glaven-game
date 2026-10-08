@@ -221,7 +221,7 @@ extension BoardCoordinator {
             removePieceFromBoard(pieceID)
             recordMonsterKill(name: name)
             if let character = creditedCharacter(for: killer) {
-                gameManager.scenarioStatsManager.recordKill(by: character.name, elite: entity.type == .elite,
+                gameManager.scenarioStatsManager.recordKill(by: character.name, monster: name, elite: entity.type == .elite,
                                                            overkill: max(0, overkill), fromFullHealth: fromFullHealth)
             }
             gameManager.scenarioRulesManager.evaluateRules()

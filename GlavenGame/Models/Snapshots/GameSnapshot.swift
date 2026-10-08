@@ -213,6 +213,8 @@ struct CharacterSnapshot: Codable {
     var lostWhenRemoved: [Int]?
     /// Nil in saves from before cards were chosen on levelling up.
     var chosenCards: [Int]?
+    var record: CharacterRecord?
+    var questChoices: [String]?
 
     init(name: String, edition: String, level: Int, off: Bool, active: Bool,
          number: Int, health: Int, maxHealth: Int,
@@ -319,6 +321,8 @@ struct CharacterSnapshot: Codable {
         roundBonusCards = try container.decodeIfPresent([Int].self, forKey: .roundBonusCards)
         lostWhenRemoved = try container.decodeIfPresent([Int].self, forKey: .lostWhenRemoved)
         chosenCards = try container.decodeIfPresent([Int].self, forKey: .chosenCards)
+        record = try container.decodeIfPresent(CharacterRecord.self, forKey: .record)
+        questChoices = try container.decodeIfPresent([String].self, forKey: .questChoices)
     }
 }
 

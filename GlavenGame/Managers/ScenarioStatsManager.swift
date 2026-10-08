@@ -25,6 +25,8 @@ struct ScenarioCharacterStats: Codable, Equatable {
     var droppedBelowHalf: Bool = false
     var shortRests: Int = 0
     var longRests: Int = 0
+    /// Kills by base monster name, for personal quests.
+    var killsByMonster: [String: Int] = [:]
 }
 
 /// What the party did together, for battle goals.
@@ -89,9 +91,11 @@ final class ScenarioStatsManager {
 
     /// A kill: whether the monster was elite, how much damage was spare, and whether a single
     /// attack took it from full health.
-    func recordKill(by characterName: String, elite: Bool = false, overkill: Int = 0, fromFullHealth: Bool = false) {
+    func recordKill(by characterName: String, monster: String? = nil, elite: Bool = false, overkill: Int = 0,
+                    fromFullHealth: Bool = false) {
         update(characterName) {
             $0.kills += 1
+            if let monster { $0.killsByMonster[CharacterRecord.baseMonsterName(monster), default: 0] += 1 }
             if elite { $0.eliteKills += 1 }
             $0.largestOverkill = max($0.largestOverkill, overkill)
             if fromFullHealth { $0.executions += 1 }

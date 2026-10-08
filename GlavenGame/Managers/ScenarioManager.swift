@@ -83,6 +83,7 @@ final class ScenarioManager {
 
         // Experience gained in the scenario itself, before the success bonus (for battle goals).
         let xpGained = scenarioXPGained()
+        recordCampaign(success: success, data: data)
 
         if success {
             // Record completion
@@ -117,19 +118,6 @@ final class ScenarioManager {
                 }
             }
 
-            // Update personal quest progress for all characters
-            for character in game.characters where !character.absent {
-                let complete = PersonalQuestEvaluator.updateProgress(
-                    character: character, game: game, editionStore: editionStore
-                )
-                if complete {
-                    game.campaignLog.append(CampaignLogEntry(
-                        type: .characterRetired,
-                        message: "\(GameText.characterName(character, labels: editionStore)) completed their personal quest and can retire"
-                    ))
-                }
-            }
-
             // Campaign log
             game.campaignLog.append(CampaignLogEntry(
                 type: .scenarioCompleted,
@@ -144,6 +132,18 @@ final class ScenarioManager {
                 message: "Failed #\(data.index) \(data.name)",
                 details: "Round \(game.round)"
             ))
+        }
+
+        // Personal quest progress, won or lost (kills count either way).
+        for character in game.characters where !character.absent {
+            let wasComplete = PersonalQuestEvaluator.isComplete(character: character, editionStore: editionStore)
+            let complete = PersonalQuestEvaluator.updateProgress(character: character, game: game, editionStore: editionStore)
+            if complete && !wasComplete {
+                game.campaignLog.append(CampaignLogEntry(
+                    type: .characterRetired,
+                    message: "\(GameText.characterName(character, labels: editionStore)) completed their personal quest and can retire"
+                ))
+            }
         }
 
         // Reset character state for the next scenario.
@@ -658,6 +658,21 @@ final class ScenarioManager {
             }
         }
         applyRewardChoices(rewards, edition: edition, choices: choices)
+    }
+
+    /// Fold the scenario into each character's campaign record, for personal quests: a win,
+    /// their kills, and exhaustions in the party.
+    private func recordCampaign(success: Bool, data: ScenarioData) {
+        let party = game.characters.filter { !$0.absent }
+        let exhaustions = party.filter(\.exhausted).count
+        for character in party {
+            let stats = scenarioStatsManager?.stats(for: character.name) ?? ScenarioCharacterStats()
+            if success { character.record.scenariosCompleted.insert(data.id) }
+            for (monster, count) in stats.killsByMonster { character.record.kills[monster, default: 0] += count }
+            character.record.eliteKills += stats.eliteKills
+            if character.exhausted { character.record.timesExhausted += 1 }
+            character.record.partyExhaustions += exhaustions
+        }
     }
 
     /// Experience each character (by id) gained in the current scenario so far.

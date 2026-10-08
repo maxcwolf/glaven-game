@@ -18,3 +18,9 @@ the game does now; change any of them and I'll follow.
    drop or reorder?
 7. **Straggler and Scrambler with no rests.** "Take only long (short) rests" — does a scenario
    with no rest at all meet it? Now: at least one rest of that kind is needed.
+8. **Quests about map regions** (Take Back the Trees, Vengeance, The Fall of Man, Elemental
+   Samples) need to know which region each scenario is in; the data doesn't say. Now: counted by
+   hand on the character sheet. I can add a region table for the 95 scenarios if you want it.
+9. **"Exhausted party members"** (A Study of Anatomy): does the character's own exhaustion count?
+   Now: yes, every exhaustion in the party in scenarios they played.
+

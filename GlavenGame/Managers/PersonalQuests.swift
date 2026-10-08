@@ -1,0 +1,82 @@
+import Foundation
+
+/// A personal quest as the player reads it.
+struct PersonalQuest: Equatable, Identifiable {
+    struct Requirement: Equatable {
+        let text: String
+        let target: Int
+        let tracking: PersonalQuestEvaluator.Tracking
+        /// Earlier requirements (0-based) that must be met first.
+        let after: [Int]
+    }
+    let id: String
+    let name: String
+    let requirements: [Requirement]
+    /// The class it unlocks on retirement, if any.
+    let unlocks: String?
+}
+
+/// Dealing personal quests (GH p.12): a recruit is dealt two and keeps one; on completing it the
+/// character retires.
+extension CharacterManager {
+
+    func personalQuest(_ cardId: String, edition: String = "gh") -> PersonalQuest? {
+        guard let data = editionStore.personalQuest(cardId: cardId, edition: edition) else { return nil }
+        let labels = (editionStore.labelsByEdition[edition]?["personalQuest"] as? [String: Any])
+            .flatMap { ($0[edition] as? [String: Any])?[cardId] as? [String: Any] }
+        let requirements = data.requirements.enumerated().map { index, req in
+            PersonalQuest.Requirement(
+                text: Self.requirementText(req.name, labels: labels?["\(index + 1)"] as? String, store: editionStore, edition: edition),
+                target: req.counterValue,
+                tracking: PersonalQuestEvaluator.tracking(questId: cardId, index: index, requirement: req),
+                after: (req.requires ?? []).map { $0 - 1 })
+        }
+        let unlocks = data.unlockCharacter.map { GameText.className($0, edition: edition, labels: editionStore) }
+        return PersonalQuest(id: cardId, name: labels?[""] as? String ?? "Quest \(cardId)",
+                             requirements: requirements, unlocks: unlocks)
+    }
+
+    private static func requirementText(_ raw: String, labels: String?, store: EditionDataStore, edition: String) -> String {
+        var text = raw.hasPrefix("%data.") ? (labels ?? store.resolveCustomText(raw, edition: edition) ?? raw) : raw
+        let words: [String: String] = [
+            "%game.items.slots.head%": "Head", "%game.items.slots.body%": "Body", "%game.items.slots.legs%": "Legs",
+            "%game.items.slots.onehand%": "One-hand", "%game.items.slots.twohand%": "Two-hand",
+            "%game.items.slots.small%": "Small", "%character.progress.gold%": "Gold",
+            "%game.checkmark%": "checkmarks", "%game.exhausted%": "Times exhausted",
+        ]
+        for (placeholder, word) in words { text = text.replacingOccurrences(of: placeholder, with: word) }
+        text = text.replacingOccurrences(of: #"%[^%]+%"#, with: "", options: .regularExpression)
+            .trimmingCharacters(in: .whitespaces)
+        return text.prefix(1).uppercased() + text.dropFirst()
+    }
+
+    /// Deal two quests to a recruit, from those no one in the party holds.
+    func dealQuests(to character: GameCharacter) {
+        let held = Set(game.characters.compactMap(\.personalQuest))
+        let deck = editionStore.personalQuests(for: character.edition).map(\.cardId).filter { !held.contains($0) }
+        character.questChoices = Array(deck.shuffled(using: &GameRandom.shared).prefix(2))
+    }
+
+    /// Keep one of the two quests dealt.
+    func chooseQuest(_ cardId: String, for character: GameCharacter) {
+        guard character.questChoices.contains(cardId),
+              let quest = editionStore.personalQuest(cardId: cardId, edition: character.edition) else { return }
+        onBeforeMutate?()
+        character.personalQuest = cardId
+        character.personalQuestProgress = Array(repeating: 0, count: quest.requirements.count)
+        character.questChoices = []
+    }
+
+    /// Count a requirement the game can't see by hand (a map region, an enhancement).
+    func adjustQuest(_ index: Int, by delta: Int, for character: GameCharacter) {
+        guard let id = character.personalQuest, let quest = personalQuest(id, edition: character.edition),
+              index < quest.requirements.count, quest.requirements[index].tracking == .manual else { return }
+        while character.personalQuestProgress.count <= index { character.personalQuestProgress.append(0) }
+        let target = quest.requirements[index].target
+        character.personalQuestProgress[index] = max(0, min(target, character.personalQuestProgress[index] + delta))
+    }
+
+    func questComplete(_ character: GameCharacter) -> Bool {
+        PersonalQuestEvaluator.isComplete(character: character, editionStore: editionStore)
+    }
+}
