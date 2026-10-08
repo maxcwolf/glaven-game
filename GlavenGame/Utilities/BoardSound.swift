@@ -40,8 +40,17 @@ enum BoardSoundPlayer {
         return files[index]
     }
 
+    /// Silent under the test runner: tests show the board in real views, and their door
+    /// openings and hits used to play through the speakers of whoever ran the suite.
+    static let isSilenced = NSClassFromString("XCTestCase") != nil
+
+    /// Sounds actually started (for tests).
+    private(set) static var playedCount = 0
+
     static func play(_ sound: BoardSound) {
-        guard SoundPlayer.settingsManager?.soundEffects ?? true, let url = nextFile(for: sound) else { return }
+        guard !isSilenced, SoundPlayer.settingsManager?.soundEffects ?? true,
+              let url = nextFile(for: sound) else { return }
+        playedCount += 1
         prepareSession()
         let player: AVAudioPlayer
         if let cached = players[url] {

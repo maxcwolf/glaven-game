@@ -53,7 +53,7 @@ enum SoundPlayer {
 
     /// Play the "Glaven" sting: once at launch, or again when `replay` is set (tapping the logo).
     static func playGlayvin(replay: Bool = false) {
-        guard shouldPlayLaunchSting(soundEffects: settingsManager?.soundEffects ?? true,
+        guard !BoardSoundPlayer.isSilenced, shouldPlayLaunchSting(soundEffects: settingsManager?.soundEffects ?? true,
                                     alreadyPlayed: playedLaunchSting && !replay) else { return }
         playedLaunchSting = true
         guard let url = appResourceBundle.url(forResource: "glayvin", withExtension: "mp3", subdirectory: "Sounds") else {

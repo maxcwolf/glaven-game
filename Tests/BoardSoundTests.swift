@@ -74,6 +74,24 @@ final class BoardSoundTests: XCTestCase {
         XCTAssertTrue(heard.contains(.door))
     }
 
+    /// Regression: tests that show the board in a real view (camera, rendering) played its
+    /// sounds through the speakers on every run — a door creak every few minutes. Nothing plays
+    /// under the test runner.
+    func testTheTestRunnerIsSilent() throws {
+        XCTAssertTrue(BoardSoundPlayer.isSilenced)
+        let before = BoardSoundPlayer.playedCount
+        BoardSoundPlayer.play(.door)
+        let gm = try SaveAndContinueTestsSupport.manager()
+        gm.characterManager.addCharacter(name: "brute", edition: "gh")
+        let scenario = try XCTUnwrap(gm.editionStore.scenarios(for: "gh").first { $0.index == "1" && $0.solo == nil })
+        gm.startScenarioOnBoard(scenario)
+        let scene = try XCTUnwrap(gm.boardCoordinator.boardScene)
+        SKView(frame: CGRect(x: 0, y: 0, width: 800, height: 600)).presentScene(scene)
+        let door = try XCTUnwrap(gm.boardCoordinator.boardState.doors.first { !$0.isOpen })
+        gm.boardCoordinator.openDoor(at: door.coord)
+        XCTAssertEqual(BoardSoundPlayer.playedCount, before)
+    }
+
     /// Headless play (the simulator, tests) makes no sound.
     func testAHeadlessBoardIsSilent() throws {
         let scene = try start(presented: false)
