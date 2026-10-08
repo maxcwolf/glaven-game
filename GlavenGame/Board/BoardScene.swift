@@ -87,6 +87,11 @@ class BoardScene: SKScene {
         for overlay in result.overlays {
             let overlayCoord = HexCoord(overlay.col, overlay.row)
             guard visibleCoords.contains(overlayCoord) else { continue }
+            // Traps that have sprung and treasure that has been looted are gone from the board.
+            let name = overlay.imageName.lowercased()
+            if name.contains("trap") && board.cells[overlayCoord]?.isTrap != true { continue }
+            if (name.contains("treasure") || name.contains("coin") || name.contains("chest"))
+                && board.cells[overlayCoord]?.overlay != .treasure { continue }
             placeOverlaySprite(overlay: overlay, offsetCol: offsetCol, offsetRow: offsetRow)
         }
 

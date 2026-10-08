@@ -25,7 +25,8 @@ struct HexCell: Codable, Sendable {
     var overlayImageName: String?
     /// Overlay sub-type (e.g. "spike" for traps, "table" for obstacles).
     var overlaySubType: String?
-    /// Damage dealt by traps on this cell.
+    /// Explicit damage override for a trap placed mid-scenario; nil means the standard
+    /// damage-trap value (2 + scenario level).
     var trapDamage: Int?
     /// Treasure ID for treasure chests/coins.
     var treasureID: String?

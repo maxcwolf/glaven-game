@@ -12,9 +12,11 @@ struct DoorInfo: Codable, Sendable {
     let refPoint: HexCoord
     /// The origin point in the child tile's local space.
     let origin: HexCoord
-    /// The VGBMapTileData for the child room (stored for room reveal).
-    /// Not codable — rebuilt from scenario data on restore.
     var isOpen: Bool = false
+    /// Path of door indices from the map's root tile to the tile behind this door. The same tile
+    /// name can appear several times in the map tree (once per connector), and only one copy
+    /// carries its monsters, overlays and onward doors, so rooms are located by path.
+    var childPath: [Int]? = nil
 }
 
 /// Spatial game state tracking what's on each hex.
