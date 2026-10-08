@@ -212,6 +212,7 @@
 		CFB8201374A8A759A8C032A9 /* ConditionName.swift in Sources */ = {isa = PBXBuildFile; fileRef = C124CDA0F843E56DFEB9254F /* ConditionName.swift */; };
 		D18A8958FB513FD0A1A027F7 /* MonsterStatModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = B84551835BADF4DA5F602FA6 /* MonsterStatModel.swift */; };
 		D4E7121201A9D615F5FC0D37 /* DeckData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1BFD0B71E6987E420B5CBA91 /* DeckData.swift */; };
+		D5E66A358D8848C0094682B1 /* ScenarioManager+Rewards.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3C61D7D6C6A754273EE78F30 /* ScenarioManager+Rewards.swift */; };
 		D6FC3C4BEE20DFD5C76C7308 /* DeckEditorSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 381A91AFE63021B058D87DF0 /* DeckEditorSheet.swift */; };
 		DA80F59435177C23D8E005E0 /* AoEResolver.swift in Sources */ = {isa = PBXBuildFile; fileRef = C9787C8278D29A360F280A45 /* AoEResolver.swift */; };
 		DBCECD3BAD657A5840A2F80A /* EditionData in Resources */ = {isa = PBXBuildFile; fileRef = 6837034E843BAFF4AB496C8A /* EditionData */; };
@@ -290,6 +291,7 @@
 		35C054964C875669475982EF /* PerkSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PerkSheet.swift; sourceTree = "<group>"; };
 		381A91AFE63021B058D87DF0 /* DeckEditorSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeckEditorSheet.swift; sourceTree = "<group>"; };
 		3A61C3B64DFD88B472B3864F /* LootDeckView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LootDeckView.swift; sourceTree = "<group>"; };
+		3C61D7D6C6A754273EE78F30 /* ScenarioManager+Rewards.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ScenarioManager+Rewards.swift"; sourceTree = "<group>"; };
 		3D21E983F2C6A9DB30620F8A /* AttackModifierDeck.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AttackModifierDeck.swift; sourceTree = "<group>"; };
 		3E998CE7344F97D1E3E79A74 /* AttackModifier.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AttackModifier.swift; sourceTree = "<group>"; };
 		41199D358483FF3FC45E220B /* HealthBarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthBarView.swift; sourceTree = "<group>"; };
@@ -977,6 +979,7 @@
 				6DC0AE3639F6C6E004323D24 /* ObjectiveManager.swift */,
 				794BBAB32F951E4614E23099 /* RoundManager.swift */,
 				E76A7095C8D371EF8B0F04D2 /* ScenarioManager.swift */,
+				3C61D7D6C6A754273EE78F30 /* ScenarioManager+Rewards.swift */,
 				2A627A875740C74A642DC8E7 /* ScenarioManager+Treasure.swift */,
 				0449386EC7763E37AF9AB2A4 /* ScenarioMapStore.swift */,
 				0C19CA805C2464F3FAC37E07 /* ScenarioRulesManager.swift */,
@@ -1264,6 +1267,7 @@
 				CC34ABA4C68311665619E8E3 /* ScenarioData.swift in Sources */,
 				092AB5BE3CCA94A1BDF57E91 /* ScenarioExpression.swift in Sources */,
 				52E0ADA8BFFF3AAD6661D81C /* ScenarioHeaderView.swift in Sources */,
+				D5E66A358D8848C0094682B1 /* ScenarioManager+Rewards.swift in Sources */,
 				95E46FEF3AAB72D60B29700B /* ScenarioManager+Treasure.swift in Sources */,
 				A640E78853965C39A26632DA /* ScenarioManager.swift in Sources */,
 				29E366091BF30CC9A2AC85F9 /* ScenarioMapBuilder.swift in Sources */,
