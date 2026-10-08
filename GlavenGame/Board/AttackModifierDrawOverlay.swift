@@ -23,7 +23,8 @@ struct AttackModifierDrawOverlay: View {
     @State private var revealCount1: Int = 0
     @State private var revealCount2: Int = 0
 
-    private var needsTwo: Bool { pending.advantage || pending.disadvantage }
+    /// Advantage and disadvantage cancel out into a normal single draw.
+    private var needsTwo: Bool { pending.advantage != pending.disadvantage }
 
     // MARK: - View
 
@@ -195,7 +196,7 @@ struct AttackModifierDrawOverlay: View {
                 let selected = resolveSelectedCards(chain1: chain1, chain2: chain2)
                 let chain1Wins = chainWins(chain1, over: chain2, selected: selected)
                 let chain2Wins = chainWins(chain2, over: chain1, selected: selected)
-                let bothApplied = selected.count > 1 && selected == chain1 + chain2
+                let bothApplied = pending.advantage && (chain1 + chain2).contains(where: \.rolling)
 
                 HStack(alignment: .top, spacing: 20) {
                     chainColumn(chain1, revealCount: revealCount1, label: "Card 1",
@@ -205,7 +206,7 @@ struct AttackModifierDrawOverlay: View {
                 }
 
                 if bothApplied {
-                    Text("Rolling — both cards applied")
+                    Text("Rolling — cards added together")
                         .font(.system(size: 11 * scale, weight: .semibold))
                         .foregroundStyle(.yellow)
                 }
@@ -361,19 +362,13 @@ struct AttackModifierDrawOverlay: View {
 
     // MARK: - Draw Logic
 
-    /// Draws cards from the deck until a non-rolling card is reached, returning the full chain.
-    private func drawChain() -> [AttackModifier] {
-        var chain: [AttackModifier] = []
-        repeat {
-            guard let card = pending.drawCard() else { break }
-            chain.append(card)
-        } while chain.last?.rolling == true
-        return chain.isEmpty ? [] : chain
-    }
-
     private func drawFirst() {
         SoundPlayer.play(.cardFlip)
-        let chain1 = drawChain()
+        // Advantage/disadvantage: the first draw is a single card; a normal draw follows
+        // rolling cards until a non-rolling card is reached.
+        let chain1 = needsTwo
+            ? (pending.drawCard().map { [$0] } ?? [])
+            : CombatResolver.drawChain(pending.drawCard)
         guard !chain1.isEmpty else { return }
         revealCount1 = 0
         if needsTwo {
@@ -387,7 +382,7 @@ struct AttackModifierDrawOverlay: View {
     private func drawSecond() {
         guard case .drawnFirst(let chain1) = phase else { return }
         SoundPlayer.play(.cardFlip)
-        let chain2 = drawChain()
+        let chain2 = CombatResolver.drawSecond(after: chain1, pending.drawCard)
         guard !chain2.isEmpty else { return }
         revealCount2 = 0
         phase = .done(chain1: chain1, chain2: chain2)
@@ -419,32 +414,9 @@ struct AttackModifierDrawOverlay: View {
 
     /// Selects the final cards to apply per official Gloomhaven v1 rules.
     private func resolveSelectedCards(chain1: [AttackModifier], chain2: [AttackModifier]) -> [AttackModifier] {
-        let term1 = chain1.last
-        let term2 = chain2.last
-
-        if pending.advantage && !pending.disadvantage {
-            let c1Rolling = chain1.count > 1
-            let c2Rolling = chain2.count > 1
-            if !c1Rolling && !c2Rolling {
-                // Simple: pick the better terminal card
-                if let t1 = term1, let t2 = term2 {
-                    return CombatResolver.cardScore(t1) >= CombatResolver.cardScore(t2) ? [t1] : [t2]
-                }
-                return term1.map { [$0] } ?? term2.map { [$0] } ?? []
-            } else {
-                // At least one chain has rolling: apply all cards from both chains (v1 rule)
-                return chain1 + chain2
-            }
-        } else if pending.disadvantage && !pending.advantage {
-            // Disadvantage: ignore rolling, use the worse terminal card only
-            if let t1 = term1, let t2 = term2 {
-                return CombatResolver.cardScore(t1) <= CombatResolver.cardScore(t2) ? [t1] : [t2]
-            }
-            return term1.map { [$0] } ?? term2.map { [$0] } ?? []
-        } else {
-            // Both cancel out — use chain1's terminal only
-            return term1.map { [$0] } ?? []
-        }
+        CombatResolver.selectModifierCards(first: chain1, second: chain2,
+                                           advantage: pending.advantage,
+                                           disadvantage: pending.disadvantage)
     }
 
     /// Returns true if `thisChain`'s terminal is the "winning" selection (i.e., it appears in selected).

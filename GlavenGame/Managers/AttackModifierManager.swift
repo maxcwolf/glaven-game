@@ -13,38 +13,11 @@ final class AttackModifierManager {
     // before passing the inout reference, to avoid simultaneous access
     // (toSnapshot reads game while inout holds exclusive write access).
     private func drawCard(from deck: inout AttackModifierDeck) -> AttackModifier? {
-        deck.current += 1
-        guard deck.current < deck.cards.count else {
-            deck.current -= 1
-            return nil
-        }
-        return deck.cards[deck.current]
+        deck.draw()
     }
 
     func shuffleDeck(_ deck: inout AttackModifierDeck) {
-        // Remove bless/curse from used cards
-        var newCards = deck.attackModifiers.filter { !$0.type.isSpecial }
-        // Add any remaining undrawn special cards
-        if deck.current + 1 < deck.cards.count {
-            for i in (deck.current + 1)..<deck.cards.count {
-                if deck.cards[i].type.isSpecial {
-                    newCards.append(deck.cards[i])
-                }
-            }
-        }
-        newCards.shuffle()
-        deck.cards = newCards
-        deck.current = -1
-        deck.discards = []
-    }
-
-    private func addCardToDeck(_ deck: inout AttackModifierDeck, card: AttackModifier) {
-        let insertRange = max(0, deck.cards.count - deck.current - 1)
-        if insertRange > 0 {
-            deck.cards.insert(card, at: deck.current + 1 + Int.random(in: 0..<insertRange))
-        } else {
-            deck.cards.append(card)
-        }
+        deck.reshuffle()
     }
 
     // MARK: - Public entry points (snapshot before inout borrow)
@@ -66,20 +39,12 @@ final class AttackModifierManager {
 
     func addBless(to target: AttackModifierTarget) {
         onBeforeMutate?()
-        // Enforce max 10 bless cards per deck (GH rulebook p.23)
-        let deck: AttackModifierDeck
-        switch target {
-        case .monster: deck = game.monsterAttackModifierDeck
-        case .character(let c): deck = c.attackModifierDeck
-        }
-        guard deck.cards.filter({ $0.type == .bless }).count < 10 else { return }
-
-        let card = AttackModifier(type: .bless, value: 2, valueType: .multiply, shuffle: true)
+        // Max 10 Bless cards per deck is enforced by AttackModifierDeck.addCard (GH rulebook p.23).
         switch target {
         case .monster:
-            addCardToDeck(&game.monsterAttackModifierDeck, card: card)
+            game.monsterAttackModifierDeck.addCard(type: .bless)
         case .character(let c):
-            addCardToDeck(&c.attackModifierDeck, card: card)
+            c.attackModifierDeck.addCard(type: .bless)
         }
     }
 
@@ -153,20 +118,12 @@ final class AttackModifierManager {
 
     func addCurse(to target: AttackModifierTarget) {
         onBeforeMutate?()
-        // Enforce max 10 curse cards per deck (GH rulebook p.23)
-        let deck: AttackModifierDeck
-        switch target {
-        case .monster: deck = game.monsterAttackModifierDeck
-        case .character(let c): deck = c.attackModifierDeck
-        }
-        guard deck.cards.filter({ $0.type == .curse }).count < 10 else { return }
-
-        let card = AttackModifier(type: .curse, value: 0, valueType: .multiply, shuffle: true)
+        // Max 10 Curse cards per deck is enforced by AttackModifierDeck.addCard (GH rulebook p.23).
         switch target {
         case .monster:
-            addCardToDeck(&game.monsterAttackModifierDeck, card: card)
+            game.monsterAttackModifierDeck.addCard(type: .curse)
         case .character(let c):
-            addCardToDeck(&c.attackModifierDeck, card: card)
+            c.attackModifierDeck.addCard(type: .curse)
         }
     }
 }

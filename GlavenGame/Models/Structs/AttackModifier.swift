@@ -11,9 +11,11 @@ struct AttackModifier: Codable, Hashable, Identifiable {
     var active: Bool
     var revealed: Bool
     var character: Bool
+    /// Added for the current scenario only (scenario effects); removed when the scenario ends.
+    var scenarioAdded: Bool = false
 
     enum CodingKeys: String, CodingKey {
-        case id, type, value, valueType, effects, rolling, shuffle, active, revealed, character
+        case id, type, value, valueType, effects, rolling, shuffle, active, revealed, character, scenarioAdded
     }
 
     init(id: String = UUID().uuidString, type: AttackModifierType, value: Int = 0,
@@ -36,14 +38,18 @@ struct AttackModifier: Codable, Hashable, Identifiable {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         self.id = try container.decodeIfPresent(String.self, forKey: .id) ?? UUID().uuidString
         self.type = try container.decode(AttackModifierType.self, forKey: .type)
-        self.value = try container.decodeIfPresent(Int.self, forKey: .value) ?? 0
-        self.valueType = try container.decodeIfPresent(AttackModifierValueType.self, forKey: .valueType) ?? .default
+        // Edition data (e.g. perk cards) gives only the card type ("plus1", "minus2", "double");
+        // fall back to the type's printed value so those cards actually modify attacks.
+        let standard = AttackModifier.standard(type)
+        self.value = try container.decodeIfPresent(Int.self, forKey: .value) ?? standard.value
+        self.valueType = try container.decodeIfPresent(AttackModifierValueType.self, forKey: .valueType) ?? standard.valueType
         self.effects = try container.decodeIfPresent([AttackModifierEffect].self, forKey: .effects) ?? []
         self.rolling = try container.decodeIfPresent(Bool.self, forKey: .rolling) ?? false
-        self.shuffle = try container.decodeIfPresent(Bool.self, forKey: .shuffle) ?? false
+        self.shuffle = try container.decodeIfPresent(Bool.self, forKey: .shuffle) ?? standard.shuffle
         self.active = try container.decodeIfPresent(Bool.self, forKey: .active) ?? false
         self.revealed = try container.decodeIfPresent(Bool.self, forKey: .revealed) ?? false
         self.character = try container.decodeIfPresent(Bool.self, forKey: .character) ?? false
+        self.scenarioAdded = try container.decodeIfPresent(Bool.self, forKey: .scenarioAdded) ?? false
     }
 
     var displayText: String {
@@ -57,6 +63,23 @@ struct AttackModifier: Codable, Hashable, Identifiable {
                 return "x\(value)"
             }
             return value >= 0 ? "+\(value)" : "\(value)"
+        }
+    }
+
+    /// A standard card of the given type with its printed value: Bless = ×2, Curse = null,
+    /// ×2/null trigger an end-of-round reshuffle, numeric cards carry their +/− value.
+    static func standard(_ type: AttackModifierType) -> AttackModifier {
+        switch type {
+        case .bless:
+            return AttackModifier(type: .bless, value: 2, valueType: .multiply)
+        case .curse:
+            return AttackModifier(type: .curse, value: 0, valueType: .multiply)
+        case .double_:
+            return AttackModifier(type: .double_, value: 2, valueType: .multiply, shuffle: true)
+        case .null_:
+            return AttackModifier(type: .null_, value: 0, valueType: .multiply, shuffle: true)
+        default:
+            return AttackModifier(type: type, value: type.displayValue)
         }
     }
 

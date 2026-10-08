@@ -20,6 +20,12 @@ struct AttackResult {
     let killed: Bool
     /// Retaliate damage dealt back to attacker (0 if none or out of range).
     let retaliateDamage: Int
+    /// Every condition the attack carries (ability + modifier cards), for callers that resolve
+    /// the target's death themselves (e.g. after a character negates the damage).
+    var allConditions: [ConditionName] = []
+    /// Push/pull added by drawn modifier cards.
+    var modifierPush: Int = 0
+    var modifierPull: Int = 0
 }
 
 /// Resolves attacks using the Gloomhaven attack pipeline.
@@ -68,64 +74,43 @@ enum CombatResolver {
             attackValue += 1
         }
 
-        // 3. Determine modifier cards to apply
+        // 3. Determine the modifier cards that apply (interactive UI pre-draws them).
+        let cards = preDrawnCards.isEmpty
+            ? drawModifiers(advantage: advantage, disadvantage: disadvantage, draw: drawModifier)
+            : preDrawnCards
+
+        // 4. Apply the cards: additive values first, then ×2 / null (the attacker chooses the
+        //    order within a step, and doubling after the additions is never worse).
         var isMiss = false
         var isCritical = false
         var modifierConditions: [ConditionName] = []
-        let modifier: AttackModifier?
-
-        if !preDrawnCards.isEmpty {
-            // Interactive draw UI already selected the cards — apply all of them.
-            // Rolling cards (all but last) are always additive; terminal card can be additive or multiply.
-            for card in preDrawnCards.dropLast() {
-                attackValue += card.value
-                for effect in card.effects {
-                    if let condition = conditionFromEffect(effect) { modifierConditions.append(condition) }
-                }
-            }
-            if let terminal = preDrawnCards.last {
-                if terminal.valueType == .multiply {
-                    if terminal.value == 0 { attackValue = 0; isMiss = true }
-                    else { attackValue *= terminal.value; isCritical = terminal.value >= 2 }
-                } else {
-                    attackValue += terminal.value
-                }
-                for effect in terminal.effects {
-                    if let condition = conditionFromEffect(effect) { modifierConditions.append(condition) }
-                }
-            }
-            modifier = preDrawnCards.last
-        } else {
-            // Auto-draw (legacy path, used when no interactive UI is present)
-            let drawn: AttackModifier?
-            if advantage && !disadvantage {
-                let card1 = drawModifier()
-                let card2 = drawModifier()
-                drawn = betterCard(card1, card2)
-            } else if disadvantage && !advantage {
-                let card1 = drawModifier()
-                let card2 = drawModifier()
-                drawn = worseCard(card1, card2)
-            } else {
-                drawn = drawModifier()
-            }
-
-            if let mod = drawn {
-                if mod.valueType == .multiply {
-                    if mod.value == 0 { attackValue = 0; isMiss = true }
-                    else { attackValue *= mod.value; isCritical = mod.value >= 2 }
-                } else {
-                    attackValue += mod.value
-                }
-                for effect in mod.effects {
-                    if let condition = conditionFromEffect(effect) { modifierConditions.append(condition) }
-                }
-            }
-            modifier = drawn
+        var modifierPierce = 0
+        var modifierPush = 0
+        var modifierPull = 0
+        for card in cards where card.valueType != .multiply {
+            attackValue += card.value
         }
+        for card in cards where card.valueType == .multiply {
+            if card.value == 0 {
+                attackValue = 0
+                isMiss = true
+            } else {
+                attackValue *= card.value
+                isCritical = card.value >= 2
+            }
+        }
+        for card in cards {
+            for effect in card.effects {
+                if let condition = conditionFromEffect(effect) { modifierConditions.append(condition) }
+                if effect.type == .pierce, let value = effect.value?.intValue { modifierPierce += value }
+                if effect.type == .push, let value = effect.value?.intValue { modifierPush += value }
+                if effect.type == .pull, let value = effect.value?.intValue { modifierPull += value }
+            }
+        }
+        let modifier = cards.last
 
-        // 5. Apply shield (reduced by pierce)
-        let effectiveShield = max(0, shield - pierce)
+        // 5. Apply shield (reduced by pierce). Shield only matters when there is damage to reduce.
+        let effectiveShield = max(0, shield - pierce - modifierPierce)
         if !isMiss {
             attackValue = max(0, attackValue - effectiveShield)
         }
@@ -133,18 +118,12 @@ enum CombatResolver {
         // 6. Floor at 0
         let finalDamage = max(0, attackValue)
 
-        // 7. Determine conditions to apply
-        // On a miss (null): no conditions from the attack, but modifier card conditions still apply per FAQ
-        // Actually per official FAQ: on a null, NO conditions apply at all (neither from card nor modifier)
-        let appliedConditions: [ConditionName]
-        if isMiss {
-            appliedConditions = []
-        } else {
-            appliedConditions = conditions + modifierConditions
-        }
+        // 7. Check if defender is killed
+        let killed = finalDamage > 0 && defenderHealth - finalDamage <= 0
 
-        // 8. Check if defender is killed
-        let killed = defenderHealth - finalDamage <= 0 && !isMiss
+        // 8. Conditions: attack effects apply whether or not the attack does damage — including
+        //    on a null/curse draw (GH p.19/p.23) — but not once the target has died (p.19).
+        let appliedConditions: [ConditionName] = killed ? [] : conditions + modifierConditions
 
         // 9. Check retaliate
         let retaliateDamage: Int
@@ -164,7 +143,10 @@ enum CombatResolver {
             isCritical: isCritical,
             appliedConditions: appliedConditions,
             killed: killed,
-            retaliateDamage: retaliateDamage
+            retaliateDamage: retaliateDamage,
+            allConditions: conditions + modifierConditions,
+            modifierPush: modifierPush,
+            modifierPull: modifierPull
         )
     }
 
@@ -187,22 +169,26 @@ enum CombatResolver {
         var parts: [String] = ["\(base)"]
         if isPoisoned { parts.append("+1(poison)") }
 
-        for (i, card) in preDrawnCards.enumerated() {
-            let isRolling = i < preDrawnCards.count - 1
+        for card in preDrawnCards {
             if card.valueType == .multiply {
                 if card.value == 0 { return "MISS" }
                 parts.append("×\(card.value)(mod)")
             } else {
                 let sign = card.value >= 0 ? "+" : ""
-                let tag = isRolling ? "(rolling)" : "(mod)"
+                let tag = card.rolling ? "(rolling)" : "(mod)"
                 parts.append("\(sign)\(card.value)\(tag)")
             }
         }
 
-        let effectiveShield = max(0, shield - pierce)
+        let cardPierce = preDrawnCards.flatMap(\.effects)
+            .filter { $0.type == .pierce }
+            .compactMap { $0.value?.intValue }
+            .reduce(0, +)
+        let totalPierce = pierce + cardPierce
+        let effectiveShield = max(0, shield - totalPierce)
         if effectiveShield > 0 {
-            if pierce > 0 {
-                parts.append("-\(effectiveShield)(shield-\(pierce)pierce)")
+            if totalPierce > 0 {
+                parts.append("-\(effectiveShield)(shield-\(totalPierce)pierce)")
             } else {
                 parts.append("-\(effectiveShield)(shield)")
             }
@@ -213,18 +199,73 @@ enum CombatResolver {
 
     // MARK: - Advantage / Disadvantage
 
-    /// Pick the better of two modifier cards.
-    private static func betterCard(_ a: AttackModifier?, _ b: AttackModifier?) -> AttackModifier? {
-        guard let a = a else { return b }
-        guard let b = b else { return a }
-        return cardScore(a) >= cardScore(b) ? a : b
+    /// Draw the modifier cards for one attack and return the cards that apply.
+    static func drawModifiers(advantage: Bool, disadvantage: Bool,
+                              draw: () -> AttackModifier?) -> [AttackModifier] {
+        if advantage == disadvantage {
+            return drawChain(draw)
+        }
+        let first = draw().map { [$0] } ?? []
+        let second = drawSecond(after: first, draw)
+        return selectModifierCards(first: first, second: second,
+                                   advantage: advantage, disadvantage: disadvantage)
     }
 
-    /// Pick the worse of two modifier cards.
-    private static func worseCard(_ a: AttackModifier?, _ b: AttackModifier?) -> AttackModifier? {
-        guard let a = a else { return b }
-        guard let b = b else { return a }
-        return cardScore(a) <= cardScore(b) ? a : b
+    /// Normal draw: keep drawing while the drawn card is rolling (GH p.19).
+    static func drawChain(_ draw: () -> AttackModifier?) -> [AttackModifier] {
+        var chain: [AttackModifier] = []
+        repeat {
+            guard let card = draw() else { break }
+            chain.append(card)
+        } while chain.last?.rolling == true
+        return chain
+    }
+
+    /// Second draw of an advantage/disadvantage attack: one card, continuing past rolling cards
+    /// only when the first card was rolling as well (GH p.20).
+    static func drawSecond(after first: [AttackModifier], _ draw: () -> AttackModifier?) -> [AttackModifier] {
+        guard let card = draw() else { return [] }
+        var second = [card]
+        if first.first?.rolling == true && card.rolling {
+            while second.last?.rolling == true, let next = draw() {
+                second.append(next)
+            }
+        }
+        return second
+    }
+
+    /// Choose which drawn cards apply (GH p.20).
+    /// - Advantage: two non-rolling cards → the better one. If a rolling card was drawn, its
+    ///   effect is added to the other card instead (both rolling → all cards to the first
+    ///   non-rolling one are added together).
+    /// - Disadvantage: two non-rolling cards → the worse one. Rolling cards are disregarded
+    ///   (both rolling → only the first non-rolling card drawn after them applies).
+    /// - Both or neither: a normal draw — the first chain applies.
+    static func selectModifierCards(first: [AttackModifier], second: [AttackModifier],
+                                    advantage: Bool, disadvantage: Bool) -> [AttackModifier] {
+        guard advantage != disadvantage else { return first }
+        let all = first + second
+        guard let a = first.last else { return second.last.map { [$0] } ?? [] }
+        guard let b = second.last else { return [a] }
+        let anyRolling = all.contains { $0.rolling }
+
+        if advantage {
+            if !anyRolling { return [betterCard(a, b)] }
+            return all.filter(\.rolling) + all.filter { !$0.rolling }
+        } else {
+            if !anyRolling { return [worseCard(a, b)] }
+            return all.last(where: { !$0.rolling }).map { [$0] } ?? []
+        }
+    }
+
+    /// Pick the better of two modifier cards (ties → the card drawn first).
+    private static func betterCard(_ a: AttackModifier, _ b: AttackModifier) -> AttackModifier {
+        cardScore(a) >= cardScore(b) ? a : b
+    }
+
+    /// Pick the worse of two modifier cards (ties → the card drawn first).
+    private static func worseCard(_ a: AttackModifier, _ b: AttackModifier) -> AttackModifier {
+        cardScore(a) <= cardScore(b) ? a : b
     }
 
     /// Numeric score for comparing modifier cards (higher = better for attacker).
@@ -270,6 +311,15 @@ enum CombatResolver {
         }
 
         return (totalValue, maxRange)
+    }
+
+    /// Retaliate damage dealt to an attacker at `distance`: each retaliate bonus applies only if
+    /// its own range (default 1 = adjacent) reaches the attacker; applicable bonuses stack (GH p.24).
+    static func retaliateDamage(retaliate: [ActionModel], retaliatePersistent: [ActionModel], distance: Int) -> Int {
+        (retaliate + retaliatePersistent).reduce(0) { total, action in
+            let range = action.subActions?.first { $0.type == .range }?.value?.intValue ?? 1
+            return distance <= max(1, range) ? total + (action.value?.intValue ?? 0) : total
+        }
     }
 
     /// Check if an entity has a specific condition active.

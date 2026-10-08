@@ -75,10 +75,19 @@ final class RB_AttackPipelineTests: XCTestCase {
         XCTAssertEqual(result.damage, 0, "p.18: Damage cannot go below 0")
     }
 
-    func testPipeline_missNoConditions() {
-        // p.18: "If the attack value is 0 due to a null card, no conditions are applied"
+    func testPipeline_missStillAppliesConditions() {
+        // p.19: attack effects "are applied regardless of whether the attack does damage";
+        // a null only means no damage is dealt.
         let result = resolve(base: 3, modifier: nullCard(), conditions: [.poison, .wound])
-        XCTAssertTrue(result.appliedConditions.isEmpty, "p.18: Null card blocks all conditions")
+        XCTAssertEqual(result.damage, 0, "p.19: Null deals no damage")
+        XCTAssertEqual(result.appliedConditions, [.poison, .wound], "p.19: Null still applies conditions")
+    }
+
+    func testPipeline_killedTargetGetsNoConditions() {
+        // p.19: "any additional effects of an attack are not applied once a monster dies"
+        let result = resolve(base: 5, modifier: plus(0), conditions: [.poison], defenderHealth: 4)
+        XCTAssertTrue(result.killed)
+        XCTAssertTrue(result.appliedConditions.isEmpty, "p.19: No effects on a killed target")
     }
 
     func testPipeline_hitAppliesConditions() {
