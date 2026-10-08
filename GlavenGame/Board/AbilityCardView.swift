@@ -58,10 +58,10 @@ struct BoardAbilityCardView: View {
                 HStack(spacing: 4) {
                     if roleBadgeColor == .yellow {
                         Image(systemName: "star.fill")
-                            .font(.system(size: 8))
+                            .font(BoardTheme.font(size: 11))
                     }
                     Text(badge)
-                        .font(.system(size: 9, weight: .bold))
+                        .font(BoardTheme.font(size: 11, weight: .bold))
                 }
                 .foregroundStyle(roleBadgeColor)
                 .frame(maxWidth: .infinity)
@@ -137,7 +137,7 @@ struct BoardAbilityCardView: View {
                 VStack {
                     Spacer()
                     Text(tooltip)
-                        .font(.system(size: 11))
+                        .font(BoardTheme.font(size: 11))
                         .foregroundStyle(.white)
                         .padding(8)
                         .frame(maxWidth: .infinity)
@@ -167,6 +167,7 @@ struct BoardAbilityCardView: View {
                 }
                 .buttonStyle(.plain)
                 .padding(4)
+                .accessibilityLabel("Show the card full size")
             }
         }
         .onLongPressGesture(minimumDuration: 0.4) {

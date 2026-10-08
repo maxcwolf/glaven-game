@@ -28,6 +28,11 @@ enum BoardTheme {
         static let large: CGFloat = 16
     }
 
+    /// A fixed-size system font for compact board UI, never below `minimumTextSize`.
+    static func font(size: CGFloat, weight: Font.Weight = .regular, design: Font.Design = .default) -> Font {
+        .system(size: max(size, minimumTextSize), weight: weight, design: design)
+    }
+
     /// Pirata One, for screen titles and big numbers only.
     static func display(_ size: CGFloat) -> Font { GlavenFont.title(size: size) }
 }

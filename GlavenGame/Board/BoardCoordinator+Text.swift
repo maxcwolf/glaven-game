@@ -143,6 +143,7 @@ extension BoardCoordinator {
     func pieceAppearance(_ piece: PieceID) -> PieceAppearance {
         var appearance = PieceAppearance.fallback(for: piece)
         appearance.isPlayerSide = isPlayerSide(piece)
+        appearance.name = name(piece)
         guard let game = gameManager?.game else { return appearance }
         switch piece {
         case .character(let id):

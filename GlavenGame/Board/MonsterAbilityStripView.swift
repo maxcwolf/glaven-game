@@ -40,7 +40,7 @@ struct MonsterAbilityStripView: View {
             HStack(spacing: 4) {
                 monsterThumb(monster)
                 Text(formatName(monster.name))
-                    .font(.system(size: 8, weight: active ? .heavy : .semibold))
+                    .font(BoardTheme.font(size: 11, weight: active ? .heavy : .semibold))
                     .foregroundStyle(active ? .yellow : .white.opacity(0.85))
                     .lineLimit(1)
                     .minimumScaleFactor(0.7)
@@ -59,7 +59,7 @@ struct MonsterAbilityStripView: View {
                         .fill(.white.opacity(0.08))
                         .overlay {
                             Image(systemName: "photo.badge.exclamationmark")
-                                .font(.system(size: 14))
+                                .font(BoardTheme.font(size: 14))
                                 .foregroundStyle(.white.opacity(0.3))
                         }
                 case .empty:
@@ -79,7 +79,7 @@ struct MonsterAbilityStripView: View {
             .overlay(alignment: .topTrailing) {
                 if active {
                     Image(systemName: "bolt.fill")
-                        .font(.system(size: 8, weight: .bold))
+                        .font(BoardTheme.font(size: 11, weight: .bold))
                         .foregroundStyle(.black)
                         .padding(2)
                         .background(Circle().fill(.yellow))
@@ -113,7 +113,7 @@ struct MonsterAbilityStripView: View {
             #endif
         } else {
             Image(systemName: "pawprint.fill")
-                .font(.system(size: 8))
+                .font(BoardTheme.font(size: 11))
                 .foregroundStyle(.white.opacity(0.4))
                 .frame(width: 14, height: 14)
         }

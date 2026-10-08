@@ -351,12 +351,12 @@ struct BoardView: View {
                                 .foregroundStyle(placed ? .white.opacity(0.4) : charColor)
 
                             Text(character.title.isEmpty ? character.name.replacingOccurrences(of: "-", with: " ").capitalized : character.title)
-                                .font(.system(size: 13, weight: .bold))
+                                .font(BoardTheme.font(size: 13, weight: .bold))
                                 .foregroundStyle(placed ? .white.opacity(0.4) : .white)
 
                             if placed {
                                 Image(systemName: "checkmark.circle.fill")
-                                    .font(.system(size: 14))
+                                    .font(BoardTheme.font(size: 14))
                                     .foregroundStyle(.green)
                             }
                         }
@@ -383,7 +383,7 @@ struct BoardView: View {
                         coordinator.finishSetup()
                     } label: {
                         Label("Begin Scenario", systemImage: "play.fill")
-                            .font(.system(size: 15, weight: .bold))
+                            .font(BoardTheme.font(size: 15, weight: .bold))
                             .foregroundStyle(.white)
                             .padding(.horizontal, 20)
                             .padding(.vertical, 12)
@@ -629,13 +629,13 @@ struct BoardView: View {
                     .foregroundStyle(charColor)
                     .opacity(isExhausted ? 0.4 : 1.0)
                 Text(character.title.isEmpty ? character.name.replacingOccurrences(of: "-", with: " ").capitalized : character.title)
-                    .font(.system(size: 11, weight: .bold))
+                    .font(BoardTheme.font(size: 11, weight: .bold))
                     .foregroundStyle(isExhausted ? .white.opacity(0.4) : .white)
                     .lineLimit(1)
                 Spacer()
                 if isExhausted {
                     Text("OUT")
-                        .font(.system(size: 8, weight: .heavy))
+                        .font(BoardTheme.font(size: 11, weight: .heavy))
                         .foregroundStyle(.red)
                 }
             }
@@ -644,7 +644,7 @@ struct BoardView: View {
                 // HP bar
                 HStack(spacing: 4) {
                     Image(systemName: "heart.fill")
-                        .font(.system(size: 8))
+                        .font(BoardTheme.font(size: 11))
                         .foregroundStyle(.red)
                     GeometryReader { geo in
                         ZStack(alignment: .leading) {
@@ -658,23 +658,23 @@ struct BoardView: View {
                     .frame(height: 6)
 
                     Text("\(character.health)/\(character.maxHealth)")
-                        .font(.system(size: 9, weight: .medium, design: .monospaced))
+                        .font(BoardTheme.font(size: 11, weight: .medium, design: .monospaced))
                         .foregroundStyle(.white.opacity(0.8))
                 }
 
                 // Stats row: XP, Hand, Discard
                 HStack(spacing: 8) {
                     Label("\(character.experience)", systemImage: "star.fill")
-                        .font(.system(size: 9))
+                        .font(BoardTheme.font(size: 11))
                         .foregroundStyle(.yellow.opacity(0.8))
                     Label("\(character.handCards.count)", systemImage: "hand.raised.fill")
-                        .font(.system(size: 9))
+                        .font(BoardTheme.font(size: 11))
                         .foregroundStyle(.cyan.opacity(0.8))
                     Label("\(character.discardedCards.count)", systemImage: "arrow.counterclockwise")
-                        .font(.system(size: 9))
+                        .font(BoardTheme.font(size: 11))
                         .foregroundStyle(.orange.opacity(0.7))
                     Label("\(character.lostCards.count)", systemImage: "xmark.circle")
-                        .font(.system(size: 9))
+                        .font(BoardTheme.font(size: 11))
                         .foregroundStyle(.red.opacity(0.6))
                     Spacer()
                 }
@@ -715,13 +715,13 @@ struct BoardView: View {
                     .fill(.green)
                     .frame(width: 6, height: 6)
                 Text(summon.name.replacingOccurrences(of: "-", with: " ").capitalized)
-                    .font(.system(size: 9, weight: .bold))
+                    .font(BoardTheme.font(size: 11, weight: .bold))
                     .foregroundStyle(.green)
                     .lineLimit(1)
                 Spacer()
                 if summon.state == .new {
                     Text("NEW")
-                        .font(.system(size: 7, weight: .heavy))
+                        .font(BoardTheme.font(size: 11, weight: .heavy))
                         .foregroundStyle(.white)
                         .padding(.horizontal, 4)
                         .padding(.vertical, 1)
@@ -733,19 +733,19 @@ struct BoardView: View {
             // Stats row
             HStack(spacing: 6) {
                 Label("\(summon.effectiveAttack)", systemImage: "burst.fill")
-                    .font(.system(size: 8))
+                    .font(BoardTheme.font(size: 11))
                     .foregroundStyle(.red.opacity(0.8))
                 Label("\(summon.movement)", systemImage: "arrow.right")
-                    .font(.system(size: 8))
+                    .font(BoardTheme.font(size: 11))
                     .foregroundStyle(.cyan.opacity(0.8))
                 if summon.range > 0 {
                     Label("\(summon.range)", systemImage: "scope")
-                        .font(.system(size: 8))
+                        .font(BoardTheme.font(size: 11))
                         .foregroundStyle(.orange.opacity(0.8))
                 }
                 Spacer()
                 Text("\(summon.health)/\(summon.maxHealth)")
-                    .font(.system(size: 8, weight: .medium, design: .monospaced))
+                    .font(BoardTheme.font(size: 11, weight: .medium, design: .monospaced))
                     .foregroundStyle(.green.opacity(0.8))
             }
 
@@ -818,19 +818,19 @@ struct BoardView: View {
             // Monster name
             HStack(spacing: 4) {
                 Image(systemName: monster.isBoss ? "crown.fill" : "pawprint.fill")
-                    .font(.system(size: 8))
+                    .font(BoardTheme.font(size: 11))
                     .foregroundStyle(monsterColor)
                 Text(monster.name.replacingOccurrences(of: "-", with: " ").capitalized)
-                    .font(.system(size: 10, weight: .bold))
+                    .font(BoardTheme.font(size: 11, weight: .bold))
                     .foregroundStyle(.white)
                     .lineLimit(1)
                 Spacer()
                 Text("Lv\(monster.level)")
-                    .font(.system(size: 8, weight: .medium))
+                    .font(BoardTheme.font(size: 11, weight: .medium))
                     .foregroundStyle(.white.opacity(0.5))
                 if ability != nil {
                     Image(systemName: "rectangle.portrait.on.rectangle.portrait.fill")
-                        .font(.system(size: 8))
+                        .font(BoardTheme.font(size: 11))
                         .foregroundStyle(monsterColor.opacity(0.7))
                 }
             }
@@ -867,7 +867,7 @@ struct BoardView: View {
         HStack(spacing: 4) {
             // Standee number badge
             Text("\(entity.number)")
-                .font(.system(size: 8, weight: .heavy, design: .monospaced))
+                .font(BoardTheme.font(size: 11, weight: .heavy, design: .monospaced))
                 .foregroundStyle(isElite ? .black : .white)
                 .frame(width: 14, height: 14)
                 .background(isElite ? .yellow : .white.opacity(0.3))
@@ -886,7 +886,7 @@ struct BoardView: View {
             .frame(height: 5)
 
             Text("\(entity.health)/\(entity.maxHealth)")
-                .font(.system(size: 8, weight: .medium, design: .monospaced))
+                .font(BoardTheme.font(size: 11, weight: .medium, design: .monospaced))
                 .foregroundStyle(typeColor.opacity(0.8))
 
             // Conditions
@@ -916,10 +916,10 @@ struct BoardView: View {
             // Header
             HStack(spacing: 6) {
                 Image(systemName: "scroll.fill")
-                    .font(.system(size: 11))
+                    .font(BoardTheme.font(size: 11))
                     .foregroundStyle(.yellow.opacity(0.8))
                 Text("Battle Log")
-                    .font(.system(size: 12, weight: .bold, design: .serif))
+                    .font(BoardTheme.font(size: 12, weight: .bold, design: .serif))
                     .foregroundStyle(.white.opacity(0.85))
                 Spacer()
                 Image(systemName: logExpanded ? "chevron.up" : "chevron.down")
@@ -982,7 +982,7 @@ struct BoardView: View {
                     .fill(.yellow.opacity(0.3))
                     .frame(height: 1)
                 Text(entry.message)
-                    .font(.system(size: 10, weight: .bold, design: .serif))
+                    .font(BoardTheme.font(size: 11, weight: .bold, design: .serif))
                     .foregroundStyle(.yellow.opacity(0.8))
                     .padding(.horizontal, 8)
                 Rectangle()
@@ -994,13 +994,13 @@ struct BoardView: View {
         } else {
             HStack(alignment: .top, spacing: 5) {
                 Image(systemName: entry.category.icon)
-                    .font(.system(size: 8))
+                    .font(BoardTheme.font(size: 11))
                     .foregroundStyle(entry.category.color.opacity(0.7))
                     .frame(width: 12, alignment: .center)
                     .padding(.top, 2)
 
                 Text(entry.message)
-                    .font(.system(size: 10, design: .default))
+                    .font(BoardTheme.font(size: 11, design: .default))
                     .foregroundStyle(.white.opacity(0.7))
                     .lineLimit(3)
             }
@@ -1029,7 +1029,7 @@ struct BoardView: View {
                     // Header
                     VStack(spacing: 6) {
                         Image(systemName: "bed.double.fill")
-                            .font(.system(size: 36))
+                            .font(BoardTheme.font(size: 36))
                             .foregroundStyle(.orange)
 
                         Text("\(character.title.isEmpty ? character.name : character.title) — Long Rest")
@@ -1060,7 +1060,7 @@ struct BoardView: View {
                                     )
                                     .overlay(alignment: .bottom) {
                                         Text("LOSE THIS CARD")
-                                            .font(.system(size: 9, weight: .heavy))
+                                            .font(BoardTheme.font(size: 11, weight: .heavy))
                                             .foregroundStyle(.white)
                                             .padding(.horizontal, 10)
                                             .padding(.vertical, 4)
@@ -1071,6 +1071,8 @@ struct BoardView: View {
                                     .onTapGesture {
                                         coordinator.resolveLongRest(characterID: character.id, discardIndex: index)
                                     }
+                                    .accessibilityAddTraits(.isButton)
+                                    .accessibilityLabel("Lose \(card.name ?? "this card")")
                                 }
                             }
                         }
@@ -1107,7 +1109,7 @@ struct BoardView: View {
                     // Header
                     VStack(spacing: 6) {
                         Image(systemName: "moon.zzz.fill")
-                            .font(.system(size: 36))
+                            .font(BoardTheme.font(size: 36))
                             .foregroundStyle(.cyan)
 
                         Text("\(character.title.isEmpty ? character.name : character.title) — Short Rest")
@@ -1140,7 +1142,7 @@ struct BoardView: View {
                             )
                             .overlay(alignment: .bottom) {
                                 Text("WILL BE LOST")
-                                    .font(.system(size: 9, weight: .heavy))
+                                    .font(BoardTheme.font(size: 11, weight: .heavy))
                                     .foregroundStyle(.white)
                                     .padding(.horizontal, 10)
                                     .padding(.vertical, 4)
@@ -1211,7 +1213,7 @@ struct BoardView: View {
             AttackModifierCardView(modifier: modifier, size: 80)
 
             Text(modifierLabel(modifier))
-                .font(.system(size: 14, weight: .bold, design: .monospaced))
+                .font(BoardTheme.font(size: 14, weight: .bold, design: .monospaced))
                 .foregroundStyle(modifierLabelColor(modifier))
         }
         .padding(12)
@@ -1270,12 +1272,15 @@ struct BoardView: View {
                             previewMonsterAbility = nil
                         } label: {
                             Image(systemName: "xmark")
-                                .font(.system(size: 12, weight: .bold))
+                                .font(BoardTheme.font(size: 12, weight: .bold))
                                 .foregroundStyle(.white.opacity(0.9))
                                 .frame(width: 28, height: 28)
                                 .background(.ultraThinMaterial)
                                 .clipShape(Circle())
+                                .frame(width: 44, height: 44)
+                                .contentShape(Rectangle())
                         }
+                        .accessibilityLabel("Close")
                         .buttonStyle(.plain)
                     }
 
@@ -1342,7 +1347,7 @@ struct BoardView: View {
             #endif
         } else {
             Image(systemName: monster.isBoss ? "crown.fill" : "pawprint.fill")
-                .font(.system(size: 18))
+                .font(BoardTheme.font(size: 18))
                 .foregroundStyle(monsterAbilityColor(monster))
                 .frame(width: 36, height: 36)
                 .background(Circle().fill(.white.opacity(0.08)))
@@ -1370,6 +1375,7 @@ struct BoardView: View {
             .onTapGesture {
                 coordinator.dismissCardPreview()
             }
+            .accessibilityLabel("Close the card")
             .overlay {
                 if let url = appResourceBundle.url(forResource: "\(cardId)", withExtension: "jpeg", subdirectory: "CardImages/gh"),
                    let data = try? Data(contentsOf: url),
@@ -1389,20 +1395,23 @@ struct BoardView: View {
                                 coordinator.dismissCardPreview()
                             } label: {
                                 Image(systemName: "xmark")
-                                    .font(.system(size: 12, weight: .bold))
+                                    .font(BoardTheme.font(size: 12, weight: .bold))
                                     .foregroundStyle(.white.opacity(0.9))
                                     .frame(width: 26, height: 26)
                                     .background(.ultraThinMaterial)
                                     .clipShape(Circle())
                                     .shadow(color: .black.opacity(0.3), radius: 4)
+                                    .frame(width: 44, height: 44)
+                                    .contentShape(Rectangle())
                             }
+                            .accessibilityLabel("Close")
                             .buttonStyle(.plain)
                             .padding(4)
                         }
                 } else {
                     VStack(spacing: 12) {
                         Image(systemName: "photo.badge.exclamationmark")
-                            .font(.system(size: 48))
+                            .font(BoardTheme.font(size: 48))
                             .foregroundStyle(.white.opacity(0.5))
                         Text("Card image not available")
                             .font(.subheadline)
@@ -1456,7 +1465,7 @@ struct DiscardCardPicker: View {
         VStack(alignment: .leading, spacing: 6) {
             HStack(spacing: 4) {
                 Image(systemName: "arrow.counterclockwise.circle")
-                    .font(.system(size: 10))
+                    .font(BoardTheme.font(size: 11))
                     .foregroundStyle(.cyan)
                 Text("Lose 2 discard cards to negate all damage (\(selectedIndices.count)/2 selected)")
                     .font(.caption.weight(.bold))
@@ -1490,7 +1499,7 @@ struct DiscardCardPicker: View {
                             .overlay(alignment: .bottom) {
                                 if isSelected {
                                     Text("SELECTED")
-                                        .font(.system(size: 9, weight: .heavy))
+                                        .font(BoardTheme.font(size: 11, weight: .heavy))
                                         .foregroundStyle(.white)
                                         .padding(.horizontal, 10)
                                         .padding(.vertical, 3)
@@ -1511,6 +1520,8 @@ struct DiscardCardPicker: View {
                                     selectedIndices.insert(index)
                                 }
                             }
+                            .accessibilityAddTraits(isSelected ? [.isButton, .isSelected] : .isButton)
+                            .accessibilityLabel(card.name ?? "Card")
                         }
                     }
                 }

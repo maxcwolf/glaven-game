@@ -225,7 +225,8 @@ Phase IV — the game around the board
 - [ ] Menu music: needs a looping track (Kenney has no CC0 loops)
 - [x] Scenario intro card (goal, how it's lost, special rules — described from the data; reopened from a Goal chip) and a results screen (why it ended, XP gained plus the success bonus, gold, level-ups, rewards, unlocks) (`ScenarioFramingTests`)
 - [ ] Town hub from the existing party, shop, perk and world-map views; delete the remaining companion leftovers
-- [ ] Theme tokens and type scale for the board HUD; 11 pt minimum text; VoiceOver labels; snapshot and accessibility-audit tests
+- [x] Board theme tokens (`BoardTheme`: surfaces, brass, radii, display type) and an 11 pt text floor (31 sizes of 7–10 pt raised; HUD still fits both iPads); every board control has text or a VoiceOver label; tokens on the board are spoken ("Bandit Guard 1, 4 of 6 health, Stun"); source checks guard the floor and the labels (`BoardAccessibilityTests`)
+- [ ] VoiceOver play on the board: choosing hexes (move, attack targets) needs accessible hex elements; GlavenTheme in the remaining menus; drop the unused Majalla font (288 KB)
 
 Found along the way
 - [ ] Scenario rewards the game never grants: items (26 GH scenarios), character unlocks, collective gold, item designs, events, envelopes (`ScenarioManager.applyRewards`)

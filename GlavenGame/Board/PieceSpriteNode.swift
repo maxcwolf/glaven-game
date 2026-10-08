@@ -17,6 +17,8 @@ struct PieceAppearance {
     var initials: String
     /// Characters, summons, escorts and allied monsters: their HP bars are green, enemies' red.
     var isPlayerSide: Bool
+    /// What VoiceOver calls the figure ("Bandit Guard 1"); empty falls back to the initials.
+    var name: String = ""
 
     static let normalRim = SKColor(red: 0.91, green: 0.89, blue: 0.85, alpha: 1)
     static let eliteRim = SKColor(red: 0.89, green: 0.70, blue: 0.24, alpha: 1)
@@ -179,9 +181,34 @@ class PieceSpriteNode: SKNode {
         chip.run(.sequence([grow, settle]))
     }
 
+    /// What VoiceOver says for the token: "Bandit Guard 1, elite, 4 of 6 health, Stun".
+    var spokenDescription: String {
+        var parts = [appearance.name.isEmpty ? appearance.initials : appearance.name]
+        switch appearance.rank {
+        case .elite: parts.append("elite")
+        case .boss: parts.append("boss")
+        default: break
+        }
+        if let status, status.maxHealth > 0 {
+            parts.append("\(status.health) of \(status.maxHealth) health")
+            parts += status.conditions.map(GameText.conditionName)
+        }
+        return parts.joined(separator: ", ")
+    }
+
+    /// VoiceOver on iPad reads the tokens on the board (SpriteKit nodes have no accessibility
+    /// on the Mac).
+    private func updateAccessibility() {
+        #if os(iOS)
+        isAccessibilityElement = true
+        accessibilityLabel = spokenDescription
+        #endif
+    }
+
     func apply(status newStatus: PieceStatus) {
         guard newStatus != status else { return }
         status = newStatus
+        updateAccessibility()
 
         let fraction = newStatus.maxHealth > 0
             ? min(1, max(0, CGFloat(newStatus.health) / CGFloat(newStatus.maxHealth))) : 0
