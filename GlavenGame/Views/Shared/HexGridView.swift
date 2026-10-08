@@ -23,19 +23,20 @@ struct HexGridView: View {
         let minY = visibleHexes.map(\.y).min() ?? 0
         let maxY = visibleHexes.map(\.y).max() ?? 0
 
-        let hexW = scaledHexSize * 2
-        let hexH = scaledHexSize * 1.73
-        let colSpacing = hexW * 0.75
-        let rowSpacing = hexH
+        // Patterns use the board's grid: pointy-top hexes, odd rows shifted half a hex right.
+        let hexW = scaledHexSize * 1.73
+        let hexH = scaledHexSize * 2
+        let colSpacing = hexW
+        let rowSpacing = hexH * 0.75
 
-        let totalW = CGFloat(maxX - minX) * colSpacing + hexW
-        let totalH = CGFloat(maxY - minY) * rowSpacing + hexH * 1.5
+        let totalW = CGFloat(maxX - minX) * colSpacing + hexW * 1.5
+        let totalH = CGFloat(maxY - minY) * rowSpacing + hexH
 
         return AnyView(
             ZStack {
                 ForEach(visibleHexes) { hex in
-                    let offsetX = CGFloat(hex.x - minX) * colSpacing
-                    let offsetY = CGFloat(hex.y - minY) * rowSpacing + (hex.x % 2 == 1 ? hexH * 0.5 : 0)
+                    let offsetX = CGFloat(hex.x - minX) * colSpacing + (abs(hex.y) % 2 == 1 ? hexW * 0.5 : 0)
+                    let offsetY = CGFloat(hex.y - minY) * rowSpacing
 
                     AoEHexCell(type: hex.type, condition: hex.value, size: scaledHexSize)
                         .position(x: offsetX + hexW / 2, y: offsetY + hexH / 2)
@@ -96,9 +97,9 @@ private struct AoEHexCell: View {
 
     var body: some View {
         ZStack {
-            HexagonShape()
+            PointyHexagonShape()
                 .fill(fillColor)
-            HexagonShape()
+            PointyHexagonShape()
                 .stroke(strokeColor, lineWidth: 1)
 
             // Target marker
@@ -113,7 +114,7 @@ private struct AoEHexCell: View {
                 BundledImage(ImageLoader.conditionIcon(condition), size: size * 0.6, systemName: "bolt.fill")
             }
         }
-        .frame(width: size * 2, height: size * 1.73)
+        .frame(width: size * 1.73, height: size * 2)
     }
 
     private var fillColor: Color {
@@ -158,6 +159,26 @@ struct HexagonShape: Shape {
         path.addLine(to: CGPoint(x: cx - w * 0.5, y: cy))
         path.addLine(to: CGPoint(x: cx - w * 0.25, y: cy + h * 0.5))
         path.addLine(to: CGPoint(x: cx + w * 0.25, y: cy + h * 0.5))
+        path.closeSubpath()
+        return path
+    }
+}
+
+/// Pointy-top hexagon (matches the board's hex orientation).
+struct PointyHexagonShape: Shape {
+    func path(in rect: CGRect) -> Path {
+        let w = rect.width
+        let h = rect.height
+        let cx = rect.midX
+        let cy = rect.midY
+
+        var path = Path()
+        path.move(to: CGPoint(x: cx, y: cy - h * 0.5))
+        path.addLine(to: CGPoint(x: cx + w * 0.5, y: cy - h * 0.25))
+        path.addLine(to: CGPoint(x: cx + w * 0.5, y: cy + h * 0.25))
+        path.addLine(to: CGPoint(x: cx, y: cy + h * 0.5))
+        path.addLine(to: CGPoint(x: cx - w * 0.5, y: cy + h * 0.25))
+        path.addLine(to: CGPoint(x: cx - w * 0.5, y: cy - h * 0.25))
         path.closeSubpath()
         return path
     }

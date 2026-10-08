@@ -1,147 +1,249 @@
 import Foundation
 
-/// Resolves AoE (area of effect) patterns on the hex board.
-/// Transforms AoE patterns from ability card coordinate space to board coordinates,
-/// tries all 6 rotations, and finds the orientation that hits the most enemies.
+/// Resolves area-of-effect (AoE) attack patterns on the hex board.
+///
+/// Pattern strings come from the GHS monster ability data, e.g.
+/// `"(0,1,target)|(1,0,target)|(1,1,active)|(1,2,target)"`. Each `(x,y,type)` hex is in
+/// **odd-row offset** coordinates (x = column, y = row, odd rows shifted half a hex right) —
+/// the same pointy-top convention as the board (`HexMath.oddRowToCube`). This is what makes
+/// e.g. Deep Terror's 6-hex pattern a straight line and the 7-hex Spitting Drake / Flame
+/// Demon pattern a "flower" (a center hex plus its 6 neighbors).
+///
+/// Hex types:
+/// - `active` (grey) — the attacker's own hex. A pattern with an active hex is a **melee** area
+///   attack: it is anchored on the attacker and may be rotated to any of the 6 orientations.
+/// - `target` / `conditional` (red) — hexes that are attacked.
+/// - Patterns with **no** active hex are **ranged** area attacks: the pattern may be placed
+///   anywhere in any rotation as long as at least one red hex is within range of the attacker.
+///
+/// Every enemy hit must be in line of sight of the attacker. The monster places the pattern so
+/// it covers its focus and as many other enemies as possible; if no legal placement covers the
+/// focus, nothing is hit.
+///
+/// Targetability (e.g. invisible figures) is the caller's responsibility: pass only enemies
+/// that may be targeted. Invisible figures cannot be targeted, even by area attacks.
 enum AoEResolver {
 
-    /// A parsed AoE hex with its type.
-    struct PatternHex {
+    /// A parsed AoE hex with its type, in cube coordinates (same frame as `HexCoord.cube`)
+    /// relative to the pattern origin.
+    struct PatternHex: Equatable {
         let cubeX: Int
         let cubeY: Int
         let cubeZ: Int
-        let isTarget: Bool  // true for target/conditional hexes that deal damage
+        let isTarget: Bool  // true for target/conditional hexes that are attacked
         let isActive: Bool  // true for the attacker's position in the pattern
     }
 
-    /// Parse an AoE pattern string into cube-coordinate hexes relative to the active hex.
-    /// The active hex becomes the origin (0,0,0).
-    /// Pattern format: "(x,y,type)|(x,y,type)|..." where x,y are odd-column offset coords.
+    /// A concrete placement of a pattern on the board.
+    struct Placement: Equatable {
+        /// Board hexes covered by the pattern's red (target) hexes.
+        let targetHexes: [HexCoord]
+        /// Enemies hit by this placement (in LOS of the attacker); the focus target is first.
+        let targets: [PieceID]
+    }
+
+    // MARK: - Parsing
+
+    /// Parse an AoE pattern string into cube-coordinate hexes.
+    ///
+    /// Coordinates are relative to the active (attacker) hex when the pattern has one, which then
+    /// sits at (0,0,0). Ranged patterns (no active hex) are made relative to their first red hex.
+    /// Hex types that don't take part in targeting (blank, invisible, ally, enhance) are dropped.
     static func parsePattern(_ pattern: String) -> [PatternHex] {
-        let hexes = ActionHex.parse(pattern)
-        guard !hexes.isEmpty else { return [] }
+        let hexes = ActionHex.parse(pattern).filter {
+            $0.type == .active || $0.type == .target || $0.type == .conditional
+        }
+        guard let origin = hexes.first(where: { $0.type == .active })
+            ?? hexes.first(where: { $0.type != .active }) else { return [] }
 
-        // Find the active hex (attacker position)
-        let activeHex = hexes.first(where: { $0.type == .active })
-        let originX = activeHex?.x ?? 0
-        let originY = activeHex?.y ?? 0
-
-        // Convert origin to cube
-        let originCube = oddColumnToCube(col: originX, row: originY)
-
-        // Convert all hexes to cube coordinates relative to origin
-        return hexes.compactMap { hex in
-            let cube = oddColumnToCube(col: hex.x, row: hex.y)
-            let relX = cube.x - originCube.x
-            let relY = cube.y - originCube.y
-            let relZ = cube.z - originCube.z
-
-            let isTarget = hex.type == .target || hex.type == .conditional
-            let isActive = hex.type == .active
-
-            // Skip invisible/blank hexes — they don't affect targeting
-            guard hex.type != .invisible && hex.type != .blank else { return nil }
-
-            return PatternHex(cubeX: relX, cubeY: relY, cubeZ: relZ, isTarget: isTarget, isActive: isActive)
+        let originCube = HexMath.oddRowToCube(origin.x, origin.y)
+        return hexes.map { hex in
+            let cube = HexMath.oddRowToCube(hex.x, hex.y)
+            return PatternHex(
+                cubeX: cube.x - originCube.x,
+                cubeY: cube.y - originCube.y,
+                cubeZ: cube.z - originCube.z,
+                isTarget: hex.type == .target || hex.type == .conditional,
+                isActive: hex.type == .active
+            )
         }
     }
 
-    /// Find the best AoE rotation and return all enemy piece IDs that would be hit.
-    /// The result always includes the focus target if it can be hit by any rotation.
+    /// Whether the pattern is a melee area attack (it contains the attacker's grey hex).
+    /// Patterns without an active hex are ranged area attacks.
+    static func isMeleePattern(_ pattern: String) -> Bool {
+        parsePattern(pattern).contains { $0.isActive }
+    }
+
+    // MARK: - Targeting
+
+    /// Find the enemies hit by the best placement of an AoE pattern.
+    ///
     /// - Parameters:
-    ///   - pattern: The AoE pattern string from the ability card
-    ///   - attackerPos: The attacker's position on the board
-    ///   - focusTarget: The primary focus target
-    ///   - enemies: All valid enemy piece IDs
-    ///   - board: The board state
-    /// - Returns: Array of enemy piece IDs hit by the best AoE orientation
+    ///   - pattern: The AoE pattern string from the ability card.
+    ///   - attackerPos: The hex the attack is made from.
+    ///   - focusTarget: The attacker's focus; every returned placement covers it.
+    ///   - enemies: Targetable enemies (exclude invisible figures).
+    ///   - board: The board state (piece positions, walls for LOS).
+    ///   - range: Attack range — only used for ranged patterns (no active hex), where at least
+    ///     one red hex must be within this range. Ignored for melee patterns.
+    /// - Returns: Enemies hit (focus first), or `[]` if no legal placement covers the focus.
     static func resolveTargets(
         pattern: String,
         attackerPos: HexCoord,
         focusTarget: PieceID,
         enemies: [PieceID],
-        board: BoardState
+        board: BoardState,
+        range: Int = 1
     ) -> [PieceID] {
-        let patternHexes = parsePattern(pattern)
-        guard !patternHexes.isEmpty else { return [] }
+        bestPlacement(
+            pattern: pattern,
+            attackerPos: attackerPos,
+            focusTarget: focusTarget,
+            enemies: enemies,
+            board: board,
+            range: range
+        )?.targets ?? []
+    }
 
-        // Get target hexes only (not the active/attacker hex)
-        let targetOffsets = patternHexes.filter { $0.isTarget }
-        guard !targetOffsets.isEmpty else { return [] }
+    /// Find the best legal placement of an AoE pattern: one that hits the focus (in LOS) and the
+    /// most other enemies. Returns `nil` if no legal placement hits the focus.
+    /// Ties are broken deterministically (first placement found in rotation order).
+    static func bestPlacement(
+        pattern: String,
+        attackerPos: HexCoord,
+        focusTarget: PieceID,
+        enemies: [PieceID],
+        board: BoardState,
+        range: Int = 1
+    ) -> Placement? {
+        guard let focusPos = board.piecePositions[focusTarget] else { return nil }
 
-        let attackerCube = attackerPos.cube
+        let hexes = parsePattern(pattern)
+        let targetOffsets = hexes.filter { $0.isTarget }.map { Cube($0.cubeX, $0.cubeY, $0.cubeZ) }
+        guard !targetOffsets.isEmpty else { return nil }
+        let isMelee = hexes.contains { $0.isActive }
 
-        // Build enemy position lookup
-        var positionToEnemies: [HexCoord: [PieceID]] = [:]
+        // Enemy lookup by hex (summons may share a hex).
+        var enemiesAt: [HexCoord: [PieceID]] = [:]
         for enemy in enemies {
             if let pos = board.piecePositions[enemy] {
-                positionToEnemies[pos, default: []].append(enemy)
+                enemiesAt[pos, default: []].append(enemy)
             }
         }
+        guard enemiesAt[focusPos]?.contains(focusTarget) == true else { return nil }
 
-        // Try all 6 rotations and pick the one that hits the most enemies (preferring focus)
-        var bestTargets: [PieceID] = []
-        var bestScore = -1
+        var losCache: [HexCoord: Bool] = [:]
+        func inSight(_ hex: HexCoord) -> Bool {
+            if let cached = losCache[hex] { return cached }
+            let result = LineOfSight.hasLOS(from: attackerPos, to: hex, board: board)
+            losCache[hex] = result
+            return result
+        }
 
-        for rotation in 0..<6 {
-            var hitTargets: [PieceID] = []
-            var hitsFocus = false
-
-            for offset in targetOffsets {
-                // Rotate the offset
-                let rotated = rotateCube(x: offset.cubeX, y: offset.cubeY, z: offset.cubeZ, turns: rotation)
-                // Translate to board position
-                let boardCube = (x: attackerCube.x + rotated.x, y: attackerCube.y + rotated.y, z: attackerCube.z + rotated.z)
-                let boardHex = HexCoord.fromCube(x: boardCube.x, y: boardCube.y, z: boardCube.z)
-
-                // Check if any enemies are on this hex
-                if let enemiesHere = positionToEnemies[boardHex] {
-                    for enemy in enemiesHere where !hitTargets.contains(enemy) {
-                        hitTargets.append(enemy)
-                        if enemy == focusTarget { hitsFocus = true }
-                    }
+        var best: Placement?
+        func consider(_ placementHexes: [HexCoord]) {
+            var hit: [PieceID] = []
+            for hex in placementHexes {
+                guard let here = enemiesAt[hex], inSight(hex) else { continue }
+                for enemy in here where !hit.contains(enemy) {
+                    hit.append(enemy)
                 }
             }
-
-            // Score: prioritize hitting focus, then maximize targets
-            let score = (hitsFocus ? 1000 : 0) + hitTargets.count
-            if score > bestScore {
-                bestScore = score
-                bestTargets = hitTargets
+            guard let focusIdx = hit.firstIndex(of: focusTarget) else { return }
+            hit.remove(at: focusIdx)
+            hit.insert(focusTarget, at: 0)
+            if best == nil || hit.count > best!.targets.count {
+                best = Placement(targetHexes: placementHexes, targets: hit)
             }
         }
 
-        // Ensure focus is first in the list if present
-        if let focusIdx = bestTargets.firstIndex(of: focusTarget), focusIdx > 0 {
-            bestTargets.remove(at: focusIdx)
-            bestTargets.insert(focusTarget, at: 0)
+        if isMelee {
+            // Anchored on the attacker's hex; try all 6 rotations.
+            let origin = Cube(attackerPos)
+            for turns in 0..<6 {
+                consider(targetOffsets.map { ($0.rotated(turns) + origin).hex })
+            }
+        } else {
+            for placement in rangedPlacements(
+                offsets: targetOffsets, covering: focusPos,
+                attackerPos: attackerPos, range: range, board: board
+            ) {
+                consider(placement)
+            }
         }
-
-        return bestTargets
+        return best
     }
 
-    // MARK: - Coordinate Helpers
-
-    /// Convert odd-column offset coordinates (used by AoE patterns) to cube coordinates.
-    /// AoE patterns use flat-top hexes with odd columns shifted down.
-    private static func oddColumnToCube(col: Int, row: Int) -> (x: Int, y: Int, z: Int) {
-        let x = col
-        let z = row - (col - (col & 1)) / 2
-        let y = -x - z
-        return (x, y, z)
+    /// All legal placements of a ranged pattern's red hexes that cover `hex`: every rotation,
+    /// with each red hex in turn placed on `hex`, keeping only placements where at least one red
+    /// hex is on the map, not the attacker's own hex, and within `range` of the attacker.
+    static func rangedPlacements(
+        pattern: String,
+        covering hex: HexCoord,
+        attackerPos: HexCoord,
+        range: Int,
+        board: BoardState
+    ) -> [[HexCoord]] {
+        let offsets = parsePattern(pattern).filter { $0.isTarget }.map { Cube($0.cubeX, $0.cubeY, $0.cubeZ) }
+        return rangedPlacements(offsets: offsets, covering: hex, attackerPos: attackerPos, range: range, board: board)
     }
 
-    /// Rotate cube coordinates by N × 60° clockwise around the origin.
-    private static func rotateCube(x: Int, y: Int, z: Int, turns: Int) -> (x: Int, y: Int, z: Int) {
-        var cx = x, cy = y, cz = z
-        for _ in 0..<(turns % 6) {
-            let newX = -cz
-            let newY = -cx
-            let newZ = -cy
-            cx = newX
-            cy = newY
-            cz = newZ
+    private static func rangedPlacements(
+        offsets: [Cube],
+        covering hex: HexCoord,
+        attackerPos: HexCoord,
+        range: Int,
+        board: BoardState
+    ) -> [[HexCoord]] {
+        let effectiveRange = max(range, 1)
+        let anchor = Cube(hex)
+        var seen = Set<Set<HexCoord>>()
+        var placements: [[HexCoord]] = []
+
+        for turns in 0..<6 {
+            let rotated = offsets.map { $0.rotated(turns) }
+            for pivot in rotated {
+                let placed = rotated.map { ($0 - pivot + anchor).hex }
+                guard seen.insert(Set(placed)).inserted else { continue }
+                let reachable = placed.contains { h in
+                    h != attackerPos
+                        && board.cells[h] != nil
+                        && attackerPos.distance(to: h) <= effectiveRange
+                }
+                if reachable { placements.append(placed) }
+            }
         }
-        return (cx, cy, cz)
+        return placements
+    }
+
+    // MARK: - Cube Math
+
+    /// Cube coordinate in the same frame as `HexCoord.cube` / `HexMath.oddRowToCube`.
+    private struct Cube: Equatable {
+        let x: Int, y: Int, z: Int
+
+        init(_ x: Int, _ y: Int, _ z: Int) {
+            self.x = x; self.y = y; self.z = z
+        }
+
+        init(_ coord: HexCoord) {
+            let c = coord.cube
+            self.init(c.x, c.y, c.z)
+        }
+
+        var hex: HexCoord { HexCoord.fromCube(x: x, y: y, z: z) }
+
+        /// Rotate by `turns` × 60° around the origin.
+        func rotated(_ turns: Int) -> Cube {
+            var c = self
+            for _ in 0..<(((turns % 6) + 6) % 6) {
+                c = Cube(-c.z, -c.x, -c.y)
+            }
+            return c
+        }
+
+        static func + (a: Cube, b: Cube) -> Cube { Cube(a.x + b.x, a.y + b.y, a.z + b.z) }
+        static func - (a: Cube, b: Cube) -> Cube { Cube(a.x - b.x, a.y - b.y, a.z - b.z) }
     }
 }

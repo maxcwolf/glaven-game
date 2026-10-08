@@ -1,36 +1,53 @@
 import Foundation
 
-/// Line of sight checks using corner-to-corner ray casting on a hex grid.
-/// Per Gloomhaven rules: LOS exists if ANY corner-to-corner line from source
-/// to target hex is unblocked. Only walls/obstacles block LOS (figures do NOT).
+/// Line of sight on the hex board, following the Gloomhaven rulebook:
+///
+/// > You have line of sight if you can draw a line from any corner of the attacker's hex
+/// > to any corner of the defender's hex without touching any part of a wall (the line
+/// > edge of a map tile or the entire area of any partial hex along the edge of a map tile).
+/// > Only walls block line of sight.
+///
+/// Board model:
+/// - **Walls** = hexes that are not on a revealed map tile (void: gaps between tiles,
+///   partial edge hexes, unrevealed rooms, outside the map) plus cells with a `.wall` overlay.
+/// - Obstacles, traps, hazards, difficult terrain, doors and figures do **not** block LOS
+///   ("Obstacles do not hinder ranged attacks").
+///
+/// Geometry: the board is pointy-top hexes in odd-row offset coordinates (see `HexMath` /
+/// `BoardScene.hexPath`). LOS is evaluated on an exact integer lattice — an affine image of a
+/// regular pointy-top grid — so shared corners and edges between hexes coincide exactly and
+/// there is no floating-point tolerance to tune:
+///
+/// - Hex `(col, row)` has its center at `X = 2·col + (row & 1)`, `Y = 3·row`.
+/// - Its 6 corners are the center plus `(1,1) (0,2) (-1,1) (-1,-1) (0,-2) (1,-1)`.
+///
+/// A corner-to-corner line is blocked when it overlaps a wall hex (closed hexagon) along a
+/// segment of positive length — i.e. it passes through the wall's interior or runs along
+/// one of its edges. A line that merely touches a single corner point of a wall hex (e.g. it
+/// passes through the corner shared by two open hexes and a wall hex) is not blocked.
+/// Two adjacent hexes always have LOS: the map data has no explicit edge walls between
+/// touching cells.
 enum LineOfSight {
 
     /// Check if there is line of sight between two hexes.
     static func hasLOS(from source: HexCoord, to target: HexCoord, board: BoardState) -> Bool {
         if source == target { return true }
-        if source.isAdjacent(to: target) {
-            // Adjacent hexes always have LOS unless there's a wall between them
-            // (walls are marked as impassable cells, not as cells with wall overlays
-            //  blocking adjacency — so adjacent always has LOS in standard GH)
-            return true
-        }
+        if source.isAdjacent(to: target) { return true }
 
-        let sourceCorners = hexCorners(source)
-        let targetCorners = hexCorners(target)
+        let blockers = blockingHexes(between: source, and: target, board: board)
+        if blockers.isEmpty { return true }
 
-        // Collect blocking cells: obstacles/walls that are impassable
-        // Only check cells in the bounding region between source and target
-        let blockingCells = gatherBlockingCells(from: source, to: target, board: board)
+        let sourceCorners = corners(of: source)
+        let targetCorners = corners(of: target)
 
-        // Check if any corner-to-corner line is clear
         for sc in sourceCorners {
             for tc in targetCorners {
-                if isLineUnblocked(from: sc, to: tc, blockingCells: blockingCells) {
+                let segment = Segment(sc, tc)
+                if !blockers.contains(where: { segment.overlaps($0) }) {
                     return true
                 }
             }
         }
-
         return false
     }
 
@@ -45,149 +62,154 @@ enum LineOfSight {
         return hasLOS(from: source, to: target, board: board)
     }
 
-    // MARK: - Hex Geometry
+    /// Whether a hex acts as a wall for line of sight: it is not part of the revealed map
+    /// (void / gap between tiles / partial edge hex) or it carries a `.wall` overlay.
+    /// Obstacles and every other overlay are transparent.
+    static func blocksLineOfSight(_ coord: HexCoord, board: BoardState) -> Bool {
+        guard let cell = board.cells[coord] else { return true }
+        return cell.overlay == .wall
+    }
 
-    /// The 6 corners of a flat-top hex at a given coordinate.
-    /// Uses the same coordinate system as HexMath.hexToPixel.
-    private static func hexCorners(_ coord: HexCoord) -> [CGPoint] {
-        let center = coord.pixelPosition
-        let size = HexMath.cellSize / 2.0 // radius from center to corner
-        return (0..<6).map { i in
-            let angle = CGFloat(i) * .pi / 3.0  // flat-top: 0°, 60°, 120°, ...
-            return CGPoint(
-                x: center.x + size * cos(angle),
-                y: center.y + size * sin(angle)
-            )
+    // MARK: - Lattice Geometry
+
+    /// A point on the integer LOS lattice.
+    private struct LatticePoint {
+        let x: Int
+        let y: Int
+    }
+
+    /// Corner offsets from a hex center, in counter-clockwise order on the lattice.
+    private static let cornerOffsets: [(Int, Int)] = [
+        (1, 1), (0, 2), (-1, 1), (-1, -1), (0, -2), (1, -1),
+    ]
+
+    /// Center of a hex on the integer lattice (pointy-top, odd-row offset).
+    private static func center(of coord: HexCoord) -> LatticePoint {
+        LatticePoint(x: 2 * coord.col + (coord.row & 1), y: 3 * coord.row)
+    }
+
+    /// The 6 corners of a pointy-top hex on the integer lattice.
+    private static func corners(of coord: HexCoord) -> [LatticePoint] {
+        let c = center(of: coord)
+        return cornerOffsets.map { LatticePoint(x: c.x + $0.0, y: c.y + $0.1) }
+    }
+
+    /// A wall hex, pre-computed for segment overlap tests.
+    private struct Blocker {
+        let corners: [LatticePoint]
+        let minX: Int, maxX: Int, minY: Int, maxY: Int
+
+        init(_ coord: HexCoord) {
+            let c = LineOfSight.center(of: coord)
+            corners = LineOfSight.corners(of: coord)
+            minX = c.x - 1; maxX = c.x + 1
+            minY = c.y - 2; maxY = c.y + 2
         }
     }
 
-    /// Gather all blocking cells (impassable) in the region between source and target.
-    private static func gatherBlockingCells(
-        from source: HexCoord,
-        to target: HexCoord,
-        board: BoardState
-    ) -> [(center: CGPoint, radius: CGFloat)] {
-        let halfSize = HexMath.cellSize / 2.0
-        // Use a generous bounding box
-        let minCol = min(source.col, target.col) - 1
-        let maxCol = max(source.col, target.col) + 1
-        let minRow = min(source.row, target.row) - 1
-        let maxRow = max(source.row, target.row) + 1
+    /// A corner-to-corner sight line.
+    private struct Segment {
+        let p: LatticePoint
+        let q: LatticePoint
+        let minX: Int, maxX: Int, minY: Int, maxY: Int
 
-        var blocking: [(center: CGPoint, radius: CGFloat)] = []
-        for (coord, cell) in board.cells {
-            guard coord != source && coord != target else { continue }
-            guard !cell.passable else { continue }
-            guard coord.col >= minCol && coord.col <= maxCol &&
-                  coord.row >= minRow && coord.row <= maxRow else { continue }
-            blocking.append((center: coord.pixelPosition, radius: halfSize))
+        init(_ p: LatticePoint, _ q: LatticePoint) {
+            self.p = p
+            self.q = q
+            minX = min(p.x, q.x); maxX = max(p.x, q.x)
+            minY = min(p.y, q.y); maxY = max(p.y, q.y)
         }
-        return blocking
-    }
 
-    /// Check if a line segment from p1 to p2 is unblocked by any blocking hex.
-    /// A hex blocks if the line passes through its interior.
-    private static func isLineUnblocked(
-        from p1: CGPoint,
-        to p2: CGPoint,
-        blockingCells: [(center: CGPoint, radius: CGFloat)]
-    ) -> Bool {
-        for cell in blockingCells {
-            if lineIntersectsHex(from: p1, to: p2, hexCenter: cell.center, hexRadius: cell.radius) {
+        /// Whether this segment overlaps the closed hexagon along a positive length.
+        /// Exact Liang–Barsky clipping against the hexagon's 6 half-planes using rational
+        /// parameters (integer numerator / positive denominator).
+        func overlaps(_ hex: Blocker) -> Bool {
+            // Bounding-box rejection (closed, so edge-running lines are still tested).
+            if maxX < hex.minX || minX > hex.maxX || maxY < hex.minY || minY > hex.maxY {
                 return false
             }
+
+            let dx = q.x - p.x
+            let dy = q.y - p.y
+            // Feasible parameter interval [lowN/lowD, highN/highD] ⊆ [0, 1].
+            var lowN = 0, lowD = 1
+            var highN = 1, highD = 1
+
+            for i in 0..<6 {
+                let v = hex.corners[i]
+                let w = hex.corners[(i + 1) % 6]
+                let ex = w.x - v.x
+                let ey = w.y - v.y
+                // Inside (CCW polygon): cross(e, point - v) >= 0.
+                // f(t) = cross(e, p - v) + t · cross(e, d) = a + t·b
+                let a = ex * (p.y - v.y) - ey * (p.x - v.x)
+                let b = ex * dy - ey * dx
+                if b == 0 {
+                    if a < 0 { return false } // parallel and entirely outside this edge
+                } else if b > 0 {
+                    // t >= -a / b
+                    let n = -a, d = b
+                    if n * lowD > lowN * d { lowN = n; lowD = d }
+                } else {
+                    // t <= a / (-b)
+                    let n = a, d = -b
+                    if n * highD < highN * d { highN = n; highD = d }
+                }
+            }
+            // Positive-length overlap iff low < high (a single shared point is not a block).
+            return lowN * highD < highN * lowD
         }
-        return true
     }
 
-    /// Check if a line segment intersects a hex.
-    /// Uses a simplified approach: check if the line passes through the hex's bounding hexagon
-    /// by testing against the 6 edges of the hex.
-    private static func lineIntersectsHex(
-        from p1: CGPoint,
-        to p2: CGPoint,
-        hexCenter: CGPoint,
-        hexRadius: CGFloat
-    ) -> Bool {
-        // Compute the 6 corners of the blocking hex
-        let corners = (0..<6).map { i -> CGPoint in
-            let angle = CGFloat(i) * .pi / 3.0
-            return CGPoint(
-                x: hexCenter.x + hexRadius * cos(angle),
-                y: hexCenter.y + hexRadius * sin(angle)
-            )
-        }
+    /// Wall hexes that could intersect any corner-to-corner line between the two hexes.
+    private static func blockingHexes(
+        between source: HexCoord,
+        and target: HexCoord,
+        board: BoardState
+    ) -> [Blocker] {
+        // Every corner-to-corner line lies within the convex hull of the two hexes, which only
+        // reaches one row/column beyond their bounding box; use a margin of 2 to be safe.
+        let minCol = min(source.col, target.col) - 2
+        let maxCol = max(source.col, target.col) + 2
+        let minRow = min(source.row, target.row) - 2
+        let maxRow = max(source.row, target.row) + 2
 
-        // Check if the line intersects any edge of the hex
-        for i in 0..<6 {
-            let j = (i + 1) % 6
-            if segmentsIntersect(p1, p2, corners[i], corners[j]) {
-                return true
+        // Each sight line stays within one hex radius of the center-to-center segment, so a
+        // wall hex can only matter if its center is within two radii of that segment.
+        let sc = euclidean(center(of: source))
+        let tc = euclidean(center(of: target))
+        let reach = 2.0 + 1e-6
+
+        var blockers: [Blocker] = []
+        for row in minRow...maxRow {
+            for col in minCol...maxCol {
+                let coord = HexCoord(col, row)
+                guard coord != source && coord != target else { continue }
+                guard blocksLineOfSight(coord, board: board) else { continue }
+                let bc = euclidean(center(of: coord))
+                guard distance(from: bc, toSegment: sc, tc) <= reach else { continue }
+                blockers.append(Blocker(coord))
             }
         }
-
-        // Check if either endpoint is inside the hex
-        if pointInHex(p1, center: hexCenter, radius: hexRadius) { return true }
-        if pointInHex(p2, center: hexCenter, radius: hexRadius) { return true }
-
-        // A line that penetrates the hex interior blocks LOS even when it enters and
-        // exits exactly at vertices — the degenerate case the strict edge-crossing test
-        // above misses (it makes a solid wall of obstacles fail to block). Model the
-        // blocker as a regular hexagon: if the segment passes within the apothem (the
-        // inscribed-circle radius), it goes through the interior. The small margin keeps
-        // edge-grazing "see-around" lines unblocked, so a single obstacle can still be
-        // seen past per Gloomhaven geometry.
-        let apothem = hexRadius * 0.866  // cos(30°)
-        if distancePointToSegment(hexCenter, p1, p2) < apothem - 1.0 {
-            return true
-        }
-
-        return false
+        return blockers
     }
 
-    /// Shortest distance from a point to a line segment.
-    private static func distancePointToSegment(_ p: CGPoint, _ a: CGPoint, _ b: CGPoint) -> CGFloat {
+    /// Map a lattice point back to regular-hex Euclidean space (hex circumradius = 1).
+    private static func euclidean(_ p: LatticePoint) -> (x: Double, y: Double) {
+        (Double(p.x) * 3.0.squareRoot() / 2.0, Double(p.y) / 2.0)
+    }
+
+    /// Shortest Euclidean distance from a point to a segment.
+    private static func distance(
+        from p: (x: Double, y: Double),
+        toSegment a: (x: Double, y: Double),
+        _ b: (x: Double, y: Double)
+    ) -> Double {
         let dx = b.x - a.x
         let dy = b.y - a.y
         let lenSq = dx * dx + dy * dy
         if lenSq == 0 { return hypot(p.x - a.x, p.y - a.y) }
-        var t = ((p.x - a.x) * dx + (p.y - a.y) * dy) / lenSq
-        t = max(0, min(1, t))
+        let t = max(0, min(1, ((p.x - a.x) * dx + (p.y - a.y) * dy) / lenSq))
         return hypot(p.x - (a.x + t * dx), p.y - (a.y + t * dy))
-    }
-
-    /// Check if two line segments intersect.
-    /// Uses the cross product method.
-    private static func segmentsIntersect(
-        _ a1: CGPoint, _ a2: CGPoint,
-        _ b1: CGPoint, _ b2: CGPoint
-    ) -> Bool {
-        let d1 = cross(a1, a2, b1)
-        let d2 = cross(a1, a2, b2)
-        let d3 = cross(b1, b2, a1)
-        let d4 = cross(b1, b2, a2)
-
-        // Lines touching at exactly a corner doesn't block (per GH rules)
-        // So we use strict inequality
-        if ((d1 > 0 && d2 < 0) || (d1 < 0 && d2 > 0)) &&
-           ((d3 > 0 && d4 < 0) || (d3 < 0 && d4 > 0)) {
-            return true
-        }
-
-        return false
-    }
-
-    /// Cross product of vectors (b-a) and (c-a).
-    private static func cross(_ a: CGPoint, _ b: CGPoint, _ c: CGPoint) -> CGFloat {
-        (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x)
-    }
-
-    /// Check if a point is inside a hex (approximate using distance check).
-    private static func pointInHex(_ point: CGPoint, center: CGPoint, radius: CGFloat) -> Bool {
-        // Use a slightly reduced radius to avoid edge cases at corners
-        let innerRadius = radius * 0.866 // cos(30°) = sqrt(3)/2
-        let dx = abs(point.x - center.x)
-        let dy = abs(point.y - center.y)
-        return dx < innerRadius && dy < radius * 0.95 && dx + dy * 0.577 < innerRadius
     }
 }
