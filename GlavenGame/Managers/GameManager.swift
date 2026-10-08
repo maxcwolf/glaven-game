@@ -106,8 +106,15 @@ final class GameManager {
 
         // Wire scenario rules to round advancement
         roundMgr.onRoundAdvanced = { [weak self] in
-            self?.scenarioRulesManager.evaluateRules(phase: .roundStart)
-            self?.scenarioStatsManager.advanceRound()
+            guard let self else { return }
+            self.scenarioRulesManager.evaluateRules(phase: .roundStart)
+            // Aggressor: is there a monster on the map as the round begins?
+            let board = self.boardCoordinator
+            let monstersPresent = board.boardState.piecePositions.keys.contains {
+                if case .monster = $0 { return !board.isPlayerSide($0) }
+                return false
+            }
+            self.scenarioStatsManager.advanceRound(monstersPresent: monstersPresent)
         }
         roundMgr.onRoundEnding = { [weak self] in
             self?.scenarioRulesManager.evaluateRules(phase: .roundEnd)

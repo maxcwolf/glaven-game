@@ -125,6 +125,7 @@ extension BoardCoordinator {
     @discardableResult
     func sufferDamage(_ amount: Int, to pieceID: PieceID, killer: PieceID? = nil) -> Bool {
         guard amount > 0, let gameManager, let entity = entity(for: pieceID) else { return false }
+        let (healthBefore, maxHealth) = (entity.health, entity.maxHealth)
         gameManager.entityManager.changeHealth(entity, amount: -amount)
         boardScene?.pieceDamage(id: pieceID, amount: amount)
         boardScene?.refreshStatus(of: pieceID)
@@ -132,7 +133,8 @@ extension BoardCoordinator {
             gameManager.scenarioStatsManager.recordDamageDealt(by: dealer.name, amount: amount)
         }
         if entity.health <= 0 {
-            handleDeath(of: pieceID, killer: killer)
+            handleDeath(of: pieceID, killer: killer, overkill: amount - healthBefore,
+                        fromFullHealth: healthBefore == maxHealth)
             return true
         }
         return false
@@ -193,7 +195,8 @@ extension BoardCoordinator {
 
     /// Resolve a figure reaching 0 HP: monsters die (money token for normal/elite monsters that
     /// were not summoned or spawned), summons are removed, characters become exhausted.
-    func handleDeath(of pieceID: PieceID, killer: PieceID? = nil) {
+    /// `overkill` and `fromFullHealth` describe the blow that killed it, for battle goals.
+    func handleDeath(of pieceID: PieceID, killer: PieceID? = nil, overkill: Int = 0, fromFullHealth: Bool = false) {
         guard let gameManager else { return }
         boardScene?.play(.death)
         switch pieceID {
@@ -218,7 +221,8 @@ extension BoardCoordinator {
             removePieceFromBoard(pieceID)
             recordMonsterKill(name: name)
             if let character = creditedCharacter(for: killer) {
-                gameManager.scenarioStatsManager.recordKill(by: character.name)
+                gameManager.scenarioStatsManager.recordKill(by: character.name, elite: entity.type == .elite,
+                                                           overkill: max(0, overkill), fromFullHealth: fromFullHealth)
             }
             gameManager.scenarioRulesManager.evaluateRules()
         case .summon(let id):

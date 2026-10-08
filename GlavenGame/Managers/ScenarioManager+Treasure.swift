@@ -25,6 +25,7 @@ extension ScenarioManager {
         onBeforeMutate?()
         let edition = scenario.data.edition
         game.lootedTreasures.insert(key)
+        if let character { scenarioStatsManager?.recordTreasure(by: character.name) }
         game.campaignLog.append(CampaignLogEntry(
             type: .treasureLooted,
             message: "Looted treasure \(index) in #\(scenario.data.index) \(scenario.data.name)"

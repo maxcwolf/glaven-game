@@ -16,3 +16,5 @@ the game does now; change any of them and I'll follow.
 6. **Phase VI scope** (TODO.md): the remaining town rules — battle goals, personal quests,
    retirement, sanctuary, enhancements, class events — then VoiceOver hexes. Anything to add,
    drop or reorder?
+7. **Straggler and Scrambler with no rests.** "Take only long (short) rests" — does a scenario
+   with no rest at all meet it? Now: at least one rest of that kind is needed.

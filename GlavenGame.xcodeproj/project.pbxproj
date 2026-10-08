@@ -95,6 +95,7 @@
 		7341D050CFF3F51B1A40A8D0 /* ElementBoardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8255E1A8F1CC6DC84CBFD242 /* ElementBoardView.swift */; };
 		75DF0BB6FC95C99A2DB187DC /* CombatResolver.swift in Sources */ = {isa = PBXBuildFile; fileRef = D43BC428DB53E9EC54ECA21C /* CombatResolver.swift */; };
 		7BC432AB3D70A08BFC5E87E7 /* WorldMapView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C9ECD4B608FAFAC66D31A536 /* WorldMapView.swift */; };
+		7CC59ABF933C68012195E7B3 /* BattleGoals.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0124B0388BD2AA1770320E6B /* BattleGoals.swift */; };
 		7E0A4C8A93D25AE344CB0A4D /* EntityManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9E6A2CFAF5C759FC39E1C802 /* EntityManager.swift */; };
 		7E73D0A139DFBE1715DA1F44 /* PlayerTurnController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A2BBA0188C2D10D81CAC68B /* PlayerTurnController.swift */; };
 		7E83CFF586BC1BDCB1ADFF2A /* AttackModifierManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69054202832ECCDDB26C8B2B /* AttackModifierManager.swift */; };
@@ -103,6 +104,7 @@
 		82BD2069DBF2BD8ABEBDC1B0 /* GlavenTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6911D16FDC2CF2B049586221 /* GlavenTheme.swift */; };
 		8556401DE6DDEC3B29A94C2E /* GamePhase.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E3252016F044D305E5F9AD4 /* GamePhase.swift */; };
 		878AB4F2AE1E85720DFA5775 /* EventCardManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = E3D72B6EC5F59987FCB0636A /* EventCardManager.swift */; };
+		880C9BE58DD587B65392858A /* BattleGoalPicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7935967456962F4F03B80C2B /* BattleGoalPicker.swift */; };
 		892B9BF7411972FD0C1157E4 /* ScenarioMaps in Resources */ = {isa = PBXBuildFile; fileRef = C4B5DE1CCC42A105EA251124 /* ScenarioMaps */; };
 		8A8AE9C25AFA67C4AFF49C9B /* AttackModifierCardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 42374DD85E631755D52BD747 /* AttackModifierCardView.swift */; };
 		8CB0FFF5B997D068B2D99954 /* AppPhase.swift in Sources */ = {isa = PBXBuildFile; fileRef = D9682A31C9693AB6DADDC9F6 /* AppPhase.swift */; };
@@ -198,6 +200,7 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		0124B0388BD2AA1770320E6B /* BattleGoals.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BattleGoals.swift; sourceTree = "<group>"; };
 		015914F204A6A1A5CD04676F /* ItemManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ItemManager.swift; sourceTree = "<group>"; };
 		01D2EFBD8378EDAFC3F215CF /* ActionType.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActionType.swift; sourceTree = "<group>"; };
 		0449386EC7763E37AF9AB2A4 /* ScenarioMapStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScenarioMapStore.swift; sourceTree = "<group>"; };
@@ -280,6 +283,7 @@
 		773EDD0EFA56B12B34CB32AB /* TreasureRewardParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TreasureRewardParser.swift; sourceTree = "<group>"; };
 		784104537FFDD30F2652C01D /* BoardCoordinator+Rules.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "BoardCoordinator+Rules.swift"; sourceTree = "<group>"; };
 		78DCD8429185EF58A68330B4 /* CharacterStatModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CharacterStatModel.swift; sourceTree = "<group>"; };
+		7935967456962F4F03B80C2B /* BattleGoalPicker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BattleGoalPicker.swift; sourceTree = "<group>"; };
 		794BBAB32F951E4614E23099 /* RoundManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RoundManager.swift; sourceTree = "<group>"; };
 		7E0C1D4AA6F0D3063582A41E /* LootType.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LootType.swift; sourceTree = "<group>"; };
 		800796073F61F4C2A69A6408 /* ActiveCardHalf.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActiveCardHalf.swift; sourceTree = "<group>"; };
@@ -559,6 +563,7 @@
 			isa = PBXGroup;
 			children = (
 				D0F512D593B3AEA9F219C2FC /* AbilityCardChoiceViews.swift */,
+				7935967456962F4F03B80C2B /* BattleGoalPicker.swift */,
 				BC02E40BD390F740C8CA66B1 /* CreditsSheet.swift */,
 				28320BFD439C596F3CD2DDEA /* EventSheet.swift */,
 				AD2078C38F909FF5A2F71A7B /* GameSetupView.swift */,
@@ -782,6 +787,7 @@
 			children = (
 				A30E472AAD62BB67AE83169C /* ActionsManager.swift */,
 				69054202832ECCDDB26C8B2B /* AttackModifierManager.swift */,
+				0124B0388BD2AA1770320E6B /* BattleGoals.swift */,
 				0A945DF49A79FBC6C6FE4B3C /* CharacterManager.swift */,
 				3477ACD63A2C3231A799AB39 /* EnhancementsManager.swift */,
 				9E6A2CFAF5C759FC39E1C802 /* EntityManager.swift */,
@@ -911,6 +917,8 @@
 				27BECA66EE2165B380748F33 /* AttackModifierValueType.swift in Sources */,
 				4DB872F6360BA26177F0CD27 /* BattleGoalData.swift in Sources */,
 				9458CF11BD646363D1E12D72 /* BattleGoalEvaluator.swift in Sources */,
+				880C9BE58DD587B65392858A /* BattleGoalPicker.swift in Sources */,
+				7CC59ABF933C68012195E7B3 /* BattleGoals.swift in Sources */,
 				916FFE7F8E38E482DBC83A94 /* BoardBuilder.swift in Sources */,
 				428795E432235765EB962529 /* BoardCamera.swift in Sources */,
 				B8BA0DCB5F22292931347410 /* BoardCoordinator+Combat.swift in Sources */,

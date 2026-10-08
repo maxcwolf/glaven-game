@@ -417,7 +417,9 @@ extension Scenario {
             disabledRules: disabledRules,
             killCounts: killCounts,
             startingExperience: startingExperience,
-            startingGold: startingGold
+            startingGold: startingGold,
+            stats: stats,
+            partyStats: partyStats
         )
     }
 }
@@ -435,6 +437,8 @@ extension ScenarioSnapshot {
         scenario.killCounts = killCounts ?? [:]
         scenario.startingExperience = startingExperience ?? [:]
         scenario.startingGold = startingGold ?? [:]
+        scenario.stats = stats ?? [:]
+        scenario.partyStats = partyStats ?? ScenarioPartyStats()
         return scenario
     }
 }

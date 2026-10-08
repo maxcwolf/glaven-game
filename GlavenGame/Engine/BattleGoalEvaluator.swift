@@ -1,7 +1,7 @@
 import Foundation
 
 /// Evaluates whether a character achieved their selected battle goal at the end of a scenario.
-/// Returns nil if the goal cannot be auto-evaluated (requires manual tracking).
+/// Every Gloomhaven goal is judged from the scenario's stats; nil only for an unknown card.
 enum BattleGoalEvaluator {
 
     /// Evaluate a battle goal for a character.
@@ -11,13 +11,14 @@ enum BattleGoalEvaluator {
     ///   - stats: The character's scenario stats (kills, damage, coins, etc.)
     ///   - scenarioXP: XP gained during this scenario (not including bonus)
     ///   - alliesExhausted: Whether any ally characters were exhausted
-    /// - Returns: `true` if achieved, `false` if failed, `nil` if cannot auto-evaluate
+    /// - Returns: `true` if achieved, `false` if failed, `nil` for an unknown card
     static func evaluate(
         cardId: String,
         character: GameCharacter,
         stats: ScenarioCharacterStats,
         scenarioXP: Int,
-        alliesExhausted: Bool
+        alliesExhausted: Bool,
+        party: ScenarioPartyStats = ScenarioPartyStats()
     ) -> Bool? {
         switch cardId {
         // Streamliner: "Have five or more total cards in your hand and discard at the end"
@@ -44,21 +45,21 @@ enum BattleGoalEvaluator {
         case "463":
             return character.health == character.maxHealth
 
-        // Neutralizer: "Cause a trap to be sprung or disarmed" — needs event tracking
+        // Neutralizer: "Cause a trap to be sprung or disarmed"
         case "464":
-            return nil
+            return stats.trapsTriggered > 0
 
-        // Plunderer: "Loot a treasure overlay tile" — needs event tracking
+        // Plunderer: "Loot a treasure overlay tile"
         case "465":
-            return nil
+            return stats.treasuresLooted > 0
 
         // Protector: "No character allies became exhausted"
         case "466":
             return !alliesExhausted
 
-        // Explorer: "Reveal a room tile by opening a door" — needs event tracking
+        // Explorer: "Reveal a room tile by opening a door"
         case "467":
-            return nil
+            return stats.doorsOpened > 0
 
         // Hoarder: "Loot five or more money tokens"
         case "468":
@@ -66,7 +67,7 @@ enum BattleGoalEvaluator {
 
         // Indigent: "Loot no money tokens or treasure overlay tiles"
         case "469":
-            return stats.coinsLooted == 0
+            return stats.coinsLooted == 0 && stats.treasuresLooted == 0
 
         // Pacifist: "Kill three or fewer monsters"
         case "470":
@@ -76,45 +77,45 @@ enum BattleGoalEvaluator {
         case "471":
             return stats.kills >= 5
 
-        // Hunter: "Kill one or more elite monsters" — needs elite kill tracking
+        // Hunter: "Kill one or more elite monsters"
         case "472":
-            return nil
+            return stats.eliteKills > 0
 
-        // Professional: "Use items >= level + 2 times" — needs item use count
+        // Professional: "Use items >= level + 2 times"
         case "473":
-            return nil
+            return stats.itemUses >= character.level + 2
 
-        // Aggressor: "Monsters present at beginning of every round" — needs round tracking
+        // Aggressor: "Monsters present at beginning of every round"
         case "474":
-            return nil
+            return !party.roundStartedWithoutMonsters
 
-        // Dynamo: "Overkill a monster by 4+" — needs event tracking
+        // Dynamo: "Overkill a monster by 4+"
         case "475":
-            return nil
+            return stats.largestOverkill >= 4
 
         // Purist: "Use no items during the scenario"
         case "476":
             return character.spentItems.isEmpty && character.consumedItems.isEmpty
 
-        // Opener: "Be the first to kill a monster" — needs event tracking
+        // Opener: "Be the first to kill a monster"
         case "477":
-            return nil
+            return party.firstKiller == character.name
 
-        // Diehard: "Never drop below half max HP" — needs continuous tracking
+        // Diehard: "Never drop below half max HP"
         case "478":
-            return nil
+            return !stats.droppedBelowHalf
 
-        // Executioner: "Kill an undamaged monster with a single attack" — needs event tracking
+        // Executioner: "Kill an undamaged monster with a single attack"
         case "479":
-            return nil
+            return stats.executions > 0
 
-        // Straggler: "Take only long rests" — needs rest type tracking
+        // Straggler: "Take only long rests"
         case "480":
-            return nil
+            return stats.longRests > 0 && stats.shortRests == 0
 
-        // Scrambler: "Take only short rests" — needs rest type tracking
+        // Scrambler: "Take only short rests"
         case "481":
-            return nil
+            return stats.shortRests > 0 && stats.longRests == 0
 
         default:
             return nil
@@ -125,7 +126,7 @@ enum BattleGoalEvaluator {
     struct Result {
         let cardId: String
         let goalName: String
-        let achieved: Bool?  // nil = manual check required
+        let achieved: Bool?  // nil = an unknown card
         let checksAwarded: Int
     }
 
@@ -159,7 +160,8 @@ enum BattleGoalEvaluator {
                 character: character,
                 stats: stats,
                 scenarioXP: xp,
-                alliesExhausted: alliesExhausted
+                alliesExhausted: alliesExhausted,
+                party: statsManager.partyStats
             )
 
             let goalData = battleGoalData.first { $0.cardId == cardId }

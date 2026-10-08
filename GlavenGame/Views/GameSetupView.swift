@@ -17,6 +17,8 @@ struct GameSetupView: View {
     @State private var events: [EventCardManager.Deck] = []
     /// Set out for this scenario once the events are resolved.
     @State private var settingOutFor: ScenarioData?
+    /// Choosing battle goals, the last step before setting out.
+    @State private var choosingGoals = false
 
     /// Once the party has played, this is the town between scenarios.
     private var inTown: Bool {
@@ -142,6 +144,12 @@ struct GameSetupView: View {
                 .ignoresSafeArea()
         }
         .overlay {
+            if choosingGoals {
+                BattleGoalPicker(onDone: departure)
+                    .transition(.opacity)
+            }
+        }
+        .overlay {
             if let deck = events.first {
                 EventSheet(deck: deck) { finishEvent(deck) }
                     .id("\(deck)-\(events.count)")
@@ -187,17 +195,27 @@ struct GameSetupView: View {
         if gameManager.game.events.cityEventDue { queue.append(.city) }
         if gameManager.eventCardManager.needsRoadEvent(for: scenario) { queue.append(.road) }
         settingOutFor = scenario
-        if queue.isEmpty { gameManager.startScenarioOnBoard(scenario) } else { events = queue }
+        if queue.isEmpty { chooseGoals() } else { events = queue }
+    }
+
+    /// Deal battle goals, then set out once everyone has kept one.
+    private func chooseGoals() {
+        gameManager.scenarioManager.dealBattleGoals()
+        withAnimation(.snappy) { choosingGoals = true }
+    }
+
+    private func departure() {
+        choosingGoals = false
+        guard let scenario = settingOutFor else { return }
+        settingOutFor = nil
+        gameManager.saveGame()
+        gameManager.startScenarioOnBoard(scenario)
     }
 
     private func finishEvent(_ deck: EventCardManager.Deck) {
         if deck == .city { gameManager.game.events.cityEventDue = false }
         events.removeFirst()
-        if events.isEmpty, let scenario = settingOutFor {
-            settingOutFor = nil
-            gameManager.saveGame()
-            gameManager.startScenarioOnBoard(scenario)
-        }
+        if events.isEmpty, settingOutFor != nil { chooseGoals() }
     }
 
     private var levelUpTitle: String {

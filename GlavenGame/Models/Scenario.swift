@@ -16,6 +16,9 @@ final class Scenario {
     /// results can show what was gained in it.
     var startingExperience: [String: Int] = [:]
     var startingGold: [String: Int] = [:]
+    /// What each character (by name) and the party did, for battle goals.
+    var stats: [String: ScenarioCharacterStats] = [:]
+    var partyStats = ScenarioPartyStats()
 
     init(data: ScenarioData, isCustom: Bool = false) {
         self.data = data

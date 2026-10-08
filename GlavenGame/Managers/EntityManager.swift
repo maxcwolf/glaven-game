@@ -44,6 +44,7 @@ final class EntityManager {
         if let charName = characterName(for: entity) {
             if actualChange < 0 {
                 scenarioStatsManager?.recordDamageTaken(by: charName, amount: -actualChange)
+                scenarioStatsManager?.recordHealth(of: charName, health: entity.health, maxHealth: entity.maxHealth)
             } else if actualChange > 0 {
                 scenarioStatsManager?.recordHeal(by: charName, amount: actualChange)
             }

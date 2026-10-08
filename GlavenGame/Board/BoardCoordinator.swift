@@ -399,6 +399,7 @@ final class BoardCoordinator {
         // Lose the chosen card
         guard discardIndex >= 0, discardIndex < character.discardedCards.count else { return }
         pendingLongRest = nil
+        gameManager.scenarioStatsManager.recordRest(by: character.name, long: true)
         let lostCard = character.discardedCards.remove(at: discardIndex)
         character.lostCards.append(lostCard)
 
@@ -501,6 +502,7 @@ final class BoardCoordinator {
               let character = gameManager.game.characters.first(where: { $0.id == pending.characterID }) else { return }
 
         let lostCardId = pending.randomCardId
+        gameManager.scenarioStatsManager.recordRest(by: character.name, long: false)
 
         // Remove the lost card from discard
         if let idx = character.discardedCards.firstIndex(of: lostCardId) {
@@ -1803,6 +1805,10 @@ final class BoardCoordinator {
         guard let door = boardState.doors.first(where: { $0.coord == coord && !$0.isOpen }),
               let scenario = scenarioData,
               let gameManager = gameManager else { return }
+        // Explorer: a door opened on a character's turn is theirs.
+        if let character = creditedCharacter(for: actingPiece) {
+            gameManager.scenarioStatsManager.recordDoor(by: character.name)
+        }
 
         boardPhase = .roomReveal
         guard let reveal = BoardBuilder.revealRoomSlots(door: door, scenario: scenario, board: boardState) else {

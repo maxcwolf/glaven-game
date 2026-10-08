@@ -81,6 +81,9 @@ final class ScenarioManager {
         guard let scenario = game.scenario else { return }
         let data = scenario.data
 
+        // Experience gained in the scenario itself, before the success bonus (for battle goals).
+        let xpGained = scenarioXPGained()
+
         if success {
             // Record completion
             game.completedScenarios.insert(data.id)
@@ -103,7 +106,7 @@ final class ScenarioManager {
                 let results = BattleGoalEvaluator.evaluateAll(
                     game: game,
                     statsManager: statsManager,
-                    scenarioXPGained: [:],  // XP tracking per-character not needed for most goals
+                    scenarioXPGained: xpGained,
                     battleGoalData: battleGoals
                 )
                 for (charID, result) in results {
@@ -152,6 +155,9 @@ final class ScenarioManager {
         //   - Clear temporary combat buffs (shield, retaliate, etc.)
         //   - Dismiss summons
         for character in game.characters where !character.absent {
+            // Battle goals are for one scenario; new ones are dealt for the next.
+            character.battleGoalCardIds = []
+            character.selectedBattleGoal = nil
             character.exhausted = false
             character.longRest = false
             character.health = character.maxHealth
@@ -652,6 +658,14 @@ final class ScenarioManager {
             }
         }
         applyRewardChoices(rewards, edition: edition, choices: choices)
+    }
+
+    /// Experience each character (by id) gained in the current scenario so far.
+    func scenarioXPGained() -> [String: Int] {
+        guard let scenario = game.scenario else { return [:] }
+        return Dictionary(uniqueKeysWithValues: game.characters.map {
+            ($0.id, $0.experience - (scenario.startingExperience[$0.id] ?? $0.experience))
+        })
     }
 
     /// Note each character's experience and gold as the scenario begins (characters added

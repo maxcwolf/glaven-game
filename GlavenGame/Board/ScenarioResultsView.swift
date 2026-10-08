@@ -108,6 +108,12 @@ struct ScenarioResultsView: View {
                 if hero.bonusXP > 0 { stat("Success bonus", "+\(hero.bonusXP)") }
                 stat("Gold", "+\(hero.goldGained)")
             }
+            if let goal = hero.battleGoal {
+                Label(goal.met ? "\(goal.name): +\(goal.checks) \(goal.checks == 1 ? "checkmark" : "checkmarks")" : "\(goal.name): not met",
+                      systemImage: goal.met ? "checkmark.square.fill" : "square")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(goal.met ? BoardTheme.brass : BoardTheme.secondaryText)
+            }
             if let level = hero.levelUpTo {
                 Label("Can reach level \(level)", systemImage: "arrow.up.circle.fill")
                     .font(.caption.weight(.semibold))

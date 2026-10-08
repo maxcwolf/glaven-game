@@ -34,6 +34,14 @@ struct ScenarioOutcome: Equatable {
         let exhausted: Bool
         /// The level the character can now reach, when they have enough experience for it.
         let levelUpTo: Int?
+        /// The battle goal they kept, and how it went (checkmarks only on a success).
+        var battleGoal: GoalResult? = nil
+    }
+
+    struct GoalResult: Equatable {
+        let name: String
+        let met: Bool
+        let checks: Int
     }
 
     let victory: Bool
@@ -73,7 +81,8 @@ extension BoardCoordinator {
                 bonusXP: bonus,
                 goldGained: character.loot - (scenario.startingGold[character.id] ?? character.loot),
                 exhausted: character.exhausted,
-                levelUpTo: reachable > character.level ? reachable : nil)
+                levelUpTo: reachable > character.level ? reachable : nil,
+                battleGoal: goalResult(for: character, victory: victory, xpGained: xpGained))
         }
 
         var lines: [String] = []
@@ -141,6 +150,18 @@ extension BoardCoordinator {
             note: victory
                 ? "Every character gains the bonus experience, exhausted or not."
                 : "No rewards, but everyone keeps the experience and gold they gained.")
+    }
+
+    /// How the character's battle goal went: judged on a success, never met on a loss.
+    private func goalResult(for character: GameCharacter, victory: Bool, xpGained: Int) -> ScenarioOutcome.GoalResult? {
+        guard let gameManager, let goal = gameManager.scenarioManager.chosenBattleGoal(of: character) else { return nil }
+        guard victory else { return ScenarioOutcome.GoalResult(name: goal.name, met: false, checks: 0) }
+        let stats = gameManager.scenarioStatsManager
+        let others = gameManager.game.characters.contains { $0.id != character.id && !$0.absent && $0.exhausted }
+        let met = BattleGoalEvaluator.evaluate(cardId: goal.id, character: character, stats: stats.stats(for: character.name),
+                                               scenarioXP: xpGained, alliesExhausted: others,
+                                               party: stats.partyStats) == true
+        return ScenarioOutcome.GoalResult(name: goal.name, met: met, checks: met ? goal.checks : 0)
     }
 
     private func signed(_ value: Int) -> String {

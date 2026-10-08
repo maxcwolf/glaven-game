@@ -77,6 +77,10 @@ extension BoardCoordinator {
     /// conditions, and the trap is removed. Returns false if the figure died.
     @MainActor func springTrap(at hex: HexCoord, on pieceID: PieceID) async -> Bool {
         guard let gameManager, let cell = boardState.cells[hex], cell.isTrap else { return true }
+        // Neutralizer: a trap sprung on a character's (or their summon's) turn is theirs.
+        if let character = creditedCharacter(for: actingPiece) {
+            gameManager.scenarioStatsManager.recordTrap(by: character.name)
+        }
         let damage = cell.trapDamage ?? gameManager.levelManager.trap()
         let subType = cell.overlaySubType
 

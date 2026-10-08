@@ -7,6 +7,8 @@ struct ScenarioBriefCard: View {
     /// "Begin" as the scenario starts, "Close" when reopened.
     let buttonTitle: String
     let onDismiss: () -> Void
+    /// Each character's battle goal (name, goal), shown as a reminder.
+    var battleGoals: [(character: String, goal: BattleGoal)] = []
 
     var body: some View {
         ZStack {
@@ -36,6 +38,19 @@ struct ScenarioBriefCard: View {
                                 .frame(height: 280)
                         } else {
                             bullets(brief.rules)
+                        }
+                    }
+                }
+
+                if !battleGoals.isEmpty {
+                    section("Battle goals", systemImage: "checkmark.square", tint: BoardTheme.brass) {
+                        VStack(alignment: .leading, spacing: 6) {
+                            ForEach(battleGoals, id: \.character) { entry in
+                                (Text("\(entry.character) · \(entry.goal.name): ").bold() + Text(entry.goal.text))
+                                    .font(.subheadline)
+                                    .foregroundStyle(BoardTheme.text)
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
                         }
                     }
                 }

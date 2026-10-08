@@ -455,4 +455,6 @@ struct ScenarioSnapshot: Codable {
     var killCounts: [String: Int]?
     var startingExperience: [String: Int]?
     var startingGold: [String: Int]?
+    var stats: [String: ScenarioCharacterStats]?
+    var partyStats: ScenarioPartyStats?
 }

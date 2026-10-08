@@ -124,9 +124,13 @@ struct BoardView: View {
 
             // The scenario's intro, or its goal and rules reopened from the HUD
             if let presentation = coordinator.briefPresentation, let brief = coordinator.scenarioBrief {
-                ScenarioBriefCard(brief: brief, buttonTitle: presentation == .intro ? "Begin" : "Close") {
-                    withAnimation(.snappy) { coordinator.briefPresentation = nil }
-                }
+                ScenarioBriefCard(brief: brief, buttonTitle: presentation == .intro ? "Begin" : "Close",
+                                  onDismiss: { withAnimation(.snappy) { coordinator.briefPresentation = nil } },
+                                  battleGoals: gameManager.game.characters.filter { !$0.absent }.compactMap { character in
+                                      gameManager.scenarioManager.chosenBattleGoal(of: character).map {
+                                          (GameText.characterName(character, labels: gameManager.editionStore), $0)
+                                      }
+                                  })
                 .transition(.opacity)
                 .zIndex(9)
                 .onAppear { if presentation == .intro { BoardSoundPlayer.play(.start) } }
