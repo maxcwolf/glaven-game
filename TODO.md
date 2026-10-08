@@ -347,7 +347,20 @@ Monsters (review pass)
 Turn flow (review pass)
 - [x] Moves/teleports finish before the next action; default Move/Attack can't wedge the turn; standalone push/pull pick their own targets; leaving the board stops in-flight turns; multi-figure summons
 
+Scenario rewards (2026-10-08)
+- [x] **Item rewards** (26 GH scenarios incl. solo): each copy goes to one participating character of the players' choice who doesn't already own one (picked on the conclusion sheet); several copies go to different characters; a copy no one can take goes to the city's supply
+- [x] **Item designs** (GH 11, 12, 65) add the item to the city's supply
+- [x] **Collective gold** (GH 55, 83, 89) split however the players choose on the conclusion sheet (even split by default)
+- [x] **Battle goal checkmarks** (GH 41, 91) for every participating character
+- [x] **Character unlocks** (GH 44, 54, 56, 62) unlock the class
+- [x] **Choose a location** (GH 13: one of 15, 17, 20) unlocks only the chosen scenario
+- [x] **Shop stocked reward items from the start** — items 96–150 (scenario rewards, treasures, solo items) had no prosperity level and were for sale at prosperity 1; the shop ignored unlocked items (designs, random draws) and sold more copies than exist. It now offers prosperity items up to the prosperity level plus unlocked items, with stock limited to the item's copies
+
 ### Remaining gaps
+
+- [ ] **Scenario reward: add events** (GH 21, 35, 36, 51, 54: `events` like `city:78`) — the city and road decks aren't modelled by composition: every one of the 81 city and 69 road events can be drawn from the start, and a drawn card never returns to the deck. Needs the starting decks (1–30), cards added by scenarios, class unlocks and retirements, and return-to-bottom vs. remove-from-game on resolution before the reward can add a card
+- [ ] **Scenario reward: envelopes** (GH 58, 60: envelope X) — there's no envelope or sealed-content state to open
+- [ ] **Scenario reward: custom text** (GH 54, 56, 58, 60, 62) — personal-quest outcomes ("immediately retire the Seeker of Xorn", "'Vengeance' quest complete") that depend on whose quest it is; shown on the conclusion sheet but not applied
 
 - [ ] **Objectives/escorts aren't placed on the board** — the map data has no objective positions (22 scenarios use objectives)
 - [ ] **Scenario spawn markers** — map data has no marker positions, so rule spawns are placed near the other monsters

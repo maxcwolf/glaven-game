@@ -13,38 +13,25 @@ final class ItemManager {
 
     // MARK: - Item Availability
 
-    /// Check if an item is available based on all unlock criteria.
+    /// Whether the item is in the city's supply: unlocked by the party's prosperity level, or
+    /// added by an item design, a scenario reward, a treasure or a random item draw. Scenario
+    /// reward items, treasure items and random item designs start out of the supply.
     func isItemAvailable(_ item: ItemData) -> Bool {
-        let edition = game.edition ?? "gh"
+        // Explicitly unlocked items (designs, rewards nobody could take, random draws)
+        let key = "\(item.edition)-\(item.id)"
+        if game.unlockedItems.contains(key) { return true }
 
         // Random items are never in the general pool
         if item.random { return false }
 
-        // Explicitly unlocked items
-        let key = "\(item.edition)-\(item.id)"
-        if game.unlockedItems.contains(key) { return true }
-
-        // Prosperity-based availability
-        if item.unlockProsperity > 0 && item.unlockProsperity <= game.partyProsperity {
-            if item.unlockScenario == nil {
-                return true
-            }
-        }
-
         // Scenario-based unlocks
         if let scenarioReq = item.unlockScenario {
-            let scenarioKey = "\(item.edition)-\(scenarioReq)"
-            if game.completedScenarios.contains(scenarioKey) {
-                return true
-            }
+            return game.completedScenarios.contains("\(item.edition)-\(scenarioReq)")
         }
 
-        // Items with no restrictions (prosperity 0 means always available if not random and not scenario-locked)
-        if item.unlockProsperity == 0 && item.unlockScenario == nil && !item.random {
-            return true
-        }
-
-        return false
+        // Prosperity-based availability (items without a prosperity level are never in the
+        // starting supply)
+        return item.unlockProsperity > 0 && item.unlockProsperity <= game.prosperityLevel
     }
 
     /// Get all available items for the current edition.

@@ -8,6 +8,7 @@ struct ScenarioConclusionSheet: View {
 
     @State private var showingStickerPlacement = false
     @State private var earnedOverlay: WorldMapOverlay?
+    @State private var choices = ScenarioRewardChoices()
 
     private var scenario: Scenario? { gameManager.game.scenario }
 
@@ -45,6 +46,9 @@ struct ScenarioConclusionSheet: View {
                     // Rewards
                     if success, let rewards = scenario.data.rewards {
                         RewardsSummaryView(rewards: rewards)
+                        if RewardChoicesView.needsChoices(rewards) {
+                            RewardChoicesView(rewards: rewards, edition: scenario.data.edition, choices: $choices)
+                        }
                     }
 
                     // Unlocks
@@ -71,6 +75,7 @@ struct ScenarioConclusionSheet: View {
                         }
                         .buttonStyle(.borderedProminent)
                         .controlSize(.large)
+                        .disabled(!collectiveGoldAssigned)
                     } else {
                         Button {
                             gameManager.scenarioManager.finishScenario(success: false)
@@ -96,13 +101,35 @@ struct ScenarioConclusionSheet: View {
                 Button("Dismiss") { dismiss() }
             }
         }
+        .onAppear(perform: setDefaultChoices)
+    }
+
+    /// Start every reward choice on the default the manager would make without one.
+    private func setDefaultChoices() {
+        guard success, let data = scenario?.data, let rewards = data.rewards else { return }
+        let manager = gameManager.scenarioManager
+        for grant in ScenarioManager.rewardItemGrants(rewards) {
+            let key = "\(data.edition)-\(grant.id)"
+            choices.itemRecipients[key] = manager.eligibleItemRecipients(key).prefix(grant.count).map(\.id)
+        }
+        if let gold = rewards.collectiveGold {
+            choices.collectiveGold = manager.collectiveGoldShares(total: manager.resolveRewardInt(gold))
+        }
+        choices.location = rewards.chooseLocation?.first
+    }
+
+    /// The whole of the collective gold must be handed out before the rewards are applied.
+    private var collectiveGoldAssigned: Bool {
+        guard success, let gold = scenario?.data.rewards?.collectiveGold else { return true }
+        let total = gameManager.scenarioManager.resolveRewardInt(gold)
+        return choices.collectiveGold.values.reduce(0, +) == total
     }
 
     private func applyRewardsAndShowSticker() {
         // Check for overlay sticker BEFORE applying rewards (so we know what was just earned)
         let overlay = scenario?.data.rewards?.overlaySticker ?? scenario?.data.rewards?.overlayCampaignSticker
 
-        gameManager.scenarioManager.finishScenario(success: true)
+        gameManager.scenarioManager.finishScenario(success: true, choices: choices)
 
         if let overlay = overlay, overlay.coordinates.x != nil {
             earnedOverlay = overlay
@@ -136,6 +163,140 @@ struct ScenarioConclusionSheet: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(GlavenTheme.cardBackground)
         .clipShape(RoundedRectangle(cornerRadius: 12))
+    }
+}
+
+// MARK: - Reward Choices
+
+/// The picks players make for rewards: who takes each item (GH p.47), how the collective gold
+/// is split, and which location a "choose one" reward unlocks.
+private struct RewardChoicesView: View {
+    @Environment(GameManager.self) private var gameManager
+    let rewards: ScenarioRewards
+    let edition: String
+    @Binding var choices: ScenarioRewardChoices
+
+    static func needsChoices(_ rewards: ScenarioRewards) -> Bool {
+        !(rewards.items ?? []).isEmpty || rewards.collectiveGold != nil
+            || !(rewards.chooseLocation ?? []).isEmpty
+    }
+
+    private var manager: ScenarioManager { gameManager.scenarioManager }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Choose Rewards")
+                .font(.headline)
+                .foregroundStyle(GlavenTheme.primaryText)
+
+            ForEach(ScenarioManager.rewardItemGrants(rewards), id: \.id) { grant in
+                itemPicker(id: grant.id, count: grant.count)
+            }
+            if let gold = rewards.collectiveGold {
+                collectiveGoldSplit(total: manager.resolveRewardInt(gold))
+            }
+            if let locations = rewards.chooseLocation, !locations.isEmpty {
+                locationPicker(locations)
+            }
+        }
+        .padding()
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(GlavenTheme.cardBackground)
+        .clipShape(RoundedRectangle(cornerRadius: 12))
+    }
+
+    private func displayName(_ character: GameCharacter) -> String {
+        character.title.isEmpty ? character.name.replacingOccurrences(of: "-", with: " ").capitalized : character.title
+    }
+
+    @ViewBuilder
+    private func itemPicker(id: Int, count: Int) -> some View {
+        let key = "\(edition)-\(id)"
+        let name = gameManager.editionStore.itemData(id: id, edition: edition)?.name ?? "Item \(id)"
+        let eligible = manager.eligibleItemRecipients(key)
+        VStack(alignment: .leading, spacing: 4) {
+            Text(count > 1 ? "\(count)× \(name)" : name)
+                .font(.subheadline)
+                .fontWeight(.medium)
+                .foregroundStyle(GlavenTheme.primaryText)
+            if eligible.isEmpty {
+                Text("Everyone already owns one — it goes to the city's supply")
+                    .font(.caption)
+                    .foregroundStyle(GlavenTheme.secondaryText)
+            }
+            ForEach(0..<min(count, eligible.count), id: \.self) { copy in
+                Picker(count > 1 ? "Copy \(copy + 1) goes to" : "Goes to", selection: recipient(key, copy: copy)) {
+                    ForEach(eligible, id: \.id) { character in
+                        Text(displayName(character)).tag(character.id)
+                    }
+                }
+                .font(.caption)
+                .foregroundStyle(GlavenTheme.primaryText)
+            }
+        }
+    }
+
+    private func recipient(_ key: String, copy: Int) -> Binding<String> {
+        Binding(
+            get: {
+                let ids = choices.itemRecipients[key] ?? []
+                return copy < ids.count ? ids[copy] : ""
+            },
+            set: { id in
+                var ids = choices.itemRecipients[key] ?? []
+                while ids.count <= copy { ids.append("") }
+                // A character can only take one copy: swap with the copy they held.
+                if let other = ids.firstIndex(of: id), other != copy { ids[other] = ids[copy] }
+                ids[copy] = id
+                choices.itemRecipients[key] = ids
+            }
+        )
+    }
+
+    @ViewBuilder
+    private func collectiveGoldSplit(total: Int) -> some View {
+        let assigned = choices.collectiveGold.values.reduce(0, +)
+        VStack(alignment: .leading, spacing: 4) {
+            Text("Split \(total) collective gold")
+                .font(.subheadline)
+                .fontWeight(.medium)
+                .foregroundStyle(GlavenTheme.primaryText)
+            ForEach(manager.rewardParty, id: \.id) { character in
+                let share = choices.collectiveGold[character.id] ?? 0
+                Stepper(value: goldShare(character.id), in: 0...max(0, share + total - assigned)) {
+                    Text("\(displayName(character)): \(share) gold")
+                        .font(.caption)
+                        .foregroundStyle(GlavenTheme.primaryText)
+                }
+            }
+            if assigned != total {
+                Text("\(total - assigned) gold still to hand out")
+                    .font(.caption)
+                    .foregroundStyle(.orange)
+            }
+        }
+    }
+
+    private func goldShare(_ id: String) -> Binding<Int> {
+        Binding(
+            get: { choices.collectiveGold[id] ?? 0 },
+            set: { choices.collectiveGold[id] = $0 }
+        )
+    }
+
+    @ViewBuilder
+    private func locationPicker(_ locations: [String]) -> some View {
+        Picker("Unlock one location", selection: Binding(
+            get: { choices.location ?? locations[0] },
+            set: { choices.location = $0 }
+        )) {
+            ForEach(locations, id: \.self) { index in
+                let name = gameManager.editionStore.scenarioData(index: index, edition: edition)?.name
+                Text(name.map { "#\(index) \($0)" } ?? "Scenario \(index)").tag(index)
+            }
+        }
+        .font(.subheadline)
+        .foregroundStyle(GlavenTheme.primaryText)
     }
 }
 

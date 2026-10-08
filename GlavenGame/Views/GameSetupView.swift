@@ -165,10 +165,7 @@ struct GameSetupView: View {
         return "\(GameText.characterName(character, labels: gameManager.editionStore)) to level \(character.level + 1)?"
     }
 
-    private var prosperityLevel: Int {
-        let thresholds = [0, 4, 9, 15, 22, 30, 39, 49, 64]
-        return (thresholds.lastIndex { gameManager.game.partyProsperity >= $0 } ?? 0) + 1
-    }
+    private var prosperityLevel: Int { gameManager.game.prosperityLevel }
 
     private func townChip(_ text: String, icon: String) -> some View {
         Label(text, systemImage: icon)

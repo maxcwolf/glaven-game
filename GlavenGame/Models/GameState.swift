@@ -75,6 +75,12 @@ final class GameState {
     var objectives: [GameObjectiveContainer] {
         figures.compactMap { $0.asObjective }
     }
+
+    /// Prosperity level (1–9) reached by the party's prosperity checkmarks.
+    var prosperityLevel: Int {
+        let thresholds = [0, 4, 9, 15, 22, 30, 39, 49, 64]
+        return (thresholds.lastIndex { partyProsperity >= $0 } ?? 0) + 1
+    }
 }
 
 // MARK: - Type-erased Figure wrapper

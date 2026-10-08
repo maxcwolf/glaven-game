@@ -83,7 +83,9 @@ final class ScenarioManager {
         game.scenario = nil
     }
 
-    func finishScenario(success: Bool) {
+    /// `choices` holds the players' picks for rewards that need one (who takes an item, the
+    /// collective gold split, a location to unlock); defaults apply where it is silent.
+    func finishScenario(success: Bool, choices: ScenarioRewardChoices = ScenarioRewardChoices()) {
         onBeforeMutate?()
         guard let scenario = game.scenario else { return }
         let data = scenario.data
@@ -101,7 +103,7 @@ final class ScenarioManager {
 
             // Apply scenario-specific rewards
             if let rewards = data.rewards {
-                applyRewards(rewards, edition: data.edition)
+                applyRewards(rewards, edition: data.edition, choices: choices)
             }
 
             // Evaluate battle goals and award checkmarks
@@ -615,7 +617,8 @@ final class ScenarioManager {
 
     // MARK: - Private: Rewards
 
-    private func applyRewards(_ rewards: ScenarioRewards, edition: String) {
+    private func applyRewards(_ rewards: ScenarioRewards, edition: String,
+                              choices: ScenarioRewardChoices = ScenarioRewardChoices()) {
         if let globals = rewards.globalAchievements {
             for g in globals { game.globalAchievements.insert(g) }
         }
@@ -657,6 +660,7 @@ final class ScenarioManager {
                 character.experience += amount
             }
         }
+        applyRewardChoices(rewards, edition: edition, choices: choices)
     }
 
     /// Note each character's experience and gold as the scenario begins (characters added

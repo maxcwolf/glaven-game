@@ -10,17 +10,15 @@ struct ItemShopSheet: View {
 
     private var edition: String { gameManager.game.edition ?? "gh" }
 
-    private var prosperityLevel: Int {
-        let thresholds = [0, 4, 9, 15, 22, 30, 39, 49, 64]
-        for i in stride(from: thresholds.count - 1, through: 0, by: -1) {
-            if gameManager.game.partyProsperity >= thresholds[i] { return i + 1 }
-        }
-        return 1
-    }
+    private var prosperityLevel: Int { gameManager.game.prosperityLevel }
 
+    /// The city's supply, plus anything the character owns so it can be sold back.
     private var availableItems: [ItemData] {
-        let allItems = gameManager.editionStore.availableItems(for: edition, prosperity: prosperityLevel)
-        var filtered = allItems
+        var filtered = gameManager.itemManager.availableItems()
+        let supply = Set(filtered.map(\.itemKey))
+        filtered += gameManager.editionStore.items(for: edition).filter {
+            isOwned($0) && !supply.contains($0.itemKey)
+        }
 
         if let slot = selectedSlot {
             filtered = filtered.filter { $0.slot == slot }
@@ -40,6 +38,11 @@ struct ItemShopSheet: View {
     /// Whether the character can buy it now: affordable, in stock and not already theirs.
     private func canAfford(_ item: ItemData) -> Bool {
         gameManager.itemManager.purchaseProblem(item, for: character) == nil
+    }
+
+    /// Every copy of the item is owned by someone in the party.
+    private func isSoldOut(_ item: ItemData) -> Bool {
+        !gameManager.itemManager.inStock(item)
     }
 
     var body: some View {
@@ -75,7 +78,8 @@ struct ItemShopSheet: View {
                 // Item list
                 List {
                     ForEach(availableItems) { item in
-                        ItemRow(item: item, isOwned: isOwned(item), canAfford: canAfford(item)) {
+                        ItemRow(item: item, isOwned: isOwned(item), canAfford: canAfford(item),
+                                soldOut: isSoldOut(item)) {
                             let traded = isOwned(item)
                                 ? gameManager.itemManager.sell(item, for: character)
                                 : gameManager.itemManager.buy(item, for: character)
@@ -125,7 +129,10 @@ private struct ItemRow: View {
     let item: ItemData
     let isOwned: Bool
     let canAfford: Bool
+    let soldOut: Bool
     let action: () -> Void
+
+    private var canBuy: Bool { canAfford && !soldOut }
 
     var body: some View {
         HStack(spacing: 12) {
@@ -183,20 +190,20 @@ private struct ItemRow: View {
 
             // Buy/Sell button
             Button(action: action) {
-                Text(isOwned ? "Sell" : "Buy")
+                Text(isOwned ? "Sell" : (soldOut ? "Sold Out" : "Buy"))
                     .font(.caption)
                     .fontWeight(.bold)
                     .padding(.horizontal, 12)
                     .padding(.vertical, 6)
-                    .background(isOwned ? Color.orange.opacity(0.3) : (canAfford ? Color.green.opacity(0.3) : Color.gray.opacity(0.2)))
-                    .foregroundStyle(isOwned ? .orange : (canAfford ? .green : Color.secondary))
+                    .background(isOwned ? Color.orange.opacity(0.3) : (canBuy ? Color.green.opacity(0.3) : Color.gray.opacity(0.2)))
+                    .foregroundStyle(isOwned ? .orange : (canBuy ? .green : Color.secondary))
                     .clipShape(Capsule())
             }
             .buttonStyle(.plain)
-            .disabled(!isOwned && !canAfford)
+            .disabled(!isOwned && !canBuy)
         }
         .padding(.vertical, 4)
-        .opacity(isOwned ? 1.0 : (canAfford ? 1.0 : 0.5))
+        .opacity(isOwned ? 1.0 : (canBuy ? 1.0 : 0.5))
     }
 
     @ViewBuilder
