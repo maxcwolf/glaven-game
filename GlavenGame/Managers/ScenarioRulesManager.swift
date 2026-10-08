@@ -1,5 +1,31 @@
 import Foundation
 
+/// When scenario rules are evaluated.
+///
+/// In the Gloomhaven Secretariat data format a rule with `"start": true` is resolved at the
+/// START of a round and a rule without it at the END of a round. Rules with `"always": true`
+/// are re-checked on every evaluation (any phase), which is how mid-round triggers such as
+/// "when the door is destroyed" or "when room 3 is revealed" fire promptly.
+enum RulePhase: String, CaseIterable {
+    /// Start of a round: `game.round` already holds the new round number.
+    /// Evaluates `start` rules (and `always` rules).
+    case roundStart
+    /// End of a round: `game.round` still holds the round that is ending.
+    /// Evaluates rules without `start` (and `always` rules).
+    case roundEnd
+    /// Any mid-round board change (a figure died, a room was revealed, ...).
+    /// Evaluates `always` rules and condition-only rules that have no `round` expression.
+    case figureChange
+}
+
+/// Timing of per-turn rules (`alwaysApplyTurn` in scenario data).
+enum TurnRuleTiming: String {
+    /// `"alwaysApplyTurn": "turn"` — at the start of a figure's turn.
+    case turnStart = "turn"
+    /// `"alwaysApplyTurn": "after"` — at the end of a figure's turn.
+    case turnEnd = "after"
+}
+
 @Observable
 final class ScenarioRulesManager {
     private let game: GameState
@@ -8,6 +34,17 @@ final class ScenarioRulesManager {
 
     /// Called when a rule's `rooms` effect should reveal rooms. Wired from GameManager.
     var onOpenRooms: (([Int]) -> Void)?
+    /// Places a rule-spawned monster on the board (entity + piece). Returns false when the board
+    /// isn't active, in which case only the game-state entity is created.
+    var onSpawnMonster: ((_ name: String, _ type: MonsterType, _ marker: String?, _ health: String?) -> Bool)?
+
+    /// Re-entrancy guard: effects (e.g. `onOpenRooms`) may cause callers to request another
+    /// evaluation while one is running; that request is folded into a follow-up pass.
+    @ObservationIgnored private var isEvaluating = false
+    @ObservationIgnored private var reentrantRequest = false
+
+    /// Bound on follow-up passes after a pass that applied rules (cascading triggers).
+    private static let maxPasses = 5
 
     init(game: GameState, monsterManager: MonsterManager, entityManager: EntityManager) {
         self.game = game
@@ -17,76 +54,197 @@ final class ScenarioRulesManager {
 
     // MARK: - Rule Evaluation
 
+    /// Backwards-compatible entry point for mid-round re-checks (e.g. after a kill).
+    /// Equivalent to `evaluateRules(phase: .figureChange)`.
     func evaluateRules() {
-        guard let scenario = game.scenario else { return }
-        guard let rules = scenario.data.rules else { return }
+        evaluateRules(phase: .figureChange)
+    }
+
+    /// Evaluates every rule of the current scenario that belongs to `phase` and applies the
+    /// ones whose conditions hold.
+    ///
+    /// Firing limits:
+    /// - `once` rules fire at most once per scenario.
+    /// - Other rules fire at most once per round (tracked in `scenario.appliedRules` with a
+    ///   per-round key, so undo/redo snapshots restore it).
+    /// - `alwaysApply` rules whose only effect is `statEffects` are persistent modifiers and are
+    ///   re-applied (idempotently) on every evaluation so newly spawned monsters pick them up.
+    /// - Rules with `alwaysApplyTurn` are skipped here; see `evaluateTurnRules(_:for:)`.
+    ///
+    /// After a pass that applied something, further `.figureChange` passes run (bounded) so that
+    /// rules triggered by those effects (e.g. a room opened by another rule) fire immediately.
+    func evaluateRules(phase: RulePhase) {
+        if isEvaluating {
+            reentrantRequest = true
+            return
+        }
+        isEvaluating = true
+        defer { isEvaluating = false }
+
+        var currentPhase = phase
+        for _ in 0..<Self.maxPasses {
+            reentrantRequest = false
+            let appliedSomething = runPass(phase: currentPhase)
+            guard appliedSomething || reentrantRequest else { break }
+            currentPhase = .figureChange
+        }
+    }
+
+    /// Applies per-turn rules (`alwaysApplyTurn`) to the figure whose turn is starting/ending.
+    /// Only figure effects are applied, and only to `entity` (if it matches the rule's identifier).
+    func evaluateTurnRules(_ timing: TurnRuleTiming, for entity: any Entity) {
+        guard let scenario = game.scenario, let rules = scenario.data.rules else { return }
+        for (index, rule) in rules.enumerated() where rule.alwaysApplyTurn == timing.rawValue {
+            if rule.isOnce && scenario.appliedRules.contains(scenario.ruleKey(index: index)) { continue }
+            guard conditionsHold(rule, index: index, scenario: scenario, round: game.round) else { continue }
+            let effects = (rule.figures ?? []).filter { !Self.isTriggerType($0.type) }
+            var applied = false
+            for figureRule in effects {
+                guard let type = figureRule.type, let identifier = figureRule.identifier else { continue }
+                let targets = findTargets(identifier: identifier)
+                guard targets.contains(where: { $0 === entity }) else { continue }
+                applyFigureEffect(type, value: figureRule.value, to: entity)
+                applied = true
+            }
+            if applied {
+                markApplied(scenario.ruleKey(index: index), in: scenario)
+            }
+        }
+    }
+
+    // MARK: - Pass
+
+    /// Runs one evaluation pass. Returns true if a (non-persistent) rule was applied.
+    private func runPass(phase: RulePhase) -> Bool {
+        guard let scenario = game.scenario, let rules = scenario.data.rules else { return false }
+        let round = game.round
+        var appliedSomething = false
 
         for (index, rule) in rules.enumerated() {
-            guard shouldTrigger(rule, index: index, scenario: scenario) else { continue }
-            applyRule(rule, index: index, scenario: scenario)
+            guard rule.alwaysApplyTurn == nil else { continue }
+            guard Self.isEligible(rule, in: phase) else { continue }
+            let persistent = Self.isPersistentStatEffectRule(rule)
+            if !persistent && hasFired(rule, index: index, round: round, scenario: scenario) { continue }
+            guard conditionsHold(rule, index: index, scenario: scenario, round: round) else { continue }
+            applyRule(rule, index: index, scenario: scenario, round: round)
+            if !persistent { appliedSomething = true }
         }
+        return appliedSomething
+    }
+
+    // MARK: - Phase & Firing Limits
+
+    /// Whether `rule` is evaluated during `phase`.
+    static func isEligible(_ rule: ScenarioRule, in phase: RulePhase) -> Bool {
+        if rule.isAlways { return true }
+        guard rule.round != nil else {
+            // No round expression: a purely condition-driven rule (figure triggers / required
+            // rooms) is re-checked on every evaluation. Without any condition it never fires
+            // automatically.
+            let hasFigureTrigger = (rule.figures ?? []).contains { isTriggerType($0.type) }
+            let hasRoomRequirement = !(rule.requiredRooms ?? []).isEmpty
+            return hasFigureTrigger || hasRoomRequirement
+        }
+        switch phase {
+        case .roundStart: return rule.isStart
+        case .roundEnd: return !rule.isStart
+        case .figureChange: return false
+        }
+    }
+
+    /// `alwaysApply` rules that only carry `statEffects` are persistent, idempotent modifiers.
+    static func isPersistentStatEffectRule(_ rule: ScenarioRule) -> Bool {
+        guard rule.alwaysApply == true, !(rule.statEffects ?? []).isEmpty else { return false }
+        let hasOtherEffects = !(rule.spawns ?? []).isEmpty
+            || !(rule.objectiveSpawns ?? []).isEmpty
+            || (rule.figures ?? []).contains { !isTriggerType($0.type) }
+            || !(rule.elements ?? []).isEmpty
+            || !(rule.rooms ?? []).isEmpty
+            || !(rule.disableRules ?? []).isEmpty
+            || rule.finish != nil
+        return !hasOtherEffects
+    }
+
+    /// Key recording that a non-`once` rule fired in `round`.
+    static func roundKey(_ ruleKey: String, round: Int) -> String {
+        "\(ruleKey)@r\(round)"
+    }
+
+    /// Inserts `key` only when missing, so repeated (persistent) applications don't churn observers.
+    private func markApplied(_ key: String, in scenario: Scenario) {
+        if !scenario.appliedRules.contains(key) {
+            scenario.appliedRules.insert(key)
+        }
+    }
+
+    private func hasFired(_ rule: ScenarioRule, index: Int, round: Int, scenario: Scenario) -> Bool {
+        let key = scenario.ruleKey(index: index)
+        if rule.isOnce { return scenario.appliedRules.contains(key) }
+        return scenario.appliedRules.contains(Self.roundKey(key, round: round))
     }
 
     // MARK: - Trigger Conditions
 
-    private func shouldTrigger(_ rule: ScenarioRule, index: Int, scenario: Scenario) -> Bool {
-        let ruleKey = scenario.ruleKey(index: index)
-
+    private func conditionsHold(_ rule: ScenarioRule, index: Int, scenario: Scenario, round: Int) -> Bool {
         if scenario.disabledRules.contains(index) { return false }
-        if rule.isOnce && scenario.appliedRules.contains(ruleKey) { return false }
 
-        if let requiredRooms = rule.requiredRooms {
+        if let requiredRooms = rule.requiredRooms, !requiredRooms.isEmpty {
             let revealed = Set(scenario.revealedRooms)
             if !Set(requiredRooms).isSubset(of: revealed) { return false }
         }
 
         if let roundExpr = rule.round {
-            if !evaluateRoundCondition(roundExpr, round: game.round) { return false }
+            if !evaluateRoundCondition(roundExpr, round: round) { return false }
         }
 
-        // Check figure-based trigger conditions (dead / present / killed).
-        // A rule's figures array may contain both trigger entries and effect entries.
-        // All trigger entries must pass for the rule to fire.
-        if let figures = rule.figures {
-            let triggers = figures.filter { isTriggerType($0.type) }
-            if !triggers.isEmpty {
-                let allPass = triggers.allSatisfy { evaluateFigureTrigger($0, scenario: scenario) }
-                if !allPass { return false }
-            }
-        }
+        // Figure-based trigger conditions (dead / present / killed). A rule's figures array may
+        // contain both trigger entries and effect entries; all trigger entries must pass.
+        let triggers = (rule.figures ?? []).filter { Self.isTriggerType($0.type) }
+        if !triggers.allSatisfy({ evaluateFigureTrigger($0, scenario: scenario) }) { return false }
 
         return true
     }
 
-    private func isTriggerType(_ type: String?) -> Bool {
+    static func isTriggerType(_ type: String?) -> Bool {
         guard let type = type else { return false }
         return ["dead", "present", "killed"].contains(type)
     }
 
+    /// Evaluates a rule's `round` expression with R = `round`, C = number of participating
+    /// characters and L = scenario level. Unparseable expressions are treated as not triggered.
+    func evaluateRoundCondition(_ expression: String, round: Int) -> Bool {
+        let trimmed = expression.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmed == "start" { return round == 0 }
+        if let targetRound = Int(trimmed) { return round == targetRound }
+
+        let variables = ["R": round, "C": scenarioCharacterCount, "L": game.level]
+        guard let result = ScenarioExpression.condition(trimmed, variables: variables) else {
+            print("[ScenarioRules] Cannot evaluate round expression '\(expression)'; rule not triggered")
+            return false
+        }
+        return result
+    }
+
     private func evaluateFigureTrigger(_ figureRule: ScenarioFigureRule, scenario: Scenario) -> Bool {
         guard let type = figureRule.type, let identifier = figureRule.identifier else { return true }
-        let edition = identifier.edition ?? scenario.data.edition
 
         switch type {
         case "dead":
-            // All matching alive entities must be gone (either never existed or all dead).
-            let alive = findTargets(identifier: identifier, edition: edition)
-            return alive.isEmpty
+            // All matching entities must be gone (either never existed or all dead).
+            return findTargets(identifier: identifier).isEmpty
 
         case "present":
             // At least one matching entity must be alive.
-            let alive = findTargets(identifier: identifier, edition: edition)
-            return !alive.isEmpty
+            return !findTargets(identifier: identifier).isEmpty
 
         case "killed":
-            let namePattern = identifier.name ?? ".*"
-            let count = totalKills(matching: namePattern, scenario: scenario)
+            let count = killCount(identifier: identifier, scenario: scenario)
             switch figureRule.value {
-            case .string("all"):
-                // "all" means every spawned entity of this type is dead.
-                return findTargets(identifier: identifier, edition: edition).isEmpty
+            case .string(let s) where s.lowercased() == "all":
+                // Every spawned matching entity is dead (and at least one was killed).
+                return count >= 1 && findTargets(identifier: identifier).isEmpty
             case .string(let s):
-                return count >= (Int(s) ?? 1)
+                return count >= (ScenarioExpression.integerValue(s, variables: valueVariables()) ?? 1)
             case .int(let threshold):
                 return count >= threshold
             case nil:
@@ -98,40 +256,41 @@ final class ScenarioRulesManager {
         }
     }
 
-    private func totalKills(matching namePattern: String, scenario: Scenario) -> Int {
-        if namePattern == ".*" {
-            return scenario.killCounts.values.reduce(0, +)
+    /// Number of matching figures killed so far.
+    private func killCount(identifier: ScenarioFigureRuleIdentifier, scenario: Scenario) -> Int {
+        let targetType = identifier.type ?? "monster"
+        let namePattern = identifier.name ?? ".*"
+        let deadMatches = deadEntities(identifier: identifier).count
+
+        guard targetType == "monster", identifier.marker == nil, (identifier.tags ?? []).isEmpty else {
+            // Objectives, markers and tags are not in killCounts: count dead entities instead.
+            return deadMatches
         }
-        return scenario.killCounts
-            .filter { matchesName($0.key, pattern: namePattern) }
+        let recorded = scenario.killCounts
+            .filter { namePattern == ".*" || matchesName($0.key, pattern: namePattern) }
             .values.reduce(0, +)
-    }
-
-    private func evaluateRoundCondition(_ expr: String, round: Int) -> Bool {
-        if expr == "true" { return true }
-        if expr == "false" { return false }
-        if expr == "start" { return round == 0 }
-        if let targetRound = Int(expr) { return round == targetRound }
-
-        let substituted = expr.replacingOccurrences(of: "R", with: "\(round)")
-        let predicate = NSPredicate(format: substituted)
-        return predicate.evaluate(with: nil)
+        return max(recorded, deadMatches)
     }
 
     // MARK: - Apply Rule Effects
 
-    private func applyRule(_ rule: ScenarioRule, index: Int, scenario: Scenario) {
+    private func applyRule(_ rule: ScenarioRule, index: Int, scenario: Scenario, round: Int) {
         let ruleKey = scenario.ruleKey(index: index)
-        scenario.appliedRules.insert(ruleKey)
+        markApplied(ruleKey, in: scenario)
+        if !rule.isOnce {
+            markApplied(Self.roundKey(ruleKey, round: round), in: scenario)
+        }
 
         let edition = scenario.data.edition
-        let playerCount = max(2, game.activeCharacters.count)
+        let playerCount = scenarioPlayerCount
 
         // Spawn monsters
-        if let spawns = rule.spawns {
+        if let spawns = rule.spawns, !spawns.isEmpty {
+            let figureCount = triggerFigureCount(rule)
             for spawn in spawns {
                 guard let monsterType = spawn.monster.monsterType(forPlayerCount: playerCount) else { continue }
-                for _ in 0..<spawn.resolvedCount {
+                let count = resolveCount(spawn.count, figureCount: figureCount)
+                for _ in 0..<count {
                     spawnMonsterEntity(name: spawn.monster.name, type: monsterType,
                                        edition: edition, marker: spawn.marker,
                                        health: spawn.monster.health)
@@ -140,9 +299,11 @@ final class ScenarioRulesManager {
         }
 
         // Spawn objectives
-        if let objectiveSpawns = rule.objectiveSpawns {
+        if let objectiveSpawns = rule.objectiveSpawns, !objectiveSpawns.isEmpty {
+            let figureCount = triggerFigureCount(rule)
             for spawn in objectiveSpawns {
-                for i in 0..<spawn.resolvedCount {
+                let count = resolveCount(spawn.count, figureCount: figureCount)
+                for i in 0..<count {
                     spawnObjective(spawn.objective, edition: edition, number: i + 1, marker: spawn.marker)
                 }
             }
@@ -150,8 +311,7 @@ final class ScenarioRulesManager {
 
         // Apply figure effects (non-trigger entries only)
         if let figures = rule.figures {
-            let effects = figures.filter { !isTriggerType($0.type) }
-            for figureRule in effects {
+            for figureRule in figures where !Self.isTriggerType(figureRule.type) {
                 applyFigureRule(figureRule, edition: edition)
             }
         }
@@ -189,6 +349,64 @@ final class ScenarioRulesManager {
         }
     }
 
+    // MARK: - Counts & Variables
+
+    /// Number of participating (non-absent) characters. Fixed for the scenario: exhausting a
+    /// character does not change it (matches ScenarioManager's spawn player count).
+    private var scenarioCharacterCount: Int {
+        game.characters.filter { !$0.absent }.count
+    }
+
+    /// Player count used for monster-type selection (minimum 2).
+    private var scenarioPlayerCount: Int {
+        max(2, scenarioCharacterCount)
+    }
+
+    /// Variables for value expressions (damage, hit points, counts). C is at least 2, as in
+    /// GHS entity-value formulas.
+    private func valueVariables(figureCount: Int? = nil) -> [String: Int] {
+        var variables = ["C": scenarioPlayerCount, "L": game.level, "R": game.round]
+        if let figureCount { variables["F"] = figureCount }
+        return variables
+    }
+
+    /// Resolves a spawn `count` (number or expression such as `"F"` or `"C-1"`), clamped to 0...20.
+    private func resolveCount(_ value: IntOrString?, figureCount: Int) -> Int {
+        let raw: Int
+        switch value {
+        case nil:
+            raw = 1
+        case .int(let n):
+            raw = n
+        case .string(let s):
+            if let n = ScenarioExpression.integerValue(s, variables: valueVariables(figureCount: figureCount)) {
+                raw = n
+            } else {
+                print("[ScenarioRules] Cannot evaluate spawn count '\(s)'; spawning 1")
+                raw = 1
+            }
+        }
+        return min(max(raw, 0), 20)
+    }
+
+    /// `F` in spawn counts: the number of figures matched by the rule's trigger entries
+    /// (alive figures for `present`, dead ones for `dead` / `killed`). 1 if the rule has no
+    /// figure trigger.
+    private func triggerFigureCount(_ rule: ScenarioRule) -> Int {
+        let triggers = (rule.figures ?? []).filter { Self.isTriggerType($0.type) }
+        guard !triggers.isEmpty else { return 1 }
+        var total = 0
+        for trigger in triggers {
+            guard let identifier = trigger.identifier else { continue }
+            if trigger.type == "present" {
+                total += findTargets(identifier: identifier).count
+            } else {
+                total += deadEntities(identifier: identifier).count
+            }
+        }
+        return total
+    }
+
     // MARK: - Private: Stat Effects
 
     private func applyScenarioStatEffects(_ effects: [StatEffectRule], edition: String, playerCount: Int) {
@@ -207,14 +425,19 @@ final class ScenarioRulesManager {
             for monster in game.monsters {
                 let editionMatches = identifier.edition == nil || monster.edition == targetEdition
                 guard editionMatches, matchesName(monster.name, pattern: namePattern) else { continue }
-                monsterManager.applyScenarioStatEffect(statEffect, to: monster, charCount: playerCount)
+                // Re-applying a rename / deck override reshuffles the ability deck and discards the
+                // drawn card, so only apply those parts once per monster group.
+                var effectToApply = statEffect
+                if let name = statEffect.name, monster.displayName == name { effectToApply.name = nil }
+                if let deck = statEffect.deck, monster.deckOverride == deck { effectToApply.deck = nil }
+                monsterManager.applyScenarioStatEffect(effectToApply, to: monster, charCount: playerCount)
             }
         }
     }
 
     private func checkStatEffectReference(_ reference: StatEffectReference, edition: String) -> Bool {
         guard let identifier = reference.identifier, let type = reference.type else { return true }
-        let targets = findTargets(identifier: identifier, edition: edition)
+        let targets = findTargets(identifier: identifier)
         switch type {
         case "present": return !targets.isEmpty
         case "dead":    return targets.isEmpty
@@ -226,6 +449,7 @@ final class ScenarioRulesManager {
 
     private func spawnMonsterEntity(name: String, type: MonsterType, edition: String,
                                      marker: String? = nil, health: String? = nil) {
+        if onSpawnMonster?(name, type, marker, health) == true { return }
         var monster = game.monsters.first(where: { $0.name == name && $0.edition == edition })
         if monster == nil {
             monsterManager.addMonster(name: name, edition: edition)
@@ -233,15 +457,17 @@ final class ScenarioRulesManager {
         }
         guard let monster = monster else { return }
 
+        let entityCountBefore = monster.entities.count
         monster.off = false
         monsterManager.addEntity(type: type, to: monster)
+        // addEntity may refuse (e.g. no standee available); never decorate an older entity.
+        guard monster.entities.count > entityCountBefore, let entity = monster.entities.last else { return }
 
-        if let marker = marker, let entity = monster.entities.last {
+        if let marker = marker {
             entity.markers.append(marker)
         }
-        if let healthExpr = health, let entity = monster.entities.last {
-            let hp = evaluateEntityValue(.string(healthExpr), level: game.level,
-                                          characterCount: game.activeCharacters.count)
+        if let healthExpr = health,
+           let hp = ScenarioExpression.integerValue(healthExpr, variables: valueVariables()) {
             entity.health = hp
             entity.maxHealth = hp
         }
@@ -258,8 +484,11 @@ final class ScenarioRulesManager {
         container.initiative = objData.resolvedInitiative
 
         if let healthValue = objData.health {
-            let hp = evaluateEntityValue(healthValue, level: game.level,
-                                          characterCount: game.activeCharacters.count)
+            let hp: Int
+            switch healthValue {
+            case .int(let n): hp = n
+            case .string(let s): hp = ScenarioExpression.integerValue(s, variables: valueVariables()) ?? 1
+            }
             let entity = GameObjectiveEntity(number: number, health: hp, maxHealth: hp)
             if let marker = marker ?? objData.marker { entity.marker = marker }
             container.entities.append(entity)
@@ -274,114 +503,164 @@ final class ScenarioRulesManager {
         guard let ruleType = figureRule.type else { return }
         guard let identifier = figureRule.identifier else { return }
 
-        let targets = findTargets(identifier: identifier, edition: edition)
-
-        let valueStr: String?
-        switch figureRule.value {
-        case .int(let v): valueStr = String(v)
-        case .string(let s): valueStr = s
-        case nil: valueStr = nil
-        }
-
+        let targets = findTargets(identifier: identifier)
         for target in targets {
-            applyFigureEffect(ruleType, value: valueStr, to: target)
+            // "Ignore negative scenario effects" perk.
+            if figureRule.scenarioEffect == true, let character = target as? GameCharacter,
+               character.hasCustomPerk("ignoreNegativeScenario") {
+                continue
+            }
+            applyFigureEffect(ruleType, value: figureRule.value, to: target)
         }
     }
 
-    private func findTargets(identifier: ScenarioFigureRuleIdentifier, edition: String) -> [any Entity] {
+    /// Alive (non-exhausted, non-absent) entities matching `identifier`.
+    ///
+    /// Identifier types: `character`, `characterWithSummon` (characters plus their summons),
+    /// `summon`, `monster` (default), `objective`, and `all` (every figure on the board).
+    /// Filters: `name` (exact or anchored regex), `marker`, `tags`, and `hp` (an expression over
+    /// `HP` = current and `H` = maximum hit points, e.g. `"HP < H"`).
+    private func findTargets(identifier: ScenarioFigureRuleIdentifier) -> [any Entity] {
+        matchingEntities(identifier: identifier, alive: true)
+    }
+
+    /// Dead / exhausted entities matching `identifier` (monster entities removed from the game are
+    /// not counted).
+    private func deadEntities(identifier: ScenarioFigureRuleIdentifier) -> [any Entity] {
+        matchingEntities(identifier: identifier, alive: false)
+    }
+
+    private func matchingEntities(identifier: ScenarioFigureRuleIdentifier, alive: Bool) -> [any Entity] {
         let targetType = identifier.type ?? "monster"
-        let namePattern = identifier.name ?? ".*"
+        let isAll = targetType == "all"
+        let namePattern = isAll ? ".*" : (identifier.name ?? ".*")
         let requiredTags = identifier.tags ?? []
+        let markerFilter = isAll ? nil : identifier.marker
         var results: [any Entity] = []
 
-        func hasTags(_ entity: any Entity) -> Bool {
-            guard !requiredTags.isEmpty else { return true }
-            return requiredTags.allSatisfy { entity.tags.contains($0) }
+        func passesFilters(_ entity: any Entity) -> Bool {
+            if !requiredTags.isEmpty && !requiredTags.allSatisfy({ entity.tags.contains($0) }) { return false }
+            if let hpExpr = identifier.hp, !matchesHealthFilter(hpExpr, entity: entity) { return false }
+            return true
         }
 
-        switch targetType {
-        case "character", "characterWithSummon":
-            for character in game.characters {
-                if matchesName(character.name, pattern: namePattern) && hasTags(character) {
+        // Characters (and their summons)
+        if isAll || ["character", "characterWithSummon", "summon"].contains(targetType) {
+            for character in game.characters where !character.absent {
+                let nameMatches = matchesName(character.name, pattern: namePattern)
+                if targetType != "summon" && nameMatches && character.exhausted != alive
+                    && markerFilter == nil && passesFilters(character) {
                     results.append(character)
                 }
-            }
-        case "monster":
-            for monster in game.monsters {
-                if matchesName(monster.name, pattern: namePattern) {
-                    for entity in monster.aliveEntities {
-                        if let markerFilter = identifier.marker {
-                            if entity.markers.contains(markerFilter) && hasTags(entity) {
-                                results.append(entity)
-                            }
-                        } else if hasTags(entity) {
-                            results.append(entity)
-                        }
+                guard isAll || targetType == "characterWithSummon" || targetType == "summon" else { continue }
+                for summon in character.summons where summon.dead != alive {
+                    // characterWithSummon matches the owner's name; summon matches the summon's.
+                    let summonMatches = targetType == "summon"
+                        ? matchesName(summon.name, pattern: namePattern)
+                        : nameMatches
+                    if summonMatches && markerFilter == nil && passesFilters(summon) {
+                        results.append(summon)
                     }
                 }
             }
-        case "objective":
+        }
+
+        // Monsters
+        if isAll || targetType == "monster" {
+            for monster in game.monsters where matchesName(monster.name, pattern: namePattern) {
+                for entity in monster.entities where entity.dead != alive {
+                    if let markerFilter, !entity.markers.contains(markerFilter) { continue }
+                    if passesFilters(entity) { results.append(entity) }
+                }
+            }
+        }
+
+        // Objectives
+        if isAll || targetType == "objective" {
             for figure in game.figures {
-                if case .objective(let container) = figure {
-                    if matchesName(container.name, pattern: namePattern) {
-                        for entity in container.entities where !entity.dead {
-                            if let markerFilter = identifier.marker {
-                                if entity.marker == markerFilter && hasTags(entity) {
-                                    results.append(entity)
-                                }
-                            } else if hasTags(entity) {
-                                results.append(entity)
-                            }
-                        }
+                guard case .objective(let container) = figure,
+                      matchesName(container.name, pattern: namePattern) else { continue }
+                for entity in container.entities where entity.dead != alive {
+                    if let markerFilter, entity.marker != markerFilter && !entity.markers.contains(markerFilter) {
+                        continue
                     }
+                    if passesFilters(entity) { results.append(entity) }
                 }
             }
-        default:
-            break
         }
 
         return results
     }
 
+    /// Evaluates an identifier `hp` filter such as `"HP < H"` (HP = current, H = max hit points).
+    private func matchesHealthFilter(_ expression: String, entity: any Entity) -> Bool {
+        let variables = ["HP": entity.health, "H": entity.maxHealth, "C": scenarioPlayerCount, "L": game.level]
+        guard let result = ScenarioExpression.condition(expression, variables: variables) else {
+            print("[ScenarioRules] Cannot evaluate hp filter '\(expression)'; no match")
+            return false
+        }
+        return result
+    }
+
     private func matchesName(_ name: String, pattern: String) -> Bool {
         if pattern == ".*" { return true }
         if pattern == name { return true }
-        if let regex = try? NSRegularExpression(pattern: "^\(pattern)$", options: []) {
+        if let regex = try? NSRegularExpression(pattern: "^(?:\(pattern))$", options: []) {
             let range = NSRange(name.startIndex..., in: name)
             return regex.firstMatch(in: name, options: [], range: range) != nil
         }
         return false
     }
 
-    private func applyFigureEffect(_ type: String, value: String?, to entity: any Entity) {
+    /// Integer value of a figure-rule `value` (`2`, `"2"`, `"(2xC)+L-2"`).
+    private func integerValue(_ value: IntOrString?, default defaultValue: Int) -> Int {
+        switch value {
+        case .int(let n):
+            return n
+        case .string(let s):
+            if let n = ScenarioExpression.integerValue(s, variables: valueVariables()) { return n }
+            print("[ScenarioRules] Cannot evaluate value '\(s)'; using \(defaultValue)")
+            return defaultValue
+        case nil:
+            return defaultValue
+        }
+    }
+
+    private func stringValue(_ value: IntOrString?) -> String? {
+        switch value {
+        case .int(let n): return String(n)
+        case .string(let s): return s
+        case nil: return nil
+        }
+    }
+
+    private func applyFigureEffect(_ type: String, value: IntOrString?, to entity: any Entity) {
         switch type {
         case "damage":
-            let amount = Int(value ?? "1") ?? 1
-            entityManager.changeHealth(entity, amount: -amount)
+            let amount = integerValue(value, default: 1)
+            if amount > 0 { entityManager.changeHealth(entity, amount: -amount) }
 
         case "heal":
-            let amount = Int(value ?? "1") ?? 1
-            entityManager.changeHealth(entity, amount: amount)
+            let amount = integerValue(value, default: 1)
+            if amount > 0 { entityManager.changeHealth(entity, amount: amount) }
 
         case "setHp":
-            if let hpStr = value {
-                let hp = evaluateEntityValue(.string(hpStr), level: game.level,
-                                              characterCount: game.activeCharacters.count)
-                entity.health = hp
+            if value != nil {
+                entity.health = max(0, integerValue(value, default: entity.health))
             }
 
         case "condition", "gainCondition":
-            if let condStr = value, let cond = ConditionName(rawValue: condStr) {
+            if let condStr = stringValue(value), let cond = ConditionName(rawValue: condStr) {
                 entityManager.addCondition(cond, to: entity)
             }
 
         case "permanentCondition":
-            if let condStr = value, let cond = ConditionName(rawValue: condStr) {
+            if let condStr = stringValue(value), let cond = ConditionName(rawValue: condStr) {
                 entityManager.addCondition(cond, to: entity, permanent: true)
             }
 
         case "removeCondition":
-            if let condStr = value, let cond = ConditionName(rawValue: condStr) {
+            if let condStr = stringValue(value), let cond = ConditionName(rawValue: condStr) {
                 entityManager.removeCondition(cond, from: entity)
             }
 
@@ -394,13 +673,19 @@ final class ScenarioRulesManager {
 
         case "toggleOff", "dormant":
             entity.off = true
+            if type == "dormant", let monsterEntity = entity as? GameMonsterEntity {
+                monsterEntity.dormant = true
+            }
 
         case "toggleOn", "activate":
             entity.off = false
+            if type == "activate", let monsterEntity = entity as? GameMonsterEntity {
+                monsterEntity.dormant = false
+            }
 
         case "amAdd":
             // value format: "type:count" e.g. "curse:3", "minus1:3", "bless:2"
-            applyAmAdd(value: value, to: entity)
+            applyAmAdd(value: stringValue(value), to: entity)
 
         default:
             break
@@ -409,32 +694,26 @@ final class ScenarioRulesManager {
 
     // MARK: - amAdd helper
 
-    /// Adds attack modifier cards to a character's AM deck.
-    /// value format: "{cardType}:{count}", e.g. "curse:3", "minus1:2"
+    /// Adds attack modifier cards to a character's AM deck, shuffled into the undrawn portion.
+    /// value format: "{cardType}:{count}", e.g. "curse:3", "minus1:2".
+    /// Non-special cards (e.g. -1) also join the deck's base list so they survive reshuffles;
+    /// bless/curse respect the 10-card limit.
     private func applyAmAdd(value: String?, to entity: any Entity) {
         guard let character = entity as? GameCharacter,
               let value = value else { return }
 
         let parts = value.split(separator: ":", maxSplits: 1)
         let typeName = parts.first.map(String.init) ?? value
-        let count = parts.count > 1 ? Int(String(parts[1])) ?? 1 : 1
+        let count = parts.count > 1
+            ? (ScenarioExpression.integerValue(String(parts[1]), variables: valueVariables()) ?? 1)
+            : 1
 
-        guard let cardType = AttackModifierType(rawValue: typeName) else { return }
+        guard let cardType = AttackModifierType(rawValue: typeName), count > 0 else { return }
 
-        let card = makeAmCard(type: cardType)
-        for _ in 0..<count {
-            character.attackModifierDeck.cards.append(card)
-        }
-    }
-
-    private func makeAmCard(type: AttackModifierType) -> AttackModifier {
-        switch type {
-        case .curse:
-            return AttackModifier(type: .curse, value: 0, valueType: .multiply, shuffle: true)
-        case .bless:
-            return AttackModifier(type: .bless, value: 2, valueType: .multiply, shuffle: true)
-        default:
-            return AttackModifier(type: type)
+        // Shuffled into the undrawn part of the deck with real values; scenario -1s persist
+        // through reshuffles and Bless/Curse are capped at 10 (AttackModifierDeck.addCard).
+        for _ in 0..<min(count, 20) {
+            character.attackModifierDeck.addCard(type: cardType)
         }
     }
 

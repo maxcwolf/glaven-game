@@ -100,6 +100,17 @@ final class GameCharacter: Figure, Entity {
         self.maxHealth = hp
     }
 
+    // MARK: - Perks
+
+    /// Whether a selected perk carries the given custom rule (e.g. "ignoreNegativeItem").
+    func hasCustomPerk(_ key: String) -> Bool {
+        guard let perks = characterData?.perks else { return false }
+        return perks.indices.contains { index in
+            index < selectedPerks.count && selectedPerks[index] > 0
+                && (perks[index].custom?.contains(key) ?? false)
+        }
+    }
+
     // MARK: - XP / Level
 
     static let xpThresholds = [0, 45, 95, 150, 210, 275, 345, 420, 500]
