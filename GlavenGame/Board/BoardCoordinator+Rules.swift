@@ -77,6 +77,7 @@ extension BoardCoordinator {
         guard let gameManager, let entity = entity(for: pieceID) else { return 0 }
         let healed = gameManager.entityManager.heal(entity, amount: amount)
         if healed > 0 { boardScene?.pieceLoot(id: pieceID, text: "+\(healed) HP") }
+        boardScene?.refreshStatus(of: pieceID)
         return healed
     }
 
@@ -110,6 +111,7 @@ extension BoardCoordinator {
         } else {
             gameManager.entityManager.addCondition(condition, to: entity)
         }
+        boardScene?.refreshStatus(of: pieceID)
         log("\(name(pieceID)) gains \(GameText.conditionName(condition))", category: .condition)
     }
 
@@ -122,6 +124,7 @@ extension BoardCoordinator {
         guard amount > 0, let gameManager, let entity = entity(for: pieceID) else { return false }
         gameManager.entityManager.changeHealth(entity, amount: -amount)
         boardScene?.pieceDamage(id: pieceID, amount: amount)
+        boardScene?.refreshStatus(of: pieceID)
         if let dealer = creditedCharacter(for: killer), killer != pieceID {
             gameManager.scenarioStatsManager.recordDamageDealt(by: dealer.name, amount: amount)
         }

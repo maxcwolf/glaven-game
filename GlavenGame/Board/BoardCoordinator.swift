@@ -635,6 +635,10 @@ final class BoardCoordinator {
         scene.scaleMode = .resizeFill
         scene.onHexTap = { [weak self] coord in self?.handleHexTap(coord) }
         scene.onPieceTap = { [weak self] piece in self?.handlePieceTap(piece) }
+        scene.appearanceProvider = { [weak self] piece in
+            self?.pieceAppearance(piece) ?? PieceAppearance.fallback(for: piece)
+        }
+        scene.statusProvider = { [weak self] piece in self?.pieceStatus(piece) }
         boardScene = scene
 
         let padding = 2
@@ -644,6 +648,7 @@ final class BoardCoordinator {
         scene.buildBoard(from: boardState, scenario: scenario, offsetCol: offsetCol, offsetRow: offsetRow,
                          characterAppearances: buildCharacterAppearances())
         applyAnimationSpeed(gameManager?.settingsManager.animationSpeed ?? 1)
+        syncPieceVisuals()
     }
 
     /// Apply the Animation Speed setting (0.5 fast … 2 slow) to the board's animations and to
@@ -896,7 +901,7 @@ final class BoardCoordinator {
         }.sorted { $0.initiative < $1.initiative }
 
         currentTurnIndex = -1
-        refreshInvisibility()
+        syncPieceVisuals()
         let orderDesc = turnOrder.map { entry in
             let name: String
             switch entry.figure {
@@ -913,7 +918,7 @@ final class BoardCoordinator {
     /// Advance to the next figure in initiative order.
     func advanceToNextFigure() {
         guard let gameManager = gameManager else { return }
-        refreshInvisibility()
+        syncPieceVisuals()
 
         // End the current figure's turn (conditions expire), then resolve anything that died.
         if currentTurnIndex >= 0 && currentTurnIndex < turnOrder.count {
@@ -1748,6 +1753,7 @@ final class BoardCoordinator {
         // Rebuild the visual board to include the new room
         boardScene?.buildBoard(from: boardState, scenario: scenario, offsetCol: offsetCol, offsetRow: offsetRow,
                                characterAppearances: buildCharacterAppearances())
+        syncPieceVisuals()
 
         boardPhase = .execution
         log("A door opens and a new room is revealed", category: .door, trace: door.childTileRef)
@@ -2045,6 +2051,7 @@ final class BoardCoordinator {
         if let scenario = scenarioData {
             boardScene?.buildBoard(from: boardState, scenario: scenario, offsetCol: offsetCol, offsetRow: offsetRow,
                                    characterAppearances: buildCharacterAppearances())
+            syncPieceVisuals()
         }
     }
 

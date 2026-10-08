@@ -1,99 +1,159 @@
 import SpriteKit
 import Foundation
 
-/// Visual node for a figure (character, monster, summon, objective) on the board.
+/// How a figure's token looks: its portrait, the colour of its rim and the badge it carries.
+struct PieceAppearance {
+    enum Rank: Equatable {
+        case character, normal, elite, boss, summon, objective
+    }
+
+    var rank: Rank
+    /// Character or monster portrait; nil draws `initials` instead.
+    var portrait: PlatformImage?
+    /// Rim colour: the character's colour, a summon's owner's colour, or the monster rank's colour.
+    var rimColor: SKColor
+    /// Standee number for monsters.
+    var badge: String?
+    var initials: String
+    /// Characters, summons, escorts and allied monsters: their HP bars are green, enemies' red.
+    var isPlayerSide: Bool
+
+    static let normalRim = SKColor(red: 0.91, green: 0.89, blue: 0.85, alpha: 1)
+    static let eliteRim = SKColor(red: 0.89, green: 0.70, blue: 0.24, alpha: 1)
+    static let bossRim = SKColor(red: 0.78, green: 0.27, blue: 0.23, alpha: 1)
+    static let objectiveRim = SKColor(red: 0.6, green: 0.6, blue: 0.6, alpha: 1)
+
+    /// A plain token for `pieceID` when nothing more is known about it.
+    static func fallback(for pieceID: PieceID) -> PieceAppearance {
+        switch pieceID {
+        case .character(let id):
+            return PieceAppearance(rank: .character, portrait: nil,
+                                   rimColor: SKColor(red: 0.2, green: 0.6, blue: 0.9, alpha: 1), badge: nil,
+                                   initials: String(GameText.titleCased(id).prefix(2)).uppercased(), isPlayerSide: true)
+        case .monster(let name, let standee):
+            return PieceAppearance(rank: .normal, portrait: nil, rimColor: normalRim, badge: "\(standee)",
+                                   initials: String(GameText.titleCased(name).prefix(1)), isPlayerSide: false)
+        case .summon:
+            return PieceAppearance(rank: .summon, portrait: nil,
+                                   rimColor: SKColor(red: 0.4, green: 0.8, blue: 0.4, alpha: 1), badge: nil, initials: "S",
+                                   isPlayerSide: true)
+        case .objective(let id):
+            return PieceAppearance(rank: .objective, portrait: nil, rimColor: objectiveRim, badge: nil, initials: "\(id)",
+                                   isPlayerSide: true)
+        }
+    }
+}
+
+/// What a figure's token shows about its state.
+struct PieceStatus: Equatable {
+    var health: Int
+    var maxHealth: Int
+    /// Active conditions, in display order.
+    var conditions: [ConditionName]
+}
+
+/// Visual node for a figure (character, monster, summon, objective) on the board: a round
+/// portrait token with a rim showing its side and rank, a standee badge, an HP bar and the icons
+/// of its active conditions.
 class PieceSpriteNode: SKNode {
     let pieceID: PieceID
+    private(set) var appearance: PieceAppearance
+    /// The state the token last displayed (nil until the first `apply(status:)`).
+    private(set) var status: PieceStatus?
+    /// The conditions shown as icons (at most `maxConditionIcons`).
+    private(set) var shownConditions: [ConditionName] = []
 
-    private let bodyNode: SKShapeNode
-    private let labelNode: SKLabelNode
-    private var hpBarBg: SKShapeNode?
-    private var hpBarFill: SKShapeNode?
+    private let rimNode: SKShapeNode
+    private var badgeNode: SKShapeNode?
+    private let hpBar = SKNode()
+    private let hpFill: SKSpriteNode
+    private let conditionLayer = SKNode()
 
-    private static let standeeSize: CGFloat = 30
-    private static let characterSize: CGFloat = 36
-    private static let eliteColor = SKColor(red: 1.0, green: 0.85, blue: 0.1, alpha: 1.0)
-    private static let normalColor = SKColor(red: 0.8, green: 0.8, blue: 0.8, alpha: 1.0)
-    private static let characterColor = SKColor(red: 0.2, green: 0.6, blue: 0.9, alpha: 1.0)
-    private static let summonColor = SKColor(red: 0.4, green: 0.8, blue: 0.4, alpha: 1.0)
-    private static let objectiveColor = SKColor(red: 0.6, green: 0.6, blue: 0.6, alpha: 1.0)
+    static let maxConditionIcons = 4
+    /// Token radius; characters are a little larger than standees, as on the table.
+    static func radius(for pieceID: PieceID) -> CGFloat {
+        if case .character = pieceID { return HexMath.cellStepX * 0.40 }
+        return HexMath.cellStepX * 0.37
+    }
 
-    /// Create a piece sprite with optional character appearance data.
-    init(pieceID: PieceID, characterColor: SKColor? = nil, thumbnailImage: PlatformImage? = nil) {
+    private var radius: CGFloat { Self.radius(for: pieceID) }
+
+    init(pieceID: PieceID, appearance: PieceAppearance) {
         self.pieceID = pieceID
+        self.appearance = appearance
+        let radius = Self.radius(for: pieceID)
 
-        // Create body shape — characters get a circular token, others keep squares
-        switch pieceID {
-        case .character:
-            let size = Self.characterSize
-            bodyNode = SKShapeNode(circleOfRadius: size / 2)
-            bodyNode.lineWidth = 3
-        default:
-            let size = Self.standeeSize
-            let rect = CGRect(x: -size / 2, y: -size / 2, width: size, height: size)
-            bodyNode = SKShapeNode(rect: rect, cornerRadius: 4)
-            bodyNode.lineWidth = 2
-        }
+        rimNode = SKShapeNode(circleOfRadius: radius)
+        rimNode.fillColor = SKColor(red: 0.10, green: 0.08, blue: 0.07, alpha: 1)
+        rimNode.strokeColor = appearance.rimColor
+        rimNode.lineWidth = appearance.rank == .elite || appearance.rank == .boss ? 4 : 3
+        rimNode.glowWidth = 0
 
-        // Label
-        labelNode = SKLabelNode(fontNamed: "Helvetica-Bold")
-        labelNode.fontSize = 10
-        labelNode.verticalAlignmentMode = .center
-        labelNode.horizontalAlignmentMode = .center
-        labelNode.fontColor = .white
-        labelNode.zPosition = 2
+        let barWidth = radius * 1.5
+        hpFill = SKSpriteNode(color: .green, size: CGSize(width: barWidth - 2, height: 4))
 
         super.init()
 
-        // Configure appearance based on piece type
-        switch pieceID {
-        case .character(let charID):
-            let color = characterColor ?? Self.characterColor
-            bodyNode.strokeColor = color
-            labelNode.fontSize = 11
+        // A soft shadow under the token separates it from the map art.
+        let shadow = SKShapeNode(circleOfRadius: radius)
+        shadow.fillColor = SKColor(white: 0, alpha: 0.45)
+        shadow.strokeColor = .clear
+        shadow.position = CGPoint(x: 0, y: -2.5)
+        shadow.zPosition = -1
+        addChild(shadow)
+        addChild(rimNode)
 
-            // Try to add thumbnail image inside the circle
-            if let image = thumbnailImage {
-                let texSize = Self.characterSize - 6
-                let texture = SKTexture(image: image)
-                let sprite = SKSpriteNode(texture: texture, size: CGSize(width: texSize, height: texSize))
-                let cropNode = SKCropNode()
-                let mask = SKShapeNode(circleOfRadius: texSize / 2)
-                mask.fillColor = .white
-                cropNode.maskNode = mask
-                cropNode.addChild(sprite)
-                cropNode.zPosition = 1
-                addChild(cropNode)
-
-                // Dark fill behind texture for transparency edges
-                bodyNode.fillColor = SKColor(red: 0.1, green: 0.1, blue: 0.1, alpha: 1.0)
-                // Hide label when thumbnail is shown
-                labelNode.isHidden = true
-            } else {
-                // Fallback: colored circle with abbreviation
-                bodyNode.fillColor = color.withAlphaComponent(0.8)
-                let name = charID.split(separator: "-").last.map(String.init) ?? charID
-                labelNode.text = String(name.prefix(2)).uppercased()
-            }
-
-        case .monster(_, let standee):
-            bodyNode.fillColor = SKColor(red: 0.6, green: 0.15, blue: 0.15, alpha: 1.0)
-            bodyNode.strokeColor = Self.normalColor
-            labelNode.text = "\(standee)"
-
-        case .summon:
-            bodyNode.fillColor = Self.summonColor.withAlphaComponent(0.8)
-            bodyNode.strokeColor = Self.summonColor
-            labelNode.text = "S"
-
-        case .objective(let id):
-            bodyNode.fillColor = Self.objectiveColor.withAlphaComponent(0.6)
-            bodyNode.strokeColor = Self.objectiveColor
-            labelNode.text = "\(id)"
+        if let portrait = appearance.portrait, let texture = Self.circularTexture(portrait, diameter: radius * 2 - 4) {
+            let sprite = SKSpriteNode(texture: texture, size: CGSize(width: radius * 2 - 4, height: radius * 2 - 4))
+            sprite.zPosition = 1
+            sprite.name = "portrait"
+            addChild(sprite)
+        } else {
+            let label = SKLabelNode(fontNamed: "Helvetica-Bold")
+            label.text = appearance.initials
+            label.fontSize = radius * 0.7
+            label.fontColor = appearance.rimColor
+            label.verticalAlignmentMode = .center
+            label.horizontalAlignmentMode = .center
+            label.zPosition = 1
+            addChild(label)
         }
 
-        addChild(bodyNode)
-        addChild(labelNode)
+        if let badge = appearance.badge {
+            let badgeRadius = radius * 0.36
+            let disc = SKShapeNode(circleOfRadius: badgeRadius)
+            disc.fillColor = appearance.rank == .elite ? PieceAppearance.eliteRim
+                : appearance.rank == .boss ? PieceAppearance.bossRim : PieceAppearance.normalRim
+            disc.strokeColor = SKColor(white: 0, alpha: 0.6)
+            disc.lineWidth = 1
+            disc.position = CGPoint(x: radius * 0.74, y: radius * 0.74)
+            disc.zPosition = 3
+            let label = SKLabelNode(fontNamed: "Helvetica-Bold")
+            label.text = badge
+            label.fontSize = badgeRadius * 1.25
+            label.fontColor = appearance.rank == .boss ? .white : SKColor(red: 0.1, green: 0.08, blue: 0.06, alpha: 1)
+            label.verticalAlignmentMode = .center
+            label.horizontalAlignmentMode = .center
+            disc.addChild(label)
+            addChild(disc)
+            badgeNode = disc
+        }
+
+        // HP bar under the token: a dark track and a fill scaled to the remaining health.
+        let track = SKSpriteNode(color: SKColor(red: 0.12, green: 0.08, blue: 0.07, alpha: 0.95),
+                                 size: CGSize(width: barWidth, height: 6))
+        hpBar.addChild(track)
+        hpFill.anchorPoint = CGPoint(x: 0, y: 0.5)
+        hpFill.position = CGPoint(x: -(barWidth - 2) / 2, y: 0)
+        hpFill.zPosition = 1
+        hpBar.addChild(hpFill)
+        hpBar.position = CGPoint(x: 0, y: -radius - 5)
+        hpBar.zPosition = 3
+        hpBar.isHidden = true
+        addChild(hpBar)
+
+        conditionLayer.zPosition = 4
+        addChild(conditionLayer)
     }
 
     required init?(coder aDecoder: NSCoder) {
@@ -102,53 +162,87 @@ class PieceSpriteNode: SKNode {
 
     // MARK: - Size
 
-    /// The effective size of this piece (characters are larger).
-    private var effectiveSize: CGFloat {
-        if case .character = pieceID { return Self.characterSize }
-        return Self.standeeSize
-    }
+    /// The effective size of this piece (its diameter).
+    private var effectiveSize: CGFloat { radius * 2 }
 
     // MARK: - Updates
 
-    /// Update the visual to reflect elite status.
-    func setElite(_ isElite: Bool) {
-        if isElite {
-            bodyNode.strokeColor = Self.eliteColor
-            bodyNode.lineWidth = 3
-        } else {
-            bodyNode.strokeColor = Self.normalColor
-            bodyNode.lineWidth = 2
+    /// Show the figure's health and conditions.
+    func apply(status newStatus: PieceStatus) {
+        guard newStatus != status else { return }
+        status = newStatus
+
+        let fraction = newStatus.maxHealth > 0
+            ? min(1, max(0, CGFloat(newStatus.health) / CGFloat(newStatus.maxHealth))) : 0
+        hpFill.xScale = fraction
+        hpFill.color = appearance.isPlayerSide
+            ? SKColor(red: 0.37, green: 0.66, blue: 0.27, alpha: 1)
+            : SKColor(red: 0.85, green: 0.28, blue: 0.23, alpha: 1)
+        hpBar.isHidden = newStatus.maxHealth <= 0
+
+        let shown = Array(newStatus.conditions.prefix(Self.maxConditionIcons))
+        guard shown != shownConditions else { return }
+        shownConditions = shown
+        conditionLayer.removeAllChildren()
+        // Icons sit on the token's left edge, clear of the badge and of the tokens above and below.
+        let iconRadius = radius * 0.3
+        for (index, condition) in shown.enumerated() {
+            let angle = CGFloat.pi * (0.78 + 0.22 * CGFloat(index))
+            let chip = SKShapeNode(circleOfRadius: iconRadius)
+            chip.fillColor = SKColor(red: 0.1, green: 0.08, blue: 0.07, alpha: 0.95)
+            chip.strokeColor = SKColor(white: 1, alpha: 0.5)
+            chip.lineWidth = 1
+            chip.position = CGPoint(x: cos(angle) * (radius + 1), y: sin(angle) * (radius + 1))
+            chip.name = "condition-\(condition.rawValue)"
+            if let texture = Self.conditionTexture(condition) {
+                let icon = SKSpriteNode(texture: texture, size: CGSize(width: iconRadius * 1.6, height: iconRadius * 1.6))
+                chip.addChild(icon)
+            }
+            conditionLayer.addChild(chip)
         }
     }
 
-    /// Show/update the HP bar.
-    func updateHealthBar(current: Int, max: Int) {
-        let barWidth: CGFloat = effectiveSize
-        let barHeight: CGFloat = 4
-        let yOffset: CGFloat = -effectiveSize / 2 - 6
+    // MARK: - Textures
 
-        // Remove old bars
-        hpBarBg?.removeFromParent()
-        hpBarFill?.removeFromParent()
+    private static var conditionTextures: [ConditionName: SKTexture] = [:]
 
-        // Background
-        let bg = SKShapeNode(rect: CGRect(x: -barWidth / 2, y: yOffset, width: barWidth, height: barHeight), cornerRadius: 1)
-        bg.fillColor = SKColor(red: 0.2, green: 0.2, blue: 0.2, alpha: 0.8)
-        bg.strokeColor = .clear
-        bg.zPosition = 1
-        addChild(bg)
-        hpBarBg = bg
+    private static func conditionTexture(_ condition: ConditionName) -> SKTexture? {
+        if let cached = conditionTextures[condition] { return cached }
+        guard let image = ImageLoader.conditionIcon(condition.rawValue) else { return nil }
+        let texture = SKTexture(image: image)
+        conditionTextures[condition] = texture
+        return texture
+    }
 
-        // Fill
-        let fraction = max > 0 ? CGFloat(current) / CGFloat(max) : 0
-        let fillWidth = barWidth * min(1, fraction)
-        let fill = SKShapeNode(rect: CGRect(x: -barWidth / 2, y: yOffset, width: fillWidth, height: barHeight), cornerRadius: 1)
-        let hpColor: SKColor = fraction > 0.5 ? .green : fraction > 0.25 ? .yellow : .red
-        fill.fillColor = hpColor
-        fill.strokeColor = .clear
-        fill.zPosition = 2
-        addChild(fill)
-        hpBarFill = fill
+    private static var portraitTextures: [ObjectIdentifier: SKTexture] = [:]
+
+    /// The portrait cut to a circle once, so tokens need no crop node and batch together.
+    static func circularTexture(_ image: PlatformImage, diameter: CGFloat) -> SKTexture? {
+        let key = ObjectIdentifier(image)
+        if let cached = portraitTextures[key] { return cached }
+        let pixels = Int(diameter * 2)
+        #if os(macOS)
+        var rect = CGRect(origin: .zero, size: image.size)
+        guard let source = image.cgImage(forProposedRect: &rect, context: nil, hints: nil) else { return nil }
+        #else
+        guard let source = image.cgImage else { return nil }
+        #endif
+        guard let context = CGContext(data: nil, width: pixels, height: pixels, bitsPerComponent: 8, bytesPerRow: 0,
+                                      space: CGColorSpaceCreateDeviceRGB(),
+                                      bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else { return nil }
+        let bounds = CGRect(x: 0, y: 0, width: pixels, height: pixels)
+        context.addEllipse(in: bounds)
+        context.clip()
+        // Fill the circle with the portrait's centre square.
+        let side = min(source.width, source.height)
+        let crop = CGRect(x: (source.width - side) / 2, y: (source.height - side) / 2, width: side, height: side)
+        guard let square = source.cropping(to: crop) else { return nil }
+        context.interpolationQuality = .high
+        context.draw(square, in: bounds)
+        guard let circular = context.makeImage() else { return nil }
+        let texture = SKTexture(cgImage: circular)
+        portraitTextures[key] = texture
+        return texture
     }
 
     // MARK: - Animations

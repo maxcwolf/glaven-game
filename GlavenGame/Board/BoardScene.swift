@@ -33,6 +33,12 @@ class BoardScene: SKScene {
     /// Cached character appearances for piece creation.
     var storedAppearances: [String: CharacterAppearance] = [:]
 
+    /// How each figure's token looks (portrait, rim, badge). Set by the coordinator; without it
+    /// tokens fall back to `storedAppearances` for characters and plain tokens for the rest.
+    var appearanceProvider: ((PieceID) -> PieceAppearance)?
+    /// Each figure's current health and conditions, shown on its token.
+    var statusProvider: ((PieceID) -> PieceStatus?)?
+
     /// Board state reference for hit testing.
     weak var boardStateRef: BoardState?
 
@@ -103,10 +109,6 @@ class BoardScene: SKScene {
         self.storedAppearances = characterAppearances
         for (pieceID, coord) in board.piecePositions {
             addPieceSprite(id: pieceID, at: coord, offsetCol: offsetCol, offsetRow: offsetRow)
-            // Apply elite styling
-            if board.eliteStandees.contains(pieceID), let node = pieceNodes[pieceID] {
-                node.setElite(true)
-            }
         }
 
         // Restore loot tokens
@@ -207,17 +209,43 @@ class BoardScene: SKScene {
     // MARK: - Piece Sprites
 
     func addPieceSprite(id: PieceID, at coord: HexCoord, offsetCol: Int = 0, offsetRow: Int = 0) {
-        var charColor: SKColor? = nil
-        var thumbnail: PlatformImage? = nil
-        if case .character(let charID) = id, let appearance = storedAppearances[charID] {
-            charColor = appearance.color
-            thumbnail = appearance.thumbnail
+        var appearance = appearanceProvider?(id) ?? PieceAppearance.fallback(for: id)
+        if appearanceProvider == nil, case .character(let charID) = id, let stored = storedAppearances[charID] {
+            appearance.rimColor = stored.color
+            appearance.portrait = stored.thumbnail
         }
-        let pieceNode = PieceSpriteNode(pieceID: id, characterColor: charColor, thumbnailImage: thumbnail)
+        if appearanceProvider == nil, boardStateRef?.eliteStandees.contains(id) == true {
+            appearance.rank = .elite
+            appearance.rimColor = PieceAppearance.eliteRim
+        }
+        pieceNodes[id]?.removeFromParent()
+        let pieceNode = PieceSpriteNode(pieceID: id, appearance: appearance)
         pieceNode.position = hexCenterInScene(col: coord.col - offsetCol, row: coord.row - offsetRow)
         pieceNode.zPosition = 10
         pieceLayer.addChild(pieceNode)
         pieceNodes[id] = pieceNode
+        refreshStatus(of: id)
+    }
+
+    /// The token for a piece on the board.
+    func pieceNode(for id: PieceID) -> PieceSpriteNode? {
+        pieceNodes[id]
+    }
+
+    /// Show a piece's health and conditions on its token.
+    func updatePieceStatus(id: PieceID, status: PieceStatus) {
+        pieceNodes[id]?.apply(status: status)
+    }
+
+    /// Bring one token up to date from `statusProvider`.
+    func refreshStatus(of id: PieceID) {
+        guard let node = pieceNodes[id], let status = statusProvider?(id) else { return }
+        node.apply(status: status)
+    }
+
+    /// Bring every token up to date from `statusProvider`.
+    func refreshAllStatuses() {
+        for id in pieceNodes.keys.sorted() { refreshStatus(of: id) }
     }
 
     func removePieceSprite(id: PieceID) {
