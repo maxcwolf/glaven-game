@@ -41,6 +41,9 @@ class BoardScene: SKScene {
 
     /// Board state reference for hit testing.
     weak var boardStateRef: BoardState?
+    /// The grid offset the board was drawn with, to turn a tap back into a board hex.
+    private(set) var offsetCol = 0
+    private(set) var offsetRow = 0
 
     // MARK: - Setup
 
@@ -74,6 +77,8 @@ class BoardScene: SKScene {
     func buildBoard(from board: BoardState, scenario: VGBScenario, offsetCol: Int, offsetRow: Int,
                     characterAppearances: [String: CharacterAppearance] = [:]) {
         boardStateRef = board
+        self.offsetCol = offsetCol
+        self.offsetRow = offsetRow
         tileLayer.removeAllChildren()
         overlayLayer.removeAllChildren()
         lootLayer.removeAllChildren()
@@ -357,24 +362,49 @@ class BoardScene: SKScene {
 
     // MARK: - Input
 
-    /// Handle a tap/click: a piece first, then a highlighted hex. Returns true if handled.
+    /// Handle a tap/click. The tap is resolved to the hex it falls in (nearest hex centre, so a
+    /// tap near an edge can't pick the neighbour): the figure standing there if there is one,
+    /// otherwise the hex if it is highlighted. Returns true if handled.
     @discardableResult
-    private func handleTap(at location: CGPoint) -> Bool {
-        let pieceHits = pieceLayer.nodes(at: location)
-        if let pieceNode = pieceHits.first(where: { $0 is PieceSpriteNode }) as? PieceSpriteNode {
-            onPieceTap?(pieceNode.pieceID)
+    func handleTap(at location: CGPoint) -> Bool {
+        let hex = Self.hex(at: location, offsetCol: offsetCol, offsetRow: offsetRow)
+        if let piece = boardStateRef?.piecePositions.first(where: { $0.value == hex })?.key {
+            onPieceTap?(piece)
             return true
         }
-
-        // Highlighted hexes (move/attack/summon/push selection)
-        let highlightHits = highlightLayer.nodes(at: location)
-        if !highlightHits.isEmpty {
-            for (coord, node) in highlightNodes where highlightHits.contains(where: { $0 === node }) {
-                onHexTap?(coord)
-                return true
-            }
+        if highlightNodes[hex] != nil {
+            onHexTap?(hex)
+            return true
         }
         return false
+    }
+
+    /// The board hex whose centre is nearest to a point in scene space.
+    static func hex(at point: CGPoint, offsetCol: Int, offsetRow: Int) -> HexCoord {
+        // Local (offset-free) grid: centre of (c, r) is hexToPixel + half a cell, with y flipped.
+        let localY = -point.y - HexMath.cellSize / 2
+        let approxRow = Int((localY / HexMath.cellStepY).rounded())
+        var best = HexCoord(0, 0)
+        var bestDistance = CGFloat.infinity
+        for row in (approxRow - 1)...(approxRow + 1) {
+            let shift: CGFloat = row & 1 == 1 ? HexMath.cellStepX / 2 : 0
+            let approxCol = Int(((point.x - HexMath.cellStepX / 2 - shift) / HexMath.cellStepX).rounded())
+            for col in (approxCol - 1)...(approxCol + 1) {
+                let p = HexMath.hexToPixel(col: col, row: row)
+                let center = CGPoint(x: p.x + HexMath.cellStepX / 2, y: -(p.y + HexMath.cellSize / 2))
+                let distance = hypot(point.x - center.x, point.y - center.y)
+                if distance < bestDistance {
+                    bestDistance = distance
+                    best = HexCoord(col + offsetCol, row + offsetRow)
+                }
+            }
+        }
+        return best
+    }
+
+    /// The centre of a board hex in scene space.
+    func sceneCenter(of hex: HexCoord) -> CGPoint {
+        hexCenterInScene(col: hex.col - offsetCol, row: hex.row - offsetRow)
     }
 
     private func pan(to location: CGPoint) {
@@ -392,20 +422,31 @@ class BoardScene: SKScene {
     }
 
     #if os(macOS)
+    /// Where the click started (in view points) and whether it has turned into a drag, so a
+    /// pan that starts on a highlighted hex doesn't also move the character there.
+    private var clickStart: CGPoint?
+    private var clickDragged = false
+
     override func mouseDown(with event: NSEvent) {
-        let location = event.location(in: self)
-        if handleTap(at: location) { return }
-        // Otherwise, start panning
-        lastPanPoint = location
+        clickStart = event.locationInWindow
+        clickDragged = false
+        lastPanPoint = event.location(in: self)
     }
 
     override func mouseDragged(with event: NSEvent) {
-        let location = event.location(in: self)
-        pan(to: location)
+        if let start = clickStart, hypot(event.locationInWindow.x - start.x, event.locationInWindow.y - start.y) > 6 {
+            clickDragged = true
+        }
+        guard clickDragged else { return }
+        pan(to: event.location(in: self))
         lastPanPoint = event.location(in: self)
     }
 
     override func mouseUp(with event: NSEvent) {
+        if clickStart != nil, !clickDragged {
+            handleTap(at: event.location(in: self))
+        }
+        clickStart = nil
         lastPanPoint = nil
     }
 
@@ -413,22 +454,28 @@ class BoardScene: SKScene {
         zoom(by: event.deltaY * 0.05)
     }
     #else
-    /// Where the current touch started, to tell a tap from a pan.
+    /// Where the current touch started, to tell a tap from a pan. The threshold is measured in
+    /// screen points, so it doesn't change with zoom.
     private var touchStart: CGPoint?
+    private var touchStartInView: CGPoint?
     private var touchMoved = false
 
     override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
         guard let touch = touches.first else { return }
         let location = touch.location(in: self)
         touchStart = location
+        touchStartInView = touch.location(in: view)
         lastPanPoint = location
         touchMoved = false
     }
 
     override func touchesMoved(_ touches: Set<UITouch>, with event: UIEvent?) {
         guard let touch = touches.first else { return }
+        // A second finger means a pinch: don't pan or tap.
+        if (event?.allTouches?.count ?? 1) > 1 { touchMoved = true; return }
         let location = touch.location(in: self)
-        if let start = touchStart, hypot(location.x - start.x, location.y - start.y) > 8 {
+        let inView = touch.location(in: view)
+        if let start = touchStartInView, hypot(inView.x - start.x, inView.y - start.y) > 8 {
             touchMoved = true
         }
         if touchMoved {
