@@ -57,7 +57,7 @@ final class BoardTapTests: XCTestCase {
         // Every empty hex highlighted (as for a long move or teleport): taps in the band where a
         // hex's frame overlaps its lower neighbours' always pick the hex they are in.
         let empties = coord.boardState.cells.keys.filter { !coord.boardState.isOccupied($0) }
-        scene.highlightHexes(Set(empties), color: .cyan, offsetCol: coord.offsetCol, offsetRow: coord.offsetRow)
+        scene.highlightHexes(Set(empties), style: .move, offsetCol: coord.offsetCol, offsetRow: coord.offsetRow)
         for hex in empties.sorted() {
             let c = scene.sceneCenter(of: hex)
             for dx in [-20.0, 20.0] {

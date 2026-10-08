@@ -670,7 +670,7 @@ final class PlayerTurnController {
             characterID: characterID,
             validHexes: validHexes
         )
-        coordinator.boardScene?.highlightHexes(validHexes, color: .green, offsetCol: coordinator.offsetCol, offsetRow: coordinator.offsetRow)
+        coordinator.boardScene?.highlightHexes(validHexes, style: .summon, offsetCol: coordinator.offsetCol, offsetRow: coordinator.offsetRow)
         coordinator.log("\(who) summons \(GameText.titleCased(summonName)). Choose a hex next to them", category: .info)
         return true
     }

@@ -697,7 +697,7 @@ final class BoardCoordinator {
         // Highlight available starting locations
         let occupied = Set(boardState.piecePositions.values)
         let available = Set(boardState.startingLocations.filter { !occupied.contains($0) })
-        boardScene?.highlightHexes(available, color: .yellow, offsetCol: offsetCol, offsetRow: offsetRow)
+        boardScene?.highlightHexes(available, style: .place, offsetCol: offsetCol, offsetRow: offsetRow)
     }
 
     /// Place a character on a starting hex.
@@ -743,7 +743,7 @@ final class BoardCoordinator {
                         summonID: next.id, characterID: characterID, summonName: pending.summonName,
                         validHexes: hexes, remaining: pending.remaining - 1, summonData: data)
                     interactionMode = .placingSummon(summonID: next.id, characterID: characterID, validHexes: hexes)
-                    boardScene?.highlightHexes(hexes, color: .green, offsetCol: offsetCol, offsetRow: offsetRow)
+                    boardScene?.highlightHexes(hexes, style: .summon, offsetCol: offsetCol, offsetRow: offsetRow)
                     return
                 }
             }
@@ -1257,8 +1257,8 @@ final class BoardCoordinator {
             return
         }
         interactionMode = .selectingMove(pieceID: pieceID, range: moveRange, validHexes: validHexes, mode: mode)
-        let color: SKColor = mode == .jump ? .green : (mode == .fly ? .yellow : .cyan)
-        boardScene?.highlightHexes(validHexes, color: color, offsetCol: offsetCol, offsetRow: offsetRow)
+        let style: HighlightStyle = mode == .jump ? .jump : (mode == .fly ? .fly : .move)
+        boardScene?.highlightHexes(validHexes, style: style, offsetCol: offsetCol, offsetRow: offsetRow)
     }
 
     /// Begin a jump move action — ignores figures and terrain except on the last hex.
@@ -1290,7 +1290,7 @@ final class BoardCoordinator {
         }
 
         interactionMode = .selectingMove(pieceID: pieceID, range: range, validHexes: validHexes, teleport: true)
-        boardScene?.highlightHexes(validHexes, color: .purple, offsetCol: offsetCol, offsetRow: offsetRow)
+        boardScene?.highlightHexes(validHexes, style: .teleport, offsetCol: offsetCol, offsetRow: offsetRow)
     }
 
     /// Execute a move to a target hex: the path that avoids traps and hazards when one fits the
@@ -1429,7 +1429,7 @@ final class BoardCoordinator {
             interactionMode = .selectingAttackTarget(pieceID: pieceID, range: range, validTargets: validTargets)
         }
         let targetHexes = Set(validTargets.compactMap { boardState.piecePositions[$0] })
-        boardScene?.highlightHexes(targetHexes, color: .red, offsetCol: offsetCol, offsetRow: offsetRow)
+        boardScene?.highlightHexes(targetHexes, style: .attack, offsetCol: offsetCol, offsetRow: offsetRow)
     }
 
     /// Begin an interactive condition-apply action (player taps a single enemy target).
@@ -1444,7 +1444,7 @@ final class BoardCoordinator {
 
         interactionMode = .selectingConditionTarget(pieceID: pieceID, condition: condition, validTargets: validTargets)
         let targetHexes = Set(validTargets.compactMap { boardState.piecePositions[$0] })
-        boardScene?.highlightHexes(targetHexes, color: .yellow, offsetCol: offsetCol, offsetRow: offsetRow)
+        boardScene?.highlightHexes(targetHexes, style: .condition, offsetCol: offsetCol, offsetRow: offsetRow)
     }
 
     /// Begin an interactive heal action — the player picks themself or an ally (character or
@@ -1453,7 +1453,7 @@ final class BoardCoordinator {
         let validTargets = alliesInRange(of: pieceID, range: range, includeSelf: true)
         interactionMode = .selectingHealTarget(pieceID: pieceID, healValue: healValue, validTargets: validTargets)
         let targetHexes = Set(validTargets.compactMap { boardState.piecePositions[$0] })
-        boardScene?.highlightHexes(targetHexes, color: .green, offsetCol: offsetCol, offsetRow: offsetRow)
+        boardScene?.highlightHexes(targetHexes, style: .heal, offsetCol: offsetCol, offsetRow: offsetRow)
     }
 
     /// Apply a condition to all enemies within range from the acting piece (auto, no target selection).
@@ -1518,7 +1518,7 @@ final class BoardCoordinator {
         }
         interactionMode = .selectingForcedMoveTarget(pieceID: pieceID, steps: steps, isPush: isPush, validTargets: targets)
         let hexes = Set(targets.compactMap { boardState.piecePositions[$0] })
-        boardScene?.highlightHexes(hexes, color: isPush ? .orange : .cyan, offsetCol: offsetCol, offsetRow: offsetRow)
+        boardScene?.highlightHexes(hexes, style: .forcedMove, offsetCol: offsetCol, offsetRow: offsetRow)
     }
 
     /// Begin a standalone push/pull action (top-level action, not attack sub-action).
@@ -1570,7 +1570,7 @@ final class BoardCoordinator {
                 target: target, attackerPos: attackerPos, validHexes: validSet,
                 remainingSteps: remainingSteps, isPush: isPush
             )
-            boardScene?.highlightHexes(validSet, color: isPush ? .orange : .cyan, offsetCol: offsetCol, offsetRow: offsetRow)
+            boardScene?.highlightHexes(validSet, style: .forcedMove, offsetCol: offsetCol, offsetRow: offsetRow)
         }
     }
 
@@ -1984,7 +1984,7 @@ final class BoardCoordinator {
                         targetCount: targetCount, selected: selected
                     )
                     let targetHexes = Set(remaining.compactMap { boardState.piecePositions[$0] })
-                    boardScene?.highlightHexes(targetHexes, color: .red, offsetCol: offsetCol, offsetRow: offsetRow)
+                    boardScene?.highlightHexes(targetHexes, style: .attack, offsetCol: offsetCol, offsetRow: offsetRow)
                 }
             }
 

@@ -203,6 +203,9 @@ class BoardScene: SKScene {
         return texture
     }
 
+    /// The hexes currently highlighted (for tests).
+    var highlightedHexes: Set<HexCoord> { Set(highlightNodes.keys) }
+
     /// Names of the overlay sprites drawn on the board (for tests).
     var overlaySpriteNames: [String] {
         overlayLayer.children.compactMap(\.name)
@@ -335,29 +338,103 @@ class BoardScene: SKScene {
 
     // MARK: - Highlights
 
-    /// Show colored highlights on hexes.
-    func highlightHexes(_ hexes: Set<HexCoord>, color: SKColor, offsetCol: Int = 0, offsetRow: Int = 0) {
+    /// The style of the highlights currently shown (nil when there are none).
+    private(set) var highlightStyle: HighlightStyle?
+
+    /// Show highlighted hexes for one kind of choice.
+    func highlightHexes(_ hexes: Set<HexCoord>, style: HighlightStyle, offsetCol: Int = 0, offsetRow: Int = 0) {
         clearHighlights()
+        highlightStyle = style
+        let radius = HexMath.cellSize / 2.1
+        let outline = hexPath(radius: radius)
+        let color = style.color
 
-        for hex in hexes {
-            let center = hexCenterInScene(col: hex.col - offsetCol, row: hex.row - offsetRow)
-
-            let path = hexPath(radius: HexMath.cellSize / 2.1)
-            let shape = SKShapeNode(path: path)
-            shape.fillColor = color.withAlphaComponent(0.3)
-            shape.strokeColor = color.withAlphaComponent(0.6)
-            shape.lineWidth = 2
-            shape.position = center
+        for hex in hexes.sorted() {
+            let shape = SKShapeNode(path: outline)
+            shape.fillColor = color.withAlphaComponent(0.28)
+            shape.strokeColor = color.withAlphaComponent(0.95)
+            shape.lineWidth = 3
+            shape.position = hexCenterInScene(col: hex.col - offsetCol, row: hex.row - offsetRow)
             shape.zPosition = 5
+            shape.name = "highlight-\(style)"
+
+            switch style.cue {
+            case .outline:
+                break
+            case .dashed:
+                shape.path = outline.copy(dashingWithPhase: 0, lengths: [9, 6])
+                shape.fillColor = .clear
+                let fill = SKShapeNode(path: outline)
+                fill.fillColor = color.withAlphaComponent(0.22)
+                fill.strokeColor = .clear
+                shape.addChild(fill)
+            case .doubleRing:
+                let inner = SKShapeNode(path: hexPath(radius: radius * 0.72))
+                inner.strokeColor = color.withAlphaComponent(0.9)
+                inner.lineWidth = 2
+                inner.fillColor = .clear
+                shape.addChild(inner)
+            case .reticle:
+                let ring = SKShapeNode(circleOfRadius: radius * 0.78)
+                ring.strokeColor = color
+                ring.lineWidth = 2.5
+                ring.fillColor = .clear
+                let ticks = CGMutablePath()
+                for angle in stride(from: 0.0, to: 2 * Double.pi, by: Double.pi / 2) {
+                    let a = CGFloat(angle)
+                    ticks.move(to: CGPoint(x: cos(a) * radius * 0.6, y: sin(a) * radius * 0.6))
+                    ticks.addLine(to: CGPoint(x: cos(a) * radius * 0.95, y: sin(a) * radius * 0.95))
+                }
+                let tickNode = SKShapeNode(path: ticks)
+                tickNode.strokeColor = color
+                tickNode.lineWidth = 3
+                ring.addChild(tickNode)
+                ring.zPosition = 15   // above the token so the target is unmistakable
+                shape.addChild(ring)
+            case .plus:
+                let plus = CGMutablePath()
+                let arm = radius * 0.32
+                plus.move(to: CGPoint(x: -arm, y: radius * 0.55)); plus.addLine(to: CGPoint(x: arm, y: radius * 0.55))
+                plus.move(to: CGPoint(x: 0, y: radius * 0.55 - arm)); plus.addLine(to: CGPoint(x: 0, y: radius * 0.55 + arm))
+                let plusNode = SKShapeNode(path: plus)
+                plusNode.strokeColor = color
+                plusNode.lineWidth = 4
+                plusNode.zPosition = 15
+                shape.addChild(plusNode)
+            case .chevron:
+                let chevron = CGMutablePath()
+                chevron.move(to: CGPoint(x: -radius * 0.25, y: radius * 0.3))
+                chevron.addLine(to: CGPoint(x: radius * 0.15, y: 0))
+                chevron.addLine(to: CGPoint(x: -radius * 0.25, y: -radius * 0.3))
+                let chevronNode = SKShapeNode(path: chevron)
+                chevronNode.strokeColor = color
+                chevronNode.lineWidth = 4
+                shape.addChild(chevronNode)
+            case .dot:
+                let dot = SKShapeNode(circleOfRadius: 6)
+                dot.fillColor = color
+                dot.strokeColor = .clear
+                shape.addChild(dot)
+            }
+
+            // A slow pulse so highlights read over busy map art.
+            if !reduceMotion {
+                shape.run(.repeatForever(.sequence([.fadeAlpha(to: 0.7, duration: 0.8),
+                                                    .fadeAlpha(to: 1.0, duration: 0.8)])))
+            }
             highlightLayer.addChild(shape)
             highlightNodes[hex] = shape
         }
     }
 
+    /// Set from the accessibility setting; turns off the highlight pulse.
+    var reduceMotion = false
+
     /// Clear all hex highlights.
     func clearHighlights() {
         highlightLayer.removeAllChildren()
         highlightNodes.removeAll()
+        highlightStyle = nil
     }
 
     // MARK: - Input

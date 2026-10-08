@@ -7,6 +7,10 @@ struct BoardView: View {
     @Bindable var coordinator: BoardCoordinator
     @State private var previewMonsterAbility: (GameMonster, AbilityModel)?
     @State private var confirmingAbandon = false
+    /// The side columns (party, monsters, battle log) can be hidden to see the whole board.
+    @State private var showSidePanels = true
+    @State private var logExpanded = true
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         ZStack {
@@ -14,6 +18,8 @@ struct BoardView: View {
             if let scene = coordinator.boardScene {
                 SpriteView(scene: scene)
                     .ignoresSafeArea()
+                    .onAppear { scene.reduceMotion = reduceMotion }
+                    .onChange(of: reduceMotion) { _, value in scene.reduceMotion = value }
             } else {
                 Color.black
                     .overlay {
@@ -31,15 +37,18 @@ struct BoardView: View {
                         .padding(.horizontal)
                         .padding(.bottom, 6)
                 }
-                HStack(alignment: .top, spacing: 0) {
-                    // Left: character info cards
-                    characterInfoPanel
-                    Spacer()
-                    // Right: monster info + battle log
-                    VStack(spacing: 4) {
-                        monsterInfoPanel
-                        turnLogPanel
+                if showSidePanels {
+                    HStack(alignment: .top, spacing: 0) {
+                        // Left: character info cards
+                        characterInfoPanel
+                        Spacer(minLength: 0)
+                        // Right: monster info + battle log, each capped so the board stays visible
+                        VStack(spacing: 4) {
+                            monsterInfoPanel
+                            turnLogPanel
+                        }
                     }
+                    .transition(.opacity)
                 }
                 Spacer()
                 bottomBar
@@ -142,6 +151,20 @@ struct BoardView: View {
                     .background(.black.opacity(0.6))
                     .clipShape(Capsule())
             }
+
+            // Show or hide the side columns to see the whole board.
+            Button {
+                withAnimation(.snappy) { showSidePanels.toggle() }
+            } label: {
+                Image(systemName: showSidePanels ? "sidebar.squares.leading" : "rectangle.split.3x1")
+                    .font(.headline)
+                    .foregroundStyle(.white)
+                    .frame(width: 44, height: 44)
+                    .background(.black.opacity(0.6))
+                    .clipShape(Circle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(showSidePanels ? "Hide side panels" : "Show side panels")
 
             // Game menu: leaving the scenario never happens on a single stray tap.
             Menu {
@@ -477,13 +500,16 @@ struct BoardView: View {
         let characters = gameManager.game.characters.filter { !$0.absent }
 
         if !characters.isEmpty {
-            ScrollView {
-                VStack(spacing: 6) {
-                    ForEach(characters, id: \.id) { character in
-                        characterCard(character)
-                    }
+            let cards = VStack(spacing: 6) {
+                ForEach(characters, id: \.id) { character in
+                    characterCard(character)
                 }
-                .padding(6)
+            }
+            .padding(6)
+            // Sized to the party; scrolls only when the screen is too short for it.
+            ViewThatFits(in: .vertical) {
+                cards
+                ScrollView { cards }
             }
             .frame(width: 260)
             .background(.black.opacity(0.55))
@@ -801,13 +827,20 @@ struct BoardView: View {
                     .font(.system(size: 12, weight: .bold, design: .serif))
                     .foregroundStyle(.white.opacity(0.85))
                 Spacer()
-                Text("\(coordinator.turnLog.count)")
-                    .font(.system(size: 9, weight: .medium, design: .monospaced))
-                    .foregroundStyle(.white.opacity(0.4))
+                Image(systemName: logExpanded ? "chevron.up" : "chevron.down")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.white.opacity(0.6))
             }
             .padding(.horizontal, 10)
             .padding(.vertical, 8)
+            .frame(minHeight: 44)
+            .contentShape(Rectangle())
+            .onTapGesture { withAnimation(.snappy) { logExpanded.toggle() } }
+            .accessibilityElement(children: .combine)
+            .accessibilityAddTraits(.isButton)
+            .accessibilityHint(logExpanded ? "Collapse the battle log" : "Expand the battle log")
 
+            if logExpanded {
             Divider().overlay(.white.opacity(0.15))
 
             // Log entries
@@ -828,6 +861,11 @@ struct BoardView: View {
                         }
                     }
                 }
+                .onAppear {
+                    if let last = coordinator.turnLog.last { proxy.scrollTo(last.id, anchor: .bottom) }
+                }
+            }
+            .frame(minHeight: 80, maxHeight: 220)
             }
         }
         .frame(width: 260)

@@ -45,6 +45,7 @@
 		2F5F780EA637CDD97D941E26 /* EditionEditorSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = C75AAD9571D2AFCF48AB0DA9 /* EditionEditorSheet.swift */; };
 		2F807259DA42BCE506285C72 /* HexGridView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6BB5848795BA4ADF8305822D /* HexGridView.swift */; };
 		310D2CC3F25CF06B8BC2B77C /* ScenarioChartSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 99F03C82524246E2BEF40702 /* ScenarioChartSheet.swift */; };
+		344011EC30AA402F4F4FE2DD /* HighlightStyle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 85444C8330CF135ED8080DFA /* HighlightStyle.swift */; };
 		348B45E0F8996A22336E276D /* ActionValueType.swift in Sources */ = {isa = PBXBuildFile; fileRef = C03684D92E27E6D64CDEF9C0 /* ActionValueType.swift */; };
 		34E52CCA39FF59F3296B5135 /* BoardSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = 33A6C1188659B67AC3B2FFC8 /* BoardSnapshot.swift */; };
 		3526967A1B1504E38CA78A61 /* MoveResourcesSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04E1CC18C7B4198FA2F7B0C6 /* MoveResourcesSheet.swift */; };
@@ -368,6 +369,7 @@
 		83EB9921D52AC61A5ADD3F0A /* TurnRailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TurnRailView.swift; sourceTree = "<group>"; };
 		843CD4A48C04247D50F3C39A /* AttackModifierDeckDialog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AttackModifierDeckDialog.swift; sourceTree = "<group>"; };
 		851B045DDF55EA0BAE7BC954 /* WelcomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WelcomeView.swift; sourceTree = "<group>"; };
+		85444C8330CF135ED8080DFA /* HighlightStyle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HighlightStyle.swift; sourceTree = "<group>"; };
 		8631B220635598C0A14D982C /* BoardBuilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BoardBuilder.swift; sourceTree = "<group>"; };
 		880CE3020A2D75F0D0F81B01 /* AddMonsterSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddMonsterSheet.swift; sourceTree = "<group>"; };
 		889E9E03A546F9863470E6EB /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
@@ -898,6 +900,7 @@
 				972A40BE4DE4A8FA037B3C54 /* BoardView.swift */,
 				4C2B76831C29EEA9CE98F5A8 /* CardSelectionPanel.swift */,
 				BA5C6A163BDEB897E9993360 /* EscortTurnController.swift */,
+				85444C8330CF135ED8080DFA /* HighlightStyle.swift */,
 				D2399EDB7F011E68F62A5F2F /* MonsterAbilityStripView.swift */,
 				CEBB2CD9E70D5ABFA126923B /* MonsterTurnController.swift */,
 				DD9B9D4203B3CFD7D307E4EE /* PieceSpriteNode.swift */,
@@ -1200,6 +1203,7 @@
 				F5A44407247D607BCAE13211 /* HexCoord.swift in Sources */,
 				2F807259DA42BCE506285C72 /* HexGridView.swift in Sources */,
 				C3941B681AC4B7D13D8E2526 /* HexMath.swift in Sources */,
+				344011EC30AA402F4F4FE2DD /* HighlightStyle.swift in Sources */,
 				CEB52ADC67373B8B77A407CD /* ImageLoader.swift in Sources */,
 				A899906EA9EAABA88896FE70 /* InitiativeInputView.swift in Sources */,
 				536F0F1A04CE1A7B9631044C /* InitiativeToolSheet.swift in Sources */,
