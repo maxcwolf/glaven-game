@@ -540,22 +540,10 @@ struct BoardView: View {
         let resolver = labelResolver(for: edition)
 
         if let card {
-            let highlight: CardHighlight = isTop ? .top : .bottom
-            let badge = isTop ? "TOP · INITIATIVE \(card.initiative)" : "BOTTOM"
-            let badgeColor: Color = isTop ? .yellow : .cyan
-
-            BoardAbilityCardView(
-                card: card,
-                characterColor: activeCharacterColor,
-                highlight: highlight,
-                width: 140,
-                height: 240,
-                roleBadge: badge,
-                roleBadgeColor: badgeColor,
-                labelResolver: resolver,
-                onPreview: previewAction(card: card)
-            )
-            .padding(.leading, 8)
+            ActiveCardHalf(card: card, isTop: isTop, characterColor: activeCharacterColor,
+                           labelResolver: resolver, onPreview: previewAction(card: card))
+                .padding(.leading, 8)
+                .padding(.vertical, 6)
         } else if playerTurn.phase == .turnComplete {
             // Show both cards side by side, dimmed
             HStack(spacing: 6) {

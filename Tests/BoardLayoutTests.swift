@@ -33,6 +33,19 @@ final class BoardLayoutTests: XCTestCase {
         XCTAssertGreaterThan(checked.count, 1)
     }
 
+    /// Regression: the turn panel showed the whole 240 pt card while one half of it was being
+    /// played, so the panel took a third of the screen and the board shrank to fit above it.
+    func testTheTurnPanelShowsOnlyTheHalfBeingPlayed() throws {
+        let gm = try SaveAndContinueTestsSupport.manager()
+        let card = try XCTUnwrap(gm.editionStore.abilities(forDeck: "brute", edition: "gh").first)
+        for isTop in [true, false] {
+            let half = ActiveCardHalf(card: card, isTop: isTop, characterColor: .red)
+            let height = NSHostingController(rootView: half).sizeThatFits(in: CGSize(width: 400, height: 600)).height
+            XCTAssertLessThanOrEqual(height, 160, "\(isTop ? "top" : "bottom") half: \(height) pt")
+            XCTAssertLessThan(height, ActiveCardHalf.cardSize.height * 0.7)
+        }
+    }
+
     func testHUDFitsDuringSetupWithAFullParty() throws {
         let gm = try SaveAndContinueTestsSupport.manager()
         for name in ["brute", "tinkerer", "spellweaver", "cragheart"] {

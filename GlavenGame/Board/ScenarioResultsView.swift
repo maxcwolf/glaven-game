@@ -55,6 +55,7 @@ struct ScenarioResultsView: View {
             }
             .padding(28)
             .frame(maxWidth: 760)
+            .fixedSize(horizontal: false, vertical: true)
             .boardPanel()
             .padding(24)
         }

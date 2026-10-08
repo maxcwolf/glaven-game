@@ -13,6 +13,20 @@ final class TownTests: XCTestCase {
         return gm
     }
 
+    // MARK: - Layout
+
+    /// Regression: the parchment background sized the town wider than the screen, pushing the
+    /// Campaign button off the edge, and the header floated over the panels.
+    func testTheTownFitsTheScreen() throws {
+        let gm = try party(["brute", "tinkerer", "spellweaver", "cragheart"])
+        gm.game.completedScenarios.insert("gh-1")
+        for screen in [CGSize(width: 1376, height: 988), CGSize(width: 1133, height: 700)] {
+            let size = NSHostingController(rootView: GameSetupView().environment(gm)).sizeThatFits(in: screen)
+            XCTAssertLessThanOrEqual(size.width, screen.width + 0.5, "\(screen)")
+            XCTAssertLessThanOrEqual(size.height, screen.height + 0.5, "\(screen)")
+        }
+    }
+
     // MARK: - Levels
 
     func testALevelIsTakenOnlyWithTheExperienceForIt() throws {

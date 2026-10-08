@@ -142,6 +142,7 @@
 		BECDE7A9C337E991508726F4 /* GameState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 927D27803802AD81536EA860 /* GameState.swift */; };
 		BF6BBF8E4D54D670161DA3D0 /* GameText.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5FFE059ED977F411C451EA65 /* GameText.swift */; };
 		BF775F0114B6F567A1A74F92 /* BoardCoordinator+Movement.swift in Sources */ = {isa = PBXBuildFile; fileRef = B6C9F8BE9CC7A895A0360304 /* BoardCoordinator+Movement.swift */; };
+		C0B2D8674061CBC4D28A537D /* ActiveCardHalf.swift in Sources */ = {isa = PBXBuildFile; fileRef = 800796073F61F4C2A69A6408 /* ActiveCardHalf.swift */; };
 		C0E9C5B5B98F723E70B5A5BB /* HexCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = 11CBAC9F034879BB91B54D73 /* HexCell.swift */; };
 		C20C2F095EEAA5871F1BFBF9 /* CharacterItemsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB1B617FED39015D1033829C /* CharacterItemsView.swift */; };
 		C2B13B3624B6F7A6EBA5D808 /* ScenarioRule.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2A76D126F0BA77D9B298FE07 /* ScenarioRule.swift */; };
@@ -277,6 +278,7 @@
 		78DCD8429185EF58A68330B4 /* CharacterStatModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CharacterStatModel.swift; sourceTree = "<group>"; };
 		794BBAB32F951E4614E23099 /* RoundManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RoundManager.swift; sourceTree = "<group>"; };
 		7E0C1D4AA6F0D3063582A41E /* LootType.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LootType.swift; sourceTree = "<group>"; };
+		800796073F61F4C2A69A6408 /* ActiveCardHalf.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActiveCardHalf.swift; sourceTree = "<group>"; };
 		81C28FB339301A6F83C1744B /* SummonState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SummonState.swift; sourceTree = "<group>"; };
 		8255DC95DDC21DBA25280177 /* ElementModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ElementModel.swift; sourceTree = "<group>"; };
 		8255E1A8F1CC6DC84CBFD242 /* ElementBoardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ElementBoardView.swift; sourceTree = "<group>"; };
@@ -709,6 +711,7 @@
 			isa = PBXGroup;
 			children = (
 				14ABB7C34DDD57BF9162EA76 /* AbilityCardView.swift */,
+				800796073F61F4C2A69A6408 /* ActiveCardHalf.swift */,
 				84AAD1A669303376EFE4AB19 /* BoardCamera.swift */,
 				06273638779D4902224E1602 /* BoardCoordinator.swift */,
 				A6B11F82C5E44D977254134D /* BoardCoordinator+Combat.swift */,
@@ -889,6 +892,7 @@
 				03A389CA770501F9BD252F73 /* ActionType.swift in Sources */,
 				348B45E0F8996A22336E276D /* ActionValueType.swift in Sources */,
 				AE36609C9943107272FEE51A /* ActionsManager.swift in Sources */,
+				C0B2D8674061CBC4D28A537D /* ActiveCardHalf.swift in Sources */,
 				DA80F59435177C23D8E005E0 /* AoEResolver.swift in Sources */,
 				8CB0FFF5B997D068B2D99954 /* AppPhase.swift in Sources */,
 				4270F50EFBD54ADD461ECF50 /* AttackModifier.swift in Sources */,

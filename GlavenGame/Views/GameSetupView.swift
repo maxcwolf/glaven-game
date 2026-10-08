@@ -54,17 +54,45 @@ struct GameSetupView: View {
     }
 
     var body: some View {
-        ZStack {
-            // Textured background with dark translucent overlay
-            ParchmentBackground(edition: edition)
-                .overlay(
-                    Color(red: 0.12, green: 0.14, blue: 0.18)
-                        .opacity(GlavenTheme.isLight ? 0.15 : 0.75)
-                )
+        VStack(spacing: 12) {
+            // Top bar: back to the menu, the town and its standing, the campaign
+            HStack(spacing: 12) {
+                Button {
+                    gameManager.returnToMainMenu()
+                } label: {
+                    HStack(spacing: 4) {
+                        Image(systemName: "chevron.left")
+                            .font(.caption)
+                        Text("Menu")
+                            .font(.subheadline)
+                            .fontWeight(.medium)
+                    }
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 6)
+                    .background(GlavenTheme.cardBackground.opacity(0.8))
+                    .foregroundStyle(GlavenTheme.accentText)
+                    .clipShape(Capsule())
+                }
+                .buttonStyle(.plain)
+                Spacer()
+                if inTown {
+                    Text("Gloomhaven")
+                        .font(theme.titleFont(size: 28))
+                        .foregroundStyle(BoardTheme.text)
+                    townChip("Prosperity \(prosperityLevel)", icon: "building.columns.fill")
+                    townChip("Reputation \(gameManager.game.partyReputation)", icon: "shield.lefthalf.filled")
+                }
+                Button("Campaign", systemImage: "book.closed.fill") { showCampaign = true }
+                    .buttonStyle(.bordered)
+                    .tint(BoardTheme.brass)
+                    .fixedSize()
+            }
+            .padding(.horizontal, 20)
+            .padding(.top, 12)
 
             // Main content — centered panels with breathing room
             GeometryReader { geo in
-                let panelHeight = min(geo.size.height - 120, 700)
+                let panelHeight = min(geo.size.height - 90, 700)
                 VStack(spacing: 20) {
                     HStack(spacing: 24) {
                         characterPanel
@@ -98,45 +126,12 @@ struct GameSetupView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
             .padding(.horizontal, 32)
-
-            // Top bar: back to the menu, the town and its standing, the campaign
-            VStack {
-                HStack(spacing: 12) {
-                    Button {
-                        gameManager.returnToMainMenu()
-                    } label: {
-                        HStack(spacing: 4) {
-                            Image(systemName: "chevron.left")
-                                .font(.caption)
-                            Text("Menu")
-                                .font(.subheadline)
-                                .fontWeight(.medium)
-                        }
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 6)
-                        .background(GlavenTheme.cardBackground.opacity(0.8))
-                        .foregroundStyle(GlavenTheme.accentText)
-                        .clipShape(Capsule())
-                    }
-                    .buttonStyle(.plain)
-                    Spacer()
-                    if inTown {
-                        Text("Gloomhaven")
-                            .font(theme.titleFont(size: 28))
-                            .foregroundStyle(BoardTheme.text)
-                        townChip("Prosperity \(prosperityLevel)", icon: "building.columns.fill")
-                        townChip("Reputation \(gameManager.game.partyReputation)", icon: "shield.lefthalf.filled")
-                    }
-                    Button("Campaign", systemImage: "book.closed.fill") { showCampaign = true }
-                        .buttonStyle(.bordered)
-                        .tint(BoardTheme.brass)
-                        .fixedSize()
-                }
-                .padding(.horizontal, 20)
-                .padding(.top, 12)
-                .padding(.top, 8)
-                Spacer()
-            }
+        }
+        .background {
+            // Textured background with dark translucent overlay, behind the layout so it never sizes it
+            ParchmentBackground(edition: edition)
+                .overlay(Color(red: 0.12, green: 0.14, blue: 0.18).opacity(GlavenTheme.isLight ? 0.15 : 0.75))
+                .ignoresSafeArea()
         }
         .sheet(item: $sheetCharacter) { character in
             CharacterSheetView(character: character)

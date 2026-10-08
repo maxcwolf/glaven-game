@@ -231,6 +231,8 @@ Phase IV — the game around the board
 - [x] Board theme tokens (`BoardTheme`: surfaces, brass, radii, display type) and an 11 pt text floor (31 sizes of 7–10 pt raised; HUD still fits both iPads); every board control has text or a VoiceOver label; tokens on the board are spoken ("Bandit Guard 1, 4 of 6 health, Stun"); source checks guard the floor and the labels (`BoardAccessibilityTests`)
 - [ ] VoiceOver play on the board: choosing hexes (move, attack targets) needs accessible hex elements; GlavenTheme in the remaining menus; drop the unused Majalla font (288 KB)
 
+- [x] Compact turn panel: only the half of the card being played (top or bottom), so the panel is ~40% shorter and the board bigger during a turn (`BoardLayoutTests`)
+
 Found along the way
 - [ ] Scenario rewards the game never grants: items (26 GH scenarios), character unlocks, collective gold, item designs, events, envelopes (`ScenarioManager.applyRewards`)
 

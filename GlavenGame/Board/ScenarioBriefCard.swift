@@ -54,6 +54,7 @@ struct ScenarioBriefCard: View {
             }
             .padding(28)
             .frame(maxWidth: 620)
+            .fixedSize(horizontal: false, vertical: true)   // as tall as its contents, not the screen
             .boardPanel()
             .padding(24)
         }
