@@ -76,7 +76,6 @@
 		46C7E8752AD96F15E7F9AF89 /* Condition.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC4BEBEF0D48AC6F54D3F19F /* Condition.swift */; };
 		48BC7EC9071DEE0C42DED128 /* ElementModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8255DC95DDC21DBA25280177 /* ElementModel.swift */; };
 		48EF2D85E0A4E375FFF1EAD2 /* AttackModifierEffectType.swift in Sources */ = {isa = PBXBuildFile; fileRef = D509FC90D805FC2585C9C743 /* AttackModifierEffectType.swift */; };
-		4A04E1172772853B9D0415D3 /* AboutSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = BD400435469819EE1EB795D9 /* AboutSheet.swift */; };
 		4B2BA4139D0D27B42EE7818E /* RoundManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 794BBAB32F951E4614E23099 /* RoundManager.swift */; };
 		4CF3E8304E25558244E5481A /* BoardCoordinator+Text.swift in Sources */ = {isa = PBXBuildFile; fileRef = 41D94C91FCB1BF3FC44B5F95 /* BoardCoordinator+Text.swift */; };
 		4D06962FD66D7469C2E754CD /* GlavenGame.swift in Sources */ = {isa = PBXBuildFile; fileRef = B600B1213ADD3BA7A385CA3F /* GlavenGame.swift */; };
@@ -184,6 +183,7 @@
 		AF3F2201E31B145FBC2FF948 /* AttackModifierDeck.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D21E983F2C6A9DB30620F8A /* AttackModifierDeck.swift */; };
 		B189530ED1928A8B077B6949 /* ItemDetailSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5F921AE521FD17686B09BE95 /* ItemDetailSheet.swift */; };
 		B47234E91D6B816CC5EAB984 /* PersonalQuestEvaluator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A6A55C02339D884EA81120B /* PersonalQuestEvaluator.swift */; };
+		B4A7BF694B78622B41587BD4 /* MenuKeyArt.swift in Sources */ = {isa = PBXBuildFile; fileRef = 975066D59FC5616F167806B8 /* MenuKeyArt.swift */; };
 		B693C957C8B55DF15A1B6B1C /* LootCardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4CC400C04C45823B038513D4 /* LootCardView.swift */; };
 		B6DB78CBDC0541217E3000B2 /* LogoView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BCA279443E59250573E9D370 /* LogoView.swift */; };
 		B71FFD4185C4AD3708AEE550 /* ActionEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A0AEB962D1B4A44FBDD0D36 /* ActionEditorView.swift */; };
@@ -211,6 +211,7 @@
 		C7914CE29166A711DD59D56B /* EntityProtocol.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4A36D7C42F715C8F0B91A909 /* EntityProtocol.swift */; };
 		C7A71268D4ED515FDA566884 /* PreferencesSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = B90AB17781FA04ADADF656EB /* PreferencesSheet.swift */; };
 		C8BEF4631B318047240E63F6 /* SavedGameModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = B881C2715E0BC0457CC00B37 /* SavedGameModel.swift */; };
+		CC2250A35E0CC8D728DE8112 /* CreditsSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = BC02E40BD390F740C8CA66B1 /* CreditsSheet.swift */; };
 		CC34ABA4C68311665619E8E3 /* ScenarioData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A52E7B1A950562EF505A524 /* ScenarioData.swift */; };
 		CD303BDC62AA852B959A42D1 /* AchievementStickerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 59AFE5E4B839F33A56167E44 /* AchievementStickerView.swift */; };
 		CDD4F85BC9EA33EA6415855E /* GameMonster.swift in Sources */ = {isa = PBXBuildFile; fileRef = AE4FE04C5C22C618D1AB2170 /* GameMonster.swift */; };
@@ -399,6 +400,7 @@
 		96B5B3B671FF141F5F296A83 /* EntityCondition.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EntityCondition.swift; sourceTree = "<group>"; };
 		972A40BE4DE4A8FA037B3C54 /* BoardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BoardView.swift; sourceTree = "<group>"; };
 		972ABF0E93841851FFA1C998 /* GameSnapshot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameSnapshot.swift; sourceTree = "<group>"; };
+		975066D59FC5616F167806B8 /* MenuKeyArt.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuKeyArt.swift; sourceTree = "<group>"; };
 		9768805A47D8A289C8196C81 /* AttackModifierSelectSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AttackModifierSelectSheet.swift; sourceTree = "<group>"; };
 		9972ED9B698C56E59CD11765 /* ElementView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ElementView.swift; sourceTree = "<group>"; };
 		99F03C82524246E2BEF40702 /* ScenarioChartSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScenarioChartSheet.swift; sourceTree = "<group>"; };
@@ -434,8 +436,8 @@
 		B97936FE7C6DC6879E3A5861 /* ScenarioBriefCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScenarioBriefCard.swift; sourceTree = "<group>"; };
 		BA5C6A163BDEB897E9993360 /* EscortTurnController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EscortTurnController.swift; sourceTree = "<group>"; };
 		BA81DDD9366A51A3A52F3C1B /* PerkType.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PerkType.swift; sourceTree = "<group>"; };
+		BC02E40BD390F740C8CA66B1 /* CreditsSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CreditsSheet.swift; sourceTree = "<group>"; };
 		BCA279443E59250573E9D370 /* LogoView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LogoView.swift; sourceTree = "<group>"; };
-		BD400435469819EE1EB795D9 /* AboutSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AboutSheet.swift; sourceTree = "<group>"; };
 		C03684D92E27E6D64CDEF9C0 /* ActionValueType.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActionValueType.swift; sourceTree = "<group>"; };
 		C0429C07F7DA0462F801132A /* GameSummon.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameSummon.swift; sourceTree = "<group>"; };
 		C124CDA0F843E56DFEB9254F /* ConditionName.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConditionName.swift; sourceTree = "<group>"; };
@@ -605,7 +607,6 @@
 		227A3064E6D684967F7C3C60 /* Dialogs */ = {
 			isa = PBXGroup;
 			children = (
-				BD400435469819EE1EB795D9 /* AboutSheet.swift */,
 				6F8289B98BDEB6A290C5EA08 /* ActionHistorySheet.swift */,
 				0574A66B4DC4532439B5BD52 /* AddCharacterSheet.swift */,
 				880CE3020A2D75F0D0F81B01 /* AddMonsterSheet.swift */,
@@ -723,9 +724,11 @@
 		64A0D40F873AFB63942E5D4D /* Views */ = {
 			isa = PBXGroup;
 			children = (
+				BC02E40BD390F740C8CA66B1 /* CreditsSheet.swift */,
 				2DCD6E622ADAFAA13D8D936F /* GameBoardView.swift */,
 				AD2078C38F909FF5A2F71A7B /* GameSetupView.swift */,
 				4840A613B6DC796BF25638E0 /* MainMenuView.swift */,
+				975066D59FC5616F167806B8 /* MenuKeyArt.swift */,
 				851B045DDF55EA0BAE7BC954 /* WelcomeView.swift */,
 				227A3064E6D684967F7C3C60 /* Dialogs */,
 				C641B4FBC49E70B2D7FE83EA /* Editors */,
@@ -1115,7 +1118,6 @@
 				A2F0171C14292FA97E954CDA /* AbilityCardView.swift in Sources */,
 				F8EF92F34C6388C428209DFF /* AbilityCardsSheet.swift in Sources */,
 				CF2FDBA6BAD0B1C947FEAB87 /* AbilityModel.swift in Sources */,
-				4A04E1172772853B9D0415D3 /* AboutSheet.swift in Sources */,
 				CD303BDC62AA852B959A42D1 /* AchievementStickerView.swift in Sources */,
 				B71FFD4185C4AD3708AEE550 /* ActionEditorView.swift in Sources */,
 				9DB6D601D46BFC77F4E2F90D /* ActionHistorySheet.swift in Sources */,
@@ -1179,6 +1181,7 @@
 				3EB5A309C4C479EFF33646F6 /* ConditionType.swift in Sources */,
 				4120712738BDF3001B571449 /* ConditionsView.swift in Sources */,
 				6645399904C7D8DEC468F308 /* ContentView.swift in Sources */,
+				CC2250A35E0CC8D728DE8112 /* CreditsSheet.swift in Sources */,
 				4F5A0445F0366A6E4117202B /* DamageChoiceSheet.swift in Sources */,
 				7EA3413FBD0C440E5CE281B6 /* DebugSheet.swift in Sources */,
 				D4E7121201A9D615F5FC0D37 /* DeckData.swift in Sources */,
@@ -1260,6 +1263,7 @@
 				C4B13C1F7E443D08F6CDB37E /* LootManager.swift in Sources */,
 				F2423600BC981360B0C9093B /* LootType.swift in Sources */,
 				36769205F2999D17E959C581 /* MainMenuView.swift in Sources */,
+				B4A7BF694B78622B41587BD4 /* MenuKeyArt.swift in Sources */,
 				E299D64C11D083EA47EB11E9 /* ModifierTrayView.swift in Sources */,
 				E6E25B46F9DD8E50E5312036 /* MonsterAI.swift in Sources */,
 				3BA7F9EC1E24B79B3E456175 /* MonsterAbility.swift in Sources */,

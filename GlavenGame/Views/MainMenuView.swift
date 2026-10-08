@@ -3,25 +3,27 @@ import SwiftUI
 struct MainMenuView: View {
     @Environment(GameManager.self) private var gameManager
     @State private var showSettings = false
+    @State private var showLoad = false
+    @State private var showCredits = false
 
     var body: some View {
         ZStack {
-            GlavenTheme.background
-                .ignoresSafeArea()
+            MenuKeyArt()
 
             VStack(spacing: 24) {
                 Spacer()
 
-                LogoView(size: 180)
-
-                Text("GLAVEN")
-                    .font(GlavenFont.title(size: 72))
-                    .foregroundStyle(GlavenTheme.primaryText)
-                    .padding(.top, -8)
+                Text("Glaven")
+                    .font(GlavenFont.title(size: 96))
+                    .foregroundStyle(BoardTheme.text)
+                    .shadow(color: .black.opacity(0.8), radius: 12, y: 4)
+                    .accessibilityAddTraits(.isHeader)
 
                 Text("A Gloomhaven Board Game")
                     .font(.title3)
-                    .foregroundStyle(GlavenTheme.secondaryText)
+                    .foregroundStyle(BoardTheme.text.opacity(0.85))
+                    .shadow(color: .black, radius: 6)
+                    .padding(.top, -18)
 
                 VStack(spacing: 12) {
                     if let summary = gameManager.autosaveSummary {
@@ -36,11 +38,21 @@ struct MainMenuView: View {
                         }
                     }
 
+                    if hasSaveSlots {
+                        menuButton("Load Game", icon: "folder.fill") {
+                            showLoad = true
+                        }
+                    }
+
                     menuButton("Settings", icon: "gearshape.fill") {
                         showSettings = true
                     }
+
+                    menuButton("Credits", icon: "scroll.fill") {
+                        showCredits = true
+                    }
                 }
-                .frame(width: 280)
+                .frame(width: 300)
                 .padding(.top, 8)
 
                 Spacer()
@@ -49,6 +61,12 @@ struct MainMenuView: View {
         }
         .sheet(isPresented: $showSettings) {
             PreferencesSheet()
+        }
+        .sheet(isPresented: $showLoad) {
+            SaveSlotsSheet()
+        }
+        .sheet(isPresented: $showCredits) {
+            CreditsSheet()
         }
         .confirmationDialog("Start a new campaign?", isPresented: Bindable(gameManager).confirmingNewGame,
                             titleVisibility: .visible) {
@@ -59,6 +77,11 @@ struct MainMenuView: View {
         } message: {
             Text("Your saved party and its progress will be replaced.")
         }
+    }
+
+    /// Named saves to load (the autosave is Continue).
+    private var hasSaveSlots: Bool {
+        gameManager.allSaveSlots().contains { $0.name != "autosave" }
     }
 
     /// Continue, with what it resumes: "Brute, Tinkerer" and "#1 Black Barrow · Round 2".
@@ -74,21 +97,20 @@ struct MainMenuView: View {
                         .font(GlavenFont.title(size: 22))
                     Text(continueDetail(summary))
                         .font(.caption)
-                        .foregroundStyle(GlavenTheme.secondaryText)
+                        .foregroundStyle(BoardTheme.secondaryText)
                         .lineLimit(2)
                 }
                 Spacer()
                 Image(systemName: "chevron.right")
                     .font(.caption)
-                    .foregroundStyle(GlavenTheme.secondaryText)
+                    .foregroundStyle(BoardTheme.secondaryText)
             }
             .padding(.horizontal, 20)
             .padding(.vertical, 12)
             .frame(minHeight: 44)
-            .background(GlavenTheme.cardBackground)
-            .foregroundStyle(GlavenTheme.primaryText)
-            .clipShape(RoundedRectangle(cornerRadius: 12))
-            .overlay(RoundedRectangle(cornerRadius: 12).stroke(GlavenTheme.accentText.opacity(0.5), lineWidth: 1))
+            .background(BoardTheme.panel, in: RoundedRectangle(cornerRadius: BoardTheme.Radius.medium))
+            .overlay(RoundedRectangle(cornerRadius: BoardTheme.Radius.medium).stroke(BoardTheme.brass, lineWidth: 1.5))
+            .foregroundStyle(BoardTheme.text)
         }
         .buttonStyle(.plain)
         .accessibilityHint(continueDetail(summary))
@@ -111,13 +133,14 @@ struct MainMenuView: View {
                 Spacer()
                 Image(systemName: "chevron.right")
                     .font(.caption)
-                    .foregroundStyle(GlavenTheme.secondaryText)
+                    .foregroundStyle(BoardTheme.secondaryText)
             }
             .padding(.horizontal, 20)
             .padding(.vertical, 14)
-            .background(GlavenTheme.cardBackground)
-            .foregroundStyle(GlavenTheme.primaryText)
-            .clipShape(RoundedRectangle(cornerRadius: 12))
+            .frame(minHeight: 44)
+            .background(BoardTheme.panel, in: RoundedRectangle(cornerRadius: BoardTheme.Radius.medium))
+            .overlay(RoundedRectangle(cornerRadius: BoardTheme.Radius.medium).stroke(BoardTheme.border, lineWidth: 1))
+            .foregroundStyle(BoardTheme.text)
         }
         .buttonStyle(.plain)
     }

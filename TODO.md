@@ -221,7 +221,8 @@ Phase III — game feel
 - [x] Board sound effects (Kenney CC0 packs, credited in Resources/Sounds/CREDITS.txt): steps, hits, heavy hits, misses, blocks, deaths, heals, loot, doors, traps, teleports, landings, conditions, card draws, a character's turn; silent when headless (`BoardSoundTests`)
 
 Phase IV — the game around the board
-- [ ] Main menu key art, music and credits
+- [x] Main menu key art (the world map, drifting under a vignette; still under Reduce Motion), Load Game and Credits on the menu (the mascot moved there), jingles for a scenario's start, victory and defeat (`MainMenuTests`)
+- [ ] Menu music: needs a looping track (Kenney has no CC0 loops)
 - [x] Scenario intro card (goal, how it's lost, special rules — described from the data; reopened from a Goal chip) and a results screen (why it ended, XP gained plus the success bonus, gold, level-ups, rewards, unlocks) (`ScenarioFramingTests`)
 - [ ] Town hub from the existing party, shop, perk and world-map views; delete the remaining companion leftovers
 - [ ] Theme tokens and type scale for the board HUD; 11 pt minimum text; VoiceOver labels; snapshot and accessibility-audit tests

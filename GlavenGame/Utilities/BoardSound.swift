@@ -1,6 +1,6 @@
 import AVFoundation
 
-/// The board's sound cues. The audio is Kenney's RPG, impact and interface packs (CC0; see
+/// The board's sound cues. The audio is Kenney's RPG, impact, interface and jingle packs (CC0; see
 /// Resources/Sounds/CREDITS.txt), shipped as `<cue>-<n>.m4a` with one or more variants.
 enum BoardSound: String, CaseIterable {
     case step, hit, heavyHit = "hit-heavy", blocked, miss, death, land, heal, loot, door, teleport
@@ -11,6 +11,8 @@ enum BoardSound: String, CaseIterable {
     case trap
     /// A character's turn begins.
     case turn
+    /// Jingles: a scenario begins, is won, is lost.
+    case start, victory, defeat
 
     /// Footsteps sit under everything else.
     var volume: Float { self == .step ? 0.35 : 0.8 }

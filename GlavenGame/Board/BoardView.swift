@@ -129,6 +129,7 @@ struct BoardView: View {
                 }
                 .transition(.opacity)
                 .zIndex(9)
+                .onAppear { if presentation == .intro { BoardSoundPlayer.play(.start) } }
             }
 
             // Results
@@ -136,6 +137,7 @@ struct BoardView: View {
                 ScenarioResultsView(outcome: outcome) { coordinator.confirmScenarioEnd() }
                     .transition(.opacity)
                     .zIndex(10)
+                    .onAppear { BoardSoundPlayer.play(outcome.victory ? .victory : .defeat) }
             }
         }
     }

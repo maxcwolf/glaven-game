@@ -109,7 +109,7 @@ struct GameBoardView: View {
         // Settings & info
         case .preferences: PreferencesSheet()
         case .keyboardShortcuts: KeyboardShortcutsSheet()
-        case .about: AboutSheet()
+        case .about: CreditsSheet()
         case .debug: DebugSheet()
         // Standalone tools
         case .amTool: AttackModifierToolSheet()

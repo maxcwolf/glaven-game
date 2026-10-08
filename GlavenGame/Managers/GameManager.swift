@@ -405,8 +405,10 @@ final class GameManager {
 
     // MARK: - Save Slots
 
+    /// Save to a named slot. During a scenario that's the start of the current round, as for the
+    /// autosave, so loading it never lands in a half-played turn.
     func saveToSlot(name: String) {
-        let snapshot = game.toSnapshot(boardCoordinator: boardCoordinator)
+        let snapshot = roundCheckpoint ?? game.toSnapshot(boardCoordinator: boardCoordinator)
         guard let data = try? JSONEncoder().encode(snapshot) else { return }
 
         let fetchDescriptor = FetchDescriptor<SavedGameModel>(
@@ -423,19 +425,24 @@ final class GameManager {
         try? modelContext.save()
     }
 
-    func loadFromSlot(name: String) {
-        let fetchDescriptor = FetchDescriptor<SavedGameModel>(
-            predicate: #Predicate { $0.name == name }
-        )
-        guard let saved = try? modelContext.fetch(fetchDescriptor).first,
-              let data = saved.snapshotData,
-              let snapshot = try? JSONDecoder().decode(GameSnapshot.self, from: data) else {
-            return
+    /// Load a saved slot and carry on from it the way Continue does: it becomes the autosave,
+    /// then the game resumes on the board (mid-scenario) or at the party screen.
+    func loadSlotAndContinue(name: String) {
+        let fetchDescriptor = FetchDescriptor<SavedGameModel>(predicate: #Predicate { $0.name == name })
+        guard let saved = try? modelContext.fetch(fetchDescriptor).first, let data = saved.snapshotData,
+              let snapshot = try? JSONDecoder().decode(GameSnapshot.self, from: data) else { return }
+        let autosave = FetchDescriptor<SavedGameModel>(predicate: #Predicate { $0.name == "autosave" })
+        if let existing = try? modelContext.fetch(autosave).first {
+            existing.snapshotData = data
+            existing.updatedAt = Date()
+        } else {
+            let model = SavedGameModel(name: "autosave")
+            model.snapshotData = data
+            modelContext.insert(model)
         }
-        undoStack.removeAll()
-        redoStack.removeAll()
-        roundCheckpoint = nil
-        game.restore(from: snapshot, editionStore: editionStore, boardCoordinator: boardCoordinator)
+        try? modelContext.save()
+        autosaveSummary = AutosaveSummary(snapshot, savedAt: Date(), labels: editionStore)
+        continueGame()
     }
 
     func deleteSlot(name: String) {

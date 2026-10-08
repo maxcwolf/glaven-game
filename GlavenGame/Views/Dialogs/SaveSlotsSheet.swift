@@ -67,8 +67,8 @@ struct SaveSlotsSheet: View {
             )) {
                 Button("Load", role: .destructive) {
                     if let slot = slotToLoad {
-                        gameManager.loadFromSlot(name: slot.name)
                         dismiss()
+                        gameManager.loadSlotAndContinue(name: slot.name)
                     }
                 }
                 Button("Cancel", role: .cancel) { slotToLoad = nil }
