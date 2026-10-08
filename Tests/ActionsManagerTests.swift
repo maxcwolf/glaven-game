@@ -5,8 +5,8 @@ import XCTest
 ///  - A Heal must actually remove the conditions it can clear (Poison/Wound), matching
 ///    its own isApplicable check and the long-rest convention. It must NOT clear
 ///    conditions Heal cannot remove (immobilize/stun/disarm/muddle…).
-///  - A combined element consume ("fire:earth") consumes ONE of the listed elements,
-///    not all of them.
+///  - A combined element consume ("fire:earth") needs and consumes ALL listed elements
+///    ("If a single augment lists multiple element uses, all elements must be used").
 final class ActionsManagerTests: XCTestCase {
 
     private func manager(_ t: TestGame) -> ActionsManager {
@@ -51,9 +51,9 @@ final class ActionsManagerTests: XCTestCase {
                       "heal must NOT remove immobilize")
     }
 
-    // MARK: - #16 Combined element consume picks one
+    // MARK: - Combined element consume requires every listed element
 
-    func testInteractiveElementConsume_consumesOnlyOneOfList() {
+    func testInteractiveElementConsume_consumesAllOfList() {
         let t = TestGame()
         let char = t.addCharacter()
         t.game.elementBoard = ElementModel.defaultBoard()
@@ -73,7 +73,31 @@ final class ActionsManagerTests: XCTestCase {
         func state(_ type: ElementType) -> ElementState {
             t.game.elementBoard.first { $0.type == type }!.state
         }
-        let consumed = [state(.fire), state(.earth)].filter { $0 == .consumed }.count
-        XCTAssertEqual(consumed, 1, "a combined consume 'fire:earth' consumes exactly ONE element, not both")
+        XCTAssertEqual(state(.fire), .consumed)
+        XCTAssertEqual(state(.earth), .consumed, "a combined consume 'fire:earth' consumes both elements")
+    }
+
+    func testInteractiveElementConsume_needsEveryListedElement() {
+        let t = TestGame()
+        let char = t.addCharacter()
+        t.game.elementBoard = ElementModel.defaultBoard()
+        if let i = t.game.elementBoard.firstIndex(where: { $0.type == .fire }) {
+            t.game.elementBoard[i].state = .strong
+        }
+        let am = manager(t)
+        let action = ActionModel(type: .element, value: .string("fire:earth"), valueType: .minus)
+        am.applyInteractiveAction(entity: char, figure: char,
+                                  interactiveAction: InteractiveAction(action: action, index: "0"))
+        XCTAssertEqual(t.game.elementBoard.first { $0.type == .fire }!.state, .strong,
+                       "earth is inert, so the augment can't be paid and fire is not consumed")
+    }
+
+    func testInfusingWaningElementMakesItStrongAgain() {
+        let game = GameState()
+        game.elementBoard = ElementModel.defaultBoard()
+        let i = game.elementBoard.firstIndex { $0.type == .ice }!
+        game.elementBoard[i].state = .waning
+        game.infuseElement(.ice)
+        XCTAssertEqual(game.elementBoard[i].state, .new, "becomes strong at the end of the turn")
     }
 }

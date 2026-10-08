@@ -255,7 +255,11 @@ final class ActionsManager {
         switch action.type {
         case .heal:
             let amount = action.value?.intValue ?? 0
-            entity.health = min(entity.maxHealth, entity.health + amount)
+            // Poison blocks the healing itself (GH p.23); the heal still removes it.
+            let poisoned = entity.entityConditions.contains { ($0.name == .poison || $0.name == .poison_x) }
+            if !poisoned {
+                entity.health = min(entity.maxHealth, entity.health + amount)
+            }
             // A Heal removes the conditions it can clear (Poison/Wound). It does NOT
             // clear conditions like immobilize/stun/disarm/muddle, which expire on
             // their own timing. (Matches RoundManager long-rest and the GH Heal rule.)
@@ -298,24 +302,13 @@ final class ActionsManager {
         case .element:
             let values = getValues(action)
             let isConsume = action.valueType == .minus || action.valueType == .subtract
+            let elements = values.compactMap { ElementType(rawValue: $0) }
             if isConsume {
-                // A colon-separated consume ("fire:earth") means consume ONE of the
-                // listed elements (the actor's choice), not all of them. Consume the
-                // first listed element that is currently active on the board.
-                let candidates = values.compactMap { ElementType(rawValue: $0) }
-                if let chosen = candidates.first(where: { type in
-                    game.elementBoard.first(where: { $0.type == type })
-                        .map { $0.state == .strong || $0.state == .waning } ?? false
-                }) {
-                    consumeElement(chosen)
-                }
+                // A combined consume ("fire:earth") needs every listed element (GH p.24).
+                game.consumeElements(elements)
             } else {
                 // Infusing a colon list infuses each listed element.
-                for val in values {
-                    if let elemType = ElementType(rawValue: val) {
-                        infuseElement(elemType)
-                    }
-                }
+                elements.forEach(game.infuseElement)
             }
             // Tag all entities of this figure for element actions
             for ent in entitiesForFigure(figure) {
@@ -414,24 +407,6 @@ final class ActionsManager {
             entity.type = newType
             entity.maxHealth = newStat.health?.intValue ?? entity.maxHealth
             entity.health = max(1, entity.maxHealth - healthDiff)
-        }
-    }
-
-    private func consumeElement(_ type: ElementType) {
-        if let idx = game.elementBoard.firstIndex(where: { $0.type == type }) {
-            let current = game.elementBoard[idx].state
-            if current == .strong || current == .waning {
-                game.elementBoard[idx].state = .consumed
-            }
-        }
-    }
-
-    private func infuseElement(_ type: ElementType) {
-        if let idx = game.elementBoard.firstIndex(where: { $0.type == type }) {
-            let current = game.elementBoard[idx].state
-            if current == .inert || current == .consumed {
-                game.elementBoard[idx].state = .new
-            }
         }
     }
 }
