@@ -962,6 +962,21 @@ final class BoardRulesRegressionTests: XCTestCase {
         XCTAssertFalse(tinkerer.entityConditions.contains { $0.name == condition })
     }
 
+    /// Regression: a heal for allies ("Heal 1, all adjacent allies") healed the character.
+    func testHealsReachTheAllies() throws {
+        let tinkerer = addCharacter("tinkerer", at: HexCoord(3, 3))
+        let brute = addCharacter("brute", at: HexCoord(4, 3))
+        let far = addCharacter("spellweaver", at: HexCoord(8, 8))
+        for character in [tinkerer, brute, far] { character.health = 3 }
+        let turn = turn(for: tinkerer, top: try card("Hook Gun", of: "tinkerer"), bottom: try card("Restorative Mist", of: "tinkerer"),
+                        bottomFirst: true)
+        turn.skipCurrentAction()      // Move 2
+        turn.executeCurrentAction()   // Heal 1, all adjacent allies
+        XCTAssertEqual(brute.health, 4)
+        XCTAssertEqual(far.health, 3, "not out of reach")
+        XCTAssertEqual(tinkerer.health, 3, "not the Tinkerer")
+    }
+
     // MARK: - Mindthief augments
 
     /// Play `augment`'s top (the augment, then its own Attack) against an adjacent Bandit Guard.

@@ -631,6 +631,28 @@ final class PlayerTurnController {
                 if case .healBonus = $0 { return true }; return false }) {
                 healValue += extra
             }
+            // "All adjacent allies", "self and all allies", "one adjacent ally": who it heals.
+            if let reach = allyReach(of: action, coordinator: coordinator) {
+                applyPrintedEffects(of: action, coordinator: coordinator)
+                if reach.chooseOne {
+                    guard !reach.pieces.isEmpty else {
+                        coordinator.log("\(who) has no ally beside them to heal", category: .heal)
+                        return false
+                    }
+                    coordinator.log("\(who): Heal \(healValue). Choose the ally", category: .heal)
+                    coordinator.beginHealAction(pieceID: pieceID, healValue: healValue, range: 1, conditions: conditions)
+                    if case .selectingHealTarget(let healer, let value, _) = coordinator.interactionMode {
+                        coordinator.interactionMode = .selectingHealTarget(pieceID: healer, healValue: value, validTargets: Set(reach.pieces))
+                    }
+                    return true
+                }
+                for figure in reach.pieces {
+                    let healed = coordinator.heal(figure, amount: healValue, source: pieceID)
+                    for cond in conditions { coordinator.applyCondition(cond, to: figure) }
+                    coordinator.log("\(who) heals \(coordinator.name(figure)) for \(healed)", category: .heal, trace: "Heal \(healValue)")
+                }
+                return false
+            }
             if range > 0 {
                 coordinator.log("\(who): Heal \(healValue), Range \(range). Choose who to heal", category: .heal)
                 applyPrintedEffects(of: action, coordinator: coordinator)
@@ -683,6 +705,18 @@ final class PlayerTurnController {
             }
 
         case .shield, .retaliate:
+            // "Shield 1, self and all adjacent allies", "Retaliate 2, one adjacent ally"…
+            if let reach = allyReach(of: action, coordinator: coordinator) {
+                for figure in reach.chooseOne ? Array(reach.pieces.prefix(1)) : reach.pieces {
+                    if figure == pieceID {
+                        applyDefensiveBonus(action)
+                    } else if case .character(let id) = figure, let ally = gameManager?.game.characters.first(where: { $0.id == id }) {
+                        Self.giveRoundBonus(action, to: ally)
+                        coordinator.log("\(coordinator.name(figure)): \(GameText.actionTitle(action))", category: .condition)
+                    }
+                }
+                break
+            }
             applyDefensiveBonus(action)
             // Unstable Upheaval: "Shield 2, affect all allies".
             if customText(of: action).contains("affect all allies"), let game = gameManager?.game {
@@ -809,6 +843,30 @@ final class PlayerTurnController {
             .compactMap { $0.value?.stringValue }
             .compactMap { store.resolveCustomText($0, edition: edition) }
             .map { $0.lowercased() }
+    }
+
+    /// Who a heal, shield or retaliate printed for allies reaches ("alliesAdjacentAffect",
+    /// "selfAlliesAffectRange:4", "allyAffectAdjacent"…), or nil when it's the character's own.
+    private func allyReach(of action: ActionModel, coordinator: BoardCoordinator) -> (pieces: [PieceID], chooseOne: Bool)? {
+        guard let spec = action.subActions?.first(where: { $0.type == .specialTarget })?.value?.stringValue.lowercased(),
+              spec != "self", spec.contains("all") else { return nil }
+        let me = PieceID.character(characterID)
+        let withSelf = spec.hasPrefix("self")
+        let reach: Int = spec.contains("adjacent") ? 1
+            : (spec.split(separator: ":").last.flatMap { Int($0.prefix(while: \.isNumber)) } ?? 99)
+        let allies = coordinator.alliesInRange(of: me, range: reach, includeSelf: false).sorted()
+        if spec.hasPrefix("ally") { return (allies, true) }   // one ally
+        return ((withSelf ? [me] : []) + allies, false)
+    }
+
+    /// A round Shield or Retaliate for an ally (it stacks with theirs).
+    private static func giveRoundBonus(_ action: ActionModel, to ally: GameCharacter) {
+        let value = action.value?.intValue ?? 0
+        if action.type == .shield {
+            ally.shield = ActionModel(type: .shield, value: .int((ally.shield?.value?.intValue ?? 0) + value))
+        } else {
+            ally.retaliate.append(ActionModel(type: .retaliate, value: .int(value)))
+        }
     }
 
     /// Range of an attack action before augments (melee = 1).
