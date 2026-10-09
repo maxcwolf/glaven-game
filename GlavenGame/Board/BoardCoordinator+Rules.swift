@@ -132,6 +132,12 @@ extension BoardCoordinator {
     @discardableResult
     func sufferDamage(_ amount: Int, to pieceID: PieceID, killer: PieceID? = nil) -> Bool {
         guard amount > 0, let gameManager, let entity = entity(for: pieceID) else { return false }
+        // Juggernaut, Frost Armor: "suffer no damage instead", a charge each time.
+        if useFirstCharge(of: pieceID, where: { $0 == .negateDamage }) != nil {
+            log("\(name(pieceID)) suffers no damage", category: .damage)
+            boardScene?.pieceUnharmed(id: pieceID, missed: false)
+            return false
+        }
         let (healthBefore, maxHealth) = (entity.health, entity.maxHealth)
         gameManager.entityManager.changeHealth(entity, amount: -amount)
         boardScene?.pieceDamage(id: pieceID, amount: amount)
@@ -153,7 +159,7 @@ extension BoardCoordinator {
     @MainActor func sufferDamageWithMitigation(_ amount: Int, to pieceID: PieceID, source: String,
                                     killer: PieceID? = nil) async -> Bool {
         guard amount > 0 else { return false }
-        if case .character(let id) = pieceID,
+        if case .character(let id) = pieceID, !negatesDamage(pieceID),
            let character = gameManager?.game.characters.first(where: { $0.id == id }),
            await promptDamageMitigation(character: character, damage: amount, source: source) {
             boardScene?.floatText("Prevented", over: pieceID, style: .info)

@@ -58,6 +58,8 @@ final class GameCharacter: Figure, Entity {
     var consumedItems: Set<String> = []
     /// Use slots marked on items that take several uses before they're spent (Hide Armor).
     var itemSlotsUsed: [String: Int] = [:]
+    /// Charges marked on persistent bonuses in the active area (Warding Strength), by card.
+    var bonusChargesUsed: [Int: Int] = [:]
 
     // Character sheet
     var notes: String = ""
@@ -82,6 +84,7 @@ final class GameCharacter: Figure, Entity {
     /// Move a card out of the active area to the lost or discard pile, as its icon requires.
     func removeFromActiveArea(_ cardId: Int) {
         activeCards.removeAll { $0 == cardId }
+        bonusChargesUsed[cardId] = nil
         roundBonusCards.removeAll { $0 == cardId }
         if lostWhenRemoved.contains(cardId) {
             lostWhenRemoved.removeAll { $0 == cardId }

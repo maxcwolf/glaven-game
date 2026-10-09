@@ -52,6 +52,10 @@ final class PlayerTurnController {
     var hexesMoved = 0
     /// Hexes passed over (not ended on) during the latest move action, for "enemies moved through".
     var hexesPassed: [HexCoord] = []
+    /// Cards whose persistent half was performed this turn: their charged bonus is in effect
+    /// before they reach the active area. A bonus used up this turn never gets there.
+    var persistentCardsThisTurn: [Int] = []
+    var usedUpThisTurn: Set<Int> = []
     var magmaWadersHealed = false
     private var hornedHelmUsed = false
     /// Attack value and range of the attack being resolved (including element bonuses).
@@ -344,6 +348,12 @@ final class PlayerTurnController {
     @discardableResult
     private func executeAction(_ action: ActionModel, coordinator: BoardCoordinator) -> Bool {
         let pieceID = PieceID.character(characterID)
+        // A persistent half's charged bonus applies once the half is being performed.
+        if halfMarkers(for: phase).contains("persistent"),
+           let cardId = (phase == .executeBottomAction ? bottomCard : topCard)?.cardId,
+           !persistentCardsThisTurn.contains(cardId) {
+            persistentCardsThisTurn.append(cardId)
+        }
 
         switch action.type {
         case .move, .jump, .fly:
@@ -402,6 +412,15 @@ final class PlayerTurnController {
                 }
             }
             pendingAttackRange = range
+            // Charged bonuses: Backup Ammunition (one more target on a ranged attack), Crackling Air.
+            if range > 1, coordinator.useFirstCharge(of: pieceID, where: { $0 == .extraTargetOnRanged }) != nil {
+                targetCount += 1
+                coordinator.log("\(who): one more target", category: .attack)
+            }
+            if case .attackBonus(let bonus)? = coordinator.useFirstCharge(of: pieceID, where: {
+                if case .attackBonus = $0 { return true }; return false }) {
+                pendingAttackValue += bonus
+            }
             // Silent Stiletto: Pierce 1 on every melee attack.
             if range <= 1 {
                 pendingPierce += PassiveItems.meleePierce(for: character?.items ?? [])
@@ -475,6 +494,11 @@ final class PlayerTurnController {
                 }
             }
             grantBonusExperience(bonus)
+            // Potent Potables: +2 on the next heal actions.
+            if case .healBonus(let extra)? = coordinator.useFirstCharge(of: pieceID, where: {
+                if case .healBonus = $0 { return true }; return false }) {
+                healValue += extra
+            }
             if range > 0 {
                 coordinator.log("\(who): Heal \(healValue), Range \(range). Choose who to heal", category: .heal)
                 applyPrintedEffects(of: action, coordinator: coordinator)
@@ -803,7 +827,10 @@ final class PlayerTurnController {
         }
         let markers = Self.markers(in: half)
         let lost = lostFlag || markers.contains("lost")
-        if markers.contains("persistent") || markers.contains("round") {
+        if usedUpThisTurn.contains(cardId) {
+            // Its charges ran out during this turn: it goes straight where it would end up.
+            if lost { character.lostCards.append(cardId) } else { character.discardedCards.append(cardId) }
+        } else if markers.contains("persistent") || markers.contains("round") {
             character.activeCards.append(cardId)
             if markers.contains("round") && !markers.contains("persistent") {
                 character.roundBonusCards.append(cardId)

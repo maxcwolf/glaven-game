@@ -181,6 +181,7 @@ final class ScenarioManager {
             character.spentItems.removeAll()
             character.consumedItems.removeAll()
             character.itemSlotsUsed.removeAll()
+            character.bonusChargesUsed.removeAll()
         }
 
         game.monsterAttackModifierDeck.removeScenarioCards()

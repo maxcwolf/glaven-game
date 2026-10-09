@@ -1629,7 +1629,8 @@ final class BoardCoordinator {
 
         await performAttack(
             attacker: attacker, target: target,
-            attack: AttackParameters(value: attackValue, isRanged: range > 1,
+            attack: AttackParameters(value: attackValueWithBonuses(attackValue, attacker: attacker, target: target),
+                                     isRanged: range > 1,
                                      pierce: turn?.pendingPierce ?? 0,
                                      conditions: turn?.pendingConditions ?? [],
                                      push: turn?.pendingPush ?? 0,

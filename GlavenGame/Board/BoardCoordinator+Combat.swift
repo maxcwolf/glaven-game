@@ -122,6 +122,24 @@ extension BoardCoordinator {
         var result = resolve()
         // Shields and armour: a shield for an attack that would damage (pierce still applies).
         var negated = false
+        // Charged bonuses on the target: Warding Strength (Shield 1), Cold Front (no damage, and
+        // Retaliate 3, Range 3), Opposing Strike (Retaliate against melee attacks).
+        if areEnemies(attacker, target) {
+            if !attack.isRanged && distance <= 1, case .retaliateAgainstMelee(let amount)? = useFirstCharge(of: target, where: {
+                if case .retaliateAgainstMelee = $0 { return true }; return false }) {
+                retaliate += amount
+            }
+            if result.damage > 0, case .shieldAgainstAttacks(let amount)? = useFirstCharge(of: target, where: {
+                if case .shieldAgainstAttacks = $0 { return true }; return false }) {
+                shield += amount
+                result = resolve()
+            }
+            if result.damage > 0, case .negateAttackAndRetaliate(let amount, let range)? = useFirstCharge(of: target, where: {
+                if case .negateAttackAndRetaliate = $0 { return true }; return false }) {
+                negated = true
+                if distance <= range { retaliate += amount }
+            }
+        }
         for item in DefenseItem.onDamage where result.damage > 0 && !negated && areEnemies(attacker, target) {
             if await offerDefenseItem(item, to: target, from: attacker) {
                 shield += item.shield

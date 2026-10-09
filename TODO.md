@@ -403,7 +403,8 @@ Scenario rewards (2026-10-08)
 - [ ] **Scenario-specific goals** beyond "kill all enemies" are only modelled where the scenario data has a `finish` rule
 - [x] **"Enemies moved through" attacks** (Trample, two Mindthief cards) attack every enemy passed over in the half's move (`testTrampleAttacksEveryEnemyJumpedOver`)
 - [ ] **Other custom-text abilities** (e.g. Reviving Ether's "recover all lost cards", Flanking Strike's bonus) need manual resolution — on the board they have no effect
-- [ ] **Persistent bonus charges** (e.g. "next 3 attacks") aren't tracked; persistent cards stay in the active area until the scenario ends
+- [x] **Persistent bonus charges**: the starting classes' charged cards (Warding Strength, Juggernaut, Opposing Strike, Backup Ammunition, Single Out, Smoke Bomb, Cull the Weak, Spring the Trap, Frost Armor, Crackling Air, Engulfed in Flames, Cold Front, Potent Potables) mark a charge per use, give their slot XP and leave the active area when used up (`ChargedBonusTests`)
+- [ ] **Charged cards needing a choice or not yet coded**: Lumbering Bash, Auto Turret, Gas Canister (start/end of turn actions with a target), Stone Pummel, Nature's Lift, the air part of Crackling Air, and the locked classes' charged cards
 - [x] **Items during board turns** (Phase VI: about 110 of 150 items play on the board)
 - [ ] **Icy terrain** — no forced-movement mechanic
 - [ ] **Plague / Enfeeble** (FH) — no mechanics
