@@ -150,6 +150,30 @@ final class BoardItemTests: XCTestCase {
         XCTAssertTrue(brute.spentItems.contains("gh-8"))
     }
 
+    func testHideArmorGuardsTwiceBeforeItIsSpent() async throws {
+        brute.items = ["gh-3"]
+        let health = brute.health
+        let (offered, guardPiece) = try await banditAttacks(for: 3, answer: true)
+        XCTAssertEqual(offered, "Hide Armor")
+        XCTAssertEqual(brute.health, health - 2)
+        XCTAssertEqual(brute.itemSlotsUsed["gh-3"], 1)
+        XCTAssertFalse(brute.spentItems.contains("gh-3"), "one use left")
+        let restored = brute.toSnapshot().toRuntime(editionStore: gm.editionStore)
+        XCTAssertEqual(restored.itemSlotsUsed, ["gh-3": 1], "the marked use is saved")
+
+        let second = Task { @MainActor in
+            await self.coord.performAttack(attacker: guardPiece, target: .character(self.brute.id),
+                                           attack: AttackParameters(value: 3), drawCard: { AttackModifier(type: .plus0) })
+        }
+        let deadline = Date().addingTimeInterval(3)
+        while coord.pendingItemUse == nil && Date() < deadline { try await Task.sleep(nanoseconds: 1_000_000) }
+        coord.resolvePendingItemUse(true)
+        _ = await second.value
+        XCTAssertEqual(brute.health, health - 4)
+        XCTAssertTrue(brute.spentItems.contains("gh-3"))
+        XCTAssertNil(brute.itemSlotsUsed["gh-3"])
+    }
+
     func testADeclinedItemStaysReady() async throws {
         brute.items = ["gh-8"]
         let health = brute.health

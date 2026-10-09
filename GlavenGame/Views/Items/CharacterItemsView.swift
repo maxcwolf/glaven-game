@@ -76,6 +76,13 @@ struct CharacterItemsView: View {
 
             Spacer(minLength: 0)
 
+            // Use slots marked so far (Hide Armor: two before it's spent)
+            if item.slots > 1, !isSpent, !isConsumed, let used = character.itemSlotsUsed[key], used > 0 {
+                Text("\(used) of \(item.slots) used")
+                    .font(.caption2.monospacedDigit())
+                    .foregroundStyle(GlavenTheme.secondaryText)
+            }
+
             // State badges
             if isConsumed {
                 Image(systemName: "flame.circle.fill")

@@ -94,11 +94,12 @@ extension BoardCoordinator {
             )
         }
         var result = resolve()
-        // Heater Shield: Shield 1 for an attack that would damage (pierce still applies).
-        if result.damage > 0, areEnemies(attacker, target),
-           await offerDefenseItem(.heaterShield, to: target, from: attacker) {
-            shield += 1
-            result = resolve()
+        // Heater Shield, Hide Armor: Shield 1 for an attack that would damage (pierce still applies).
+        for item in DefenseItem.shields where result.damage > 0 && areEnemies(attacker, target) {
+            if await offerDefenseItem(item, to: target, from: attacker) {
+                shield += 1
+                result = resolve()
+            }
         }
         let breakdown = CombatResolver.damageBreakdown(
             base: attack.value, isPoisoned: isPoisoned, preDrawnCards: preDrawn,

@@ -185,6 +185,7 @@ final class RoundManager {
         if character.longRest && character.health > 0 {
             entityManager.heal(character, amount: 2)
             character.spentItems.removeAll()
+            character.itemSlotsUsed.removeAll()
         }
     }
 

@@ -56,6 +56,8 @@ final class GameCharacter: Figure, Entity {
     var spentItems: Set<String> = []
     /// Items that have been consumed this scenario (removed until scenario end).
     var consumedItems: Set<String> = []
+    /// Use slots marked on items that take several uses before they're spent (Hide Armor).
+    var itemSlotsUsed: [String: Int] = [:]
 
     // Character sheet
     var notes: String = ""

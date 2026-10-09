@@ -215,6 +215,7 @@ struct CharacterSnapshot: Codable {
     var chosenCards: [Int]?
     var record: CharacterRecord?
     var questChoices: [String]?
+    var itemSlotsUsed: [String: Int]?
 
     init(name: String, edition: String, level: Int, off: Bool, active: Bool,
          number: Int, health: Int, maxHealth: Int,
@@ -323,6 +324,7 @@ struct CharacterSnapshot: Codable {
         chosenCards = try container.decodeIfPresent([Int].self, forKey: .chosenCards)
         record = try container.decodeIfPresent(CharacterRecord.self, forKey: .record)
         questChoices = try container.decodeIfPresent([String].self, forKey: .questChoices)
+        itemSlotsUsed = try container.decodeIfPresent([String: Int].self, forKey: .itemSlotsUsed)
     }
 }
 

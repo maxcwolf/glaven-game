@@ -5,8 +5,7 @@ import Foundation
 /// refreshed by a long rest; a consumed one is gone for the scenario.
 ///
 /// Played so far: the starting shop's on-turn items, and Leather Armor and Heater Shield, offered
-/// when an enemy attacks. Hide Armor (two uses) and the Iron Helmet are still marked by hand on
-/// the character sheet.
+/// when an enemy attacks. The Iron Helmet is still marked by hand on the character sheet.
 enum BoardItemEffect: Equatable {
     case extraMove(Int)
     case jump
@@ -170,11 +169,16 @@ enum DefenseItem: String, CaseIterable {
     case leatherArmor = "gh-4"
     /// Heater Shield: Shield 1 against an attack that damages (offered once the damage is known).
     case heaterShield = "gh-8"
+    /// Hide Armor: the same, twice, before it is spent.
+    case hideArmor = "gh-3"
+
+    /// Items that guard against one attack's damage with Shield 1.
+    static let shields: [DefenseItem] = [.heaterShield, .hideArmor]
 
     var question: String {
         switch self {
         case .leatherArmor: return "Give the attacker disadvantage?"
-        case .heaterShield: return "Gain Shield 1 against this attack?"
+        case .heaterShield, .hideArmor: return "Gain Shield 1 against this attack?"
         }
     }
 }
@@ -211,7 +215,16 @@ extension BoardCoordinator {
         }
         guard use else { return false }
         gameManager.characterManager.onBeforeMutate?()
-        if data.consumed { character.consumedItems.insert(item.rawValue) } else { character.spentItems.insert(item.rawValue) }
+        // An item with use slots (Hide Armor: two) is spent once they are all marked.
+        let used = character.itemSlotsUsed[item.rawValue, default: 0] + 1
+        if data.slots > 1 && used < data.slots {
+            character.itemSlotsUsed[item.rawValue] = used
+        } else if data.consumed {
+            character.consumedItems.insert(item.rawValue)
+        } else {
+            character.spentItems.insert(item.rawValue)
+            character.itemSlotsUsed[item.rawValue] = nil
+        }
         gameManager.scenarioStatsManager.recordItemUse(by: character.name)
         log("\(name(target)) uses \(data.name)", category: .info)
         return true

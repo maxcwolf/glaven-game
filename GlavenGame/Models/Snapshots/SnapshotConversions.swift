@@ -157,6 +157,7 @@ extension GameCharacter {
         )
         snapshot.record = record
         snapshot.questChoices = questChoices.isEmpty ? nil : questChoices
+        snapshot.itemSlotsUsed = itemSlotsUsed.isEmpty ? nil : itemSlotsUsed
         return snapshot
     }
 }
@@ -212,6 +213,7 @@ extension CharacterSnapshot {
         c.lostWhenRemoved = lostWhenRemoved ?? []
         c.record = record ?? CharacterRecord()
         c.questChoices = questChoices ?? []
+        c.itemSlotsUsed = itemSlotsUsed ?? [:]
         if let chosenCards {
             c.chosenCards = chosenCards
         } else {
