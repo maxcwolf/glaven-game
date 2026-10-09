@@ -65,6 +65,16 @@ final class ScenarioFramingTests: XCTestCase {
         XCTAssertNil(sim.gm.boardCoordinator.briefPresentation, "Continue goes straight back to the board")
     }
 
+    /// The brief is made once per scenario (views read it on every render), and is the new
+    /// scenario's once another starts.
+    func testTheBriefFollowsTheScenario() throws {
+        let sim = try ScenarioSimulator(scenario: "1", options: .init(seed: 2))
+        let first = try XCTUnwrap(sim.coord.scenarioBrief)
+        XCTAssertEqual(sim.coord.scenarioBrief, first)
+        sim.gm.scenarioManager.setScenario(try XCTUnwrap(sim.gm.editionStore.scenarios(for: "gh").first { $0.index == "2" && $0.solo == nil }))
+        XCTAssertNotEqual(sim.coord.scenarioBrief?.title, first.title)
+    }
+
     // MARK: - The results
 
     private func scenarioOne() throws -> (GameManager, BoardCoordinator) {

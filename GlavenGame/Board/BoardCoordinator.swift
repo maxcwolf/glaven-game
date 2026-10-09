@@ -182,8 +182,13 @@ final class BoardCoordinator {
     /// The goal, ways to lose and special rules of the scenario on the board.
     var scenarioBrief: ScenarioBrief? {
         guard let gameManager, let scenario = gameManager.game.scenario else { return nil }
-        return ScenarioBrief.make(for: scenario.data, labels: gameManager.editionStore)
+        // Views read it on every render; it only changes with the scenario.
+        if let cached = briefCache, cached.scenarioID == scenario.data.id { return cached.brief }
+        let brief = ScenarioBrief.make(for: scenario.data, labels: gameManager.editionStore)
+        briefCache = (scenario.data.id, brief)
+        return brief
     }
+    @ObservationIgnored private var briefCache: (scenarioID: String, brief: ScenarioBrief)?
 
     /// The active player turn controller (nil when monster/no turn).
     var activePlayerTurn: PlayerTurnController?

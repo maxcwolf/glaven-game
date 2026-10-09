@@ -17,10 +17,14 @@ enum BoardSound: String, CaseIterable {
     /// Footsteps sit under everything else.
     var volume: Float { self == .step ? 0.35 : 0.8 }
 
-    /// The bundled files for this cue, in variant order.
-    var files: [URL] {
-        (0..<8).compactMap { appResourceBundle.url(forResource: "\(rawValue)-\($0)", withExtension: "m4a", subdirectory: "Sounds") }
-    }
+    /// The bundled files for this cue, in variant order (looked up once, not on every footstep).
+    var files: [URL] { Self.bundledFiles[self] ?? [] }
+
+    private static let bundledFiles: [BoardSound: [URL]] = Dictionary(uniqueKeysWithValues: allCases.map { sound in
+        (sound, (0..<8).compactMap {
+            appResourceBundle.url(forResource: "\(sound.rawValue)-\($0)", withExtension: "m4a", subdirectory: "Sounds")
+        })
+    })
 }
 
 /// Plays board sounds when the player has sound effects on. Variants take turns rather than
