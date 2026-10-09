@@ -7,7 +7,11 @@ import Foundation
 /// "To a single attack" is played as the whole attack action for now. Items whose effects the
 /// board doesn't play yet are still marked used by hand on the character sheet.
 struct BoardItemEffect: Equatable {
-    enum Moment: Equatable { case turn, move, attack, meleeAttack, rangedAttack }
+    enum Moment: Equatable {
+        case turn, move, attack, meleeAttack, rangedAttack
+        /// A melee or ranged attack on a single target (not an area or a multi-target attack).
+        case singleMeleeAttack, singleRangedAttack
+    }
 
     enum Part: Equatable {
         case extraMove(Int)
@@ -34,6 +38,8 @@ struct BoardItemEffect: Equatable {
         case loot(Int)
         /// Infuse this many elements of the player's choosing.
         case infuseAny(Int)
+        /// Turn the attack into the item's printed area (Battle-Axe, Long Spear…).
+        case areaFromItem
         /// Remove one negative condition of the player's choosing.
         case removeOneNegativeCondition
     }
@@ -116,6 +122,10 @@ struct BoardItemEffect: Equatable {
         "gh-118": .init(.turn, .infuseAny(1)),                                // Staff of Elements
         "gh-75": .init(.turn, consuming: [.wild], .infuseAny(1)),             // Circlet of Elements
         "gh-89": .init(.turn, .removeOneNegativeCondition),                   // Minor Cure Potion
+        "gh-18": .init(.singleMeleeAttack, .areaFromItem),                    // Battle-Axe
+        "gh-26": .init(.singleMeleeAttack, .areaFromItem),                    // Long Spear
+        "gh-47": .init(.singleMeleeAttack, .areaFromItem),                    // Reaping Scythe
+        "gh-33": .init(.singleRangedAttack, .areaFromItem),                   // Volatile Bomb
     ]
 }
 
@@ -160,6 +170,9 @@ enum PassiveItems {
 
     static func ignoresHazards(_ items: [String]) -> Bool { items.contains(where: hazardProof.contains) }
 
+    /// Halberd: a single-target melee attack reaches any enemy within 2 hexes.
+    static let halberd = "gh-68"
+
     static func defaultAttack(for items: [String]) -> Int { items.compactMap { defaultAttack[$0] }.max() ?? 2 }
     static func defaultMove(for items: [String]) -> Int { items.compactMap { defaultMove[$0] }.max() ?? 2 }
     static func flies(_ items: [String]) -> Bool { items.contains(where: flying.contains) }
@@ -203,6 +216,10 @@ extension BoardCoordinator {
         case (.rangedAttack, .selectingAttackTarget(let attacker, _, _)),
              (.rangedAttack, .selectingMultiAttackTargets(let attacker, _, _, _, _)):
             return attacker == me && turn.currentAttackRange() > 1
+        case (.singleMeleeAttack, .selectingAttackTarget(let attacker, _, _)):
+            return attacker == me && turn.currentAttackRange() <= 1 && turn.pendingAreaPattern == nil
+        case (.singleRangedAttack, .selectingAttackTarget(let attacker, _, _)):
+            return attacker == me && turn.currentAttackRange() > 1 && turn.pendingAreaPattern == nil
         default:
             return false
         }
@@ -301,6 +318,11 @@ extension BoardCoordinator {
             sufferDamage(amount, to: me)
         case .loot(let range):
             collectLootInRange(pieceID: me, range: range)
+        case .areaFromItem:
+            guard let pattern = item.actions?.first(where: { $0.type == .area })?.value?.stringValue,
+                  case .selectingAttackTarget(_, let range, _) = interactionMode else { break }
+            turn.setAreaPattern(pattern)
+            beginAttackAction(pieceID: me, range: range)
         case .infuseAny(let count):
             pendingElementChoice = PendingElementChoice(characterID: character.id, count: count, itemName: item.name)
         case .removeOneNegativeCondition:

@@ -111,7 +111,7 @@ final class BoardItemTests: XCTestCase {
             + [PassiveItems.unmovable, PassiveItems.muddleToStrengthen, PassiveItems.chainHood,
                PassiveItems.necklaceOfTeeth, PassiveItems.imposingBlade, DefenseItem.ironHelmet,
                PassiveItems.shoesOfHappiness, PassiveItems.enduranceFootwraps, PassiveItems.steelSabatons,
-               PassiveItems.hornedHelm] + Array(PassiveItems.hazardProof)
+               PassiveItems.hornedHelm, PassiveItems.halberd] + Array(PassiveItems.hazardProof)
         XCTAssertEqual(Set(keys).count, keys.count, "no item in two tables")
         for key in keys {
             let id = try XCTUnwrap(Int(key.dropFirst(3)))
@@ -207,7 +207,33 @@ final class BoardItemTests: XCTestCase {
         XCTAssertEqual(turn.currentAttackValue(), 4)
     }
 
+    func testTheLongSpearTurnsTheAttackIntoALine() async throws {
+        brute.items = ["gh-26"]
+        let near = try XCTUnwrap(coord.spawnMonster(name: "bandit-guard", type: .normal, at: HexCoord(4, 3), origin: .placed))
+        coord.spawnMonster(name: "bandit-guard", type: .normal, at: HexCoord(5, 3), origin: .placed)
+        let turn = try startTurn()
+        turn.executeCurrentAction()   // Trample: Attack 3, a single melee target
+        try use("gh-26")
+        XCTAssertNotNil(turn.pendingAreaPattern)
+        XCTAssertEqual(usable(), [], "an area attack isn't a single target any more")
+        coord.handlePieceTap(near)
+        let deadline = Date().addingTimeInterval(3)
+        while turn.currentActionIndex == 0 && Date() < deadline { try await Task.sleep(nanoseconds: 1_000_000) }
+        XCTAssertTrue(coord.turnLog.contains { $0.message.contains("area attack hits 2 enemies") },
+                      coord.turnLog.suffix(5).map(\.message).joined(separator: " / "))
+    }
+
     // MARK: - Always on
+
+    func testTheHalberdReachesTwoHexes() throws {
+        brute.items = ["gh-68"]
+        let far = try XCTUnwrap(coord.spawnMonster(name: "bandit-guard", type: .normal, at: HexCoord(5, 3), origin: .placed))
+        let turn = try startTurn()
+        turn.executeCurrentAction()
+        guard case .selectingAttackTarget(_, _, let targets) = coord.interactionMode else { return XCTFail() }
+        XCTAssertTrue(targets.contains(far))
+        XCTAssertEqual(turn.currentAttackRange(), 1, "still a melee attack")
+    }
 
     func testTheMaskOfTerrorPushesOnMeleeAttacks() throws {
         brute.items = ["gh-66"]

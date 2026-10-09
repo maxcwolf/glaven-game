@@ -256,6 +256,9 @@ final class PlayerTurnController {
     /// Add to the attack being resolved (Minor Power Potion).
     func addToAttack(_ bonus: Int) { pendingAttackValue += bonus }
 
+    /// Turn the attack being targeted into an area attack (Battle-Axe).
+    func setAreaPattern(_ pattern: String) { pendingAreaPattern = pattern }
+
     /// More range for the attack being targeted (Hawk Helm).
     func extendAttackRange(by extra: Int) { pendingAttackRange += extra }
 
@@ -440,7 +443,10 @@ final class PlayerTurnController {
             let extrasStr = extras.isEmpty ? "" : ", " + extras.joined(separator: ", ")
             coordinator.log("\(who): Attack \(pendingAttackValue), Range \(range)\(extrasStr)", category: .attack)
             applyPerformedEffects()
-            coordinator.beginAttackAction(pieceID: pieceID, range: range, targetCount: targetCount)
+            // Halberd: a single-target melee attack reaches enemies 2 hexes away (still melee).
+            let halberd = range <= 1 && targetCount == 1 && pendingAreaPattern == nil
+                && character?.items.contains(PassiveItems.halberd) == true
+            coordinator.beginAttackAction(pieceID: pieceID, range: halberd ? 2 : range, targetCount: targetCount)
             return true
 
         case .heal:
