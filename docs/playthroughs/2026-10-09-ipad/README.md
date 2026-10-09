@@ -64,3 +64,10 @@ Severity: **bug** (wrong result), **rules** (diverges from the rulebook), **ux**
 | 24 | events | style | The gold-sharing dialog is still in the old style. |
 | 25 | quests | feature | Hold "Unlocks the Plagueherald/Doomstalker" in the quest picker to learn about the class. |
 | 26 | settings | feature | A game option to go back to the start of the previous turn. |
+
+## Fixed afterwards
+
+Everything in the table above is fixed except #26 (go back a turn), which stays in TODO.md. Found
+while checking the fixes on the iPad, and fixed too: the last scenario's elements stayed lit when
+the next began, disabled board buttons weren't dimmed, and The Thin Places showed the data's
+"(scenario number > 51)".

@@ -117,6 +117,19 @@ final class LearningModeTests: XCTestCase {
         XCTAssertNil(coord.tipPosition, "a new run starts over")
     }
 
+    /// A town explanation sits under what was held, or above it when it wouldn't fit below
+    /// (iPad playthrough 2026-10-09: a quest's "Unlocks the Sunkeeper", near the bottom of the
+    /// screen, had its card run off the edge).
+    func testATownExplanationStaysOnScreen() {
+        let screen = CGSize(width: 1376, height: 1032)
+        let high = CGRect(x: 100, y: 40, width: 120, height: 30)
+        XCTAssertEqual(TownLearning.cardOffset(below: high, width: 420, height: 300, in: screen).height, 84)
+        let low = CGRect(x: 600, y: 900, width: 200, height: 24)
+        let offset = TownLearning.cardOffset(below: low, width: 420, height: 300, in: screen)
+        XCTAssertEqual(offset.height, 900 - 14 - 300, "above it")
+        XCTAssertLessThanOrEqual(offset.height + 300, screen.height)
+    }
+
     func testATipHoldsTheMonstersTurnUntilItsClosed() throws {
         let sim = try board(learning: true)
         let coord = sim.coord

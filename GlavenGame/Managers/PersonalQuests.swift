@@ -57,6 +57,8 @@ extension CharacterManager {
             "%game.checkmark%": "checkmarks", "%game.exhausted%": "Times exhausted",
         ]
         for (placeholder, word) in words { text = text.replacingOccurrences(of: placeholder, with: word) }
+        // The data's own shorthand, in the card's words (The Thin Places).
+        text = text.replacingOccurrences(of: "(scenario number > 51)", with: "(numbered 52 or higher)")
         text = text.replacingOccurrences(of: #"%[^%]+%"#, with: "", options: .regularExpression)
             .trimmingCharacters(in: .whitespaces)
         return text.prefix(1).uppercased() + text.dropFirst()

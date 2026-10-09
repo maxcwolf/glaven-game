@@ -24,6 +24,9 @@ final class ScenarioManager {
         let scenario = Scenario(data: scenarioData)
         game.scenario = scenario
         recordStartingTallies()
+        // Every scenario starts with all elements inert (iPad playthrough 2026-10-09: the last
+        // scenario's Earth was still lit as #2 began); its own rules may infuse some below.
+        for index in game.elementBoard.indices { game.elementBoard[index].state = .inert }
 
         applyScenarioData(scenarioData)
         addItemPenaltyCards()

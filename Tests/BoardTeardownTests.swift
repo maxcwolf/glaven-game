@@ -162,6 +162,19 @@ extension BoardTeardownTests {
         gm.startScenarioOnBoard(try XCTUnwrap(scenarios.first { $0.index == "2" }))
         XCTAssertNil(coord.lastModifierReveal)
     }
+
+    /// The elements start inert in every scenario, whatever the last one left lit.
+    func testTheNextScenarioStartsWithNoElements() throws {
+        let gm = try SaveAndContinueTestsSupport.manager()
+        gm.characterManager.addCharacter(name: "brute", edition: "gh")
+        let scenarios = gm.editionStore.scenarios(for: "gh").filter { $0.solo == nil }
+        gm.startScenarioOnBoard(try XCTUnwrap(scenarios.first { $0.index == "1" }))
+        let earth = try XCTUnwrap(gm.game.elementBoard.firstIndex { $0.type == .earth })
+        gm.game.elementBoard[earth].state = .waning
+        gm.boardCoordinator.exitBoard()
+        gm.startScenarioOnBoard(try XCTUnwrap(scenarios.first { $0.index == "2" }))
+        XCTAssertEqual(gm.game.elementBoard[earth].state, .inert)
+    }
 }
 
 /// A board scene whose move animations never finish.

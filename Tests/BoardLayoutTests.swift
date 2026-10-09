@@ -140,6 +140,13 @@ final class PartyScreenLayoutTests: XCTestCase {
 /// dialogs and the gold split were still in the old style).
 @MainActor
 final class BoardDialogStyleTests: XCTestCase {
+    /// A disabled board button is dimmed, not as bright as one ready to press.
+    func testADisabledBoardButtonIsDimmed() {
+        XCTAssertEqual(BoardButtonStyle.opacity(enabled: true, pressed: false), 1)
+        XCTAssertLessThan(BoardButtonStyle.opacity(enabled: false, pressed: false), 0.5)
+        XCTAssertLessThan(BoardButtonStyle.opacity(enabled: true, pressed: true), 1)
+    }
+
     func testTheRestAndRewardDialogsUseTheBoardsLook() throws {
         let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
         for file in ["GlavenGame/Board/RestSheets.swift", "GlavenGame/Board/RewardChoicesView.swift"] {

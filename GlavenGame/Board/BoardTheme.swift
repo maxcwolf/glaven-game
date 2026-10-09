@@ -60,7 +60,25 @@ struct BoardButtonStyle: ButtonStyle {
     var kind: Kind = .quiet
     var compact = false
 
+    /// How opaque the button is: dimmed while pressed, and more so while it can't be used (a
+    /// disabled brass button looked as ready as any other — the long rest's "Choose a Card").
+    static func opacity(enabled: Bool, pressed: Bool) -> Double {
+        guard enabled else { return 0.4 }
+        return pressed ? 0.75 : 1
+    }
+
     func makeBody(configuration: Configuration) -> some View {
+        BoardButtonBody(configuration: configuration, kind: kind, compact: compact)
+    }
+}
+
+private struct BoardButtonBody: View {
+    let configuration: ButtonStyleConfiguration
+    let kind: BoardButtonStyle.Kind
+    let compact: Bool
+    @Environment(\.isEnabled) private var isEnabled
+
+    var body: some View {
         configuration.label
             .lineLimit(1)
             .fixedSize()   // a button's words never wrap
@@ -70,7 +88,7 @@ struct BoardButtonStyle: ButtonStyle {
             .frame(minHeight: compact ? 36 : 44)
             .background(kind == .primary ? BoardTheme.brass : BoardTheme.raised, in: Capsule())
             .overlay(Capsule().stroke(kind == .primary ? .clear : BoardTheme.border.opacity(0.6), lineWidth: 1))
-            .opacity(configuration.isPressed ? 0.75 : 1)
+            .opacity(BoardButtonStyle.opacity(enabled: isEnabled, pressed: configuration.isPressed))
             .contentShape(Capsule())
     }
 }

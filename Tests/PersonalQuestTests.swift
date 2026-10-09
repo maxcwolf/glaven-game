@@ -27,6 +27,12 @@ final class PersonalQuestTests: XCTestCase {
         XCTAssertEqual(manager.personalQuest("513")?.reward, "Opens Envelope X")
         XCTAssertEqual(manager.personalQuest("526")?.reward, "Opens Envelope X")
         XCTAssertTrue(manager.personalQuest("523")?.reward?.hasPrefix("Unlocks the ") == true)
+        // No data shorthand reaches the player (iPad playthrough: "(scenario number > 51)").
+        for data in gm.editionStore.personalQuests(for: "gh") {
+            for requirement in try XCTUnwrap(manager.personalQuest(data.cardId)).requirements {
+                XCTAssertFalse(requirement.text.contains(">"), requirement.text)
+            }
+        }
     }
 
     /// Held in the quest picker, "Unlocks the …" explains the class, and "Opens Envelope X"

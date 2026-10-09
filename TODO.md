@@ -492,6 +492,10 @@ Performance & robustness
 - [x] Short/Long Rest and gold-sharing dialogs in the board's look
 - [x] Hold "Unlocks the …" (or "Opens Envelope X") in the quest picker to learn about it
 - [ ] Game option: go back to the start of the previous turn
+- [x] The last scenario's elements stayed lit when the next one began
+- [x] Disabled board buttons looked as ready as any other (now dimmed)
+- [x] A quest's requirement showed the data's shorthand "(scenario number > 51)"
+- [ ] **Next:** performance and memory-leak testing — after the app is open a while many buttons seem unresponsive (user report, 2026-10-09)
 
 ### Remaining gaps
 

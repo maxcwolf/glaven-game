@@ -357,14 +357,18 @@ struct LearningOverlay: View {
 /// Learning mode in town: a tip when something new can be done there (level up, a perk, a
 /// quest to choose or finish, gold to spend), and How to Play.
 struct TownLearning: ViewModifier {
-    /// Under the held chip, kept on screen.
-    static func cardOffset(below target: CGRect?, width: CGFloat, in size: CGSize) -> CGSize {
+    /// Under the held chip, or above it when there's no room below (a quest's reward line near
+    /// the bottom of the screen), kept on screen.
+    static func cardOffset(below target: CGRect?, width: CGFloat, height: CGFloat = 0, in size: CGSize) -> CGSize {
         guard let target else { return CGSize(width: (size.width - width) / 2, height: 80) }
         let x = min(max(16, target.midX - width / 2), size.width - width - 16)
-        return CGSize(width: x, height: target.maxY + 14)
+        let below = target.maxY + 14
+        if below + height + 16 <= size.height { return CGSize(width: x, height: below) }
+        return CGSize(width: x, height: max(16, target.minY - 14 - height))
     }
 
     @Environment(GameManager.self) private var gameManager
+    @State private var cardHeight: CGFloat = 0
     /// Changes whenever what the party can do in town changes.
     let key: String
 
@@ -406,7 +410,8 @@ struct TownLearning: ViewModifier {
                                     .allowsHitTesting(false)
                             }
                             ExplanationCard(explanation: explanation, coordinator: coordinator)
-                                .offset(Self.cardOffset(below: target, width: 420, in: geo.size))
+                                .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { cardHeight = $0 }
+                                .offset(Self.cardOffset(below: target, width: 420, height: cardHeight, in: geo.size))
                         }
                         .id(explanation.id)
                         .transition(.opacity)
