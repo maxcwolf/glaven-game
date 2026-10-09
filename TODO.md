@@ -418,10 +418,11 @@ Scenario rewards (2026-10-08)
 - [ ] Forced enemy attacks (Submissive Affliction: the data's Attack 2 / Range +0 is relative to the monster? open question 16) and Sinister Opportunity's forced move (inside the character's move) are still resolved by hand
 - [x] **Dirt Tornado** muddles every figure in its area, allies included (`testDirtTornadoMuddlesEveryoneInTheArea`)
 - [x] **Destroying an adjacent obstacle** (Rock Tunnel, Explosive Punch), the player picking which (`testRockTunnelDestroysAnAdjacentObstacle`)
+- [x] **Crackling Air**: +1, or +2 by consuming Air (`testCracklingAirAddsTwoByConsumingAir`)
 - [ ] **Other custom-text abilities** (e.g. Reviving Ether's "recover all lost cards", Flanking Strike's bonus) need manual resolution — on the board they have no effect
 - [x] **Persistent bonus charges**: the starting classes' charged cards (Warding Strength, Juggernaut, Opposing Strike, Backup Ammunition, Single Out, Smoke Bomb, Cull the Weak, Spring the Trap, Frost Armor, Crackling Air, Engulfed in Flames, Cold Front, Potent Potables) mark a charge per use, give their slot XP and leave the active area when used up (`ChargedBonusTests`)
 - [x] Locked classes' charged cards: Immortality, Purifying Aura, Angelic Ascension, Voice of the Night, Cauterize, Master Physician, Defiance of Death, Nightfall, Beacon of Light, Fortified Position (`ChargedBonusTests`)
-- [ ] **Charged cards needing a choice or not yet coded**: Lumbering Bash, Auto Turret, Gas Canister, Triage (actions with a target), Stone Pummel, Nature's Lift, Foul Wind, the air part of Crackling Air; Doomstalker dooms, Eclipse's extra actions, Vengeful Barrage, Unending Chant, Grim Bargain, Intervening Apparitions, Blood Hunger
+- [ ] **Charged cards needing a choice or not yet coded**: Lumbering Bash, Auto Turret, Gas Canister, Triage (actions with a target), Stone Pummel, Nature's Lift, Foul Wind; Doomstalker dooms, Eclipse's extra actions, Vengeful Barrage, Unending Chant, Grim Bargain, Intervening Apparitions, Blood Hunger
 - [x] **Items during board turns** (Phase VI: about 110 of 150 items play on the board)
 - [ ] **Icy terrain** — no forced-movement mechanic
 - [ ] **Plague / Enfeeble** (FH) — no mechanics

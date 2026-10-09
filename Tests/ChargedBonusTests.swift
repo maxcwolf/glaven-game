@@ -273,4 +273,22 @@ final class ChargedBonusTests: XCTestCase {
         XCTAssertEqual(tinkerer.health, tinkererHealth)
         XCTAssertEqual(brute.health, bruteHealth - 2, "the Brute takes it, though it's out of melee range")
     }
+
+    func testCracklingAirAddsTwoByConsumingAir() throws {
+        let spellweaver = add("spellweaver", at: HexCoord(3, 3))
+        spellweaver.activeCards = [69]
+        _ = try bandit(at: HexCoord(5, 3))
+        let deck = gm.editionStore.abilities(forDeck: "spellweaver", edition: "gh")
+        let orbs = try XCTUnwrap(deck.first { $0.name == "Impaling Eruption" }), other = try XCTUnwrap(deck.first { $0.name == "Frost Armor" })
+        spellweaver.handCards = [orbs.cardId!, other.cardId!]
+        gm.game.elementBoard[gm.game.elementBoard.firstIndex { $0.type == .air }!].state = .strong
+        let turn = PlayerTurnController(characterID: spellweaver.id, coordinator: coord, gameManager: gm)
+        coord.activePlayerTurn = turn
+        turn.selectCards(top: orbs, bottom: other)
+        let printed = orbs.actions?.first?.value?.intValue ?? 0
+        turn.executeCurrentAction()
+        XCTAssertEqual(turn.currentAttackValue(), printed + 2)
+        XCTAssertFalse(gm.game.isElementAvailable(.air))
+        XCTAssertEqual(spellweaver.bonusChargesUsed[69], 1)
+    }
 }

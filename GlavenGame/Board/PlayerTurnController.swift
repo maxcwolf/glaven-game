@@ -466,6 +466,15 @@ final class PlayerTurnController {
                 pendingConditions.append(contentsOf: conditions)
                 pendingAdvantage = pendingAdvantage || advantage
             }
+            if case .attackBonusOrElement(let bonus, let element, let upgraded)? = coordinator.useFirstCharge(of: pieceID, where: {
+                if case .attackBonusOrElement = $0 { return true }; return false }) {
+                if let game = gameManager?.game, game.consumeElements([element]) != nil {
+                    coordinator.log("\(who) consumes \(GameText.elementName(element))", category: .element)
+                    pendingAttackValue += upgraded
+                } else {
+                    pendingAttackValue += bonus
+                }
+            }
             if coordinator.isConditionActive(.invisible, on: pieceID),
                case .conditionWhileInvisible(let condition)? = coordinator.useFirstCharge(of: pieceID, where: {
                    if case .conditionWhileInvisible = $0 { return true }; return false }) {

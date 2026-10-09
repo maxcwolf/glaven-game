@@ -19,6 +19,8 @@ enum ChargedBonus: Equatable {
     case extraTargetOnRanged
     /// On each of the character's attack actions: +N, added conditions, advantage.
     case attackPackage(bonus: Int, conditions: [ConditionName], advantage: Bool)
+    /// +N on each attack action, or +M by consuming the element (Crackling Air: +1, Air: +2).
+    case attackBonusOrElement(Int, ElementType, Int)
     /// A condition added to each attack made while invisible.
     case conditionWhileInvisible(ConditionName)
     /// +N each time the character is healed.
@@ -75,7 +77,7 @@ enum ChargedBonus: Equatable {
         "gh-106": .bonusAgainstDisabled(2),                     // Cull the Weak
         "gh-111": .doubleAgainstFlanked,                        // Spring the Trap
         "gh-66": .negateDamage,                                 // Frost Armor
-        "gh-69": .attackPackage(bonus: 1, conditions: [], advantage: false), // Crackling Air
+        "gh-69": .attackBonusOrElement(1, .air, 2),            // Crackling Air
         "gh-79": .retaliateAgainstMelee(3),                     // Engulfed in Flames
         "gh-85": .negateAttackAndRetaliate(3, range: 3),        // Cold Front
         "gh-44": .healBonus(2),                                 // Potent Potables
