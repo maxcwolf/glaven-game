@@ -248,4 +248,19 @@ final class EventCardTests: XCTestCase {
                 .write(to: URL(fileURLWithPath: "\(out)/\(deck)-\(id).png"))
         }
     }
+
+    /// Regression: city event 11 showed "…a piece of parchment.<br><br>Something for sirs…":
+    /// the data's HTML line breaks are paragraph breaks, in narratives and outcomes alike.
+    func testEventTextHasNoMarkup() {
+        let all = gm.editionStore.events(for: "gh")
+        XCTAssertGreaterThan(all.count, 50)
+        for event in all {
+            let texts = [event.narrative] + (event.options ?? []).flatMap { [$0.narrative] + ($0.outcomes ?? []).map(\.narrative) }
+            for text in texts.compactMap({ $0 }) {
+                XCTAssertFalse(text.contains("<"), "\(event.id): \(text.prefix(80))")
+            }
+        }
+        let parchment = all.first { $0.type == "city" && $0.cardId == "11" }?.narrative ?? ""
+        XCTAssertTrue(parchment.contains("parchment.\n\n"), parchment)
+    }
 }

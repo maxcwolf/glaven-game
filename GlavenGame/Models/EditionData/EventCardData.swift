@@ -14,6 +14,49 @@ struct EventCardData: Codable, Hashable, Identifiable {
     }
 }
 
+/// Event text uses HTML line breaks ("…a piece of parchment.<br><br>Something for sirs…");
+/// they're read as paragraph breaks.
+func eventText(_ raw: String?) -> String? {
+    raw?.replacingOccurrences(of: "<br>", with: "\n")
+}
+
+extension EventCardData {
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        cardId = try c.decode(String.self, forKey: .cardId)
+        edition = try c.decode(String.self, forKey: .edition)
+        type = try c.decode(String.self, forKey: .type)
+        narrative = eventText(try c.decodeIfPresent(String.self, forKey: .narrative))
+        options = try c.decodeIfPresent([EventOption].self, forKey: .options)
+    }
+}
+
+extension EventOption {
+    enum CodingKeys: String, CodingKey { case label, narrative, returnToDeck, removeFromDeck, outcomes }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        label = try c.decodeIfPresent(String.self, forKey: .label)
+        narrative = eventText(try c.decodeIfPresent(String.self, forKey: .narrative))
+        returnToDeck = try c.decodeIfPresent(Bool.self, forKey: .returnToDeck)
+        removeFromDeck = try c.decodeIfPresent(Bool.self, forKey: .removeFromDeck)
+        outcomes = try c.decodeIfPresent([EventOutcome].self, forKey: .outcomes)
+    }
+}
+
+extension EventOutcome {
+    enum CodingKeys: String, CodingKey { case narrative, effects, condition, returnToDeck, removeFromDeck }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        narrative = eventText(try c.decodeIfPresent(String.self, forKey: .narrative))
+        effects = try c.decodeIfPresent([EventEffect].self, forKey: .effects)
+        condition = try c.decodeIfPresent(EventCondition.self, forKey: .condition)
+        returnToDeck = try c.decodeIfPresent(Bool.self, forKey: .returnToDeck)
+        removeFromDeck = try c.decodeIfPresent(Bool.self, forKey: .removeFromDeck)
+    }
+}
+
 struct EventOption: Codable, Hashable {
     var label: String?
     var narrative: String?
