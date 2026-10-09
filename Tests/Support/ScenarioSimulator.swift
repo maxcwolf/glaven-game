@@ -184,6 +184,14 @@ final class ScenarioSimulator {
             coord.resolveRecovery([])
             return
         }
+        if coord.pendingElementChoice != nil {
+            coord.resolveElementChoice([])
+            return
+        }
+        if coord.pendingConditionRemoval != nil {
+            coord.resolveConditionRemoval(nil)
+            return
+        }
         if coord.pendingItemUse != nil {
             // Policies don't spend items, so seeded games play the same with or without them.
             coord.resolvePendingItemUse(false)

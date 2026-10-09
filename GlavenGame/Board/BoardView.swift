@@ -110,6 +110,18 @@ struct BoardView: View {
                     .transition(.opacity)
             }
 
+            // Elements to infuse, a condition to remove (Mana Potions, Minor Cure Potion)
+            if let pending = coordinator.pendingElementChoice {
+                ElementChoicePrompt(pending: pending, coordinator: coordinator)
+                    .id(pending.id)
+                    .transition(.opacity)
+            }
+            if let pending = coordinator.pendingConditionRemoval {
+                ConditionRemovalPrompt(pending: pending, coordinator: coordinator)
+                    .id(pending.id)
+                    .transition(.opacity)
+            }
+
             // Long rest card choice prompt
             if let pending = coordinator.pendingLongRest,
                let character = gameManager.game.characters.first(where: { $0.id == pending.characterID }) {

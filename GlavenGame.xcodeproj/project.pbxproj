@@ -138,6 +138,7 @@
 		A9667995FD7E67375AA587E3 /* MonsterManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = F32D8ED53532637A9DB0B648 /* MonsterManager.swift */; };
 		A9717720E43E11FBB3CD0D59 /* SummonAI.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4476120A6229F3C2DAD4CF5C /* SummonAI.swift */; };
 		A9C41AC74B9185EF20659AE0 /* SettingsModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA8BD6F44CA703162D48586C /* SettingsModel.swift */; };
+		ABE672BB7787B4520C543562 /* ItemChoicePrompts.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000098AD3673FC4885285C46 /* ItemChoicePrompts.swift */; };
 		ABF77D86E73182CD257DCEC8 /* CharacterManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A945DF49A79FBC6C6FE4B3C /* CharacterManager.swift */; };
 		AD628E167EA038B4F5134691 /* PerkModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 58FD5F7A5D954BE508CF69F0 /* PerkModel.swift */; };
 		AE36609C9943107272FEE51A /* ActionsManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A30E472AAD62BB67AE83169C /* ActionsManager.swift */; };
@@ -211,6 +212,7 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		000098AD3673FC4885285C46 /* ItemChoicePrompts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ItemChoicePrompts.swift; sourceTree = "<group>"; };
 		00BBEBDEA7AD7385CDCFDF66 /* PersonalQuests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PersonalQuests.swift; sourceTree = "<group>"; };
 		0124B0388BD2AA1770320E6B /* BattleGoals.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BattleGoals.swift; sourceTree = "<group>"; };
 		015914F204A6A1A5CD04676F /* ItemManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ItemManager.swift; sourceTree = "<group>"; };
@@ -767,6 +769,7 @@
 				EA732C1B11B1FD79F496753D /* DamageChoiceSheet.swift */,
 				BA5C6A163BDEB897E9993360 /* EscortTurnController.swift */,
 				85444C8330CF135ED8080DFA /* HighlightStyle.swift */,
+				000098AD3673FC4885285C46 /* ItemChoicePrompts.swift */,
 				2808BBF85E5363980E325C52 /* ItemUsePrompt.swift */,
 				1B976E74EDC74601B6166FB8 /* MapTiles.swift */,
 				18D02F667561B11569B262B7 /* ModifierTrayView.swift */,
@@ -1038,6 +1041,7 @@
 				344011EC30AA402F4F4FE2DD /* HighlightStyle.swift in Sources */,
 				CEB52ADC67373B8B77A407CD /* ImageLoader.swift in Sources */,
 				2A06E26B553A030414E30208 /* IntOrString.swift in Sources */,
+				ABE672BB7787B4520C543562 /* ItemChoicePrompts.swift in Sources */,
 				BA1FC5F02BBBDDBA6ECDE2B3 /* ItemData.swift in Sources */,
 				B189530ED1928A8B077B6949 /* ItemDetailSheet.swift in Sources */,
 				C3E777BF9C09D52587AB7B2A /* ItemManager.swift in Sources */,

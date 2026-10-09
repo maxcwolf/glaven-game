@@ -32,6 +32,10 @@ struct BoardItemEffect: Equatable {
         case extraRange(Int)
         case sufferDamage(Int)
         case loot(Int)
+        /// Infuse this many elements of the player's choosing.
+        case infuseAny(Int)
+        /// Remove one negative condition of the player's choosing.
+        case removeOneNegativeCondition
     }
 
     let moment: Moment
@@ -107,6 +111,11 @@ struct BoardItemEffect: Equatable {
         "gh-102": .init(.rangedAttack, .sufferDamage(3), .attackBonus(1)),    // Sacrificial Robes
         "gh-117": .init(.meleeAttack, .sufferDamage(2), .attackBonus(1)),     // Bloody Axe
         "gh-127": .init(.turn, .loot(1)),                                     // Giant Remote Spider
+        "gh-20": .init(.turn, .infuseAny(1)),                                 // Minor Mana Potion
+        "gh-48": .init(.turn, .infuseAny(2)),                                 // Major Mana Potion
+        "gh-118": .init(.turn, .infuseAny(1)),                                // Staff of Elements
+        "gh-75": .init(.turn, consuming: [.wild], .infuseAny(1)),             // Circlet of Elements
+        "gh-89": .init(.turn, .removeOneNegativeCondition),                   // Minor Cure Potion
     ]
 }
 
@@ -268,7 +277,62 @@ extension BoardCoordinator {
             sufferDamage(amount, to: me)
         case .loot(let range):
             collectLootInRange(pieceID: me, range: range)
+        case .infuseAny(let count):
+            pendingElementChoice = PendingElementChoice(characterID: character.id, count: count, itemName: item.name)
+        case .removeOneNegativeCondition:
+            let negatives = character.entityConditions.filter { $0.name.isNegative && !$0.permanent }.map(\.name)
+            if negatives.count == 1 {
+                removeCondition(negatives[0], from: character)
+            } else if negatives.count > 1 {
+                pendingConditionRemoval = PendingConditionRemoval(characterID: character.id, options: negatives,
+                                                                  itemName: item.name)
+            }
         }
+    }
+
+    /// Infusing elements of the player's choosing (Mana Potions, Staff of Elements).
+    struct PendingElementChoice: Identifiable, Equatable {
+        let id = UUID()
+        let characterID: String
+        let count: Int
+        let itemName: String
+    }
+
+    /// Called from the picker: infuse the chosen elements (at most the pending count, each once).
+    func resolveElementChoice(_ elements: [ElementType]) {
+        guard let pending = pendingElementChoice, let game = gameManager?.game else { return }
+        pendingElementChoice = nil
+        var chosen: [ElementType] = []
+        for element in elements where element != .wild && !chosen.contains(element) && chosen.count < pending.count {
+            chosen.append(element)
+        }
+        for element in chosen { game.infuseElement(element) }
+        if !chosen.isEmpty {
+            log("\(name(.character(pending.characterID))) infuses \(GameText.list(chosen.map(GameText.elementName)))",
+                category: .element)
+        }
+    }
+
+    /// Removing one negative condition of the player's choosing (Minor Cure Potion).
+    struct PendingConditionRemoval: Identifiable, Equatable {
+        let id = UUID()
+        let characterID: String
+        let options: [ConditionName]
+        let itemName: String
+    }
+
+    func resolveConditionRemoval(_ condition: ConditionName?) {
+        guard let pending = pendingConditionRemoval else { return }
+        pendingConditionRemoval = nil
+        guard let condition, pending.options.contains(condition),
+              let character = gameManager?.game.characters.first(where: { $0.id == pending.characterID }) else { return }
+        removeCondition(condition, from: character)
+    }
+
+    private func removeCondition(_ condition: ConditionName, from character: GameCharacter) {
+        character.entityConditions.removeAll { $0.name == condition && !$0.permanent }
+        boardScene?.refreshStatus(of: .character(character.id))
+        log("\(name(.character(character.id))) is no longer \(GameText.conditionName(condition).lowercased())", category: .condition)
     }
 
     /// Recovering discarded cards: which ones (up to `count`) go back to the hand.

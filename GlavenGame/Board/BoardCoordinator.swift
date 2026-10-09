@@ -380,6 +380,12 @@ final class BoardCoordinator {
     /// Non-nil while a character picks discarded cards to recover (Minor Stamina Potion).
     var pendingRecovery: PendingRecovery?
 
+    /// Non-nil while a character picks elements to infuse (Mana Potions).
+    var pendingElementChoice: PendingElementChoice?
+
+    /// Non-nil while a character picks a negative condition to remove (Minor Cure Potion).
+    var pendingConditionRemoval: PendingConditionRemoval?
+
     /// Called from the UI when the player makes a damage mitigation choice.
     func resolvePendingDamage(choice: DamageMitigationChoice) {
         guard let pending = pendingDamage else { return }

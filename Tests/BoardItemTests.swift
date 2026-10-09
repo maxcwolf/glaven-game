@@ -1,4 +1,5 @@
 import XCTest
+import SwiftUI
 import SwiftData
 @testable import GlavenGameLib
 
@@ -383,5 +384,45 @@ final class BoardItemTests: XCTestCase {
         XCTAssertTrue(coord.useItem(try XCTUnwrap(coord.usableItems().first)))
         XCTAssertNil(coord.pendingRecovery)
         XCTAssertTrue(brute.discardedCards.isEmpty)
+    }
+
+    // MARK: - Items with a choice
+
+    func testAManaPotionInfusesTheChosenElements() throws {
+        brute.items = ["gh-48"]   // Major Mana Potion: two
+        _ = try startTurn()
+        try use("gh-48")
+        XCTAssertEqual(coord.pendingElementChoice?.count, 2)
+        coord.resolveElementChoice([.fire, .fire, .ice, .dark])
+        let infused = gm.game.elementBoard.filter { $0.state == .new }.map(\.type)
+        XCTAssertEqual(Set(infused), [.fire, .ice], "two different elements, no more")
+        XCTAssertNil(coord.pendingElementChoice)
+    }
+
+    func testAMinorCurePotionRemovesTheChosenCondition() throws {
+        brute.items = ["gh-89"]
+        _ = try startTurn()
+        coord.applyCondition(.poison, to: .character(brute.id))
+        coord.applyCondition(.wound, to: .character(brute.id))
+        try use("gh-89")
+        XCTAssertEqual(coord.pendingConditionRemoval?.options.sorted { $0.rawValue < $1.rawValue }, [.poison, .wound])
+        coord.resolveConditionRemoval(.wound)
+        XCTAssertEqual(brute.entityConditions.map(\.name), [.poison])
+    }
+
+    /// `ITEM_RENDER_OUT=/tmp/i.png swift test --filter testRenderElementChoice` renders the picker.
+    func testRenderElementChoice() throws {
+        guard let out = ProcessInfo.processInfo.environment["ITEM_RENDER_OUT"] else {
+            throw XCTSkip("set ITEM_RENDER_OUT to render the element picker")
+        }
+        GlavenFont.registerFonts()
+        let pending = BoardCoordinator.PendingElementChoice(characterID: brute.id, count: 2, itemName: "Major Mana Potion")
+        let view = ElementChoicePrompt(pending: pending, coordinator: coord)
+            .frame(width: 700, height: 300).background(Color.black)
+        let renderer = ImageRenderer(content: view)
+        renderer.scale = 1
+        let image = try XCTUnwrap(renderer.cgImage)
+        try XCTUnwrap(NSBitmapImageRep(cgImage: image).representation(using: .png, properties: [:]))
+            .write(to: URL(fileURLWithPath: out))
     }
 }
