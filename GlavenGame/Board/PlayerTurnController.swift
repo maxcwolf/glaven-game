@@ -589,7 +589,7 @@ final class PlayerTurnController {
             }
 
         case .custom:
-            performPrintedText(action, coordinator: coordinator)
+            return performPrintedText(action, coordinator: coordinator)
 
         case .experience:
             grantExperience(action.value?.intValue ?? 1)
@@ -739,13 +739,29 @@ final class PlayerTurnController {
     // MARK: - Printed text
 
     /// A step that is only text: what the board can do from it (Reviving Ether, Thief's Knack,
-    /// Crater's damage around the character). Unknown text is left to the players.
-    private func performPrintedText(_ action: ActionModel, coordinator: BoardCoordinator) {
-        guard let character else { return }
+    /// Crater's damage around the character, Proximity Mine's trap). Unknown text is left to the
+    /// players. Returns true when it waits for the player (placing a trap).
+    private func performPrintedText(_ action: ActionModel, coordinator: BoardCoordinator) -> Bool {
+        guard let character else { return false }
         let me = PieceID.character(characterID)
         let own = action.value.flatMap { gameManager?.editionStore.resolveCustomText($0.stringValue, edition: character.edition) } ?? ""
         let text = (own + " " + customText(of: action)).lowercased()
-        if text.contains("all of your lost cards") && text.contains("recover") {
+        if text.contains("trap in an adjacent empty hex"), text.hasPrefix("create") || text.contains(" create") {
+            // Proximity Mine: "Create one 6 damage trap…", "Gain XP +2 when the trap is sprung by
+            // an enemy" (the next line of the half); Volatile Concoction: "2 damage Poison trap".
+            let half = phase == .executeBottomAction ? bottomActions : topActions
+            let following = half.dropFirst(currentActionIndex + 1).first.map(customText(of:)) ?? ""
+            let nextLine = half.dropFirst(currentActionIndex + 1).first.flatMap { $0.value }
+                .flatMap { gameManager?.editionStore.resolveCustomText($0.stringValue, edition: character.edition) }?.lowercased() ?? following
+            let xp = nextLine.contains("trap is sprung") ? (nextLine.firstMatch(of: #/xp \+(\d+)/#).flatMap { Int($0.1) } ?? 0) : 0
+            let trap = PlacedToken.trap(damage: Self.damageAmount(in: text), subType: text.contains("poison") ? "poison" : nil,
+                                        experience: xp)
+            return coordinator.beginPlacingTokens(trap, count: 1, by: me)
+        } else if text.contains("obstacle") && text.contains("create") {
+            // Avalanche: "Create two single-hex obstacles in empty hexes adjacent to you."
+            let count = text.contains("two") ? 2 : 1
+            return coordinator.beginPlacingTokens(.obstacle, count: count, by: me)
+        } else if text.contains("all of your lost cards") && text.contains("recover") {
             let lost = character.lostCards
             character.handCards.append(contentsOf: lost)
             character.lostCards.removeAll()
@@ -765,6 +781,7 @@ final class PlayerTurnController {
             }
             coordinator.printedDamage(text, amount: amount, by: me, around: coordinator.boardState.piecePositions[me])
         }
+        return false
     }
 
     static func damageAmount(in text: String) -> Int {

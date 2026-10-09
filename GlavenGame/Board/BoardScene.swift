@@ -400,6 +400,13 @@ class BoardScene: SKScene {
         return placed
     }
 
+    /// Draw a single-hex overlay placed during play (a trap or obstacle from a card).
+    func addOverlaySprite(imageName: String, at coord: HexCoord, offsetCol: Int, offsetRow: Int) {
+        placeOverlaySprite(overlay: PositionedOverlay(imageName: imageName, col: coord.col, row: coord.row,
+                                                      direction: "", cells: [(coord.col, coord.row)]),
+                           offsetCol: offsetCol, offsetRow: offsetRow)
+    }
+
     /// The image for one hex of a multi-hex overlay: the base image for the first hex, then the
     /// `-2`, `-3` pieces when the art has them.
     static func overlayPieceName(_ base: String, index: Int) -> String {

@@ -101,6 +101,10 @@ extension BoardCoordinator {
             return Instruction(title: title,
                                detail: "Tap up to \(count) enemies, then Confirm (\(selected.count) of \(count) chosen)",
                                canSkip: ownTurn)
+        case .placingToken(_, let token, let remaining, _):
+            return Instruction(title: "Place \(token.name)",
+                               detail: remaining > 1 ? "Tap an empty hex next to you (\(remaining) to place)"
+                                                     : "Tap an empty hex next to you", canSkip: false)
         case .placingSummon(let summonID, _, _):
             return Instruction(title: "Place \(name(.summon(id: summonID)))",
                                detail: "Tap a highlighted hex next to your character", canSkip: false)

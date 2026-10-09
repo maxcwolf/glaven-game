@@ -22,6 +22,9 @@ enum InteractionMode {
     /// Multi-target attack selection (targetCount > 1). Player picks targets one by one.
     case selectingMultiAttackTargets(pieceID: PieceID, range: Int, validTargets: Set<PieceID>, targetCount: Int, selected: [PieceID])
     case placingSummon(summonID: String, characterID: String, validHexes: Set<HexCoord>)
+    /// The character places a trap or obstacle from a card in an empty adjacent hex
+    /// (Proximity Mine, Avalanche); `remaining` counts this one.
+    case placingToken(pieceID: PieceID, token: PlacedToken, remaining: Int, validHexes: Set<HexCoord>)
     case selectingPushPullHex(target: PieceID, attackerPos: HexCoord, validHexes: Set<HexCoord>, remainingSteps: Int, isPush: Bool)
     /// Player selects a single enemy to apply a condition to.
     case selectingConditionTarget(pieceID: PieceID, condition: ConditionName, validTargets: Set<PieceID>)
@@ -386,6 +389,9 @@ final class BoardCoordinator {
 
     /// Non-nil while a character picks elements to infuse (Mana Potions).
     var pendingElementChoice: PendingElementChoice?
+
+    /// Traps placed by characters that give experience when an enemy springs them (Proximity Mine).
+    var characterTraps: [HexCoord: (characterID: String, experience: Int)] = [:]
 
     /// Non-nil while a character picks items to refresh (Empowering Talisman, Utility Belt).
     var pendingItemRefresh: PendingItemRefresh?
@@ -2085,6 +2091,11 @@ final class BoardCoordinator {
         case .placingSummon(let summonID, let characterID, let validHexes):
             if validHexes.contains(coord) {
                 placeSummon(summonID: summonID, characterID: characterID, at: coord)
+            }
+
+        case .placingToken(let pieceID, let token, let remaining, let validHexes):
+            if validHexes.contains(coord) {
+                placeToken(token, at: coord, by: pieceID, remaining: remaining)
             }
 
         case .selectingPushPullHex(let target, let attackerPos, let validHexes, let remaining, let isPush):

@@ -1,5 +1,28 @@
 import Foundation
 
+/// A trap or obstacle a card places (Proximity Mine, Volatile Concoction, Avalanche).
+enum PlacedToken: Equatable {
+    /// Damage, the trap's sub-type (its added condition), and the experience its owner gains
+    /// when an enemy springs it.
+    case trap(damage: Int, subType: String?, experience: Int)
+    case obstacle
+
+    var name: String {
+        switch self {
+        case .trap(let damage, let subType, _):
+            return subType == "poison" ? "a \(damage) damage poison trap" : "a \(damage) damage trap"
+        case .obstacle: return "an obstacle"
+        }
+    }
+
+    var imageName: String {
+        switch self {
+        case .trap(_, let subType, _): return subType == "poison" ? "trap-poison" : "trap-spike"
+        case .obstacle: return "obstacle-boulder-1"
+        }
+    }
+}
+
 /// How a figure travels along a path, which decides which hexes' terrain affects it.
 enum MovementStyle {
     /// Normal movement: every hex entered triggers traps and hazardous terrain.
@@ -122,6 +145,38 @@ extension BoardCoordinator {
         return true
     }
 
+    // MARK: - Traps and obstacles from cards
+
+    /// Ask the player to place `count` tokens in empty hexes next to the character; false when
+    /// there's no room (the rest of the action is lost).
+    func beginPlacingTokens(_ token: PlacedToken, count: Int, by pieceID: PieceID) -> Bool {
+        guard count > 0, let position = boardState.piecePositions[pieceID] else { return false }
+        let hexes = Set(position.neighbors.filter(isEmptyHex))
+        guard !hexes.isEmpty else {
+            log("\(name(pieceID)) has no empty hex beside them for \(token.name)", category: .info)
+            return false
+        }
+        interactionMode = .placingToken(pieceID: pieceID, token: token, remaining: count, validHexes: hexes)
+        boardScene?.highlightHexes(hexes, style: .summon, offsetCol: offsetCol, offsetRow: offsetRow)
+        return true
+    }
+
+    func placeToken(_ token: PlacedToken, at hex: HexCoord, by pieceID: PieceID, remaining: Int) {
+        switch token {
+        case .trap(let damage, let subType, let experience):
+            boardState.placeTrap(at: hex, damage: damage, subType: subType)
+            if experience > 0, case .character(let id) = pieceID { characterTraps[hex] = (id, experience) }
+        case .obstacle:
+            boardState.placeObstacle(at: hex)
+        }
+        boardScene?.addOverlaySprite(imageName: token.imageName, at: hex, offsetCol: offsetCol, offsetRow: offsetRow)
+        boardScene?.clearHighlights()
+        log("\(name(pieceID)) places \(token.name)", category: .info, trace: "at \(hex)")
+        interactionMode = .idle
+        if remaining > 1, beginPlacingTokens(token, count: remaining - 1, by: pieceID) { return }
+        activePlayerTurn?.advanceAfterAsyncAction()
+    }
+
     /// Thief's Knack: disarm one trap next to the figure.
     func disarmTrap(besides pieceID: PieceID) {
         guard let position = boardState.piecePositions[pieceID],
@@ -174,6 +229,12 @@ extension BoardCoordinator {
         boardScene?.removeOverlaySprite(at: hex, offsetCol: offsetCol, offsetRow: offsetRow)
         boardScene?.play(.trap)
         log("\(name(pieceID)) springs a trap and suffers \(damage) damage", category: .damage, trace: subType)
+        // Proximity Mine: experience for its owner when an enemy springs it.
+        if let (owner, experience) = characterTraps.removeValue(forKey: hex), areEnemies(.character(owner), pieceID),
+           let character = gameManager.game.characters.first(where: { $0.id == owner }) {
+            character.experience += experience
+            log("\(name(.character(owner))) gains \(experience) XP", category: .info)
+        }
 
         if await sufferDamageWithMitigation(damage, to: pieceID, source: "a trap") {
             return false

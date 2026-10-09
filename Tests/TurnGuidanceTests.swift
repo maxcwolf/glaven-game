@@ -27,6 +27,9 @@ final class TurnGuidanceTests: XCTestCase {
             .selectingAttackTarget(pieceID: brute, range: 1, validTargets: [guardPiece]),
             .selectingMultiAttackTargets(pieceID: brute, range: 2, validTargets: [guardPiece], targetCount: 2, selected: []),
             .placingSummon(summonID: "x", characterID: gm.game.characters[0].id, validHexes: hexes),
+            .placingToken(pieceID: .character(gm.game.characters[0].id), token: .trap(damage: 6, subType: nil, experience: 2),
+                          remaining: 1, validHexes: hexes),
+            .placingToken(pieceID: .character(gm.game.characters[0].id), token: .obstacle, remaining: 2, validHexes: hexes),
             .selectingPushPullHex(target: guardPiece, attackerPos: HexCoord(4, 5), validHexes: hexes,
                                   remainingSteps: 2, isPush: true),
             .selectingConditionTarget(pieceID: brute, condition: .poison, validTargets: [guardPiece]),
@@ -42,7 +45,8 @@ final class TurnGuidanceTests: XCTestCase {
             XCTAssertFalse(instruction.title.isEmpty)
         }
         XCTAssertEqual(coord.instruction(for: modes[2])?.title, "Jump 3")
-        XCTAssertEqual(coord.instruction(for: modes[7])?.title, "Push Bandit Guard 1")
+        XCTAssertEqual(coord.instruction(for: modes[9])?.title, "Push Bandit Guard 1")
+        XCTAssertEqual(coord.instruction(for: modes[7])?.title, "Place a 6 damage trap")
         XCTAssertEqual(coord.instruction(for: .watchingMonsterTurn)?.canSkip, false)
     }
 

@@ -617,6 +617,45 @@ final class BoardRulesRegressionTests: XCTestCase {
         XCTAssertEqual(beside.health, health - 1)
     }
 
+    /// Proximity Mine: the Tinkerer places a 6 damage trap beside them; an enemy springing it
+    /// gives the Tinkerer 2 experience.
+    func testProximityMinePlacesATrapThatPaysExperience() async throws {
+        let tinkerer = addCharacter("tinkerer", at: HexCoord(3, 3))
+        let turn = turn(for: tinkerer, top: try card("Proximity Mine", of: "tinkerer"), bottom: try card("Hook Gun", of: "tinkerer"))
+        turn.executeCurrentAction()
+        guard case .placingToken(_, let token, _, let hexes) = coord.interactionMode else { return XCTFail("a hex to choose") }
+        XCTAssertEqual(token, .trap(damage: 6, subType: nil, experience: 2))
+        XCTAssertTrue(hexes.contains(HexCoord(4, 3)))
+        coord.handleHexTap(HexCoord(4, 3))
+        XCTAssertEqual(coord.boardState.cells[HexCoord(4, 3)]?.isTrap, true)
+        XCTAssertEqual(coord.boardState.cells[HexCoord(4, 3)]?.trapDamage, 6)
+        XCTAssertEqual(turn.currentActionIndex, 1)
+
+        let bandit = addMonster("bandit-guard", at: HexCoord(5, 3))
+        bandit.health = 50
+        bandit.maxHealth = 50
+        let xp = tinkerer.experience
+        guard let piece = coord.boardState.piecePositions.first(where: { $0.value == HexCoord(5, 3) })?.key else { return XCTFail() }
+        await coord.moveAlong(piece, path: [HexCoord(5, 3), HexCoord(4, 3)], style: .normal)
+        XCTAssertEqual(bandit.health, 44)
+        XCTAssertEqual(tinkerer.experience, xp + 2)
+    }
+
+    /// Avalanche: two obstacles, one hex at a time.
+    func testAvalanchePlacesTwoObstacles() throws {
+        let cragheart = addCharacter("cragheart", at: HexCoord(3, 3))
+        let turn = turn(for: cragheart, top: try card("Crater", of: "cragheart"), bottom: try card("Avalanche", of: "cragheart"),
+                        bottomFirst: true)
+        turn.executeCurrentAction()
+        coord.handleHexTap(HexCoord(4, 3))
+        guard case .placingToken(_, .obstacle, 1, let hexes) = coord.interactionMode else { return XCTFail("a second obstacle") }
+        XCTAssertFalse(hexes.contains(HexCoord(4, 3)))
+        coord.handleHexTap(HexCoord(2, 3))
+        XCTAssertEqual(coord.boardState.cells[HexCoord(4, 3)]?.passable, false)
+        XCTAssertEqual(coord.boardState.cells[HexCoord(2, 3)]?.passable, false)
+        XCTAssertEqual(turn.currentActionIndex, 1)
+    }
+
     // MARK: - Mindthief augments
 
     /// Play `augment`'s top (the augment, then its own Attack) against an adjacent Bandit Guard.
