@@ -234,4 +234,27 @@ final class TurnFlowTests: XCTestCase {
         XCTAssertEqual(targets.count, 1)
         XCTAssertEqual(gm.game.elementBoard.first { $0.type == .earth }?.state, .new, "the attack's infusion")
     }
+
+    // MARK: - Setting up
+
+    /// Until the scenario begins, a placed character can be moved to another starting hex.
+    func testAPlacedCharacterCanMoveBeforeTheScenarioBegins() throws {
+        gm.characterManager.addCharacter(name: "brute", edition: "gh")
+        let brute = gm.game.characters[0]
+        let scenario = try XCTUnwrap(gm.editionStore.scenarios(for: "gh").first { $0.index == "1" && $0.solo == nil })
+        gm.startScenarioOnBoard(scenario)
+        let starts = coord.boardState.startingLocations.filter { !coord.boardState.isOccupied($0) }
+        XCTAssertGreaterThan(starts.count, 1)
+        coord.placeCharacter(characterID: brute.id, at: starts[0])
+        XCTAssertEqual(coord.boardState.piecePositions[.character(brute.id)], starts[0])
+
+        coord.beginPlaceCharacter(characterID: brute.id)
+        coord.handleHexTap(starts[1])
+        XCTAssertEqual(coord.boardState.piecePositions[.character(brute.id)], starts[1])
+        XCTAssertFalse(coord.boardState.isOccupied(starts[0]))
+
+        coord.finishSetup()
+        coord.placeCharacter(characterID: brute.id, at: starts[0])
+        XCTAssertEqual(coord.boardState.piecePositions[.character(brute.id)], starts[1], "not once play has begun")
+    }
 }

@@ -915,6 +915,18 @@ final class BoardCoordinator {
               !boardState.isOccupied(coord) else { return }
 
         let pieceID = PieceID.character(characterID)
+        // A character already placed may move to another starting hex until the scenario begins.
+        if let from = boardState.piecePositions[pieceID] {
+            guard boardPhase == .setup else { return }
+            boardState.movePiece(pieceID, to: coord)
+            boardScene?.movePiece(id: pieceID, along: [from, coord], animation: .teleport,
+                                  offsetCol: offsetCol, offsetRow: offsetRow) {}
+            boardScene?.clearHighlights()
+            interactionMode = .idle
+            log("\(characterName(characterID)) takes another starting hex", category: .setup, trace: "at \(coord)")
+            beginNextPlacement()
+            return
+        }
         boardState.placePiece(pieceID, at: coord)
 
         // Ensure character appearance data is stored before placing
@@ -930,7 +942,6 @@ final class BoardCoordinator {
         beginNextPlacement()
     }
 
-    /// Place a summon on a chosen hex during interactive summon placement.
     /// Drop what rode on a target choice that was skipped (Pendant of the Plague's Curse, a
     /// heal's conditions), so it doesn't land on a later target instead.
     func dropChoiceExtras() {
@@ -949,6 +960,7 @@ final class BoardCoordinator {
         }
     }
 
+    /// Place a summon on a chosen hex during interactive summon placement.
     func placeSummon(summonID: String, characterID: String, at coord: HexCoord) {
         let summonPieceID = PieceID.summon(id: summonID)
         boardState.placePiece(summonPieceID, at: coord)

@@ -388,6 +388,10 @@ struct BoardView: View {
                 Label("Tap a lit starting hex to place the chosen character, or pick another first", systemImage: "hand.tap.fill")
                     .font(.caption)
                     .foregroundStyle(.white.opacity(0.7))
+            } else if case .placingCharacter = coordinator.interactionMode {
+                Label("Tap a lit starting hex to move there", systemImage: "hand.tap.fill")
+                    .font(.caption)
+                    .foregroundStyle(.white.opacity(0.7))
             }
 
             HStack(spacing: 12) {
@@ -431,7 +435,7 @@ struct BoardView: View {
                         )
                     }
                     .buttonStyle(.plain)
-                    .disabled(placed)
+                    .accessibilityHint(placed ? "Move to another starting hex" : "Choose a starting hex")
                 }
 
                 Spacer()
