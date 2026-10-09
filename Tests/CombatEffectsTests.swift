@@ -146,4 +146,26 @@ final class CombatEffectsTests: XCTestCase {
         XCTAssertEqual(brute.health, health)
         XCTAssertEqual(brute.lostCards, [1])
     }
+
+    // MARK: - Round bonuses
+
+    /// A Shield and Retaliate a monster gained this round (a consumed element) last the round:
+    /// another of its type entering play doesn't wipe them, and the newcomer gets its card's.
+    func testAMonsterKeepsItsRoundBonusesWhenAnotherOfItsTypeArrives() throws {
+        let first = addMonster("bandit-guard", at: HexCoord(5, 5))
+        let monster = try XCTUnwrap(gm.game.monsters.first { $0.name == "bandit-guard" })
+        let deck = gm.monsterManager.abilities(for: monster)
+        monster.abilities = [try XCTUnwrap(deck.firstIndex { $0.cardId == 524 })]   // Shield 1, Retaliate 2
+        monster.ability = 0
+        monster.abilityDrawn = true
+        gm.monsterManager.applyStatEffects(for: monster)
+        first.retaliate.append(ActionModel(type: .retaliate, value: .int(3)))
+        first.shield = ActionModel(type: .shield, value: .int((first.shield?.value?.intValue ?? 0) + 2))
+        let (retaliates, shield) = (first.retaliate.count, first.shield?.value?.intValue)
+
+        let second = addMonster("bandit-guard", at: HexCoord(8, 8))
+        XCTAssertEqual(first.retaliate.count, retaliates, "the round's Retaliate stays")
+        XCTAssertEqual(first.shield?.value?.intValue, shield, "the round's Shield stays")
+        XCTAssertEqual(second.shield?.value?.intValue, 1, "the newcomer has its card's Shield 1")
+    }
 }

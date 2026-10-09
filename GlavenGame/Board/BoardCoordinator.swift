@@ -2107,7 +2107,8 @@ final class BoardCoordinator {
             if isMidRound, !monster.abilityDrawn {
                 gameManager.monsterManager.drawAbility(for: monster)
             }
-            gameManager.monsterManager.applyStatEffects(for: monster)
+            gameManager.monsterManager.applyStatEffects(
+                for: monster, only: Set(placed.filter { $0.name == monster.name }.map(\.standee)))
         }
         if isMidRound {
             for piece in placed { pendingRevealedStandees[piece.name, default: []].insert(piece.standee) }
@@ -2151,7 +2152,8 @@ final class BoardCoordinator {
                     if isMidRound, !monster.abilityDrawn {
                         gameManager.monsterManager.drawAbility(for: monster)
                     }
-                    gameManager.monsterManager.applyStatEffects(for: monster)
+                    gameManager.monsterManager.applyStatEffects(
+                        for: monster, only: Set(placed.filter { $0.name == monster.name }.map(\.standee)))
                 }
                 if isMidRound {
                     for piece in placed { pendingRevealedStandees[piece.name, default: []].insert(piece.standee) }

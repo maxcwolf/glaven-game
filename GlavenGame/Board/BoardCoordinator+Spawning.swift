@@ -73,7 +73,7 @@ extension BoardCoordinator {
         if midRound && origin != .summoned {
             pendingRevealedStandees[monster.name, default: []].insert(number)
         }
-        gameManager.monsterManager.applyStatEffects(for: monster)
+        gameManager.monsterManager.applyStatEffects(for: monster, only: [number])
         return pieceID
     }
 
