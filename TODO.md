@@ -192,6 +192,7 @@ Most of the items above belong to the companion-app views, which the game itself
 reaches; `ContentView` only shows the main menu, the party screen and the board.
 
 ### Look & feel audit 2026-10-08 (`docs/audits/2026-10-08-ux-audit.pdf`)
+- [x] Board layout from the mockup (`docs/mockups/`): one top bar (menu, round and phase, goal, a turn rail that shows who is ready or choosing during card selection and "2 of 3 acting" in play, small elements lit by state); party and monster panels sized to their contents with portraits; the log as recent notes with the whole log a tap away; card selection as the real card scans with Lead/Second badges, the board fitting above it (`testTheTopBarDuringCardSelection`, `testTheTopBarDuringPlay`)
 
 Phase I — safety & words (done)
 - [x] Autosave at the start of every round, at scenario end and on Save & Quit; Continue resumes the board at the saved round (`SaveAndContinueTests`)

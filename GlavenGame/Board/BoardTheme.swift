@@ -46,4 +46,10 @@ extension View {
             .overlay(RoundedRectangle(cornerRadius: radius).stroke(BoardTheme.border, lineWidth: 1))
             .shadow(color: .black.opacity(0.45), radius: 14, y: 6)
     }
+
+    /// A side-column card (party, monsters, log): the panel surface with a faint brass edge.
+    func sidePanelStyle() -> some View {
+        background(BoardTheme.panel, in: RoundedRectangle(cornerRadius: BoardTheme.Radius.medium))
+            .overlay(RoundedRectangle(cornerRadius: BoardTheme.Radius.medium).stroke(BoardTheme.border.opacity(0.35), lineWidth: 1))
+    }
 }

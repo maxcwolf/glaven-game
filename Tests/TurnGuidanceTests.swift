@@ -73,6 +73,75 @@ final class TurnGuidanceTests: XCTestCase {
         XCTAssertGreaterThan(checked, 0)
     }
 
+    // MARK: - Top bar
+
+    /// The top bar says the round and what's happening; while cards are chosen its rail says
+    /// who is ready, who is choosing, and that the monsters draw when the cards are revealed.
+    func testTheTopBarDuringCardSelection() async throws {
+        let sim = try ScenarioSimulator(scenario: "1", options: .init(seed: 2))
+        await sim.play(rounds: 1)
+        XCTAssertEqual(sim.coord.boardPhase, .cardSelection)
+        XCTAssertEqual(sim.coord.hudHeading.title, "Round 2")
+        XCTAssertEqual(sim.coord.hudHeading.subtitle, "Choose cards")
+
+        let party = sim.gm.game.activeCharacters.filter { !$0.exhausted }
+        let rail = sim.coord.selectionRail
+        XCTAssertEqual(rail.prefix(party.count).map(\.state), [.current] + Array(repeating: .upcoming, count: party.count - 1))
+        XCTAssertEqual(rail.first?.detail, "Choosing\u{2026}")
+        XCTAssertTrue(rail.allSatisfy { !$0.showsInitiative })
+        XCTAssertEqual(rail.last?.name, "Bandit Guards")
+        XCTAssertEqual(rail.last?.detail, "Draw at reveal")
+
+        let first = try XCTUnwrap(party.first)
+        let deck = sim.gm.editionStore.abilities(forDeck: first.characterData?.deck ?? first.name, edition: "gh")
+        let hand = first.handCards.compactMap { id in deck.first { $0.cardId == id } }
+        sim.coord.chooseCards(for: first.id, leading: hand[0], other: hand[1])
+        let after = sim.coord.selectionRail
+        XCTAssertEqual(after.first?.state, .done)
+        XCTAssertEqual(after.first?.detail, "Ready")
+        XCTAssertEqual(after.dropFirst().first?.state, .current)
+        for entry in after {
+            XCTAssertEqual(PlayerTextTests.lint(entry.name + " " + (entry.detail ?? "")), [], entry.name)
+        }
+        XCTAssertTrue(sim.coord.turnRail.isEmpty, "no turn order until every card is revealed")
+    }
+
+    /// During play the heading names whose turn it is, and the acting monster type says which
+    /// of its standees is acting (elites first).
+    func testTheTopBarDuringPlay() async throws {
+        let sim = try ScenarioSimulator(scenario: "1", options: .init(seed: 2))
+        var checked = false
+        await sim.play(rounds: 2) {
+            guard let entry = sim.coord.currentTurnEntry, case .monster(let monster) = entry.figure,
+                  case .monster(let name, _)? = sim.coord.actingPiece, name == monster.name,
+                  monster.aliveEntities.count > 1 else { return }
+            XCTAssertEqual(sim.coord.hudHeading.subtitle, "\(sim.coord.figureName(entry.figure))\u{2019}s turn")
+            let current = sim.coord.turnRail.first { $0.state == .current }
+            XCTAssertNotNil(current?.detail?.firstMatch(of: #/^\d of \d acting$/#), current?.detail ?? "none")
+            checked = true
+        }
+        XCTAssertTrue(checked)
+    }
+
+    func testElementsShowHowLitTheyAre() {
+        XCTAssertEqual(CompactElement.level(.inert), 0)
+        XCTAssertEqual(CompactElement.level(.consumed), 0)
+        XCTAssertEqual(CompactElement.level(.waning), 1)
+        XCTAssertEqual(CompactElement.level(.strong), 2)
+        XCTAssertEqual(CompactElement.level(.new), 2)
+    }
+
+    /// The side column's notes: the last three events, no round headers or setup lines.
+    func testRecentEventsAreTheLastThree() {
+        let log = [TurnLogEntry(message: "Scenario 1", category: .setup),
+                   TurnLogEntry(message: "a", category: .attack), TurnLogEntry(message: "b", category: .move),
+                   TurnLogEntry(message: "c", category: .damage), TurnLogEntry(message: "d", category: .attack)]
+        XCTAssertEqual(BoardView.recentEvents(log).map(\.message), ["b", "c", "d"])
+        for chosen in 0...2 {
+            XCTAssertEqual(PlayerTextTests.lint(CardSelectionPanel.instruction(chosen: chosen)), [])
+        }
+    }
+
     // MARK: - Skip this action
 
     /// Skipping an attack while choosing its target moves on to the next ability of the same

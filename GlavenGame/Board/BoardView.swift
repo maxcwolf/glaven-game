@@ -9,7 +9,7 @@ struct BoardView: View {
     @State private var confirmingAbandon = false
     /// The side columns (party, monsters, battle log) can be hidden to see the whole board.
     @State private var showSidePanels = true
-    @State private var logExpanded = true
+    @State private var logExpanded = false
     /// Where the board and the HUD's panels sit, so the board is framed in the clear part.
     @State private var hudFrames = HUDFrames()
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -37,15 +37,18 @@ struct BoardView: View {
 
             // HUD overlays
             VStack(spacing: 0) {
-                boardHUD
+                BoardTopBar(coordinator: coordinator, showSidePanels: $showSidePanels,
+                            onAbandon: { confirmingAbandon = true })
                     .reportFrame { hudFrames.hud = $0 }
-                let rail = coordinator.turnRail
-                if !rail.isEmpty {
-                    TurnRailView(entries: rail)
-                        .reportFrame { hudFrames.rail = $0 }
-                        .padding(.horizontal)
-                        .padding(.bottom, 6)
-                }
+                    .padding(.bottom, 8)
+                    .confirmationDialog("Abandon this scenario?", isPresented: $confirmingAbandon, titleVisibility: .visible) {
+                        Button("Abandon Scenario", role: .destructive) {
+                            gameManager.completeScenario(success: false)
+                        }
+                        Button("Keep Playing", role: .cancel) {}
+                    } message: {
+                        Text("It counts as a loss. Your characters keep the experience and gold they've collected.")
+                    }
                 if showSidePanels {
                     HStack(alignment: .top, spacing: 0) {
                         // Left: the party, and the modifier tray under it
@@ -82,8 +85,9 @@ struct BoardView: View {
                         character: character
                     )
                     .id(charID) // Force recreate @State when character changes
-                    .padding()
+                    .reportFrame { hudFrames.cardPanel = $0 }
                 }
+                .ignoresSafeArea(edges: .bottom)
                 .transition(.move(edge: .bottom))
             }
 
@@ -207,6 +211,8 @@ struct BoardView: View {
         /// it, so it doesn't jump each time the bar changes (actions, End Turn, a monster's turn).
         private(set) var bottomLeading: CGRect = .zero
         var bottomTrailing: CGRect = .zero
+        /// The hand while cards are being chosen: the board fits above it.
+        var cardPanel: CGRect = .zero
 
         mutating func reportBottomLeading(_ frame: CGRect) {
             guard !frame.isEmpty else { return }
@@ -221,128 +227,12 @@ struct BoardView: View {
                 return CGRect(x: frame.minX, y: frame.minY, width: frame.width,
                               height: max(frame.height, board.maxY - frame.minY))
             }
-            return BoardViewport.obstacles([hud, rail, column(left), column(right), bottomLeading, bottomTrailing],
-                                           over: board)
+            return BoardViewport.obstacles([hud, rail, column(left), column(right), bottomLeading, bottomTrailing,
+                                            cardPanel], over: board)
         }
     }
 
     private var hudObstacles: [CGRect] { hudFrames.obstacles(showingSidePanels: showSidePanels) }
-
-    // MARK: - Top HUD
-
-    @ViewBuilder
-    private var boardHUD: some View {
-        HStack(spacing: 16) {
-            // What is happening: "Place Your Characters", "Brute’s Turn · 20"
-            Text(coordinator.phaseTitle)
-                .font(.headline)
-                .foregroundStyle(.white)
-                .padding(.horizontal, 12)
-                .padding(.vertical, 6)
-                .background(.black.opacity(0.6))
-                .clipShape(Capsule())
-
-            // The scenario's goal and special rules, any time.
-            if coordinator.scenarioBrief != nil {
-                Button {
-                    withAnimation(.snappy) { coordinator.briefPresentation = .reminder }
-                } label: {
-                    Label("Goal", systemImage: "scope")
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(BoardTheme.text)
-                        .padding(.horizontal, 12)
-                        .frame(minHeight: 44)
-                        .background(.black.opacity(0.6))
-                        .clipShape(Capsule())
-                        .overlay(Capsule().stroke(BoardTheme.brass.opacity(0.7), lineWidth: 1))
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel("Scenario goal and rules")
-            }
-
-            Spacer()
-
-            // Element board
-            ElementBoardView()
-                .padding(.horizontal, 8)
-                .padding(.vertical, 4)
-                .background(.black.opacity(0.5))
-                .clipShape(RoundedRectangle(cornerRadius: 8))
-
-            // Round counter (hidden while placing characters, before round 1)
-            if let round = coordinator.displayedRound {
-                Text("Round \(round)")
-                    .font(.subheadline.monospacedDigit())
-                    .foregroundStyle(.white)
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 4)
-                    .background(.black.opacity(0.6))
-                    .clipShape(Capsule())
-            }
-
-            // Frame the whole board again after panning and zooming.
-            Button {
-                coordinator.boardScene?.fitCamera(animated: true)
-            } label: {
-                Image(systemName: "viewfinder")
-                    .font(.headline)
-                    .foregroundStyle(.white)
-                    .frame(width: 44, height: 44)
-                    .background(.black.opacity(0.6))
-                    .clipShape(Circle())
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel("Show the whole board")
-
-            // Show or hide the side columns to see the whole board.
-            Button {
-                coordinator.boardScene?.refitWhenHUDChanges()
-                withAnimation(.snappy) { showSidePanels.toggle() }
-            } label: {
-                Image(systemName: showSidePanels ? "sidebar.squares.leading" : "rectangle.split.3x1")
-                    .font(.headline)
-                    .foregroundStyle(.white)
-                    .frame(width: 44, height: 44)
-                    .background(.black.opacity(0.6))
-                    .clipShape(Circle())
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel(showSidePanels ? "Hide side panels" : "Show side panels")
-
-            // Game menu: leaving the scenario never happens on a single stray tap.
-            Menu {
-                Button {
-                    gameManager.saveAndQuitScenario()
-                } label: {
-                    Label("Save & Quit to Menu", systemImage: "square.and.arrow.down")
-                }
-                Button(role: .destructive) {
-                    confirmingAbandon = true
-                } label: {
-                    Label("Abandon Scenario…", systemImage: "flag.slash")
-                }
-            } label: {
-                Image(systemName: "line.3.horizontal")
-                    .font(.headline)
-                    .foregroundStyle(.white)
-                    .frame(width: 44, height: 44)
-                    .background(.black.opacity(0.6))
-                    .clipShape(Circle())
-            }
-            .menuStyle(.button)
-            .buttonStyle(.plain)
-            .accessibilityLabel("Game menu")
-        }
-        .padding()
-        .confirmationDialog("Abandon this scenario?", isPresented: $confirmingAbandon, titleVisibility: .visible) {
-            Button("Abandon Scenario", role: .destructive) {
-                gameManager.completeScenario(success: false)
-            }
-            Button("Keep Playing", role: .cancel) {}
-        } message: {
-            Text("It counts as a loss. Your characters keep the experience and gold they've collected.")
-        }
-    }
 
     // MARK: - Bottom Bar
 
@@ -680,115 +570,111 @@ struct BoardView: View {
         let characters = gameManager.game.characters.filter { !$0.absent }
 
         if !characters.isEmpty {
-            let cards = VStack(spacing: 6) {
+            let cards = VStack(spacing: 8) {
                 ForEach(characters, id: \.id) { character in
                     characterCard(character)
                 }
             }
-            .padding(6)
             // Sized to the party; scrolls only when the screen is too short for it.
             ViewThatFits(in: .vertical) {
                 cards
                 ScrollView { cards }
             }
-            .frame(width: 260)
-            .background(.black.opacity(0.55))
-            .clipShape(RoundedRectangle(cornerRadius: 10))
-            .overlay(
-                RoundedRectangle(cornerRadius: 10)
-                    .strokeBorder(.white.opacity(0.08), lineWidth: 1)
-            )
-            .padding(8)
+            .frame(width: Self.sidePanelWidth)
+            .padding(.leading, 16)
         }
     }
 
+    /// The side columns' width.
+    static let sidePanelWidth: CGFloat = 240
+
+    /// A party member: portrait, hit points, and their hand and lost cards.
     @ViewBuilder
     private func characterCard(_ character: GameCharacter) -> some View {
-        let charColor = Color(hex: character.color) ?? .blue
         let isExhausted = character.exhausted || character.health <= 0
+        let low = character.health * 3 < character.maxHealth
 
-        VStack(alignment: .leading, spacing: 4) {
-            // Name row
-            HStack(spacing: 6) {
-                BundledImage(ImageLoader.characterIcon(edition: character.edition, name: character.name), size: 14, systemName: "person.fill")
-                    .foregroundStyle(charColor)
-                    .opacity(isExhausted ? 0.4 : 1.0)
-                Text(GameText.characterName(character, labels: gameManager.editionStore))
-                    .font(BoardTheme.font(size: 11, weight: .bold))
-                    .foregroundStyle(isExhausted ? .white.opacity(0.4) : .white)
-                    .lineLimit(1)
-                Spacer()
-                if isExhausted {
-                    Text("OUT")
-                        .font(BoardTheme.font(size: 11, weight: .heavy))
-                        .foregroundStyle(.red)
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 10) {
+                portrait(ImageLoader.characterThumbnail(edition: character.edition, name: character.name), size: 40)
+                    .saturation(isExhausted ? 0 : 1)
+                    .opacity(isExhausted ? 0.5 : 1)
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack {
+                        Text(GameText.characterName(character, labels: gameManager.editionStore))
+                            .font(BoardTheme.font(size: 14, weight: .semibold))
+                            .foregroundStyle(isExhausted ? BoardTheme.secondaryText : BoardTheme.text)
+                            .lineLimit(1)
+                        Spacer(minLength: 4)
+                        if isExhausted {
+                            Text("Exhausted")
+                                .font(BoardTheme.font(size: 11, weight: .bold))
+                                .foregroundStyle(BoardTheme.defeat)
+                        } else {
+                            Text("\(character.health)/\(character.maxHealth)")
+                                .font(BoardTheme.font(size: 12, weight: .medium).monospacedDigit())
+                                .foregroundStyle(low ? BoardTheme.defeat : BoardTheme.secondaryText)
+                        }
+                    }
+                    if !isExhausted {
+                        healthBar(current: character.health, max: character.maxHealth, height: 5)
+                        Text("XP \(character.experience) · Hand \(character.handCards.count) · Lost \(character.lostCards.count)")
+                            .font(BoardTheme.font(size: 11).monospacedDigit())
+                            .foregroundStyle(BoardTheme.secondaryText)
+                    }
                 }
             }
 
             if !isExhausted {
-                // HP bar
-                HStack(spacing: 4) {
-                    Image(systemName: "heart.fill")
-                        .font(BoardTheme.font(size: 11))
-                        .foregroundStyle(.red)
-                    GeometryReader { geo in
-                        ZStack(alignment: .leading) {
-                            RoundedRectangle(cornerRadius: 2)
-                                .fill(.white.opacity(0.15))
-                            RoundedRectangle(cornerRadius: 2)
-                                .fill(hpColor(current: character.health, max: character.maxHealth))
-                                .frame(width: geo.size.width * CGFloat(max(0, character.health)) / CGFloat(max(1, character.maxHealth)))
-                        }
-                    }
-                    .frame(height: 6)
-
-                    Text("\(character.health)/\(character.maxHealth)")
-                        .font(BoardTheme.font(size: 11, weight: .medium, design: .monospaced))
-                        .foregroundStyle(.white.opacity(0.8))
-                }
-
-                // Stats row: XP, Hand, Discard
-                HStack(spacing: 8) {
-                    Label("\(character.experience)", systemImage: "star.fill")
-                        .font(BoardTheme.font(size: 11))
-                        .foregroundStyle(.yellow.opacity(0.8))
-                    Label("\(character.handCards.count)", systemImage: "hand.raised.fill")
-                        .font(BoardTheme.font(size: 11))
-                        .foregroundStyle(.cyan.opacity(0.8))
-                    Label("\(character.discardedCards.count)", systemImage: "arrow.counterclockwise")
-                        .font(BoardTheme.font(size: 11))
-                        .foregroundStyle(.orange.opacity(0.7))
-                    Label("\(character.lostCards.count)", systemImage: "xmark.circle")
-                        .font(BoardTheme.font(size: 11))
-                        .foregroundStyle(.red.opacity(0.6))
-                    Spacer()
-                }
-
-                // Active conditions
                 let conditions = character.entityConditions.filter { !$0.expired }
                 if !conditions.isEmpty {
                     HStack(spacing: 3) {
                         ForEach(conditions, id: \.name) { cond in
-                            BundledImage(ImageLoader.conditionIcon(cond.name.rawValue), size: 12, systemName: "bolt.fill")
+                            BundledImage(ImageLoader.conditionIcon(cond.name.rawValue), size: 14, systemName: "bolt.fill")
                                 .help(GameText.conditionName(cond.name))
                         }
                     }
                 }
-
-                // Summons
                 let livingSummons = character.summons.filter { !$0.dead && $0.health > 0 }
                 ForEach(livingSummons, id: \.id) { summon in
                     summonMiniCard(summon)
                 }
             }
         }
-        .padding(8)
-        .background(charColor.opacity(0.15))
-        .clipShape(RoundedRectangle(cornerRadius: 6))
-        .overlay(
-            RoundedRectangle(cornerRadius: 6)
-                .stroke(charColor.opacity(0.3), lineWidth: 1)
-        )
+        .padding(10)
+        .sidePanelStyle()
+        .accessibilityElement(children: .combine)
+    }
+
+    /// A round portrait from a thumbnail.
+    @ViewBuilder
+    private func portrait(_ image: PlatformImage?, size: CGFloat) -> some View {
+        Group {
+            if let image {
+                #if os(macOS)
+                Image(nsImage: image).resizable().scaledToFill()
+                #else
+                Image(uiImage: image).resizable().scaledToFill()
+                #endif
+            } else {
+                Circle().fill(BoardTheme.raised)
+            }
+        }
+        .frame(width: size, height: size)
+        .clipShape(Circle())
+    }
+
+    /// A slim hit point bar.
+    private func healthBar(current: Int, max: Int, height: CGFloat) -> some View {
+        GeometryReader { geo in
+            ZStack(alignment: .leading) {
+                Capsule().fill(Color.white.opacity(0.1))
+                Capsule()
+                    .fill(hpColor(current: current, max: max))
+                    .frame(width: geo.size.width * CGFloat(Swift.max(0, current)) / CGFloat(Swift.max(1, max)))
+            }
+        }
+        .frame(height: height)
     }
 
     @ViewBuilder
@@ -873,75 +759,63 @@ struct BoardView: View {
         let aliveMonsters = gameManager.game.monsters.filter { !$0.off && !$0.aliveEntities.isEmpty }
 
         if !aliveMonsters.isEmpty {
-            ScrollView {
-                VStack(spacing: 4) {
-                    ForEach(aliveMonsters, id: \.id) { monster in
-                        monsterGroupCard(monster)
-                    }
+            let groups = VStack(spacing: 8) {
+                ForEach(aliveMonsters, id: \.id) { monster in
+                    monsterGroupCard(monster)
                 }
-                .padding(6)
             }
-            .frame(width: 260)
-            .frame(maxHeight: 200)
-            .background(.black.opacity(0.55))
-            .clipShape(RoundedRectangle(cornerRadius: 10))
-            .overlay(
-                RoundedRectangle(cornerRadius: 10)
-                    .strokeBorder(.white.opacity(0.08), lineWidth: 1)
-            )
-            .padding(.horizontal, 8)
-            .padding(.top, 8)
+            // As tall as its rows; scrolls only when they don't fit.
+            ViewThatFits(in: .vertical) {
+                groups
+                ScrollView { groups }
+            }
+            .frame(width: Self.sidePanelWidth)
+            .padding(.trailing, 16)
         }
     }
 
+    /// A monster type: portrait, name and level, then a row per standee (elites first). Tapping
+    /// it shows this round's ability card.
     @ViewBuilder
     private func monsterGroupCard(_ monster: GameMonster) -> some View {
-        let monsterColor: Color = monster.isBoss ? .purple : .red
         let ability = gameManager.monsterManager.currentAbility(for: monster)
 
-        VStack(alignment: .leading, spacing: 3) {
-            // Monster name
-            HStack(spacing: 4) {
-                Image(systemName: monster.isBoss ? "crown.fill" : "pawprint.fill")
-                    .font(BoardTheme.font(size: 11))
-                    .foregroundStyle(monsterColor)
-                Text(coordinator.monsterTypeName(monster.name))
-                    .font(BoardTheme.font(size: 11, weight: .bold))
-                    .foregroundStyle(.white)
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 8) {
+                portrait(ImageLoader.monsterThumbnail(edition: monster.edition, name: monster.name), size: 26)
+                Text(coordinator.monsterTypeName(monster.name) + (monster.aliveEntities.count > 1 ? "s" : ""))
+                    .font(BoardTheme.font(size: 14, weight: .semibold))
+                    .foregroundStyle(BoardTheme.text)
                     .lineLimit(1)
-                Spacer()
-                Text("Lv\(monster.level)")
-                    .font(BoardTheme.font(size: 11, weight: .medium))
-                    .foregroundStyle(.white.opacity(0.5))
-                if ability != nil {
-                    Image(systemName: "rectangle.portrait.on.rectangle.portrait.fill")
+                if monster.isBoss {
+                    Image(systemName: "crown.fill")
                         .font(BoardTheme.font(size: 11))
-                        .foregroundStyle(monsterColor.opacity(0.7))
+                        .foregroundStyle(BoardTheme.victory)
+                        .accessibilityLabel("Boss")
                 }
+                Spacer(minLength: 4)
+                Text("Lv \(monster.level)")
+                    .font(BoardTheme.font(size: 11))
+                    .foregroundStyle(BoardTheme.secondaryText)
             }
 
-            // Standee rows — elites first, then normals
             let sorted = monster.aliveEntities.sorted { a, b in
                 if a.type != b.type { return a.type == .elite }
                 return a.number < b.number
             }
-
             ForEach(sorted, id: \.id) { entity in
                 monsterEntityRow(entity, monster: monster)
             }
         }
-        .padding(6)
-        .background(monsterColor.opacity(0.1))
-        .clipShape(RoundedRectangle(cornerRadius: 5))
-        .overlay(
-            RoundedRectangle(cornerRadius: 5)
-                .stroke(monsterColor.opacity(0.2), lineWidth: 1)
-        )
+        .padding(10)
+        .sidePanelStyle()
+        .contentShape(Rectangle())
         .onTapGesture {
             if let ability {
                 previewMonsterAbility = (monster, ability)
             }
         }
+        .accessibilityElement(children: .combine)
         .accessibilityAddTraits(.isButton)
         .accessibilityHint("Shows this round's ability card")
     }
@@ -949,115 +823,119 @@ struct BoardView: View {
     @ViewBuilder
     private func monsterEntityRow(_ entity: GameMonsterEntity, monster: GameMonster) -> some View {
         let isElite = entity.type == .elite
-        let typeColor: Color = isElite ? .yellow : .white
 
-        HStack(spacing: 4) {
-            // Standee number badge
+        HStack(spacing: 8) {
             Text("\(entity.number)")
-                .font(BoardTheme.font(size: 11, weight: .heavy, design: .monospaced))
-                .foregroundStyle(isElite ? .black : .white)
-                .frame(width: 14, height: 14)
-                .background(isElite ? .yellow : .white.opacity(0.3))
-                .clipShape(RoundedRectangle(cornerRadius: 2))
+                .font(BoardTheme.font(size: 11, weight: .bold).monospacedDigit())
+                .foregroundStyle(isElite ? BoardTheme.sheet : BoardTheme.text)
+                .frame(width: 18, height: 18)
+                .background(isElite ? BoardTheme.victory : BoardTheme.raised, in: RoundedRectangle(cornerRadius: 4))
+                .accessibilityLabel(isElite ? "Elite \(entity.number)" : "Standee \(entity.number)")
 
-            // HP bar
-            GeometryReader { geo in
-                ZStack(alignment: .leading) {
-                    RoundedRectangle(cornerRadius: 2)
-                        .fill(.white.opacity(0.1))
-                    RoundedRectangle(cornerRadius: 2)
-                        .fill(hpColor(current: entity.health, max: entity.maxHealth))
-                        .frame(width: geo.size.width * CGFloat(max(0, entity.health)) / CGFloat(max(1, entity.maxHealth)))
-                }
-            }
-            .frame(height: 5)
+            healthBar(current: entity.health, max: entity.maxHealth, height: 5)
 
-            Text("\(entity.health)/\(entity.maxHealth)")
-                .font(BoardTheme.font(size: 11, weight: .medium, design: .monospaced))
-                .foregroundStyle(typeColor.opacity(0.8))
-
-            // Conditions
             let conditions = entity.entityConditions.filter { !$0.expired }
             ForEach(conditions, id: \.name) { cond in
-                BundledImage(ImageLoader.conditionIcon(cond.name.rawValue), size: 10, systemName: "bolt.fill")
+                BundledImage(ImageLoader.conditionIcon(cond.name.rawValue), size: 12, systemName: "bolt.fill")
                     .help(GameText.conditionName(cond.name))
             }
+
+            Text("\(entity.health)/\(entity.maxHealth)")
+                .font(BoardTheme.font(size: 11).monospacedDigit())
+                .foregroundStyle(BoardTheme.secondaryText)
         }
-        .frame(height: 16)
+        .frame(height: 18)
     }
 
     // MARK: - Shared Helpers
 
     private func hpColor(current: Int, max: Int) -> Color {
         let ratio = Double(current) / Double(Swift.max(1, max))
-        if ratio > 0.6 { return .green }
-        if ratio > 0.3 { return .yellow }
-        return .red
+        if ratio > 0.6 { return BoardTheme.gain }
+        if ratio > 0.3 { return BoardTheme.victory }
+        return BoardTheme.defeat
     }
 
     // MARK: - Battle Log
 
+    /// What just happened: the last few entries as short notes, with the whole log a tap away.
     @ViewBuilder
     private var turnLogPanel: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            // Header
-            HStack(spacing: 6) {
-                Image(systemName: "scroll.fill")
-                    .font(BoardTheme.font(size: 11))
-                    .foregroundStyle(.yellow.opacity(0.8))
-                Text("Battle Log")
-                    .font(BoardTheme.font(size: 12, weight: .bold, design: .serif))
-                    .foregroundStyle(.white.opacity(0.85))
-                Spacer()
-                Image(systemName: logExpanded ? "chevron.up" : "chevron.down")
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(.white.opacity(0.6))
+        if logExpanded || !Self.recentEvents(coordinator.turnLog).isEmpty {
+            logColumn
+        }
+    }
+
+    private var logColumn: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Button {
+                withAnimation(.snappy) { logExpanded.toggle() }
+            } label: {
+                HStack(spacing: 6) {
+                    Image(systemName: "scroll")
+                    Text(logExpanded ? "Battle log" : "Recent")
+                    Spacer()
+                    Image(systemName: logExpanded ? "chevron.up" : "chevron.down")
+                }
+                .font(BoardTheme.font(size: 12, weight: .semibold))
+                .foregroundStyle(BoardTheme.secondaryText)
+                .padding(.horizontal, 4)
+                .frame(minHeight: 32)
+                .contentShape(Rectangle())
             }
-            .padding(.horizontal, 10)
-            .padding(.vertical, 8)
-            .frame(minHeight: 44)
-            .contentShape(Rectangle())
-            .onTapGesture { withAnimation(.snappy) { logExpanded.toggle() } }
-            .accessibilityElement(children: .combine)
-            .accessibilityAddTraits(.isButton)
-            .accessibilityHint(logExpanded ? "Collapse the battle log" : "Expand the battle log")
+            .buttonStyle(.plain)
+            .accessibilityHint(logExpanded ? "Shows only the latest events" : "Shows the whole battle log")
 
             if logExpanded {
-            Divider().overlay(.white.opacity(0.15))
-
-            // Log entries
-            ScrollViewReader { proxy in
-                ScrollView {
-                    LazyVStack(alignment: .leading, spacing: 1) {
-                        ForEach(coordinator.turnLog.suffix(100)) { entry in
-                            logEntryRow(entry)
-                                .id(entry.id)
+                ScrollViewReader { proxy in
+                    ScrollView {
+                        LazyVStack(alignment: .leading, spacing: 1) {
+                            ForEach(coordinator.turnLog.suffix(100)) { entry in
+                                logEntryRow(entry)
+                                    .id(entry.id)
+                            }
+                        }
+                        .padding(.vertical, 4)
+                    }
+                    .onChange(of: coordinator.turnLog.count) { _, _ in
+                        if let last = coordinator.turnLog.last {
+                            withAnimation(.easeOut(duration: 0.2)) {
+                                proxy.scrollTo(last.id, anchor: .bottom)
+                            }
                         }
                     }
-                    .padding(.vertical, 4)
-                }
-                .onChange(of: coordinator.turnLog.count) { _, _ in
-                    if let last = coordinator.turnLog.last {
-                        withAnimation(.easeOut(duration: 0.2)) {
-                            proxy.scrollTo(last.id, anchor: .bottom)
-                        }
+                    .onAppear {
+                        if let last = coordinator.turnLog.last { proxy.scrollTo(last.id, anchor: .bottom) }
                     }
                 }
-                .onAppear {
-                    if let last = coordinator.turnLog.last { proxy.scrollTo(last.id, anchor: .bottom) }
+                .frame(minHeight: 80, maxHeight: 260)
+                .sidePanelStyle()
+            } else {
+                ForEach(Self.recentEvents(coordinator.turnLog)) { entry in
+                    Label {
+                        Text(entry.message).lineLimit(2)
+                    } icon: {
+                        Image(systemName: entry.category.icon)
+                            .foregroundStyle(BoardTheme.brass)
+                    }
+                    .font(BoardTheme.font(size: 12))
+                    .foregroundStyle(BoardTheme.text)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 7)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(BoardTheme.raised, in: RoundedRectangle(cornerRadius: BoardTheme.Radius.small))
+                    .transition(.move(edge: .top).combined(with: .opacity))
                 }
-            }
-            .frame(minHeight: 80, maxHeight: 220)
             }
         }
-        .frame(width: 260)
-        .background(.black.opacity(0.65))
-        .clipShape(RoundedRectangle(cornerRadius: 10))
-        .overlay(
-            RoundedRectangle(cornerRadius: 10)
-                .strokeBorder(.white.opacity(0.08), lineWidth: 1)
-        )
-        .padding(8)
+        .frame(width: Self.sidePanelWidth)
+        .padding(.trailing, 16)
+        .animation(.snappy, value: coordinator.turnLog.count)
+    }
+
+    /// The latest events worth a note: no round headers or setup lines, at most three, newest last.
+    static func recentEvents(_ log: [TurnLogEntry]) -> [TurnLogEntry] {
+        Array(log.filter { !$0.isRoundHeader && $0.category != .setup }.suffix(3))
     }
 
     @ViewBuilder

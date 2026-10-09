@@ -44,6 +44,59 @@ extension BoardCoordinator {
         let kind: Kind
         /// A long-resting character acts at initiative 99.
         let isLongRest: Bool
+        /// A line under the name: "Ready", "Choosing…", "2 of 3 acting".
+        var detail: String? = nil
+        /// Whether the initiative is known yet (not while cards are being chosen).
+        var showsInitiative = true
+    }
+
+    /// The top bar's heading: the round, and what is happening in it.
+    var hudHeading: (title: String, subtitle: String) {
+        let round = displayedRound.map { "Round \($0)" }
+        switch boardPhase {
+        case .setup: return ("Setup", "Place your characters")
+        case .cardSelection: return (round ?? "Round 1", "Choose cards")
+        case .execution:
+            let subtitle = currentTurnEntry.map { "\(figureName($0.figure))\u{2019}s turn" } ?? "Round in progress"
+            return (round ?? "Round", subtitle)
+        case .roomReveal: return (round ?? "Round", "New room revealed")
+        case .scenarioEnd: return (round ?? "Round", scenarioResult == .defeat ? "Scenario failed" : "Scenario complete")
+        }
+    }
+
+    /// The rail while cards are being chosen: who is ready, who is choosing, and the monsters,
+    /// whose cards are drawn when everyone's are revealed. No initiatives yet.
+    var selectionRail: [TurnRailEntry] {
+        guard boardPhase == .cardSelection, let game = gameManager?.game else { return [] }
+        let party = game.activeCharacters.filter { !$0.exhausted && !$0.absent }
+        var entries = party.map { character -> TurnRailEntry in
+            let done = cardSelectionsComplete.contains(character.id)
+            let current = cardSelectingCharacterID == character.id
+            return TurnRailEntry(id: character.id, name: characterName(character.id), initiative: 0,
+                                 state: done ? .done : (current ? .current : .upcoming),
+                                 kind: .character(edition: character.edition, name: character.name),
+                                 isLongRest: done && character.longRest,
+                                 detail: done ? (character.longRest ? "Long rest" : "Ready")
+                                     : (current ? "Choosing\u{2026}" : "Waiting"),
+                                 showsInitiative: false)
+        }
+        for monster in game.monsters where !monster.off && !monster.aliveEntities.isEmpty && !isPlayerSideMonster(monster) {
+            entries.append(TurnRailEntry(id: "monster-\(monster.name)", name: monsterTypeName(monster.name) + "s",
+                                         initiative: 0, state: .upcoming,
+                                         kind: .monster(edition: monster.edition, name: monster.name),
+                                         isLongRest: false, detail: "Draw at reveal", showsInitiative: false))
+        }
+        return entries
+    }
+
+    private func isPlayerSideMonster(_ monster: GameMonster) -> Bool { monster.isAlly || monster.isAllied }
+
+    /// "2 of 3 acting" for the monster type whose turn it is: standees act elites first, then by number.
+    private func actingDetail(_ monster: GameMonster) -> String? {
+        guard case .monster(let name, let standee)? = actingPiece, name == monster.name else { return nil }
+        let order = monster.aliveEntities.sorted { ($0.type == .elite ? 0 : 1, $0.number) < ($1.type == .elite ? 0 : 1, $1.number) }
+        guard order.count > 1, let index = order.firstIndex(where: { $0.number == standee }) else { return nil }
+        return "\(index + 1) of \(order.count) acting"
     }
 
     /// The round's turn order for the HUD rail: who has acted, who is acting, who is next.
@@ -54,16 +107,19 @@ extension BoardCoordinator {
                 : (entry.completed || index < currentTurnIndex ? .done : .upcoming)
             let kind: TurnRailEntry.Kind
             var longRest = false
+            var detail: String?
             switch entry.figure {
             case .character(let c):
                 kind = .character(edition: c.edition, name: c.name)
                 longRest = c.longRest
-            case .monster(let m): kind = .monster(edition: m.edition, name: m.name)
+            case .monster(let m):
+                kind = .monster(edition: m.edition, name: m.name)
+                if state == .current { detail = actingDetail(m) }
             case .objective: kind = .objective
             }
             return TurnRailEntry(id: entry.id.uuidString, name: figureName(entry.figure),
                                  initiative: Int(entry.initiative.rounded(.up)), state: state, kind: kind,
-                                 isLongRest: longRest)
+                                 isLongRest: longRest, detail: detail)
         }
     }
 

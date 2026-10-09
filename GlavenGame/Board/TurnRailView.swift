@@ -1,7 +1,8 @@
 import SwiftUI
 
-/// The round's turn order: a portrait and initiative for each figure, with the one acting lit,
-/// the ones that have acted dimmed and the rest still to come.
+/// The round's turn order in the top bar: a portrait, initiative and name for each figure, the
+/// one acting ringed in brass, the ones that have acted dimmed with a check. While cards are
+/// being chosen it shows who is ready and who is choosing instead.
 struct TurnRailView: View {
     let entries: [BoardCoordinator.TurnRailEntry]
 
@@ -17,53 +18,64 @@ struct TurnRailView: View {
                     }
             }
         }
-        .background(.black.opacity(0.6))
-        .clipShape(Capsule())
+        .background(BoardTheme.sheet, in: Capsule())
         .fixedSize(horizontal: false, vertical: true)
         .accessibilityElement(children: .contain)
         .accessibilityLabel("Turn order")
     }
 
     private var chips: some View {
-        HStack(spacing: 6) {
+        HStack(spacing: 4) {
             ForEach(entries) { entry in
                 chip(entry).id(entry.id)
             }
         }
-        .padding(.horizontal, 6)
-        .padding(.vertical, 5)
+        .padding(4)
     }
 
     private func chip(_ entry: BoardCoordinator.TurnRailEntry) -> some View {
         let isCurrent = entry.state == .current
-        return HStack(spacing: 6) {
+        return HStack(spacing: 8) {
             portrait(entry)
-                .frame(width: 28, height: 28)
+                .frame(width: 30, height: 30)
                 .clipShape(Circle())
-                .overlay(Circle().stroke(.white.opacity(0.8), lineWidth: 1))
-            Text("\(entry.initiative)")
-                .font(.subheadline.monospacedDigit().weight(.bold))
-            Text(entry.name)
-                .font(.subheadline)
-                .lineLimit(1)
-            if entry.isLongRest {
-                Image(systemName: "bed.double.fill")
-                    .font(.caption)
-                    .accessibilityLabel("Long rest")
-            }
-            if entry.state == .done {
-                Image(systemName: "checkmark")
-                    .font(.caption.weight(.bold))
+                .overlay(Circle().stroke(isCurrent ? BoardTheme.brass : .clear, lineWidth: 2))
+                .overlay(alignment: .bottomTrailing) {
+                    if entry.state == .done {
+                        Image(systemName: entry.isLongRest ? "bed.double.fill" : "checkmark")
+                            .font(BoardTheme.font(size: 11, weight: .bold))
+                            .foregroundStyle(BoardTheme.sheet)
+                            .frame(width: 17, height: 17)
+                            .background(BoardTheme.gain, in: Circle())
+                            .offset(x: 3, y: 3)
+                    }
+                }
+            VStack(alignment: .leading, spacing: 0) {
+                HStack(spacing: 4) {
+                    if entry.showsInitiative {
+                        Text("\(entry.initiative)").monospacedDigit()
+                    }
+                    Text(entry.name).lineLimit(1)
+                    if entry.isLongRest && entry.state != .done {
+                        Image(systemName: "bed.double.fill").accessibilityLabel("Long rest")
+                    }
+                }
+                .font(BoardTheme.font(size: 13, weight: .semibold))
+                .foregroundStyle(entry.state == .upcoming ? BoardTheme.secondaryText : BoardTheme.text)
+                if let detail = entry.detail {
+                    Text(detail)
+                        .font(BoardTheme.font(size: 11))
+                        .foregroundStyle(isCurrent ? BoardTheme.brass : BoardTheme.secondaryText)
+                        .lineLimit(1)
+                }
             }
         }
-        .foregroundStyle(isCurrent ? Color(red: 0.95, green: 0.84, blue: 0.62) : .white)
         .padding(.leading, 4)
         .padding(.trailing, 10)
-        .padding(.vertical, 4)
-        .background(isCurrent ? Color(red: 0.23, green: 0.17, blue: 0.08) : .clear)
-        .clipShape(Capsule())
-        .overlay(Capsule().stroke(isCurrent ? Color(red: 0.89, green: 0.70, blue: 0.24) : .clear, lineWidth: 1.5))
-        .opacity(entry.state == .done ? 0.45 : 1)
+        .padding(.vertical, 3)
+        .background(isCurrent ? BoardTheme.raised : .clear, in: Capsule())
+        .overlay(Capsule().stroke(isCurrent ? BoardTheme.brass.opacity(0.7) : .clear, lineWidth: 1))
+        .opacity(entry.state == .done ? 0.75 : 1)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(accessibilityText(entry))
     }
@@ -95,6 +107,7 @@ struct TurnRailView: View {
         case .current: state = "acting now"
         case .upcoming: state = "still to act"
         }
+        guard entry.showsInitiative else { return "\(entry.name), \(entry.detail ?? state)" }
         return "\(entry.name), initiative \(entry.initiative), \(state)"
     }
 }

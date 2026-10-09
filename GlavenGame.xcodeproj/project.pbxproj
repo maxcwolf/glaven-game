@@ -110,6 +110,7 @@
 		800B52D79643E5CB76B64F29 /* Fonts in Resources */ = {isa = PBXBuildFile; fileRef = 5D581F71B3F53FBB364E1E22 /* Fonts */; };
 		82234109FFEE89D34817A5C7 /* ScenarioMapDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4901D882DBB4A4409384EE90 /* ScenarioMapDetailView.swift */; };
 		82BD2069DBF2BD8ABEBDC1B0 /* GlavenTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6911D16FDC2CF2B049586221 /* GlavenTheme.swift */; };
+		839A430B4DAB455B45FE0744 /* BoardTopBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = A74028D5DFEC6A3B6D0C3323 /* BoardTopBar.swift */; };
 		8556401DE6DDEC3B29A94C2E /* GamePhase.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E3252016F044D305E5F9AD4 /* GamePhase.swift */; };
 		878AB4F2AE1E85720DFA5775 /* EventCardManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = E3D72B6EC5F59987FCB0636A /* EventCardManager.swift */; };
 		880C9BE58DD587B65392858A /* BattleGoalPicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7935967456962F4F03B80C2B /* BattleGoalPicker.swift */; };
@@ -346,6 +347,7 @@
 		A30E472AAD62BB67AE83169C /* ActionsManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActionsManager.swift; sourceTree = "<group>"; };
 		A61085FE2C898425387309FD /* AttackModifierType.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AttackModifierType.swift; sourceTree = "<group>"; };
 		A6B11F82C5E44D977254134D /* BoardCoordinator+Combat.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "BoardCoordinator+Combat.swift"; sourceTree = "<group>"; };
+		A74028D5DFEC6A3B6D0C3323 /* BoardTopBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BoardTopBar.swift; sourceTree = "<group>"; };
 		A7E2165E5E511B9078052C55 /* BoardSound.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BoardSound.swift; sourceTree = "<group>"; };
 		AABF17B34BECDFBAFC515C72 /* SanctuarySheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SanctuarySheet.swift; sourceTree = "<group>"; };
 		AB1B617FED39015D1033829C /* CharacterItemsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CharacterItemsView.swift; sourceTree = "<group>"; };
@@ -783,6 +785,7 @@
 				41D94C91FCB1BF3FC44B5F95 /* BoardCoordinator+Text.swift */,
 				1E5BE6C620EBFDD27F7F98C0 /* BoardScene.swift */,
 				1ED388D23F2EFC9F14DE5E4F /* BoardTheme.swift */,
+				A74028D5DFEC6A3B6D0C3323 /* BoardTopBar.swift */,
 				972A40BE4DE4A8FA037B3C54 /* BoardView.swift */,
 				4C2B76831C29EEA9CE98F5A8 /* CardSelectionPanel.swift */,
 				EA732C1B11B1FD79F496753D /* DamageChoiceSheet.swift */,
@@ -994,6 +997,7 @@
 				0C1677F77D3A230F0485CB53 /* BoardSound.swift in Sources */,
 				9B0C1F1811587190DFECF3B7 /* BoardState.swift in Sources */,
 				408F1DFBED7FF00698975ED0 /* BoardTheme.swift in Sources */,
+				839A430B4DAB455B45FE0744 /* BoardTopBar.swift in Sources */,
 				DC76BF79136B777FBBE43EED /* BoardView.swift in Sources */,
 				3D70D4B36FC1C27F8205C998 /* BundleHelper.swift in Sources */,
 				000550603398D6EC31B12E45 /* CampaignLogEntry.swift in Sources */,

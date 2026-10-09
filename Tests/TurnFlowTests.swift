@@ -177,6 +177,8 @@ final class TurnFlowTests: XCTestCase {
         XCTAssertEqual(CardSelectionPanel.selection([4], tapping: 7), [4, 7])
         XCTAssertEqual(CardSelectionPanel.selection([4, 7], tapping: 2), [4, 2], "the second card is replaced")
         XCTAssertEqual(CardSelectionPanel.selection([4, 7], tapping: 7), [7, 4], "the tapped card leads")
+        XCTAssertEqual(CardSelectionPanel.selection([4, 7], tapping: 4), [7, 4], "tapping the lead swaps them too")
+        XCTAssertEqual(CardSelectionPanel.selection([7, 4], tapping: 4), [4, 7], "and back")
         XCTAssertEqual(CardSelectionPanel.selection([4], tapping: 4), [], "put back")
     }
 
