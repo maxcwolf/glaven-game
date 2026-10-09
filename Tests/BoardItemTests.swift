@@ -666,4 +666,53 @@ final class BoardItemTests: XCTestCase {
         XCTAssertEqual(coord.boardState.cells[HexCoord(5, 3)]?.isTrap, false)
         XCTAssertEqual(coord.boardState.cells[HexCoord(8, 3)]?.isTrap, true, "out of range")
     }
+
+    // MARK: - Items between the turn's steps
+
+    /// Scroll of Healing: Heal 3, Range 5, the player choosing who; the card's steps don't move on.
+    func testAScrollOfHealingHealsWithoutAdvancingTheTurn() throws {
+        brute.items = ["gh-94"]
+        gm.characterManager.addCharacter(name: "tinkerer", edition: "gh")
+        let tinkerer = gm.game.characters[1]
+        coord.boardState.placePiece(.character(tinkerer.id), at: HexCoord(6, 3))
+        tinkerer.health = 2
+        let turn = try startTurn()
+        try use("gh-94")
+        guard case .selectingHealTarget(_, let value, let targets) = coord.interactionMode else { return XCTFail("a heal to aim") }
+        XCTAssertEqual(value, 3)
+        XCTAssertTrue(targets.contains(.character(tinkerer.id)))
+        coord.handlePieceTap(.character(tinkerer.id))
+        XCTAssertEqual(tinkerer.health, 5)
+        XCTAssertEqual(turn.currentActionIndex, 0, "the card's first step is still to come")
+        XCTAssertEqual(usable(), [], "used up")
+    }
+
+    func testTheDoomedCompassMovesAnEnemy() throws {
+        brute.items = ["gh-124"]
+        let piece = try XCTUnwrap(coord.spawnMonster(name: "bandit-guard", type: .normal, at: HexCoord(6, 3), origin: .placed))
+        _ = try startTurn()
+        try use("gh-124")
+        coord.handlePieceTap(piece)
+        guard case .selectingMove(let mover, let range, _, _, _) = coord.interactionMode else { return XCTFail("the enemy moves") }
+        XCTAssertEqual(mover, piece)
+        XCTAssertEqual(range, 2)
+    }
+
+    func testElementalBootsNeedFiveHexesMoved() async throws {
+        brute.items = ["gh-149"]
+        let turn = try startTurn()
+        XCTAssertEqual(usable(), [])
+        await coord.moveAlong(.character(brute.id), path: (3...8).map { HexCoord($0, 3) }, style: .normal)
+        XCTAssertEqual(turn.hexesMoved, 5)
+        XCTAssertEqual(usable(), ["gh-149"])
+        try use("gh-149")
+        XCTAssertEqual(coord.pendingElementChoice?.count, 1)
+    }
+
+    func testThiefsHoodLootsFarther() throws {
+        brute.items = ["gh-109"]
+        let turn = try startTurn()
+        try use("gh-109")
+        XCTAssertEqual(turn.lootBonus, 1)
+    }
 }

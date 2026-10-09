@@ -157,11 +157,13 @@ extension BoardCoordinator {
 
     /// Offer a printed action to another figure (an ally, or an enemy the character controls).
     /// False when no one can take it.
-    func beginChoosingPerformer(for action: ActionModel, by pieceID: PieceID, enemies: Bool, range: Int) -> Bool {
+    func beginChoosingPerformer(for action: ActionModel, by pieceID: PieceID, enemies: Bool, range: Int,
+                                summonsOnly: Bool = false) -> Bool {
         guard let position = boardState.piecePositions[pieceID] else { return false }
         let candidates = Set(boardState.piecePositions.filter { piece, hex in
             piece != pieceID && hex.distance(to: position) <= range && entity(for: piece) != nil
                 && areEnemies(pieceID, piece) == enemies && LineOfSight.hasLOS(from: position, to: hex, board: boardState)
+                && (!summonsOnly || { if case .character(let id) = pieceID { return summonOwner(of: piece)?.id == id }; return false }())
         }.keys)
         guard !candidates.isEmpty else {
             log("\(name(pieceID)) has no \(enemies ? "enemy" : "ally") in range to perform it", category: .info)

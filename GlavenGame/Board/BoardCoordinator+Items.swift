@@ -11,6 +11,9 @@ struct BoardItemEffect: Equatable {
         case turn, move, attack, meleeAttack, rangedAttack
         /// While the character's own heal waits for a target.
         case heal
+        /// Between the turn's steps, when nothing waits for a choice: items that start a choice
+        /// of their own (Scroll of Healing, Doomed Compass).
+        case betweenSteps
         /// A melee or ranged attack on a single target (not an area or a multi-target attack).
         case singleMeleeAttack, singleRangedAttack
     }
@@ -49,6 +52,15 @@ struct BoardItemEffect: Equatable {
         case doubleHeal
         /// Disarm every trap within this range.
         case disarmTraps(Int)
+        /// Another figure (an enemy, or one of the character's summons) moves under the
+        /// character's control (Doomed Compass, Staff of Summoning).
+        case controlledMove(Int, range: Int, enemy: Bool)
+        /// Destroy an adjacent obstacle (Resonant Crystal).
+        case destroyObstacle
+        /// Heal, choosing the target within range (Scroll of Healing).
+        case healInRange(Int, range: Int)
+        /// The next Loot ability loots this much farther (Thief's Hood: Loot 1 becomes Loot 2).
+        case lootBonus(Int)
         /// Remove one negative condition of the player's choosing.
         case removeOneNegativeCondition
     }
@@ -57,10 +69,18 @@ struct BoardItemEffect: Equatable {
     let parts: [Part]
     /// Elements the item consumes to work ("wild": any one); it can't be used without them.
     var consumes: [ElementType] = []
+    /// Hexes the character must have moved this turn first (Elemental Boots: 5).
+    var minimumMoved = 0
 
     init(_ moment: Moment, _ parts: Part...) {
         self.moment = moment
         self.parts = parts
+    }
+
+    init(_ moment: Moment, afterMoving hexes: Int, _ parts: Part...) {
+        self.moment = moment
+        self.parts = parts
+        self.minimumMoved = hexes
     }
 
     init(_ moment: Moment, consuming elements: [ElementType], _ parts: Part...) {
@@ -141,6 +161,12 @@ struct BoardItemEffect: Equatable {
         "gh-135": .init(.heal, .doubleHeal),                                  // Focusing Ray
         "gh-136": .init(.rangedAttack, .attackBonus(2), .advantage, .sufferDamage(2)), // Volatile Elixir
         "gh-125": .init(.turn, .disarmTraps(2)),                              // Curious Gear
+        "gh-124": .init(.betweenSteps, .controlledMove(2, range: 5, enemy: true)),  // Doomed Compass
+        "gh-120": .init(.betweenSteps, .controlledMove(3, range: 3, enemy: false)), // Staff of Summoning
+        "gh-133": .init(.betweenSteps, .destroyObstacle),                     // Resonant Crystal
+        "gh-94": .init(.betweenSteps, .healInRange(3, range: 5)),             // Scroll of Healing
+        "gh-149": .init(.turn, afterMoving: 5, .infuseAny(1)),                // Elemental Boots
+        "gh-109": .init(.turn, .lootBonus(1)),                                // Thief's Hood
     ]
 }
 
@@ -215,6 +241,7 @@ extension BoardCoordinator {
             guard !character.spentItems.contains(key), !character.consumedItems.contains(key),
                   let effect = BoardItemEffect.byItem[key], isMoment(effect.moment, for: turn),
                   effect.consumes.isEmpty || gameManager.game.canConsumeElements(effect.consumes),
+                  turn.hexesMoved >= effect.minimumMoved,
                   let item = itemData(key) else { return nil }
             return item
         }
@@ -240,6 +267,8 @@ extension BoardCoordinator {
             return attacker == me && turn.currentAttackRange() > 1
         case (.heal, .selectingHealTarget(let healer, _, _)):
             return healer == me
+        case (.betweenSteps, .idle):
+            return (turn.phase == .executeTopAction || turn.phase == .executeBottomAction) && !turn.isWaiting
         case (.singleMeleeAttack, .selectingAttackTarget(let attacker, _, _)):
             return attacker == me && turn.currentAttackRange() <= 1 && turn.pendingAreaPattern == nil
         case (.singleRangedAttack, .selectingAttackTarget(let attacker, _, _)):
@@ -355,6 +384,15 @@ extension BoardCoordinator {
                 interactionMode = .selectingHealTarget(pieceID: healer, healValue: value * 2, validTargets: targets)
                 log("\(name(me)): Heal \(value * 2)", category: .heal)
             }
+        case .controlledMove(let hexes, let range, let enemy):
+            _ = beginChoosingPerformer(for: ActionModel(type: .move, value: .int(hexes)), by: me, enemies: enemy, range: range,
+                                       summonsOnly: !enemy)
+        case .destroyObstacle:
+            _ = beginPlacingTokens(.destroyObstacle, count: 1, by: me)
+        case .healInRange(let amount, let range):
+            beginHealAction(pieceID: me, healValue: amount, range: range)
+        case .lootBonus(let extra):
+            turn.lootBonus += extra
         case .disarmTraps(let range):
             guard let origin = boardState.piecePositions[me] else { break }
             let traps = boardState.cells.values.filter { $0.isTrap && $0.coord.distance(to: origin) <= range }.map(\.coord).sorted()

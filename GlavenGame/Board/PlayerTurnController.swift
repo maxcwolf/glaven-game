@@ -54,6 +54,10 @@ final class PlayerTurnController {
     var hexesMoved = 0
     /// Damage the character has dealt this turn (Balanced Measure's Move X).
     var damageInflicted = 0
+    /// Extra loot range for the next Loot ability (Thief's Hood).
+    var lootBonus = 0
+    /// Whether a step is waiting for the player (a target, a hex).
+    var isWaiting: Bool { awaitingAsync || defaultAttackPending }
     /// Damage the character chose to suffer this turn (Flurry of Axes' X).
     var damageSuffered = 0
     /// Hexes moved by the latest move action (Hook and Chain).
@@ -690,7 +694,9 @@ final class PlayerTurnController {
             grantExperience(action.value?.intValue ?? 1)
 
         case .loot:
-            let lootRange = action.value?.intValue ?? 1
+            // Thief's Hood: Loot 1 becomes Loot 2.
+            let lootRange = (action.value?.intValue ?? 1) + lootBonus
+            lootBonus = 0
             coordinator.log("\(who): Loot \(lootRange)", category: .loot)
             coordinator.collectLootInRange(pieceID: pieceID, range: lootRange)
 
