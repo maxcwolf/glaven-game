@@ -52,6 +52,8 @@ final class PlayerTurnController {
     var attackTexts: [String] = []
     /// Hexes the character has moved this turn (not pushed or pulled), for movement items.
     var hexesMoved = 0
+    /// Damage the character has dealt this turn (Balanced Measure's Move X).
+    var damageInflicted = 0
     /// Hexes passed over (not ended on) during the latest move action, for "enemies moved through".
     var hexesPassed: [HexCoord] = []
     /// Cards whose persistent half was performed this turn: their charged bonus is in effect
@@ -369,7 +371,7 @@ final class PlayerTurnController {
         switch action.type {
         case .move, .jump, .fly:
             let bonus = consumeAugments(of: action)
-            var moveValue = action.value?.intValue ?? 2
+            var moveValue = variableValue(action) ?? action.value?.intValue ?? 2
             var mode: MoveMode = action.type == .jump ? .jump : (action.type == .fly ? .fly : .normal)
             for effect in (action.subActions ?? []) + bonus {
                 if effect.type == .jump { mode = .jump }
@@ -406,7 +408,7 @@ final class PlayerTurnController {
             var range = 1
             var targetCount = 1
             var allTargets: String?
-            resetPendingAttack(value: action.value?.intValue ?? 2, range: 1)
+            resetPendingAttack(value: variableValue(action) ?? action.value?.intValue ?? 2, range: 1)
             // Element augments are paid only when the attack has a target.
             let hasTarget = !coordinator.targetableEnemies(of: pieceID, range: attackRange(of: action)).isEmpty
             let bonus = hasTarget ? consumeAugments(of: action) : []
@@ -782,6 +784,16 @@ final class PlayerTurnController {
             coordinator.printedDamage(text, amount: amount, by: me, around: coordinator.boardState.piecePositions[me])
         }
         return false
+    }
+
+    /// "X" values the card defines in its text (Balanced Measure): hexes moved so far this
+    /// turn, or damage inflicted so far this turn.
+    private func variableValue(_ action: ActionModel) -> Int? {
+        guard case .string(let printed)? = action.value, Int(printed) == nil else { return nil }
+        let text = customText(of: action)
+        if text.contains("hexes you have moved") { return hexesMoved }
+        if text.contains("damage you have inflicted") { return damageInflicted }
+        return nil
     }
 
     static func damageAmount(in text: String) -> Int {

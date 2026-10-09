@@ -156,6 +156,9 @@ extension BoardCoordinator {
         boardScene?.refreshStatus(of: pieceID)
         if let dealer = creditedCharacter(for: killer), killer != pieceID {
             gameManager.scenarioStatsManager.recordDamageDealt(by: dealer.name, amount: amount)
+            if activePlayerTurn?.characterID == dealer.id, killer == .character(dealer.id) {
+                activePlayerTurn?.damageInflicted += amount
+            }
         }
         if entity.health <= 0 {
             handleDeath(of: pieceID, killer: killer, overkill: amount - healthBefore,

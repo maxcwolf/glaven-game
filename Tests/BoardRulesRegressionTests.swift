@@ -656,6 +656,26 @@ final class BoardRulesRegressionTests: XCTestCase {
         XCTAssertEqual(turn.currentActionIndex, 1)
     }
 
+    /// Regression: Balanced Measure's "X" (hexes moved; damage inflicted) was played as 2.
+    func testBalancedMeasureCountsTheTurn() async throws {
+        let brute = addCharacter(at: HexCoord(3, 3))
+        let bandit = addMonster("bandit-guard", at: HexCoord(8, 3))
+        bandit.health = 50
+        bandit.maxHealth = 50
+        let measure = try card("Balanced Measure", of: "brute"), other = try card("Trample", of: "brute")
+        let turn = turn(for: brute, top: measure, bottom: other)
+        await coord.moveAlong(.character(brute.id), path: (3...7).map { HexCoord($0, 3) }, style: .normal)
+        turn.executeCurrentAction()   // Attack X: four hexes moved
+        XCTAssertEqual(turn.currentAttackValue(), 4)
+
+        let next = self.turn(for: brute, top: other, bottom: measure, bottomFirst: true)
+        guard let piece = coord.boardState.piecePositions.first(where: { $0.value == HexCoord(8, 3) })?.key else { return XCTFail() }
+        coord.sufferDamage(3, to: piece, killer: .character(brute.id))
+        next.executeCurrentAction()   // Move X: three damage inflicted
+        guard case .selectingMove(_, let range, _, _, _) = coord.interactionMode else { return XCTFail("a move") }
+        XCTAssertEqual(range, 3)
+    }
+
     // MARK: - Mindthief augments
 
     /// Play `augment`'s top (the augment, then its own Attack) against an adjacent Bandit Guard.
