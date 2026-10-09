@@ -222,6 +222,7 @@ final class GameManager {
         boardCoordinator.startScenario(scenario: vgbScenario, playerCount: playerCount)
         applyEventEffectsAtScenarioStart()
         appPhase = .board
+        forgetHistory()
     }
 
     /// What road and city events left for this scenario (GH p.38): each character starts with
@@ -283,8 +284,17 @@ final class GameManager {
         }
     }
 
-    var canUndo: Bool { !undoStack.isEmpty }
-    var canRedo: Bool { !redoStack.isEmpty }
+    /// Undo and redo are for the town and setup screens. On the board a turn in progress holds
+    /// figures, continuations and animations that a restored snapshot would leave behind (a
+    /// half-finished move would never complete), so the board's own Cancel takes back a choice
+    /// instead, and nothing is recorded there. History never reaches across a scenario.
+    var canUndo: Bool { appPhase != .board && !undoStack.isEmpty }
+    var canRedo: Bool { appPhase != .board && !redoStack.isEmpty }
+
+    private func forgetHistory() {
+        undoStack.removeAll()
+        redoStack.removeAll()
+    }
     var undoCount: Int { undoStack.count }
     var redoCount: Int { redoStack.count }
 
@@ -368,6 +378,7 @@ final class GameManager {
         guard restoreCampaign(id) else { return }
         if resumeScenarioFromCheckpoint() {
             appPhase = .board
+            forgetHistory()
         } else {
             appPhase = .gameSetup
         }
@@ -398,6 +409,7 @@ final class GameManager {
         if let questReward { applyQuestReward(questReward) }
         roundCheckpoint = nil
         boardCoordinator.exitBoard()
+        forgetHistory()   // a finished scenario can't be undone
         // Back to town: spend gold, level up, pick the next scenario — after a city event.
         game.events.cityEventDue = true
         appPhase = .gameSetup
@@ -480,6 +492,7 @@ final class GameManager {
     func saveAndQuitScenario() {
         saveGame()
         boardCoordinator.exitBoard()
+        forgetHistory()
     }
 
     // MARK: - Campaigns
@@ -552,6 +565,7 @@ final class GameManager {
     // MARK: - Undo/Redo
 
     func pushUndoState() {
+        guard appPhase != .board else { return }
         guard let data = try? JSONEncoder().encode(game.toSnapshot(boardCoordinator: boardCoordinator)) else { return }
         undoStack.append(data)
         if undoStack.count > Self.maxUndoDepth {
@@ -561,7 +575,7 @@ final class GameManager {
     }
 
     func undo() {
-        guard let previous = undoStack.popLast() else { return }
+        guard canUndo, let previous = undoStack.popLast() else { return }
         // Push current state to redo
         if let current = try? JSONEncoder().encode(game.toSnapshot(boardCoordinator: boardCoordinator)) {
             redoStack.append(current)
@@ -572,7 +586,7 @@ final class GameManager {
     }
 
     func redo() {
-        guard let next = redoStack.popLast() else { return }
+        guard canRedo, let next = redoStack.popLast() else { return }
         // Push current state to undo
         if let current = try? JSONEncoder().encode(game.toSnapshot(boardCoordinator: boardCoordinator)) {
             undoStack.append(current)
@@ -586,7 +600,7 @@ final class GameManager {
     /// Index 0 = earliest undo state. Index undoCount = current state. Index undoCount + redoCount = latest redo state.
     func jumpToHistory(index: Int) {
         let currentIndex = undoStack.count
-        if index == currentIndex { return }
+        if index == currentIndex || appPhase == .board { return }
 
         guard let currentData = try? JSONEncoder().encode(game.toSnapshot(boardCoordinator: boardCoordinator)) else { return }
 

@@ -84,6 +84,34 @@ final class SaveAndContinueTests: XCTestCase {
         XCTAssertEqual(gm.game.scenario?.pendingFinish, "won")
     }
 
+    /// Undo is a town tool: nothing is recorded on the board (a restored snapshot would strand a
+    /// turn in progress), and a finished scenario can't be undone from town.
+    func testUndoNeverReachesIntoOrAcrossAScenario() async throws {
+        let sim = try ScenarioSimulator(scenario: "1", options: .init(seed: 2))
+        let gm = sim.gm
+        sim.gm.appPhase = .board
+        await sim.play(rounds: 2)
+        XCTAssertEqual(gm.appPhase, .board)
+        XCTAssertFalse(gm.canUndo, "nothing to undo on the board")
+        XCTAssertEqual(gm.undoCount, 0, "nothing recorded on the board")
+        let health = gm.game.characters.map(\.health)
+        gm.undo()
+        XCTAssertEqual(gm.game.characters.map(\.health), health)
+
+        gm.completeScenario(success: true)
+        XCTAssertEqual(gm.appPhase, .gameSetup)
+        XCTAssertFalse(gm.canUndo, "the scenario's end can't be undone")
+        XCTAssertEqual(gm.game.completedScenarios, ["gh-1"])
+
+        // In town, undo works as before.
+        let brute = try XCTUnwrap(gm.game.characters.first)
+        gm.characterManager.setNotes("bought a sword", for: brute)
+        XCTAssertTrue(gm.canUndo)
+        gm.undo()
+        XCTAssertEqual(gm.game.characters.first?.notes, "")
+        XCTAssertEqual(gm.game.completedScenarios, ["gh-1"])
+    }
+
     /// Save & Quit leaves for the main menu; Continue brings the same round back, even after the
     /// app saved again at the menu.
     func testSaveAndQuitThenContinueResumesTheSameRound() async throws {
