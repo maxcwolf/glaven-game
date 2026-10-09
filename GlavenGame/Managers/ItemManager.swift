@@ -84,13 +84,31 @@ final class ItemManager {
 
     // MARK: - Buying and Selling
 
+    /// The change to every shop price from the party's reputation (p.48): 1 gold off at +3,
+    /// 2 at +7, 3 at +11, 4 at +15, 5 at +19, and as much more at −3, −7, −11, −15, −19.
+    static func reputationPriceModifier(_ reputation: Int) -> Int {
+        if reputation >= 3 { return -((reputation + 1) / 4) }
+        if reputation <= -3 { return (-reputation + 1) / 4 }
+        return 0
+    }
+
+    /// What the item costs the party now, with the reputation discount or surcharge.
+    func price(_ item: ItemData) -> Int {
+        max(0, item.cost + Self.reputationPriceModifier(game.partyReputation))
+    }
+
+    /// What selling the item back pays: half its printed price, rounded down (p.47).
+    func salePrice(_ item: ItemData) -> Int {
+        item.cost / 2
+    }
+
     /// Why a character can't buy an item, or nil when they can.
     enum PurchaseProblem: Equatable { case alreadyOwned, soldOut, tooExpensive }
 
     func purchaseProblem(_ item: ItemData, for character: GameCharacter) -> PurchaseProblem? {
         if character.items.contains(item.itemKey) { return .alreadyOwned }
         if !inStock(item) { return .soldOut }
-        if character.loot < item.cost { return .tooExpensive }
+        if character.loot < price(item) { return .tooExpensive }
         return nil
     }
 
@@ -100,8 +118,8 @@ final class ItemManager {
     func buy(_ item: ItemData, for character: GameCharacter) -> Bool {
         guard purchaseProblem(item, for: character) == nil else { return false }
         onBeforeMutate?()
+        character.loot -= price(item)
         character.items.append(item.itemKey)
-        character.loot -= item.cost
         editionStore.fitLoadout(character, unlimited: game.tableRules.bringEveryItem)   // left at home if there's no room for it
         return true
     }
@@ -140,7 +158,7 @@ final class ItemManager {
         onBeforeMutate?()
         character.items.remove(at: index)
         character.itemsLeftBehind.removeAll { $0 == item.itemKey }
-        character.loot += item.cost / 2
+        character.loot += salePrice(item)
         return true
     }
 

@@ -7,6 +7,8 @@ struct ItemShopSheet: View {
     @State private var searchText = ""
     @State private var selectedSlot: ItemSlot?
     @State private var selectedItem: ItemData?
+    /// An owned item the player tapped Sell on, waiting for them to confirm.
+    @State private var pendingSale: ItemData?
 
     private var edition: String { gameManager.game.edition ?? "gh" }
 
@@ -71,6 +73,12 @@ struct ItemShopSheet: View {
                     Text("Prosperity \(prosperityLevel)")
                         .font(.caption)
                         .foregroundStyle(GlavenTheme.secondaryText)
+                    let modifier = ItemManager.reputationPriceModifier(gameManager.game.partyReputation)
+                    if modifier != 0 {
+                        Text("Reputation: prices \(modifier > 0 ? "+" : "\u{2212}")\(abs(modifier))")
+                            .font(.caption)
+                            .foregroundStyle(modifier < 0 ? GlavenTheme.positive : GlavenTheme.secondaryText)
+                    }
                 }
                 .padding(.horizontal)
                 .padding(.bottom, 8)
@@ -78,12 +86,16 @@ struct ItemShopSheet: View {
                 // Item list
                 List {
                     ForEach(availableItems) { item in
-                        ItemRow(item: item, isOwned: isOwned(item), canAfford: canAfford(item),
-                                soldOut: isSoldOut(item)) {
-                            let traded = isOwned(item)
-                                ? gameManager.itemManager.sell(item, for: character)
-                                : gameManager.itemManager.buy(item, for: character)
-                            if traded { BoardSoundPlayer.play(.loot) }
+                        let owned = isOwned(item)
+                        ItemRow(item: item, isOwned: owned, canAfford: canAfford(item), soldOut: isSoldOut(item),
+                                price: owned ? gameManager.itemManager.salePrice(item) : gameManager.itemManager.price(item)) {
+                            // Selling asks first: Buy and Sell share a spot, so a double tap
+                            // would otherwise sell what was just bought at half price.
+                            if owned {
+                                pendingSale = item
+                            } else if gameManager.itemManager.buy(item, for: character) {
+                                BoardSoundPlayer.play(.loot)
+                            }
                         }
                         .contentShape(Rectangle())
                         .onTapGesture { selectedItem = item }
@@ -103,6 +115,17 @@ struct ItemShopSheet: View {
             }
             .sheet(item: $selectedItem) { item in
                 ItemDetailSheet(item: item)
+            }
+            .confirmationDialog(pendingSale.map { "Sell \($0.name) for \(gameManager.itemManager.salePrice($0)) gold?" } ?? "",
+                                isPresented: Binding(get: { pendingSale != nil }, set: { if !$0 { pendingSale = nil } }),
+                                titleVisibility: .visible) {
+                if let item = pendingSale {
+                    Button("Sell for \(gameManager.itemManager.salePrice(item)) Gold", role: .destructive) {
+                        if gameManager.itemManager.sell(item, for: character) { BoardSoundPlayer.play(.loot) }
+                        pendingSale = nil
+                    }
+                }
+                Button("Keep It", role: .cancel) { pendingSale = nil }
             }
         }
     }
@@ -130,6 +153,8 @@ private struct ItemRow: View {
     let isOwned: Bool
     let canAfford: Bool
     let soldOut: Bool
+    /// The price to buy it, or (owned) what selling it pays.
+    let price: Int
     let action: () -> Void
 
     private var canBuy: Bool { canAfford && !soldOut }
@@ -182,7 +207,7 @@ private struct ItemRow: View {
                 Image(systemName: "dollarsign.circle")
                     .font(.caption)
                     .foregroundStyle(.yellow)
-                Text("\(item.cost)")
+                Text("\(price)")
                     .font(.subheadline)
                     .fontWeight(.bold)
                     .foregroundStyle(.yellow)
@@ -191,6 +216,7 @@ private struct ItemRow: View {
             // Buy/Sell button
             Button(action: action) {
                 Text(isOwned ? "Sell" : (soldOut ? "Sold Out" : "Buy"))
+                    .accessibilityLabel(isOwned ? "Sell for \(price) gold" : (soldOut ? "Sold out" : "Buy for \(price) gold"))
                     .font(.caption)
                     .fontWeight(.bold)
                     .padding(.horizontal, 12)

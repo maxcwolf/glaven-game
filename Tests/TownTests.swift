@@ -139,6 +139,37 @@ final class TownTests: XCTestCase {
         c.loot = item.cost - 1
         XCTAssertEqual(shop.purchaseProblem(item, for: c), .tooExpensive)
     }
+
+    /// Reputation changes every shop price (p.48): −1 at +3 … −5 at +19, and the reverse below
+    /// −3. Selling still pays half the printed price.
+    func testReputationChangesShopPrices() throws {
+        let table: [(Int, Int)] = [(0, 0), (2, 0), (3, -1), (6, -1), (7, -2), (10, -2), (11, -3), (14, -3),
+                                   (15, -4), (18, -4), (19, -5), (20, -5), (-2, 0), (-3, 1), (-6, 1),
+                                   (-7, 2), (-11, 3), (-15, 4), (-19, 5), (-20, 5)]
+        for (reputation, modifier) in table {
+            XCTAssertEqual(ItemManager.reputationPriceModifier(reputation), modifier, "reputation \(reputation)")
+        }
+
+        let gm = try party(["brute"])
+        let shop = gm.itemManager
+        let brute = gm.game.characters[0]
+        let item = try XCTUnwrap(shop.availableItems().filter { $0.cost >= 20 }.min { $0.cost < $1.cost })
+
+        gm.game.partyReputation = 20
+        XCTAssertEqual(shop.price(item), item.cost - 5)
+        brute.loot = item.cost - 5
+        XCTAssertTrue(shop.buy(item, for: brute), "affordable with the discount")
+        XCTAssertEqual(brute.loot, 0)
+        XCTAssertTrue(shop.sell(item, for: brute))
+        XCTAssertEqual(brute.loot, item.cost / 2, "selling pays half the printed price")
+
+        gm.game.partyReputation = -20
+        brute.loot = item.cost
+        XCTAssertEqual(shop.purchaseProblem(item, for: brute), .tooExpensive, "5 gold more at −20")
+        brute.loot = item.cost + 5
+        XCTAssertTrue(shop.buy(item, for: brute))
+        XCTAssertEqual(brute.loot, 0)
+    }
 }
 
 extension TownTests {
