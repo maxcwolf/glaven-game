@@ -66,7 +66,7 @@ final class EnhancementTests: XCTestCase {
 
         let area = try XCTUnwrap(gm.editionStore.abilities(forDeck: "cragheart", edition: "gh")
             .flatMap(CardEnhancing.slots).first { $0.type == .hex })
-        XCTAssertEqual(CardEnhancing.options(for: area, edition: "gh"), [], "hex areas aren't played yet")
+        XCTAssertEqual(CardEnhancing.options(for: area, edition: "gh"), area.action.value?.stringValue.contains("enhance") == true ? [.hex] : [])
     }
 
     // MARK: - Prices
@@ -266,5 +266,21 @@ final class EnhancementTests: XCTestCase {
         XCTAssertEqual(coord.pendingElementChoice?.count, 1)
         coord.resolveElementChoice([.light])
         XCTAssertEqual(gm.game.elementBoard.first { $0.type == .light }?.state, .new)
+    }
+
+    /// A hex enhancement turns the area's marked hex into a target; it costs 200 gold divided by
+    /// the hexes already targeted.
+    func testAHexEnhancementWidensTheArea() throws {
+        let sweeping = try card("Sweeping Blow", of: "brute")
+        let slot = try XCTUnwrap(CardEnhancing.slots(of: sweeping).first { $0.type == .hex })
+        XCTAssertEqual(CardEnhancing.options(for: slot, edition: "gh"), [.hex])
+        XCTAssertEqual(CardEnhancing.cost(.hex, in: slot, card: sweeping, enhancements: [], edition: "gh"), 66, "200 / 3 hexes")
+        let enhanced = CardEnhancing.apply([Enhancement(cardId: slot.cardId, actionHalf: slot.half, actionIndex: slot.actionIndex,
+                                                        slotIndex: slot.slotIndex, action: .hex)],
+                                           to: slot.half == "top" ? sweeping.actions ?? [] : sweeping.bottomActions ?? [],
+                                           cardId: slot.cardId, half: slot.half)
+        let pattern = try XCTUnwrap(enhanced.flatMap { $0.subActions ?? [] }.first { $0.type == .area }?.value?.stringValue)
+        XCTAssertEqual(pattern.components(separatedBy: "target").count - 1, 4)
+        XCTAssertFalse(pattern.contains("enhance"))
     }
 }

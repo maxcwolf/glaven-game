@@ -53,8 +53,7 @@ enum CardEnhancing {
 
     // MARK: - What a slot can take
 
-    /// The enhancements a slot can take that the board plays. Hex (area) enhancements aren't
-    /// played yet, so they aren't sold.
+    /// The enhancements a slot can take that the board plays.
     static func options(for slot: Slot, edition: String) -> [EnhancementAction] {
         EnhancementsManager.availableActions(for: slot.type, actionType: slot.action.type, isSummon: false, edition: edition)
             .filter { plays($0, in: slot) }
@@ -67,7 +66,8 @@ enum CardEnhancing {
         case .jump:
             return slot.action.type == .move && slot.host.type == .move
         case .hex:
-            return false
+            // An area with a hex marked where the card has room for one more.
+            return slot.action.type == .area && slot.action.value?.stringValue.contains("enhance") == true
         case .wild:
             return [.attack, .move, .heal, .shield, .retaliate].contains(slot.host.type)
         default:
@@ -93,7 +93,15 @@ enum CardEnhancing {
     /// What the Enhancer charges for `enhancement` in `slot`, given what the card already has.
     static func cost(_ enhancement: EnhancementAction, in slot: Slot, card: AbilityModel,
                      enhancements: [Enhancement], edition: String) -> Int {
-        EnhancementsManager.enhancementCost(
+        // Gloomhaven's hex: 200 gold divided by the hexes the area already targets (not doubled
+        // for several targets).
+        if enhancement == .hex, edition == "gh", let pattern = slot.action.value?.stringValue {
+            let targets = max(1, pattern.components(separatedBy: "target").count - 1)
+            let level = max(0, (card.level?.intValue ?? 1) - 1) * 25
+            let earlier = EnhancementsManager.enhancementCount(on: slot.cardId, in: enhancements) * 75
+            return 200 / targets + level + earlier
+        }
+        return EnhancementsManager.enhancementCost(
             action: enhancement, slotType: slot.type, actionType: slot.action.type,
             cardLevel: card.level?.intValue ?? 1,
             previousEnhancements: EnhancementsManager.enhancementCount(on: slot.cardId, in: enhancements),
@@ -155,9 +163,23 @@ enum CardEnhancing {
             } else {
                 host = enhancement.action == .plus1 ? plusOne(host) : adding(enhancement.action, to: host)
             }
+            if enhancement.action == .hex { host = addingHex(to: host) }
             result[index] = host
         }
         return result
+    }
+
+    /// The area's first hex marked for an enhancement becomes a target hex.
+    private static func addingHex(to host: ActionModel) -> ActionModel {
+        var host = host
+        host.subActions = host.subActions?.map { sub in
+            guard sub.type == .area, let pattern = sub.value?.stringValue,
+                  let range = pattern.range(of: "enhance") else { return sub }
+            var sub = sub
+            sub.value = .string(pattern.replacingCharacters(in: range, with: "target"))
+            return sub
+        }
+        return host
     }
 
     private static func plusOne(_ action: ActionModel) -> ActionModel {

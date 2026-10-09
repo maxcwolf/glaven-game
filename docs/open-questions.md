@@ -39,3 +39,5 @@ the game does now; change any of them and I'll follow.
     two hands' worth, and half their level (rounded up) in small items. Today every item they own
     is carried, and all of them work on the board. Should I add a loadout choice in town (with
     the shop refusing nothing, just what's brought), or enforce it at purchase? Now: no limit.
+15. **Hex enhancements on areas with two marked hexes** (8 cards). The added hex goes on the
+    first marked hex. Want a choice of which, when buying? Now: the first.
