@@ -251,6 +251,19 @@ final class MonsterTurnController {
             case .summon:
                 performSummon(action, pieceID: pieceID)
 
+            case .shield, .retaliate:
+                // The card's own Shield/Retaliate was given when it was revealed; a paid element
+                // inside it adds to it, or replaces it ("Shield 2 instead", the Lurker).
+                for paid in (action.subActions ?? []) where MonsterAbility.isConsume(paid) && consumed.contains(paid.id) {
+                    for reward in paid.subActions ?? [] where reward.type == action.type {
+                        let instead = reward.subActions?.contains { $0.value?.stringValue.contains("instead") == true } == true
+                        let extra = (reward.value?.intValue ?? 0) - (instead ? (action.value?.intValue ?? 0) : 0)
+                        guard extra > 0 else { continue }
+                        applyRoundBonus(ActionModel(type: action.type, value: .int(extra)), to: entity)
+                        coordinator.log("\(coordinator.name(pieceID)): \(GameText.actionTitle(reward))", category: .condition)
+                    }
+                }
+
             case .custom where action.value?.stringValue.contains("ondeath") == true:
                 // "On death: …" (Cultists) is made when the monster dies, not on its turn.
                 continue

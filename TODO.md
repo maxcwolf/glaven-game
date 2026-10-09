@@ -437,7 +437,7 @@ Scenario rewards (2026-10-08)
 - [x] **Items during board turns** (Phase VI: about 110 of 150 items play on the board)
 - [x] **Monster ability text**: traps (Archers, Flame Demon), damage around the monster or its target (Ancient Artillery, Night Demon, Flame Demon, Savvas Lavaflow), +2 against a flanked target (Hound, Giant Viper), disadvantage against the Giant Viper this round, the Harrower's heal per target damaged (`MonsterTextTests`)
 - [x] **Cultists' "on death" attack**: made from where the Cultist fell, right after the attack that killed it, never on its own turn (`testACultistAttacksAsItDies`)
-- [ ] The Lurker's "Shield 2 instead" (consume Ice) stacks with its Shield 1
+- [x] Element bonuses inside a monster's Shield/Retaliate: the Lurker's "consume Ice: Shield 2 instead" (`testALurkersIceShieldReplacesItsShield`)
 - [ ] **Icy terrain** — no forced-movement mechanic
 - [ ] **Plague / Enfeeble** (FH) — no mechanics
 - [ ] **Multi-hex obstacles** — one overlay per hex

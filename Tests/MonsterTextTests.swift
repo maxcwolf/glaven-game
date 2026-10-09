@@ -109,4 +109,21 @@ final class MonsterTextTests: XCTestCase {
         XCTAssertEqual(coord.turnLog.filter { $0.message.contains("attacks Brute") }.count, attacksBefore + 1)
         _ = health
     }
+
+    /// Lurker (612): "Shield 1; consume Ice: Shield 2 instead" — 2, not 3, and not 1.
+    func testALurkersIceShieldReplacesItsShield() async throws {
+        _ = character("brute", at: HexCoord(6, 3))
+        gm.game.elementBoard[gm.game.elementBoard.firstIndex { $0.type == .ice }!].state = .strong
+        let piece = try XCTUnwrap(coord.spawnMonster(name: "lurker", type: .normal, at: HexCoord(3, 3), origin: .placed))
+        let monster = try XCTUnwrap(gm.game.monsters.first { $0.name == "lurker" })
+        let deck = gm.monsterManager.abilities(for: monster)
+        monster.abilities = [try XCTUnwrap(deck.firstIndex { $0.cardId == 612 })]
+        monster.ability = 0
+        monster.abilityDrawn = true
+        gm.monsterManager.applyStatEffects(for: monster)
+        let entity = try XCTUnwrap(coord.entity(for: piece))
+        let before = entity.shield?.value?.intValue ?? 0
+        await MonsterTurnController(coordinator: coord, gameManager: gm).executeMonsterGroup(monster)
+        XCTAssertEqual((entity.shield?.value?.intValue ?? 0) - before, 1, "Shield 1 became Shield 2")
+    }
 }
