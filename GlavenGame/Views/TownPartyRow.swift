@@ -7,6 +7,7 @@ struct TownPartyRow: View {
     let character: GameCharacter
     var onSheet: () -> Void
     var onShop: () -> Void
+    var onEnhance: () -> Void = {}
     var onLevelUp: () -> Void
     var onChooseCard: () -> Void
     var onHand: () -> Void
@@ -70,6 +71,11 @@ struct TownPartyRow: View {
                 Button("Shop", systemImage: "bag.fill", action: onShop)
                     .buttonStyle(.bordered)
                     .tint(.gray)
+                if gameManager.enhancementsManager.enhancerOpen(edition: character.edition) {
+                    Button("Enhance", systemImage: "sparkles", action: onEnhance)
+                        .buttonStyle(.bordered)
+                        .tint(.gray)
+                }
             }
             .font(.subheadline)
             .controlSize(.small)

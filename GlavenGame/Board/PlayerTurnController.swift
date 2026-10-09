@@ -71,8 +71,10 @@ final class PlayerTurnController {
     func selectCards(top: AbilityModel, bottom: AbilityModel) {
         self.topCard = top
         self.bottomCard = bottom
-        self.topActions = top.actions ?? []
-        self.bottomActions = bottom.bottomActions ?? []
+        // Enhancements bought in town are part of the card (GH p.42).
+        let enhancements = character?.enhancements ?? []
+        self.topActions = CardEnhancing.apply(enhancements, to: top.actions ?? [], cardId: top.cardId, half: "top")
+        self.bottomActions = CardEnhancing.apply(enhancements, to: bottom.bottomActions ?? [], cardId: bottom.cardId, half: "bottom")
         self.phase = bottomFirst ? .executeBottomAction : .executeTopAction
         self.currentActionIndex = 0
     }
@@ -331,6 +333,7 @@ final class PlayerTurnController {
             grantBonusExperience(bonus)
             let label = mode == .jump ? "Jump" : (mode == .fly ? "Fly" : "Move")
             coordinator.log("\(who): \(label) \(moveValue)", category: .move)
+            applyPrintedEffects(of: action, coordinator: coordinator)
             coordinator.beginMoveAction(pieceID: pieceID, moveRange: moveValue, mode: mode)
             return true
 
@@ -412,17 +415,25 @@ final class PlayerTurnController {
             let bonus = consumeAugments(of: action)
             var healValue = action.value?.intValue ?? 0
             var range = 0
+            var conditions: [ConditionName] = []
             for sub in (action.subActions ?? []) + bonus {
                 if sub.type == .range, let r = sub.value?.intValue { range = r }
                 if sub.type == .heal { healValue += MonsterAbility.signedValue(sub) }
+                if sub.type == .condition, let name = sub.value?.stringValue, let cond = ConditionName(rawValue: name) {
+                    conditions.append(cond)
+                }
             }
             grantBonusExperience(bonus)
             if range > 0 {
                 coordinator.log("\(who): Heal \(healValue), Range \(range). Choose who to heal", category: .heal)
-                coordinator.beginHealAction(pieceID: pieceID, healValue: healValue, range: range)
+                applyPrintedEffects(of: action, coordinator: coordinator)
+                coordinator.beginHealAction(pieceID: pieceID, healValue: healValue, range: range, conditions: conditions)
                 return true
             }
             let healed = coordinator.heal(pieceID, amount: healValue, source: pieceID)
+            if !hasSpecialTargetSelf(action) {
+                for cond in conditions { coordinator.applyCondition(cond, to: pieceID) }
+            }
             coordinator.log("\(who) heals for \(healed)", category: .heal, trace: "Heal \(healValue), self")
 
         case .condition:
@@ -520,13 +531,7 @@ final class PlayerTurnController {
         // actions already ran their sub-actions, and attacks apply theirs once they have a
         // target); conditions on self-targeted actions apply to the character.
         if ![.element, .attack, .box, .concatenation, .grid].contains(action.type) {
-            for sub in action.subActions ?? [] {
-                if sub.type == .element && !MonsterAbility.isConsume(sub) {
-                    applyElementAction(sub, coordinator: coordinator)
-                } else if let xp = Self.experience(in: sub) {
-                    grantExperience(xp)
-                }
-            }
+            applyPrintedEffects(of: action, coordinator: coordinator)
         }
         if hasSpecialTargetSelf(action) && action.type != .condition {
             for sub in action.subActions ?? [] where sub.type == .condition {
@@ -536,6 +541,18 @@ final class PlayerTurnController {
             }
         }
         return false
+    }
+
+    /// Infusions and XP printed inside an action (Blind Destruction's earth, an element
+    /// enhancement), which come with performing it.
+    private func applyPrintedEffects(of action: ActionModel, coordinator: BoardCoordinator) {
+        for sub in action.subActions ?? [] {
+            if sub.type == .element && !MonsterAbility.isConsume(sub) {
+                applyElementAction(sub, coordinator: coordinator)
+            } else if let xp = Self.experience(in: sub) {
+                grantExperience(xp)
+            }
+        }
     }
 
     /// Range of an attack action before augments (melee = 1).

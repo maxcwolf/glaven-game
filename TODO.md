@@ -243,7 +243,8 @@ Phase VI — the rest of Gloomhaven's town rules
 - [x] Personal quests: two dealt on recruiting, one kept; a campaign record per character (wins, kills by monster, elite kills, exhaustions) counts every requirement the game can see, after wins and losses; progress in town and on the sheet; by-hand counting only for map-region, enhancement and Skullbane requirements (`PersonalQuestTests`, `PersonalQuestAutotrackTests`)
 - [x] Retirement from town when the quest is complete (unlock, prosperity, log); a new recruit takes the slot
 - [x] Sanctuary donation in town: 10 gold once per visit for two blessings in the next scenario; prosperity +1 per 100 gold given; counts for Piety in All Things (`TownTests`)
-- [ ] Enhancements in town (EnhancementsManager exists; the old companion sheet was deleted, see git 718ed50)
+- [x] Enhancements in town: the Enhancer (after The Power of Enhancement) sells +1, conditions, elements and jump for each card slot at chart prices, paid in the character's gold; enhanced cards play enhanced on the board and show their enhancements on card tiles; heals now apply their own conditions, and moves their printed infusions (`EnhancementTests`)
+- [ ] Hex (area) and any-element enhancements: not sold yet — areas need the added hex placed, any element needs an infusion picker (printed "infuse any element" is also skipped on the board today)
 - [ ] Unlocking or retiring a class adds its city and road events to the decks
 - [ ] VoiceOver play on the board (accessible hexes for moves and targets); the remaining menus on the board theme; drop the unused Majalla font
 - Open questions for the user: docs/open-questions.md

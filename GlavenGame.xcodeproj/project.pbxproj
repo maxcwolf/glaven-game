@@ -91,6 +91,7 @@
 		68B34A2D170B539CB4F7D79A /* SummonState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 81C28FB339301A6F83C1744B /* SummonState.swift */; };
 		69153077728453EBEE92D7D4 /* BoardCoordinator+Spawning.swift in Sources */ = {isa = PBXBuildFile; fileRef = 82764E21991595370066BD2F /* BoardCoordinator+Spawning.swift */; };
 		6A2C001DDB53BA14D5172D8E /* ObjectiveManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DC0AE3639F6C6E004323D24 /* ObjectiveManager.swift */; };
+		6D608F3FE34AB04DE2BE8DE6 /* EnhancementSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35D4A8E2CD8880F3B5B21592 /* EnhancementSheet.swift */; };
 		6DB6AB6ED57EBE6DBFCC2A33 /* UIScale.swift in Sources */ = {isa = PBXBuildFile; fileRef = 75C223FE093334EB47476FA0 /* UIScale.swift */; };
 		7341D050CFF3F51B1A40A8D0 /* ElementBoardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8255E1A8F1CC6DC84CBFD242 /* ElementBoardView.swift */; };
 		75DF0BB6FC95C99A2DB187DC /* CombatResolver.swift in Sources */ = {isa = PBXBuildFile; fileRef = D43BC428DB53E9EC54ECA21C /* CombatResolver.swift */; };
@@ -176,6 +177,7 @@
 		D18A8958FB513FD0A1A027F7 /* MonsterStatModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = B84551835BADF4DA5F602FA6 /* MonsterStatModel.swift */; };
 		D4E7121201A9D615F5FC0D37 /* DeckData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1BFD0B71E6987E420B5CBA91 /* DeckData.swift */; };
 		D5E66A358D8848C0094682B1 /* ScenarioManager+Rewards.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3C61D7D6C6A754273EE78F30 /* ScenarioManager+Rewards.swift */; };
+		D7CE1CE9C11E696DD3D22EA9 /* CardEnhancing.swift in Sources */ = {isa = PBXBuildFile; fileRef = D87DC294ED9193A4E2061B72 /* CardEnhancing.swift */; };
 		DA80F59435177C23D8E005E0 /* AoEResolver.swift in Sources */ = {isa = PBXBuildFile; fileRef = C9787C8278D29A360F280A45 /* AoEResolver.swift */; };
 		DBCECD3BAD657A5840A2F80A /* EditionData in Resources */ = {isa = PBXBuildFile; fileRef = 6837034E843BAFF4AB496C8A /* EditionData */; };
 		DC76BF79136B777FBBE43EED /* BoardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 972A40BE4DE4A8FA037B3C54 /* BoardView.swift */; };
@@ -236,6 +238,7 @@
 		33A6C1188659B67AC3B2FFC8 /* BoardSnapshot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BoardSnapshot.swift; sourceTree = "<group>"; };
 		33CE037572CCD1CC45F5F131 /* PieceID.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PieceID.swift; sourceTree = "<group>"; };
 		3477ACD63A2C3231A799AB39 /* EnhancementsManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EnhancementsManager.swift; sourceTree = "<group>"; };
+		35D4A8E2CD8880F3B5B21592 /* EnhancementSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EnhancementSheet.swift; sourceTree = "<group>"; };
 		36A8B8B694D98254AB1958A9 /* Color+Hex.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Color+Hex.swift"; sourceTree = "<group>"; };
 		3C61D7D6C6A754273EE78F30 /* ScenarioManager+Rewards.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ScenarioManager+Rewards.swift"; sourceTree = "<group>"; };
 		3D21E983F2C6A9DB30620F8A /* AttackModifierDeck.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AttackModifierDeck.swift; sourceTree = "<group>"; };
@@ -369,6 +372,7 @@
 		D509FC90D805FC2585C9C743 /* AttackModifierEffectType.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AttackModifierEffectType.swift; sourceTree = "<group>"; };
 		D5883A3D9378A826BF8AA541 /* ConditionType.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConditionType.swift; sourceTree = "<group>"; };
 		D86B71BFEEBD99C00C1AF649 /* TownPartyRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TownPartyRow.swift; sourceTree = "<group>"; };
+		D87DC294ED9193A4E2061B72 /* CardEnhancing.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CardEnhancing.swift; sourceTree = "<group>"; };
 		D8D120B1CEE8FA85B7939897 /* Pathfinder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Pathfinder.swift; sourceTree = "<group>"; };
 		D9682A31C9693AB6DADDC9F6 /* AppPhase.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppPhase.swift; sourceTree = "<group>"; };
 		D9D1DCB6F2E36C85EC7CA983 /* QuestPicker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuestPicker.swift; sourceTree = "<group>"; };
@@ -573,6 +577,7 @@
 				D0F512D593B3AEA9F219C2FC /* AbilityCardChoiceViews.swift */,
 				7935967456962F4F03B80C2B /* BattleGoalPicker.swift */,
 				BC02E40BD390F740C8CA66B1 /* CreditsSheet.swift */,
+				35D4A8E2CD8880F3B5B21592 /* EnhancementSheet.swift */,
 				28320BFD439C596F3CD2DDEA /* EventSheet.swift */,
 				AD2078C38F909FF5A2F71A7B /* GameSetupView.swift */,
 				4840A613B6DC796BF25638E0 /* MainMenuView.swift */,
@@ -685,6 +690,7 @@
 				8631B220635598C0A14D982C /* BoardBuilder.swift */,
 				33A6C1188659B67AC3B2FFC8 /* BoardSnapshot.swift */,
 				93501E1A8B09C90B3224D4E6 /* BoardState.swift */,
+				D87DC294ED9193A4E2061B72 /* CardEnhancing.swift */,
 				D43BC428DB53E9EC54ECA21C /* CombatResolver.swift */,
 				EC67D8214EC555D0D3D36DA1 /* EscortAI.swift */,
 				2D9D8344A9522FB4BC90880C /* GameRandom.swift */,
@@ -948,6 +954,7 @@
 				DC76BF79136B777FBBE43EED /* BoardView.swift in Sources */,
 				3D70D4B36FC1C27F8205C998 /* BundleHelper.swift in Sources */,
 				000550603398D6EC31B12E45 /* CampaignLogEntry.swift in Sources */,
+				D7CE1CE9C11E696DD3D22EA9 /* CardEnhancing.swift in Sources */,
 				5B13B2FCD96C798F2DF93DE9 /* CardPool.swift in Sources */,
 				264672DD5FA11BF550313E8D /* CardSelectionPanel.swift in Sources */,
 				9BF3482C20F2CC41F462F7AC /* CharacterClass.swift in Sources */,
@@ -975,6 +982,7 @@
 				F281285B9F8642504EBF952F /* ElementType.swift in Sources */,
 				E64FC53CA3E919734FCCDBF9 /* ElementView.swift in Sources */,
 				1E105B509AA9841848BDC003 /* Enhancement.swift in Sources */,
+				6D608F3FE34AB04DE2BE8DE6 /* EnhancementSheet.swift in Sources */,
 				29AAA0498618366B61CE6DBA /* EnhancementSlotType.swift in Sources */,
 				43170E8E4353FA170EAEF8D5 /* EnhancementsManager.swift in Sources */,
 				21FA5E07EC8A712DE13F6A66 /* EntityCondition.swift in Sources */,

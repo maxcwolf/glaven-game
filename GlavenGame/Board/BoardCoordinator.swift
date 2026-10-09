@@ -125,6 +125,8 @@ final class BoardCoordinator {
     var boardState: BoardState
     var boardPhase: BoardPhase = .setup
     var interactionMode: InteractionMode = .idle
+    /// Conditions the heal being targeted gives whoever it heals (Amputate's stun, a bless enhancement).
+    var pendingHealConditions: [ConditionName] = []
     var selectedPiece: PieceID?
     /// The figure whose turn it is, ringed on the board (nil between turns).
     var actingPiece: PieceID?
@@ -1544,8 +1546,9 @@ final class BoardCoordinator {
 
     /// Begin an interactive heal action — the player picks themself or an ally (character or
     /// summon) within range and line of sight (p.25).
-    func beginHealAction(pieceID: PieceID, healValue: Int, range: Int) {
+    func beginHealAction(pieceID: PieceID, healValue: Int, range: Int, conditions: [ConditionName] = []) {
         let validTargets = alliesInRange(of: pieceID, range: range, includeSelf: true)
+        pendingHealConditions = conditions
         interactionMode = .selectingHealTarget(pieceID: pieceID, healValue: healValue, validTargets: validTargets)
         let targetHexes = Set(validTargets.compactMap { boardState.piecePositions[$0] })
         boardScene?.highlightHexes(targetHexes, style: .heal, offsetCol: offsetCol, offsetRow: offsetRow)
@@ -2107,6 +2110,8 @@ final class BoardCoordinator {
             if validTargets.contains(piece) {
                 let healed = heal(piece, amount: healValue, source: healerID)
                 log("\(name(healerID)) heals \(name(piece)) for \(healed)", category: .heal, trace: "Heal \(healValue)")
+                for condition in pendingHealConditions { applyCondition(condition, to: piece) }
+                pendingHealConditions = []
                 boardScene?.clearHighlights()
                 interactionMode = .idle
                 activePlayerTurn?.advanceAfterAsyncAction()

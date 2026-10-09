@@ -25,15 +25,30 @@ struct AbilityCardTile: View {
                         .padding(6)
                 }
             }
+            .overlay(alignment: .bottom) {
+                if !enhancements.isEmpty {
+                    Label(enhancements.joined(separator: ", "), systemImage: "sparkles")
+                        .font(BoardTheme.font(size: 11, weight: .semibold))
+                        .foregroundStyle(BoardTheme.text)
+                        .lineLimit(2)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 3)
+                        .frame(maxWidth: .infinity)
+                        .background(BoardTheme.scrim)
+                }
+            }
             .opacity(selected ? 1 : 0.85)
             .accessibilityElement(children: .ignore)
             .accessibilityLabel(accessibilityText)
             .accessibilityAddTraits(selected ? [.isButton, .isSelected] : .isButton)
     }
 
+    private var enhancements: [String] { CardEnhancing.summary(of: card, enhancements: character.enhancements) }
+
     private var accessibilityText: String {
         let level = CardPool.level(of: card).map { "level \($0)" } ?? "level X"
-        return "\(card.name ?? "Card"), \(level), initiative \(card.initiative)"
+        let enhanced = enhancements.isEmpty ? "" : ", enhanced: \(enhancements.joined(separator: ", "))"
+        return "\(card.name ?? "Card"), \(level), initiative \(card.initiative)\(enhanced)"
     }
 
     @ViewBuilder

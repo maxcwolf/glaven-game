@@ -25,4 +25,10 @@ the game does now; change any of them and I'll follow.
    Now: yes, every exhaustion in the party in scenarios they played.
 10. **Sanctuary and prosperity.** Every 100 gold the party donates raises prosperity by one. Is
     that the threshold you play with? Now: 100.
-
+11. **When the Enhancer opens.** By the rulebook, Gloomhaven's enhancements need The Power of
+    Enhancement (won in Frozen Hollow, scenario 14), so the Enhance button is hidden until then.
+    Many groups house-rule it open from the start — want a setting? Now: by the rulebook.
+12. **Enhancements saved by the old companion sheet** addressed a sub-action's slot in a way that
+    could clash with the next action's slot; the new address is `(index + 1) × 100 + sub`. Any
+    old saves with enhancements would read them on the wrong line. I assumed there are none worth
+    migrating. Now: no migration.
