@@ -35,3 +35,7 @@ the game does now; change any of them and I'll follow.
 13. **Iron Helmet.** The game data gives it neither the spent nor the consumed mark, so it's
     always on: every enemy ×2 against the wearer counts as +0. If your copy of the card has a
     spent mark, it should be offered once per rest like Leather Armor. Now: always on.
+14. **Item carry limits.** By the rules a character brings at most one head, body and legs item,
+    two hands' worth, and half their level (rounded up) in small items. Today every item they own
+    is carried, and all of them work on the board. Should I add a loadout choice in town (with
+    the shop refusing nothing, just what's brought), or enforce it at purchase? Now: no limit.
