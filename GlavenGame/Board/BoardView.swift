@@ -530,13 +530,14 @@ struct BoardView: View {
 
                             if !playerTurn.isWaiting {
                             HStack(spacing: 8) {
-                                let defaultLabel = playerTurn.phase == .executeTopAction ? "Use Basic Attack 2" : "Use Basic Move 2"
-                                Button(defaultLabel) {
-                                    playerTurn.useDefaultAction()
+                                if playerTurn.canUseDefaultAction {
+                                    Button(playerTurn.defaultActionTitle) {
+                                        playerTurn.useDefaultAction()
+                                    }
+                                    .buttonStyle(.bordered)
+                                    .tint(.cyan)
+                                    .controlSize(.small)
                                 }
-                                .buttonStyle(.bordered)
-                                .tint(.cyan)
-                                .controlSize(.small)
 
                                 Button("Skip Rest of Half") {
                                     playerTurn.skipRemainingActions()

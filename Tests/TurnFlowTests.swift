@@ -93,4 +93,57 @@ final class TurnFlowTests: XCTestCase {
         XCTAssertTrue(tinkerer.summons.isEmpty)
         XCTAssertFalse(turn.hasActed)
     }
+
+    // MARK: - Bonuses at the start and end of the turn
+
+    /// After Lumbering Bash's start-of-turn heal, the first half can still be played as the
+    /// basic attack; the button offers it only while it can be used, with the real value.
+    func testABasicAttackFollowsAStartOfTurnHeal() throws {
+        let cragheart = add("cragheart", at: HexCoord(3, 3))
+        cragheart.activeCards = [143]   // Lumbering Bash: Heal at the start of each turn
+        let cards = deck("cragheart").filter { $0.cardId != 143 }
+        let turn = turn(for: cragheart, top: cards[0], bottom: cards[1])
+        XCTAssertNotNil(PlayerTurnController.bonusCard(of: turn.topActions[0]), "the heal comes first")
+        XCTAssertTrue(turn.canUseDefaultAction)
+        XCTAssertEqual(turn.defaultActionTitle, "Use Basic Attack 2")
+
+        turn.executeCurrentAction()   // the start-of-turn heal
+        coord.handlePieceTap(.character(cragheart.id))
+        XCTAssertEqual(turn.currentActionIndex, 1)
+        XCTAssertTrue(turn.canUseDefaultAction, "the half's own abilities haven't started")
+        turn.useDefaultAction()
+        XCTAssertTrue(turn.topUsedAsDefault)
+    }
+
+    /// Auto Turret's end-of-turn attack still comes when the last half is a basic move.
+    func testAnEndOfTurnAttackFollowsABasicMove() async throws {
+        let tinkerer = add("tinkerer", at: HexCoord(3, 3))
+        tinkerer.activeCards = [54]   // Auto Turret
+        coord.spawnMonster(name: "bandit-guard", type: .normal, at: HexCoord(3, 6), origin: .placed)
+        let cards = deck("tinkerer").filter { $0.cardId != 54 }
+        let turn = turn(for: tinkerer, top: cards[0], bottom: cards[1])
+        turn.skipRemainingActions()   // the top half
+        XCTAssertEqual(turn.phase, .executeBottomAction)
+        turn.useDefaultAction()       // the bottom half: basic Move 2
+        guard case .selectingMove(_, _, let hexes, _, _) = coord.interactionMode else { return XCTFail("a move") }
+        coord.handleHexTap(try XCTUnwrap(hexes.sorted().first))
+        _ = await waitUntil { !turn.isWaiting }
+        XCTAssertEqual(turn.phase, .executeBottomAction, "the turn isn't over: Auto Turret's attack is still to come")
+        XCTAssertFalse(turn.canUseDefaultAction)
+        turn.executeCurrentAction()
+        guard case .selectingAttackTarget = coord.interactionMode else { return XCTFail("Auto Turret attacks") }
+    }
+
+    /// Once a half's printed ability is performed, its basic action can no longer replace it.
+    func testNoBasicActionAfterAPrintedAbility() throws {
+        let brute = add("brute", at: HexCoord(3, 3))
+        let trample = try XCTUnwrap(deck("brute").first { $0.name == "Trample" })
+        let dagger = try XCTUnwrap(deck("brute").first { $0.name == "Spare Dagger" })
+        let turn = turn(for: brute, top: dagger, bottom: trample)
+        turn.skipRemainingActions()
+        turn.executeCurrentAction()   // Trample's bottom: Move 4, Jump
+        guard case .selectingMove(_, _, let hexes, _, _) = coord.interactionMode else { return XCTFail("a move") }
+        coord.handleHexTap(try XCTUnwrap(hexes.sorted().first))
+        XCTAssertFalse(turn.canUseDefaultAction)
+    }
 }

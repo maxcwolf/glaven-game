@@ -244,7 +244,7 @@ final class PlayerTurnController {
         if defaultAttackPending {
             defaultAttackPending = false
             awaitingAsync = false
-            advancePhase()
+            finishHalfAfterBasicAction()
             return
         }
         guard awaitingAsync else { return }
@@ -394,17 +394,54 @@ final class PlayerTurnController {
         self.checkpoint = nil
     }
 
+    /// The steps of the half being played.
+    private var currentSteps: [ActionModel] {
+        switch phase {
+        case .executeTopAction: return topActions
+        case .executeBottomAction: return bottomActions
+        default: return []
+        }
+    }
+
+    /// Whether the half's basic action can still replace its printed abilities: none of them has
+    /// been performed yet (start-of-turn bonus steps, Lumbering Bash's heal, don't count).
+    var canUseDefaultAction: Bool {
+        guard phase == .executeTopAction || phase == .executeBottomAction,
+              !defaultAttackPending, !awaitingAsync, !(character?.exhausted ?? true) else { return false }
+        let alreadyBasic = phase == .executeTopAction ? topUsedAsDefault : bottomUsedAsDefault
+        return !alreadyBasic && currentSteps.prefix(currentActionIndex).allSatisfy { Self.bonusCard(of: $0) != nil }
+    }
+
+    /// The basic action's button: "Use Basic Attack 3" with a Versatile Dagger.
+    var defaultActionTitle: String {
+        let items = character?.carriedItems ?? []
+        return phase == .executeTopAction
+            ? "Use Basic Attack \(PassiveItems.defaultAttack(for: items))"
+            : "Use Basic Move \(PassiveItems.defaultMove(for: items))"
+    }
+
+    /// After a basic action the half's printed abilities are done, but the turn's bonus steps in
+    /// it still come (Auto Turret's attack at the end of the turn).
+    private func finishHalfAfterBasicAction() {
+        if currentActionIndex >= currentSteps.count { advancePhase() }
+    }
+
     /// Use the default action for the current half instead of the printed one:
     /// Attack 2 on the top half, Move 2 on the bottom half.
     func useDefaultAction() {
-        guard let coordinator = coordinator, !hasActed || currentActionIndex == 0, !defaultAttackPending else { return }
+        guard let coordinator = coordinator, !defaultAttackPending else { return }
         if character?.exhausted ?? true {
             endForExhaustion()
             return
         }
-        guard !awaitingAsync else { return }
+        guard canUseDefaultAction else { return }
         checkpoint = makeCheckpoint()
         hasActed = true
+        // The basic action replaces the half's printed abilities; the turn's bonus steps in it
+        // still to come stay, to be performed after it.
+        let steps = currentSteps
+        let kept = Array(steps.prefix(currentActionIndex)) + steps.dropFirst(currentActionIndex).filter { Self.bonusCard(of: $0) != nil }
+        if phase == .executeTopAction { topActions = kept } else { bottomActions = kept }
 
         let pieceID = PieceID.character(characterID)
         switch phase {
