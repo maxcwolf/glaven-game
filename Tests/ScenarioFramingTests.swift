@@ -30,6 +30,10 @@ final class ScenarioFramingTests: XCTestCase {
                 XCTAssertEqual(PlayerTextTests.lint(line), [], "#\(data.index): \(line)")
                 XCTAssertFalse(line.contains("%") || line.contains(" ,") || line.contains(":+"), "#\(data.index): \(line)")
             }
+            for line in brief.rewards + [brief.map].compactMap({ $0 }) {
+                XCTAssertEqual(PlayerTextTests.lint(line), [], "#\(data.index): \(line)")
+                XCTAssertFalse(line.contains("%"), "#\(data.index): \(line)")
+            }
             for line in [brief.goal] + brief.defeat + brief.rules {
                 XCTAssertTrue(line.hasSuffix(".") || line.hasSuffix("!"), "#\(data.index) reads as a sentence: \(line)")
                 XCTAssertGreaterThanOrEqual(line.split(separator: " ").count, 3, "#\(data.index) is a whole rule: \(line)")
@@ -39,7 +43,10 @@ final class ScenarioFramingTests: XCTestCase {
 
     func testBriefsSayWhatTheScenarioAsks() throws {
         XCTAssertEqual(try brief("1"), ScenarioBrief(title: "#1 Black Barrow", goal: "Kill every enemy.",
-                                                     defeat: ["Every character is exhausted."], rules: []))
+                                                     defeat: ["Every character is exhausted."], rules: [],
+                                                     monsters: ["bandit-archer", "bandit-guard", "living-bones"],
+                                                     map: "3 rooms · start in L1a",
+                                                     rewards: ["Party achievement: First Steps", "Unlocks #2 Barrow Lair"]))
         XCTAssertEqual(try brief("2").rules, ["Each character adds 3 Curses to their attack modifier deck."])
         XCTAssertEqual(try brief("14").rules.first, "Each character adds 3 \u{2212}1 cards to their attack modifier deck.")
         XCTAssertEqual(try brief("27").goal, "Survive until the end of round 10.")
@@ -172,7 +179,7 @@ final class ScenarioFramingTests: XCTestCase {
             try XCTUnwrap(NSBitmapImageRep(cgImage: image).representation(using: .png, properties: [:]))
                 .write(to: URL(fileURLWithPath: "\(out)/\(name).png"))
         }
-        for index in ["1", "27", "42"] {
+        for index in ["1", "21", "27", "42"] {
             try render(ScenarioBriefCard(brief: try brief(index), buttonTitle: "Begin") {}, "brief-\(index)")
         }
         let (gm, coord) = try scenarioOne()

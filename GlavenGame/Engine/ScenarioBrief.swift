@@ -9,6 +9,13 @@ struct ScenarioBrief: Equatable {
     var goal: String
     var defeat: [String]
     var rules: [String]
+    /// The monster types the scenario uses, by key ("bandit-guard"), for their portraits.
+    var monsters: [String] = []
+    /// "3 rooms · start in L1a".
+    var map: String? = nil
+    /// What winning gives, in a few words each: "Party achievement: First Steps", "Unlocks #2 Barrow Lair".
+    var rewards: [String] = []
+    var edition: String = "gh"
 
     static func make(for scenario: ScenarioData, labels: EditionDataStore? = nil) -> ScenarioBrief {
         let rules = scenario.rules ?? []
@@ -19,7 +26,48 @@ struct ScenarioBrief: Equatable {
             goal: goal(rules.filter { $0.finish == "won" }, edition: scenario.edition, labels: labels),
             defeat: ["Every character is exhausted."]
                 + rules.filter { $0.finish == "lost" }.map { lossText($0, labels: labels, edition: scenario.edition) },
-            rules: specialRules(scenario, labels: labels))
+            rules: specialRules(scenario, labels: labels),
+            monsters: scenario.monsters ?? [],
+            map: mapLine(scenario.rooms ?? []),
+            rewards: rewardLines(scenario, labels: labels),
+            edition: scenario.edition)
+    }
+
+    // MARK: - Monsters, map and rewards
+
+    private static func mapLine(_ rooms: [RoomData]) -> String? {
+        guard !rooms.isEmpty else { return nil }
+        let count = rooms.count == 1 ? "1 room" : "\(rooms.count) rooms"
+        guard let start = rooms.first(where: \.isInitial)?.ref else { return count }
+        return "\(count) · start in \(start)"
+    }
+
+    /// The rewards for winning that are known before playing (gold and XP written as formulas
+    /// are left to the end screen).
+    private static func rewardLines(_ scenario: ScenarioData, labels: EditionDataStore?) -> [String] {
+        let edition = scenario.edition
+        var lines: [String] = []
+        let rewards = scenario.rewards
+        func achievement(_ id: String, _ kind: String) -> String {
+            labels?.resolveLabel(key: "\(kind).\(id)", edition: edition) ?? GameText.titleCased(id)
+        }
+        if case .int(let gold)? = rewards?.gold, gold != 0 { lines.append("\(gold) gold each") }
+        if case .int(let xp)? = rewards?.experience, xp != 0 { lines.append("\(xp) experience each") }
+        for id in rewards?.partyAchievements ?? [] { lines.append("Party achievement: \(achievement(id, "partyAchievements"))") }
+        for id in rewards?.globalAchievements ?? [] { lines.append("Global achievement: \(achievement(id, "globalAchievements"))") }
+        for entry in rewards?.items ?? [] {
+            let id = entry.split(separator: ":").first.flatMap { Int($0) }
+            if let id, let name = labels?.itemData(id: id, edition: edition)?.name { lines.append("Item: \(name)") }
+        }
+        if let name = rewards?.unlockCharacter {
+            lines.append("New class: \(GameText.className(name, edition: edition, labels: labels))")
+        }
+        for index in scenario.unlocks ?? [] {
+            guard let unlocked = labels?.scenarioData(index: index, edition: edition) else { continue }
+            let name = labels?.resolveLabel(key: "scenario.title.\(edition).\(index)", edition: edition) ?? unlocked.name
+            lines.append("Unlocks #\(index) \(name)")
+        }
+        return lines
     }
 
     // MARK: - Goal

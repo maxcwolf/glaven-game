@@ -33,6 +33,19 @@ struct ScenarioBriefCard: View {
                     bullets(brief.defeat)
                 }
 
+                if !brief.monsters.isEmpty {
+                    section("Monsters", systemImage: "pawprint", tint: BoardTheme.secondaryText) {
+                        monsterRow
+                    }
+                }
+
+                if brief.map != nil || !brief.rewards.isEmpty {
+                    VStack(alignment: .leading, spacing: 6) {
+                        if let map = brief.map { detailRow("Map", map) }
+                        if !brief.rewards.isEmpty { detailRow("Rewards", brief.rewards.joined(separator: " · ")) }
+                    }
+                }
+
                 if !brief.rules.isEmpty {
                     section("Special rules", systemImage: "scroll", tint: BoardTheme.brass) {
                         // Most scenarios have a rule or two; a long list (GH 42) scrolls.
@@ -84,6 +97,52 @@ struct ScenarioBriefCard: View {
         }
         .accessibilityElement(children: .contain)
         .accessibilityLabel("Scenario \(brief.title)")
+    }
+
+    /// The scenario's monsters as portraits, named.
+    private var monsterRow: some View {
+        // Wraps when a scenario has many (Infernal Throne has seven).
+        FlowLayout(spacing: 10) {
+            ForEach(brief.monsters, id: \.self) { monster in
+                VStack(spacing: 4) {
+                    Group {
+                        if let image = ImageLoader.monsterThumbnail(edition: brief.edition, name: monster) {
+                            #if os(macOS)
+                            Image(nsImage: image).resizable().scaledToFill()
+                            #else
+                            Image(uiImage: image).resizable().scaledToFill()
+                            #endif
+                        } else {
+                            Circle().fill(BoardTheme.raised)
+                        }
+                    }
+                    .frame(width: 44, height: 44)
+                    .clipShape(Circle())
+                    .overlay(Circle().stroke(BoardTheme.border, lineWidth: 1))
+                    Text(GameText.monsterName(monster, edition: brief.edition))
+                        .font(BoardTheme.font(size: 11))
+                        .foregroundStyle(BoardTheme.secondaryText)
+                        .multilineTextAlignment(.center)
+                        .frame(width: 76)
+                }
+                .accessibilityElement(children: .combine)
+            }
+        }
+    }
+
+    /// "MAP   3 rooms · start in L1a"
+    private func detailRow(_ label: String, _ value: String) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: 12) {
+            Text(label.uppercased())
+                .font(.caption.weight(.bold))
+                .foregroundStyle(BoardTheme.secondaryText)
+                .frame(width: 70, alignment: .leading)
+            Text(value)
+                .font(.subheadline)
+                .foregroundStyle(BoardTheme.text)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .accessibilityElement(children: .combine)
     }
 
     private func section<Content: View>(_ title: String, systemImage: String, tint: Color,
