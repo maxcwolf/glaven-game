@@ -680,6 +680,7 @@ final class PlayerTurnController {
         guard let character, xp > 0 else { return }
         character.experience += xp
         coordinator?.log("\(who) gains \(xp) XP", category: .info)
+        coordinator?.teach(.experience)
     }
 
     /// Execute one action. Returns true if it waits for player input (and advances later).

@@ -20,6 +20,7 @@ struct MonsterAbilityStripView: View {
                         let deckName = monster.monsterData?.deck ?? monster.name
                         if let url = ImageLoader.monsterAbilityCardURL(deckName: deckName, cardIndex: cardIndex) {
                             monsterCardCell(monster: monster, url: url)
+                                .learnable(.monsterCard(monster.name))
                         }
                     }
                 }

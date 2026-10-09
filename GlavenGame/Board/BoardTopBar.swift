@@ -9,20 +9,25 @@ struct BoardTopBar: View {
     var onAbandon: () -> Void
 
     var body: some View {
-        HStack(spacing: 12) {
+        HStack(spacing: 10) {
             menu
             heading
             if let brief = coordinator.scenarioBrief {
                 goalChip(brief.goal)
+                    .learnable(.goal)
             }
             Spacer(minLength: 4)
             let rail = coordinator.turnRail.isEmpty ? coordinator.selectionRail : coordinator.turnRail
             if !rail.isEmpty {
                 TurnRailView(entries: rail)
+                    .learnable(.turnRail)
                     .layoutPriority(1)
             }
             Spacer(minLength: 4)
-            CompactElementBoard()
+            HStack(spacing: 6) {
+                explainButton
+                CompactElementBoard()
+            }
         }
         .padding(.horizontal, 16)
         .frame(height: 64)
@@ -51,6 +56,16 @@ struct BoardTopBar: View {
             }
             Divider()
             Button {
+                coordinator.openHowToPlay()
+            } label: {
+                Label("How to Play", systemImage: "book")
+            }
+            Toggle(isOn: Binding(get: { gameManager.game.learningMode },
+                                 set: { gameManager.setLearningMode($0) })) {
+                Label("Learning Mode", systemImage: "lightbulb")
+            }
+            Divider()
+            Button {
                 gameManager.saveAndQuitScenario()
             } label: {
                 Label("Save & Quit to Menu", systemImage: "square.and.arrow.down")
@@ -68,6 +83,27 @@ struct BoardTopBar: View {
         .menuStyle(.button)
         .buttonStyle(.plain)
         .accessibilityLabel("Game menu")
+    }
+
+    /// The "?": the next tap explains what it lands on.
+    private var explainButton: some View {
+        Button {
+            coordinator.toggleExplainMode()
+        } label: {
+            Text("?")
+                .font(BoardTheme.font(size: 18, weight: .bold))
+                .foregroundStyle(coordinator.explainMode ? BoardTheme.sheet : BoardTheme.text)
+                .frame(width: 32, height: 32)
+                .background(coordinator.explainMode ? BoardTheme.brass : BoardTheme.raised, in: Circle())
+                .overlay(Circle().stroke(BoardTheme.border, lineWidth: 1))
+                .frame(width: 36, height: 44)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .keyboardShortcut("/", modifiers: .shift)
+        .accessibilityLabel("Explain")
+        .accessibilityHint("The next thing you tap is explained instead of used")
+        .accessibilityAddTraits(coordinator.explainMode ? .isSelected : [])
     }
 
     // MARK: - Heading and goal
@@ -118,6 +154,7 @@ struct CompactElementBoard: View {
         HStack(spacing: 4) {
             ForEach(gameManager.game.elementBoard) { element in
                 CompactElement(element: element)
+                    .learnable(.element(element.type))
             }
         }
         .accessibilityElement(children: .contain)

@@ -98,6 +98,9 @@ extension BoardCoordinator {
     /// their owner's deck; allied monsters use the ally deck).
     func applyCondition(_ condition: ConditionName, to pieceID: PieceID) {
         guard let gameManager, let entity = entity(for: pieceID) else { return }
+        if let topic = LearnTopic.id(for: condition) {
+            teach(topic, "\(name(pieceID)) has \(GameText.conditionName(condition)).", at: .piece(pieceID))
+        }
         if condition == .muddle, let character = entity as? GameCharacter,
            character.carriedItems.contains(PassiveItems.muddleToStrengthen) {
             log("\(name(pieceID))\u{2019}s Drakescale Helm turns Muddle into Strengthen", category: .condition)
@@ -211,6 +214,7 @@ extension BoardCoordinator {
 
         let generation = boardGeneration
         let choice = await withCheckedContinuation { (continuation: CheckedContinuation<DamageMitigationChoice, Never>) in
+            teach(.preventingDamage)
             pendingDamage = PendingDamage(characterID: character.id, damage: damage,
                                           sourceDescription: source, continuation: continuation)
         }

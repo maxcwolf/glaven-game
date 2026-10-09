@@ -29,6 +29,37 @@ struct MonsterTurnResult {
     var attack: MonsterAttackSpec? = nil
     /// Whether the movement is a jump.
     var jumping: Bool = false
+    /// Every enemy it could focus on, best first (the first is the focus), and why: for the
+    /// learning mode's "Why?".
+    var focusCandidates: [FocusCandidate] = []
+}
+
+/// An enemy a monster could focus on, and what decided it (p.30): first the fewest traps and
+/// hazards on the way, then the least movement to attack it, then the nearest, then the one
+/// acting first.
+struct FocusCandidate: Equatable {
+    let pieceID: PieceID
+    let negativeHexes: Int
+    let pathCost: Int
+    let proximity: Int
+    let initiative: Double
+
+    /// What set the first of two candidates ahead of the second.
+    enum Reason: Equatable { case traps, movement, proximity, initiative }
+
+    static func reason(_ a: FocusCandidate, over b: FocusCandidate) -> Reason {
+        if a.negativeHexes != b.negativeHexes { return .traps }
+        if a.pathCost != b.pathCost { return .movement }
+        if a.proximity != b.proximity { return .proximity }
+        return .initiative
+    }
+
+    static func ordered(_ a: FocusCandidate, _ b: FocusCandidate) -> Bool {
+        if a.negativeHexes != b.negativeHexes { return a.negativeHexes < b.negativeHexes }
+        if a.pathCost != b.pathCost { return a.pathCost < b.pathCost }
+        if a.proximity != b.proximity { return a.proximity < b.proximity }
+        return a.initiative < b.initiative
+    }
 }
 
 /// Implements Gloomhaven's monster AI focus/movement algorithm (GH p.29–31).
@@ -55,6 +86,7 @@ enum MonsterAI {
         let standee = entity.number
         let actions = ability.actions ?? []
 
+        var candidates: [FocusCandidate] = []
         func result(path: [HexCoord] = [], targets: [PieceID] = [], from: HexCoord? = nil,
                     focus: PieceID? = nil, stunned: Bool = false, disarmed: Bool = false,
                     attack: MonsterAttackSpec? = nil, jumping: Bool = false) -> MonsterTurnResult {
@@ -65,7 +97,7 @@ enum MonsterAI {
                 abilityActions: actions.filter { $0.type != .move && $0.type != .attack },
                 initiative: ability.initiative,
                 pendingPush: attack?.push ?? 0, pendingPull: attack?.pull ?? 0,
-                attack: attack, jumping: jumping
+                attack: attack, jumping: jumping, focusCandidates: candidates
             )
         }
 
@@ -113,6 +145,17 @@ enum MonsterAI {
         let blockingPositions = movementBlockers(board: board, monster: monster, gameState: gameState)
         let allyPositions = gatherAllyPositions(board: board, monster: monster, excluding: pieceID)
 
+        candidates = focusCandidates(
+            from: currentPos,
+            enemies: enemies,
+            board: board,
+            range: focusRange,
+            isRanged: isRanged,
+            enemyPositions: blockingPositions,
+            gameState: gameState,
+            mode: mode,
+            attack: attackSpec
+        )
         guard let focus = findFocus(
             from: currentPos,
             enemies: enemies,
@@ -215,14 +258,22 @@ enum MonsterAI {
         mode: MoveMode = .normal,
         attack: MonsterAttackSpec? = nil
     ) -> PieceID? {
-        struct FocusCandidate {
-            let pieceID: PieceID
-            let negativeHexes: Int
-            let pathCost: Int
-            let proximity: Int
-            let initiative: Double
-        }
+        focusCandidates(from: position, enemies: enemies, board: board, range: range, isRanged: isRanged,
+                        enemyPositions: enemyPositions, gameState: gameState, mode: mode, attack: attack).first?.pieceID
+    }
 
+    /// Every enemy the monster could attack this turn or later, best focus first.
+    static func focusCandidates(
+        from position: HexCoord,
+        enemies: [PieceID],
+        board: BoardState,
+        range: Int,
+        isRanged: Bool,
+        enemyPositions: Set<HexCoord>,
+        gameState: GameState,
+        mode: MoveMode = .normal,
+        attack: MonsterAttackSpec? = nil
+    ) -> [FocusCandidate] {
         var candidates: [FocusCandidate] = []
 
         for enemy in enemies {
@@ -258,14 +309,7 @@ enum MonsterAI {
             ))
         }
 
-        candidates.sort { a, b in
-            if a.negativeHexes != b.negativeHexes { return a.negativeHexes < b.negativeHexes }
-            if a.pathCost != b.pathCost { return a.pathCost < b.pathCost }
-            if a.proximity != b.proximity { return a.proximity < b.proximity }
-            return a.initiative < b.initiative
-        }
-
-        return candidates.first?.pieceID
+        return candidates.sorted(by: FocusCandidate.ordered)
     }
 
     /// Find all valid attack hexes to hit a target from.

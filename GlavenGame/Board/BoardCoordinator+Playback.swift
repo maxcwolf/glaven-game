@@ -34,6 +34,11 @@ extension BoardCoordinator {
 
     /// Wait here while the game is paused (and the board is still this one).
     @MainActor func waitWhilePaused() async {
+        // A learning tip on screen holds the monsters too, even one shown before their turn began.
+        if pendingTip != nil && isAutomatedTurn && !isPaused {
+            setPaused(true)
+            tipPausedPlayback = true
+        }
         let generation = boardGeneration
         while isPaused && isCurrentBoard(generation) {
             await withCheckedContinuation { pauseWaiters.append($0) }

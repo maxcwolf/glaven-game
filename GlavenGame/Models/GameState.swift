@@ -24,6 +24,9 @@ final class GameState {
     var partyName: String = ""
     /// Variants this campaign plays by (all off: the rulebook).
     var tableRules = TableRules()
+    /// Tips the first time each rule comes up, and "Why?" on what the monsters do: on for a
+    /// player's first campaign.
+    var learningMode = false
     var partyReputation: Int = 0
     var partyProsperity: Int = 0
 
@@ -83,6 +86,7 @@ final class GameState {
         lootDeck = fresh.lootDeck
         partyName = fresh.partyName
         tableRules = fresh.tableRules
+        learningMode = fresh.learningMode
         partyReputation = fresh.partyReputation
         partyProsperity = fresh.partyProsperity
         scenario = fresh.scenario

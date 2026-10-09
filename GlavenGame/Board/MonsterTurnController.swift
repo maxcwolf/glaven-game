@@ -29,6 +29,7 @@ final class MonsterTurnController {
     @MainActor func executeMonsterGroup(_ monster: GameMonster, only: Set<Int>? = nil) async {
         guard let coordinator, let gameManager else { return }
         guard !monster.off, !monster.aliveEntities.isEmpty else { return }
+        coordinator.teach(.monstersAct, at: .monsterCard(monster.name))
 
         guard let ability = gameManager.monsterManager.currentAbility(for: monster) else {
             coordinator.log("\(coordinator.monsterTypeName(monster.name)) has no ability card", category: .info)
@@ -75,6 +76,7 @@ final class MonsterTurnController {
                 var turn = MonsterTurnState()
                 await executeCard(actions, pieceID: pieceID, entity: entity, monster: monster,
                                   ability: ability, consumed: consumed ?? [], turn: &turn)
+                coordinator.endWhy()
                 guard !isStale else { return }
             }
             // End of this monster's turn: conditions that last "until the end of its next turn" expire.
@@ -145,7 +147,10 @@ final class MonsterTurnController {
         // Focus is chosen before performing any action (p.30).
         if !state.focusChosen {
             state.focusChosen = true
-            state.focus = currentTurn().focusTarget
+            let plan = currentTurn()
+            state.focus = plan.focusTarget
+            // What it weighed, for "Why?" on the lines it logs.
+            coordinator.beginWhy(for: pieceID, candidates: plan.focusCandidates, ranged: plan.attack?.isRanged ?? false)
             if state.focus == nil && (MonsterAbility.hasAttack(actions) || actions.contains { $0.type == .move }) {
                 coordinator.log("\(coordinator.name(pieceID)) finds no enemy to focus on", category: .info)
             }
@@ -168,6 +173,7 @@ final class MonsterTurnController {
                     coordinator.log("\(coordinator.name(pieceID)) moves \(steps) hex\(steps == 1 ? "" : "es")",
                                     category: .move, trace: "to \(plan.movementPath.last!)")
                     let style: MovementStyle = monster.monsterData?.flying == true ? .fly : (plan.jumping ? .jump : .normal)
+                    coordinator.noteWhyMove(steps)
                     await coordinator.moveAlong(pieceID, path: plan.movementPath, style: style)
                     state.hexesMoved += plan.movementPath.count - 1
                 }
@@ -213,6 +219,7 @@ final class MonsterTurnController {
                                                  conditions: spec.conditions, push: spec.push, pull: spec.pull,
                                                  advantage: spec.advantage, range: max(1, spec.range)))
                     guard !isStale else { return }
+                    coordinator.noteWhyAttack(on: victim)
                     if (coordinator.entity(for: victim)?.health ?? 0) < healthBefore || !coordinator.isOnBoard(victim) { damaged += 1 }
                     // Savvas Lavaflow: "All allies and enemies adjacent to the target suffer 2 damage."
                     for text in printed where text.contains("adjacent to the target suffer") {

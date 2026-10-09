@@ -11,6 +11,8 @@ class BoardScene: SKScene {
     private let lootLayer = SKNode()
     private let pieceLayer = SKNode()
     private let highlightLayer = SKNode()
+    /// A monster's "Why?" drawn on the board (kept apart from the highlights, which come and go).
+    private let whyLayer = SKNode()
     /// Floating numbers, attack lines and other short-lived effects, above every piece. Effects
     /// live here rather than on the piece, so a killing blow's number outlives the piece.
     private let effectsLayer = SKNode()
@@ -88,10 +90,11 @@ class BoardScene: SKScene {
     /// everything again each time the scene was shown, and SpriteKit throws on that.)
     private func setUpLayers() {
         backgroundColor = SKColor(red: 0.12, green: 0.1, blue: 0.09, alpha: 1.0)
-        for layer in [tileLayer, overlayLayer, lootLayer, pieceLayer, highlightLayer, effectsLayer] {
+        for layer in [tileLayer, overlayLayer, lootLayer, pieceLayer, highlightLayer, whyLayer, effectsLayer] {
             addChild(layer)
         }
         effectsLayer.zPosition = 30
+        whyLayer.zPosition = 35
         // Gold on a dark band, so the ring reads on warm floors as well as dark ones.
         actingRing.strokeColor = SKColor(red: 0.98, green: 0.80, blue: 0.30, alpha: 1)
         actingRing.lineWidth = 4
@@ -164,6 +167,7 @@ class BoardScene: SKScene {
         pieceLayer.removeAllChildren()
         if actingRing.parent == nil { pieceLayer.addChild(actingRing) }
         highlightLayer.removeAllChildren()
+        whyLayer.removeAllChildren()
         effectsLayer.removeAllChildren()
         pieceNodes.removeAll()
         highlightNodes.removeAll()
@@ -941,36 +945,105 @@ class BoardScene: SKScene {
     /// Set from the accessibility setting; turns off the highlight pulse.
     var reduceMotion = false
 
-    /// Clear all hex highlights.
     /// A small chip under each piece the player may attack with the damage before the draw
     /// ("1 dmg"); the instruction spells out each sum. It goes with the highlights.
     func showTargetPreviews(_ previews: [PieceID: String]) {
-        let scale = min(max(cameraState.scale, 0.75), 1.6)
         for (id, text) in previews.sorted(by: { $0.key < $1.key }) {
-            guard let node = pieceNodes[id] else { continue }
-            let label = SKLabelNode()
-            label.attributedText = NSAttributedString(string: text, attributes: [
-                .font: PlatformFont.systemFont(ofSize: 12, weight: .semibold),
-                .foregroundColor: SKColor(red: 0.96, green: 0.92, blue: 0.84, alpha: 1),
-            ])
-            label.verticalAlignmentMode = .center
-            label.horizontalAlignmentMode = .center
-            label.zPosition = 1
-            let size = CGSize(width: label.frame.width + 12, height: 20)
-            let pill = SKShapeNode(rectOf: size, cornerRadius: size.height / 2)
-            pill.fillColor = SKColor(red: 0.11, green: 0.09, blue: 0.08, alpha: 0.94)
-            pill.strokeColor = SKColor(red: 0.784, green: 0.573, blue: 0.180, alpha: 1)
-            pill.lineWidth = 1.5
-            let chip = SKNode()
+            guard let chip = chip(text, under: id, lit: false) else { continue }
             chip.name = "preview"
-            chip.addChild(pill)
-            chip.addChild(label)
-            chip.setScale(scale)
-            chip.position = CGPoint(x: node.position.x, y: node.position.y - HexMath.cellStepX * 0.42 - size.height / 2 * scale)
-            chip.zPosition = 40
             highlightLayer.addChild(chip)
         }
     }
+
+    /// A pill of text under a piece; a lit one is brass with dark text.
+    private func chip(_ text: String, under id: PieceID, lit: Bool) -> SKNode? {
+        guard let node = pieceNodes[id] else { return nil }
+        let scale = min(max(cameraState.scale, 0.75), 1.6)
+        let brass = SKColor(red: 0.784, green: 0.573, blue: 0.180, alpha: 1)
+        let label = SKLabelNode()
+        label.attributedText = NSAttributedString(string: text, attributes: [
+            .font: PlatformFont.systemFont(ofSize: 12, weight: .semibold),
+            .foregroundColor: lit ? SKColor(red: 0.09, green: 0.075, blue: 0.065, alpha: 1)
+                : SKColor(red: 0.96, green: 0.92, blue: 0.84, alpha: 1),
+        ])
+        label.verticalAlignmentMode = .center
+        label.horizontalAlignmentMode = .center
+        label.zPosition = 1
+        let size = CGSize(width: label.frame.width + 12, height: 20)
+        let pill = SKShapeNode(rectOf: size, cornerRadius: size.height / 2)
+        pill.fillColor = lit ? brass : SKColor(red: 0.11, green: 0.09, blue: 0.08, alpha: 0.94)
+        pill.strokeColor = brass
+        pill.lineWidth = 1.5
+        let chip = SKNode()
+        chip.addChild(pill)
+        chip.addChild(label)
+        chip.setScale(scale)
+        chip.position = CGPoint(x: node.position.x, y: node.position.y - HexMath.cellStepX * 0.42 - size.height / 2 * scale)
+        chip.zPosition = 40
+        return chip
+    }
+
+    /// A monster's "Why?": a dashed line to its focus, rings on both, and a chip under each enemy
+    /// it weighed (how far it would have had to move).
+    func showWhy(chips: [PieceID: String], from monster: PieceID, to focus: PieceID?) {
+        clearWhy()
+        let brass = SKColor(red: 0.784, green: 0.573, blue: 0.180, alpha: 1)
+        let radius = HexMath.cellStepX * 0.36
+        if let focus, let a = pieceNodes[monster]?.position, let b = pieceNodes[focus]?.position {
+            let path = CGMutablePath()
+            path.move(to: a)
+            path.addLine(to: b)
+            let line = SKShapeNode(path: path.copy(dashingWithPhase: 0, lengths: [8, 6]))
+            line.strokeColor = brass
+            line.lineWidth = 3
+            whyLayer.addChild(line)
+            for point in [a, b] {
+                let ring = SKShapeNode(circleOfRadius: radius)
+                ring.position = point
+                ring.strokeColor = brass
+                ring.lineWidth = 3
+                ring.fillColor = .clear
+                whyLayer.addChild(ring)
+            }
+        }
+        for (id, text) in chips.sorted(by: { $0.key < $1.key }) {
+            if let chip = chip(text, under: id, lit: id == focus) { whyLayer.addChild(chip) }
+        }
+    }
+
+    func clearWhy() { whyLayer.removeAllChildren() }
+
+    /// Where a figure is in the window (y down, SwiftUI's global space), for a tip's spotlight or
+    /// an explanation beside it.
+    func viewRect(of piece: PieceID) -> CGRect? {
+        pieceNodes[piece].map { viewRect(around: $0.position) }
+    }
+
+    func viewRect(of hex: HexCoord) -> CGRect {
+        viewRect(around: sceneCenter(of: hex))
+    }
+
+    private func viewRect(around point: CGPoint) -> CGRect {
+        // Through the window: wherever the SpriteKit view sits inside SwiftUI's, the window
+        // (SwiftUI's global space) is where the overlay is measured too.
+        func toView(_ p: CGPoint) -> CGPoint {
+            guard let view else { return cameraState.viewPoint(of: p, in: viewport) }
+            let inView = convertPoint(toView: p)
+            #if os(macOS)
+            let inWindow = view.convert(inView, to: nil)
+            let height = view.window?.contentView?.bounds.height ?? view.bounds.height
+            return CGPoint(x: inWindow.x, y: height - inWindow.y)   // AppKit windows count up from the bottom
+            #else
+            return view.convert(inView, to: nil)
+            #endif
+        }
+        let center = toView(point)
+        let edge = toView(CGPoint(x: point.x + HexMath.cellStepX * 0.45, y: point.y))
+        let radius = max(12, abs(edge.x - center.x))
+        return CGRect(x: center.x - radius, y: center.y - radius, width: radius * 2, height: radius * 2)
+    }
+
+    /// Clear all hex highlights.
 
     func clearHighlights() {
         highlightLayer.removeAllChildren()
@@ -990,11 +1063,42 @@ class BoardScene: SKScene {
             onPieceTap?(piece)
             return true
         }
-        if highlightNodes[hex] != nil {
+        // After the "?", any hex on the board can be explained.
+        if highlightNodes[hex] != nil || (explainsTaps && boardStateRef?.cells[hex] != nil) {
             onHexTap?(hex)
             return true
         }
         return false
+    }
+
+    // MARK: - Holding a finger (or the button) down
+
+    /// After the "?", a tap on any hex explains it rather than only highlighted ones acting.
+    var explainsTaps = false
+    /// A long-press on a hex (whatever stands on it): the board explains it.
+    var onHold: ((HexCoord) -> Void)?
+    /// How long a press has to last to explain instead of tap.
+    static let holdDuration: TimeInterval = 0.45
+    private var holdTimer: DispatchWorkItem?
+    /// The press became a hold: its release isn't a tap.
+    private var held = false
+
+    private func startHold(at location: CGPoint) {
+        holdTimer?.cancel()
+        held = false
+        let hex = Self.hex(at: location, offsetCol: offsetCol, offsetRow: offsetRow)
+        let timer = DispatchWorkItem { [weak self] in
+            guard let self, self.boardStateRef?.cells[hex] != nil else { return }
+            self.held = true
+            self.onHold?(hex)
+        }
+        holdTimer = timer
+        DispatchQueue.main.asyncAfter(deadline: .now() + Self.holdDuration, execute: timer)
+    }
+
+    private func cancelHold() {
+        holdTimer?.cancel()
+        holdTimer = nil
     }
 
     /// The board hex whose centre is nearest to a point in scene space.
@@ -1048,11 +1152,19 @@ class BoardScene: SKScene {
         clickStart = event.locationInWindow
         clickDragged = false
         lastPanPoint = event.location(in: self)
+        startHold(at: event.location(in: self))
+    }
+
+    /// A right-click explains, as a long-press does.
+    override func rightMouseDown(with event: NSEvent) {
+        let hex = Self.hex(at: event.location(in: self), offsetCol: offsetCol, offsetRow: offsetRow)
+        if boardStateRef?.cells[hex] != nil { onHold?(hex) }
     }
 
     override func mouseDragged(with event: NSEvent) {
         if let start = clickStart, hypot(event.locationInWindow.x - start.x, event.locationInWindow.y - start.y) > 6 {
             clickDragged = true
+            cancelHold()
         }
         guard clickDragged else { return }
         pan(to: event.location(in: self))
@@ -1060,7 +1172,8 @@ class BoardScene: SKScene {
     }
 
     override func mouseUp(with event: NSEvent) {
-        if clickStart != nil, !clickDragged {
+        cancelHold()
+        if clickStart != nil, !clickDragged, !held {
             handleTap(at: event.location(in: self))
         }
         clickStart = nil
@@ -1095,16 +1208,18 @@ class BoardScene: SKScene {
         touchStartInView = touch.location(in: view)
         lastPanPoint = location
         touchMoved = false
+        startHold(at: location)
     }
 
     override func touchesMoved(_ touches: Set<UITouch>, with event: UIEvent?) {
         guard let touch = touches.first else { return }
         // A second finger means a pinch: don't pan or tap.
-        if (event?.allTouches?.count ?? 1) > 1 { touchMoved = true; return }
+        if (event?.allTouches?.count ?? 1) > 1 { touchMoved = true; cancelHold(); return }
         let location = touch.location(in: self)
         let inView = touch.location(in: view)
         if let start = touchStartInView, hypot(inView.x - start.x, inView.y - start.y) > 8 {
             touchMoved = true
+            cancelHold()
         }
         if touchMoved {
             pan(to: location)
@@ -1113,7 +1228,8 @@ class BoardScene: SKScene {
     }
 
     override func touchesEnded(_ touches: Set<UITouch>, with event: UIEvent?) {
-        if !touchMoved, let start = touchStart {
+        cancelHold()
+        if !touchMoved, !held, let start = touchStart {
             handleTap(at: start)
         }
         touchStart = nil
@@ -1121,6 +1237,7 @@ class BoardScene: SKScene {
     }
 
     override func touchesCancelled(_ touches: Set<UITouch>, with event: UIEvent?) {
+        cancelHold()
         touchStart = nil
         lastPanPoint = nil
     }

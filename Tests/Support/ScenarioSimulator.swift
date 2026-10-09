@@ -181,6 +181,10 @@ final class ScenarioSimulator {
                 draw: draw.drawCard))
             return
         }
+        if coord.pendingTip != nil {
+            coord.dismissTip()
+            return
+        }
         if coord.pendingRecovery != nil {
             coord.resolveRecovery([])
             return

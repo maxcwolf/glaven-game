@@ -406,6 +406,7 @@ struct GameSetupView: View {
             }
             .buttonStyle(.plain)
             .padding(.horizontal, 16)
+            learningModeRow
 
             Divider().opacity(0.2)
 
@@ -451,6 +452,29 @@ struct GameSetupView: View {
     }
 
     @ViewBuilder
+    /// Learning mode: tips the first time each rule comes up, and "Why?" on what the monsters
+    /// do. On for a player's first campaign.
+    private var learningModeRow: some View {
+        Toggle(isOn: Binding(get: { gameManager.game.learningMode },
+                             set: { gameManager.setLearningMode($0) })) {
+            Label {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Learning mode")
+                        .font(.subheadline.weight(.semibold))
+                    Text("Explains each rule the first time it comes up, and \u{201C}Why?\u{201D} on what the monsters do.")
+                        .font(.caption)
+                        .foregroundStyle(GlavenTheme.secondaryText)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            } icon: {
+                Image(systemName: "lightbulb.fill").foregroundStyle(BoardTheme.brass)
+            }
+        }
+        .tint(BoardTheme.brass)
+        .padding(.horizontal, 16)
+        .padding(.vertical, 4)
+    }
+
     private var difficultyRow: some View {
         HStack(spacing: 0) {
             Text("Diff")

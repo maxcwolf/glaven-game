@@ -42,6 +42,7 @@ extension GameState {
         )
         snapshot.events = events
         snapshot.tableRules = tableRules == TableRules() ? nil : tableRules
+        snapshot.learningMode = learningMode ? true : nil
         snapshot.difficulty = difficulty
         return snapshot
     }
@@ -80,6 +81,7 @@ extension GameState {
         unlockedItems = snapshot.unlockedItems
         events = snapshot.events ?? EventState()
         tableRules = snapshot.tableRules ?? TableRules()
+        learningMode = snapshot.learningMode ?? false
         difficulty = snapshot.difficulty ?? .normal
 
         // Restore figures

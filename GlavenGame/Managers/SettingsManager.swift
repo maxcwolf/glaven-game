@@ -21,6 +21,8 @@ final class SettingsManager {
     var uiScale: CGFloat = 1.0
     var lightMode: Bool = false
     var excludedConditions: Set<ConditionName> = []
+    /// Learning mode tips already shown: each is shown once, in any campaign.
+    var seenTips: Set<String> = []
     var animationSpeed: Double = 1.0  // 0.5 = fast, 1.0 = normal, 2.0 = slow
     /// Draw attack modifier cards by hand for every attack; otherwise monsters and summons draw
     /// for themselves and only the players' own attacks wait for a tap.
@@ -66,6 +68,9 @@ final class SettingsManager {
             compact = settings.compact
             uiScale = CGFloat(settings.uiScale)
             lightMode = settings.lightMode
+            if let data = settings.seenTipsData {
+                seenTips = (try? JSONDecoder().decode(Set<String>.self, from: data)) ?? []
+            }
             if let data = settings.excludedConditionsData {
                 excludedConditions = (try? JSONDecoder().decode(Set<ConditionName>.self, from: data)) ?? []
             }
@@ -104,6 +109,7 @@ final class SettingsManager {
         settings.uiScale = Double(uiScale)
         settings.lightMode = lightMode
         settings.excludedConditionsData = try? JSONEncoder().encode(excludedConditions)
+        settings.seenTipsData = try? JSONEncoder().encode(seenTips)
         settings.animationSpeed = animationSpeed
         settings.drawAllModifiers = drawAllModifiers
         settings.hapticFeedback = hapticFeedback

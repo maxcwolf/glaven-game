@@ -102,6 +102,8 @@ struct TurnLogEntry: Identifiable {
     /// Technical detail kept out of the player's view (grid coordinates, raw values) that test
     /// transcripts record alongside the message.
     let trace: String?
+    /// The monster decision behind this line, for "Why?".
+    var whyID: UUID?
 
     init(message: String, category: TurnLogCategory = .info, isRoundHeader: Bool = false, trace: String? = nil) {
         self.message = message
@@ -420,6 +422,22 @@ final class BoardCoordinator {
 
     /// Non-nil while the player picks a figure from a list mid-turn (Heart of the Betrayer).
     var pendingFigureChoice: PendingFigureChoice?
+
+    // MARK: Learning mode
+
+    /// The tip on screen, and the ones waiting their turn.
+    var pendingTip: LearnTip?
+    var tipQueue: [LearnTip] = []
+    /// The monsters' turns were paused for a tip, and go on once it's closed.
+    var tipPausedPlayback = false
+    /// What a long-press (or the "?") is explaining, or a monster's "Why?".
+    var explanation: Explanation?
+    /// The "?": the next tap explains instead of acting.
+    var explainMode = false
+    /// What each monster weighed on its turn, for "Why?" on its log lines.
+    var monsterWhys: [UUID: MonsterWhy] = [:]
+    var currentWhyID: UUID?
+    var howToPlay: HowToPlayRequest?
 
     /// Boots of Speed / Quickness offers still to make this round, and the one being made.
     var initiativeOffers: [PendingInitiativeChange] = []
@@ -779,6 +797,7 @@ final class BoardCoordinator {
         buildScene(for: scenario)
         boardPhase = .setup
         turnLog = []
+        resetLearning()
         log("Scenario \(scenario.id): \(scenario.title)", category: .setup)
         log("\(boardState.startingLocations.count) starting locations available", category: .setup)
         beginNextPlacement()
@@ -803,6 +822,7 @@ final class BoardCoordinator {
         attachToGame()
         buildScene(for: scenario)
         turnLog = []
+        resetLearning()
         log("Scenario \(scenario.id): \(scenario.title)", category: .setup)
         beginCardSelection()
     }
@@ -852,6 +872,8 @@ final class BoardCoordinator {
         pushPull?.resume()
         for move in moves.values { move.resume() }
         endPlaybackControls()
+        resetLearning()
+        howToPlay = nil
 
         pendingShortRest = nil
         pendingLongRest = nil
@@ -900,6 +922,7 @@ final class BoardCoordinator {
         scene.scaleMode = .resizeFill
         scene.onHexTap = { [weak self] coord in self?.handleHexTap(coord) }
         scene.onPieceTap = { [weak self] piece in self?.handlePieceTap(piece) }
+        scene.onHold = { [weak self] hex in self?.explainHex(at: hex) }
         scene.appearanceProvider = { [weak self] piece in
             self?.pieceAppearance(piece) ?? PieceAppearance.fallback(for: piece)
         }
@@ -1024,6 +1047,7 @@ final class BoardCoordinator {
         boardState.placePiece(summonPieceID, at: coord)
         boardScene?.addPieceSprite(id: summonPieceID, at: coord, offsetCol: offsetCol, offsetRow: offsetRow)
         boardScene?.clearHighlights()
+        teach(.summons, at: .piece(summonPieceID))
         let pending = pendingSummonPlacement
         pendingSummonPlacement = nil
         interactionMode = .idle
@@ -1064,6 +1088,7 @@ final class BoardCoordinator {
     /// Start the card selection phase for a new round.
     func beginCardSelection() {
         guard let gameManager = gameManager else { return }
+        teachAtCardSelection()
 
         boardPhase = .cardSelection
         endPlaybackControls()
@@ -1192,6 +1217,7 @@ final class BoardCoordinator {
     /// Order the round's figures by initiative and start the first turn.
     func buildTurnOrderAndStart() {
         guard let gameManager = gameManager else { return }
+        teach(.initiative, at: .turnRail)
         // Build turn order from sorted figures
         turnOrder = gameManager.game.figures.compactMap { figure in
             switch figure {
@@ -1485,12 +1511,14 @@ final class BoardCoordinator {
             log("\(characterName(character.id))\u{2019}s turn (no cards chosen)", category: .round)
         }
         interactionMode = .idle
+        teach(.yourTurn, at: .playedCards)
     }
 
     /// Called when the player finishes their turn (all actions done or skipped).
     func finishPlayerTurn() {
         // Ignore a second End Turn for the same turn.
         guard let ptc = activePlayerTurn, ptc.phase == .turnComplete else { return }
+        teach(.playedCards)
         applyEndOfTurnItems(ptc)
         applyEndOfTurnBonuses(ptc)
         activePlayerTurn = nil
@@ -1612,6 +1640,7 @@ final class BoardCoordinator {
     /// Begin a player's move action (normal, jump or flying movement, GH p.17).
     func beginMoveAction(pieceID: PieceID, moveRange: Int, mode: MoveMode = .normal) {
         guard let pos = boardState.piecePositions[pieceID] else { return }
+        if case .character = pieceID { teach(.moving) }
 
         if isConditionActive(.immobilize, on: pieceID) {
             log("\(name(pieceID)) is immobilized and can\u{2019}t move", category: .condition)
@@ -1819,6 +1848,7 @@ final class BoardCoordinator {
 
     /// Begin a player's attack action.
     func beginAttackAction(pieceID: PieceID, range: Int, targetCount: Int = 1) {
+        if case .character = pieceID { teach(.attacking) }
         abilityTargets = []
         extraTargetsEarned = 0
         if isConditionActive(.disarm, on: pieceID) {
@@ -2416,6 +2446,7 @@ final class BoardCoordinator {
     // MARK: - Input Handling
 
     func handleHexTap(_ coord: HexCoord) {
+        if explainMode { return explainHex(at: coord) }
         let asked = String(describing: interactionMode)
         // A choice accepted can't be cancelled any more.
         defer { if String(describing: interactionMode) != asked { activePlayerTurn?.choiceMade() } }
@@ -2454,6 +2485,7 @@ final class BoardCoordinator {
     }
 
     func handlePieceTap(_ piece: PieceID) {
+        if explainMode { return explain(.piece(piece)) }
         let asked = String(describing: interactionMode)
         defer { if String(describing: interactionMode) != asked { activePlayerTurn?.choiceMade() } }
         switch interactionMode {
@@ -2706,7 +2738,11 @@ final class BoardCoordinator {
     /// Add a line to the battle log. `message` is what the player reads, so it uses display names
     /// (`name(_:)`); grid coordinates and other technical detail go in `trace`.
     func log(_ message: String, category: TurnLogCategory = .info, trace: String? = nil) {
-        turnLog.append(TurnLogEntry(message: message, category: category, trace: trace))
+        var entry = TurnLogEntry(message: message, category: category, trace: trace)
+        teachFromLog(category, message)
+        // A monster's move and attack lines can say why it did them.
+        if let why = currentWhyID, category == .move || category == .attack { entry.whyID = why }
+        turnLog.append(entry)
     }
 
     /// The player-facing name of a piece: "Brute", "Bandit Guard 2", "Harmless Contraption".

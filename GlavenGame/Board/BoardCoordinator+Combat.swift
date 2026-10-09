@@ -171,7 +171,16 @@ extension BoardCoordinator {
             lastModifierReveal?.chips = CombatResolver.sumChips(
                 base: attack.value, isPoisoned: isPoisoned, cards: preDrawn, shield: shield, pierce: attack.pierce,
                 isMiss: result.isMiss, finalDamage: result.damage, conditions: result.allConditions)
+            if let reveal = lastModifierReveal {
+                let drew = GameText.list(reveal.selected.map(Self.modifierName))
+                teach(.modifiers, "Here \(name(attacker)) drew \(drew): \(sum).", at: .modifierTray)
+                if reveal.advantage != reveal.disadvantage {
+                    teach(.advantage, "\(name(attacker)) attacked with \(reveal.advantage ? "advantage" : "disadvantage").",
+                          at: .modifierTray)
+                }
+            }
         }
+        if shield > 0 || retaliate > 0 { teach(.shieldAndRetaliate, at: .piece(target)) }
 
         if result.damage == 0 {
             boardScene?.pieceUnharmed(id: target, missed: result.isMiss)

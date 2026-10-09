@@ -20,6 +20,7 @@ struct BoardView: View {
             if let scene = coordinator.boardScene {
                 SpriteView(scene: scene)
                     .ignoresSafeArea()
+                    .anchorPreference(key: LearnAnchorKey.self, value: .bounds) { [.board: $0] }
                     .reportFrame { hudFrames.board = $0 }
                     .onAppear {
                         scene.reduceMotion = reduceMotion
@@ -57,6 +58,7 @@ struct BoardView: View {
                             // Only once there's a draw to make or cards to show: no empty box.
                             if ModifierTrayView.hasContent(coordinator) {
                                 ModifierTrayView(coordinator: coordinator)
+                                    .learnable(.modifierTray)
                                     .transition(.opacity)
                             }
                         }
@@ -87,6 +89,7 @@ struct BoardView: View {
                         character: character
                     )
                     .id(charID) // Force recreate @State when character changes
+                    .learnable(.cardPanel)
                     .reportFrame { hudFrames.cardPanel = $0 }
                 }
                 .ignoresSafeArea(edges: .bottom)
@@ -216,6 +219,33 @@ struct BoardView: View {
                     .onAppear { BoardSoundPlayer.play(outcome.victory ? .victory : .defeat) }
             }
         }
+        // Learning mode: a tip with its spotlight, an explanation, or the "?" outlines.
+        .overlayPreferenceValue(LearnAnchorKey.self) { anchors in
+            GeometryReader { geo in
+                let rects = anchors.mapValues { geo[$0] }
+                LearningOverlay(coordinator: coordinator, anchors: rects.filter { $0.key != .board },
+                                boardRect: { boardRect(of: $0, overlayOrigin: geo.frame(in: .global).origin) },
+                                size: geo.size)
+            }
+            .ignoresSafeArea()   // the dimming reaches the screen's edges, and the holes line up
+        }
+        .sheet(item: $coordinator.howToPlay) { request in
+            HowToPlaySheet(topic: request.topic) { coordinator.howToPlay = nil }
+        }
+    }
+
+    /// Where a figure or hex on the board is, in the learning overlay's space.
+    private func boardRect(of subject: LearnSubject, overlayOrigin: CGPoint) -> CGRect? {
+        guard let scene = coordinator.boardScene else { return nil }
+        let local: CGRect?
+        switch subject {
+        case .piece(let piece): local = scene.viewRect(of: piece)
+        case .hex(let hex): local = scene.viewRect(of: hex)
+        case .pieces(let pieces):
+            local = pieces.compactMap(scene.viewRect(of:)).reduce(nil) { $0?.union($1) ?? $1 }
+        default: local = nil
+        }
+        return local?.offsetBy(dx: -overlayOrigin.x, dy: -overlayOrigin.y)
     }
 
     // MARK: - Board framing
@@ -387,6 +417,7 @@ struct BoardView: View {
                                     labelResolver: labelResolver(for: edition),
                                     onPreview: { card in previewAction(card: card)?() })
                 }
+                .learnable(.playedCards)
                 turnControls(playerTurn)
             }
             .padding(14)
@@ -537,6 +568,7 @@ struct BoardView: View {
             let cards = VStack(spacing: 8) {
                 ForEach(characters, id: \.id) { character in
                     characterCard(character)
+                        .learnable(.piece(.character(character.id)))
                 }
             }
             // Sized to the party; scrolls only when the screen is too short for it.
@@ -596,6 +628,7 @@ struct BoardView: View {
                         ForEach(conditions, id: \.name) { cond in
                             BundledImage(ImageLoader.conditionIcon(cond.name.rawValue), size: 14, systemName: "bolt.fill")
                                 .help(GameText.conditionName(cond.name))
+                                .learnable(.condition(cond.name))
                         }
                     }
                 }
@@ -726,6 +759,7 @@ struct BoardView: View {
             let groups = VStack(spacing: 8) {
                 ForEach(aliveMonsters, id: \.id) { monster in
                     monsterGroupCard(monster)
+                        .learnable(.monsterGroup(monster.name))
                 }
             }
             // As tall as its rows; scrolls only when they don't fit.
@@ -827,6 +861,7 @@ struct BoardView: View {
     private var turnLogPanel: some View {
         if logExpanded || !Self.recentEvents(coordinator.turnLog).isEmpty {
             logColumn
+                .learnable(.log)
         }
     }
 
@@ -852,10 +887,15 @@ struct BoardView: View {
 
             if logExpanded {
                 ScrollViewReader { proxy in
+                    let shown = Array(coordinator.turnLog.suffix(100))
+                    let whys = Self.whyLines(shown)
                     ScrollView {
                         LazyVStack(alignment: .leading, spacing: 1) {
-                            ForEach(coordinator.turnLog.suffix(100)) { entry in
+                            ForEach(shown) { entry in
                                 logEntryRow(entry)
+                                    .overlay(alignment: .topTrailing) {
+                                        if whys.contains(entry.id) { whyButton(entry) }
+                                    }
                                     .id(entry.id)
                             }
                         }
@@ -875,7 +915,9 @@ struct BoardView: View {
                 .frame(minHeight: 80, maxHeight: 260)
                 .sidePanelStyle()
             } else {
-                ForEach(Self.recentEvents(coordinator.turnLog)) { entry in
+                let recent = Self.recentEvents(coordinator.turnLog)
+                let whys = Self.whyLines(recent)
+                ForEach(recent) { entry in
                     Label {
                         Text(entry.message).lineLimit(2)
                     } icon: {
@@ -888,6 +930,9 @@ struct BoardView: View {
                     .padding(.vertical, 7)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .background(BoardTheme.raised, in: RoundedRectangle(cornerRadius: BoardTheme.Radius.small))
+                    .overlay(alignment: .topTrailing) {
+                        if whys.contains(entry.id) { whyButton(entry).offset(y: -9) }
+                    }
                     .transition(.move(edge: .top).combined(with: .opacity))
                 }
             }
@@ -895,6 +940,27 @@ struct BoardView: View {
         .frame(width: Self.sidePanelWidth)
         .padding(.trailing, 16)
         .animation(.snappy, value: coordinator.turnLog.count)
+    }
+
+    /// The lines that get a "Why?" (in learning mode): the last line of each monster's turn.
+    private static func whyLines(_ entries: [TurnLogEntry]) -> Set<UUID> {
+        var last: [UUID: UUID] = [:]
+        for entry in entries { if let why = entry.whyID { last[why] = entry.id } }
+        return Set(last.values)
+    }
+
+    @ViewBuilder
+    private func whyButton(_ entry: TurnLogEntry) -> some View {
+        if coordinator.learningMode, let why = entry.whyID, coordinator.monsterWhys[why] != nil {
+            Button("Why?") { coordinator.showWhy(why) }
+                .font(BoardTheme.font(size: 12, weight: .bold))
+                .foregroundStyle(BoardTheme.sheet)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 3)
+                .background(BoardTheme.brass, in: Capsule())
+                .buttonStyle(.plain)
+                .accessibilityHint("Shows how the monster chose what to do")
+        }
     }
 
     /// The latest events worth a note: what figures did, not round bookkeeping (turn order, card

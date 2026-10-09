@@ -480,9 +480,23 @@ final class GameManager {
 
     /// Start a new campaign from scratch and go to the party screen. Other campaigns stay saved.
     func beginNewGame() {
+        refreshCampaigns()
+        let first = campaigns.isEmpty
         newGame()
         setEdition("gh")
+        // A player's first campaign teaches the game as it's played.
+        game.learningMode = first
         appPhase = .gameSetup
+    }
+
+    /// Turn the learning mode on or off for this campaign.
+    func setLearningMode(_ on: Bool) {
+        guard game.learningMode != on else { return }
+        game.learningMode = on
+        // Mid-scenario the save is the round's checkpoint: the switch goes in it too.
+        roundCheckpoint?.learningMode = on ? true : nil
+        departureCheckpoint?.learningMode = on ? true : nil
+        saveGame()
     }
 
     /// New Campaign from the app menu: the campaign being played is saved (a scenario at the

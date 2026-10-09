@@ -39,6 +39,8 @@ struct GameSnapshot: Codable {
     var boardSnapshot: BoardSnapshot?
     var events: EventState?
     var tableRules: TableRules?
+    /// Optional: older saves have no learning mode.
+    var learningMode: Bool?
     /// Optional: older saves are Normal.
     var difficulty: DifficultyMode?
 
@@ -117,6 +119,7 @@ struct GameSnapshot: Codable {
         unlockedItems = try c.decodeIfPresent(Set<String>.self, forKey: .unlockedItems) ?? []
         events = try c.decodeIfPresent(EventState.self, forKey: .events)
         tableRules = try c.decodeIfPresent(TableRules.self, forKey: .tableRules)
+        learningMode = try c.decodeIfPresent(Bool.self, forKey: .learningMode)
         boardSnapshot = try c.decodeIfPresent(BoardSnapshot.self, forKey: .boardSnapshot)
         difficulty = try c.decodeIfPresent(DifficultyMode.self, forKey: .difficulty)
     }
