@@ -805,6 +805,9 @@ final class BoardRulesRegressionTests: XCTestCase {
         let possession = try card("Possession", of: "mindthief")
         XCTAssertFalse(PlayerTurnController.steps(possession.actions ?? [], labels: gm.editionStore, edition: "gh")
             .contains { $0.type == .attack }, "the ally's Attack 6")
+        let syringe = try card("Syringe", of: "saw")
+        XCTAssertFalse(PlayerTurnController.steps(syringe.actions ?? [], labels: gm.editionStore, edition: "gh")
+            .contains { $0.type == .shield }, "the ally's Shield 2")
     }
 
     /// Regression: Sinister Opportunity's Move 3 added the forced enemy's Move 1 (Move 4).

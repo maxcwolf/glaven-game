@@ -1031,7 +1031,8 @@ final class PlayerTurnController {
     static func performedBySomeoneElse(_ action: ActionModel, labels: EditionDataStore?, edition: String) -> Bool {
         guard let key = action.value?.stringValue else { return false }
         let text = (labels?.resolveCustomText(key, edition: edition) ?? key).lowercased()
-        return text.contains("perform") || key.contains("perform")
+        // Syringe: "Place this card in one adjacent ally's active area": its Shield is the ally's.
+        return text.contains("perform") || key.contains("perform") || text.contains("ally's active area")
     }
 
     /// A printed action wrapped by text (not a marker, more text, or an element it consumes).
