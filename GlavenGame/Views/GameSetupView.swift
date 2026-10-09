@@ -546,7 +546,7 @@ struct GameSetupView: View {
                 )
 
                 VStack(alignment: .leading, spacing: 1) {
-                    Text(character.name.replacingOccurrences(of: "-", with: " ").capitalized)
+                    Text(GameText.className(character.name, edition: edition, labels: gameManager.editionStore))
                         .font(.subheadline)
                         .fontWeight(.medium)
                         .foregroundStyle(GlavenTheme.primaryText)

@@ -39,7 +39,7 @@ struct MonsterAbilityStripView: View {
             // Monster name + thumbnail header
             HStack(spacing: 4) {
                 monsterThumb(monster)
-                Text(formatName(monster.name))
+                Text(coordinator.monsterTypeName(monster.name))
                     .font(BoardTheme.font(size: 11, weight: active ? .heavy : .semibold))
                     .foregroundStyle(active ? .yellow : .white.opacity(0.85))
                     .lineLimit(1)
@@ -127,7 +127,4 @@ struct MonsterAbilityStripView: View {
         return m.id == monster.id
     }
 
-    private func formatName(_ name: String) -> String {
-        name.split(separator: "-").map { $0.capitalized }.joined(separator: " ")
-    }
 }

@@ -799,7 +799,7 @@ struct BoardView: View {
                 Circle()
                     .fill(.green)
                     .frame(width: 6, height: 6)
-                Text(summon.name.replacingOccurrences(of: "-", with: " ").capitalized)
+                Text(coordinator.name(.summon(id: summon.id)))
                     .font(BoardTheme.font(size: 11, weight: .bold))
                     .foregroundStyle(.green)
                     .lineLimit(1)
@@ -905,7 +905,7 @@ struct BoardView: View {
                 Image(systemName: monster.isBoss ? "crown.fill" : "pawprint.fill")
                     .font(BoardTheme.font(size: 11))
                     .foregroundStyle(monsterColor)
-                Text(monster.name.replacingOccurrences(of: "-", with: " ").capitalized)
+                Text(coordinator.monsterTypeName(monster.name))
                     .font(BoardTheme.font(size: 11, weight: .bold))
                     .foregroundStyle(.white)
                     .lineLimit(1)
@@ -1359,7 +1359,7 @@ struct BoardView: View {
                     HStack(spacing: 8) {
                         monsterAbilityThumb(monster)
                         VStack(alignment: .leading, spacing: 2) {
-                            Text(monster.name.split(separator: "-").map { $0.capitalized }.joined(separator: " "))
+                            Text(coordinator.monsterTypeName(monster.name))
                                 .font(.title3.weight(.bold))
                                 .foregroundStyle(.white)
                             Text("Ability Card — Round \(gameManager.game.round)")

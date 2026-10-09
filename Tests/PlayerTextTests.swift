@@ -198,4 +198,25 @@ final class PlayerTextTests: XCTestCase {
         XCTAssertEqual(CombatResolver.readableBreakdown(base: 3, isPoisoned: false, preDrawnCards: [],
                                                        shield: 0, isMiss: true, finalDamage: 0), "miss")
     }
+
+    /// Names on the board and in town come from the game's labels ("Captain of the Guard"), not
+    /// from ids run through `.capitalized` ("Captain Of The Guard").
+    func testNamesAreNotBuiltFromIds() throws {
+        let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
+            .appendingPathComponent("GlavenGame")
+        let files = ["Board/BoardView.swift", "Board/MonsterAbilityStripView.swift", "Views/GameSetupView.swift"]
+        for file in files {
+            let text = try String(contentsOf: root.appendingPathComponent(file), encoding: .utf8)
+            for (index, line) in text.components(separatedBy: "\n").enumerated()
+            where line.contains(".name") && line.contains("capitalized") {
+                XCTFail("\(file):\(index + 1) builds a name from an id: \(line.trimmingCharacters(in: .whitespaces))")
+            }
+        }
+        // A lost scenario goes back to town (completeScenario), and the button says so.
+        let results = try String(contentsOf: root.appendingPathComponent("Board/ScenarioResultsView.swift"), encoding: .utf8)
+        XCTAssertFalse(results.contains("Back to Menu"))
+        XCTAssertEqual(GameText.monsterName("captain-of-the-guard", edition: "gh",
+                                            labels: try SaveAndContinueTestsSupport.manager().editionStore),
+                       "Captain of the Guard")
+    }
 }

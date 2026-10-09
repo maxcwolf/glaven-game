@@ -43,7 +43,7 @@ struct ScenarioResultsView: View {
                     .foregroundStyle(BoardTheme.secondaryText)
                     .multilineTextAlignment(.center)
                 Button { onFinish(choices) } label: {
-                    Label(outcome.victory ? "Finish Scenario" : "Back to Menu",
+                    Label(outcome.victory ? "Finish Scenario" : "Back to Town",
                           systemImage: outcome.victory ? "checkmark.circle.fill" : "arrow.uturn.left.circle.fill")
                         .font(.headline)
                         .frame(minWidth: 200, minHeight: 44)
