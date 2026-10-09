@@ -21,7 +21,7 @@ struct ItemUsePrompt: View {
                 HStack(spacing: 12) {
                     Button("Not Now") { coordinator.resolvePendingItemUse(false) }
                         .buttonStyle(.bordered)
-                        .tint(.gray)
+                        .tint(BoardTheme.text)
                     Button("Use \(pending.itemName)") { coordinator.resolvePendingItemUse(true) }
                         .buttonStyle(.borderedProminent)
                         .tint(BoardTheme.brass)

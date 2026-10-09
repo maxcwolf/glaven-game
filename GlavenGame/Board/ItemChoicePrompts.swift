@@ -71,7 +71,7 @@ struct ConditionRemovalPrompt: View {
         } actions: {
             Button("Keep Them All") { coordinator.resolveConditionRemoval(nil) }
                 .buttonStyle(.bordered)
-                .tint(.gray)
+                .tint(BoardTheme.text)
         }
     }
 }
@@ -121,7 +121,7 @@ struct InitiativeChangePrompt: View {
                 .tint(BoardTheme.brass)
             Button("Keep \(pending.initiative)") { coordinator.resolveInitiativeChange(0) }
                 .buttonStyle(.bordered)
-                .tint(.gray)
+                .tint(BoardTheme.text)
             Button("Later (\(later))") { coordinator.resolveInitiativeChange(pending.amount) }
                 .buttonStyle(.borderedProminent)
                 .tint(BoardTheme.brass)

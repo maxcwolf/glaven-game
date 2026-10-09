@@ -529,8 +529,13 @@ final class BoardItemTests: XCTestCase {
         }
         GlavenFont.registerFonts()
         let pending = BoardCoordinator.PendingElementChoice(characterID: brute.id, count: 2, itemName: "Major Mana Potion")
-        let view = ElementChoicePrompt(pending: pending, coordinator: coord)
-            .frame(width: 700, height: 300).background(Color.black)
+        let boots = BoardCoordinator.PendingInitiativeChange(characterID: brute.id, itemKey: "gh-15", itemName: "Boots of Speed",
+                                                             amount: 10, initiative: 45)
+        let view = VStack {
+            ElementChoicePrompt(pending: pending, coordinator: coord)
+            InitiativeChangePrompt(pending: boots, coordinator: coord)
+        }
+        .frame(width: 700, height: 560).background(Color.black)
         let renderer = ImageRenderer(content: view)
         renderer.scale = 1
         let image = try XCTUnwrap(renderer.cgImage)
