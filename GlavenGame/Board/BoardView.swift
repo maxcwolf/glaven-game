@@ -426,28 +426,13 @@ struct BoardView: View {
                 }
 
                 if !playerTurn.isWaiting {
-                    HStack(spacing: 8) {
-                        if !playerTurn.hasActed {
-                            // Either card may provide the top half, and either half may go first.
-                            Button("Swap Cards") { playerTurn.swapCards() }
-                                .help("Use the other card's top half and this card's bottom half")
-                            Button(playerTurn.bottomFirst ? "Top First" : "Bottom First") {
-                                playerTurn.setBottomFirst(!playerTurn.bottomFirst)
-                            }
-                            .accessibilityValue(playerTurn.bottomFirst ? "Bottom half first" : "Top half first")
-                        }
-                        if playerTurn.canUseDefaultAction {
-                            Button(playerTurn.defaultActionTitle) { playerTurn.useDefaultAction() }
-                        }
-                        Button("Skip Rest of Half") { playerTurn.skipRemainingActions() }
-                    }
-                    .buttonStyle(.boardQuietCompact)
+                    TurnChoiceButtons(turn: playerTurn)
                 }
 
                 // Items whose moment has come: during this move, this attack, or the turn.
                 let items = coordinator.usableItems()
                 if !items.isEmpty {
-                    HStack(spacing: 8) {
+                    FlowLayout(spacing: 8) {
                         ForEach(items, id: \.itemKey) { item in
                             Button {
                                 coordinator.useItem(item)

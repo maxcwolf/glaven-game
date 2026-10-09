@@ -50,6 +50,24 @@ final class BoardLayoutTests: XCTestCase {
         XCTAssertTrue(checked)
     }
 
+    /// Regression: the quiet buttons (Swap Cards … Skip Rest of Half) ran out of the turn panel
+    /// on an 11-inch-wide layout; they wrap within the width they're given.
+    func testTheTurnButtonsStayInsideThePanel() async throws {
+        let sim = try ScenarioSimulator(scenario: "1", options: .init(seed: 2))
+        var checked = false
+        await sim.play(rounds: 2) {
+            guard !checked, let turn = sim.coord.activePlayerTurn, !turn.hasActed,
+                  turn.phase == .executeTopAction || turn.phase == .executeBottomAction else { return }
+            let host = NSHostingController(rootView: TurnChoiceButtons(turn: turn))
+            let narrow = host.sizeThatFits(in: CGSize(width: 320, height: 1000))
+            let wide = host.sizeThatFits(in: CGSize(width: 2000, height: 1000))
+            XCTAssertLessThanOrEqual(narrow.width, 320.5, "wider than the panel: \(narrow.width) pt")
+            XCTAssertGreaterThan(narrow.height, wide.height, "wraps onto another row instead")
+            checked = true
+        }
+        XCTAssertTrue(checked)
+    }
+
     func testHalfHeadings() {
         XCTAssertEqual(BoardView.halfHeading(phase: .turnComplete, top: nil, bottom: nil), "Turn done")
         for phase in [PlayerTurnPhase.executeTopAction, .executeBottomAction, .turnComplete] {

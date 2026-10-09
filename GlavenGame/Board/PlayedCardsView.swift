@@ -81,3 +81,29 @@ struct PlayedCardsView: View {
         }
     }
 }
+
+/// The turn's quieter choices: swap the cards and pick which half goes first (before acting),
+/// the basic action, and skipping the rest of the half. They wrap rather than run out of the
+/// panel when it's narrow.
+struct TurnChoiceButtons: View {
+    let turn: PlayerTurnController
+
+    var body: some View {
+        FlowLayout(spacing: 8) {
+            if !turn.hasActed {
+                // Either card may provide the top half, and either half may go first.
+                Button("Swap Cards") { turn.swapCards() }
+                    .help("Use the other card's top half and this card's bottom half")
+                Button(turn.bottomFirst ? "Top First" : "Bottom First") {
+                    turn.setBottomFirst(!turn.bottomFirst)
+                }
+                .accessibilityValue(turn.bottomFirst ? "Bottom half first" : "Top half first")
+            }
+            if turn.canUseDefaultAction {
+                Button(turn.defaultActionTitle) { turn.useDefaultAction() }
+            }
+            Button("Skip Rest of Half") { turn.skipRemainingActions() }
+        }
+        .buttonStyle(.boardQuietCompact)
+    }
+}
