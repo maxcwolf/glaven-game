@@ -25,22 +25,13 @@ the game does now; change any of them and I'll follow.
    Now: yes, every exhaustion in the party in scenarios they played.
 10. **Sanctuary and prosperity.** Every 100 gold the party donates raises prosperity by one. Is
     that the threshold you play with? Now: 100.
-11. **When the Enhancer opens.** By the rulebook, Gloomhaven's enhancements need The Power of
-    Enhancement (won in Frozen Hollow, scenario 14), so the Enhance button is hidden until then.
-    Many groups house-rule it open from the start — want a setting? Now: by the rulebook.
-12. **Enhancements saved by the old companion sheet** addressed a sub-action's slot in a way that
-    could clash with the next action's slot; the new address is `(index + 1) × 100 + sub`. Any
-    old saves with enhancements would read them on the wrong line. I assumed there are none worth
-    migrating. Now: no migration.
-13. **Iron Helmet.** The game data gives it neither the spent nor the consumed mark, so it's
-    always on: every enemy ×2 against the wearer counts as +0. If your copy of the card has a
-    spent mark, it should be offered once per rest like Leather Armor. Now: always on.
-14. **Item carry limits.** By the rules a character brings at most one head, body and legs item,
-    two hands' worth, and half their level (rounded up) in small items. Today every item they own
-    is carried, and all of them work on the board. Should I add a loadout choice in town (with
-    the shop refusing nothing, just what's brought), or enforce it at purchase? Now: no limit.
-15. **Hex enhancements on areas with two marked hexes** (8 cards). The added hex goes on the
-    first marked hex. Want a choice of which, when buying? Now: the first.
-16. **Forcing an enemy to attack** (Submissive Affliction's bottom). The data says "Attack 2,
-    Range +0" with no sign on the attack: is it the monster's attack +2, or a flat Attack 2? I
-    left forced enemy attacks to be resolved by hand until you say which. Now: by hand.
+11. **Table Rules** (your idea from question 14). A campaign setting, also shown on the
+    scenario brief, for variants groups commonly play, each defaulting to the rulebook: the
+    Enhancer open from the start, no carry limits, no road event before the first scenario
+    (question 1), the sanctuary threshold (question 10). A "table rules" badge on the brief
+    when anything differs. Now: planned after carry limits; say if you'd rather not.
+
+Answered on 2026-10-08: the Enhancer stays gated by Frozen Hollow (GH scenario 14); old
+companion enhancements aren't migrated (nothing released); Iron Helmet is always on (no spent
+mark); carry limits follow the rules with a loadout choice; the hex-enhancement player picks the
+marked hex; Submissive Affliction is a flat Attack 2 (Mindthief FAQ).

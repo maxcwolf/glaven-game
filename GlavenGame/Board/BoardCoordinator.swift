@@ -419,6 +419,8 @@ final class BoardCoordinator {
 
     /// Conditions that go with the one being targeted (Pendant of the Plague's Curse).
     var pendingExtraConditions: [ConditionName] = []
+    /// The attack of an enemy the character forces to attack, waiting for its target.
+    var pendingForcedAttack: AttackParameters?
 
     /// Traps placed by characters that give experience when an enemy springs them (Proximity Mine).
     var characterTraps: [HexCoord: (characterID: String, experience: Int)] = [:]
@@ -2184,7 +2186,15 @@ final class BoardCoordinator {
     func handlePieceTap(_ piece: PieceID) {
         switch interactionMode {
         case .selectingAttackTarget(let attackerID, _, let validTargets):
-            if validTargets.contains(piece) {
+            if validTargets.contains(piece), let forced = pendingForcedAttack {
+                pendingForcedAttack = nil
+                interactionMode = .idle
+                boardScene?.clearHighlights()
+                Task { @MainActor in
+                    await self.performAttack(attacker: attackerID, target: piece, attack: forced)
+                    self.activePlayerTurn?.advanceAfterAsyncAction()
+                }
+            } else if validTargets.contains(piece) {
                 let attackValue = activePlayerTurn?.currentAttackValue() ?? 2
                 let range = activePlayerTurn?.currentAttackRange() ?? 1
                 if let pattern = activePlayerTurn?.pendingAreaPattern {

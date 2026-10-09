@@ -243,7 +243,7 @@ Phase VI — the rest of Gloomhaven's town rules
 - [x] Defence items offered mid-attack: Leather Armor (disadvantage, before the draw) and Heater Shield (Shield 1 once the attack would damage); headless play declines them (`BoardItemTests`)
 - [x] Minor Stamina Potion: recovers up to two discards, picked when there are more (`BoardItemTests`)
 - [x] Hide Armor: Shield 1 against two attacks before it's spent; use slots saved and cleared with the item's refresh (`BoardItemTests`)
-- [x] Iron Helmet: an enemy's ×2 against the wearer counts as +0 (always on, as the data has it; see open question 13)
+- [x] Iron Helmet: an enemy's ×2 against the wearer counts as +0 (always on: the card has no spent or consumed mark)
 - [x] Items, second batch: 40 on-turn items (boots, potions, earrings, wands, powders, cure, Lucky Eye, Skull of Hatred, Remote Spider, Black Censer, Smoke Elixir, Ancient Drill, Staff of Xorn…), 13 defence items (every armour and shield, with use slots), and the always-on ones (stronger basic attack/move, flying, immunities, Silent Stiletto) (`BoardItemTests`)
 - [x] Items, third batch: element blades, staves, robes and orbs (usable only with their element, which they consume), Hawk Helm and Telescopic Lens (more range while targeting), Bloody Axe and Sacrificial Robes, Giant Remote Spider, Mask of Terror; unmarked items stay usable (`BoardItemTests`)
 - [x] Items with a choice: Minor and Major Mana Potions, Staff of Elements, Circlet of Elements (an element picker), Minor Cure Potion (a condition picker) (`BoardItemTests`)
@@ -253,7 +253,7 @@ Phase VI — the rest of Gloomhaven's town rules
 - [x] Boots of Speed and Quickness: once every card is revealed, the wearer may move their initiative 10 (20) earlier or later (`BoardItemTests`)
 - [x] Shadow Armor (no damage from one attack), Sun Shield (consume Light: Shield 3), Helm of the Mountain, Mask of Death, Flea-Bitten Shawl (`BoardItemTests`)
 - [x] Empowering Talisman, Pendant of Dark Pacts, Utility Belt (an item picker), Focusing Ray, Volatile Elixir, Curious Gear (`BoardItemTests`)
-- [ ] Item carry limits (one head, body and legs; two hands; small items up to half the level, rounded up; Cloak of Pockets +2): every owned item is carried today. Needs a loadout choice in town; see open question 14
+- [ ] Item carry limits (one head, body and legs; two hands; small items up to half the level, rounded up; Cloak of Pockets +2): every owned item is carried today. By the rules a character owns any number and picks what to bring before each scenario: a loadout choice before the scenario, the shop unlimited
 - [x] Second Skin: two −1 cards set aside for the scenario, back after it (`testSecondSkinSetsAsideTwoMinusOnes`)
 - [x] Items with their own choice between the turn's steps: Scroll of Healing, Doomed Compass, Staff of Summoning, Resonant Crystal; Elemental Boots (after moving 5), Thief's Hood (`BoardItemTests`)
 - [x] Scroll of Stamina, Robes of Summoning, Pendant of the Plague, Unstable Explosives (area that also hurts allies in it) (`BoardItemTests`)
@@ -263,7 +263,8 @@ Phase VI — the rest of Gloomhaven's town rules
 - [x] Sanctuary donation in town: 10 gold once per visit for two blessings in the next scenario; prosperity +1 per 100 gold given; counts for Piety in All Things (`TownTests`)
 - [x] Enhancements in town: the Enhancer (after The Power of Enhancement) sells +1, conditions, elements and jump for each card slot at chart prices, paid in the character's gold; enhanced cards play enhanced on the board and show their enhancements on card tiles; heals now apply their own conditions, and moves their printed infusions (`EnhancementTests`)
 - [x] Any-element enhancements and printed "infuse any element" (Chromatic Explosion): the player picks the element (`testAnAnyElementEnhancementAsksWhichElement`)
-- [x] Hex (area) enhancements: sold where the card's area marks room for a hex (32 areas), priced 200 ÷ hexes targeted; the marked hex becomes a target (`testAHexEnhancementWidensTheArea`). Areas with two marked hexes take the first (open question 15)
+- [x] Hex (area) enhancements: sold where the card's area marks room for a hex (32 areas), priced 200 ÷ hexes targeted; the marked hex becomes a target (`testAHexEnhancementWidensTheArea`). Areas with two marked hexes take the first
+- [ ] Hex enhancements on areas with two marked hexes (8 cards): let the player tap which marked hex the sticker goes on
 - [x] Unlocking a class (by retirement or scenario reward) shuffles its unlock event into the city and road decks; retiring adds the class's retirement event (`PersonalQuestTests`)
 - [x] VoiceOver play on the board: every pick (move, start hex, summon, push/pull hex, attack/heal/condition/forced-move target, multi-target confirm) is a spoken action on the prompt banner — distance, direction, what's there and who's beside it — doing exactly what the tap does (`BoardAccessibilityTests`); the unused Majalla font is gone
 - [x] The remaining menus on the board theme: the default dark theme is the board's palette (warm dark, brass accent, warm text) and controls take the accent app-wide; Frosthaven/Modern/B&B themes keep theirs (`ThemeTests`)
@@ -418,7 +419,7 @@ Scenario rewards (2026-10-08)
 - [x] **Element bonuses printed as text** (Earthen Clod's Immobilize, Crater's Push 2, Unstable Upheaval's "all enemies up to two hexes away", XP): read into the attack when the element is consumed (`testEarthenClodsEarthImmobilizes`)
 - [x] **Provoking Roar**: enemies attacking an ally beside the Brute this round attack the Brute instead (`ChargedBonusTests`)
 - [x] **Actions performed by another figure**: Possession (an ally attacks or moves) and Parasitic Influence (an enemy moves) let the player choose who and control it (`testPossessionLetsAnAllyAttack`, `testParasiticInfluenceMovesAnEnemy`); such actions are never mistaken for the character's own; Sinister Opportunity's Move 3 no longer absorbs the enemy's Move 1
-- [ ] Forced enemy attacks (Submissive Affliction: the data's Attack 2 / Range +0 is relative to the monster? open question 16) is still resolved by hand; Sinister Opportunity's forced move now happens after the Scoundrel's move, ending beside them (`testSinisterOpportunityMovesAnEnemyBesideTheScoundrel`)
+- [x] Forced enemy attacks (Submissive Affliction): by the Mindthief FAQ a flat Attack 2 at the monster's base range +0, from the monster deck with its stat-card effects; the Mindthief picks another enemy as the target (`testSubmissiveAfflictionMakesAnEnemyAttackAnother`). Sinister Opportunity's forced move now happens after the Scoundrel's move, ending beside them (`testSinisterOpportunityMovesAnEnemyBesideTheScoundrel`)
 - [x] **Dirt Tornado** muddles every figure in its area, allies included (`testDirtTornadoMuddlesEveryoneInTheArea`)
 - [x] **Destroying an adjacent obstacle** (Rock Tunnel, Explosive Punch), the player picking which (`testRockTunnelDestroysAnAdjacentObstacle`)
 - [x] **Crackling Air**: +1, or +2 by consuming Air (`testCracklingAirAddsTwoByConsumingAir`)

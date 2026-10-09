@@ -199,12 +199,58 @@ extension BoardCoordinator {
                 boardScene?.highlightHexes(beside, style: .move, offsetCol: offsetCol, offsetRow: offsetRow)
             }
         case .attack:
+            if let controller = activePlayerTurn.map({ PieceID.character($0.characterID) }), areEnemies(controller, performer) {
+                beginForcedEnemyAttack(action, by: performer, controller: controller)
+                return
+            }
             let range = action.subActions?.first { $0.type == .range }?.value?.intValue ?? 1
             activePlayerTurn?.preparePerformedAttack(value: value, range: max(1, range))
             beginAttackAction(pieceID: performer, range: max(1, range))
         default:
             activePlayerTurn?.advanceAfterAsyncAction()
         }
+    }
+
+    /// An enemy forced to attack another enemy, the character choosing the target (Submissive
+    /// Affliction). By the Mindthief FAQ an unsigned value is the attack itself ("Attack 2", not
+    /// +2) and a signed range is added to the monster's base range; the monster's modifier deck
+    /// and stat-card attack effects apply.
+    func beginForcedEnemyAttack(_ action: ActionModel, by performer: PieceID, controller: PieceID) {
+        guard case .monster(let name, let standee) = performer,
+              let monster = gameManager?.game.monsters.first(where: { $0.name == name }),
+              let forcedEntity = monsterEntity(name: name, standee: standee),
+              let position = boardState.piecePositions[performer] else {
+            activePlayerTurn?.advanceAfterAsyncAction()
+            return
+        }
+        if isConditionActive(.disarm, on: performer) {
+            log("\(self.name(performer)) is disarmed and can\u{2019}t attack", category: .condition)
+            activePlayerTurn?.advanceAfterAsyncAction()
+            return
+        }
+        let stat = monster.attackStat(for: forcedEntity.type)
+        let characterCount = max(2, (gameManager?.game.characters.filter { !$0.absent }.count) ?? 2)
+        let baseRange = stat?.rangeValue(characterCount: characterCount, level: monster.level) ?? 0
+        let baseAttack = stat?.attackValue(characterCount: characterCount, level: monster.level) ?? 0
+        var forced = action
+        if forced.valueType == nil { forced.valueType = .fixed }
+        let spec = MonsterAbility.attack(forced, stat: stat, baseAttack: baseAttack, baseRange: baseRange)
+        let targets = Set(boardState.piecePositions.filter { piece, hex in
+            piece != performer && areEnemies(controller, piece) && entity(for: piece) != nil
+                && !isConditionActive(.invisible, on: piece) && position.distance(to: hex) <= spec.range
+                && LineOfSight.hasLOS(from: position, to: hex, board: boardState)
+        }.keys)
+        guard !targets.isEmpty else {
+            log("\(self.name(performer)) has no other enemy within range \(spec.range) to attack", category: .attack)
+            activePlayerTurn?.advanceAfterAsyncAction()
+            return
+        }
+        pendingForcedAttack = AttackParameters(value: spec.value, isRanged: baseRange > 0 || spec.range > 1,
+                                               pierce: spec.pierce, conditions: spec.conditions,
+                                               push: spec.push, pull: spec.pull, advantage: spec.advantage)
+        interactionMode = .selectingAttackTarget(pieceID: performer, range: spec.range, validTargets: targets)
+        let hexes = Set(targets.compactMap { boardState.piecePositions[$0] })
+        boardScene?.highlightHexes(hexes, style: .attack, offsetCol: offsetCol, offsetRow: offsetRow)
     }
 
     // MARK: - Traps and obstacles from cards

@@ -871,6 +871,39 @@ final class BoardRulesRegressionTests: XCTestCase {
         XCTAssertEqual(range, 1)
     }
 
+    /// Submissive Affliction: "Force one enemy within Range 5 to perform Attack 2, Range +0,
+    /// targeting another enemy". By the Mindthief FAQ that's a flat Attack 2 at the monster's
+    /// base range, from the monster deck; the Mindthief picks which other enemy.
+    func testSubmissiveAfflictionMakesAnEnemyAttackAnother() async throws {
+        let mindthief = addCharacter("mindthief", at: HexCoord(3, 3))   // beside the forced enemy too
+        let forced = addMonster("bandit-guard", at: HexCoord(4, 3))
+        let victim = addMonster("bandit-guard", at: HexCoord(5, 3))
+        addMonster("bandit-guard", at: HexCoord(7, 3))   // out of a melee monster's reach
+        victim.health = 20
+        victim.maxHealth = 20
+        let zeros = Array(repeating: AttackModifier.standard(.plus0), count: 20)
+        gm.game.monsterAttackModifierDeck = AttackModifierDeck(attackModifiers: zeros, cards: zeros)
+        let turn = turn(for: mindthief, top: try card("Scurry", of: "mindthief"),
+                        bottom: try card("Submissive Affliction", of: "mindthief"), bottomFirst: true)
+        turn.executeCurrentAction()
+        guard case .choosingPerformer(_, _, let candidates) = coord.interactionMode else { return XCTFail("which enemy") }
+        let forcedPiece = try XCTUnwrap(coord.boardState.piecePositions.first { $0.value == HexCoord(4, 3) }?.key)
+        let victimPiece = try XCTUnwrap(coord.boardState.piecePositions.first { $0.value == HexCoord(5, 3) }?.key)
+        XCTAssertTrue(candidates.contains(forcedPiece))
+        coord.handlePieceTap(forcedPiece)
+        guard case .selectingAttackTarget(let attacker, let range, let targets) = coord.interactionMode else {
+            return XCTFail("the enemy attacks, got \(coord.interactionMode)")
+        }
+        XCTAssertEqual(attacker, forcedPiece)
+        XCTAssertEqual(range, 1, "a melee monster's base range +0")
+        XCTAssertEqual(targets, [victimPiece], "another enemy in reach, never the Mindthief")
+        coord.handlePieceTap(victimPiece)
+        _ = await waitUntil { turn.currentActionIndex > 0 || turn.phase != .executeBottomAction }
+        XCTAssertEqual(victim.health, 18, "a flat Attack 2, not the guard's attack +2")
+        XCTAssertEqual(forced.health, forced.maxHealth)
+        XCTAssertNil(coord.pendingForcedAttack)
+    }
+
     /// Dirt Tornado: "Muddle all allies and enemies in the targeted area."
     func testDirtTornadoMuddlesEveryoneInTheArea() async throws {
         let cragheart = addCharacter("cragheart", at: HexCoord(1, 3))

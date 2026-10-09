@@ -258,6 +258,7 @@ final class PlayerTurnController {
                 return
             default:
                 coordinator.interactionMode = .idle
+                coordinator.pendingForcedAttack = nil
                 coordinator.boardScene?.clearHighlights()
                 awaitingAsync = false
             }
@@ -962,11 +963,11 @@ final class PlayerTurnController {
                 return executeAction(own, coordinator: coordinator)
             }
             // Possession ("One adjacent ally may perform Attack 6"), Parasitic Influence ("Force
-            // one enemy within Range 4 to perform Move 1"). Left to the players: a forced enemy's
-            // attack (relative to the monster's stats), several performers ("all allies", "two
+            // one enemy within Range 4 to perform Move 1"), Submissive Affliction (a forced enemy
+            // attacks another). Left to the players: several performers ("all allies", "two
             // summoned allies"), and several actions for one performer (Move, then Attack).
             let enemy = text.contains("enemy")
-            guard performed.count == 1, let one = performed.first, !(enemy && one.type == .attack),
+            guard performed.count == 1, let one = performed.first,
                   !text.contains("all "), !text.contains("two ") else {
                 coordinator.log("\(who): resolve this by hand", category: .info)
                 return false
