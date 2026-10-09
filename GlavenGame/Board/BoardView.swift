@@ -52,10 +52,12 @@ struct BoardView: View {
                 if showSidePanels {
                     HStack(alignment: .top, spacing: 0) {
                         // Left: the party, and the modifier tray under it
-                        VStack(alignment: .leading, spacing: 0) {
+                        VStack(alignment: .leading, spacing: 8) {
                             characterInfoPanel
-                            if coordinator.boardPhase == .execution || coordinator.pendingModifierDraw != nil {
+                            // Only once there's a draw to make or cards to show: no empty box.
+                            if ModifierTrayView.hasContent(coordinator) {
                                 ModifierTrayView(coordinator: coordinator)
+                                    .transition(.opacity)
                             }
                         }
                         .reportFrame { hudFrames.left = $0 }

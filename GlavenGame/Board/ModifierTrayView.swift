@@ -9,6 +9,11 @@ struct ModifierTrayView: View {
 
     private let cardHeight: CGFloat = 62
 
+    /// Shown only once there's something in it: a draw to make, or the last attack's cards.
+    static func hasContent(_ coordinator: BoardCoordinator) -> Bool {
+        coordinator.pendingModifierDraw != nil || coordinator.lastModifierReveal != nil
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             header
@@ -19,20 +24,15 @@ struct ModifierTrayView: View {
                     .id(reveal.id)
                     .transition(reduceMotion ? .opacity : .asymmetric(
                         insertion: .scale(scale: 0.85).combined(with: .opacity), removal: .opacity))
-            } else {
-                Text("Attack modifier cards appear here.")
-                    .font(.caption)
-                    .foregroundStyle(.white.opacity(0.6))
             }
         }
         .padding(10)
-        .frame(width: 260, alignment: .leading)
-        .background(.black.opacity(0.65))
-        .clipShape(RoundedRectangle(cornerRadius: 10))
-        .overlay(RoundedRectangle(cornerRadius: 10)
-            .strokeBorder(coordinator.pendingModifierDraw != nil ? Color(red: 0.89, green: 0.70, blue: 0.24) : .white.opacity(0.08),
+        .frame(width: BoardView.sidePanelWidth, alignment: .leading)
+        .background(BoardTheme.panel, in: RoundedRectangle(cornerRadius: BoardTheme.Radius.medium))
+        .overlay(RoundedRectangle(cornerRadius: BoardTheme.Radius.medium)
+            .strokeBorder(coordinator.pendingModifierDraw != nil ? BoardTheme.brass : BoardTheme.border.opacity(0.35),
                           lineWidth: coordinator.pendingModifierDraw != nil ? 2 : 1))
-        .padding(.horizontal, 8)
+        .padding(.leading, 16)
         .animation(reduceMotion ? nil : .snappy, value: coordinator.lastModifierReveal?.id)
         .animation(reduceMotion ? nil : .snappy, value: coordinator.pendingModifierDraw?.id)
     }

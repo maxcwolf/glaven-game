@@ -176,6 +176,15 @@ final class SmokeTestFixesTests: XCTestCase {
         XCTAssertTrue(others.allSatisfy { $0.health == $0.maxHealth })
     }
 
+    /// The modifier tray stays hidden until there's a draw to make or cards to show: an empty
+    /// "cards appear here" box sat under the party all through play.
+    func testTheModifierTrayHidesUntilItHasCards() async throws {
+        let sim = try ScenarioSimulator(scenario: "1", options: .init(seed: 2))
+        XCTAssertFalse(ModifierTrayView.hasContent(sim.coord))
+        await sim.play(rounds: 1)
+        XCTAssertTrue(ModifierTrayView.hasContent(sim.coord), "after the first attack, its cards")
+    }
+
     private func waitUntil(timeout: TimeInterval = 3, _ condition: () -> Bool) async -> Bool {
         let deadline = Date().addingTimeInterval(timeout)
         while !condition() {
