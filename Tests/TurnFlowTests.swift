@@ -146,4 +146,25 @@ final class TurnFlowTests: XCTestCase {
         coord.handleHexTap(try XCTUnwrap(hexes.sorted().first))
         XCTAssertFalse(turn.canUseDefaultAction)
     }
+
+    // MARK: - The end of the round
+
+    /// A round bonus card leaves the active area before the short rest is offered, so the rest
+    /// can recover it — and with one other discard, the character may now rest at all.
+    func testARoundBonusCardIsDiscardedBeforeTheShortRest() {
+        coord.autoResolvePrompts = false
+        let brute = add("brute", at: HexCoord(3, 3))
+        coord.boardPhase = .execution
+        gm.game.state = .next
+        brute.handCards = [3, 4, 5]
+        brute.discardedCards = [1]
+        brute.activeCards = [2]
+        brute.roundBonusCards = [2]
+        coord.turnOrder = []
+        coord.currentTurnIndex = -1
+        coord.advanceToNextFigure()   // the round ends
+        XCTAssertNotNil(coord.pendingShortRest, "two discards: a short rest is offered")
+        XCTAssertEqual(Set(brute.discardedCards), [1, 2])
+        XCTAssertTrue(brute.activeCards.isEmpty)
+    }
 }

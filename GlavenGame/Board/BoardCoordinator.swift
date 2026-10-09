@@ -1418,6 +1418,11 @@ final class BoardCoordinator {
     // MARK: - End of Round
 
     private func endRound() {
+        // Round bonuses end before the players may short rest, so those cards are in the
+        // discard pile for it (p.30).
+        for character in gameManager?.game.characters ?? [] {
+            for cardId in character.roundBonusCards { character.removeFromActiveArea(cardId) }
+        }
         // Offer short rests before transitioning to the next round
         offerShortRests()
     }
