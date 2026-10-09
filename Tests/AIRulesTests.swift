@@ -47,3 +47,87 @@ final class AIRulesBoardTests: XCTestCase {
         XCTAssertEqual(attacks, 0, "the bandit is out of its reach")
     }
 }
+
+/// Monster focus and movement on a plain board (`TestGame`).
+final class AIRulesTests: XCTestCase {
+
+    private func card(_ actions: [ActionModel]) -> AbilityModel {
+        AbilityModel(cardId: 1, initiative: 50, actions: actions)
+    }
+
+    /// The six hexes `steps` away from `center` straight along each axis.
+    private func axisHexes(from center: HexCoord, steps: Int) -> [HexCoord] {
+        center.neighbors.map { neighbor in
+            let (c, n) = (center.cube, neighbor.cube)
+            return HexCoord.fromCube(x: c.x + (n.x - c.x) * steps, y: c.y + (n.y - c.y) * steps, z: c.z + (n.z - c.z) * steps)
+        }
+    }
+
+    /// A melee area reaching 3 hexes in a line attacks an enemy only from where the line can be
+    /// turned onto it. The enemy 2 hexes away off every axis is out of the line's reach; the one
+    /// 3 hexes away on an axis is in it, so that one is the focus and is attacked from where the
+    /// monster stands (Harrower Infester, Deep Terror, Earth and Wind Demons, Savvas).
+    func testAMeleeAreaFocusesOnAnEnemyItsPatternCovers() {
+        let t = TestGame()
+        let monsterHex = HexCoord(5, 5)
+        let line = Set((1...3).flatMap { axisHexes(from: monsterHex, steps: $0) })
+        let offAxis = t.board.cells.keys.filter { $0.distance(to: monsterHex) == 2 && !line.contains($0) }.sorted()[0]
+        let onAxis = axisHexes(from: monsterHex, steps: 3).sorted().first { $0.distance(to: offAxis) > 2 }!
+        t.addCharacter(name: "brute", pos: offAxis, initiative: 10)
+        t.addCharacter(name: "spellweaver", pos: onAxis, initiative: 20)
+        let monster = t.addSimpleMonster(positions: [(1, monsterHex, 5)])
+        let ability = card([ActionModel(type: .attack, value: .int(2), subActions: [
+            ActionModel(type: .area, value: .string("(1,0,active)|(1,1,target)|(2,2,target)|(2,3,target)"))])])
+        let turn = MonsterAI.computeTurn(pieceID: .monster(name: "test-monster", standee: 1), monster: monster,
+                                         entity: monster.entities[0], ability: ability, board: t.board, gameState: t.game)
+        XCTAssertEqual(turn.focusTarget, .character("gh-spellweaver"))
+        XCTAssertEqual(turn.attackTargets, [.character("gh-spellweaver")])
+    }
+
+    /// A flying monster may end its move over an obstacle, so an enemy ringed by obstacles is
+    /// still a focus it can reach and attack.
+    func testAFlyingMonsterAttacksFromOverAnObstacle() throws {
+        let t = TestGame()
+        let target = HexCoord(6, 6)
+        for hex in target.neighbors {
+            t.board.cells[hex]!.passable = false
+            t.board.cells[hex]!.overlay = .obstacle
+        }
+        t.addCharacter(pos: target)
+        t.editionStore.loadAllEditions()
+        let monster = try XCTUnwrap(t.addMonster(name: "sun-demon", positions: [(.normal, HexCoord(2, 2))]))
+        XCTAssertEqual(monster.monsterData?.flying, true)
+        let ability = card([ActionModel(type: .move, value: .int(8)), ActionModel(type: .attack, value: .int(2))])
+        let turn = MonsterAI.computeTurn(pieceID: .monster(name: "sun-demon", standee: monster.entities[0].number),
+                                         monster: monster, entity: monster.entities[0], ability: ability,
+                                         board: t.board, gameState: t.game)
+        XCTAssertNotNil(turn.focusTarget)
+        XCTAssertEqual(turn.movementPath.last.map { $0.distance(to: target) }, 1, "it ends beside the enemy")
+        XCTAssertFalse(turn.attackTargets.isEmpty)
+    }
+
+    /// A monster that can't reach its focus this turn moves as close as it can: when an ally
+    /// stands where its route runs out of movement, it takes another hex just as close instead
+    /// of stopping short.
+    func testAnAllyOnTheRouteDoesNotShortenTheMove() {
+        let t = TestGame()
+        t.addCharacter(pos: HexCoord(9, 1))
+        let monster = t.addSimpleMonster(positions: [(1, HexCoord(1, 9), 5)])
+        let ability = card([ActionModel(type: .move, value: .int(2)), ActionModel(type: .attack, value: .int(2))])
+        let piece = PieceID.monster(name: "test-monster", standee: 1)
+        let first = MonsterAI.computeTurn(pieceID: piece, monster: monster, entity: monster.entities[0], ability: ability,
+                                          board: t.board, gameState: t.game)
+        XCTAssertEqual(first.movementPath.count - 1, 2)
+        let end = first.movementPath.last!
+        let closest = end.distance(to: HexCoord(9, 1))
+
+        let ally = GameMonsterEntity(number: 2, type: .normal, health: 5, maxHealth: 5, level: 1)
+        monster.entities.append(ally)
+        t.board.placePiece(.monster(name: "test-monster", standee: 2), at: end)
+        let second = MonsterAI.computeTurn(pieceID: piece, monster: monster, entity: monster.entities[0], ability: ability,
+                                           board: t.board, gameState: t.game)
+        XCTAssertEqual(second.movementPath.count - 1, 2, "it still moves 2")
+        XCTAssertNotEqual(second.movementPath.last, end)
+        XCTAssertEqual(second.movementPath.last.map { $0.distance(to: HexCoord(9, 1)) }, closest, "just as close")
+    }
+}
