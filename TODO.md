@@ -418,7 +418,7 @@ Scenario rewards (2026-10-08)
 - [x] **Element bonuses printed as text** (Earthen Clod's Immobilize, Crater's Push 2, Unstable Upheaval's "all enemies up to two hexes away", XP): read into the attack when the element is consumed (`testEarthenClodsEarthImmobilizes`)
 - [x] **Provoking Roar**: enemies attacking an ally beside the Brute this round attack the Brute instead (`ChargedBonusTests`)
 - [x] **Actions performed by another figure**: Possession (an ally attacks or moves) and Parasitic Influence (an enemy moves) let the player choose who and control it (`testPossessionLetsAnAllyAttack`, `testParasiticInfluenceMovesAnEnemy`); such actions are never mistaken for the character's own; Sinister Opportunity's Move 3 no longer absorbs the enemy's Move 1
-- [ ] Forced enemy attacks (Submissive Affliction: the data's Attack 2 / Range +0 is relative to the monster? open question 16) and Sinister Opportunity's forced move (inside the character's move) are still resolved by hand
+- [ ] Forced enemy attacks (Submissive Affliction: the data's Attack 2 / Range +0 is relative to the monster? open question 16) is still resolved by hand; Sinister Opportunity's forced move now happens after the Scoundrel's move, ending beside them (`testSinisterOpportunityMovesAnEnemyBesideTheScoundrel`)
 - [x] **Dirt Tornado** muddles every figure in its area, allies included (`testDirtTornadoMuddlesEveryoneInTheArea`)
 - [x] **Destroying an adjacent obstacle** (Rock Tunnel, Explosive Punch), the player picking which (`testRockTunnelDestroysAnAdjacentObstacle`)
 - [x] **Crackling Air**: +1, or +2 by consuming Air (`testCracklingAirAddsTwoByConsumingAir`)

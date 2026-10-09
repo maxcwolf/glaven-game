@@ -811,6 +811,25 @@ final class BoardRulesRegressionTests: XCTestCase {
             .contains { $0.type == .shield }, "the ally's Shield 2")
     }
 
+    /// Sinister Opportunity: after the move, an adjacent enemy moves 1, ending beside the Scoundrel.
+    func testSinisterOpportunityMovesAnEnemyBesideTheScoundrel() async throws {
+        let scoundrel = addCharacter("scoundrel", at: HexCoord(3, 3))
+        addMonster("bandit-guard", at: HexCoord(6, 3))
+        let turn = turn(for: scoundrel, top: try card("Backstab", of: "scoundrel"), bottom: try card("Sinister Opportunity", of: "scoundrel"),
+                        bottomFirst: true)
+        turn.executeCurrentAction()
+        coord.handleHexTap(HexCoord(5, 3))
+        _ = await waitUntil { if case .choosingPerformer = self.coord.interactionMode { return true }; return false }
+        guard case .choosingPerformer(_, _, let candidates) = coord.interactionMode, let bandit = candidates.first else {
+            return XCTFail("an adjacent enemy to move")
+        }
+        coord.handlePieceTap(bandit)
+        guard case .selectingMove(_, let range, let hexes, _, _) = coord.interactionMode else { return XCTFail() }
+        XCTAssertEqual(range, 1)
+        XCTAssertFalse(hexes.isEmpty)
+        XCTAssertTrue(hexes.allSatisfy { $0.isAdjacent(to: HexCoord(5, 3)) }, "ending beside the Scoundrel")
+    }
+
     /// Regression: Sinister Opportunity's Move 3 added the forced enemy's Move 1 (Move 4).
     func testSinisterOpportunityMovesThree() throws {
         let scoundrel = addCharacter("scoundrel", at: HexCoord(3, 3))

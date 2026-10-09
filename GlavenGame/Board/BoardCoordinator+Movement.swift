@@ -103,7 +103,15 @@ extension BoardCoordinator {
         if let turn = activePlayerTurn, case .character(let id) = pieceID, turn.characterID == id,
            style != .forced, !turn.afterMoveTexts.isEmpty {
             for text in turn.afterMoveTexts {
-                if text.contains("every hex you enter") {
+                if text.contains("force one adjacent enemy to perform") {
+                    // Sinister Opportunity: "…perform Move 1, with you controlling the action, and
+                    // ending in a hex adjacent to you."
+                    var move = ActionModel(type: .move, value: .int(1))
+                    if turn.afterMoveTexts.contains(where: { $0.contains("ending in a hex adjacent to you") }) {
+                        move.subActions = [ActionModel(type: .specialTarget, value: .string("endAdjacentToController"))]
+                    }
+                    _ = beginChoosingPerformer(for: move, by: pieceID, enemies: true, range: 1)
+                } else if text.contains("every hex you enter") {
                     lootHexes(for: pieceID, coords: Array(path.dropFirst()))
                 } else if text.contains("suffer") {
                     printedDamage(text, amount: PlayerTurnController.damageAmount(in: text), by: pieceID,
@@ -182,6 +190,14 @@ extension BoardCoordinator {
         switch action.type {
         case .move:
             beginMoveAction(pieceID: performer, moveRange: value)
+            // "Ending in a hex adjacent to you": only those destinations.
+            if action.subActions?.contains(where: { $0.value?.stringValue == "endAdjacentToController" }) == true,
+               let controller = activePlayerTurn.flatMap({ boardState.piecePositions[.character($0.characterID)] }),
+               case .selectingMove(let mover, let range, let hexes, let teleport, let mode) = interactionMode {
+                let beside = hexes.filter { $0.isAdjacent(to: controller) }
+                interactionMode = .selectingMove(pieceID: mover, range: range, validHexes: beside, teleport: teleport, mode: mode)
+                boardScene?.highlightHexes(beside, style: .move, offsetCol: offsetCol, offsetRow: offsetRow)
+            }
         case .attack:
             let range = action.subActions?.first { $0.type == .range }?.value?.intValue ?? 1
             activePlayerTurn?.preparePerformedAttack(value: value, range: max(1, range))
