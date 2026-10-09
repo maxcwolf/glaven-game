@@ -930,6 +930,17 @@ final class BoardCoordinator {
     }
 
     /// Place a summon on a chosen hex during interactive summon placement.
+    /// Drop a summon placement that won't happen (the ability was skipped or taken back): the
+    /// summon waiting for its hex goes with it, so it neither lingers in the character's summons
+    /// nor keeps the summon card in the active area.
+    func abandonSummonPlacement() {
+        guard let pending = pendingSummonPlacement else { return }
+        pendingSummonPlacement = nil
+        gameManager?.game.characters.first { $0.id == pending.characterID }?.summons.removeAll {
+            $0.id == pending.summonID && !isOnBoard(.summon(id: $0.id))
+        }
+    }
+
     func placeSummon(summonID: String, characterID: String, at coord: HexCoord) {
         let summonPieceID = PieceID.summon(id: summonID)
         boardState.placePiece(summonPieceID, at: coord)

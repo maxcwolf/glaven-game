@@ -262,6 +262,7 @@ final class PlayerTurnController {
                 return
             default:
                 coordinator.interactionMode = .idle
+                coordinator.abandonSummonPlacement()
                 coordinator.boardScene?.clearHighlights()
                 defaultAttackPending = false
                 awaitingAsync = false
@@ -286,6 +287,7 @@ final class PlayerTurnController {
             default:
                 coordinator.interactionMode = .idle
                 coordinator.pendingForcedAttack = nil
+                coordinator.abandonSummonPlacement()
                 coordinator.boardScene?.clearHighlights()
                 awaitingAsync = false
             }
@@ -337,7 +339,8 @@ final class PlayerTurnController {
         return coordinator.boardState.piecePositions == checkpoint.positions
             && coordinator.boardState.cells == checkpoint.cells
             && coordinator.pendingItemUse == nil && coordinator.pendingModifierDraw == nil
-            && coordinator.pendingDamage == nil && coordinator.pendingSummonPlacement == nil
+            && coordinator.pendingDamage == nil
+            && (coordinator.pendingSummonPlacement == nil || { if case .placingSummon = coordinator.interactionMode { return true }; return false }())
     }
 
     /// Whether `action` is a single-target attack with no enemy in range right now, so its
@@ -355,6 +358,7 @@ final class PlayerTurnController {
     /// Cancel the choice: undo what the action did before asking, and wait to perform it again.
     func cancelChoice() {
         guard canCancelChoice, let checkpoint, let coordinator, let gameManager, let character else { return }
+        coordinator.abandonSummonPlacement()
         checkpoint.character.apply(to: character, editionStore: gameManager.editionStore)
         gameManager.game.elementBoard = checkpoint.elements
         if coordinator.turnLog.count > checkpoint.logCount {
