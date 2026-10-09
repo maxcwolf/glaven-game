@@ -43,10 +43,12 @@ final class CampaignStore {
     /// (tests, previews) gets a temporary folder of its own, shared by every manager on it.
     static func directory(for container: ModelContainer) -> URL {
         if container.configurations.contains(where: \.isStoredInMemoryOnly) {
-            if let known = temporaryDirectories.object(forKey: container) { return known as URL }
+            let key = ObjectIdentifier(container)
+            if let known = temporaryDirectories[key], known.container === container { return known.url }
+            temporaryDirectories = temporaryDirectories.filter { $0.value.container != nil }
             let url = FileManager.default.temporaryDirectory
                 .appendingPathComponent("GlavenGameCampaigns-\(UUID().uuidString)", isDirectory: true)
-            temporaryDirectories.setObject(url as NSURL, forKey: container)
+            temporaryDirectories[key] = TemporaryDirectory(container: container, url: url)
             return url
         }
         #if os(iOS)
@@ -58,7 +60,13 @@ final class CampaignStore {
         return base.appendingPathComponent("Campaigns", isDirectory: true)
     }
 
-    private static let temporaryDirectories = NSMapTable<ModelContainer, NSURL>.weakToStrongObjects()
+    /// By container identity, held weakly: a container that's gone can't claim a folder again
+    /// even if a new one reuses its address.
+    private struct TemporaryDirectory {
+        weak var container: ModelContainer?
+        let url: URL
+    }
+    private static var temporaryDirectories: [ObjectIdentifier: TemporaryDirectory] = [:]
 
     func url(for id: UUID) -> URL {
         directory.appendingPathComponent("\(id.uuidString).json")

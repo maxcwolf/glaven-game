@@ -72,4 +72,17 @@ final class RenderPurityTests: XCTestCase {
             XCTAssertFalse(writesTheGame { render(view) }, "\(name) writes the game while drawing")
         }
     }
+
+    /// The board, mid-scenario, draws without writing the game either.
+    func testTheBoardDrawsWithoutWritingTheGame() async throws {
+        let sim = try ScenarioSimulator(scenario: "1", options: .init(seed: 2))
+        await sim.play(rounds: 2)
+        gm = sim.gm
+        let board = AnyView(BoardView(coordinator: sim.coord))
+        render(board)
+        XCTAssertFalse(writesTheGame { render(board) }, "the board writes the game while drawing")
+        sim.coord.briefPresentation = .reminder
+        render(board)
+        XCTAssertFalse(writesTheGame { render(board) }, "the scenario brief writes the game while drawing")
+    }
 }
