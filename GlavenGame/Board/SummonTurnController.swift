@@ -78,7 +78,13 @@ final class SummonTurnController {
         }
 
         guard let attack = result.attack, !result.attackTargets.isEmpty else { return }
-        for target in result.attackTargets {
+        var targets = result.attackTargets
+        if let planned = result.movementPath.last, coordinator.boardState.piecePositions[pieceID] != planned {
+            // Stopped short of its hex (a bear trap): only what it can reach from where it stands.
+            let reachable = coordinator.targetableEnemies(of: pieceID, range: attack.range)
+            targets = targets.filter(reachable.contains)
+        }
+        for target in targets {
             guard !isStale, !summon.dead, coordinator.isOnBoard(pieceID), coordinator.scenarioResult == nil else { return }
             await coordinator.performAttack(
                 attacker: pieceID, target: target,
