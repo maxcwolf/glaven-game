@@ -24,6 +24,9 @@ final class CharacterManager {
         guard !game.characters.contains(where: { $0.name == name && $0.edition == edition }) else { return }
         let clampedLevel = max(1, min(9, level))
         let character = GameCharacter(name: name, edition: edition, level: clampedLevel, characterData: data)
+        // A new character starts with the experience of their level and 15 × (level + 1) gold (p.45).
+        character.experience = GameCharacter.xpThresholds[clampedLevel - 1]
+        character.loot = Self.startingGold(level: clampedLevel)
         character.attackModifierDeck = .defaultDeck()
         character.selectedPerks = Array(repeating: 0, count: data.perks?.count ?? 0)
         // Assign unique number
@@ -37,6 +40,12 @@ final class CharacterManager {
             details: "Level \(clampedLevel)"
         ))
     }
+
+    /// Gold a new character brings: 15 × (level + 1) (p.45).
+    static func startingGold(level: Int) -> Int { 15 * (level + 1) }
+
+    /// The highest level a new character can start at: the city's prosperity level (p.45).
+    var highestStartingLevel: Int { game.prosperityLevel }
 
     func removeCharacter(_ character: GameCharacter) {
         onBeforeMutate?()

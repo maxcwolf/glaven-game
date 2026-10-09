@@ -142,6 +142,7 @@ final class ScenarioRewardTests: XCTestCase {
 
     func testCollectiveGold_splitAsTheyChoose() throws {
         let party = addParty("brute", "tinkerer")
+        for character in party { character.loot = 0 }
         var choices = ScenarioRewardChoices()
         choices.collectiveGold = [party[0].id: 10, party[1].id: 0]
         complete(try scenario("55"), choices: choices)
@@ -152,6 +153,7 @@ final class ScenarioRewardTests: XCTestCase {
 
     func testCollectiveGold_aSplitThatDoesNotAddUp_isSplitEvenly() throws {
         let party = addParty("brute", "tinkerer")
+        for character in party { character.loot = 0 }
         var choices = ScenarioRewardChoices()
         choices.collectiveGold = [party[0].id: 50]
         complete(try scenario("55"), choices: choices)

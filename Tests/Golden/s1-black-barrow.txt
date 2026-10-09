@@ -7,10 +7,10 @@ Scoundrel takes position [at (3,4)]
 === Round 1 ===
 --- state after round 0 ---
 elements: none
-brute (3,1) hp 10/10 hand 10 discard 0 lost 0 active 0 xp 0 gold 0
-spellweaver (4,2) hp 6/6 hand 8 discard 0 lost 0 active 0 xp 0 gold 0
-cragheart (3,2) hp 10/10 hand 11 discard 0 lost 0 active 0 xp 0 gold 0
-scoundrel (3,4) hp 8/8 hand 9 discard 0 lost 0 active 0 xp 0 gold 0
+brute (3,1) hp 10/10 hand 10 discard 0 lost 0 active 0 xp 0 gold 30
+spellweaver (4,2) hp 6/6 hand 8 discard 0 lost 0 active 0 xp 0 gold 30
+cragheart (3,2) hp 10/10 hand 11 discard 0 lost 0 active 0 xp 0 gold 30
+scoundrel (3,4) hp 8/8 hand 9 discard 0 lost 0 active 0 xp 0 gold 30
 bandit-guard #1 elite (0,1) hp 9/9
 bandit-guard #2 elite (0,5) hp 9/9
 bandit-guard #3 normal (0,0) hp 6/6
@@ -75,10 +75,10 @@ Round 1 complete
 === Round 2 ===
 --- state after round 1 ---
 elements: fire waning, air waning, earth waning
-scoundrel (1,5) hp 3/8 hand 7 discard 2 lost 0 active 0 xp 0 gold 0
-cragheart (1,1) hp 2/10 hand 9 discard 1 lost 1 active 0 xp 1 gold 0
-spellweaver (4,2) hp 6/6 hand 6 discard 1 lost 1 active 0 xp 0 gold 0
-brute (1,0) hp 10/10 hand 8 discard 1 lost 1 active 0 xp 2 gold 0
+scoundrel (1,5) hp 3/8 hand 7 discard 2 lost 0 active 0 xp 0 gold 30
+cragheart (1,1) hp 2/10 hand 9 discard 1 lost 1 active 0 xp 1 gold 30
+spellweaver (4,2) hp 6/6 hand 6 discard 1 lost 1 active 0 xp 0 gold 30
+brute (1,0) hp 10/10 hand 8 discard 1 lost 1 active 0 xp 2 gold 30
 bandit-guard #2 elite (0,5) hp 5/9 [poison]
 bandit-guard #3 normal (0,0) hp 6/6
 bandit-guard #4 normal (0,2) hp 6/6
@@ -146,10 +146,10 @@ Round 2 complete
 === Round 3 ===
 --- state after round 2 ---
 elements: earth waning
-scoundrel (1,5) hp 1/8 hand 4 discard 1 lost 4 active 0 xp 1 gold 0
-spellweaver (4,2) hp 6/6 hand 4 discard 2 lost 2 active 0 xp 1 gold 0
-brute (1,2) hp 7/10 hand 6 discard 2 lost 2 active 0 xp 5 gold 0
-cragheart (1,1) hp 4/10 hand 7 discard 3 lost 1 active 0 xp 1 gold 0
+scoundrel (1,5) hp 1/8 hand 4 discard 1 lost 4 active 0 xp 1 gold 30
+spellweaver (4,2) hp 6/6 hand 4 discard 2 lost 2 active 0 xp 1 gold 30
+brute (1,2) hp 7/10 hand 6 discard 2 lost 2 active 0 xp 5 gold 30
+cragheart (1,1) hp 4/10 hand 7 discard 3 lost 1 active 0 xp 1 gold 30
 bandit-guard #2 elite (0,5) hp 1/9 [poison]
 bandit-guard #3 normal (0,1) hp 6/6
 bandit-guard #5 normal (1,4) hp 6/6

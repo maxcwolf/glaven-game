@@ -173,6 +173,32 @@ final class TownTests: XCTestCase {
 }
 
 extension TownTests {
+    /// A new character starts with their level's experience and 15 × (level + 1) gold, at a level
+    /// no higher than the prosperity level (p.45).
+    func testARecruitStartsWithGoldAndExperience() throws {
+        let gm = try party(["brute"])
+        let brute = gm.game.characters[0]
+        XCTAssertEqual(brute.loot, 30)
+        XCTAssertEqual(brute.experience, 0)
+
+        gm.characterManager.addCharacter(name: "tinkerer", edition: "gh", level: 3)
+        let tinkerer = try XCTUnwrap(gm.game.characters.first { $0.name == "tinkerer" })
+        XCTAssertEqual(tinkerer.loot, 60)
+        XCTAssertEqual(tinkerer.experience, 95)
+        XCTAssertEqual(tinkerer.level, 3)
+
+        XCTAssertEqual(gm.characterManager.highestStartingLevel, 1, "a new city: level 1 only")
+        gm.game.partyProsperity = 9
+        XCTAssertEqual(gm.characterManager.highestStartingLevel, 3)
+    }
+
+    /// In town, tapping a party member in the recruit list asks before they leave for good.
+    func testDismissingAVeteranAsksFirst() {
+        XCTAssertEqual(GameSetupView.recruitTap(isAdded: false, inTown: true), .add)
+        XCTAssertEqual(GameSetupView.recruitTap(isAdded: true, inTown: false), .remove)
+        XCTAssertEqual(GameSetupView.recruitTap(isAdded: true, inTown: true), .confirmDismissal)
+    }
+
     /// `TOWN_RENDER_OUT=/tmp/town.png swift test --filter testRenderTown` renders the town.
     func testRenderTown() throws {
         guard let out = ProcessInfo.processInfo.environment["TOWN_RENDER_OUT"] else {

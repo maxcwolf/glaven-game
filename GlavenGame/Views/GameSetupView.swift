@@ -16,6 +16,8 @@ struct GameSetupView: View {
     @State private var handCharacter: GameCharacter?
     @State private var questCharacter: GameCharacter?
     @State private var retiringCharacter: GameCharacter?
+    /// A party member the player tapped in the recruit list in town, waiting for confirmation.
+    @State private var dismissingCharacter: GameCharacter?
     @State private var showSanctuary = false
     @State private var showWorldMap = false
     @State private var showCampaign = false
@@ -25,6 +27,15 @@ struct GameSetupView: View {
     @State private var settingOutFor: ScenarioData?
     /// Choosing battle goals, the last step before setting out.
     @State private var choosingGoals = false
+
+    enum RecruitTap: Equatable { case add, remove, confirmDismissal }
+
+    /// What tapping a row of the recruit list does: before the first scenario a party member's
+    /// row takes them out again; in town it asks first, since everything they earned goes too.
+    static func recruitTap(isAdded: Bool, inTown: Bool) -> RecruitTap {
+        guard isAdded else { return .add }
+        return inTown ? .confirmDismissal : .remove
+    }
 
     /// Once the party has played, this is the town between scenarios.
     private var inTown: Bool {
@@ -178,6 +189,20 @@ struct GameSetupView: View {
                 QuestPicker(character: character) { questCharacter = nil }
                     .transition(.opacity)
             }
+        }
+        .confirmationDialog(dismissingCharacter.map { "Dismiss \(GameText.characterName($0, labels: gameManager.editionStore))?" } ?? "",
+                            isPresented: Binding(get: { dismissingCharacter != nil },
+                                                 set: { if !$0 { dismissingCharacter = nil } }),
+                            titleVisibility: .visible) {
+            if let character = dismissingCharacter {
+                Button("Dismiss for Good", role: .destructive) {
+                    gameManager.characterManager.removeCharacter(character)
+                    dismissingCharacter = nil
+                }
+            }
+            Button("Keep Them", role: .cancel) { dismissingCharacter = nil }
+        } message: {
+            Text("They leave the party with their experience, gold, items and perks. This can't be undone.")
         }
         .confirmationDialog(retireTitle, isPresented: Binding(
             get: { retiringCharacter != nil }, set: { if !$0 { retiringCharacter = nil } }
@@ -345,6 +370,7 @@ struct GameSetupView: View {
                     .foregroundStyle(GlavenTheme.secondaryText)
                     .padding(.trailing, 8)
                 ForEach(1...9, id: \.self) { level in
+                    let allowed = level <= gameManager.characterManager.highestStartingLevel
                     Button {
                         selectedLevel = level
                     } label: {
@@ -357,6 +383,9 @@ struct GameSetupView: View {
                             .clipShape(Circle())
                     }
                     .buttonStyle(.plain)
+                    .disabled(!allowed)
+                    .opacity(allowed ? 1 : 0.35)
+                    .accessibilityLabel(allowed ? "Level \(level)" : "Level \(level), needs prosperity \(level)")
                     if level < 9 {
                         Spacer(minLength: 2)
                     }
@@ -489,11 +518,15 @@ struct GameSetupView: View {
         Button {
             if isAdded {
                 if let gameChar = gameManager.game.characters.first(where: { $0.name == character.name }) {
-                    gameManager.characterManager.removeCharacter(gameChar)
+                    switch Self.recruitTap(isAdded: true, inTown: inTown) {
+                    case .confirmDismissal: dismissingCharacter = gameChar
+                    default: gameManager.characterManager.removeCharacter(gameChar)
+                    }
                 }
             } else {
                 guard gameManager.game.characters.count < 4 else { return }
-                gameManager.characterManager.addCharacter(name: character.name, edition: edition, level: selectedLevel)
+                gameManager.characterManager.addCharacter(name: character.name, edition: edition,
+                                                          level: min(selectedLevel, gameManager.characterManager.highestStartingLevel))
                 // A recruit chooses their personal quest straight away.
                 if let recruit = gameManager.game.characters.first(where: { $0.name == character.name }) {
                     chooseQuest(for: recruit)

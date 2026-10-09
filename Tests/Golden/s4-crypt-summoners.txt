@@ -6,9 +6,9 @@ Spellweaver takes position [at (1,4)]
 === Round 1 ===
 --- state after round 0 ---
 elements: none
-tinkerer (1,2) hp 8/8 hand 12 discard 0 lost 0 active 0 xp 0 gold 0
-mindthief (0,3) hp 6/6 hand 10 discard 0 lost 0 active 0 xp 0 gold 0
-spellweaver (1,4) hp 6/6 hand 8 discard 0 lost 0 active 0 xp 0 gold 0
+tinkerer (1,2) hp 8/8 hand 12 discard 0 lost 0 active 0 xp 0 gold 30
+mindthief (0,3) hp 6/6 hand 10 discard 0 lost 0 active 0 xp 0 gold 30
+spellweaver (1,4) hp 6/6 hand 8 discard 0 lost 0 active 0 xp 0 gold 30
 bandit-archer #1 normal (4,0) hp 5/5
 bandit-archer #2 normal (3,1) hp 5/5
 living-bones #1 elite (2,1) hp 6/6
@@ -65,9 +65,9 @@ Round 1 complete
 === Round 2 ===
 --- state after round 1 ---
 elements: fire waning
-tinkerer (1,2) hp 8/8 hand 10 discard 1 lost 1 active 0 xp 2 gold 0
-mindthief (1,1) hp 2/6 hand 7 discard 1 lost 2 active 0 xp 3 gold 0
-spellweaver (1,4) hp 6/6 hand 6 discard 1 lost 1 active 0 xp 2 gold 0
+tinkerer (1,2) hp 8/8 hand 10 discard 1 lost 1 active 0 xp 2 gold 30
+mindthief (1,1) hp 2/6 hand 7 discard 1 lost 2 active 0 xp 3 gold 30
+spellweaver (1,4) hp 6/6 hand 6 discard 1 lost 1 active 0 xp 2 gold 30
 bandit-archer #1 normal (4,0) hp 5/5
 bandit-archer #2 normal (3,1) hp 3/5
 living-bones #2 elite (3,2) hp 4/6
@@ -124,9 +124,9 @@ Round 2 complete
 === Round 3 ===
 --- state after round 2 ---
 elements: ice waning, earth waning
-spellweaver (1,4) hp 6/6 hand 4 discard 2 lost 2 active 0 xp 4 gold 0
-mindthief (0,1) hp 2/6 hand 5 discard 1 lost 4 active 0 xp 4 gold 0
-tinkerer (1,2) hp 8/8 hand 8 discard 1 lost 3 active 0 xp 4 gold 2
+spellweaver (1,4) hp 6/6 hand 4 discard 2 lost 2 active 0 xp 4 gold 30
+mindthief (0,1) hp 2/6 hand 5 discard 1 lost 4 active 0 xp 4 gold 30
+tinkerer (1,2) hp 8/8 hand 8 discard 1 lost 3 active 0 xp 4 gold 32
 bandit-archer #1 normal (4,0) hp 5/5
 living-bones #2 elite (3,2) hp 1/6
 money tokens: (3,1)x1

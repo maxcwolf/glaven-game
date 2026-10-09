@@ -126,11 +126,12 @@ final class EventCardTests: XCTestCase {
     /// City 31, option B: a Sunkeeper won't let the party refuse, so option A's outcome applies.
     func testAnOutcomeCanSendThePartyToTheOtherOption() {
         gm.characterManager.addCharacter(name: "sun", edition: "gh")
+        let gold = game.characters.reduce(0) { $0 + $1.loot }
         top(.city, "31")
         events.resolve(.city, option: "B")
         XCTAssertTrue(game.partyAchievements.contains("bad-business"))
         XCTAssertTrue(game.manualScenarios.contains("gh-83"))
-        XCTAssertEqual(game.characters.reduce(0) { $0 + $1.loot }, 20)
+        XCTAssertEqual(game.characters.reduce(0) { $0 + $1.loot } - gold, 20)
         XCTAssertFalse(events.deck(.city).contains("31"), "removed, as option A says")
     }
 
