@@ -112,6 +112,7 @@
 		7E83CFF586BC1BDCB1ADFF2A /* AttackModifierManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69054202832ECCDDB26C8B2B /* AttackModifierManager.swift */; };
 		800B52D79643E5CB76B64F29 /* Fonts in Resources */ = {isa = PBXBuildFile; fileRef = 5D581F71B3F53FBB364E1E22 /* Fonts */; };
 		82234109FFEE89D34817A5C7 /* ScenarioMapDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4901D882DBB4A4409384EE90 /* ScenarioMapDetailView.swift */; };
+		8258D929E98C3247DC890111 /* TownViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9F15394A91633C6E2E08E46 /* TownViews.swift */; };
 		82BD2069DBF2BD8ABEBDC1B0 /* GlavenTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6911D16FDC2CF2B049586221 /* GlavenTheme.swift */; };
 		839A430B4DAB455B45FE0744 /* BoardTopBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = A74028D5DFEC6A3B6D0C3323 /* BoardTopBar.swift */; };
 		8556401DE6DDEC3B29A94C2E /* GamePhase.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E3252016F044D305E5F9AD4 /* GamePhase.swift */; };
@@ -378,6 +379,7 @@
 		B881C2715E0BC0457CC00B37 /* SavedGameModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SavedGameModel.swift; sourceTree = "<group>"; };
 		B90AB17781FA04ADADF656EB /* PreferencesSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreferencesSheet.swift; sourceTree = "<group>"; };
 		B97936FE7C6DC6879E3A5861 /* ScenarioBriefCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScenarioBriefCard.swift; sourceTree = "<group>"; };
+		B9F15394A91633C6E2E08E46 /* TownViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TownViews.swift; sourceTree = "<group>"; };
 		BA5C6A163BDEB897E9993360 /* EscortTurnController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EscortTurnController.swift; sourceTree = "<group>"; };
 		BA81DDD9366A51A3A52F3C1B /* PerkType.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PerkType.swift; sourceTree = "<group>"; };
 		BAA69530D042DCA0EDABF5B4 /* AreaPatternView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AreaPatternView.swift; sourceTree = "<group>"; };
@@ -629,6 +631,7 @@
 				AABF17B34BECDFBAFC515C72 /* SanctuarySheet.swift */,
 				4D00189AAD6484D20C66CBC0 /* TableRulesSheet.swift */,
 				D86B71BFEEBD99C00C1AF649 /* TownPartyRow.swift */,
+				B9F15394A91633C6E2E08E46 /* TownViews.swift */,
 				227A3064E6D684967F7C3C60 /* Dialogs */,
 				FFE5F7E058CB9F9443DB1BC5 /* Figures */,
 				1342548B78DD9C498F581744 /* Footer */,
@@ -1180,6 +1183,7 @@
 				8AA44B90BFF46A1E66C7CF62 /* TableRulesSheet.swift in Sources */,
 				4D8A855BF0C689D5ED706822 /* TileGrids.swift in Sources */,
 				14511DEB8C59B9436FC95253 /* TownPartyRow.swift in Sources */,
+				8258D929E98C3247DC890111 /* TownViews.swift in Sources */,
 				46B94503244BB10D9E14A9F0 /* TreasureRewardParser.swift in Sources */,
 				ED9D3F8E14B8D7CFBE91954D /* TurnRailView.swift in Sources */,
 				6DB6AB6ED57EBE6DBFCC2A33 /* UIScale.swift in Sources */,

@@ -217,4 +217,32 @@ extension TownTests {
         try XCTUnwrap(NSBitmapImageRep(cgImage: image).representation(using: .png, properties: [:]))
             .write(to: URL(fileURLWithPath: out))
     }
+
+    /// Set Out says what it leads to, or what's missing first.
+    func testSetOutSaysWhatComesNext() {
+        XCTAssertEqual(GameSetupView.setOutDetail(hasParty: false, scenario: true, cityEvent: false, roadEvent: false),
+                       "Recruit your party first")
+        XCTAssertEqual(GameSetupView.setOutDetail(hasParty: true, scenario: false, cityEvent: false, roadEvent: false),
+                       "Choose a scenario first")
+        XCTAssertEqual(GameSetupView.setOutDetail(hasParty: true, scenario: true, cityEvent: false, roadEvent: false),
+                       "Battle goals, then the board")
+        XCTAssertEqual(GameSetupView.setOutDetail(hasParty: true, scenario: true, cityEvent: false, roadEvent: true),
+                       "Road event, then battle goals")
+        XCTAssertEqual(GameSetupView.setOutDetail(hasParty: true, scenario: true, cityEvent: true, roadEvent: true),
+                       "City event, road event, then battle goals")
+        XCTAssertEqual(GameSetupView.townSubtitle(scenariosPlayed: 0), "Recruit your party and set out")
+        XCTAssertEqual(GameSetupView.townSubtitle(scenariosPlayed: 1), "In town \u{00B7} 1 scenario played")
+        XCTAssertEqual(GameSetupView.townSubtitle(scenariosPlayed: 3), "In town \u{00B7} 3 scenarios played")
+    }
+
+    /// The banner crops the world map around the scenario, kept inside the map at its edges.
+    func testTheScenarioBannerShowsTheMapAroundTheScenario() throws {
+        let rect = CGRect(x: 1572, y: 967, width: 187, height: 131)
+        let crop = try XCTUnwrap(ImageLoader.worldMapCrop(edition: "gh", around: rect, size: ScenarioBanner.cropSize))
+        XCTAssertEqual(crop.size.width, ScenarioBanner.cropSize.width, accuracy: 1)
+        XCTAssertEqual(crop.size.height, ScenarioBanner.cropSize.height, accuracy: 1)
+        let corner = try XCTUnwrap(ImageLoader.worldMapCrop(edition: "gh", around: CGRect(x: 0, y: 0, width: 10, height: 10),
+                                                             size: ScenarioBanner.cropSize))
+        XCTAssertEqual(corner.size.width, ScenarioBanner.cropSize.width, accuracy: 1, "slid back inside at the edge")
+    }
 }

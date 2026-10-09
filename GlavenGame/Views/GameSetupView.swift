@@ -92,105 +92,24 @@ struct GameSetupView: View {
     }
 
     var body: some View {
-        VStack(spacing: 12) {
-            // Top bar: back to the menu, the town and its standing, the campaign
-            HStack(spacing: 12) {
-                Button {
-                    gameManager.returnToMainMenu()
-                } label: {
-                    HStack(spacing: 4) {
-                        Image(systemName: "chevron.left")
-                            .font(.caption)
-                        Text("Menu")
-                            .font(.subheadline)
-                            .fontWeight(.medium)
-                    }
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 6)
-                    .background(GlavenTheme.cardBackground.opacity(0.8))
-                    .foregroundStyle(GlavenTheme.accentText)
-                    .clipShape(Capsule())
+        GeometryReader { geo in
+            let compact = geo.size.width < 1300
+            VStack(spacing: 0) {
+                topBar
+                HStack(alignment: .top, spacing: 16) {
+                    partyPanel
+                        .frame(width: compact ? 350 : 400)
+                    scenarioPanel
+                    scenarioListPanel
+                        .frame(width: compact ? 240 : 280)
                 }
-                .buttonStyle(.plain)
-                Spacer()
-                if inTown {
-                    Text("Gloomhaven")
-                        .font(theme.titleFont(size: 28))
-                        .foregroundStyle(BoardTheme.text)
-                    townChip("Prosperity \(prosperityLevel)", icon: "building.columns.fill")
-                    townChip("Reputation \(gameManager.game.partyReputation)", icon: "shield.lefthalf.filled")
-                }
-                if gameManager.game.events.cityEventDue {
-                    Button("City Event", systemImage: "building.2.fill") {
-                        gameManager.prepareEvents([.city])
-                        events = [.city]
-                    }
-                        .buttonStyle(.borderedProminent)
-                        .tint(BoardTheme.brass)
-                        .fixedSize()
-                }
-                if inTown {
-                    Button("Sanctuary", systemImage: "sun.max") { showSanctuary = true }
-                        .buttonStyle(.bordered)
-                        .tint(BoardTheme.brass)
-                        .fixedSize()
-                }
-                Button("Campaign", systemImage: "book.closed.fill") { showCampaign = true }
-                    .buttonStyle(.bordered)
-                    .tint(BoardTheme.brass)
-                Button("How to Play", systemImage: "book") { gameManager.boardCoordinator.openHowToPlay() }
-                    .buttonStyle(.bordered)
-                    .tint(BoardTheme.brass)
-                    .fixedSize()
-                    .fixedSize()
+                .padding(16)
             }
-            .padding(.horizontal, 20)
-            .padding(.top, 12)
-
-            // Main content — centered panels with breathing room
-            GeometryReader { geo in
-                let panelHeight = min(geo.size.height - 90, 700)
-                VStack(spacing: 20) {
-                    HStack(spacing: 24) {
-                        characterPanel
-                            .frame(maxWidth: 420)
-                        scenarioPanel
-                            .frame(maxWidth: 420)
-                    }
-                    .frame(height: panelHeight)
-
-                    // Start button
-                    Button {
-                        if let scenario = selectedScenario { setOut(for: scenario) }
-                    } label: {
-                        HStack(spacing: 8) {
-                            Image(systemName: "play.fill")
-                            Text("Start Scenario")
-                                .font(theme.titleFont(size: 20))
-                        }
-                        .padding(.horizontal, 36)
-                        .padding(.vertical, 12)
-                        .background(canStart ? BoardTheme.brass : GlavenTheme.primaryText.opacity(0.08))
-                        .foregroundStyle(canStart ? .white : GlavenTheme.secondaryText)
-                        .clipShape(Capsule())
-                        .shadow(color: canStart ? BoardTheme.brass.opacity(0.4) : .clear, radius: 8, y: 2)
-                    }
-                    .buttonStyle(.plain)
-                    .disabled(!canStart)
-                    // With only one scenario to play (a new campaign's Black Barrow), it's chosen.
-                    .onAppear {
-                        if selectedScenario == nil { selectedScenario = Self.onlyChoice(availableScenarios) }
-                    }
-                }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-            }
-            .padding(.horizontal, 32)
         }
-        .background {
-            // Textured background with dark translucent overlay, behind the layout so it never sizes it
-            ParchmentBackground(edition: edition)
-                .overlay(Color(red: 0.12, green: 0.14, blue: 0.18).opacity(GlavenTheme.isLight ? 0.15 : 0.75))
-                .ignoresSafeArea()
+        .background(BoardTheme.sheet.ignoresSafeArea())
+        // With only one scenario to play (a new campaign's Black Barrow), it's chosen.
+        .onAppear {
+            if selectedScenario == nil { selectedScenario = Self.onlyChoice(availableScenarios) }
         }
         .overlay {
             if showSanctuary {
@@ -341,94 +260,80 @@ struct GameSetupView: View {
 
     private var prosperityLevel: Int { gameManager.game.prosperityLevel }
 
-    private func townChip(_ text: String, icon: String) -> some View {
-        Label(text, systemImage: icon)
-            .font(.subheadline.weight(.semibold))
-            .foregroundStyle(BoardTheme.text)
-            .padding(.horizontal, 10)
-            .padding(.vertical, 6)
-            .background(BoardTheme.panel, in: Capsule())
-    }
+    private var party: [GameCharacter] { gameManager.game.characters.filter { !$0.absent } }
 
-    // MARK: - Character Panel
+    // MARK: - Top bar
 
-    @ViewBuilder
-    private var characterPanel: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            // Panel header
-            HStack(alignment: .firstTextBaseline) {
-                Image(systemName: "person.3.fill")
-                    .font(.caption)
-                    .foregroundStyle(GlavenTheme.accentText)
-                Text("Party")
-                    .font(theme.titleFont(size: 18))
-                    .foregroundStyle(GlavenTheme.primaryText)
-                Spacer()
-                if gameManager.game.characters.isEmpty {
-                    Text("Choose 2\u{2013}4")
-                        .font(.caption)
-                        .foregroundStyle(GlavenTheme.secondaryText)
-                } else {
-                    Text("\(gameManager.game.characters.count) of 4")
-                        .font(.caption)
-                        .fontWeight(.medium)
-                        .foregroundStyle(GlavenTheme.accentText)
-                }
-            }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 12)
-
-            // Level selector
-            HStack(spacing: 0) {
-                Text("Lvl")
-                    .font(.caption2)
-                    .fontWeight(.bold)
-                    .foregroundStyle(GlavenTheme.secondaryText)
-                    .padding(.trailing, 8)
-                ForEach(1...9, id: \.self) { level in
-                    let allowed = level <= gameManager.characterManager.highestStartingLevel
-                    Button {
-                        selectedLevel = level
-                    } label: {
-                        Text("\(level)")
-                            .font(.caption)
-                            .fontWeight(selectedLevel == level ? .bold : .regular)
-                            .frame(width: 28, height: 28)
-                            .background(selectedLevel == level ? Color.accentColor : GlavenTheme.primaryText.opacity(0.06))
-                            .foregroundStyle(selectedLevel == level ? .white : GlavenTheme.secondaryText)
-                            .clipShape(Circle())
-                    }
-                    .buttonStyle(.plain)
-                    .disabled(!allowed)
-                    .opacity(allowed ? 1 : 0.35)
-                    .accessibilityLabel(allowed ? "Level \(level)" : "Level \(level), needs prosperity \(level)")
-                    if level < 9 {
-                        Spacer(minLength: 2)
-                    }
-                }
-            }
-            .padding(.horizontal, 16)
-            .padding(.bottom, 10)
-
-            difficultyRow
-            difficultyHint
-            Button { showTableRules = true } label: {
-                Label(TableRulesSheet.summary(gameManager.game.tableRules), systemImage: "list.bullet.rectangle")
-                    .font(.caption)
-                    .foregroundStyle(gameManager.game.tableRules == TableRules() ? GlavenTheme.secondaryText : BoardTheme.brass)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .frame(minHeight: 32)
+    /// Back to the menu, where the party is, the town's standing, and what can be done in town.
+    private var topBar: some View {
+        HStack(spacing: 12) {
+            Button {
+                gameManager.returnToMainMenu()
+            } label: {
+                Image(systemName: "chevron.left")
+                    .font(BoardTheme.font(size: 16, weight: .semibold))
+                    .foregroundStyle(BoardTheme.text)
+                    .frame(width: 40, height: 40)
+                    .background(BoardTheme.raised, in: Circle())
+                    .frame(width: 44, height: 44)
+                    .contentShape(Circle())
             }
             .buttonStyle(.plain)
-            .padding(.horizontal, 16)
-            learningModeRow
+            .accessibilityLabel("Main menu")
+            VStack(alignment: .leading, spacing: 0) {
+                Text(inTown ? "Gloomhaven" : "New Campaign")
+                    .font(BoardTheme.display(24))
+                    .foregroundStyle(BoardTheme.text)
+                Text(Self.townSubtitle(scenariosPlayed: gameManager.game.completedScenarios.count))
+                    .font(BoardTheme.font(size: 12, weight: .medium))
+                    .foregroundStyle(BoardTheme.secondaryText)
+                    .lineLimit(1)
+            }
+            .accessibilityElement(children: .combine)
+            .accessibilityAddTraits(.isHeader)
+            if inTown {
+                TownChip(icon: "building.columns.fill", text: "Prosperity \(prosperityLevel)")
+                TownChip(icon: "shield.lefthalf.filled", text: "Reputation \(gameManager.game.partyReputation)")
+            }
+            Spacer(minLength: 8)
+            if gameManager.game.events.cityEventDue {
+                Button("City Event", systemImage: "building.2.fill") {
+                    gameManager.prepareEvents([.city])
+                    events = [.city]
+                }
+                .buttonStyle(.boardPrimaryCompact)
+            }
+            if inTown {
+                Button("Sanctuary", systemImage: "sun.max") { showSanctuary = true }
+                    .buttonStyle(.boardQuietCompact)
+            }
+            Button("Campaign", systemImage: "book.closed") { showCampaign = true }
+                .buttonStyle(.boardQuietCompact)
+            Button("How to Play", systemImage: "book") { gameManager.boardCoordinator.openHowToPlay() }
+                .buttonStyle(.boardQuietCompact)
+        }
+        .padding(.horizontal, 16)
+        .frame(height: 64)
+        .background(BoardTheme.panel)
+        .overlay(alignment: .bottom) { Rectangle().fill(BoardTheme.border.opacity(0.5)).frame(height: 1) }
+    }
 
-            Divider().opacity(0.2)
+    /// "Recruit your party and set out", or "In town · 3 scenarios played".
+    static func townSubtitle(scenariosPlayed: Int) -> String {
+        guard scenariosPlayed > 0 else { return "Recruit your party and set out" }
+        return "In town \u{00B7} \(scenariosPlayed) scenario\(scenariosPlayed == 1 ? "" : "s") played"
+    }
 
-            // The party, then the classes to recruit from
+    // MARK: - Party
+
+    /// The party's cards, and the classes to recruit pinned at the bottom: adding someone never
+    /// moves the class tiles, so a second tap can't land on the wrong class.
+    private var partyPanel: some View {
+        TownPanel {
+            TownPanelHeading(title: "Party", detail: party.isEmpty ? "CHOOSE 2\u{2013}4" : "\(party.count) OF 4")
             ScrollView {
-                LazyVStack(spacing: 2) {
-                    ForEach(gameManager.game.characters.filter { !$0.absent }, id: \.id) { character in
+                VStack(spacing: 10) {
+                    ForEach(party, id: \.id) { character in
                         TownPartyRow(character: character,
                                      onSheet: { sheetCharacter = character },
                                      onShop: { shopCharacter = character },
@@ -438,97 +343,372 @@ struct GameSetupView: View {
                                      onChooseCard: { cardChoiceCharacter = character },
                                      onHand: { handCharacter = character },
                                      onChooseQuest: { chooseQuest(for: character) },
-                                     onRetire: { retiringCharacter = character })
-                            .padding(.bottom, 6)
+                                     onRetire: { retiringCharacter = character },
+                                     onRemove: { remove(character) })
                     }
-                    if !gameManager.game.characters.isEmpty {
-                        Text("RECRUIT")
-                            .font(.caption.weight(.bold))
-                            .foregroundStyle(BoardTheme.brass)
+                    if party.isEmpty {
+                        Text("Recruit two to four characters from the classes below.")
+                            .font(BoardTheme.font(size: 14))
+                            .foregroundStyle(BoardTheme.secondaryText)
                             .frame(maxWidth: .infinity, alignment: .leading)
-                            .padding(.horizontal, 8)
-                            .padding(.top, 6)
-                    }
-                    ForEach(allCharacters) { character in
-                        characterRow(character)
+                            .padding(.vertical, 8)
                     }
                 }
-                .padding(.horizontal, 8)
-                .padding(.vertical, 4)
+            }
+            .frame(maxHeight: .infinity)
+            recruitStrip
+        }
+    }
+
+    private func remove(_ character: GameCharacter) {
+        switch Self.recruitTap(isAdded: true, inTown: inTown) {
+        case .confirmDismissal: dismissingCharacter = character
+        default: gameManager.characterManager.removeCharacter(character)
+        }
+    }
+
+    private var recruitStrip: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 6) {
+                TownSmallCaps(text: "Recruit")
+                Spacer()
+                let highest = gameManager.characterManager.highestStartingLevel
+                if highest > 1 {
+                    Text("at level").font(BoardTheme.font(size: 12)).foregroundStyle(BoardTheme.secondaryText)
+                    ForEach(1...highest, id: \.self) { level in
+                        Button { selectedLevel = level } label: {
+                            Text("\(level)")
+                                .font(BoardTheme.font(size: 12, weight: .semibold))
+                                .foregroundStyle(selectedLevel == level ? BoardTheme.sheet : BoardTheme.text)
+                                .frame(width: 26, height: 26)
+                                .background(selectedLevel == level ? BoardTheme.brass : BoardTheme.raised, in: Circle())
+                                .frame(width: 30, height: 44)
+                                .contentShape(Circle())
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("Recruit at level \(level)")
+                        .accessibilityAddTraits(selectedLevel == level ? .isSelected : [])
+                    }
+                }
+            }
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 8) {
+                    ForEach(allCharacters) { recruitTile($0) }
+                }
             }
         }
-        .background(GlavenTheme.cardBackground.opacity(0.85))
-        .clipShape(RoundedRectangle(cornerRadius: 14))
-        .overlay(
-            RoundedRectangle(cornerRadius: 14)
-                .strokeBorder(GlavenTheme.primaryText.opacity(0.1), lineWidth: 1)
-        )
-        .shadow(color: .black.opacity(0.25), radius: 12, y: 4)
+        .padding(.top, 4)
+    }
+
+    private func recruitTile(_ character: CharacterData) -> some View {
+        let isAdded = existingNames.contains(character.name)
+        let full = !isAdded && gameManager.game.characters.count >= 4
+        let classColor = Color(hex: character.color ?? "#808080") ?? .gray
+        let name = GameText.className(character.name, edition: edition, labels: gameManager.editionStore)
+        let level = min(selectedLevel, gameManager.characterManager.highestStartingLevel)
+        return Button {
+            if isAdded {
+                if let member = gameManager.game.characters.first(where: { $0.name == character.name }) { remove(member) }
+            } else {
+                guard gameManager.game.characters.count < 4 else { return }
+                gameManager.characterManager.addCharacter(name: character.name, edition: edition, level: level)
+                // A recruit chooses their personal quest straight away.
+                if let recruit = gameManager.game.characters.first(where: { $0.name == character.name }) {
+                    chooseQuest(for: recruit)
+                }
+            }
+        } label: {
+            VStack(spacing: 4) {
+                ThumbnailImage(image: ImageLoader.characterThumbnail(edition: character.edition, name: character.name),
+                               size: 48, cornerRadius: 24, fallbackColor: classColor)
+                    .overlay(Circle().stroke(isAdded ? classColor : BoardTheme.border.opacity(0.6), lineWidth: isAdded ? 2.5 : 1))
+                    .overlay(alignment: .topTrailing) {
+                        if isAdded {
+                            Image(systemName: "checkmark.circle.fill")
+                                .font(BoardTheme.font(size: 16, weight: .bold))
+                                .foregroundStyle(BoardTheme.brass, BoardTheme.sheet)
+                                .offset(x: 4, y: -4)
+                        }
+                    }
+                Text(name)
+                    .font(BoardTheme.font(size: 12, weight: isAdded ? .semibold : .regular))
+                    .foregroundStyle(isAdded ? BoardTheme.text : BoardTheme.secondaryText)
+                    .lineLimit(1)
+                Text("\u{2665}\(character.healthForLevel(level)) \u{00B7} \(character.resolvedHandSize) cards")
+                    .font(BoardTheme.font(size: 11).monospacedDigit())
+                    .foregroundStyle(BoardTheme.secondaryText)
+                    .lineLimit(1)
+                    .fixedSize()
+            }
+            .frame(width: 84)
+            .padding(.vertical, 8)
+            .background(isAdded ? classColor.opacity(0.14) : BoardTheme.raised.opacity(0.6),
+                        in: RoundedRectangle(cornerRadius: BoardTheme.Radius.medium))
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .disabled(full)
+        .opacity(full ? 0.4 : 1)
+        .accessibilityLabel("\(name), \(character.healthForLevel(level)) hit points, \(character.resolvedHandSize) cards")
+        .accessibilityValue(isAdded ? "in the party" : "")
+        .accessibilityHint(isAdded ? "Takes them out of the party" : "Adds them to the party")
+    }
+
+    // MARK: - The scenario
+
+    /// The chosen scenario: where it is on the map, its goal, monsters and rewards; then the
+    /// difficulty, and Set Out.
+    private var scenarioPanel: some View {
+        TownPanel {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 12) {
+                    if let scenario = selectedScenario {
+                        scenarioDetail(scenario)
+                    } else {
+                        VStack(spacing: 8) {
+                            Image(systemName: "map").font(BoardTheme.font(size: 34)).foregroundStyle(BoardTheme.brass)
+                            Text("Choose a scenario").font(BoardTheme.display(28)).foregroundStyle(BoardTheme.text)
+                            Text("From the list, or on the World Map.")
+                                .font(BoardTheme.font(size: 14)).foregroundStyle(BoardTheme.secondaryText)
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.top, 80)
+                    }
+                }
+            }
+            .frame(maxHeight: .infinity)
+            Rectangle().fill(BoardTheme.border.opacity(0.4)).frame(height: 1)
+            settingsRows
+            HStack {
+                Spacer()
+                setOutButton
+            }
+        }
     }
 
     @ViewBuilder
+    private func scenarioDetail(_ scenario: ScenarioData) -> some View {
+        let brief = ScenarioBrief.make(for: scenario, labels: gameManager.editionStore)
+        ScenarioBanner(scenario: scenario, edition: edition)
+        VStack(alignment: .leading, spacing: 2) {
+            TownSmallCaps(text: "Next scenario", lit: true)
+            Text(brief.title)
+                .font(BoardTheme.display(36))
+                .foregroundStyle(BoardTheme.text)
+                .fixedSize(horizontal: false, vertical: true)
+                .accessibilityAddTraits(.isHeader)
+            if let map = brief.map {
+                Text(map).font(BoardTheme.font(size: 13)).foregroundStyle(BoardTheme.secondaryText)
+            }
+        }
+        Label(brief.goal, systemImage: "scope")
+            .font(BoardTheme.font(size: 16, weight: .semibold))
+            .foregroundStyle(BoardTheme.text)
+            .fixedSize(horizontal: false, vertical: true)
+        if !brief.monsters.isEmpty {
+            TownSmallCaps(text: "Monsters")
+            FlowLayout(spacing: 10) {
+                ForEach(brief.monsters, id: \.self) { monster in
+                    let name = GameText.monsterName(monster, edition: brief.edition, labels: gameManager.editionStore)
+                    VStack(spacing: 4) {
+                        ThumbnailImage(image: ImageLoader.monsterThumbnail(edition: brief.edition, name: monster),
+                                       size: 48, cornerRadius: 24, fallbackColor: BoardTheme.raised)
+                            .overlay(Circle().stroke(BoardTheme.border, lineWidth: 1))
+                        Text(name)
+                            .font(BoardTheme.font(size: 11))
+                            .foregroundStyle(BoardTheme.secondaryText)
+                            .lineLimit(1)
+                    }
+                    .frame(width: 80)
+                    .accessibilityElement(children: .ignore)
+                    .accessibilityLabel(name)
+                }
+            }
+        }
+        if !brief.rewards.isEmpty {
+            TownSmallCaps(text: "Rewards")
+            Text(brief.rewards.joined(separator: " \u{00B7} "))
+                .font(BoardTheme.font(size: 13))
+                .foregroundStyle(BoardTheme.text)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    /// Difficulty, the scenario level it gives, the table rules and learning mode.
+    private var settingsRows: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(alignment: .center, spacing: 12) {
+                TownSmallCaps(text: "Difficulty")
+                HStack(spacing: 0) {
+                    ForEach(DifficultyMode.allCases, id: \.self) { mode in
+                        let selected = gameManager.game.difficulty == mode
+                        Button { gameManager.game.difficulty = mode } label: {
+                            Text(mode.shortLabel)
+                                .font(BoardTheme.font(size: 13, weight: .semibold))
+                                .lineLimit(1)
+                                .foregroundStyle(selected ? BoardTheme.sheet : BoardTheme.text)
+                                .padding(.horizontal, 10)
+                                .frame(minHeight: 30)
+                                .background(selected ? BoardTheme.brass : Color.clear, in: Capsule())
+                                .contentShape(Capsule())
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel(mode.description)
+                        .accessibilityAddTraits(selected ? .isSelected : [])
+                    }
+                }
+                .padding(2)
+                .background(BoardTheme.raised, in: Capsule())
+                .fixedSize()
+            }
+            difficultyHint
+            HStack(spacing: 16) {
+                Button { showTableRules = true } label: {
+                    Label(TableRulesSheet.summary(gameManager.game.tableRules), systemImage: "list.bullet.rectangle")
+                        .font(BoardTheme.font(size: 13))
+                        .foregroundStyle(gameManager.game.tableRules == TableRules() ? BoardTheme.secondaryText : BoardTheme.brass)
+                        .lineLimit(1)
+                        .frame(minHeight: 32)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                learningModeRow
+            }
+        }
+    }
+
+    /// Set out: the events owed, then battle goals, then the board.
+    private var setOutButton: some View {
+        Button {
+            if let scenario = selectedScenario { setOut(for: scenario) }
+        } label: {
+            HStack(spacing: 12) {
+                Image(systemName: "play.fill")
+                VStack(alignment: .leading, spacing: 0) {
+                    Text("Set Out").font(BoardTheme.display(24))
+                    Text(setOutDetail)
+                        .font(BoardTheme.font(size: 11, weight: .medium))
+                        .opacity(0.8)
+                        .lineLimit(1)
+                }
+            }
+            .foregroundStyle(canStart ? BoardTheme.sheet : BoardTheme.secondaryText)
+            .padding(.horizontal, 26)
+            .frame(minHeight: 56)
+            .background(canStart ? BoardTheme.brass : BoardTheme.raised, in: Capsule())
+            .shadow(color: canStart ? BoardTheme.brass.opacity(0.35) : .clear, radius: 10, y: 3)
+            .contentShape(Capsule())
+        }
+        .buttonStyle(.plain)
+        .disabled(!canStart)
+        .keyboardShortcut(.defaultAction)
+        .accessibilityLabel("Set Out")
+        .accessibilityHint(setOutDetail)
+    }
+
+    private var setOutDetail: String {
+        Self.setOutDetail(hasParty: !gameManager.game.characters.isEmpty, scenario: selectedScenario != nil,
+                          cityEvent: gameManager.game.events.cityEventDue,
+                          roadEvent: selectedScenario.map { gameManager.eventCardManager.needsRoadEvent(for: $0) } ?? false)
+    }
+
+    /// What Set Out leads to: "City event, road event, then battle goals"; or what's missing.
+    static func setOutDetail(hasParty: Bool, scenario: Bool, cityEvent: Bool, roadEvent: Bool) -> String {
+        guard hasParty else { return "Recruit your party first" }
+        guard scenario else { return "Choose a scenario first" }
+        let events = [cityEvent ? "city event" : nil, roadEvent ? "road event" : nil].compactMap { $0 }
+        guard !events.isEmpty else { return "Battle goals, then the board" }
+        let text = events.joined(separator: ", ") + ", then battle goals"
+        return text.prefix(1).uppercased() + text.dropFirst()
+    }
+
+    // MARK: - Scenario list
+
+    private var scenarioListPanel: some View {
+        TownPanel {
+            TownPanelHeading(title: "Scenarios", detail: "\(availableScenarios.count) OPEN")
+            if availableScenarios.count > 5 {
+                HStack(spacing: 6) {
+                    Image(systemName: "magnifyingglass").foregroundStyle(BoardTheme.secondaryText)
+                    TextField("Search", text: $scenarioSearch)
+                        .textFieldStyle(.plain)
+                        .foregroundStyle(BoardTheme.text)
+                    if !scenarioSearch.isEmpty {
+                        Button { scenarioSearch = "" } label: { Image(systemName: "xmark.circle.fill") }
+                            .buttonStyle(.plain)
+                            .foregroundStyle(BoardTheme.secondaryText)
+                            .accessibilityLabel("Clear the search")
+                    }
+                }
+                .font(BoardTheme.font(size: 14))
+                .padding(.horizontal, 10)
+                .frame(height: 36)
+                .background(BoardTheme.raised, in: RoundedRectangle(cornerRadius: BoardTheme.Radius.small))
+            }
+            ScrollView {
+                LazyVStack(spacing: 4) {
+                    ForEach(filteredScenarios) { scenarioRow($0) }
+                }
+            }
+            .frame(maxHeight: .infinity)
+            Button("World Map", systemImage: "map") { showWorldMap = true }
+                .buttonStyle(.boardQuietCompact)
+                .frame(maxWidth: .infinity)
+        }
+    }
+
+    private func scenarioRow(_ scenario: ScenarioData) -> some View {
+        let isSelected = selectedScenario?.id == scenario.id
+        let hasMap = ScenarioMapStore.shared.hasMap(for: scenario.index)
+        return Button {
+            selectedScenario = scenario
+        } label: {
+            HStack(spacing: 10) {
+                Text(scenario.index)
+                    .font(BoardTheme.font(size: 13, weight: .bold).monospacedDigit())
+                    .foregroundStyle(isSelected ? BoardTheme.sheet : BoardTheme.brass)
+                    .minimumScaleFactor(0.7)
+                    .frame(width: 32, height: 32)
+                    .background(isSelected ? BoardTheme.sheet.opacity(0.2) : BoardTheme.raised, in: Circle())
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(scenario.name)
+                        .font(BoardTheme.font(size: 14, weight: isSelected ? .semibold : .regular))
+                        .foregroundStyle(isSelected ? BoardTheme.sheet : BoardTheme.text)
+                        .lineLimit(1)
+                    if !hasMap {
+                        Label("No map", systemImage: "exclamationmark.triangle.fill")
+                            .font(BoardTheme.font(size: 11))
+                            .foregroundStyle(isSelected ? BoardTheme.sheet : BoardTheme.defeat)
+                    }
+                }
+                Spacer(minLength: 0)
+            }
+            .padding(.horizontal, 8)
+            .frame(minHeight: 46)
+            .background(isSelected ? BoardTheme.brass : Color.clear, in: RoundedRectangle(cornerRadius: BoardTheme.Radius.medium))
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Scenario \(scenario.index), \(scenario.name)")
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
+    }
+
     /// Learning mode: tips the first time each rule comes up, and "Why?" on what the monsters
     /// do. On for a player's first campaign.
     private var learningModeRow: some View {
         Toggle(isOn: Binding(get: { gameManager.game.learningMode },
                              set: { gameManager.setLearningMode($0) })) {
-            Label {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("Learning mode")
-                        .font(.subheadline.weight(.semibold))
-                    Text("Explains each rule the first time it comes up, and \u{201C}Why?\u{201D} on what the monsters do.")
-                        .font(.caption)
-                        .foregroundStyle(GlavenTheme.secondaryText)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-            } icon: {
-                Image(systemName: "lightbulb.fill").foregroundStyle(BoardTheme.brass)
-            }
+            Label("Learning mode", systemImage: "lightbulb.fill")
+                .font(BoardTheme.font(size: 13))
+                .foregroundStyle(gameManager.game.learningMode ? BoardTheme.brass : BoardTheme.secondaryText)
         }
+        .toggleStyle(.switch)
         .tint(BoardTheme.brass)
-        .padding(.horizontal, 16)
-        .padding(.vertical, 4)
+        .fixedSize()
+        .accessibilityHint("Explains each rule the first time it comes up, and \u{201C}Why?\u{201D} on what the monsters do")
     }
 
-    private var difficultyRow: some View {
-        HStack(spacing: 0) {
-            Text("Diff")
-                .font(.caption2)
-                .fontWeight(.bold)
-                .foregroundStyle(GlavenTheme.secondaryText)
-                .frame(width: 28, alignment: .leading)
-            ForEach(DifficultyMode.allCases, id: \.self) { mode in
-                difficultyButton(mode)
-                if mode != .veryHard {
-                    Spacer(minLength: 2)
-                }
-            }
-        }
-        .padding(.horizontal, 16)
-        .padding(.bottom, 6)
-    }
-
-    @ViewBuilder
-    private func difficultyButton(_ mode: DifficultyMode) -> some View {
-        let isSelected = gameManager.game.difficulty == mode
-        Button {
-            gameManager.game.difficulty = mode
-        } label: {
-            Text(mode.shortLabel)
-                .font(.system(size: 9, weight: isSelected ? .bold : .regular))
-                .lineLimit(1)
-                .minimumScaleFactor(0.7)
-                .frame(maxWidth: .infinity)
-                .frame(height: 28)
-                .background(isSelected ? difficultyColor(mode) : GlavenTheme.primaryText.opacity(0.06))
-                .foregroundStyle(isSelected ? .white : GlavenTheme.secondaryText)
-                .clipShape(RoundedRectangle(cornerRadius: 6))
-        }
-        .buttonStyle(.plain)
-    }
-
-    /// Always present, so adding the first character doesn't push the rows below it down
-    /// (a second tap would land on the wrong character).
+    /// Always present, so the rows below never move as the party changes.
     private var difficultyHint: some View {
         ScenarioLevelLine(text: Self.difficultyHint(for: gameManager))
     }
@@ -539,241 +719,6 @@ struct GameSetupView: View {
         }
         return "Scenario level \(gameManager.levelManager.scenarioLevel()) · \(gameManager.game.difficulty.description)"
     }
-
-    private func difficultyColor(_ mode: DifficultyMode) -> Color {
-        switch mode {
-        case .story:    return .blue
-        case .easy:     return .green
-        case .normal:   return Color.accentColor
-        case .hard:     return .orange
-        case .veryHard: return .red
-        }
-    }
-
-    @ViewBuilder
-    private func characterRow(_ character: CharacterData) -> some View {
-        let isAdded = existingNames.contains(character.name)
-        let charColor = Color(hex: character.color ?? "#808080") ?? .gray
-
-        Button {
-            if isAdded {
-                if let gameChar = gameManager.game.characters.first(where: { $0.name == character.name }) {
-                    switch Self.recruitTap(isAdded: true, inTown: inTown) {
-                    case .confirmDismissal: dismissingCharacter = gameChar
-                    default: gameManager.characterManager.removeCharacter(gameChar)
-                    }
-                }
-            } else {
-                guard gameManager.game.characters.count < 4 else { return }
-                gameManager.characterManager.addCharacter(name: character.name, edition: edition,
-                                                          level: min(selectedLevel, gameManager.characterManager.highestStartingLevel))
-                // A recruit chooses their personal quest straight away.
-                if let recruit = gameManager.game.characters.first(where: { $0.name == character.name }) {
-                    chooseQuest(for: recruit)
-                }
-            }
-        } label: {
-            HStack(spacing: 10) {
-                ThumbnailImage(
-                    image: ImageLoader.characterThumbnail(edition: character.edition, name: character.name),
-                    size: 40,
-                    cornerRadius: 8,
-                    fallbackColor: charColor
-                )
-                .overlay(
-                    RoundedRectangle(cornerRadius: 8)
-                        .strokeBorder(isAdded ? charColor : .clear, lineWidth: 2)
-                )
-
-                VStack(alignment: .leading, spacing: 1) {
-                    Text(GameText.className(character.name, edition: edition, labels: gameManager.editionStore))
-                        .font(.subheadline)
-                        .fontWeight(.medium)
-                        .foregroundStyle(GlavenTheme.primaryText)
-                    HStack(spacing: 6) {
-                        HStack(spacing: 2) {
-                            GameIcon(image: ImageLoader.statusIcon("health"), fallbackSystemName: "heart.fill", size: 10, color: .red)
-                            Text("\(character.healthForLevel(selectedLevel))")
-                                .font(.caption2)
-                                .foregroundStyle(GlavenTheme.secondaryText)
-                        }
-                        Text("Hand \(character.resolvedHandSize)")
-                            .font(.caption2)
-                            .foregroundStyle(GlavenTheme.secondaryText)
-                    }
-                }
-
-                Spacer()
-
-                if isAdded {
-                    Image(systemName: "checkmark.circle.fill")
-                        .foregroundStyle(charColor)
-                        .font(.body)
-                } else {
-                    Circle()
-                        .strokeBorder(GlavenTheme.primaryText.opacity(0.15), lineWidth: 1.5)
-                        .frame(width: 20, height: 20)
-                }
-            }
-            .padding(.horizontal, 10)
-            .padding(.vertical, 8)
-            .background(isAdded ? charColor.opacity(0.08) : .clear)
-            .clipShape(RoundedRectangle(cornerRadius: 10))
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .disabled(!isAdded && gameManager.game.characters.count >= 4)
-        .opacity(!isAdded && gameManager.game.characters.count >= 4 ? 0.4 : 1)
-    }
-
-    // MARK: - Scenario Panel
-
-    @ViewBuilder
-    private var scenarioPanel: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            // Panel header
-            HStack(alignment: .firstTextBaseline) {
-                Image(systemName: "map.fill")
-                    .font(.caption)
-                    .foregroundStyle(GlavenTheme.accentText)
-                Text("Scenario")
-                    .font(theme.titleFont(size: 18))
-                    .foregroundStyle(GlavenTheme.primaryText)
-                Button("World Map", systemImage: "map") { showWorldMap = true }
-                    .buttonStyle(.bordered)
-                    .controlSize(.small)
-                    .tint(BoardTheme.brass)
-                Spacer()
-                if let s = selectedScenario {
-                    Text(s.name)
-                        .font(.caption)
-                        .fontWeight(.medium)
-                        .foregroundStyle(GlavenTheme.accentText)
-                        .lineLimit(1)
-                } else {
-                    Text("\(availableScenarios.count) available")
-                        .font(.caption)
-                        .foregroundStyle(GlavenTheme.secondaryText)
-                }
-            }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 12)
-
-            // Search bar (only if many scenarios)
-            if availableScenarios.count > 5 {
-                HStack(spacing: 6) {
-                    Image(systemName: "magnifyingglass")
-                        .font(.caption)
-                        .foregroundStyle(GlavenTheme.secondaryText)
-                    TextField("Search", text: $scenarioSearch)
-                        .textFieldStyle(.plain)
-                        .font(.subheadline)
-                    if !scenarioSearch.isEmpty {
-                        Button {
-                            scenarioSearch = ""
-                        } label: {
-                            Image(systemName: "xmark.circle.fill")
-                                .font(.caption)
-                                .foregroundStyle(GlavenTheme.secondaryText)
-                        }
-                        .buttonStyle(.plain)
-                    }
-                }
-                .padding(.horizontal, 10)
-                .padding(.vertical, 6)
-                .background(GlavenTheme.primaryText.opacity(0.05))
-                .clipShape(RoundedRectangle(cornerRadius: 8))
-                .padding(.horizontal, 16)
-                .padding(.bottom, 8)
-            }
-
-            Divider().opacity(0.2)
-
-            // Scenario list
-            ScrollView {
-                LazyVStack(spacing: 2) {
-                    ForEach(filteredScenarios) { scenario in
-                        scenarioRow(scenario)
-                    }
-                }
-                .padding(.horizontal, 8)
-                .padding(.vertical, 4)
-            }
-        }
-        .background(GlavenTheme.cardBackground.opacity(0.85))
-        .clipShape(RoundedRectangle(cornerRadius: 14))
-        .overlay(
-            RoundedRectangle(cornerRadius: 14)
-                .strokeBorder(GlavenTheme.primaryText.opacity(0.1), lineWidth: 1)
-        )
-        .shadow(color: .black.opacity(0.25), radius: 12, y: 4)
-    }
-
-    @ViewBuilder
-    private func scenarioRow(_ scenario: ScenarioData) -> some View {
-        let isSelected = selectedScenario?.id == scenario.id
-        let hasMap = ScenarioMapStore.shared.hasMap(for: scenario.index)
-
-        Button {
-            selectedScenario = isSelected ? nil : scenario
-        } label: {
-            HStack(spacing: 12) {
-                // Scenario number badge
-                Text(scenario.index)
-                    .font(.system(.caption, design: .monospaced))
-                    .fontWeight(.bold)
-                    .foregroundStyle(isSelected ? .white : GlavenTheme.secondaryText)
-                    .frame(width: 32, height: 32)
-                    .background(isSelected ? Color.accentColor : GlavenTheme.primaryText.opacity(0.08))
-                    .clipShape(RoundedRectangle(cornerRadius: 6))
-
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(scenario.name)
-                        .font(.subheadline)
-                        .fontWeight(.medium)
-                        .foregroundStyle(GlavenTheme.primaryText)
-                    HStack(spacing: 6) {
-                        if let monsters = scenario.monsters, !monsters.isEmpty {
-                            HStack(spacing: 2) {
-                                Image(systemName: "pawprint.fill")
-                                    .font(.system(size: 8))
-                                Text("\(monsters.count)")
-                                    .font(.caption2)
-                            }
-                            .foregroundStyle(GlavenTheme.secondaryText)
-                        }
-                        if !hasMap {
-                            HStack(spacing: 2) {
-                                Image(systemName: "exclamationmark.triangle.fill")
-                                    .font(.system(size: 8))
-                                Text("No map")
-                                    .font(.caption2)
-                            }
-                            .foregroundStyle(.orange)
-                        }
-                    }
-                }
-
-                Spacer()
-
-                if isSelected {
-                    Image(systemName: "checkmark.circle.fill")
-                        .foregroundStyle(Color.accentColor)
-                        .font(.body)
-                }
-            }
-            .padding(.horizontal, 10)
-            .padding(.vertical, 8)
-            .background(isSelected ? Color.accentColor.opacity(0.1) : .clear)
-            .clipShape(RoundedRectangle(cornerRadius: 10))
-            .overlay(
-                RoundedRectangle(cornerRadius: 10)
-                    .strokeBorder(isSelected ? Color.accentColor.opacity(0.3) : .clear, lineWidth: 1)
-            )
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-    }
 }
 
 /// The line under the difficulty buttons. It always takes one line of space, so adding the first
@@ -783,10 +728,8 @@ struct ScenarioLevelLine: View {
 
     var body: some View {
         Text(text)
-            .font(.caption2)
-            .foregroundStyle(GlavenTheme.secondaryText)
+            .font(BoardTheme.font(size: 12))
+            .foregroundStyle(BoardTheme.secondaryText)
             .lineLimit(1)
-            .padding(.horizontal, 16)
-            .padding(.bottom, 8)
     }
 }

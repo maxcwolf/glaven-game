@@ -81,4 +81,6 @@ extension ButtonStyle where Self == BoardButtonStyle {
     /// Everything else: quiet.
     static var boardQuiet: BoardButtonStyle { BoardButtonStyle(kind: .quiet) }
     static var boardQuietCompact: BoardButtonStyle { BoardButtonStyle(kind: .quiet, compact: true) }
+    /// The next thing to do, in a row of small buttons.
+    static var boardPrimaryCompact: BoardButtonStyle { BoardButtonStyle(kind: .primary, compact: true) }
 }

@@ -65,6 +65,32 @@ enum ImageLoader {
         return loadImage(subdirectory: "Images/world-map/\(edition)/scenarios", filename: filename, ext: "png")
     }
 
+    /// The world map around a scenario's spot (`rect` in the map's pixels), `size` pixels across:
+    /// the banner over a scenario in town.
+    static func worldMapCrop(edition: String, around rect: CGRect, size: CGSize) -> PlatformImage? {
+        let key = "crop/\(edition)/\(Int(rect.midX))-\(Int(rect.midY))-\(Int(size.width))x\(Int(size.height))" as NSString
+        if let cached = cache.object(forKey: key) { return cached }
+        guard let map = worldMapBase(edition: edition) else { return nil }
+        #if os(macOS)
+        guard let full = map.cgImage(forProposedRect: nil, context: nil, hints: nil) else { return nil }
+        #else
+        guard let full = map.cgImage else { return nil }
+        #endif
+        let bounds = CGRect(x: 0, y: 0, width: full.width, height: full.height)
+        var crop = CGRect(x: rect.midX - size.width / 2, y: rect.midY - size.height / 2, width: size.width, height: size.height)
+        // Kept inside the map: slid back in at the edges.
+        crop.origin.x = min(max(0, crop.origin.x), max(0, bounds.width - crop.width))
+        crop.origin.y = min(max(0, crop.origin.y), max(0, bounds.height - crop.height))
+        guard let piece = full.cropping(to: crop.intersection(bounds)) else { return nil }
+        #if os(macOS)
+        let image = NSImage(cgImage: piece, size: NSSize(width: piece.width, height: piece.height))
+        #else
+        let image = UIImage(cgImage: piece)
+        #endif
+        cache.setObject(image, forKey: key, cost: piece.width * piece.height * 4)
+        return image
+    }
+
     static func worldMapOverlay(edition: String, name: String) -> PlatformImage? {
         loadImage(subdirectory: "Images/world-map/\(edition)/overlays", filename: "\(edition)-\(name)", ext: "png")
     }
