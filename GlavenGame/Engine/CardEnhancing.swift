@@ -96,7 +96,11 @@ enum CardEnhancing {
         // Gloomhaven's hex: 200 gold divided by the hexes the area already targets (not doubled
         // for several targets).
         if enhancement == .hex, edition == "gh", let pattern = slot.action.value?.stringValue {
-            let targets = max(1, pattern.components(separatedBy: "target").count - 1)
+            // A hex already added to this area counts as one it targets.
+            let added = enhancements.filter {
+                $0.cardId == slot.cardId && $0.actionHalf == slot.half && $0.actionIndex == slot.actionIndex && $0.action == .hex
+            }.count
+            let targets = max(1, pattern.components(separatedBy: "target").count - 1 + added)
             let level = max(0, (card.level?.intValue ?? 1) - 1) * 25
             let earlier = EnhancementsManager.enhancementCount(on: slot.cardId, in: enhancements) * 75
             return 200 / targets + level + earlier
@@ -163,20 +167,29 @@ enum CardEnhancing {
             } else {
                 host = enhancement.action == .plus1 ? plusOne(host) : adding(enhancement.action, to: host)
             }
-            if enhancement.action == .hex { host = addingHex(to: host) }
+            if enhancement.action == .hex, let original = actions[index].subActions?.first(where: { $0.type == .area }) {
+                host = addingHex(enhancement.slotIndex, of: original, to: host)
+            }
             result[index] = host
         }
         return result
     }
 
-    /// The area's first hex marked for an enhancement becomes a target hex.
-    private static func addingHex(to host: ActionModel) -> ActionModel {
+    /// The hexes an area marks for enhancement, in the order of its hex slots.
+    static func markedHexes(in area: ActionModel) -> [ActionHex] {
+        ActionHex.parse(area.value?.stringValue ?? "").filter { $0.type == .enhance }
+    }
+
+    /// The area's `slot`th marked hex (as printed, `original`) becomes a target hex.
+    private static func addingHex(_ slot: Int, of original: ActionModel, to host: ActionModel) -> ActionModel {
+        let marked = markedHexes(in: original)
+        guard marked.indices.contains(slot) else { return host }
+        let hex = marked[slot]
         var host = host
         host.subActions = host.subActions?.map { sub in
-            guard sub.type == .area, let pattern = sub.value?.stringValue,
-                  let range = pattern.range(of: "enhance") else { return sub }
+            guard sub.type == .area, let pattern = sub.value?.stringValue else { return sub }
             var sub = sub
-            sub.value = .string(pattern.replacingCharacters(in: range, with: "target"))
+            sub.value = .string(pattern.replacingOccurrences(of: "(\(hex.x),\(hex.y),enhance)", with: "(\(hex.x),\(hex.y),target)"))
             return sub
         }
         return host

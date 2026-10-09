@@ -25,6 +25,7 @@
 		101C9C9AB7FC39F5358E8BFD /* ItemUsePrompt.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2808BBF85E5363980E325C52 /* ItemUsePrompt.swift */; };
 		14511DEB8C59B9436FC95253 /* TownPartyRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = D86B71BFEEBD99C00C1AF649 /* TownPartyRow.swift */; };
 		15D2951A77CC1C086296F86D /* ScenarioMarkerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7050B86E677EE171AD0A3573 /* ScenarioMarkerView.swift */; };
+		1BD1F642825D52D6A6F79626 /* AreaPatternView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BAA69530D042DCA0EDABF5B4 /* AreaPatternView.swift */; };
 		1CC69FD5D69AB9E38536A39E /* EntityValueFunction.swift in Sources */ = {isa = PBXBuildFile; fileRef = EFAF7312A61CA28A484AE10E /* EntityValueFunction.swift */; };
 		1E105B509AA9841848BDC003 /* Enhancement.swift in Sources */ = {isa = PBXBuildFile; fileRef = EBE9E8D46F66914CB111FEC5 /* Enhancement.swift */; };
 		20DF67A50B1E99F5D18B9FDC /* BoardCoordinator+Items.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8AF5F88A83DE6D05C0E02C99 /* BoardCoordinator+Items.swift */; };
@@ -357,6 +358,7 @@
 		B97936FE7C6DC6879E3A5861 /* ScenarioBriefCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScenarioBriefCard.swift; sourceTree = "<group>"; };
 		BA5C6A163BDEB897E9993360 /* EscortTurnController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EscortTurnController.swift; sourceTree = "<group>"; };
 		BA81DDD9366A51A3A52F3C1B /* PerkType.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PerkType.swift; sourceTree = "<group>"; };
+		BAA69530D042DCA0EDABF5B4 /* AreaPatternView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AreaPatternView.swift; sourceTree = "<group>"; };
 		BC02E40BD390F740C8CA66B1 /* CreditsSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CreditsSheet.swift; sourceTree = "<group>"; };
 		BCA279443E59250573E9D370 /* LogoView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LogoView.swift; sourceTree = "<group>"; };
 		C03684D92E27E6D64CDEF9C0 /* ActionValueType.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActionValueType.swift; sourceTree = "<group>"; };
@@ -589,6 +591,7 @@
 			isa = PBXGroup;
 			children = (
 				D0F512D593B3AEA9F219C2FC /* AbilityCardChoiceViews.swift */,
+				BAA69530D042DCA0EDABF5B4 /* AreaPatternView.swift */,
 				7935967456962F4F03B80C2B /* BattleGoalPicker.swift */,
 				BC02E40BD390F740C8CA66B1 /* CreditsSheet.swift */,
 				35D4A8E2CD8880F3B5B21592 /* EnhancementSheet.swift */,
@@ -946,6 +949,7 @@
 				C0B2D8674061CBC4D28A537D /* ActiveCardHalf.swift in Sources */,
 				DA80F59435177C23D8E005E0 /* AoEResolver.swift in Sources */,
 				8CB0FFF5B997D068B2D99954 /* AppPhase.swift in Sources */,
+				1BD1F642825D52D6A6F79626 /* AreaPatternView.swift in Sources */,
 				4270F50EFBD54ADD461ECF50 /* AttackModifier.swift in Sources */,
 				8A8AE9C25AFA67C4AFF49C9B /* AttackModifierCardView.swift in Sources */,
 				AF3F2201E31B145FBC2FF948 /* AttackModifierDeck.swift in Sources */,

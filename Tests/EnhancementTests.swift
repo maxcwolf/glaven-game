@@ -244,7 +244,13 @@ final class EnhancementTests: XCTestCase {
         brute.loot = 140
         gm.game.globalAchievements.insert(EnhancementsManager.enhancerAchievement)
         brute.enhancements = [Enhancement(cardId: 1, actionHalf: "top", actionIndex: 0, slotIndex: 0, action: .poison)]
-        let view = EnhancementSheet(character: brute, scrolls: false).environment(gm).frame(width: 1376, height: 1032)
+        brute.level = 3
+        let start = ProcessInfo.processInfo.environment["ENHANCE_RENDER_CARD"].flatMap { name in
+            try? card(name, of: "brute").cardId
+        }
+        if let start { brute.chosenCards.append(start) }
+        let view = EnhancementSheet(character: brute, scrolls: false, startCard: start).environment(gm)
+            .frame(width: 1376, height: 1032)
         let renderer = ImageRenderer(content: view)
         renderer.scale = 1
         let image = try XCTUnwrap(renderer.cgImage)
@@ -282,5 +288,32 @@ final class EnhancementTests: XCTestCase {
         let pattern = try XCTUnwrap(enhanced.flatMap { $0.subActions ?? [] }.first { $0.type == .area }?.value?.stringValue)
         XCTAssertEqual(pattern.components(separatedBy: "target").count - 1, 4)
         XCTAssertFalse(pattern.contains("enhance"))
+    }
+
+    /// Brute Force marks two hexes, one per hex slot: each slot fills its own marked hex, and
+    /// the second is priced by the hexes the area targets with the first one added.
+    func testEachHexSlotFillsItsOwnMarkedHex() throws {
+        let bruteForce = try card("Brute Force", of: "brute")
+        let slots = CardEnhancing.slots(of: bruteForce).filter { $0.type == .hex }
+        XCTAssertEqual(slots.count, 2)
+        let area = try XCTUnwrap(slots[0].action.type == .area ? slots[0].action : nil)
+        XCTAssertEqual(CardEnhancing.markedHexes(in: area).map { "\($0.x),\($0.y)" }, ["0,0", "0,2"])
+        let second = Enhancement(cardId: slots[1].cardId, actionHalf: slots[1].half, actionIndex: slots[1].actionIndex,
+                                 slotIndex: 1, action: .hex)
+        func pattern(_ enhancements: [Enhancement]) throws -> String {
+            let actions = CardEnhancing.apply(enhancements, to: bruteForce.actions ?? [], cardId: bruteForce.cardId, half: "top")
+            return try XCTUnwrap(actions.flatMap { $0.subActions ?? [] }.first { $0.type == .area }?.value?.stringValue)
+        }
+        let onlySecond = try pattern([second])
+        XCTAssertTrue(onlySecond.contains("(0,2,target)"), "the second slot's hex")
+        XCTAssertTrue(onlySecond.contains("(0,0,enhance)"), "the first marked hex is still open")
+
+        XCTAssertEqual(CardEnhancing.cost(.hex, in: slots[0], card: bruteForce, enhancements: [], edition: "gh"),
+                       66 + 50, "200 / 3 hexes, plus 50 for a level 3 card")
+        XCTAssertEqual(CardEnhancing.cost(.hex, in: slots[0], card: bruteForce, enhancements: [second], edition: "gh"),
+                       50 + 50 + 75, "200 / 4 hexes, plus 75 for the enhancement already on the card")
+        let both = try pattern([second, Enhancement(cardId: slots[0].cardId, actionHalf: "top", actionIndex: slots[0].actionIndex,
+                                                    slotIndex: 0, action: .hex)])
+        XCTAssertFalse(both.contains("enhance"))
     }
 }

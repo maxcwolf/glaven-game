@@ -10,6 +10,8 @@ struct EnhancementSheet: View {
     @State private var pending: Purchase?
     /// Off for snapshots: ImageRenderer draws neither scroll views nor navigation stacks.
     var scrolls = true
+    /// The card shown first (otherwise the lowest-level one).
+    var startCard: Int? = nil
 
     struct Purchase: Identifiable {
         let slot: CardEnhancing.Slot
@@ -35,7 +37,7 @@ struct EnhancementSheet: View {
         if scrolls {
             NavigationStack { sheet }
         } else {
-            content.onAppear { if cardId == nil { cardId = cards.first?.cardId } }
+            content.onAppear { if cardId == nil { cardId = startCard ?? cards.first?.cardId } }
         }
     }
 
@@ -98,7 +100,7 @@ struct EnhancementSheet: View {
             } message: {
                 Text("An enhancement stays on the card for good.")
             }
-            .onAppear { if cardId == nil { cardId = cards.first?.cardId } }
+            .onAppear { if cardId == nil { cardId = startCard ?? cards.first?.cardId } }
     }
 
     private var lockedNote: some View {
@@ -157,6 +159,13 @@ struct EnhancementSheet: View {
                      + (slotsOnLine > 1 ? " · SLOT \(slot.slotIndex + 1) OF \(slotsOnLine)" : ""))
                     .font(.caption.weight(.bold))
                     .foregroundStyle(BoardTheme.secondaryText)
+            }
+            if slot.type == .hex, slot.action.type == .area, let pattern = slot.action.value?.stringValue {
+                // Which marked hex this slot fills (Brute Force has two, one per slot).
+                let marked = CardEnhancing.markedHexes(in: slot.action)
+                AreaPatternView(pattern: pattern,
+                                highlighted: marked.indices.contains(slot.slotIndex) ? marked[slot.slotIndex] : nil)
+                    .padding(.vertical, 2)
             }
             if let current {
                 Label(current.action.displayName, systemImage: "sparkles")
