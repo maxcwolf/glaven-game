@@ -71,7 +71,8 @@ extension BoardCoordinator {
         }
 
         var advantage = attack.advantage
-        var disadvantage = attack.isRanged && attackerPos.isAdjacent(to: targetPos)
+        // Giant Viper: "All attacks targeting it this round gain disadvantage."
+        var disadvantage = (attack.isRanged && attackerPos.isAdjacent(to: targetPos)) || disadvantagedThisRound.contains(target)
         // Some monsters' stat cards give every attack against them disadvantage (e.g. Night Demon).
         if case .monster(let name, _) = target, let monsterEntity = defender as? GameMonsterEntity,
            let stat = gameManager?.game.monsters.first(where: { $0.name == name })?.stat(for: monsterEntity.type),

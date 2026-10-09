@@ -134,9 +134,12 @@ Spellweaver heals Spellweaver for 1 [Heal 3]
 Spellweaver ends the turn
 Bandit Archer’s turn: ability card (14)
 Bandit Archer 2 attacks Brute: 2 + 0 = 2 damage [2 +0(mod) = 2]
+Bandit Archer 2 places a 3 damage trap [at (-1,5)]
 Bandit Archer 5 attacks Brute: 2 ×2 = 4 damage [2 ×2(mod) = 4]
 Brute loses a card from hand to prevent 4 damage
+Bandit Archer 5 places a 3 damage trap [at (-4,5)]
 Bandit Archer 1 attacks Scoundrel: miss [MISS]
+Bandit Archer 1 places a 3 damage trap [at (-1,0)]
 Bandit Commander’s turn: ability card (17)
 Bandit Commander 1 uses special ability 2
 Bandit Commander 1 summons Living Bones 2
@@ -151,14 +154,10 @@ Brute infuses Earth
 Brute ends the turn
 Cragheart’s turn: Crushing Grasp and Massive Boulder
 Cragheart: Move 4
-Cragheart moves 3 hexes [to (-1,0)]
+Cragheart moves 2 hexes [to (-1,-2)]
 Cragheart: Attack 3, Range 1, Immobilize
-Cragheart infuses Earth
-Cragheart attacks Bandit Archer 1: 3 ×2 = 6 damage [3 ×2(mod) = 6]
-Bandit Archer 1 dies
-A money token drops [at (0,0)]
+Cragheart has no target within range 1
 Cragheart ends the turn
-Cragheart loots 1 money token (2 gold)
 Living Bones’s turn: ability card (64)
 Living Bones 1 moves 3 hexes [to (-3,5)]
 Living Bones 1 can’t reach its focus
@@ -173,25 +172,37 @@ elements: earth waning
 scoundrel (-2,0) hp 5/8 hand 5 discard 4 lost 0 active 0 xp 0 gold 2
 spellweaver (-3,-3) hp 6/6 hand 4 discard 2 lost 2 active 0 xp 4 gold 0
 brute (-2,1) hp 3/10 hand 5 discard 3 lost 2 active 0 xp 3 gold 0
-cragheart (-1,0) hp 10/10 hand 7 discard 3 lost 1 active 0 xp 0 gold 2
+cragheart (-1,-2) hp 10/10 hand 7 discard 3 lost 1 active 0 xp 0 gold 0
+bandit-archer #1 normal (0,0) hp 2/5
 bandit-archer #2 elite (0,6) hp 7/7
 bandit-archer #5 elite (-3,6) hp 7/7
 bandit-commander #1 boss (-2,7) hp 40/40
 living-bones #1 elite (-3,5) hp 6/6
 living-bones #2 elite (-3,7) hp 6/6
-money tokens: (-3,0)x1 (0,0)x1
+money tokens: (-3,0)x1 (-1,0)x1
 doors open: 1/5
-Scoundrel plays Venom Shiv (60) and Quick Hands
-Spellweaver plays Reviving Ether (80) and Ride the Wind
+Scoundrel plays Thief's Knack (23) and Quick Hands
+Spellweaver plays Frost Armor (20) and Reviving Ether
 Brute will long rest
-Cragheart plays Crater (61) and Backup Ammunition
+Cragheart plays Opposing Strike (46) and Backup Ammunition
 Bandit Commander draws an ability card (14)
 Living Bones draws an ability card (20)
 Bandit Archer draws an ability card (31)
-Turn order: Bandit Commander 14, Living Bones 20, Bandit Archer 31, Scoundrel 60, Cragheart 61, Spellweaver 80, Brute 99
+Turn order: Bandit Commander 14, Spellweaver 20, Living Bones 20, Scoundrel 23, Bandit Archer 31, Cragheart 46, Brute 99
 Bandit Commander’s turn: ability card (14)
 Bandit Commander 1 uses special ability 2
 Bandit Commander 1 summons Living Bones 3
+Spellweaver’s turn: Frost Armor and Reviving Ether
+Spellweaver: Jump 4
+Spellweaver moves 3 hexes [to (-3,0)]
+Spellweaver consumes Earth
+Spellweaver: Attack 3, Range 3
+Spellweaver gains 1 XP
+Spellweaver attacks Bandit Archer 1: 3 + 0 = 3 damage [3 +0(mod) = 3]
+Bandit Archer 1 dies
+A money token drops [at (0,0)]
+Spellweaver ends the turn
+Spellweaver loots 1 money token (2 gold)
 Living Bones’s turn: ability card (20)
 Living Bones 1 moves 2 hexes [to (-2,3)]
 Living Bones 1 can’t reach its focus
@@ -199,38 +210,33 @@ Living Bones 1 heals Living Bones 1 for 0 [Heal 2]
 Living Bones 2 moves 2 hexes [to (-3,5)]
 Living Bones 2 can’t reach its focus
 Living Bones 2 heals Living Bones 2 for 0 [Heal 2]
-Bandit Archer’s turn: ability card (31)
-Bandit Archer 2 attacks Brute: 3 + 0 = 3 damage [3 +0(mod) = 3]
-Brute loses 2 discarded cards to prevent 3 damage
-Bandit Archer 5 attacks Brute: 3 − 1 = 2 damage [3 -1(mod) = 2]
-Scoundrel’s turn: Venom Shiv and Quick Hands
-Scoundrel takes the top half from Quick Hands and the bottom half from Venom Shiv
-Scoundrel: Move 5
-Scoundrel moves 2 hexes [to (-2,2)]
+Scoundrel’s turn: Thief's Knack and Quick Hands
+Scoundrel takes the top half from Quick Hands and the bottom half from Thief's Knack
 Scoundrel: Move 2
-Scoundrel moves 1 hex [to (-1,2)]
+Scoundrel moves 2 hexes [to (-2,2)]
 Scoundrel: Attack 2, Range 1
 Scoundrel attacks Living Bones 1: 2 + 1 − 1 shield = 2 damage [2 +1(mod) -1(shield) = 2]
+Scoundrel: Attack 3, Range 1
+Scoundrel gains 1 XP
+Scoundrel attacks Living Bones 1: 3 + 0 − 1 shield = 2 damage [3 +0(mod) -1(shield) = 2]
 Scoundrel ends the turn
-Cragheart’s turn: Crater and Backup Ammunition
-Cragheart consumes Earth
-Cragheart: Attack 3, Range 3, Push 2
-Cragheart gains 1 XP
-Cragheart attacks Living Bones 1: 3 ×2 − 1 shield = 5 damage [3 ×2(mod) -1(shield) = 5]
-Living Bones 1 dies
+Bandit Archer’s turn: ability card (31)
+Bandit Archer 2 attacks Scoundrel: 3 + 0 = 3 damage [3 +0(mod) = 3]
+Bandit Archer 5 attacks Scoundrel: 3 − 1 = 2 damage [3 -1(mod) = 2]
+Scoundrel loses 2 discarded cards to prevent 2 damage
+Cragheart’s turn: Opposing Strike and Backup Ammunition
 Cragheart: Move 3
-Cragheart moves 3 hexes [to (-2,3)]
+Cragheart springs a trap and suffers 3 damage [bear]
+Cragheart gains Immobilize
+Cragheart is immobilized and stops
+Cragheart moves 1 hex [to (-1,-1)]
+Cragheart: Attack 3, Range 1
+Cragheart has no target within range 1
 Cragheart ends the turn
-Spellweaver’s turn: Reviving Ether and Ride the Wind
-Spellweaver recovers 2 lost cards
-Spellweaver infuses Dark
-Spellweaver: Jump 8
-Spellweaver moves 7 hexes [to (-4,3)]
-Spellweaver infuses Air
-Spellweaver ends the turn
-Brute long rests: loses Spare Dagger, heals 2 and takes back 5 cards
+Brute long rests: choose a card to lose
+Brute long rests: loses Eye for an Eye, heals 2 and takes back 7 cards
+Spellweaver skips the short rest
 Scoundrel skips the short rest
 Cragheart skips the short rest
-Spellweaver skips the short rest
 Round 3 complete
 === Round 4 ===

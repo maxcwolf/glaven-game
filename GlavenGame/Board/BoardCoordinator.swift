@@ -399,6 +399,9 @@ final class BoardCoordinator {
     /// Non-nil while a character picks elements to infuse (Mana Potions).
     var pendingElementChoice: PendingElementChoice?
 
+    /// Figures every attack against has disadvantage this round (Giant Viper).
+    var disadvantagedThisRound: Set<PieceID> = []
+
     /// Conditions that go with the one being targeted (Pendant of the Plague's Curse).
     var pendingExtraConditions: [ConditionName] = []
 
@@ -999,6 +1002,7 @@ final class BoardCoordinator {
             }
         }
 
+        disadvantagedThisRound = []
         // Every card is revealed: Boots of Speed and Quickness may change an initiative now.
         initiativeOffers = initiativeItemOffers()
         offerNextInitiativeChange()

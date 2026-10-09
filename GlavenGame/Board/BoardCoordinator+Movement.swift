@@ -248,6 +248,14 @@ extension BoardCoordinator {
         activePlayerTurn?.advanceAfterAsyncAction()
     }
 
+    /// A trap a monster places (an Archer's, a Flame Demon's): no choice, no turn to advance.
+    func placeTrap(damage: Int, at hex: HexCoord, by pieceID: PieceID) {
+        let token = PlacedToken.trap(damage: damage, subType: nil, experience: 0)
+        boardState.placeTrap(at: hex, damage: damage)
+        boardScene?.addOverlaySprite(imageName: token.imageName, at: hex, offsetCol: offsetCol, offsetRow: offsetRow)
+        log("\(name(pieceID)) places \(token.name)", category: .info, trace: "at \(hex)")
+    }
+
     /// Thief's Knack: disarm one trap next to the figure.
     func disarmTrap(besides pieceID: PieceID) {
         guard let position = boardState.piecePositions[pieceID],

@@ -153,6 +153,7 @@ final class MonsterTurnController {
                 }
                 let plan = currentTurn()
                 if let newFocus = plan.focusTarget { state.focus = newFocus }
+                defer { performPrintedText(texts(in: action, monster: monster), pieceID: pieceID) }
                 guard plan.movementPath.count > 1 else { continue }
                 let steps = plan.movementPath.count - 1
                 coordinator.log("\(coordinator.name(pieceID)) moves \(steps) hex\(steps == 1 ? "" : "es")",
@@ -183,14 +184,34 @@ final class MonsterTurnController {
                     coordinator.log("\(coordinator.name(pieceID)) can\u{2019}t reach its focus", category: .move)
                     continue
                 }
+                let printed = texts(in: action, monster: monster)
+                // Text inside a paid element consume (the Harrower's "Heal 2, self for each target damaged").
+                let paid = (action.subActions ?? []).filter { MonsterAbility.isConsume($0) && consumed.contains($0.id) }
+                    .flatMap { texts(in: $0, monster: monster) }
+                var damaged = 0
                 for victim in targets {
                     guard stillHere(), coordinator.scenarioResult == nil else { return }
+                    let victimHex = coordinator.boardState.piecePositions[victim]
+                    let healthBefore = coordinator.entity(for: victim)?.health ?? 0
                     await coordinator.performAttack(
                         attacker: pieceID, target: victim,
-                        attack: AttackParameters(value: spec.value, isRanged: spec.isRanged, pierce: spec.pierce,
+                        attack: AttackParameters(value: spec.value + bonus(printed, against: victim, pieceID: pieceID),
+                                                 isRanged: spec.isRanged, pierce: spec.pierce,
                                                  conditions: spec.conditions, push: spec.push, pull: spec.pull,
                                                  advantage: spec.advantage))
+                    if (coordinator.entity(for: victim)?.health ?? 0) < healthBefore || !coordinator.isOnBoard(victim) { damaged += 1 }
+                    // Savvas Lavaflow: "All allies and enemies adjacent to the target suffer 2 damage."
+                    for text in printed where text.contains("adjacent to the target suffer") {
+                        coordinator.printedDamage(text, amount: PlayerTurnController.damageAmount(in: text), by: pieceID,
+                                                  around: victimHex)
+                    }
                 }
+                for text in paid where text.contains("for each target damaged") && damaged > 0 && stillHere() {
+                    let amount = (text.firstMatch(of: #/heal (\d+)/#).flatMap { Int($0.1) } ?? 0) * damaged
+                    let healed = coordinator.heal(pieceID, amount: amount, source: pieceID)
+                    coordinator.log("\(coordinator.name(pieceID)) heals for \(healed)", category: .heal)
+                }
+                if stillHere() { performPrintedText(printed.filter { !$0.contains("adjacent to the target") }, pieceID: pieceID) }
 
             case .heal:
                 performHeal(action, pieceID: pieceID, entity: entity, monster: monster, consumed: consumed)
@@ -230,6 +251,15 @@ final class MonsterTurnController {
             case .summon:
                 performSummon(action, pieceID: pieceID)
 
+            case .custom:
+                // Text printed as its own line ("All enemies suffer 2 damage"), and what it wraps.
+                performPrintedText(texts(in: ActionModel(type: .concatenation, subActions: [action]), monster: monster), pieceID: pieceID)
+                let wrapped = (action.subActions ?? []).filter { $0.type != .custom }
+                if !wrapped.isEmpty {
+                    await executeCard(wrapped, pieceID: pieceID, entity: entity, monster: monster,
+                                      ability: ability, consumed: consumed, turn: &state)
+                }
+
             case .special:
                 // Boss special abilities: run the structured actions as if they were the card
                 // (so their Move/Attack drive focus and movement); scenario-specific text must be
@@ -253,6 +283,58 @@ final class MonsterTurnController {
                 // Shield/retaliate are applied for the whole round when the card is revealed;
                 // element infusions happen after the type's turn; hints/custom text are display-only.
                 break
+            }
+        }
+    }
+
+    // MARK: - Printed text
+
+    /// The text printed in an action (its custom lines), resolved and lowercased.
+    private func texts(in action: ActionModel, monster: GameMonster) -> [String] {
+        guard let store = gameManager?.editionStore else { return [] }
+        return (action.subActions ?? []).filter { $0.type == .custom }.compactMap { $0.value?.stringValue }
+            .compactMap { store.resolveCustomText($0, edition: monster.edition) }.map { $0.lowercased() }
+    }
+
+    /// "+2 Attack if the target is adjacent to any of the Hound's allies" (Hound, Giant Viper).
+    private func bonus(_ texts: [String], against target: PieceID, pieceID: PieceID) -> Int {
+        guard let coordinator, let hex = coordinator.boardState.piecePositions[target] else { return 0 }
+        var extra = 0
+        for text in texts where text.contains("if the target is adjacent to any of") {
+            let flanked = hex.neighbors.compactMap { coordinator.boardState.piece(at: $0) }
+                .contains { $0 != pieceID && $0 != target && !coordinator.areEnemies(pieceID, $0) }
+            if flanked { extra += text.firstMatch(of: #/\+(\d+) attack/#).flatMap { Int($0.1) } ?? 0 }
+        }
+        return extra
+    }
+
+    /// What a monster's printed text does, after its attack or move: damage around it ("All
+    /// adjacent enemies suffer 2 damage"), a trap ("Create a 3 damage trap in an adjacent empty
+    /// hex closest to an enemy"), disadvantage against it this round (Giant Viper).
+    private func performPrintedText(_ texts: [String], pieceID: PieceID) {
+        guard let coordinator, let position = coordinator.boardState.piecePositions[pieceID] else { return }
+        for text in texts {
+            if text.contains("trap in an adjacent empty hex") {
+                let enemies = coordinator.boardState.piecePositions.filter { coordinator.areEnemies(pieceID, $0.key) }.map(\.value)
+                let hexes = position.neighbors.filter(coordinator.isEmptyHex)
+                guard let hex = hexes.min(by: { a, b in
+                    let da = enemies.map { a.distance(to: $0) }.min() ?? 99, db = enemies.map { b.distance(to: $0) }.min() ?? 99
+                    return da == db ? a < b : da < db
+                }) else { continue }
+                coordinator.placeTrap(damage: PlayerTurnController.damageAmount(in: text), at: hex, by: pieceID)
+            } else if text.contains("attacks targeting") && text.contains("disadvantage") {
+                coordinator.disadvantagedThisRound.insert(pieceID)
+                coordinator.log("Attacks on \(coordinator.name(pieceID)) have disadvantage this round", category: .condition)
+            } else if text.contains("suffer") && text.contains("damage") {
+                let amount = PlayerTurnController.damageAmount(in: text)
+                if text.contains("all enemies suffer") {
+                    for enemy in coordinator.boardState.piecePositions.keys.filter({ coordinator.areEnemies(pieceID, $0) }).sorted() {
+                        coordinator.log("\(coordinator.name(enemy)) suffers \(amount) damage", category: .damage)
+                        coordinator.sufferDamage(amount, to: enemy, killer: pieceID)
+                    }
+                } else {
+                    coordinator.printedDamage(text, amount: amount, by: pieceID, around: position)
+                }
             }
         }
     }
