@@ -75,6 +75,16 @@ extension BoardCoordinator {
     @discardableResult
     func heal(_ pieceID: PieceID, amount: Int, source: PieceID? = nil) -> Int {
         guard let gameManager, let entity = entity(for: pieceID) else { return 0 }
+        var amount = amount
+        // Master Physician: the healer's heals first remove the healed figure's negative conditions.
+        if let source, useFirstCharge(of: source, where: { $0 == .healCleanses }) != nil {
+            entity.entityConditions.removeAll { $0.name.isNegative && !$0.permanent }
+        }
+        // Cauterize: +2 each time the character is healed.
+        if case .healedBonus(let extra)? = useFirstCharge(of: pieceID, where: {
+            if case .healedBonus = $0 { return true }; return false }) {
+            amount += extra
+        }
         let healed = gameManager.entityManager.heal(entity, amount: amount)
         if healed > 0 { boardScene?.pieceHeal(id: pieceID, amount: healed) }
         boardScene?.refreshStatus(of: pieceID)
@@ -132,8 +142,10 @@ extension BoardCoordinator {
     @discardableResult
     func sufferDamage(_ amount: Int, to pieceID: PieceID, killer: PieceID? = nil) -> Bool {
         guard amount > 0, let gameManager, let entity = entity(for: pieceID) else { return false }
-        // Juggernaut, Frost Armor: "suffer no damage instead", a charge each time.
-        if useFirstCharge(of: pieceID, where: { $0 == .negateDamage }) != nil {
+        // Juggernaut, Frost Armor: "suffer no damage instead", a charge each time. Defiance of
+        // Death: only damage that would bring the character below 1 hit point.
+        if useFirstCharge(of: pieceID, where: { $0 == .negateDamage }) != nil
+            || (amount >= entity.health && useFirstCharge(of: pieceID, where: { $0 == .negateLethal }) != nil) {
             log("\(name(pieceID)) suffers no damage", category: .damage)
             boardScene?.pieceUnharmed(id: pieceID, missed: false)
             return false
@@ -159,7 +171,7 @@ extension BoardCoordinator {
     @MainActor func sufferDamageWithMitigation(_ amount: Int, to pieceID: PieceID, source: String,
                                     killer: PieceID? = nil) async -> Bool {
         guard amount > 0 else { return false }
-        if case .character(let id) = pieceID, !negatesDamage(pieceID),
+        if case .character(let id) = pieceID, !negatesDamage(pieceID, amount: amount),
            let character = gameManager?.game.characters.first(where: { $0.id == id }),
            await promptDamageMitigation(character: character, damage: amount, source: source) {
             boardScene?.floatText("Prevented", over: pieceID, style: .info)

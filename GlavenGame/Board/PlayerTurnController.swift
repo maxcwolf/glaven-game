@@ -417,9 +417,16 @@ final class PlayerTurnController {
                 targetCount += 1
                 coordinator.log("\(who): one more target", category: .attack)
             }
-            if case .attackBonus(let bonus)? = coordinator.useFirstCharge(of: pieceID, where: {
-                if case .attackBonus = $0 { return true }; return false }) {
+            if case .attackPackage(let bonus, let conditions, let advantage)? = coordinator.useFirstCharge(of: pieceID, where: {
+                if case .attackPackage = $0 { return true }; return false }) {
                 pendingAttackValue += bonus
+                pendingConditions.append(contentsOf: conditions)
+                pendingAdvantage = pendingAdvantage || advantage
+            }
+            if coordinator.isConditionActive(.invisible, on: pieceID),
+               case .conditionWhileInvisible(let condition)? = coordinator.useFirstCharge(of: pieceID, where: {
+                   if case .conditionWhileInvisible = $0 { return true }; return false }) {
+                pendingConditions.append(condition)
             }
             // Silent Stiletto: Pierce 1 on every melee attack.
             if range <= 1 {

@@ -5,7 +5,7 @@ import Foundation
 /// each time the bonus applies (some slots give experience); when every charge is marked the
 /// card leaves the active area, to the lost pile if it has the lost icon.
 ///
-/// Played so far: the starting classes' charged cards whose effect needs no extra choice.
+/// Played so far: the charged cards whose effect needs no extra choice.
 enum ChargedBonus: Equatable {
     /// Shield N against each attack that would damage the character.
     case shieldAgainstAttacks(Int)
@@ -17,8 +17,20 @@ enum ChargedBonus: Equatable {
     case retaliateAgainstMelee(Int)
     /// One more target on each of the character's ranged attack actions.
     case extraTargetOnRanged
-    /// +N on each of the character's attack actions.
-    case attackBonus(Int)
+    /// On each of the character's attack actions: +N, added conditions, advantage.
+    case attackPackage(bonus: Int, conditions: [ConditionName], advantage: Bool)
+    /// A condition added to each attack made while invisible.
+    case conditionWhileInvisible(ConditionName)
+    /// +N each time the character is healed.
+    case healedBonus(Int)
+    /// The character's heals first remove the healed figure's negative conditions.
+    case healCleanses
+    /// Suffer no damage that would bring the character below 1 hit point.
+    case negateLethal
+    /// At the end of the character's turn, infuse the element unless it is already strong.
+    case endOfTurnInfuse(ElementType)
+    /// At the end of the character's turn, heal every adjacent ally.
+    case endOfTurnHealAdjacent(Int)
     /// +N on each of the character's heal actions.
     case healBonus(Int)
     /// +N on an attack against an enemy adjacent to none of its allies.
@@ -41,10 +53,20 @@ enum ChargedBonus: Equatable {
         "gh-106": .bonusAgainstDisabled(2),                     // Cull the Weak
         "gh-111": .doubleAgainstFlanked,                        // Spring the Trap
         "gh-66": .negateDamage,                                 // Frost Armor
-        "gh-69": .attackBonus(1),                               // Crackling Air
+        "gh-69": .attackPackage(bonus: 1, conditions: [], advantage: false), // Crackling Air
         "gh-79": .retaliateAgainstMelee(3),                     // Engulfed in Flames
         "gh-85": .negateAttackAndRetaliate(3, range: 3),        // Cold Front
         "gh-44": .healBonus(2),                                 // Potent Potables
+        "gh-346": .negateDamage,                                // Immortality
+        "gh-175": .retaliateAgainstMelee(2),                    // Purifying Aura
+        "gh-203": .attackPackage(bonus: 3, conditions: [.wound], advantage: true), // Angelic Ascension
+        "gh-288": .conditionWhileInvisible(.stun),              // Voice of the Night
+        "gh-325": .healedBonus(2),                              // Cauterize
+        "gh-441": .healCleanses,                                // Master Physician
+        "gh-322": .negateLethal,                                // Defiance of Death
+        "gh-277": .endOfTurnInfuse(.dark),                      // Nightfall
+        "gh-187": .endOfTurnInfuse(.light),                     // Beacon of Light
+        "gh-230": .endOfTurnHealAdjacent(2),                    // Fortified Position
     ]
 
     /// The experience each charge slot gives, in order (0 for a plain slot).
@@ -119,9 +141,37 @@ extension BoardCoordinator {
         return found.bonus
     }
 
-    /// Whether the character would suffer no damage (Juggernaut, Frost Armor), without using a charge.
-    func negatesDamage(_ piece: PieceID) -> Bool {
-        chargedBonuses(of: piece).contains { $0.bonus == .negateDamage }
+    /// Whether the character would suffer no damage from `amount` (Juggernaut, Frost Armor;
+    /// Defiance of Death when it would be lethal), without using a charge.
+    func negatesDamage(_ piece: PieceID, amount: Int) -> Bool {
+        let health = entity(for: piece)?.health ?? 0
+        return chargedBonuses(of: piece).contains {
+            $0.bonus == .negateDamage || ($0.bonus == .negateLethal && amount >= health)
+        }
+    }
+
+    /// End-of-turn bonuses: Nightfall and Beacon of Light infuse, Fortified Position heals.
+    func applyEndOfTurnBonuses(_ turn: PlayerTurnController) {
+        guard let character = gameManager?.game.characters.first(where: { $0.id == turn.characterID }),
+              let game = gameManager?.game else { return }
+        let me = PieceID.character(character.id)
+        for (cardId, bonus) in chargedBonuses(of: character) {
+            switch bonus {
+            case .endOfTurnInfuse(let element):
+                guard game.elementBoard.first(where: { $0.type == element })?.state != .strong else { continue }
+                game.infuseElement(element)
+                log("\(name(me)) infuses \(GameText.elementName(element))", category: .element)
+                useCharge(cardId, of: character)
+            case .endOfTurnHealAdjacent(let amount):
+                for ally in alliesInRange(of: me, range: 1, includeSelf: false).sorted() {
+                    let healed = heal(ally, amount: amount, source: me)
+                    log("\(name(me)) heals \(name(ally)) for \(healed)", category: .heal)
+                }
+                useCharge(cardId, of: character)
+            default:
+                continue
+            }
+        }
     }
 
     /// The attack value against `target` with the attacker's conditional bonuses (Single Out,

@@ -1245,6 +1245,7 @@ final class BoardCoordinator {
         // Ignore a second End Turn for the same turn.
         guard let ptc = activePlayerTurn, ptc.phase == .turnComplete else { return }
         applyEndOfTurnItems(ptc)
+        applyEndOfTurnBonuses(ptc)
         activePlayerTurn = nil
         // End-of-turn looting: money tokens and treasure in the character's hex (p.28).
         let pieceID = PieceID.character(ptc.characterID)

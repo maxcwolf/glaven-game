@@ -45,7 +45,8 @@ final class ChargedBonusTests: XCTestCase {
         let deck = gm.editionStore.abilities(forDeck: "brute", edition: "gh")
         let warding = try XCTUnwrap(deck.first { $0.cardId == 7 })
         XCTAssertEqual(ChargedBonus.slots(of: warding), [0, 1, 0, 1, 0, 1])
-        let all = ["brute", "cragheart", "scoundrel", "spellweaver", "tinkerer"]
+        let all = ["brute", "cragheart", "scoundrel", "spellweaver", "tinkerer", "lightning", "sun", "eclipse",
+                   "saw", "three-spears"]
             .flatMap { gm.editionStore.abilities(forDeck: $0, edition: "gh") }
         for key in ChargedBonus.byCard.keys {
             let id = try XCTUnwrap(Int(key.dropFirst(3)))
@@ -126,5 +127,66 @@ final class ChargedBonusTests: XCTestCase {
         brute.bonusChargesUsed = [7: 2]
         let restored = brute.toSnapshot().toRuntime(editionStore: gm.editionStore)
         XCTAssertEqual(restored.bonusChargesUsed, [7: 2])
+    }
+
+    // MARK: - Locked classes
+
+    func testDefianceOfDeathOnlyStopsALethalBlow() throws {
+        let berserker = add("lightning", at: HexCoord(3, 3))
+        berserker.activeCards = [322]
+        berserker.health = 5
+        coord.sufferDamage(2, to: .character(berserker.id))
+        XCTAssertEqual(berserker.health, 3, "not lethal: suffered")
+        coord.sufferDamage(4, to: .character(berserker.id))
+        XCTAssertEqual(berserker.health, 3, "lethal: negated")
+        XCTAssertEqual(berserker.bonusChargesUsed[322], 1)
+    }
+
+    func testCauterizeAndMasterPhysicianImproveHeals() throws {
+        let berserker = add("lightning", at: HexCoord(3, 3))
+        berserker.activeCards = [325]
+        berserker.health = 2
+        coord.heal(.character(berserker.id), amount: 1)
+        XCTAssertEqual(berserker.health, 5, "Heal 1 +2")
+
+        let sawbones = add("saw", at: HexCoord(4, 3))
+        sawbones.activeCards = [441]
+        coord.applyCondition(.poison, to: .character(berserker.id))
+        coord.heal(.character(berserker.id), amount: 1, source: .character(sawbones.id))
+        XCTAssertFalse(berserker.entityConditions.contains { $0.name == .poison })
+        XCTAssertEqual(berserker.health, 8, "poison removed first, so the heal (+2 Cauterize) lands")
+    }
+
+    func testEndOfTurnBonusesInfuseAndHeal() throws {
+        let sun = add("sun", at: HexCoord(3, 3))
+        let spears = add("three-spears", at: HexCoord(4, 3))
+        sun.activeCards = [187]   // Beacon of Light
+        spears.activeCards = [230]   // Fortified Position
+        sun.health = 3
+        let sunTurn = PlayerTurnController(characterID: sun.id, coordinator: coord, gameManager: gm)
+        coord.applyEndOfTurnBonuses(sunTurn)
+        XCTAssertEqual(gm.game.elementBoard.first { $0.type == .light }?.state, .new)
+        XCTAssertEqual(sun.bonusChargesUsed[187], 1)
+        let spearsTurn = PlayerTurnController(characterID: spears.id, coordinator: coord, gameManager: gm)
+        coord.applyEndOfTurnBonuses(spearsTurn)
+        XCTAssertEqual(sun.health, 5)
+    }
+
+    func testAngelicAscensionEmpowersTheNextAttacks() throws {
+        let sun = add("sun", at: HexCoord(3, 3))
+        sun.activeCards = [203]
+        _ = try bandit(at: HexCoord(4, 3))
+        let deck = gm.editionStore.abilities(forDeck: "sun", edition: "gh")
+        let attackCard = try XCTUnwrap(deck.first { ($0.actions ?? []).first?.type == .attack && $0.cardId != 203 })
+        let other = try XCTUnwrap(deck.first { $0.cardId != attackCard.cardId && $0.cardId != 203 })
+        sun.handCards = [attackCard.cardId!, other.cardId!]
+        let turn = PlayerTurnController(characterID: sun.id, coordinator: coord, gameManager: gm)
+        coord.activePlayerTurn = turn
+        turn.selectCards(top: attackCard, bottom: other)
+        let printed = attackCard.actions?.first?.value?.intValue ?? 0
+        turn.executeCurrentAction()
+        XCTAssertEqual(turn.currentAttackValue(), printed + 3)
+        XCTAssertTrue(turn.pendingConditions.contains(.wound))
+        XCTAssertTrue(turn.pendingAdvantage)
     }
 }
