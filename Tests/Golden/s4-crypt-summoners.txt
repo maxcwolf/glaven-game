@@ -145,7 +145,6 @@ A money token drops [at (3,2)]
 Mindthief infuses Ice
 Mindthief gains 2 XP
 Mindthief: Jump 4
-Mindthief moved through no enemy
 Mindthief moves 2 hexes [to (0,3)]
 Mindthief ends the turn
 Tinkerer’s turn: Stun Shot and Flamethrower
