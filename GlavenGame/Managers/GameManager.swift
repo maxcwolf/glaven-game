@@ -245,7 +245,9 @@ final class GameManager {
                 character.attackModifierDeck.addCard(type: .minus1)
             }
             if let count = effects.blessings[character.id], count > 0 {
-                for _ in 0..<count { character.attackModifierDeck.addCard(type: .bless) }
+                for _ in 0..<count where game.hasSpecialCardLeft(.bless, forMonsterDeck: false) {
+                    character.attackModifierDeck.addCard(type: .bless)
+                }
                 boardCoordinator.log("\(name) starts with \(count) blessings from the sanctuary", category: .setup)
             }
             if let count = effects.minusOneCards[character.id], count > 0 {

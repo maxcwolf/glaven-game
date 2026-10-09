@@ -112,6 +112,11 @@ extension BoardCoordinator {
         }
         if condition == .curse || condition == .bless {
             let type: AttackModifierType = condition == .curse ? .curse : .bless
+            let monsterDeck: Bool = { if case .monster = pieceID { return !isPlayerSide(pieceID) }; return false }()
+            guard gameManager.game.hasSpecialCardLeft(type, forMonsterDeck: monsterDeck) else {
+                log("No \(GameText.conditionName(condition)) cards are left for \(name(pieceID))", category: .condition)
+                return
+            }
             switch pieceID {
             case .character(let id):
                 gameManager.game.characters.first { $0.id == id }?.attackModifierDeck.addCard(type: type)

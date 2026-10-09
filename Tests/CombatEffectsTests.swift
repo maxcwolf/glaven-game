@@ -168,4 +168,28 @@ final class CombatEffectsTests: XCTestCase {
         XCTAssertEqual(first.shield?.value?.intValue, shield, "the round's Shield stays")
         XCTAssertEqual(second.shield?.value?.intValue, 1, "the newcomer has its card's Shield 1")
     }
+
+    // MARK: - Bless and Curse cards (p.23)
+
+    /// There are 10 Bless cards in the box for every deck, 10 Curses for the players' decks and
+    /// 10 for the monsters': once they're all shuffled in, no more can be given.
+    func testBlessAndCurseCardsAreSharedBetweenDecks() {
+        let brute = addCharacter("brute", at: HexCoord(3, 3))
+        let tinkerer = addCharacter("tinkerer", at: HexCoord(5, 5))
+        let bandit = addMonster("bandit-guard", at: HexCoord(8, 8))
+        let banditPiece = PieceID.monster(name: "bandit-guard", standee: bandit.number)
+        for _ in 0..<7 { coord.applyCondition(.bless, to: .character(brute.id)) }
+        for _ in 0..<5 { coord.applyCondition(.bless, to: .character(tinkerer.id)) }
+        XCTAssertEqual(brute.attackModifierDeck.undrawnCount(of: .bless), 7)
+        XCTAssertEqual(tinkerer.attackModifierDeck.undrawnCount(of: .bless), 3, "only 10 Bless cards in all")
+        coord.applyCondition(.bless, to: banditPiece)
+        XCTAssertEqual(gm.game.monsterAttackModifierDeck.undrawnCount(of: .bless), 0)
+
+        for _ in 0..<12 { coord.applyCondition(.curse, to: .character(tinkerer.id)) }
+        for _ in 0..<12 { coord.applyCondition(.curse, to: banditPiece) }
+        XCTAssertEqual(tinkerer.attackModifierDeck.undrawnCount(of: .curse), 10)
+        XCTAssertEqual(gm.game.monsterAttackModifierDeck.undrawnCount(of: .curse), 10, "the monsters' Curses are their own")
+        coord.applyCondition(.curse, to: .character(brute.id))
+        XCTAssertEqual(brute.attackModifierDeck.undrawnCount(of: .curse), 0, "the players' 10 are all in use")
+    }
 }

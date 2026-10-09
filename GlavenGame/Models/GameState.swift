@@ -118,6 +118,19 @@ final class GameState {
         figures.compactMap { $0.asObjective }
     }
 
+    /// Whether a Bless or Curse card is left to shuffle into a deck (p.23): the box has 10 Bless
+    /// cards shared by every deck, 10 Curses for the players' decks and 10 for the monsters'.
+    func hasSpecialCardLeft(_ type: AttackModifierType, forMonsterDeck: Bool) -> Bool {
+        let playerDecks = characters.map(\.attackModifierDeck) + [allyAttackModifierDeck]
+        let decks: [AttackModifierDeck]
+        switch type {
+        case .bless: decks = playerDecks + [monsterAttackModifierDeck]
+        case .curse: decks = forMonsterDeck ? [monsterAttackModifierDeck] : playerDecks
+        default: return true
+        }
+        return decks.reduce(0) { $0 + $1.undrawnCount(of: type) } < 10
+    }
+
     /// Prosperity level (1–9) reached by the party's prosperity checkmarks.
     var prosperityLevel: Int {
         let thresholds = [0, 4, 9, 15, 22, 30, 39, 50, 64]
