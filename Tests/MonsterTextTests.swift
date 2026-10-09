@@ -184,4 +184,56 @@ final class MonsterTextTests: XCTestCase {
                       "closer to a door, or through it")
         XCTAssertFalse(coord.turnLog.contains { $0.message.contains("Resolve the boss") }, "nothing left to the players")
     }
+
+    /// An immobilized Bandit Commander doesn't head for the door: its special is a move.
+    func testAnImmobilizedBanditCommanderStaysPut() async throws {
+        let scenario = try XCTUnwrap(gm.editionStore.scenarios(for: "gh").first { $0.index == "2" && $0.solo == nil })
+        gm.characterManager.addCharacter(name: "brute", edition: "gh")
+        gm.startScenarioOnBoard(scenario)
+        coord.autoResolvePrompts = true
+        coord.turnDelayNanoseconds = 0
+        let free = try XCTUnwrap(coord.boardState.startingLocations.first { !coord.boardState.isOccupied($0) })
+        coord.placeCharacter(characterID: gm.game.characters[0].id, at: free)
+        let spot = try XCTUnwrap(free.neighbors.first { coord.isEmptyHex($0) })
+        let piece = try XCTUnwrap(coord.spawnMonster(name: "bandit-commander", type: .boss, at: spot, origin: .placed))
+        let monster = try XCTUnwrap(gm.game.monsters.first { $0.name == "bandit-commander" })
+        let commander = try XCTUnwrap(coord.entity(for: piece) as? GameMonsterEntity)
+        commander.entityConditions = [EntityCondition(name: .immobilize)]
+        let closed = coord.boardState.doors.filter { !$0.isOpen }.count
+        let deck = gm.monsterManager.abilities(for: monster)
+        monster.abilities = [try XCTUnwrap(deck.firstIndex { $0.cardId == 575 })]
+        monster.ability = 0
+        monster.abilityDrawn = true
+        await MonsterTurnController(coordinator: coord, gameManager: gm).executeMonsterGroup(monster)
+        XCTAssertEqual(coord.boardState.piecePositions[piece], spot)
+        XCTAssertEqual(coord.boardState.doors.filter { !$0.isOpen }.count, closed, "no door opened")
+    }
+
+    /// Difficult terrain costs the Bandit Commander 2 movement per hex on its way to the door.
+    func testTheBanditCommanderPaysForDifficultTerrain() async throws {
+        let scenario = try XCTUnwrap(gm.editionStore.scenarios(for: "gh").first { $0.index == "2" && $0.solo == nil })
+        gm.characterManager.addCharacter(name: "brute", edition: "gh")
+        gm.startScenarioOnBoard(scenario)
+        coord.autoResolvePrompts = true
+        coord.turnDelayNanoseconds = 0
+        let free = try XCTUnwrap(coord.boardState.startingLocations.first { !coord.boardState.isOccupied($0) })
+        coord.placeCharacter(characterID: gm.game.characters[0].id, at: free)
+        let spot = try XCTUnwrap(free.neighbors.first { coord.isEmptyHex($0) })
+        let piece = try XCTUnwrap(coord.spawnMonster(name: "bandit-commander", type: .boss, at: spot, origin: .placed))
+        let monster = try XCTUnwrap(gm.game.monsters.first { $0.name == "bandit-commander" })
+        // Every empty hex is difficult terrain.
+        for (hex, cell) in coord.boardState.cells where cell.passable && cell.overlay == nil && !coord.boardState.isOccupied(hex) {
+            coord.boardState.cells[hex]?.overlay = .difficultTerrain
+        }
+        let movement = try XCTUnwrap(monster.stat(for: .boss)?.movementValue(characterCount: 2, level: monster.level))
+        let deck = gm.monsterManager.abilities(for: monster)
+        monster.abilities = [try XCTUnwrap(deck.firstIndex { $0.cardId == 575 })]
+        monster.ability = 0
+        monster.abilityDrawn = true
+        var moved: [HexCoord] = []
+        coord.moveObserver = { mover, path, _ in if mover == piece { moved += path.dropFirst() } }
+        await MonsterTurnController(coordinator: coord, gameManager: gm).executeMonsterGroup(monster)
+        XCTAssertFalse(moved.isEmpty, "it heads for the door")
+        XCTAssertLessThanOrEqual(moved.count, movement / 2, "2 movement for each hex of difficult terrain")
+    }
 }

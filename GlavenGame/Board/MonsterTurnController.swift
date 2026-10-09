@@ -345,6 +345,10 @@ final class MonsterTurnController {
     /// its Move, opening the door if it gets there.
     @MainActor private func moveToNextDoor(pieceID: PieceID, entity: GameMonsterEntity, monster: GameMonster) async {
         guard let coordinator, let game = gameManager?.game, let start = coordinator.boardState.piecePositions[pieceID] else { return }
+        if MonsterAI.isActive(.immobilize, on: entity) {
+            coordinator.log("\(coordinator.name(pieceID)) is immobilized and can\u{2019}t move", category: .condition)
+            return
+        }
         let characterCount = max(2, game.characters.filter { !$0.absent }.count)
         let movement = monster.stat(for: entity.type)?.movementValue(characterCount: characterCount, level: monster.level) ?? 0
         let (enemies, allies) = coordinator.movementSets(for: pieceID)
@@ -352,13 +356,17 @@ final class MonsterTurnController {
             Pathfinder.findPath(board: coordinator.boardState, from: start, to: door.coord, avoidTraps: true, canOpenDoors: true,
                                 occupiedByEnemy: enemies, occupiedByAlly: allies)
         }
-        guard let path = paths.min(by: { $0.count < $1.count }), path.count > 1 else {
+        let board = coordinator.boardState
+        // The nearest door by movement (difficult terrain costs 2), not by hexes.
+        guard let path = paths.min(by: { Pathfinder.movementCost(of: $0, board: board) < Pathfinder.movementCost(of: $1, board: board) }),
+              path.count > 1 else {
             coordinator.log("\(coordinator.name(pieceID)) has no door to reach", category: .move)
             return
         }
         // Up to the first closed door on the way: it opens as the Commander reaches it.
         let doorIndex = path.firstIndex { hex in coordinator.boardState.doors.contains { $0.coord == hex && !$0.isOpen } } ?? path.count - 1
-        let reach = min(movement, doorIndex)
+        // How far along the path its Move takes it.
+        let reach = (0...doorIndex).last { Pathfinder.movementCost(of: Array(path.prefix($0 + 1)), board: board) <= movement } ?? 0
         coordinator.log("\(coordinator.name(pieceID)) heads for the door", category: .move)
         // It may pass allies, but must stop on a free hex.
         func lastFree(upTo index: Int) -> Int {
