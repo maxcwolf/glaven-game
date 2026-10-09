@@ -198,6 +198,7 @@ final class GameManager {
         game.globalAchievements = []
         game.partyAchievements = []
         game.campaignStickers = []
+        game.tableRules = TableRules()
         undoStack = []
         redoStack = []
         scenarioStatsManager.reset()
@@ -428,6 +429,20 @@ final class GameManager {
             complete(character)
             characterManager.retireCharacter(character, addRetirementEvents: false)
         }
+    }
+
+    /// Turn a table rule on or off. Going back to the item limits leaves home what no longer fits;
+    /// items already at home stay there until brought.
+    func setTableRule(_ rule: WritableKeyPath<TableRules, Bool>, _ on: Bool) {
+        guard game.tableRules[keyPath: rule] != on else { return }
+        pushUndoState()
+        game.tableRules[keyPath: rule] = on
+        if rule == \TableRules.bringEveryItem {
+            for character in game.characters {
+                editionStore.fitLoadout(character, unlimited: on)
+            }
+        }
+        saveGame()
     }
 
     /// Start a new campaign from scratch and go to the party screen. Other campaigns stay saved.

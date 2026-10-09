@@ -177,7 +177,8 @@ struct BoardView: View {
                                       gameManager.scenarioManager.chosenBattleGoal(of: character).map {
                                           (GameText.characterName(character, labels: gameManager.editionStore), $0)
                                       }
-                                  })
+                                  },
+                                  tableRules: gameManager.game.tableRules.inPlay)
                 .transition(.opacity)
                 .zIndex(9)
                 .onAppear { if presentation == .intro { BoardSoundPlayer.play(.start) } }

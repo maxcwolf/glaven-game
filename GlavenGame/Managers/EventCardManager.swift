@@ -72,7 +72,8 @@ final class EventCardManager {
 
     /// Whether setting out for `scenario` takes a road event.
     func needsRoadEvent(for scenario: ScenarioData) -> Bool {
-        scenario.eventType == "road"
+        if game.tableRules.noFirstRoadEvent, game.completedScenarios.isEmpty { return false }
+        return scenario.eventType == "road"
     }
 
     // MARK: - Outcomes
@@ -276,7 +277,7 @@ final class EventCardManager {
                 let key = "\(edition)-\(id)"
                 if let taker = scenarioManager.eligibleItemRecipients(key).first {
                     taker.items.append(key)
-                    editionStore.fitLoadout(taker)
+                    editionStore.fitLoadout(taker, unlimited: game.tableRules.bringEveryItem)
                     lines.append("\(name(taker)) takes \(itemName(id)).")
                 } else {
                     game.unlockedItems.insert(key)

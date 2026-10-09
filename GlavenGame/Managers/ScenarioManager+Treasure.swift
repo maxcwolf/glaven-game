@@ -57,7 +57,7 @@ extension ScenarioManager {
                 let itemKey = "\(edition)-\(id)"
                 if let character, !character.items.contains(itemKey) {
                     character.items.append(itemKey)
-                    editionStore.fitLoadout(character)
+                    editionStore.fitLoadout(character, unlimited: game.tableRules.bringEveryItem)
                 } else {
                     game.unlockedItems.insert(itemKey)
                 }

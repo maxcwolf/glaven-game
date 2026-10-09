@@ -102,7 +102,7 @@ final class ItemManager {
         onBeforeMutate?()
         character.items.append(item.itemKey)
         character.loot -= item.cost
-        editionStore.fitLoadout(character)   // left at home if there's no room for it
+        editionStore.fitLoadout(character, unlimited: game.tableRules.bringEveryItem)   // left at home if there's no room for it
         return true
     }
 
@@ -121,14 +121,15 @@ final class ItemManager {
             onBeforeMutate?()
             character.itemsLeftBehind.append(key)
             // Leaving Cloak of Pockets at home leaves the small items it made room for.
-            editionStore.fitLoadout(character)
+            editionStore.fitLoadout(character, unlimited: game.tableRules.bringEveryItem)
         }
         return nil
     }
 
     /// Why an item left at home can't be brought beside what the character is bringing.
     func bringingProblem(_ key: String, for character: GameCharacter) -> ItemLoadout.Problem? {
-        ItemLoadout.problem(bringing: key, beside: character.carriedItems.filter { $0 != key }, level: character.level,
+        guard !game.tableRules.bringEveryItem else { return nil }
+        return ItemLoadout.problem(bringing: key, beside: character.carriedItems.filter { $0 != key }, level: character.level,
                             item: { self.editionStore.itemData(key: $0) })
     }
 

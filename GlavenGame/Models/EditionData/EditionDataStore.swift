@@ -273,10 +273,12 @@ final class EditionDataStore {
         return itemData(id: id, edition: String(parts[0]))
     }
 
-    /// Leave behind whatever the character can't bring beside the items before it (GH p.9).
-    func fitLoadout(_ character: GameCharacter) {
-        character.itemsLeftBehind = ItemLoadout.leftBehind(owned: character.items, leftBehind: character.itemsLeftBehind,
-                                                           level: character.level, item: { self.itemData(key: $0) })
+    /// Leave behind whatever the character can't bring beside the items before it (GH p.9);
+    /// with no limits (a table rule), only what the player left at home.
+    func fitLoadout(_ character: GameCharacter, unlimited: Bool) {
+        character.itemsLeftBehind = unlimited ? character.itemsLeftBehind.filter(character.items.contains)
+            : ItemLoadout.leftBehind(owned: character.items, leftBehind: character.itemsLeftBehind,
+                                     level: character.level, item: { self.itemData(key: $0) })
     }
 
     func availableItems(for edition: String, prosperity: Int) -> [ItemData] {

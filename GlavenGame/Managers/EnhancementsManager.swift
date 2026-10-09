@@ -188,7 +188,7 @@ final class EnhancementsManager {
     static let enhancerAchievement = "the-power-of-enhancement"
 
     func enhancerOpen(edition: String) -> Bool {
-        edition != "gh" || game.globalAchievements.contains(Self.enhancerAchievement)
+        edition != "gh" || game.tableRules.enhancerFromStart || game.globalAchievements.contains(Self.enhancerAchievement)
     }
 
     func purchaseProblem(_ enhancement: EnhancementAction, in slot: CardEnhancing.Slot, card: AbilityModel,

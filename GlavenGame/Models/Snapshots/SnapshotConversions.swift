@@ -41,6 +41,7 @@ extension GameState {
             boardSnapshot: boardCoordinator?.boardScene != nil ? boardCoordinator?.snapshot() : nil
         )
         snapshot.events = events
+        snapshot.tableRules = tableRules == TableRules() ? nil : tableRules
         return snapshot
     }
 
@@ -77,6 +78,7 @@ extension GameState {
         unlockedCharacters = snapshot.unlockedCharacters
         unlockedItems = snapshot.unlockedItems
         events = snapshot.events ?? EventState()
+        tableRules = snapshot.tableRules ?? TableRules()
 
         // Restore figures
         figures = snapshot.figures.map { $0.toRuntime(editionStore: editionStore) }

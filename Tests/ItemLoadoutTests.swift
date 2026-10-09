@@ -19,7 +19,7 @@ final class ItemLoadoutTests: XCTestCase {
     private func give(_ keys: String...) {
         for key in keys {
             brute.items.append(key)
-            gm.editionStore.fitLoadout(brute)
+            gm.editionStore.fitLoadout(brute, unlimited: false)
         }
     }
 
@@ -71,7 +71,7 @@ final class ItemLoadoutTests: XCTestCase {
         XCTAssertEqual(brute.carriedItems, ["gh-12", "gh-13", "gh-14", "gh-16"], "the cloak makes room for three")
         brute.items = ["gh-12", "gh-13", "gh-14", "gh-15", "gh-16"]
         brute.itemsLeftBehind = []
-        gm.editionStore.fitLoadout(brute)
+        gm.editionStore.fitLoadout(brute, unlimited: false)
         XCTAssertEqual(brute.carriedItems, brute.items, "the cloak counts wherever it was acquired")
         brute.items.removeAll { $0 == "gh-15" }
         gm.itemManager.setBringing("gh-16", false, for: brute)

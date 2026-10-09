@@ -25,13 +25,10 @@ the game does now; change any of them and I'll follow.
    Now: yes, every exhaustion in the party in scenarios they played.
 10. **Sanctuary and prosperity.** Every 100 gold the party donates raises prosperity by one. Is
     that the threshold you play with? Now: 100.
-11. **Table Rules** (your idea from question 14). A campaign setting, also shown on the
-    scenario brief, for variants groups commonly play, each defaulting to the rulebook: the
-    Enhancer open from the start, no carry limits, no road event before the first scenario
-    (question 1), the sanctuary threshold (question 10). A "table rules" badge on the brief
-    when anything differs. Now: planned after carry limits; say if you'd rather not.
 
 Answered on 2026-10-08: the Enhancer stays gated by Frozen Hollow (GH scenario 14); old
 companion enhancements aren't migrated (nothing released); Iron Helmet is always on (no spent
 mark); carry limits follow the rules with a loadout choice; the hex-enhancement player picks the
-marked hex; Submissive Affliction is a flat Attack 2 (Mindthief FAQ).
+marked hex; Submissive Affliction is a flat Attack 2 (Mindthief FAQ). Built since: Table Rules
+(Enhancer from the start, bring every item, no road event before the first scenario), set in
+town and listed on the scenario brief; several campaigns, each saved to its own file.

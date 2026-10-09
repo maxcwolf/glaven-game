@@ -45,7 +45,7 @@ final class ScenarioManager {
     private func addItemPenaltyCards() {
         for character in game.characters where !character.absent {
             // Each brings only what fits beside the items before it.
-            editionStore.fitLoadout(character)
+            editionStore.fitLoadout(character, unlimited: game.tableRules.bringEveryItem)
             guard !character.hasCustomPerk("ignoreNegativeItem") else { continue }
             for key in character.carriedItems {
                 let parts = key.split(separator: "-")

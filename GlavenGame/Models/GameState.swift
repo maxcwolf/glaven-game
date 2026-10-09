@@ -22,6 +22,8 @@ final class GameState {
     var allyAttackModifierDeck: AttackModifierDeck = .defaultDeck()
     var lootDeck: LootDeck = LootDeck()
     var partyName: String = ""
+    /// Variants this campaign plays by (all off: the rulebook).
+    var tableRules = TableRules()
     var partyReputation: Int = 0
     var partyProsperity: Int = 0
 

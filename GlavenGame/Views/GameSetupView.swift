@@ -9,6 +9,7 @@ struct GameSetupView: View {
     @State private var sheetCharacter: GameCharacter?
     @State private var shopCharacter: GameCharacter?
     @State private var itemsCharacter: GameCharacter?
+    @State private var showTableRules = false
     @State private var enhanceCharacter: GameCharacter?
     @State private var levelUpCharacter: GameCharacter?
     @State private var cardChoiceCharacter: GameCharacter?
@@ -192,6 +193,9 @@ struct GameSetupView: View {
         .sheet(item: $sheetCharacter) { character in
             CharacterSheetView(character: character)
         }
+        .sheet(isPresented: $showTableRules) {
+            TableRulesSheet()
+        }
         .sheet(item: $itemsCharacter) { character in
             ItemLoadoutSheet(character: character)
         }
@@ -342,6 +346,15 @@ struct GameSetupView: View {
 
             difficultyRow
             difficultyHint
+            Button { showTableRules = true } label: {
+                Label(TableRulesSheet.summary(gameManager.game.tableRules), systemImage: "list.bullet.rectangle")
+                    .font(.caption)
+                    .foregroundStyle(gameManager.game.tableRules == TableRules() ? GlavenTheme.secondaryText : BoardTheme.brass)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .frame(minHeight: 32)
+            }
+            .buttonStyle(.plain)
+            .padding(.horizontal, 16)
 
             Divider().opacity(0.2)
 

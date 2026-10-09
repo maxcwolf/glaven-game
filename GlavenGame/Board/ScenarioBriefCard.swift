@@ -9,6 +9,8 @@ struct ScenarioBriefCard: View {
     let onDismiss: () -> Void
     /// Each character's battle goal (name, goal), shown as a reminder.
     var battleGoals: [(character: String, goal: BattleGoal)] = []
+    /// The table rules this campaign plays by, as a reminder.
+    var tableRules: [String] = []
 
     var body: some View {
         ZStack {
@@ -52,6 +54,12 @@ struct ScenarioBriefCard: View {
                                     .fixedSize(horizontal: false, vertical: true)
                             }
                         }
+                    }
+                }
+
+                if !tableRules.isEmpty {
+                    section("Table rules", systemImage: "list.bullet.rectangle", tint: BoardTheme.secondaryText) {
+                        bullets(tableRules)
                     }
                 }
 

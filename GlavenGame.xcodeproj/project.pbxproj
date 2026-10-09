@@ -115,6 +115,7 @@
 		880C9BE58DD587B65392858A /* BattleGoalPicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7935967456962F4F03B80C2B /* BattleGoalPicker.swift */; };
 		892B9BF7411972FD0C1157E4 /* ScenarioMaps in Resources */ = {isa = PBXBuildFile; fileRef = C4B5DE1CCC42A105EA251124 /* ScenarioMaps */; };
 		8A8AE9C25AFA67C4AFF49C9B /* AttackModifierCardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 42374DD85E631755D52BD747 /* AttackModifierCardView.swift */; };
+		8AA44B90BFF46A1E66C7CF62 /* TableRulesSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4D00189AAD6484D20C66CBC0 /* TableRulesSheet.swift */; };
 		8CB0FFF5B997D068B2D99954 /* AppPhase.swift in Sources */ = {isa = PBXBuildFile; fileRef = D9682A31C9693AB6DADDC9F6 /* AppPhase.swift */; };
 		8D637BC2C5EC03235144944A /* ScenarioMapStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0449386EC7763E37AF9AB2A4 /* ScenarioMapStore.swift */; };
 		8EE54DF20EAC7C6985AD80B1 /* SummonColor.swift in Sources */ = {isa = PBXBuildFile; fileRef = FBE537F6F81289C6EEB5CDAD /* SummonColor.swift */; };
@@ -171,6 +172,7 @@
 		C4B13C1F7E443D08F6CDB37E /* LootManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6B4DA2419C815421AF728C58 /* LootManager.swift */; };
 		C52021D67688A4B393246402 /* ScenarioStatsManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8DC43DEE8B38C661B7401300 /* ScenarioStatsManager.swift */; };
 		C52F441575A9B4779E09B7F6 /* SanctuarySheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = AABF17B34BECDFBAFC515C72 /* SanctuarySheet.swift */; };
+		C57FA18F9314E7681D1CD0C9 /* TableRules.swift in Sources */ = {isa = PBXBuildFile; fileRef = 876B37D25F8409D46B5DCBC4 /* TableRules.swift */; };
 		C63E594BE14FCFD5BC84865A /* EscortAI.swift in Sources */ = {isa = PBXBuildFile; fileRef = EC67D8214EC555D0D3D36DA1 /* EscortAI.swift */; };
 		C649244AA1729CC191971BD6 /* Pathfinder.swift in Sources */ = {isa = PBXBuildFile; fileRef = D8D120B1CEE8FA85B7939897 /* Pathfinder.swift */; };
 		C7914CE29166A711DD59D56B /* EntityProtocol.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4A36D7C42F715C8F0B91A909 /* EntityProtocol.swift */; };
@@ -269,6 +271,7 @@
 		4901D882DBB4A4409384EE90 /* ScenarioMapDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScenarioMapDetailView.swift; sourceTree = "<group>"; };
 		4A36D7C42F715C8F0B91A909 /* EntityProtocol.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EntityProtocol.swift; sourceTree = "<group>"; };
 		4C2B76831C29EEA9CE98F5A8 /* CardSelectionPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CardSelectionPanel.swift; sourceTree = "<group>"; };
+		4D00189AAD6484D20C66CBC0 /* TableRulesSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TableRulesSheet.swift; sourceTree = "<group>"; };
 		509EFE74015D273EBFFE3C19 /* BoardCoordinator+Outcome.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "BoardCoordinator+Outcome.swift"; sourceTree = "<group>"; };
 		52347FEF6FA67664FBF7BF1A /* BundleHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BundleHelper.swift; sourceTree = "<group>"; };
 		524F8A9CD2904FC63166A232 /* EditionInfo.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EditionInfo.swift; sourceTree = "<group>"; };
@@ -321,6 +324,7 @@
 		84AAD1A669303376EFE4AB19 /* BoardCamera.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BoardCamera.swift; sourceTree = "<group>"; };
 		85444C8330CF135ED8080DFA /* HighlightStyle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HighlightStyle.swift; sourceTree = "<group>"; };
 		8631B220635598C0A14D982C /* BoardBuilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BoardBuilder.swift; sourceTree = "<group>"; };
+		876B37D25F8409D46B5DCBC4 /* TableRules.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TableRules.swift; sourceTree = "<group>"; };
 		889E9E03A546F9863470E6EB /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		8A1F3360FC927B90953116E2 /* GameManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameManager.swift; sourceTree = "<group>"; };
 		8A2BBA0188C2D10D81CAC68B /* PlayerTurnController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerTurnController.swift; sourceTree = "<group>"; };
@@ -607,6 +611,7 @@
 				975066D59FC5616F167806B8 /* MenuKeyArt.swift */,
 				D9D1DCB6F2E36C85EC7CA983 /* QuestPicker.swift */,
 				AABF17B34BECDFBAFC515C72 /* SanctuarySheet.swift */,
+				4D00189AAD6484D20C66CBC0 /* TableRulesSheet.swift */,
 				D86B71BFEEBD99C00C1AF649 /* TownPartyRow.swift */,
 				227A3064E6D684967F7C3C60 /* Dialogs */,
 				FFE5F7E058CB9F9443DB1BC5 /* Figures */,
@@ -669,6 +674,7 @@
 				2F82064F5AB4E5914334FEA9 /* GameState+Elements.swift */,
 				C0429C07F7DA0462F801132A /* GameSummon.swift */,
 				D1EA85C028A0AFE294D1CD52 /* Scenario.swift */,
+				876B37D25F8409D46B5DCBC4 /* TableRules.swift */,
 				36A77BA3A7D9FB3E6FA67F86 /* EditionData */,
 				22ECA3A7C3DF537E94F746A9 /* Enums */,
 				2C227AE6F13718DB3A33256D /* Persistence */,
@@ -1138,6 +1144,8 @@
 				68B34A2D170B539CB4F7D79A /* SummonState.swift in Sources */,
 				F64F8FAF99B4F1F1C41AF2B9 /* SummonTurnController.swift in Sources */,
 				A73BC3A80E80682370D626C6 /* SupportedLocale.swift in Sources */,
+				C57FA18F9314E7681D1CD0C9 /* TableRules.swift in Sources */,
+				8AA44B90BFF46A1E66C7CF62 /* TableRulesSheet.swift in Sources */,
 				4D8A855BF0C689D5ED706822 /* TileGrids.swift in Sources */,
 				14511DEB8C59B9436FC95253 /* TownPartyRow.swift in Sources */,
 				46B94503244BB10D9E14A9F0 /* TreasureRewardParser.swift in Sources */,
