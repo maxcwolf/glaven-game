@@ -180,6 +180,11 @@ final class ScenarioSimulator {
                 advantage: draw.advantage, disadvantage: draw.disadvantage, draw: draw.drawCard))
             return
         }
+        if coord.pendingItemUse != nil {
+            // Policies don't spend items, so seeded games play the same with or without them.
+            coord.resolvePendingItemUse(false)
+            return
+        }
         if let pending = coord.pendingDamage,
            let character = character(pending.characterID) {
             coord.resolvePendingDamage(choice: policy.negateDamage(pending.damage, character: character, sim: self))
@@ -302,7 +307,7 @@ final class ScenarioSimulator {
         return [
             "\(gm.game.round)", "\(coord.boardPhase)", "\(coord.currentTurnIndex)", "\(coord.turnLog.count)",
             "\(coord.interactionMode)", turn ?? "-",
-            "\(coord.pendingDamage != nil)\(coord.pendingModifierDraw != nil)\(coord.pendingShortRest != nil)\(coord.pendingLongRest != nil)",
+            "\(coord.pendingDamage != nil)\(coord.pendingModifierDraw != nil)\(coord.pendingShortRest != nil)\(coord.pendingLongRest != nil)\(coord.pendingItemUse != nil)",
         ].joined(separator: " ")
     }
 

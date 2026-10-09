@@ -95,6 +95,13 @@ struct BoardView: View {
                     .transition(.move(edge: .bottom).combined(with: .opacity))
             }
 
+            // A defence item offered while an enemy attacks
+            if let pending = coordinator.pendingItemUse {
+                ItemUsePrompt(pending: pending, coordinator: coordinator)
+                    .id(pending.id)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+            }
+
             // Long rest card choice prompt
             if let pending = coordinator.pendingLongRest,
                let character = gameManager.game.characters.first(where: { $0.id == pending.characterID }) {

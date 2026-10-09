@@ -108,4 +108,61 @@ final class BoardItemTests: XCTestCase {
             XCTAssertNotNil(gm.editionStore.itemData(id: id, edition: "gh"), key)
         }
     }
+
+    // MARK: - When an enemy attacks
+
+    /// A Bandit Guard beside the Brute attacks for `value`, drawing +0s; the Brute has nothing to
+    /// lose to negate it, so the only prompt is the item. `answer` is the player's reply.
+    private func banditAttacks(for value: Int, answer: Bool) async throws -> (item: String?, guardPiece: PieceID) {
+        let piece = try XCTUnwrap(coord.spawnMonster(name: "bandit-guard", type: .normal, at: HexCoord(4, 3), origin: .placed))
+        brute.handCards = []
+        brute.discardedCards = []
+        coord.autoResolvePrompts = false
+        let attack = Task { @MainActor in
+            await self.coord.performAttack(attacker: piece, target: .character(self.brute.id),
+                                           attack: AttackParameters(value: value),
+                                           drawCard: { AttackModifier(type: .plus0) })
+        }
+        let deadline = Date().addingTimeInterval(3)
+        while coord.pendingItemUse == nil && Date() < deadline { try await Task.sleep(nanoseconds: 1_000_000) }
+        let offered = coord.pendingItemUse?.itemName
+        coord.resolvePendingItemUse(answer)
+        _ = await attack.value
+        return (offered, piece)
+    }
+
+    func testLeatherArmorGivesTheAttackerDisadvantage() async throws {
+        brute.items = ["gh-4"]
+        let (offered, _) = try await banditAttacks(for: 2, answer: true)
+        XCTAssertEqual(offered, "Leather Armor")
+        XCTAssertEqual(coord.lastModifierReveal?.disadvantage, true)
+        XCTAssertEqual(coord.lastModifierReveal?.drawn.count, 2, "two cards drawn, the worse one taken")
+        XCTAssertTrue(brute.spentItems.contains("gh-4"))
+        XCTAssertEqual(gm.scenarioStatsManager.stats(for: brute.name).itemUses, 1)
+    }
+
+    func testHeaterShieldBlocksOneDamage() async throws {
+        brute.items = ["gh-8"]
+        let health = brute.health
+        let (offered, _) = try await banditAttacks(for: 3, answer: true)
+        XCTAssertEqual(offered, "Heater Shield")
+        XCTAssertEqual(brute.health, health - 2, "Attack 3, +0, Shield 1")
+        XCTAssertTrue(brute.spentItems.contains("gh-8"))
+    }
+
+    func testADeclinedItemStaysReady() async throws {
+        brute.items = ["gh-8"]
+        let health = brute.health
+        _ = try await banditAttacks(for: 3, answer: false)
+        XCTAssertEqual(brute.health, health - 3)
+        XCTAssertTrue(brute.spentItems.isEmpty)
+    }
+
+    func testHeadlessPlayNeverSpendsDefenceItems() async throws {
+        brute.items = ["gh-4", "gh-8"]
+        let piece = try XCTUnwrap(coord.spawnMonster(name: "bandit-guard", type: .normal, at: HexCoord(4, 3), origin: .placed))
+        await coord.performAttack(attacker: piece, target: .character(brute.id), attack: AttackParameters(value: 2))
+        XCTAssertNil(coord.pendingItemUse)
+        XCTAssertTrue(brute.spentItems.isEmpty)
+    }
 }

@@ -374,6 +374,9 @@ final class BoardCoordinator {
     /// Non-nil when a character is being attacked and needs to choose mitigation.
     var pendingDamage: PendingDamage?
 
+    /// Non-nil while a character being attacked is offered a defence item.
+    var pendingItemUse: PendingItemUse?
+
     /// Called from the UI when the player makes a damage mitigation choice.
     func resolvePendingDamage(choice: DamageMitigationChoice) {
         guard let pending = pendingDamage else { return }

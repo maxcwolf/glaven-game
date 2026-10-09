@@ -22,6 +22,7 @@
 		0C9F28E05371C2CD265A5572 /* ScenarioResultsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF546B2E6909F44E7930DB07 /* ScenarioResultsView.swift */; };
 		0EACFB0AB8BDFFCC7F591795 /* PieceID.swift in Sources */ = {isa = PBXBuildFile; fileRef = 33CE037572CCD1CC45F5F131 /* PieceID.swift */; };
 		0F5AC7D8BA68483550C50180 /* EventState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7175CB1F50A54A84F38423F7 /* EventState.swift */; };
+		101C9C9AB7FC39F5358E8BFD /* ItemUsePrompt.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2808BBF85E5363980E325C52 /* ItemUsePrompt.swift */; };
 		14511DEB8C59B9436FC95253 /* TownPartyRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = D86B71BFEEBD99C00C1AF649 /* TownPartyRow.swift */; };
 		15D2951A77CC1C086296F86D /* ScenarioMarkerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7050B86E677EE171AD0A3573 /* ScenarioMarkerView.swift */; };
 		1CC69FD5D69AB9E38536A39E /* EntityValueFunction.swift in Sources */ = {isa = PBXBuildFile; fileRef = EFAF7312A61CA28A484AE10E /* EntityValueFunction.swift */; };
@@ -232,6 +233,7 @@
 		1BFD0B71E6987E420B5CBA91 /* DeckData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeckData.swift; sourceTree = "<group>"; };
 		1E5BE6C620EBFDD27F7F98C0 /* BoardScene.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BoardScene.swift; sourceTree = "<group>"; };
 		1ED388D23F2EFC9F14DE5E4F /* BoardTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BoardTheme.swift; sourceTree = "<group>"; };
+		2808BBF85E5363980E325C52 /* ItemUsePrompt.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ItemUsePrompt.swift; sourceTree = "<group>"; };
 		28320BFD439C596F3CD2DDEA /* EventSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EventSheet.swift; sourceTree = "<group>"; };
 		2A627A875740C74A642DC8E7 /* ScenarioManager+Treasure.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ScenarioManager+Treasure.swift"; sourceTree = "<group>"; };
 		2A76D126F0BA77D9B298FE07 /* ScenarioRule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScenarioRule.swift; sourceTree = "<group>"; };
@@ -763,6 +765,7 @@
 				EA732C1B11B1FD79F496753D /* DamageChoiceSheet.swift */,
 				BA5C6A163BDEB897E9993360 /* EscortTurnController.swift */,
 				85444C8330CF135ED8080DFA /* HighlightStyle.swift */,
+				2808BBF85E5363980E325C52 /* ItemUsePrompt.swift */,
 				1B976E74EDC74601B6166FB8 /* MapTiles.swift */,
 				18D02F667561B11569B262B7 /* ModifierTrayView.swift */,
 				D2399EDB7F011E68F62A5F2F /* MonsterAbilityStripView.swift */,
@@ -1036,6 +1039,7 @@
 				B189530ED1928A8B077B6949 /* ItemDetailSheet.swift in Sources */,
 				C3E777BF9C09D52587AB7B2A /* ItemManager.swift in Sources */,
 				68A97D3FCA889DFB1E742B97 /* ItemShopSheet.swift in Sources */,
+				101C9C9AB7FC39F5358E8BFD /* ItemUsePrompt.swift in Sources */,
 				3E28D23AFCD7CAC2E98470E4 /* LevelManager.swift in Sources */,
 				67DADD29FA79AA30D290637C /* LineOfSight.swift in Sources */,
 				B6DB78CBDC0541217E3000B2 /* LogoView.swift in Sources */,

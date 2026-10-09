@@ -4,9 +4,9 @@ import Foundation
 /// — during their move, during their attack, or any time in their turn. A spent item is
 /// refreshed by a long rest; a consumed one is gone for the scenario.
 ///
-/// Played so far: the effects that happen on the user's own turn. Items that react to an enemy's
-/// attack (armour, shields, the Iron Helmet) and ones that need a card picker (Minor Stamina
-/// Potion) are still marked by hand on the character sheet.
+/// Played so far: the starting shop's on-turn items, and Leather Armor and Heater Shield, offered
+/// when an enemy attacks. Hide Armor (two uses), the Iron Helmet and the Minor Stamina Potion (a
+/// card picker) are still marked by hand on the character sheet.
 enum BoardItemEffect: Equatable {
     case extraMove(Int)
     case jump
@@ -119,9 +119,65 @@ extension BoardCoordinator {
         return true
     }
 
-    private func itemData(_ key: String) -> ItemData? {
+    func itemData(_ key: String) -> ItemData? {
         let parts = key.split(separator: "-", maxSplits: 1)
         guard parts.count == 2, let id = Int(parts[1]) else { return nil }
         return gameManager?.editionStore.itemData(id: id, edition: String(parts[0]))
+    }
+}
+
+// MARK: - When an enemy attacks
+
+/// Items offered while an enemy attacks the character.
+enum DefenseItem: String, CaseIterable {
+    /// Leather Armor: the attacker gains disadvantage (offered before the draw).
+    case leatherArmor = "gh-4"
+    /// Heater Shield: Shield 1 against an attack that damages (offered once the damage is known).
+    case heaterShield = "gh-8"
+
+    var question: String {
+        switch self {
+        case .leatherArmor: return "Give the attacker disadvantage?"
+        case .heaterShield: return "Gain Shield 1 against this attack?"
+        }
+    }
+}
+
+extension BoardCoordinator {
+
+    struct PendingItemUse: Identifiable {
+        let id = UUID()
+        let characterID: String
+        let itemName: String
+        let question: String
+        let attacker: String
+        var continuation: CheckedContinuation<Bool, Never>?
+    }
+
+    /// Called from the UI: use the offered item, or not.
+    func resolvePendingItemUse(_ use: Bool) {
+        guard let pending = pendingItemUse else { return }
+        pendingItemUse = nil
+        pending.continuation?.resume(returning: use)
+    }
+
+    /// Offer a defence item to the character being attacked; true when they use it (it is then
+    /// spent and counted). Headless play never uses them.
+    @MainActor func offerDefenseItem(_ item: DefenseItem, to target: PieceID, from attacker: PieceID) async -> Bool {
+        guard case .character(let id) = target, !autoResolvePrompts, let gameManager,
+              let character = gameManager.game.characters.first(where: { $0.id == id }),
+              character.items.contains(item.rawValue),
+              !character.spentItems.contains(item.rawValue), !character.consumedItems.contains(item.rawValue),
+              let data = itemData(item.rawValue) else { return false }
+        let use = await withCheckedContinuation { (continuation: CheckedContinuation<Bool, Never>) in
+            pendingItemUse = PendingItemUse(characterID: id, itemName: data.name, question: item.question,
+                                            attacker: name(attacker), continuation: continuation)
+        }
+        guard use else { return false }
+        gameManager.characterManager.onBeforeMutate?()
+        if data.consumed { character.consumedItems.insert(item.rawValue) } else { character.spentItems.insert(item.rawValue) }
+        gameManager.scenarioStatsManager.recordItemUse(by: character.name)
+        log("\(name(target)) uses \(data.name)", category: .info)
+        return true
     }
 }

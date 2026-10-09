@@ -48,7 +48,7 @@ extension BoardCoordinator {
 
         let distance = attackerPos.distance(to: targetPos)
         let isPoisoned = defender.entityConditions.contains { $0.name == .poison && !$0.expired }
-        let shield = CombatResolver.totalShield(shield: defender.shield, shieldPersistent: defender.shieldPersistent)
+        var shield = CombatResolver.totalShield(shield: defender.shield, shieldPersistent: defender.shieldPersistent)
         let retaliate = CombatResolver.retaliateDamage(retaliate: defender.retaliate,
                                                        retaliatePersistent: defender.retaliatePersistent,
                                                        distance: distance)
@@ -71,6 +71,10 @@ extension BoardCoordinator {
             scene.showAttack(from: attacker, to: target, ranged: attack.isRanged || distance > 1)
             if turnDelayNanoseconds > 0 { try? await Task.sleep(nanoseconds: turnDelayNanoseconds / 2) }
         }
+        if !disadvantage, areEnemies(attacker, target),
+           await offerDefenseItem(.leatherArmor, to: target, from: attacker) {
+            disadvantage = true
+        }
 
         let preDrawn = await performModifierDraw(
             attacker: attacker, defender: target, baseAttack: attack.value,
@@ -78,15 +82,24 @@ extension BoardCoordinator {
             drawCard: drawCard ?? modifierDrawer(for: attacker)
         )
 
-        let result = CombatResolver.resolveAttack(
-            attacker: attacker, defender: target, baseAttack: attack.value,
-            advantage: advantage, disadvantage: disadvantage,
-            isPoisoned: isPoisoned, shield: shield, pierce: attack.pierce,
-            conditions: attack.conditions,
-            attackerDefenderDistance: distance,
-            preDrawnCards: preDrawn, drawModifier: { nil },
-            defenderHealth: defender.health
-        )
+        func resolve() -> AttackResult {
+            CombatResolver.resolveAttack(
+                attacker: attacker, defender: target, baseAttack: attack.value,
+                advantage: advantage, disadvantage: disadvantage,
+                isPoisoned: isPoisoned, shield: shield, pierce: attack.pierce,
+                conditions: attack.conditions,
+                attackerDefenderDistance: distance,
+                preDrawnCards: preDrawn, drawModifier: { nil },
+                defenderHealth: defender.health
+            )
+        }
+        var result = resolve()
+        // Heater Shield: Shield 1 for an attack that would damage (pierce still applies).
+        if result.damage > 0, areEnemies(attacker, target),
+           await offerDefenseItem(.heaterShield, to: target, from: attacker) {
+            shield += 1
+            result = resolve()
+        }
         let breakdown = CombatResolver.damageBreakdown(
             base: attack.value, isPoisoned: isPoisoned, preDrawnCards: preDrawn,
             shield: shield, pierce: attack.pierce, isMiss: result.isMiss, finalDamage: result.damage)
