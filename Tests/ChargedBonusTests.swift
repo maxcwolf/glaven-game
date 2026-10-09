@@ -46,7 +46,7 @@ final class ChargedBonusTests: XCTestCase {
         let warding = try XCTUnwrap(deck.first { $0.cardId == 7 })
         XCTAssertEqual(ChargedBonus.slots(of: warding), [0, 1, 0, 1, 0, 1])
         let all = ["brute", "cragheart", "scoundrel", "spellweaver", "tinkerer", "lightning", "sun", "eclipse",
-                   "saw", "three-spears", "mindthief"]
+                   "saw", "three-spears", "mindthief", "squidface"]
             .flatMap { gm.editionStore.abilities(forDeck: $0, edition: "gh") }
         for (key, bonus) in ChargedBonus.byCard where !bonus.isUnlimited && bonus != .negateNextDamage {
             let id = try XCTUnwrap(Int(key.dropFirst(3)))
@@ -328,5 +328,30 @@ final class ChargedBonusTests: XCTestCase {
         XCTAssertEqual(last.type, .attack)
         XCTAssertEqual(last.value?.intValue, 2)
         XCTAssertEqual(PlayerTurnController.bonusCard(of: last), 54)
+    }
+
+    /// Nature's Lift: on a ranged attack while Air is strong or waning, consume it for +2 Range.
+    func testNaturesLiftConsumesAirForRange() throws {
+        let cragheart = add("cragheart", at: HexCoord(3, 3))
+        cragheart.activeCards = [129]
+        _ = try bandit(at: HexCoord(6, 3))
+        let deck = gm.editionStore.abilities(forDeck: "cragheart", edition: "gh")
+        let boulder = try XCTUnwrap(deck.first { $0.name == "Massive Boulder" }), other = try XCTUnwrap(deck.first { $0.name == "Avalanche" })
+        cragheart.handCards = [boulder.cardId!, other.cardId!]
+        let turn = PlayerTurnController(characterID: cragheart.id, coordinator: coord, gameManager: gm)
+        coord.activePlayerTurn = turn
+        turn.selectCards(top: boulder, bottom: other)
+        turn.executeCurrentAction()
+        XCTAssertEqual(turn.currentAttackRange(), 3, "no Air, no lift")
+        XCTAssertNil(cragheart.bonusChargesUsed[129])
+
+        gm.game.elementBoard[gm.game.elementBoard.firstIndex { $0.type == .air }!].state = .waning
+        let next = PlayerTurnController(characterID: cragheart.id, coordinator: coord, gameManager: gm)
+        coord.activePlayerTurn = next
+        next.selectCards(top: boulder, bottom: other)
+        next.executeCurrentAction()
+        XCTAssertEqual(next.currentAttackRange(), 5)
+        XCTAssertFalse(gm.game.isElementAvailable(.air))
+        XCTAssertEqual(cragheart.bonusChargesUsed[129], 1)
     }
 }

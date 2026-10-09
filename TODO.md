@@ -424,7 +424,8 @@ Scenario rewards (2026-10-08)
 - [x] **Persistent bonus charges**: the starting classes' charged cards (Warding Strength, Juggernaut, Opposing Strike, Backup Ammunition, Single Out, Smoke Bomb, Cull the Weak, Spring the Trap, Frost Armor, Crackling Air, Engulfed in Flames, Cold Front, Potent Potables) mark a charge per use, give their slot XP and leave the active area when used up (`ChargedBonusTests`)
 - [x] Locked classes' charged cards: Immortality, Purifying Aura, Angelic Ascension, Voice of the Night, Cauterize, Master Physician, Defiance of Death, Nightfall, Beacon of Light, Fortified Position (`ChargedBonusTests`)
 - [x] **Start- and end-of-turn bonuses**: Lumbering Bash and Triage (a heal at the start of the turn), Auto Turret (an attack at the end), Gas Canister (an ally recovers a card at the end), as steps of the turn (`ChargedBonusTests`)
-- [ ] **Charged cards needing a choice or not yet coded**: Stone Pummel, Nature's Lift, Foul Wind; Doomstalker dooms, Eclipse's extra actions, Vengeful Barrage, Unending Chant, Grim Bargain, Intervening Apparitions, Blood Hunger
+- [x] Nature's Lift and Foul Wind: consume Air (when there) for +2 Range on ranged attacks / +1 Attack, a charge each time (`testNaturesLiftConsumesAirForRange`)
+- [ ] **Charged cards needing a choice or not yet coded**: Stone Pummel; Doomstalker dooms, Eclipse's extra actions, Vengeful Barrage, Unending Chant, Grim Bargain, Intervening Apparitions, Blood Hunger
 - [x] **Items during board turns** (Phase VI: about 110 of 150 items play on the board)
 - [ ] **Icy terrain** — no forced-movement mechanic
 - [ ] **Plague / Enfeeble** (FH) — no mechanics

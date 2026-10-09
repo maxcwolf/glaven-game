@@ -46,6 +46,10 @@ enum ChargedBonus: Equatable {
     case negateNextDamage
     /// Enemies attacking an ally beside the character attack the character instead (Provoking Roar).
     case drawAttacksFromAdjacentAllies
+    /// On each attack action (ranged only, if so) while the element is there: consume it for +N
+    /// Range (Nature's Lift) or +N Attack (Foul Wind). A charge is marked only when it's consumed.
+    case consumeForRange(ElementType, Int)
+    case consumeForAttack(ElementType, Int)
     /// An action the character performs at the start of each turn (Lumbering Bash: Heal 2, Range 2).
     case turnStartAction(ActionModel)
     /// An action the character performs at the end of each turn (Auto Turret: Attack 2, Range 5).
@@ -102,6 +106,8 @@ enum ChargedBonus: Equatable {
         "gh-2": .experiencePerRetaliate,                        // Eye for an Eye
         "gh-98": .negateNextDamage,                             // Trickster's Reversal
         "gh-4": .drawAttacksFromAdjacentAllies,                 // Provoking Roar
+        "gh-129": .consumeForRange(.air, 2),                    // Nature's Lift
+        "gh-298": .consumeForAttack(.air, 1),                   // Foul Wind
         "gh-143": .turnStartAction(ActionModel(type: .heal, value: .int(2),        // Lumbering Bash
                                                subActions: [ActionModel(type: .range, value: .int(2))])),
         "gh-415": .turnStartAction(ActionModel(type: .heal, value: .int(2),        // Triage

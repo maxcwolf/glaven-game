@@ -524,6 +524,26 @@ final class PlayerTurnController {
                     pendingAttackValue += bonus
                 }
             }
+            // Nature's Lift (+2 Range on a ranged attack), Foul Wind (+1 Attack): consume Air.
+            if let game = gameManager?.game, let character {
+                for (cardId, bonus) in coordinator.chargedBonuses(of: character) {
+                    switch bonus {
+                    case .consumeForRange(let element, let extra) where range > 1 && game.isElementAvailable(element):
+                        _ = game.consumeElements([element])
+                        range += extra
+                        coordinator.log("\(who) consumes \(GameText.elementName(element)): +\(extra) Range", category: .element)
+                        coordinator.useCharge(cardId, of: character)
+                    case .consumeForAttack(let element, let extra) where game.isElementAvailable(element):
+                        _ = game.consumeElements([element])
+                        pendingAttackValue += extra
+                        coordinator.log("\(who) consumes \(GameText.elementName(element)): +\(extra) Attack", category: .element)
+                        coordinator.useCharge(cardId, of: character)
+                    default:
+                        continue
+                    }
+                }
+                pendingAttackRange = range
+            }
             if coordinator.isConditionActive(.invisible, on: pieceID),
                case .conditionWhileInvisible(let condition)? = coordinator.useFirstCharge(of: pieceID, where: {
                    if case .conditionWhileInvisible = $0 { return true }; return false }) {
