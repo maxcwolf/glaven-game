@@ -82,6 +82,10 @@ final class TownDialogTests: XCTestCase {
             ("campaign", AnyView(PartySheetView())), ("world map", AnyView(WorldMapView())),
             ("hand", AnyView(HandSheet(character: brute))), ("table rules", AnyView(TableRulesSheet())),
             ("campaigns", AnyView(CampaignsSheet())), ("credits", AnyView(CreditsSheet())),
+            ("items", AnyView(ItemLoadoutSheet(character: brute))), ("enhancer", AnyView(EnhancementSheet(character: brute))),
+            ("level up", AnyView(LevelUpCardSheet(character: brute))), ("statistics", AnyView(PartyStatisticsSheet())),
+            ("quest", AnyView(QuestPicker(character: brute, onDone: {}))), ("battle goals", AnyView(BattleGoalPicker(onDone: {}))),
+            ("sanctuary", AnyView(SanctuarySheet(onDone: {}))),
         ]
         for screen in [CGSize(width: 1210, height: 834), CGSize(width: 1376, height: 1032)] {
             for (name, view) in views {
@@ -98,5 +102,81 @@ final class TownDialogTests: XCTestCase {
         let date = Date(timeIntervalSince1970: 0)
         XCTAssertTrue(CampaignsSheet.line(detail: "Brute, Tinkerer", played: date).hasPrefix("Brute, Tinkerer \u{00B7} played "))
         XCTAssertTrue(CampaignsSheet.line(detail: nil, played: date).hasPrefix("played "))
+    }
+
+    // MARK: - Recruiting
+
+    /// A recruit can be taken back from the quest picker: they leave, and so does the log's
+    /// "joined the party", while the rest of the log stays.
+    func testCancellingTheQuestUndoesTheRecruit() throws {
+        let gm = try party()
+        let before = gm.game.campaignLog.count
+        gm.characterManager.addCharacter(name: "cragheart", edition: "gh")
+        let recruit = try XCTUnwrap(gm.game.characters.first { $0.name == "cragheart" })
+        gm.characterManager.dealQuests(to: recruit)
+        XCTAssertEqual(gm.game.campaignLog.count, before + 1)
+        gm.characterManager.undoRecruit(recruit)
+        XCTAssertFalse(gm.game.characters.contains { $0.name == "cragheart" })
+        XCTAssertEqual(gm.game.campaignLog.count, before, "no trace of the recruit")
+        XCTAssertTrue(gm.game.campaignLog.contains { $0.message == "Brute joined the party" })
+    }
+
+    // MARK: - Holding to learn
+
+    /// Holding Prosperity, Reputation, City Event or Sanctuary in town says what it is, with this
+    /// campaign's numbers, and links to its page in How to Play.
+    func testHoldingTheTownsButtonsExplainsThem() throws {
+        let gm = try party()
+        gm.game.partyProsperity = 6
+        gm.game.partyReputation = 7
+        gm.game.events.sanctuaryGold = 130
+        gm.game.events.cityEventDue = true
+        let explain = { BoardCoordinator.townExplanation($0, game: gm.game) }
+        let prosperity = explain(.prosperity)
+        XCTAssertEqual(prosperity.title, "Prosperity 2")
+        XCTAssertEqual(prosperity.rows.first?.value, "6 of 9 to level 3")
+        XCTAssertEqual(prosperity.topic, .prosperity)
+        let reputation = explain(.reputation)
+        XCTAssertEqual(reputation.title, "Reputation +7")
+        XCTAssertEqual(reputation.rows.first?.value, "2 gold lower")
+        XCTAssertEqual(explain(.cityEvent).rows.first?.value, "Due now, before setting out")
+        XCTAssertEqual(explain(.sanctuary).rows.last?.value, "30 of 100 gold to the next prosperity")
+        for subject in [LearnSubject.prosperity, .reputation, .cityEvent, .sanctuary] {
+            let topic = try XCTUnwrap(explain(subject).topic)
+            XCTAssertEqual(LearnTopic.topic(topic).chapter, .town)
+        }
+        gm.game.partyReputation = -5
+        XCTAssertEqual(explain(.reputation).rows.first?.value, "1 gold higher")
+    }
+
+    // MARK: - Words
+
+    func testTheDialogsSayWhatTheyShow() throws {
+        XCTAssertEqual(BattleGoalPicker.subtitle(name: "Brute", index: 0, of: 2), "Brute, 1 of 2 \u{00B7} keep one, secretly")
+        XCTAssertEqual(SanctuarySheet.progress(30), "30 of 100 gold")
+        XCTAssertEqual(SanctuarySheet.progress(130), "30 of 100 gold, 100 given before")
+        XCTAssertEqual(ItemLoadoutSheet.atHome("Already bringing 1 small item"), "At home \u{00B7} already bringing 1 small item")
+        XCTAssertEqual(ItemLoadoutSheet.atHome(nil), "At home")
+        XCTAssertTrue(LevelUpCardSheet.note(name: "Brute", level: 2, handSize: 10).hasPrefix("Choose one card of level 2 or lower."))
+        XCTAssertEqual(LevelUpCardSheet.cardWidth(count: 2, in: CGSize(width: 1100, height: 600)), 300)
+        XCTAssertLessThan(LevelUpCardSheet.cardWidth(count: 5, in: CGSize(width: 1100, height: 600)), 220)
+
+        let gm = try party()
+        let brute = gm.game.characters[0]
+        brute.record.kills = ["bandit-guard": 4, "living-bones": 2]
+        brute.record.eliteKills = 1
+        brute.record.timesExhausted = 1
+        brute.record.scenariosCompleted = ["gh-1"]
+        gm.game.characters[1].record.kills = ["bandit-guard": 3]
+        gm.game.completedScenarios = ["gh-1"]
+        gm.game.campaignLog.append(CampaignLogEntry(type: .scenarioFailed, message: "Lost #2"))
+        let totals = PartyStatisticsSheet.totals(gm.game)
+        XCTAssertEqual(totals.won, 1)
+        XCTAssertEqual(totals.lost, 1)
+        XCTAssertEqual(totals.kills, 9)
+        XCTAssertEqual(totals.exhaustions, 1)
+        XCTAssertEqual(totals.mostKilled?.name, "bandit-guard")
+        XCTAssertEqual(totals.mostKilled?.count, 7)
+        XCTAssertEqual(PartyStatisticsSheet.numbers(brute), [1, 6, 1, 1, brute.experience, brute.loot])
     }
 }

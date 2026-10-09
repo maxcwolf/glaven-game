@@ -15,6 +15,8 @@ struct GameSetupView: View {
     @State private var cardChoiceCharacter: GameCharacter?
     @State private var handCharacter: GameCharacter?
     @State private var questCharacter: GameCharacter?
+    /// The quest picker is open for a character just recruited (Cancel takes them back).
+    @State private var questForRecruit = false
     @State private var retiringCharacter: GameCharacter?
     /// A party member the player tapped in the recruit list in town, waiting for confirmation.
     @State private var dismissingCharacter: GameCharacter?
@@ -47,6 +49,60 @@ struct GameSetupView: View {
         }
         return "\(gameManager.game.learningMode)|" + party.joined(separator: ",")
     }
+
+    /// The town's dialogs (a character's sheet, items, the shop, the campaign, the map), one at a time.
+    @ViewBuilder
+    private var dialogs: some View {
+        ZStack {
+            if let character = itemsCharacter {
+                ItemLoadoutSheet(character: character, onDone: { itemsCharacter = nil })
+                    .id(character.id)
+                    .transition(.opacity)
+            }
+            if let character = enhanceCharacter {
+                EnhancementSheet(character: character, onDone: { enhanceCharacter = nil })
+                    .id(character.id)
+                    .transition(.opacity)
+            }
+            if let character = cardChoiceCharacter {
+                LevelUpCardSheet(character: character, onDone: { cardChoiceCharacter = nil })
+                    .id(character.id)
+                    .transition(.opacity)
+            }
+            if showCampaign {
+                PartySheetView(onDone: { showCampaign = false })
+                    .transition(.opacity)
+            }
+            if showWorldMap {
+                WorldMapView(onChoose: { selectedScenario = $0 }, onDone: { showWorldMap = false })
+                    .transition(.opacity)
+            }
+            if showTableRules {
+                TableRulesSheet(onDone: { showTableRules = false })
+                    .transition(.opacity)
+            }
+            if let character = handCharacter {
+                HandSheet(character: character, onDone: { handCharacter = nil })
+                    .id(character.id)
+                    .transition(.opacity)
+            }
+            if let character = sheetCharacter {
+                CharacterSheetView(character: character,
+                                   onShop: { shopCharacter = character },
+                                   onDone: { sheetCharacter = nil })
+                    .id(character.id)
+                    .transition(.opacity)
+            }
+            if let character = shopCharacter {
+                ItemShopSheet(character: character) { shopCharacter = nil }
+                    .id(character.id)
+                    .transition(.opacity)
+            }
+        }
+    }
+
+    /// A hold on a button explains it; letting go then mustn't also press it.
+    private var heldToLearn: Bool { gameManager.boardCoordinator.explanation != nil }
 
     private var inTown: Bool {
         !gameManager.game.completedScenarios.isEmpty || !gameManager.game.campaignLog.isEmpty
@@ -119,7 +175,12 @@ struct GameSetupView: View {
         }
         .overlay {
             if let character = questCharacter {
-                QuestPicker(character: character) { questCharacter = nil }
+                QuestPicker(character: character, recruiting: questForRecruit,
+                            onCancel: {
+                                gameManager.characterManager.undoRecruit(character)
+                                questCharacter = nil
+                            },
+                            onDone: { questCharacter = nil })
                     .transition(.opacity)
             }
         }
@@ -149,67 +210,21 @@ struct GameSetupView: View {
         }
         .overlay {
             if choosingGoals {
-                BattleGoalPicker(onDone: departure)
+                BattleGoalPicker(onBack: {
+                    choosingGoals = false
+                    settingOutFor = nil
+                }, onDone: departure)
                     .transition(.opacity)
             }
         }
         .modifier(TownLearning(key: townLearningKey))
-        .overlay {
-            if showCampaign {
-                PartySheetView(onDone: { showCampaign = false })
-                    .transition(.opacity)
-            }
-        }
-        .overlay {
-            if showWorldMap {
-                WorldMapView(onChoose: { selectedScenario = $0 }, onDone: { showWorldMap = false })
-                    .transition(.opacity)
-            }
-        }
-        .overlay {
-            if showTableRules {
-                TableRulesSheet(onDone: { showTableRules = false })
-                    .transition(.opacity)
-            }
-        }
-        .overlay {
-            if let character = handCharacter {
-                HandSheet(character: character, onDone: { handCharacter = nil })
-                    .id(character.id)
-                    .transition(.opacity)
-            }
-        }
-        .overlay {
-            if let character = sheetCharacter {
-                CharacterSheetView(character: character,
-                                   onShop: { shopCharacter = character },
-                                   onDone: { sheetCharacter = nil })
-                    .id(character.id)
-                    .transition(.opacity)
-            }
-        }
-        .overlay {
-            if let character = shopCharacter {
-                ItemShopSheet(character: character) { shopCharacter = nil }
-                    .id(character.id)
-                    .transition(.opacity)
-            }
-        }
+        .overlay { dialogs }
         .overlay {
             if let deck = events.first {
                 EventSheet(deck: deck, onDone: { finishEvent(deck) }, onClose: closeEvents)
                     .id("\(deck)-\(events.count)")
                     .transition(.opacity)
             }
-        }
-        .sheet(item: $itemsCharacter) { character in
-            ItemLoadoutSheet(character: character)
-        }
-        .sheet(item: $enhanceCharacter) { character in
-            EnhancementSheet(character: character)
-        }
-        .sheet(item: $cardChoiceCharacter) { character in
-            LevelUpCardSheet(character: character)
         }
         .confirmationDialog(levelUpTitle, isPresented: Binding(
             get: { levelUpCharacter != nil }, set: { if !$0 { levelUpCharacter = nil } }
@@ -271,8 +286,9 @@ struct GameSetupView: View {
     }
 
     /// Deal two quests (unless two are waiting already) and let the character keep one.
-    private func chooseQuest(for character: GameCharacter) {
+    private func chooseQuest(for character: GameCharacter, recruiting: Bool = false) {
         if character.questChoices.isEmpty { gameManager.characterManager.dealQuests(to: character) }
+        questForRecruit = recruiting
         questCharacter = character
     }
 
@@ -316,19 +332,24 @@ struct GameSetupView: View {
             .accessibilityAddTraits(.isHeader)
             if inTown {
                 TownChip(icon: "building.columns.fill", text: "Prosperity \(prosperityLevel)")
+                    .learnable(.prosperity)
                 TownChip(icon: "shield.lefthalf.filled", text: "Reputation \(gameManager.game.partyReputation)")
+                    .learnable(.reputation)
             }
             Spacer(minLength: 8)
             if gameManager.game.events.cityEventDue {
                 Button("City Event", systemImage: "building.2.fill") {
+                    guard !heldToLearn else { return }
                     gameManager.prepareEvents([.city])
                     events = [.city]
                 }
                 .buttonStyle(.boardPrimaryCompact)
+                .learnable(.cityEvent)
             }
             if inTown {
-                Button("Sanctuary", systemImage: "sun.max") { showSanctuary = true }
+                Button("Sanctuary", systemImage: "sun.max") { if !heldToLearn { showSanctuary = true } }
                     .buttonStyle(.boardQuietCompact)
+                    .learnable(.sanctuary)
             }
             Button("Campaign", systemImage: "book.closed") { showCampaign = true }
                 .buttonStyle(.boardQuietCompact)
@@ -438,7 +459,7 @@ struct GameSetupView: View {
                 gameManager.characterManager.addCharacter(name: character.name, edition: edition, level: level)
                 // A recruit chooses their personal quest straight away.
                 if let recruit = gameManager.game.characters.first(where: { $0.name == character.name }) {
-                    chooseQuest(for: recruit)
+                    chooseQuest(for: recruit, recruiting: true)
                 }
             }
         } label: {

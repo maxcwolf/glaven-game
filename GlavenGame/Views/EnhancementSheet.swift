@@ -4,7 +4,6 @@ import SwiftUI
 /// put there. An enhancement is for good, so each purchase is confirmed first.
 struct EnhancementSheet: View {
     @Environment(GameManager.self) private var gameManager
-    @Environment(\.dismiss) private var dismiss
     let character: GameCharacter
     @State private var cardId: Int?
     @State private var pending: Purchase?
@@ -33,12 +32,42 @@ struct EnhancementSheet: View {
 
     private var selected: AbilityModel? { cards.first { $0.cardId == cardId } }
 
+    var onDone: () -> Void = {}
+
     var body: some View {
-        if scrolls {
-            NavigationStack { sheet }
-        } else {
-            content.onAppear { if cardId == nil { cardId = startCard ?? cards.first?.cardId } }
+        TownDialog(title: "The Enhancer", subtitle: "\(name) \u{00B7} enhancements stay on a card for good",
+                   portrait: (ImageLoader.characterThumbnail(edition: character.edition, name: character.name),
+                              Color(hex: character.color) ?? BoardTheme.border),
+                   onDone: onDone) {
+            TownGold(amount: character.loot)
+        } content: {
+            HStack(alignment: .top, spacing: 16) {
+                scrolling {
+                    VStack(alignment: .leading, spacing: 10) {
+                        if !open { lockedNote }
+                        TownSmallCaps(text: "Choose a card")
+                        LazyVGrid(columns: Array(repeating: GridItem(.fixed(96), spacing: 8), count: 4), alignment: .leading, spacing: 8) {
+                            ForEach(cards) { card in
+                                AbilityCardTile(card: card, character: character, selected: card.cardId == cardId, width: 96)
+                                    .opacity(card.cardId == cardId ? 1 : 0.7)
+                                    .onTapGesture { cardId = card.cardId; pending = nil }
+                            }
+                        }
+                    }
+                }
+                .frame(width: 410)
+                scrolling {
+                    HStack(alignment: .top, spacing: 14) {
+                        if let card = selected {
+                            AbilityCardTile(card: card, character: character, selected: true, width: 210)
+                        }
+                        slotsPanel
+                    }
+                }
+            }
+            .padding(18)
         }
+        .onAppear { if cardId == nil { cardId = startCard ?? cards.first?.cardId } }
     }
 
     @ViewBuilder
@@ -46,67 +75,10 @@ struct EnhancementSheet: View {
         if scrolls { ScrollView { inner() } } else { inner().frame(maxHeight: .infinity, alignment: .top) }
     }
 
-    private var content: some View {
-            HStack(alignment: .top, spacing: 0) {
-                scrolling {
-                    VStack(alignment: .leading, spacing: 12) {
-                        if !open { lockedNote }
-                        LazyVGrid(columns: [GridItem(.adaptive(minimum: 130), spacing: 10)], spacing: 10) {
-                            ForEach(cards) { card in
-                                AbilityCardTile(card: card, character: character, selected: card.cardId == cardId, width: 130)
-                                    .onTapGesture { cardId = card.cardId }
-                            }
-                        }
-                    }
-                    .padding(20)
-                }
-                .frame(maxWidth: .infinity)
-                Divider().opacity(0.3)
-                scrolling {
-                    slotsPanel
-                        .padding(20)
-                }
-                .frame(width: 380)
-            }
-            .background(BoardTheme.sheet)
-    }
-
-    private var sheet: some View {
-            content
-            .navigationTitle("The Enhancer — \(name)")
-            #if os(iOS)
-            .navigationBarTitleDisplayMode(.inline)
-            #endif
-            .toolbar {
-                ToolbarItem(placement: .principal) {
-                    Label("\(character.loot) gold", systemImage: "circle.hexagongrid.fill")
-                        .labelStyle(.titleAndIcon)
-                        .font(.headline.monospacedDigit())
-                        .foregroundStyle(BoardTheme.brass)
-                }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Done") { dismiss() }
-                }
-            }
-            .confirmationDialog(pending.map(confirmTitle) ?? "", isPresented: Binding(
-                get: { pending != nil }, set: { if !$0 { pending = nil } }), titleVisibility: .visible) {
-                if let pending, let card = selected {
-                    Button("Enhance for \(pending.cost) gold") {
-                        enhancer.buy(pending.enhancement, in: pending.slot, card: card, for: character)
-                        self.pending = nil
-                    }
-                    Button("Cancel", role: .cancel) { self.pending = nil }
-                }
-            } message: {
-                Text("An enhancement stays on the card for good.")
-            }
-            .onAppear { if cardId == nil { cardId = startCard ?? cards.first?.cardId } }
-    }
-
     private var lockedNote: some View {
         Label("The Enhancer opens once the party earns The Power of Enhancement, from Frozen Hollow.",
               systemImage: "lock.fill")
-            .font(.body)
+            .font(BoardTheme.font(size: 14))
             .foregroundStyle(BoardTheme.secondaryText)
             .padding(12)
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -120,15 +92,15 @@ struct EnhancementSheet: View {
         if let card = selected {
             VStack(alignment: .leading, spacing: 14) {
                 Text(card.name ?? "Card")
-                    .font(BoardTheme.display(26))
+                    .font(BoardTheme.display(24))
                     .foregroundStyle(BoardTheme.text)
                 let count = EnhancementsManager.enhancementCount(on: card.cardId ?? 0, in: character.enhancements)
-                Text("Level \(CardPool.level(of: card).map(String.init) ?? "X") · \(count) enhanced · \(character.loot) gold to spend")
-                    .font(.subheadline.monospacedDigit())
+                Text("Level \(CardPool.level(of: card).map(String.init) ?? "X") · \(count == 0 ? "nothing enhanced yet" : "\(count) enhanced")")
+                    .font(BoardTheme.font(size: 13))
                     .foregroundStyle(BoardTheme.secondaryText)
                 if count > 0 {
                     Text("Each enhancement already on a card adds \(character.edition == "fh" ? 50 : 75) gold.")
-                        .font(.caption)
+                        .font(BoardTheme.font(size: 12))
                         .foregroundStyle(BoardTheme.secondaryText)
                 }
                 ForEach(CardEnhancing.slots(of: card)) { slot in
@@ -137,6 +109,7 @@ struct EnhancementSheet: View {
             }
         } else {
             Text("Choose a card.")
+                .font(BoardTheme.font(size: 14))
                 .foregroundStyle(BoardTheme.secondaryText)
         }
     }
@@ -151,13 +124,14 @@ struct EnhancementSheet: View {
                     .foregroundStyle(BoardTheme.brass)
                     .accessibilityLabel(Self.shapeName(slot.type))
                 Text(Self.line(slot))
-                    .font(.headline)
+                    .font(BoardTheme.font(size: 15, weight: .semibold))
                     .foregroundStyle(BoardTheme.text)
                 Spacer()
                 let slotsOnLine = slot.action.enhancementTypes?.count ?? 1
                 Text((slot.half == "top" ? "TOP" : "BOTTOM")
                      + (slotsOnLine > 1 ? " · SLOT \(slot.slotIndex + 1) OF \(slotsOnLine)" : ""))
-                    .font(.caption.weight(.bold))
+                    .font(BoardTheme.font(size: 11, weight: .bold))
+                    .kerning(1.1)
                     .foregroundStyle(BoardTheme.secondaryText)
             }
             if slot.type == .hex, slot.action.type == .area, let pattern = slot.action.value?.stringValue {
@@ -169,12 +143,28 @@ struct EnhancementSheet: View {
             }
             if let current {
                 Label(current.action.displayName, systemImage: "sparkles")
-                    .font(.subheadline.weight(.semibold))
+                    .font(BoardTheme.font(size: 14, weight: .semibold))
                     .foregroundStyle(BoardTheme.gain)
             } else if options.isEmpty {
                 Text("The Enhancer can't do this one yet.")
-                    .font(.caption)
+                    .font(BoardTheme.font(size: 12))
                     .foregroundStyle(BoardTheme.secondaryText)
+            } else if let pending, pending.slot.id == slot.id {
+                // An enhancement is for good, so it's confirmed here first.
+                HStack(spacing: 8) {
+                    Text("\(pending.enhancement.displayName) for \(pending.cost) gold?")
+                        .font(BoardTheme.font(size: 13, weight: .semibold))
+                        .foregroundStyle(BoardTheme.text)
+                    Spacer(minLength: 4)
+                    Button("Keep") { self.pending = nil }
+                        .buttonStyle(.boardQuietCompact)
+                    Button("Enhance") {
+                        enhancer.buy(pending.enhancement, in: pending.slot, card: card, for: character)
+                        self.pending = nil
+                    }
+                    .buttonStyle(.boardPrimaryCompact)
+                    .accessibilityLabel("Enhance with \(pending.enhancement.displayName) for \(pending.cost) gold")
+                }
             } else {
                 FlowLayout(spacing: 6) {
                     ForEach(options, id: \.self) { option in
@@ -186,12 +176,12 @@ struct EnhancementSheet: View {
                         } label: {
                             HStack(spacing: 6) {
                                 Text(option.displayName).foregroundStyle(BoardTheme.text)
-                                Text("\(cost)g").foregroundStyle(problem == nil ? BoardTheme.brass : BoardTheme.defeat)
+                                Text("\(cost)").foregroundStyle(problem == nil ? BoardTheme.victory : BoardTheme.secondaryText)
                             }
-                            .font(.subheadline.monospacedDigit())
-                            .padding(.horizontal, 10)
-                            .padding(.vertical, 6)
-                            .background(BoardTheme.panel, in: Capsule())
+                            .font(BoardTheme.font(size: 13, weight: .semibold).monospacedDigit())
+                            .padding(.horizontal, 11)
+                            .frame(minHeight: 32)
+                            .background(BoardTheme.raised, in: Capsule())
                             .overlay(Capsule().stroke(problem == nil ? BoardTheme.brass.opacity(0.7) : BoardTheme.border.opacity(0.5)))
                             .opacity(problem == nil ? 1 : 0.6)
                         }
@@ -204,11 +194,8 @@ struct EnhancementSheet: View {
             }
         }
         .padding(12)
-        .background(BoardTheme.raised, in: RoundedRectangle(cornerRadius: BoardTheme.Radius.medium))
-    }
-
-    private func confirmTitle(_ purchase: Purchase) -> String {
-        "\(purchase.enhancement.displayName) on \(Self.line(purchase.slot))?"
+        .background(BoardTheme.panel, in: RoundedRectangle(cornerRadius: 14))
+        .overlay(RoundedRectangle(cornerRadius: 14).stroke(BoardTheme.border.opacity(0.45), lineWidth: 1))
     }
 
     /// The printed line a slot sits on: "Attack 3", or "Attack 3 · Pierce 2" for a sub-action.

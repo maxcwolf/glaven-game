@@ -14,6 +14,8 @@ struct TownDialog<Trailing: View, Content: View>: View {
     /// "Done", or "Cancel" beside a separate confirm in `trailing`.
     var doneTitle = "Done"
     var doneDisabled = false
+    /// Done in brass, or quiet when the dialog's choices are its own buttons (a quest picker's Later).
+    var doneProminent = true
     /// What tapping outside does, when that isn't Done (it puts changes aside rather than saving them).
     var onCancel: (() -> Void)? = nil
     let onDone: () -> Void
@@ -74,7 +76,7 @@ struct TownDialog<Trailing: View, Content: View>: View {
             Spacer(minLength: 12)
             trailing
             Button(doneTitle, action: onDone)
-                .buttonStyle(.boardPrimary)
+                .buttonStyle(doneProminent ? .boardPrimary : .boardQuiet)
                 .keyboardShortcut(.defaultAction)
                 .disabled(doneDisabled)
         }

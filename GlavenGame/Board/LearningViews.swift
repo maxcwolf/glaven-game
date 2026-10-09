@@ -356,6 +356,13 @@ struct LearningOverlay: View {
 /// Learning mode in town: a tip when something new can be done there (level up, a perk, a
 /// quest to choose or finish, gold to spend), and How to Play.
 struct TownLearning: ViewModifier {
+    /// Under the held chip, kept on screen.
+    static func cardOffset(below target: CGRect?, width: CGFloat, in size: CGSize) -> CGSize {
+        guard let target else { return CGSize(width: (size.width - width) / 2, height: 80) }
+        let x = min(max(16, target.midX - width / 2), size.width - width - 16)
+        return CGSize(width: x, height: target.maxY + 14)
+    }
+
     @Environment(GameManager.self) private var gameManager
     /// Changes whenever what the party can do in town changes.
     let key: String
@@ -379,6 +386,30 @@ struct TownLearning: ViewModifier {
                     HowToPlayBook(coordinator: coordinator, topic: request.topic)
                         .id(request.id)
                         .transition(.opacity)
+                }
+            }
+            // A held chip or button explained, beside it.
+            .overlayPreferenceValue(LearnAnchorKey.self) { anchors in
+                GeometryReader { geo in
+                    if coordinator.pendingTip == nil, let explanation = coordinator.explanation {
+                        ZStack(alignment: .topLeading) {
+                            Color.black.opacity(0.3)
+                                .contentShape(Rectangle())
+                                .onTapGesture { coordinator.closeExplanation() }
+                                .accessibilityHidden(true)   // the card's Close does it
+                            let target = anchors[explanation.subject].map { geo[$0] }
+                            if let target {
+                                Capsule().stroke(BoardTheme.brass, lineWidth: 3)
+                                    .frame(width: target.width + 8, height: target.height + 8)
+                                    .offset(x: target.minX - 4, y: target.minY - 4)
+                                    .allowsHitTesting(false)
+                            }
+                            ExplanationCard(explanation: explanation, coordinator: coordinator)
+                                .offset(Self.cardOffset(below: target, width: 420, in: geo.size))
+                        }
+                        .id(explanation.id)
+                        .transition(.opacity)
+                    }
                 }
             }
             .task(id: key) { coordinator.teachInTown() }

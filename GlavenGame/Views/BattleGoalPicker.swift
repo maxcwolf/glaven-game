@@ -1,33 +1,31 @@
 import SwiftUI
 
 /// Before setting out: each character in turn keeps one of the two battle goals dealt to them.
+/// Back returns to the previous character, or (from the first) to town; the goals dealt stand.
 struct BattleGoalPicker: View {
     @Environment(GameManager.self) private var gameManager
+    var onBack: () -> Void = {}
     let onDone: () -> Void
     @State private var index = 0
 
     private var party: [GameCharacter] { gameManager.game.characters.filter { !$0.absent } }
 
     var body: some View {
-        ZStack {
-            BoardTheme.scrim.ignoresSafeArea()
-            if index < party.count {
-                let character = party[index]
-                VStack(alignment: .leading, spacing: 18) {
-                    HStack {
-                        Text("Battle Goal")
-                            .font(BoardTheme.display(30))
-                            .foregroundStyle(BoardTheme.text)
-                        Spacer()
-                        Text("\(index + 1) of \(party.count)")
-                            .font(.subheadline.monospacedDigit())
-                            .foregroundStyle(BoardTheme.secondaryText)
-                    }
-                    Text("\(GameText.characterName(character, labels: gameManager.editionStore)), keep one. Meet it in a successful scenario for its checkmarks; every three checkmarks earn a perk.")
-                        .font(.body)
+        if index < party.count {
+            let character = party[index]
+            let name = GameText.characterName(character, labels: gameManager.editionStore)
+            TownDialog(title: "Battle Goal", subtitle: Self.subtitle(name: name, index: index, of: party.count),
+                       portrait: (ImageLoader.characterThumbnail(edition: character.edition, name: character.name),
+                                  Color(hex: character.color) ?? BoardTheme.border),
+                       size: CGSize(width: 760, height: 520), doneTitle: "Back", doneProminent: false,
+                       onCancel: {}, onDone: back) {
+                EmptyView()
+            } content: {
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("Meet it in a scenario you win for its checkmarks; every three earn a perk.")
+                        .font(BoardTheme.font(size: 13))
                         .foregroundStyle(BoardTheme.secondaryText)
-                        .fixedSize(horizontal: false, vertical: true)
-                    HStack(alignment: .top, spacing: 14) {
+                    HStack(alignment: .top, spacing: 12) {
                         ForEach(Array(character.battleGoalCardIds.enumerated()), id: \.offset) { pick, cardId in
                             if let goal = gameManager.scenarioManager.battleGoal(cardId) {
                                 goalCard(goal) {
@@ -39,46 +37,48 @@ struct BattleGoalPicker: View {
                         }
                     }
                 }
-                .padding(28)
-                .frame(maxWidth: 640)
-                .fixedSize(horizontal: false, vertical: true)
-                .boardPanel()
-                .padding(24)
-                .id(character.id)
-                .transition(.opacity)
+                .padding(18)
             }
+            .id(character.id)
+            .transition(.opacity)
         }
     }
 
+    /// "Brute, 1 of 2 · keep one, secretly".
+    static func subtitle(name: String, index: Int, of count: Int) -> String {
+        "\(name), \(index + 1) of \(count) \u{00B7} keep one, secretly"
+    }
+
+    private func back() {
+        if index > 0 { withAnimation(.snappy) { index -= 1 } } else { onBack() }
+    }
+
     private func goalCard(_ goal: BattleGoal, choose: @escaping () -> Void) -> some View {
-        Button(action: choose) {
-            VStack(alignment: .leading, spacing: 10) {
-                HStack {
-                    Text(goal.name)
-                        .font(BoardTheme.display(24))
-                        .foregroundStyle(BoardTheme.text)
-                    Spacer()
-                    HStack(spacing: 2) {
-                        ForEach(0..<goal.checks, id: \.self) { _ in
-                            Image(systemName: "checkmark.square.fill")
-                        }
-                    }
-                    .foregroundStyle(BoardTheme.brass)
-                    .accessibilityLabel("\(goal.checks) checkmark\(goal.checks == 1 ? "" : "s")")
-                }
-                Text(goal.text)
-                    .font(.body)
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Text(goal.name)
+                    .font(BoardTheme.display(21))
                     .foregroundStyle(BoardTheme.text)
-                    .multilineTextAlignment(.leading)
-                    .fixedSize(horizontal: false, vertical: true)
-                Spacer(minLength: 0)
+                    .accessibilityAddTraits(.isHeader)
+                Spacer()
+                HStack(spacing: 3) {
+                    ForEach(0..<goal.checks, id: \.self) { _ in TownCheckBox(ticked: true) }
+                }
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel("\(goal.checks) checkmark\(goal.checks == 1 ? "" : "s")")
             }
-            .padding(16)
-            .frame(maxWidth: .infinity, minHeight: 170, alignment: .topLeading)
-            .background(BoardTheme.raised, in: RoundedRectangle(cornerRadius: BoardTheme.Radius.medium))
-            .overlay(RoundedRectangle(cornerRadius: BoardTheme.Radius.medium).stroke(BoardTheme.border))
+            Text(goal.text)
+                .font(BoardTheme.font(size: 14))
+                .foregroundStyle(BoardTheme.text)
+                .fixedSize(horizontal: false, vertical: true)
+            Spacer(minLength: 0)
+            Button("Keep This Goal", action: choose)
+                .buttonStyle(.boardPrimaryCompact)
+                .accessibilityLabel("Keep \(goal.name)")
         }
-        .buttonStyle(.plain)
-        .accessibilityHint("Keep this battle goal")
+        .padding(14)
+        .frame(maxWidth: .infinity, minHeight: 230, alignment: .topLeading)
+        .background(BoardTheme.panel, in: RoundedRectangle(cornerRadius: 14))
+        .overlay(RoundedRectangle(cornerRadius: 14).stroke(BoardTheme.border.opacity(0.45), lineWidth: 1))
     }
 }

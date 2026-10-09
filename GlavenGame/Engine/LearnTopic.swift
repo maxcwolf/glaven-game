@@ -20,7 +20,7 @@ struct LearnTopic: Identifiable, Equatable {
         // Your hand
         case handIsAClock, resting, exhaustion
         // Between scenarios
-        case levelUp, perks, enhancing, shopping, personalQuest, retirement
+        case levelUp, perks, enhancing, shopping, personalQuest, retirement, prosperity, reputation, events, sanctuary
         // Conditions
         case poison, wound, immobilize, disarm, stun, muddle, curse, invisible, strengthen, bless
     }
@@ -306,6 +306,27 @@ struct LearnTopic: Identifiable, Equatable {
             "The player then starts a new character, at any level up to the city's prosperity level.",
         ], art: .steps(["Quest done", "Retire in town", "Its reward unlocked", "A new character"], arrows: true),
            onTheBoard: "In town, Retire appears on a character once their quest is done."),
+
+        LearnTopic(id: .prosperity, chapter: .town, title: "Prosperity", paragraphs: [
+            "Gloomhaven grows as the party helps it. **Prosperity** rises when certain scenarios are won, through some [events](topic:events), and for every 100 gold given at the [sanctuary](topic:sanctuary). It never falls.",
+            "Each prosperity level stocks the [shop](topic:shopping) with more items, and new characters can start at a level up to the city's.",
+        ], art: .order([(4, "Prosperity 2"), (9, "Prosperity 3"), (15, "Prosperity 4")]),
+           onTheBoard: "In town, hold Prosperity to see how far the city is from its next level."),
+        LearnTopic(id: .reputation, chapter: .town, title: "Reputation", paragraphs: [
+            "**Reputation** is the party's name in the city, from \u{2212}20 to +20. [Events](topic:events) and some scenarios raise or lower it.",
+            "A good name lowers [shop](topic:shopping) prices (1 gold at +3, up to 5 at +19); a bad one raises them. Some event options need good or bad standing.",
+        ], art: .steps(["Good deeds", "Higher reputation", "Lower prices"], arrows: true),
+           onTheBoard: "In town, hold Reputation to see what it does to prices."),
+        LearnTopic(id: .events, chapter: .town, title: "City and road events", paragraphs: [
+            "Each visit to town, the party draws a **city event**: a short story with two choices, A and B. The outcome can give or take gold, experience, [reputation](topic:reputation) or [prosperity](topic:prosperity).",
+            "On the way to a scenario reached by road, a **road event** comes first. Some cards leave the deck once played; others go back to the bottom.",
+        ], art: .steps(["City event", "Road event", "Battle goals", "The scenario"], arrows: true),
+           onTheBoard: "In town, City Event appears when one is due; Set Out says which events come first."),
+        LearnTopic(id: .sanctuary, chapter: .town, title: "The sanctuary", paragraphs: [
+            "At the Sanctuary of the Great Oak a character can give 10 gold, once each visit, for two [blesses](topic:bless) in their next scenario.",
+            "Every 100 gold the party gives in all raises [prosperity](topic:prosperity) by one.",
+        ], art: .steps(["Give 10 gold", "Two blesses next scenario"], arrows: true),
+           onTheBoard: "In town, Sanctuary opens the donations; hold it to see how much has been given."),
 
         // MARK: Conditions
         LearnTopic(id: .poison, chapter: .conditions, title: "Poison", paragraphs: [

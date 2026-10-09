@@ -52,6 +52,16 @@ final class CharacterManager {
         game.figures.removeAll { $0.id == "char-\(character.edition)-\(character.name)" }
     }
 
+    /// Take back a recruit who hasn't chosen their quest yet: they leave, and so does the log's
+    /// "joined the party", as if they'd never been recruited.
+    func undoRecruit(_ character: GameCharacter) {
+        removeCharacter(character)
+        let joined = "\(GameText.className(character.name, edition: character.edition, labels: editionStore)) joined the party"
+        if let last = game.campaignLog.lastIndex(where: { $0.type == .characterAdded && $0.message == joined }) {
+            game.campaignLog.remove(at: last)
+        }
+    }
+
     func retireCharacter(_ character: GameCharacter, addRetirementEvents: Bool = true) {
         onBeforeMutate?()
 

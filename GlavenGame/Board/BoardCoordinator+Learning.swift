@@ -20,6 +20,8 @@ enum LearnSubject: Hashable {
     case board
     /// Several figures on the board at once (a monster and its focus, for "Why?").
     case pieces([PieceID])
+    // In town
+    case prosperity, reputation, cityEvent, sanctuary
 }
 
 /// A rule taught the first time it comes up: the topic, a line about what just happened, and
@@ -280,9 +282,51 @@ extension BoardCoordinator {
             return Explanation(subject: subject, title: topic.title, paragraphs: topic.paragraphs, topic: id)
         case .pieces(let pieces):
             return pieces.first.map { explainPiece($0) } ?? Explanation(subject: subject, title: "The board")
+        case .prosperity, .reputation, .cityEvent, .sanctuary:
+            return Self.townExplanation(subject, game: gameManager?.game ?? GameState())
         case .board:
             return Explanation(subject: subject, title: "The board",
                                paragraphs: ["Long-press a figure or a hex to learn what it is."], topic: .moving)
+        }
+    }
+
+    /// The town's standing and places, with this campaign's numbers.
+    static func townExplanation(_ subject: LearnSubject, game: GameState) -> Explanation {
+        switch subject {
+        case .prosperity:
+            let level = game.prosperityLevel
+            let thresholds = PartySheetView.prosperityThresholds
+            let next = level < thresholds.count
+                ? "\(game.partyProsperity) of \(thresholds[level]) to level \(level + 1)" : "\(game.partyProsperity), the highest level"
+            return Explanation(subject: subject, title: "Prosperity \(level)", rows: [
+                .init(label: "Checkmarks", value: next),
+                .init(label: "The shop", value: "Items up to prosperity \(level)"),
+                .init(label: "Recruits", value: "Can start at level \(level)"),
+            ], paragraphs: ["The city grows as the party wins certain scenarios, through some events, and for every 100 gold given at the sanctuary. It never falls."],
+               topic: .prosperity)
+        case .reputation:
+            let value = game.partyReputation
+            let modifier = ItemManager.reputationPriceModifier(value)
+            let prices = modifier == 0 ? "As printed" : "\(abs(modifier)) gold \(modifier < 0 ? "lower" : "higher")"
+            return Explanation(subject: subject, title: "Reputation \(value > 0 ? "+" : "")\(value)", rows: [
+                .init(label: "Shop prices", value: prices,
+                      note: "1 gold lower at +3, up to 5 lower at +19; higher below \u{2212}3."),
+                .init(label: "Range", value: "\u{2212}20 to +20"),
+            ], paragraphs: ["The party's name in the city. Events and some scenarios raise or lower it, and a few event options need good or bad standing."],
+               topic: .reputation)
+        case .cityEvent:
+            return Explanation(subject: subject, title: "City Event", rows: [
+                .init(label: "When", value: game.events.cityEventDue ? "Due now, before setting out" : "Once each visit to town"),
+                .init(label: "Then", value: "A road event, if the scenario is reached by road"),
+            ], paragraphs: ["Draw the top card, choose A or B, and see what happens: gold, experience, reputation, prosperity or a curse. Some cards leave the deck for good."],
+               topic: .events)
+        default:
+            let given = game.events.sanctuaryGold
+            return Explanation(subject: subject, title: "Sanctuary of the Great Oak", rows: [
+                .init(label: "Cost", value: "\(CharacterManager.donation) gold, once each visit"),
+                .init(label: "Gives", value: "Two Blesses in your next scenario"),
+                .init(label: "Given", value: "\(given % 100) of 100 gold to the next prosperity"),
+            ], topic: .sanctuary)
         }
     }
 

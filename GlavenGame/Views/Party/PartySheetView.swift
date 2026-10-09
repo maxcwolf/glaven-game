@@ -42,8 +42,11 @@ struct PartySheetView: View {
             Button("Save") { gameManager.game.partyName = nameText.trimmingCharacters(in: .whitespacesAndNewlines) }
             Button("Cancel", role: .cancel) {}
         }
-        .sheet(isPresented: $showStatistics) {
-            PartyStatisticsSheet()
+        .overlay {
+            if showStatistics {
+                PartyStatisticsSheet(onDone: { showStatistics = false })
+                    .transition(.opacity)
+            }
         }
     }
 

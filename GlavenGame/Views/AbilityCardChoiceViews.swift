@@ -70,8 +70,8 @@ struct AbilityCardTile: View {
 /// Levelling up: pick one new ability card of the character's level or lower (GH p.44).
 struct LevelUpCardSheet: View {
     @Environment(GameManager.self) private var gameManager
-    @Environment(\.dismiss) private var dismiss
     let character: GameCharacter
+    var onDone: () -> Void = {}
     @State private var picked: Int?
 
     private var cards: [AbilityModel] {
@@ -80,48 +80,61 @@ struct LevelUpCardSheet: View {
     }
 
     var body: some View {
-        NavigationStack {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 16) {
-                    Text("Choose one card to add to \(name)'s pool. It can be of level \(character.level) or lower.")
-                        .font(.body)
-                        .foregroundStyle(BoardTheme.secondaryText)
-                    let levels = Array(Set(cards.compactMap { CardPool.level(of: $0) })).sorted(by: >)
-                    ForEach(levels, id: \.self) { level in
-                        Text("LEVEL \(level)")
-                            .font(.caption.weight(.bold))
-                            .foregroundStyle(BoardTheme.brass)
-                        LazyVGrid(columns: [GridItem(.adaptive(minimum: 160), spacing: 12)], spacing: 12) {
-                            ForEach(cards.filter { CardPool.level(of: $0) == level }) { card in
-                                AbilityCardTile(card: card, character: character, selected: picked == card.cardId)
-                                    .onTapGesture { picked = card.cardId }
+        TownDialog(title: "\(name) Reaches Level \(character.level)", subtitle: "A new card for the \(name)'s pool",
+                   portrait: (ImageLoader.characterThumbnail(edition: character.edition, name: character.name),
+                              Color(hex: character.color) ?? BoardTheme.border),
+                   doneTitle: "Add Card", doneDisabled: picked == nil, onCancel: onDone, onDone: add) {
+            Button("Later", action: onDone)
+                .buttonStyle(.boardQuiet)
+        } content: {
+            VStack(alignment: .leading, spacing: 14) {
+                Text(Self.note(name: name, level: character.level, handSize: character.handSize))
+                    .font(BoardTheme.font(size: 13))
+                    .foregroundStyle(BoardTheme.secondaryText)
+                    .fixedSize(horizontal: false, vertical: true)
+                GeometryReader { geo in
+                    let width = Self.cardWidth(count: cards.count, in: geo.size)
+                    ScrollView {
+                        LazyVGrid(columns: [GridItem(.adaptive(minimum: width, maximum: width), spacing: 24)], spacing: 18) {
+                            ForEach(cards) { card in
+                                let chosen = picked == card.cardId
+                                VStack(spacing: 8) {
+                                    AbilityCardTile(card: card, character: character, selected: chosen, width: width)
+                                        .opacity(chosen || picked == nil ? 1 : 0.6)
+                                        .onTapGesture { picked = card.cardId }
+                                    TownSmallCaps(text: chosen ? "Chosen" : "Level \(CardPool.level(of: card).map(String.init) ?? "X")",
+                                                  lit: chosen)
+                                }
                             }
                         }
+                        .frame(maxWidth: .infinity)
+                        .padding(.top, 6)
                     }
                 }
-                .padding(20)
             }
-            .background(BoardTheme.sheet)
-            .navigationTitle("\(name) — Level \(character.level)")
-            #if os(iOS)
-            .navigationBarTitleDisplayMode(.inline)
-            #endif
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Later") { dismiss() }
-                }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Add Card") {
-                        if let picked { gameManager.characterManager.chooseCard(picked, for: character) }
-                        dismiss()
-                    }
-                    .disabled(picked == nil)
-                }
-            }
+            .padding(18)
         }
     }
 
     private var name: String { GameText.characterName(character, labels: gameManager.editionStore) }
+
+    private func add() {
+        if let picked { gameManager.characterManager.chooseCard(picked, for: character) }
+        onDone()
+    }
+
+    /// "Choose one card of level 2 or lower. It joins the cards the Brute can bring; the others stay out of the pool for now. A hand is still 10 cards."
+    static func note(name: String, level: Int, handSize: Int) -> String {
+        "Choose one card of level \(level) or lower. It joins the cards the \(name) can bring; the rest wait for a later level. A hand is still \(handSize) cards."
+    }
+
+    /// As large as fits in one row for two or three cards; smaller for more.
+    static func cardWidth(count: Int, in space: CGSize) -> CGFloat {
+        let byHeight = (space.height - 40) / 1.4
+        let perRow = CGFloat(max(1, min(count, 5)))
+        let byWidth = (space.width - 24 * (perRow - 1)) / perRow
+        return max(140, min(300, byHeight, byWidth))
+    }
 }
 
 /// Before a scenario: which cards from the pool the character brings, up to their hand size.
