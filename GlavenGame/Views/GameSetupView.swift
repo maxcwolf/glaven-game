@@ -188,7 +188,7 @@ struct GameSetupView: View {
         }
         .overlay {
             if let deck = events.first {
-                EventSheet(deck: deck) { finishEvent(deck) }
+                EventSheet(deck: deck, onDone: { finishEvent(deck) }, onClose: closeEvents)
                     .id("\(deck)-\(events.count)")
                     .transition(.opacity)
             }
@@ -259,6 +259,12 @@ struct GameSetupView: View {
         settingOutFor = nil
         gameManager.saveGame()
         gameManager.startScenarioOnBoard(scenario)
+    }
+
+    /// Put the events off: they stay due, and setting out waits until they're resolved.
+    private func closeEvents() {
+        events = []
+        settingOutFor = nil
     }
 
     private func finishEvent(_ deck: EventCardManager.Deck) {

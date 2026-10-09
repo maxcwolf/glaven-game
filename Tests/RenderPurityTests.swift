@@ -54,6 +54,7 @@ final class RenderPurityTests: XCTestCase {
             ("party and scenario", AnyView(GameSetupView())),
             ("city event", AnyView(EventSheet(deck: .city) {})),
             ("road event", AnyView(EventSheet(deck: .road) {})),
+            ("city event, closable", AnyView(EventSheet(deck: .city, onDone: {}, onClose: {}))),
             ("sanctuary", AnyView(SanctuarySheet {})),
             ("battle goals", AnyView(BattleGoalPicker {})),
             ("quest", AnyView(QuestPicker(character: brute) {})),

@@ -6,6 +6,8 @@ struct EventSheet: View {
     @Environment(GameManager.self) private var gameManager
     let deck: EventCardManager.Deck
     let onDone: () -> Void
+    /// Close without resolving it (it stays due); nil when it can't be put off.
+    var onClose: (() -> Void)? = nil
 
     @State private var option: String?
     @State private var choices = EventCardManager.Choices()
@@ -62,8 +64,21 @@ struct EventSheet: View {
             Text(event.cardId)
                 .font(.headline.monospacedDigit())
                 .foregroundStyle(BoardTheme.secondaryText)
+            // Until it's resolved the event can be put off; afterwards Continue closes it.
+            if let onClose, resolution == nil {
+                Button(action: onClose) {
+                    Image(systemName: "xmark")
+                        .font(.headline)
+                        .foregroundStyle(BoardTheme.secondaryText)
+                        .frame(width: 44, height: 44)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .keyboardShortcut(.cancelAction)
+                .accessibilityLabel("Close")
+                .accessibilityHint("The event stays to be resolved later")
+            }
         }
-        .accessibilityElement(children: .combine)
     }
 
     /// An option the party can't take (it needs something they don't have) is shown but greyed.
