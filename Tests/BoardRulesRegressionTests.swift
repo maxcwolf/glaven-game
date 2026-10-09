@@ -478,6 +478,65 @@ final class BoardRulesRegressionTests: XCTestCase {
         XCTAssertTrue(bandit.entityConditions.contains { $0.name == .muddle })
     }
 
+    /// Regression: a target printed beside a condition (Crippling Offensive's "Immobilize and
+    /// Push 1, one adjacent enemy") left the condition with none, so it immobilized the Brute.
+    func testATargetBesideAConditionIsTheConditionsTarget() throws {
+        let offensive = try card("Crippling Offensive", of: "brute")
+        let bottom = PlayerTurnController.attachingTargets(offensive.bottomActions ?? [])
+        let immobilize = try XCTUnwrap(bottom.flatMap { $0.subActions ?? [] }.first { $0.type == .condition })
+        XCTAssertEqual(immobilize.subActions?.first { $0.type == .specialTarget }?.value?.stringValue, "enemyAdjacent")
+
+        let character = addCharacter(at: HexCoord(3, 3))
+        addMonster("bandit-guard", at: HexCoord(4, 3))
+        let other = try card("Trample", of: "brute")
+        character.handCards = [offensive.cardId!, other.cardId!]
+        let turn = PlayerTurnController(characterID: character.id, coordinator: coord, gameManager: gm)
+        coord.activePlayerTurn = turn
+        turn.selectCards(top: other, bottom: offensive)
+        turn.setBottomFirst(true)
+        turn.skipCurrentAction()      // the move
+        turn.executeCurrentAction()   // Immobilize and Push 1
+        XCTAssertFalse(character.entityConditions.contains { $0.name == .immobilize }, "not the Brute")
+    }
+
+    /// Mass Extinction curses and wounds every other figure, allies included.
+    func testMassExtinctionHitsEveryoneElse() throws {
+        let squid = addCharacter("squidface", at: HexCoord(3, 3))
+        let ally = addCharacter("brute", at: HexCoord(6, 6))
+        let bandit = addMonster("bandit-guard", at: HexCoord(5, 3))
+        let extinction = try card("Mass Extinction", of: "squidface")
+        let other = try XCTUnwrap(gm.editionStore.abilities(forDeck: "squidface", edition: "gh").first { $0.cardId != extinction.cardId })
+        squid.handCards = [extinction.cardId!, other.cardId!]
+        let turn = PlayerTurnController(characterID: squid.id, coordinator: coord, gameManager: gm)
+        coord.activePlayerTurn = turn
+        turn.selectCards(top: extinction, bottom: other)
+        turn.executeCurrentAction()
+        XCTAssertTrue(bandit.entityConditions.contains { $0.name == .wound })
+        XCTAssertTrue(ally.entityConditions.contains { $0.name == .wound })
+        XCTAssertFalse(squid.entityConditions.contains { $0.name == .wound })
+        XCTAssertEqual(squid.attackModifierDeck.undrawnCount(of: .curse), 0)
+    }
+
+    /// Virulent Strain: poison every enemy next to a poisoned enemy (the target is in its text).
+    func testVirulentStrainSpreadsPoison() throws {
+        let squid = addCharacter("squidface", at: HexCoord(3, 3))
+        let sick = addMonster("bandit-guard", at: HexCoord(6, 3))
+        let beside = addMonster("bandit-guard", at: HexCoord(7, 3))
+        let far = addMonster("bandit-guard", at: HexCoord(9, 6))
+        sick.entityConditions = [EntityCondition(name: .poison, state: .normal)]
+        let strain = try card("Virulent Strain", of: "squidface")
+        let other = try XCTUnwrap(gm.editionStore.abilities(forDeck: "squidface", edition: "gh").first { $0.cardId != strain.cardId })
+        squid.handCards = [strain.cardId!, other.cardId!]
+        let turn = PlayerTurnController(characterID: squid.id, coordinator: coord, gameManager: gm)
+        coord.activePlayerTurn = turn
+        turn.selectCards(top: other, bottom: strain)
+        turn.setBottomFirst(true)
+        turn.executeCurrentAction()
+        XCTAssertTrue(beside.entityConditions.contains { $0.name == .poison })
+        XCTAssertFalse(far.entityConditions.contains { $0.name == .poison })
+        XCTAssertFalse(squid.entityConditions.contains { $0.name == .poison })
+    }
+
     /// Regression: "Attack 2, all enemies moved through" (Trample) attacked no one.
     func testTrampleAttacksEveryEnemyJumpedOver() async throws {
         let character = addCharacter(at: HexCoord(3, 3))

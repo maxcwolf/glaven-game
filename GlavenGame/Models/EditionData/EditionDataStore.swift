@@ -85,8 +85,28 @@ final class EditionDataStore {
            let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
             labelsByEdition[editionName] = json
         }
+        // The "spoiler" labels hold the text of what starts locked: the other classes' cards and
+        // every item's effect. The game only shows them once they're unlocked.
+        let spoilerURL = editionURL.appendingPathComponent("label/spoiler/en.json")
+        if let data = try? Data(contentsOf: spoilerURL),
+           let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
+            labelsByEdition[editionName] = Self.merging(labelsByEdition[editionName] ?? [:], json)
+        }
 
         buildIndexes(for: editionName)
+    }
+
+    /// Merge two label trees; where both have a dictionary, they are merged in turn.
+    static func merging(_ base: [String: Any], _ extra: [String: Any]) -> [String: Any] {
+        var result = base
+        for (key, value) in extra {
+            if let a = result[key] as? [String: Any], let b = value as? [String: Any] {
+                result[key] = merging(a, b)
+            } else if result[key] == nil {
+                result[key] = value
+            }
+        }
+        return result
     }
 
     /// Load all JSON files from a directory into an array of decoded objects.

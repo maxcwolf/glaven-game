@@ -87,8 +87,10 @@ final class PlayerTurnController {
         self.bottomCard = bottom
         // Enhancements bought in town are part of the card (GH p.42).
         let enhancements = character?.enhancements ?? []
-        self.topActions = CardEnhancing.apply(enhancements, to: top.actions ?? [], cardId: top.cardId, half: "top")
-        self.bottomActions = CardEnhancing.apply(enhancements, to: bottom.bottomActions ?? [], cardId: bottom.cardId, half: "bottom")
+        self.topActions = Self.attachingTargets(
+            CardEnhancing.apply(enhancements, to: top.actions ?? [], cardId: top.cardId, half: "top"))
+        self.bottomActions = Self.attachingTargets(
+            CardEnhancing.apply(enhancements, to: bottom.bottomActions ?? [], cardId: bottom.cardId, half: "bottom"))
         self.phase = bottomFirst ? .executeBottomAction : .executeTopAction
         self.currentActionIndex = 0
     }
@@ -548,6 +550,17 @@ final class PlayerTurnController {
                 coordinator.applyCondition(cond, to: pieceID)
             case .enemiesMovedThrough:
                 coordinator.applyCondition(cond, toEnemiesOn: hexesPassed, from: pieceID)
+            case .enemiesBesideSummons:
+                let summonHexes = (character?.summons ?? []).filter { !$0.dead }
+                    .compactMap { coordinator.boardState.piecePositions[.summon(id: $0.id)] }
+                coordinator.applyCondition(cond, toEnemiesOn: summonHexes.flatMap(\.neighbors), from: pieceID)
+            case .enemiesBesideEnemiesWith(let marker):
+                let marked = coordinator.boardState.piecePositions
+                    .filter { coordinator.areEnemies(pieceID, $0.key) && coordinator.isConditionActive(marker, on: $0.key) }
+                coordinator.applyCondition(cond, toEnemiesOn: marked.values.flatMap(\.neighbors), from: pieceID)
+            case .everyoneElse:
+                coordinator.applyConditionToAllEnemies(from: pieceID, condition: cond, range: 99)
+                coordinator.applyConditionToAllAllies(from: pieceID, condition: cond, range: 99)
             }
 
         case .shield, .retaliate:
@@ -699,6 +712,39 @@ final class PlayerTurnController {
         case selfAndAllAllies(range: Int?)
         /// Every enemy passed over in this half's move (Rock Tunnel, Corrupting Embrace).
         case enemiesMovedThrough
+        /// Every enemy next to one of the character's summons (Negative Energy).
+        case enemiesBesideSummons
+        /// Every enemy next to an enemy with the condition (Virulent Strain).
+        case enemiesBesideEnemiesWith(ConditionName)
+        /// Every other figure, enemy or ally (Mass Extinction).
+        case everyoneElse
+    }
+
+    /// Cards that print a target beside their conditions rather than on them ("Immobilize and
+    /// Push 1, one adjacent enemy"): the target is attached to each condition, so none of them
+    /// falls back to the character.
+    static func attachingTargets(_ actions: [ActionModel]) -> [ActionModel] {
+        let target = actions.first { $0.type == .specialTarget }
+        return actions.map { action in
+            var action = action
+            if action.type == .concatenation || action.type == .box || action.type == .grid {
+                action.subActions = attachingTargets(action.subActions ?? [])
+                if let target {
+                    action.subActions = action.subActions?.map { attach(target, to: $0) }
+                }
+            } else if let target {
+                action = attach(target, to: action)
+            }
+            return action
+        }
+    }
+
+    private static func attach(_ target: ActionModel, to action: ActionModel) -> ActionModel {
+        guard action.type == .condition,
+              !(action.subActions ?? []).contains(where: { $0.type == .specialTarget || $0.type == .range }) else { return action }
+        var action = action
+        action.subActions = (action.subActions ?? []) + [target]
+        return action
     }
 
     /// Parse the `specialTarget` subaction to determine how a condition should be targeted.
@@ -706,10 +752,20 @@ final class PlayerTurnController {
         guard let specValue = action.subActions?
             .first(where: { $0.type == .specialTarget })?.value?.stringValue else {
             // Some cards say who in their text only ("Target all enemies moved through").
-            if customText(of: action).contains("moved through") { return .enemiesMovedThrough }
-            // A condition with a range targets one enemy in range; otherwise it targets oneself.
+            let text = customText(of: action)
+            if text.contains("moved through") { return .enemiesMovedThrough }
+            if text.contains("adjacent to any summoned ally") { return .enemiesBesideSummons }
+            if text.contains("adjacent to all enemies with"),
+               let condition = ConditionName.allCases.first(where: { text.contains("condition.\($0.rawValue)") || text.contains(" \($0.rawValue)") }) {
+                return .enemiesBesideEnemiesWith(condition)
+            }
+            // A condition with a range targets one enemy in range; otherwise a positive one is the
+            // character's own, and a negative one goes to an adjacent enemy (never the character).
             if let range = action.subActions?.first(where: { $0.type == .range })?.value?.intValue {
                 return .singleEnemy(range: range)
+            }
+            if let name = action.value?.stringValue, ConditionName(rawValue: name)?.isNegative == true {
+                return .singleEnemy(range: 1)
             }
             return .self
         }
@@ -732,6 +788,8 @@ final class PlayerTurnController {
             return .enemiesMovedThrough
         case "enemies":
             return .allEnemies(range: nil)
+        case "alliesenemies":
+            return .everyoneElse
         case "allyadjacent", "alliesadjacent", "alliesadjacentaffect":
             return .allAllies(range: 1)
         case "alliesaffect":

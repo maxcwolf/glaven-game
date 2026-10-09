@@ -401,6 +401,8 @@ Scenario rewards (2026-10-08)
 - [ ] **Objectives/escorts aren't placed on the board** — the map data has no objective positions (22 scenarios use objectives)
 - [ ] **Scenario spawn markers** — map data has no marker positions, so rule spawns are placed near the other monsters
 - [ ] **Scenario-specific goals** beyond "kill all enemies" are only modelled where the scenario data has a `finish` rule
+- [x] **Conditions that fell back on the character**: a target printed beside a condition (Crippling Offensive, Airborne Toxin, Mass Extinction) or only in its text (Negative Energy, Virulent Strain, Rock Tunnel) now reaches the right figures; a negative condition with no target never lands on the character (`BoardRulesRegressionTests`)
+- [x] **Locked classes' card text and item text**: the spoiler labels weren't loaded, so those texts were missing (`LabelTests`)
 - [x] **"Enemies moved through" attacks** (Trample, two Mindthief cards) attack every enemy passed over in the half's move (`testTrampleAttacksEveryEnemyJumpedOver`)
 - [ ] **Other custom-text abilities** (e.g. Reviving Ether's "recover all lost cards", Flanking Strike's bonus) need manual resolution — on the board they have no effect
 - [x] **Persistent bonus charges**: the starting classes' charged cards (Warding Strength, Juggernaut, Opposing Strike, Backup Ammunition, Single Out, Smoke Bomb, Cull the Weak, Spring the Trap, Frost Armor, Crackling Air, Engulfed in Flames, Cold Front, Potent Potables) mark a charge per use, give their slot XP and leave the active area when used up (`ChargedBonusTests`)
