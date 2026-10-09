@@ -366,4 +366,21 @@ final class ChargedBonusTests: XCTestCase {
         XCTAssertEqual(gm.game.monsterAttackModifierDeck.undrawnCount(of: .curse), curses + 2)
         XCTAssertEqual(soothsinger.bonusChargesUsed[358], 1)
     }
+
+    /// Stone Pummel: a melee attack with an obstacle beside the Cragheart destroys it for +3 and
+    /// marks a charge; with no obstacle, nothing happens and no charge is used.
+    func testStonePummelDestroysAnObstacleForThree() throws {
+        let cragheart = add("cragheart", at: HexCoord(3, 3))
+        cragheart.activeCards = [137]
+        let target = try bandit(at: HexCoord(4, 3))
+        XCTAssertEqual(coord.attackValueWithBonuses(3, attacker: .character(cragheart.id), target: target), 3, "no obstacle")
+        XCTAssertEqual(cragheart.bonusChargesUsed[137] ?? 0, 0)
+        coord.boardState.placeObstacle(at: HexCoord(2, 3))
+        XCTAssertEqual(coord.attackValueWithBonuses(3, attacker: .character(cragheart.id), target: target), 6)
+        XCTAssertNil(coord.boardState.cells[HexCoord(2, 3)]?.overlay, "the obstacle is destroyed")
+        XCTAssertEqual(cragheart.bonusChargesUsed[137], 1)
+        let far = try bandit(at: HexCoord(6, 3))
+        coord.boardState.placeObstacle(at: HexCoord(2, 3))
+        XCTAssertEqual(coord.attackValueWithBonuses(3, attacker: .character(cragheart.id), target: far), 3, "not a melee attack")
+    }
 }

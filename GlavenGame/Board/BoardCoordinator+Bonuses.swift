@@ -79,9 +79,12 @@ enum ChargedBonus: Equatable {
     case doubleWhileInvisible
     /// Double the attack against an enemy adjacent to none of its allies but to one of the character's.
     case doubleAgainstFlanked
+    /// On a melee attack, when possible: destroy an adjacent obstacle for +N (Stone Pummel).
+    case destroyObstacleForAttack(Int)
 
     /// By edition and card id.
     static let byCard: [String: ChargedBonus] = [
+        "gh-137": .destroyObstacleForAttack(3),                                   // Stone Pummel
         "gh-7": .shieldAgainstAttacks(1),                       // Warding Strength
         "gh-15": .negateDamage,                                 // Juggernaut
         "gh-116": .retaliateAgainstMelee(2),                    // Opposing Strike
@@ -330,6 +333,16 @@ extension BoardCoordinator {
                 useFirstCharge(of: attacker) { $0 == bonus }
             case .doubleAgainstFlanked where flanked:
                 result *= 2
+                useFirstCharge(of: attacker) { $0 == bonus }
+            case .destroyObstacleForAttack(let n):
+                // "When possible": a melee attack with an obstacle beside the character.
+                guard let attackerPos = boardState.piecePositions[attacker], attackerPos.distance(to: targetPos) <= 1,
+                      let obstacle = attackerPos.neighbors.sorted().first(where: { boardState.cells[$0]?.overlay == .obstacle })
+                else { break }
+                boardState.removeObstacle(at: obstacle)
+                boardScene?.removeOverlaySprite(at: obstacle, offsetCol: offsetCol, offsetRow: offsetRow)
+                log("\(name(attacker)) destroys an obstacle", category: .attack)
+                result += n
                 useFirstCharge(of: attacker) { $0 == bonus }
             default:
                 break

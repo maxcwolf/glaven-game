@@ -465,13 +465,14 @@ Performance & robustness
 - [x] **One-ally condition targets** ("allyAffectAdjacent", "allyAffectRange:3") ask which ally; "selfAlliesAffectRange:4" keeps its range (`testAOneAllyConditionAsksWhichAlly`)
 - [x] **Heals, shields and retaliates for allies** ("all adjacent allies", "self and all allies within range 4", "one adjacent ally") reach the allies instead of only the character (`testHealsReachTheAllies`)
 - [x] **Element consumes printed as their own step**: an independent reward (Wretched Creature's curse, Armor of the Night's heal) happens when paid; a modifier of the action before it (Natural Remedy's +1 Heal, +1 Range; Concealed Dominance's area) rides on that action (`testAConsumeStepGivesWhatItPrints`, `testAModifierConsumeBelongsToTheActionBeforeIt`). Approximate: Smoke Step and Stone Fists, whose reward modifies two actions, give it as separate actions
-- [ ] **Other custom-text abilities** (e.g. Stone Pummel, the Doomstalker's dooms) need manual resolution — on the board they have no effect
+- [ ] **Other custom-text abilities** (e.g. the Doomstalker's dooms) need manual resolution — on the board they have no effect
 - [x] **Persistent bonus charges**: the starting classes' charged cards (Warding Strength, Juggernaut, Opposing Strike, Backup Ammunition, Single Out, Smoke Bomb, Cull the Weak, Spring the Trap, Frost Armor, Crackling Air, Engulfed in Flames, Cold Front, Potent Potables) mark a charge per use, give their slot XP and leave the active area when used up (`ChargedBonusTests`)
 - [x] Locked classes' charged cards: Immortality, Purifying Aura, Angelic Ascension, Voice of the Night, Cauterize, Master Physician, Defiance of Death, Nightfall, Beacon of Light, Fortified Position (`ChargedBonusTests`)
 - [x] **Start- and end-of-turn bonuses**: Lumbering Bash and Triage (a heal at the start of the turn), Auto Turret (an attack at the end), Gas Canister (an ally recovers a card at the end), as steps of the turn (`ChargedBonusTests`)
 - [x] Nature's Lift and Foul Wind: consume Air (when there) for +2 Range on ranged attacks / +1 Attack, a charge each time (`testNaturesLiftConsumesAirForRange`)
 - [x] Intervening Apparitions, Unending Chant, Blood Hunger (`ChargedBonusTests`)
-- [ ] **Charged cards needing a choice or not yet coded**: Stone Pummel; Doomstalker dooms, Eclipse's extra actions, Vengeful Barrage, Grim Bargain
+- [x] Stone Pummel: a melee attack with an obstacle beside the Cragheart destroys it for +3, a charge each time (`testStonePummelDestroysAnObstacleForThree`)
+- [ ] **Charged cards needing a choice or not yet coded**: Doomstalker dooms, Eclipse's extra actions, Vengeful Barrage, Grim Bargain
 - [x] **Items during board turns** (Phase VI: about 110 of 150 items play on the board)
 - [x] **Monster ability text**: traps (Archers, Flame Demon), damage around the monster or its target (Ancient Artillery, Night Demon, Flame Demon, Savvas Lavaflow), +2 against a flanked target (Hound, Giant Viper), disadvantage against the Giant Viper this round, the Harrower's heal per target damaged (`MonsterTextTests`)
 - [x] **Cultists' "on death" attack**: made from where the Cultist fell, right after the attack that killed it, never on its own turn (`testACultistAttacksAsItDies`)
