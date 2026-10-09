@@ -133,6 +133,8 @@ extension BoardCoordinator {
         let canSkip: Bool
         /// Whether the choice can be cancelled, putting the ability back to be performed again.
         var canCancel = false
+        /// What the attack will do to each target, nearest first ("Bandit Guard 1: 2 − 1 shield = 1 + draw").
+        var previews: [String] = []
     }
 
     /// The banner for the current interaction, with Cancel offered while the action can still
@@ -141,6 +143,9 @@ extension BoardCoordinator {
         guard var instruction = baseInstruction(for: mode) else { return nil }
         // Not while a card is shown full size on top: Escape (Cancel's key) is for closing that.
         instruction.canCancel = (activePlayerTurn?.canCancelChoice ?? false) && previewCardId == nil
+        if case .selectingAttackTarget(let attacker, _, let targets) = mode, activePlayerTurn?.pendingAreaPattern == nil {
+            instruction.previews = Array(attackPreviewLines(attacker: attacker, targets: targets).prefix(4))
+        }
         return instruction
     }
 

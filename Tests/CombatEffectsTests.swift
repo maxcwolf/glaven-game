@@ -229,4 +229,47 @@ final class CombatEffectsTests: XCTestCase {
         XCTAssertLessThan(second.health, 20, "the added target is attacked")
         XCTAssertEqual(turn.currentActionIndex, 1, "then the turn moves on")
     }
+
+    // MARK: - Attack preview and draw chips
+
+    /// Before the draw, each target says what the attack will do: Trample's Attack 3 with
+    /// Pierce 2 goes through a Shield 1; poison adds 1; a ranged attack on an adjacent enemy
+    /// is at disadvantage.
+    func testTheAttackPreviewSaysWhatTheAttackWillDo() throws {
+        let brute = addCharacter("brute", at: HexCoord(3, 3))
+        let guardEntity = addMonster("bandit-guard", at: HexCoord(4, 3))
+        guardEntity.shield = ActionModel(type: .shield, value: .int(3))
+        let piece = PieceID.monster(name: "bandit-guard", standee: guardEntity.number)
+        let deck = gm.editionStore.abilities(forDeck: "brute", edition: "gh")
+        let trample = try XCTUnwrap(deck.first { $0.name == "Trample" }), blow = try XCTUnwrap(deck.first { $0.name == "Sweeping Blow" })
+        brute.handCards = [trample.cardId!, blow.cardId!]
+        let turn = PlayerTurnController(characterID: brute.id, coordinator: coord, gameManager: gm)
+        coord.activePlayerTurn = turn
+        turn.selectCards(top: trample, bottom: blow)
+        turn.executeCurrentAction()   // Attack 3, Pierce 2
+        XCTAssertEqual(coord.attackPreview(attacker: .character(brute.id), target: piece), "3 \u{2212} 1 shield = 2 + draw")
+        XCTAssertEqual(coord.expectedDamage(attacker: .character(brute.id), target: piece), 2)
+        XCTAssertEqual(coord.instruction(for: coord.interactionMode)?.previews,
+                       ["Bandit Guard \(guardEntity.number): 3 \u{2212} 1 shield = 2 + draw"])
+        coord.applyCondition(.poison, to: piece)
+        XCTAssertEqual(coord.attackPreview(attacker: .character(brute.id), target: piece),
+                       "3 + 1 poison \u{2212} 1 shield = 3 + draw")
+        XCTAssertNil(coord.attackPreview(attacker: piece, target: .character(brute.id)), "only the player's own attacks")
+        let used = brute.bonusChargesUsed
+        _ = coord.attackPreview(attacker: .character(brute.id), target: piece)
+        XCTAssertEqual(brute.bonusChargesUsed, used, "a preview spends nothing")
+    }
+
+    func testTheDrawSumAsChips() {
+        let chips = CombatResolver.sumChips(base: 2, isPoisoned: true, cards: [AttackModifier.standard(.plus1)],
+                                            shield: 1, isMiss: false, finalDamage: 3, conditions: [.stun])
+        XCTAssertEqual(chips.map { $0.text }, ["Attack 2", "+1 poison", "+1 card", "\u{2212}1 shield", "= 3 damage", "Stun"])
+        XCTAssertEqual(chips.last(where: { $0.kind == .result })?.text, "= 3 damage")
+        let miss = CombatResolver.sumChips(base: 2, isPoisoned: false, cards: [AttackModifier.standard(.null_)],
+                                           shield: 0, isMiss: true, finalDamage: 0)
+        XCTAssertEqual(miss.map { $0.text }, ["Attack 2", "Miss"])
+        let pierced = CombatResolver.sumChips(base: 3, isPoisoned: false, cards: [AttackModifier.standard(.plus0)],
+                                              shield: 1, pierce: 2, isMiss: false, finalDamage: 3)
+        XCTAssertEqual(pierced.map { $0.text }, ["Attack 3", "+0 card", "= 3 damage"], "pierce cancels the shield")
+    }
 }

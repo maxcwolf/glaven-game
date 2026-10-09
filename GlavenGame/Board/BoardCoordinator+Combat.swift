@@ -166,6 +166,9 @@ extension BoardCoordinator {
         log("\(name(attacker)) attacks \(name(target)): \(sum)", category: .attack, trace: breakdown)
         if lastModifierReveal?.attacker == attacker, lastModifierReveal?.defender == target, lastModifierReveal?.sum == nil {
             lastModifierReveal?.sum = sum
+            lastModifierReveal?.chips = CombatResolver.sumChips(
+                base: attack.value, isPoisoned: isPoisoned, cards: preDrawn, shield: shield, pierce: attack.pierce,
+                isMiss: result.isMiss, finalDamage: result.damage, conditions: result.allConditions)
         }
 
         if result.damage == 0 {
@@ -306,6 +309,81 @@ extension BoardCoordinator {
                                     from: death.position)
             }
             deathAttackInProgress = nil
+        }
+    }
+}
+
+// MARK: - Attack preview
+
+extension BoardCoordinator {
+    /// What the character's attack will do to `target` before its card is drawn: "2 − 1 shield
+    /// = 1 + draw · Stun", with "+1 poison", "advantage" or "disadvantage" where they apply.
+    /// Charged bonuses that would be used up (Single Out, Stone Pummel…) aren't counted, so a
+    /// preview never spends a charge.
+    func attackPreview(attacker: PieceID, target: PieceID) -> String? {
+        guard let turn = activePlayerTurn, case .character(let id) = attacker, turn.characterID == id,
+              let defender = entity(for: target),
+              let from = boardState.piecePositions[attacker], let to = boardState.piecePositions[target] else { return nil }
+        var value = turn.currentAttackValue() + attackTextBonus(turn.attackTexts, attacker: attacker, target: target).attack
+        if case .monster(let monsterName, _) = target { value += turn.attackBonusAgainst[monsterName] ?? 0 }
+        let poisoned = isConditionActive(.poison, on: target)
+        let shield = max(0, CombatResolver.totalShield(shield: defender.shield, shieldPersistent: defender.shieldPersistent)
+                         - turn.pendingPierce)
+        let ranged = turn.currentAttackRange() > 1
+        var disadvantage = (ranged && from.isAdjacent(to: to)) || disadvantagedThisRound.contains(target)
+        if case .monster(let name, _) = target, let monsterEntity = defender as? GameMonsterEntity,
+           gameManager?.game.monsters.first(where: { $0.name == name })?.stat(for: monsterEntity.type)?.attackersGainDisadvantage == true {
+            disadvantage = true
+        }
+        var advantage = turn.pendingAdvantage
+        if let attackerEntity = entity(for: attacker) {
+            advantage = advantage || CombatResolver.hasAdvantage(attacker: attackerEntity)
+            disadvantage = CombatResolver.hasDisadvantage(attacker: attackerEntity, isRangedAdjacent: disadvantage)
+        }
+
+        var text = "\(value)"
+        if poisoned { text += " + 1 poison" }
+        if shield > 0 { text += " \u{2212} \(shield) shield" }
+        let expected = max(0, value + (poisoned ? 1 : 0) - shield)
+        if poisoned || shield > 0 { text += " = \(expected)" }
+        text += " + draw"
+        if advantage != disadvantage { text += advantage ? " · advantage" : " · disadvantage" }
+        for condition in turn.pendingConditions { text += " · \(GameText.conditionName(condition))" }
+        return text
+    }
+
+    /// Put the preview under every enemy the character may attack (not area attacks: there the
+    /// placement decides who is hit).
+    func showAttackPreviews(attacker: PieceID, targets: Set<PieceID>) {
+        guard activePlayerTurn?.pendingAreaPattern == nil else { return }
+        var previews: [PieceID: String] = [:]
+        for target in targets {
+            if let damage = expectedDamage(attacker: attacker, target: target) { previews[target] = "\(damage) dmg" }
+        }
+        boardScene?.showTargetPreviews(previews)
+    }
+
+    /// The damage before the draw (attack, poison, shield and pierce), for the small chip on the board.
+    func expectedDamage(attacker: PieceID, target: PieceID) -> Int? {
+        guard let turn = activePlayerTurn, case .character(let id) = attacker, turn.characterID == id,
+              let defender = entity(for: target) else { return nil }
+        var value = turn.currentAttackValue() + attackTextBonus(turn.attackTexts, attacker: attacker, target: target).attack
+        if case .monster(let monsterName, _) = target { value += turn.attackBonusAgainst[monsterName] ?? 0 }
+        if isConditionActive(.poison, on: target) { value += 1 }
+        let shield = max(0, CombatResolver.totalShield(shield: defender.shield, shieldPersistent: defender.shieldPersistent)
+                         - turn.pendingPierce)
+        return max(0, value - shield)
+    }
+
+    /// The previews for the instruction, nearest target first: "Bandit Guard 1: 2 − 1 shield = 1 + draw".
+    func attackPreviewLines(attacker: PieceID, targets: Set<PieceID>) -> [String] {
+        let origin = boardState.piecePositions[attacker]
+        return targets.sorted { a, b in
+            let da = origin.flatMap { o in boardState.piecePositions[a].map { o.distance(to: $0) } } ?? 0
+            let db = origin.flatMap { o in boardState.piecePositions[b].map { o.distance(to: $0) } } ?? 0
+            return (da, a) < (db, b)
+        }.compactMap { target in
+            attackPreview(attacker: attacker, target: target).map { "\(name(target)): \($0)" }
         }
     }
 }

@@ -263,6 +263,8 @@ final class BoardCoordinator {
         let drawnByPlayer: Bool
         /// The attack's sum once it has resolved: "2 + 1 − 1 shield = 2 damage".
         var sum: String?
+        /// The same sum as chips, for the tray.
+        var chips: [CombatResolver.SumChip] = []
 
         /// Whether `card` (at `index` in `drawn`) is one of the cards that apply.
         func applies(at index: Int) -> Bool {
@@ -1821,6 +1823,7 @@ final class BoardCoordinator {
         }
         let targetHexes = Set(validTargets.compactMap { boardState.piecePositions[$0] })
         boardScene?.highlightHexes(targetHexes, style: .attack, offsetCol: offsetCol, offsetRow: offsetRow)
+        showAttackPreviews(attacker: pieceID, targets: validTargets)
     }
 
     /// Begin an interactive condition-apply action (player taps a single enemy target).

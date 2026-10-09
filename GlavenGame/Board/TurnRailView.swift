@@ -129,6 +129,12 @@ struct InstructionBanner: View {
                 Text(instruction.detail)
                     .font(.subheadline)
                     .foregroundStyle(BoardTheme.brass)
+                ForEach(instruction.previews, id: \.self) { line in
+                    Text(line)
+                        .font(BoardTheme.font(size: 12).monospacedDigit())
+                        .foregroundStyle(BoardTheme.secondaryText)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
             }
             if instruction.canCancel, let onCancel {
                 Button("Cancel", action: onCancel)

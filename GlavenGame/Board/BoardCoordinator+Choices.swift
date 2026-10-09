@@ -36,7 +36,10 @@ extension BoardCoordinator {
             return hexChoices(hexes, from: boardState.piecePositions[target]) { "\(verb) \(self.name(target)) \($0)" }
 
         case .selectingAttackTarget(let attacker, _, let targets):
-            return pieceChoices(targets, from: attacker) { "Attack \($0)" }
+            return pieceChoices(targets, from: attacker) { piece, spoken in
+                guard let preview = self.attackPreview(attacker: attacker, target: piece) else { return "Attack \(spoken)" }
+                return "Attack \(spoken): \(preview)"
+            }
 
         case .selectingMultiAttackTargets(let attacker, _, let targets, let count, let selected):
             var choices = pieceChoices(targets.subtracting(selected), from: attacker) { "Target \($0)" }
@@ -67,12 +70,17 @@ extension BoardCoordinator {
 
     private func pieceChoices(_ pieces: Set<PieceID>, from source: PieceID,
                               label: @escaping (String) -> String) -> [BoardChoice] {
+        pieceChoices(pieces, from: source) { _, spoken in label(spoken) }
+    }
+
+    private func pieceChoices(_ pieces: Set<PieceID>, from source: PieceID,
+                              label: @escaping (PieceID, String) -> String) -> [BoardChoice] {
         let origin = boardState.piecePositions[source]
         return pieces.sorted { a, b in
             let da = distance(origin, boardState.piecePositions[a]), db = distance(origin, boardState.piecePositions[b])
             return (da, a) < (db, b)
         }.map { piece in
-            BoardChoice(id: "piece-\(piece)", label: label(spokenFigure(piece, from: origin))) { [weak self] in
+            BoardChoice(id: "piece-\(piece)", label: label(piece, spokenFigure(piece, from: origin))) { [weak self] in
                 self?.handlePieceTap(piece)
             }
         }

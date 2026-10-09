@@ -275,6 +275,48 @@ enum CombatResolver {
         return text + " = " + (finalDamage == 0 ? "no damage" : "\(finalDamage) damage")
     }
 
+    /// One step of an attack's sum, for the chips under the drawn card.
+    struct SumChip: Equatable {
+        enum Kind: Equatable { case base, card, shield, result, effect }
+        let text: String
+        let kind: Kind
+    }
+
+    /// The attack's sum as chips: "Attack 2", "+1 poison", "+1 card", "−1 shield", "= 2 damage",
+    /// then what else lands ("Stun", "Push 1"). A miss is one chip.
+    static func sumChips(
+        base: Int,
+        isPoisoned: Bool,
+        cards: [AttackModifier],
+        shield: Int,
+        pierce: Int = 0,
+        isMiss: Bool,
+        finalDamage: Int,
+        conditions: [ConditionName] = []
+    ) -> [SumChip] {
+        if isMiss || cards.contains(where: { $0.valueType == .multiply && $0.value == 0 }) {
+            return [SumChip(text: "Attack \(base)", kind: .base), SumChip(text: "Miss", kind: .result)]
+        }
+        var chips = [SumChip(text: "Attack \(base)", kind: .base)]
+        if isPoisoned { chips.append(SumChip(text: "+1 poison", kind: .card)) }
+        for card in cards {
+            if card.valueType == .multiply {
+                chips.append(SumChip(text: "\u{00D7}\(card.value) card", kind: .card))
+            } else if card.value != 0 || cards.count == 1 {
+                chips.append(SumChip(text: card.value >= 0 ? "+\(card.value) card" : "\u{2212}\(-card.value) card", kind: .card))
+            }
+        }
+        let totalPierce = pierce + cards.flatMap(\.effects).filter { $0.type == .pierce }
+            .compactMap { $0.value?.intValue }.reduce(0, +)
+        let effectiveShield = max(0, shield - totalPierce)
+        if effectiveShield > 0 { chips.append(SumChip(text: "\u{2212}\(effectiveShield) shield", kind: .shield)) }
+        chips.append(SumChip(text: finalDamage == 0 ? "= no damage" : "= \(finalDamage) damage", kind: .result))
+        for condition in conditions {
+            chips.append(SumChip(text: GameText.conditionName(condition), kind: .effect))
+        }
+        return chips
+    }
+
     // MARK: - Advantage / Disadvantage
 
     /// Draw the modifier cards for one attack and return the cards that apply.

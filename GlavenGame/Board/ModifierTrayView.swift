@@ -135,12 +135,32 @@ struct ModifierTrayView: View {
                     }
                 }
             }
-            Text(reveal.sum.map { "\(coordinator.name(reveal.attacker)) \u{2192} \(coordinator.name(reveal.defender)): \($0)" }
-                 ?? "\(coordinator.name(reveal.attacker)) \u{2192} \(coordinator.name(reveal.defender))")
+            Text("\(coordinator.name(reveal.attacker)) \u{2192} \(coordinator.name(reveal.defender))")
                 .font(.caption)
-                .foregroundStyle(.white.opacity(0.9))
+                .foregroundStyle(BoardTheme.secondaryText)
                 .fixedSize(horizontal: false, vertical: true)
+            if !reveal.chips.isEmpty {
+                // The sum, a chip per step, the result in brass.
+                FlowLayout(spacing: 4) {
+                    ForEach(Array(reveal.chips.enumerated()), id: \.offset) { _, chip in
+                        Self.chipView(chip)
+                    }
+                }
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel(reveal.sum ?? "")
+            }
         }
+    }
+
+    static func chipView(_ chip: CombatResolver.SumChip) -> some View {
+        let isResult = chip.kind == .result
+        return Text(chip.text)
+            .font(BoardTheme.font(size: 11, weight: isResult ? .bold : .medium))
+            .foregroundStyle(isResult ? BoardTheme.sheet : (chip.kind == .effect ? BoardTheme.brass : BoardTheme.text))
+            .padding(.horizontal, 8)
+            .padding(.vertical, 3)
+            .background(isResult ? BoardTheme.brass : BoardTheme.raised, in: Capsule())
+            .overlay(Capsule().stroke(isResult ? .clear : BoardTheme.border.opacity(0.6), lineWidth: 1))
     }
 
     private func accessibilityText(_ card: AttackModifier, applies: Bool) -> String {

@@ -942,6 +942,36 @@ class BoardScene: SKScene {
     var reduceMotion = false
 
     /// Clear all hex highlights.
+    /// A small chip under each piece the player may attack with the damage before the draw
+    /// ("1 dmg"); the instruction spells out each sum. It goes with the highlights.
+    func showTargetPreviews(_ previews: [PieceID: String]) {
+        let scale = min(max(cameraState.scale, 0.75), 1.6)
+        for (id, text) in previews.sorted(by: { $0.key < $1.key }) {
+            guard let node = pieceNodes[id] else { continue }
+            let label = SKLabelNode()
+            label.attributedText = NSAttributedString(string: text, attributes: [
+                .font: PlatformFont.systemFont(ofSize: 12, weight: .semibold),
+                .foregroundColor: SKColor(red: 0.96, green: 0.92, blue: 0.84, alpha: 1),
+            ])
+            label.verticalAlignmentMode = .center
+            label.horizontalAlignmentMode = .center
+            label.zPosition = 1
+            let size = CGSize(width: label.frame.width + 12, height: 20)
+            let pill = SKShapeNode(rectOf: size, cornerRadius: size.height / 2)
+            pill.fillColor = SKColor(red: 0.11, green: 0.09, blue: 0.08, alpha: 0.94)
+            pill.strokeColor = SKColor(red: 0.784, green: 0.573, blue: 0.180, alpha: 1)
+            pill.lineWidth = 1.5
+            let chip = SKNode()
+            chip.name = "preview"
+            chip.addChild(pill)
+            chip.addChild(label)
+            chip.setScale(scale)
+            chip.position = CGPoint(x: node.position.x, y: node.position.y - HexMath.cellStepX * 0.42 - size.height / 2 * scale)
+            chip.zPosition = 40
+            highlightLayer.addChild(chip)
+        }
+    }
+
     func clearHighlights() {
         highlightLayer.removeAllChildren()
         highlightNodes.removeAll()
