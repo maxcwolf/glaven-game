@@ -439,7 +439,7 @@ Scenario rewards (2026-10-08)
 - [x] **Cultists' "on death" attack**: made from where the Cultist fell, right after the attack that killed it, never on its own turn (`testACultistAttacksAsItDies`)
 - [x] Element bonuses inside a monster's Shield/Retaliate: the Lurker's "consume Ice: Shield 2 instead" (`testALurkersIceShieldReplacesItsShield`)
 - [x] **The Ooze splits** with its current hit points (`testAnOozeSplitsWithItsHitPoints`)
-- [ ] The Deep Terror's summon "in a hex adjacent to the target" (inside its attack) isn't performed
+- [x] The Deep Terror's attack summons another beside the target (`testADeepTerrorSummonsBesideItsTarget`)
 - [ ] **Icy terrain** — no forced-movement mechanic
 - [ ] **Plague / Enfeeble** (FH) — no mechanics
 - [ ] **Multi-hex obstacles** — one overlay per hex

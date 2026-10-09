@@ -212,6 +212,11 @@ final class MonsterTurnController {
                     coordinator.log("\(coordinator.name(pieceID)) heals for \(healed)", category: .heal)
                 }
                 if stillHere() { performPrintedText(printed.filter { !$0.contains("adjacent to the target") }, pieceID: pieceID) }
+                // Deep Terror: "Summon a Deep Terror in a hex adjacent to the target."
+                for summon in (action.subActions ?? []) where summon.type == .summon {
+                    guard let near = targets.first(where: { coordinator.isOnBoard($0) }) ?? (stillHere() ? pieceID : nil) else { continue }
+                    performSummon(summon, pieceID: near, summoner: entity, monster: monster)
+                }
 
             case .heal:
                 performHeal(action, pieceID: pieceID, entity: entity, monster: monster, consumed: consumed)

@@ -143,4 +143,16 @@ final class MonsterTextTests: XCTestCase {
         let child = try XCTUnwrap(monster.aliveEntities.first { $0.number != parent.number })
         XCTAssertEqual(child.health, 3)
     }
+
+    /// Deep Terror (738): its attack summons another Deep Terror beside the target.
+    func testADeepTerrorSummonsBesideItsTarget() async throws {
+        let brute = character("brute", at: HexCoord(7, 3))
+        _ = brute
+        try await play("deep-terror", card: 738, at: HexCoord(3, 3))
+        let monster = try XCTUnwrap(gm.game.monsters.first { $0.name == "deep-terror" })
+        let summoned = monster.aliveEntities.filter { $0.number != 1 }
+        XCTAssertEqual(summoned.count, 1)
+        let hex = try XCTUnwrap(coord.boardState.piecePositions[.monster(name: "deep-terror", standee: summoned[0].number)])
+        XCTAssertTrue(hex.isAdjacent(to: HexCoord(7, 3)), "beside the Brute")
+    }
 }
