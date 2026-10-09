@@ -127,8 +127,8 @@ struct LevelUpCardSheet: View {
 /// Before a scenario: which cards from the pool the character brings, up to their hand size.
 struct HandSheet: View {
     @Environment(GameManager.self) private var gameManager
-    @Environment(\.dismiss) private var dismiss
     let character: GameCharacter
+    var onDone: () -> Void = {}
     @State private var hand: Set<Int> = []
 
     private var pool: [AbilityModel] {
@@ -137,49 +137,74 @@ struct HandSheet: View {
     }
 
     private var size: Int { min(character.handSize, pool.count) }
+    private var name: String { GameText.characterName(character, labels: gameManager.editionStore) }
 
     var body: some View {
-        NavigationStack {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 12) {
-                    Text("\(hand.count) of \(size) cards")
-                        .font(.headline)
-                        .monospacedDigit()
-                        .foregroundStyle(hand.count == size ? BoardTheme.gain : BoardTheme.text)
-                    LazyVGrid(columns: [GridItem(.adaptive(minimum: 140), spacing: 10)], spacing: 10) {
-                        ForEach(pool) { card in
-                            let id = card.cardId ?? 0
-                            AbilityCardTile(card: card, character: character, selected: hand.contains(id), width: 140)
-                                .onTapGesture {
-                                    if hand.contains(id) { hand.remove(id) } else if hand.count < size { hand.insert(id) }
-                                }
+        TownDialog(title: "\(name)'s Hand", subtitle: "The cards the \(name) takes into the next scenario",
+                   doneDisabled: hand.count != size, onCancel: onDone, onDone: save) {
+            Text("\(hand.count) of \(size) cards")
+                .font(BoardTheme.font(size: 14, weight: .bold))
+                .monospacedDigit()
+                .foregroundStyle(hand.count == size ? BoardTheme.sheet : BoardTheme.text)
+                .padding(.horizontal, 14)
+                .frame(height: 32)
+                .background(hand.count == size ? BoardTheme.brass : BoardTheme.raised, in: Capsule())
+                .fixedSize()
+            Button("Cancel", action: onDone)
+                .buttonStyle(.boardQuiet)
+        } content: {
+            VStack(alignment: .leading, spacing: 10) {
+                Text("Tap a card to take it or leave it. The \(name) takes \(size) cards; each level up adds a card to choose from.")
+                    .font(BoardTheme.font(size: 13))
+                    .foregroundStyle(BoardTheme.secondaryText)
+                GeometryReader { geo in
+                    let fit = Self.layout(count: pool.count, in: geo.size)
+                    ScrollView {
+                        LazyVGrid(columns: Array(repeating: GridItem(.fixed(fit.width), spacing: Self.gap), count: fit.columns),
+                                  alignment: .leading, spacing: Self.gap) {
+                            ForEach(pool) { card in
+                                let id = card.cardId ?? 0
+                                let chosen = hand.contains(id)
+                                AbilityCardTile(card: card, character: character, selected: chosen, width: fit.width)
+                                    .opacity(chosen ? 1 : 0.6)
+                                    .onTapGesture {
+                                        if chosen { hand.remove(id) } else if hand.count < size { hand.insert(id) }
+                                    }
+                            }
                         }
+                        .padding(.top, 6)
                     }
-                }
-                .padding(20)
-            }
-            .background(BoardTheme.sheet)
-            .navigationTitle("\(GameText.characterName(character, labels: gameManager.editionStore))'s Hand")
-            #if os(iOS)
-            .navigationBarTitleDisplayMode(.inline)
-            #endif
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
-                }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Done") {
-                        let ordered = pool.compactMap(\.cardId).filter(hand.contains)
-                        gameManager.characterManager.setHand(ordered, for: character)
-                        dismiss()
-                    }
-                    .disabled(hand.count != size)
+                    .scrollDisabled(fit.fits)
                 }
             }
-            .onAppear {
-                let poolIds = Set(pool.compactMap(\.cardId))
-                hand = Set(character.handCards.filter(poolIds.contains).prefix(size))
-            }
+            .padding(18)
         }
+        .onAppear {
+            let poolIds = Set(pool.compactMap(\.cardId))
+            hand = Set(character.handCards.filter(poolIds.contains).prefix(size))
+        }
+    }
+
+    private func save() {
+        let ordered = pool.compactMap(\.cardId).filter(hand.contains)
+        gameManager.characterManager.setHand(ordered, for: character)
+        onDone()
+    }
+
+    static let gap: CGFloat = 12
+
+    /// The largest cards that show the whole pool at once in `space`, in 5 to 10 columns; with
+    /// a pool too big for that, 8 columns that scroll.
+    static func layout(count: Int, in space: CGSize) -> (columns: Int, width: CGFloat, fits: Bool) {
+        var best: (columns: Int, width: CGFloat)?
+        for columns in 5...10 {
+            let width = (space.width - gap * CGFloat(columns - 1)) / CGFloat(columns)
+            let rows = (count + columns - 1) / columns
+            let height = CGFloat(rows) * width * 1.4 + gap * CGFloat(max(0, rows - 1)) + 6
+            if height <= space.height, width > (best?.width ?? 0) { best = (columns, width) }
+        }
+        if let best { return (best.columns, floor(best.width), true) }
+        let width = (space.width - gap * 7) / 8
+        return (8, floor(max(80, width)), false)
     }
 }

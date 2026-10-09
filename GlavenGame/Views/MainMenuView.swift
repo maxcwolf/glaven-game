@@ -58,11 +58,17 @@ struct MainMenuView: View {
         .sheet(isPresented: $showSettings) {
             PreferencesSheet()
         }
-        .sheet(isPresented: $showLoad) {
-            CampaignsSheet()
+        .overlay {
+            if showLoad {
+                CampaignsSheet(onDone: { showLoad = false })
+                    .transition(.opacity)
+            }
         }
-        .sheet(isPresented: $showCredits) {
-            CreditsSheet()
+        .overlay {
+            if showCredits {
+                CreditsSheet { showCredits = false }
+                    .transition(.opacity)
+            }
         }
     }
 

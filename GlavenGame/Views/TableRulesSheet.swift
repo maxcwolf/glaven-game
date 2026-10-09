@@ -4,54 +4,41 @@ import SwiftUI
 /// the scenario brief lists those that are on.
 struct TableRulesSheet: View {
     @Environment(GameManager.self) private var gameManager
-    @Environment(\.dismiss) private var dismiss
-    /// Off for snapshots: ImageRenderer draws neither scroll views nor navigation stacks.
+    var onDone: () -> Void = {}
+    /// Off for snapshots: ImageRenderer doesn't draw scroll views.
     var scrolls = true
 
     var body: some View {
-        if scrolls {
-            NavigationStack {
-                ScrollView { content }
-                    .background(BoardTheme.sheet)
-                    .navigationTitle("Table Rules")
-                    #if os(iOS)
-                    .navigationBarTitleDisplayMode(.inline)
-                    #endif
-                    .toolbar {
-                        ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } }
-                    }
-            }
-        } else {
-            content.background(BoardTheme.sheet)
+        TownDialog(title: "Table Rules", subtitle: "This campaign only", size: CGSize(width: 680, height: 500), onDone: onDone) {
+            if scrolls { ScrollView { content } } else { content }
         }
     }
 
     private var content: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Ways your group plays differently from the rulebook. They apply to this campaign only.")
-                .font(.subheadline)
+            Text("Ways your group plays differently from the rulebook.")
+                .font(BoardTheme.font(size: 13))
                 .foregroundStyle(BoardTheme.secondaryText)
-            ForEach(TableRules.all) { rule in
-                HStack(alignment: .top, spacing: 12) {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(rule.title)
-                            .font(.headline)
-                            .foregroundStyle(BoardTheme.text)
-                        Text(rule.rulebook)
-                            .font(.caption)
-                            .foregroundStyle(BoardTheme.secondaryText)
-                            .fixedSize(horizontal: false, vertical: true)
+            TownSection {
+                ForEach(Array(TableRules.all.enumerated()), id: \.element.id) { index, rule in
+                    if index > 0 { Rectangle().fill(BoardTheme.border.opacity(0.3)).frame(height: 1) }
+                    HStack(alignment: .top, spacing: 14) {
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text(rule.title)
+                                .font(BoardTheme.font(size: 15, weight: .semibold))
+                                .foregroundStyle(BoardTheme.text)
+                            Text(rule.rulebook)
+                                .font(BoardTheme.font(size: 12))
+                                .foregroundStyle(BoardTheme.secondaryText)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                        Spacer()
+                        TownSwitch(label: rule.title, isOn: binding(rule))
                     }
-                    Spacer()
-                    Toggle(rule.title, isOn: binding(rule))
-                        .labelsHidden()
-                        .tint(BoardTheme.brass)
                 }
-                .padding(12)
-                .background(BoardTheme.raised, in: RoundedRectangle(cornerRadius: BoardTheme.Radius.medium))
             }
         }
-        .padding(20)
+        .padding(18)
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 

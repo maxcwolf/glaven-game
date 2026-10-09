@@ -206,12 +206,13 @@ reaches; `ContentView` only shows the main menu, the party screen and the board.
 - [x] Character sheet in the board's look (`docs/mockups/sheet-11in.png`): one page instead of tabs — level and XP bar, health/cards/gold, personal quest with progress, battle goals in groups of three, notes, perks in the rulebook's words with brass checkboxes, owned items; a large dialog over the town instead of the small form sheet (`TownTests`)
 - [x] Shop in the board's look (`docs/mockups/shop-11in.png`): item tiles that say what each item does, Spent/Lost badges, Buy / Sell for half (confirmed on the tile) / "n more gold" / Sold out, slot filter as a brass segmented capsule, the buyer switchable between party members, what they own per slot (`TownTests`)
 - [x] Item rule text dropped modifier, element-consume, slot and class-word tokens (Iron Helmet read "to be a  instead"); summon items had no text (`testEveryItemSaysWhatItDoes`)
-- [ ] Campaign in the board's look (`docs/mockups/campaign-11in.png`): prosperity checkmarks with level thresholds, reputation as a centred track with its price effect, achievements as chips, open and won scenarios, the party, the campaign log
-- [ ] Campaign progress counts the 17 solo scenarios and the random dungeon ("0/113" for Gloomhaven's 95)
-- [ ] World map in the board's look (`docs/mockups/worldmap-11in.png`): a large dialog, stickers only for scenarios the party has found (open in brass, won in green) instead of every scenario, a detail panel beside the map instead of a second sheet
-- [ ] Hand in the board's look (`docs/mockups/hand-11in.png`): all of the class's cards on one screen, chosen ones ringed in brass, the count as a brass chip
-- [ ] Table rules, campaigns, credits and the event card's buttons in the board's look (`docs/mockups/small-dialogs.png`); Credits overflows its sheet today
+- [x] Campaign in the board's look (`docs/mockups/campaign-11in.png`): prosperity checkmarks with level thresholds, reputation as a centred track with its price effect, achievements as chips, open and won scenarios, the party, the campaign log
+- [x] Campaign progress counted the 17 solo scenarios and the random dungeon ("0/113" for Gloomhaven's 95) (`TownDialogTests`)
+- [x] World map in the board's look (`docs/mockups/worldmap-11in.png`): a large dialog, stickers only for scenarios the party has found (open in brass, won in green) instead of every scenario, a detail panel beside the map instead of a second sheet
+- [x] Hand in the board's look (`docs/mockups/hand-11in.png`): all of the class's cards on one screen, chosen ones ringed in brass, the count as a brass chip
+- [x] Table rules, campaigns, credits and the event card in the board's look (`docs/mockups/small-dialogs.png`), as dialogs over the town and menu
 - [ ] Still to mock up: items loadout, enhancer, level-up card choice, statistics, quest and battle-goal pickers, sanctuary
+- [x] Unlocking looked won scenarios up by number in load order, so a solo scenario sharing the number could unlock nothing (#4 Crypt of the Damned → #5, #6) (`testWinningAScenarioUnlocksWhatItsCampaignCardSays`)
 - [x] Event text showed raw `<br><br>` (city event 11 and 13 others): line breaks become paragraphs (`testEventTextHasNoMarkup`)
 - [ ] Board action panel: a tall empty area above the turn controls on the 11-inch iPad
 - [ ] Learning mode, still to write: "Why?" for escorts; FH topics (loot cards, outposts) when FH play comes

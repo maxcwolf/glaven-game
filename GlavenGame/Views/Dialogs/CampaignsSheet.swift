@@ -5,41 +5,25 @@ import UniformTypeIdentifiers
 /// delete it, or import one shared from another device.
 struct CampaignsSheet: View {
     @Environment(GameManager.self) private var gameManager
-    @Environment(\.dismiss) private var dismiss
     @State private var renaming: CampaignStore.Entry?
     @State private var newName = ""
     @State private var deleting: CampaignStore.Entry?
     @State private var exporting: ExportedCampaign?
     @State private var showImporter = false
     @State private var importError: String?
-    /// Off for snapshots: ImageRenderer draws neither scroll views nor navigation stacks.
+    /// Off for snapshots: ImageRenderer doesn't draw scroll views.
     var scrolls = true
+    var onDone: () -> Void = {}
 
     var body: some View {
-        if scrolls {
-            NavigationStack { sheet }
-        } else {
-            list.background(BoardTheme.sheet)
+        TownDialog(title: "Campaigns", subtitle: Self.subtitle(count: gameManager.campaigns.count),
+                   size: CGSize(width: 780, height: 600), onDone: onDone) {
+            Button("Import", systemImage: "square.and.arrow.down") { showImporter = true }
+                .buttonStyle(.boardQuietCompact)
+                .accessibilityHint("Open a campaign file shared from another device")
+        } content: {
+            if scrolls { ScrollView { list } } else { list }
         }
-    }
-
-    private var sheet: some View {
-        ScrollView { list }
-            .background(BoardTheme.sheet)
-            .navigationTitle("Campaigns")
-            #if os(iOS)
-            .navigationBarTitleDisplayMode(.inline)
-            #endif
-            .toolbar {
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Done") { dismiss() }
-                }
-                ToolbarItem(placement: .primaryAction) {
-                    Button { showImporter = true } label: {
-                        Label("Import", systemImage: "square.and.arrow.down")
-                    }
-                }
-            }
             .alert("Rename Campaign", isPresented: Binding(get: { renaming != nil }, set: { if !$0 { renaming = nil } })) {
                 TextField("Name", text: $newName)
                 Button("Rename") {
@@ -78,6 +62,7 @@ struct CampaignsSheet: View {
         VStack(spacing: 10) {
             if gameManager.campaigns.isEmpty {
                 Text("No campaigns yet. Start one from the main menu.")
+                    .font(BoardTheme.font(size: 14))
                     .foregroundStyle(BoardTheme.secondaryText)
                     .padding(.top, 40)
             }
@@ -85,27 +70,26 @@ struct CampaignsSheet: View {
                 row(campaign)
             }
         }
-        .padding(20)
+        .padding(18)
     }
 
     private func row(_ campaign: CampaignStore.Entry) -> some View {
-        HStack(spacing: 14) {
-            VStack(alignment: .leading, spacing: 4) {
-                Text(campaign.title)
-                    .font(GlavenFont.title(size: 22))
-                    .foregroundStyle(BoardTheme.text)
-                    .lineLimit(1)
-                if let detail = Self.detail(campaign) {
-                    Text(detail)
-                        .font(.subheadline)
-                        .foregroundStyle(BoardTheme.secondaryText)
-                        .lineLimit(2)
+        let playing = campaign.id == gameManager.continueCampaign?.id
+        return HStack(spacing: 12) {
+            VStack(alignment: .leading, spacing: 3) {
+                HStack(alignment: .firstTextBaseline, spacing: 8) {
+                    Text(campaign.title)
+                        .font(BoardTheme.display(21))
+                        .foregroundStyle(BoardTheme.text)
+                        .lineLimit(1)
+                    if playing { TownSmallCaps(text: "Playing", lit: true) }
                 }
-                Text("Played \(campaign.updatedAt.formatted(date: .abbreviated, time: .shortened))")
-                    .font(.caption)
+                Text(Self.line(detail: Self.detail(campaign), played: campaign.updatedAt))
+                    .font(BoardTheme.font(size: 12))
                     .foregroundStyle(BoardTheme.secondaryText)
+                    .lineLimit(2)
             }
-            Spacer()
+            Spacer(minLength: 8)
             Menu {
                 Button { newName = campaign.name; renaming = campaign } label: { Label("Rename", systemImage: "pencil") }
                 Button { gameManager.duplicateCampaign(campaign.id) } label: { Label("Duplicate", systemImage: "plus.square.on.square") }
@@ -117,34 +101,44 @@ struct CampaignsSheet: View {
                 Divider()
                 Button(role: .destructive) { deleting = campaign } label: { Label("Delete", systemImage: "trash") }
             } label: {
-                Image(systemName: "ellipsis.circle")
-                    .font(.title2)
-                    .foregroundStyle(BoardTheme.secondaryText)
-                    .frame(width: 44, height: 44)
-            }
-            .accessibilityLabel("More for \(campaign.title)")
-            Button {
-                dismiss()
-                gameManager.continueCampaign(campaign.id)
-            } label: {
-                Label("Play", systemImage: "play.fill")
-                    .font(.headline)
-                    .padding(.horizontal, 16)
-                    .frame(minHeight: 44)
-                    .background(BoardTheme.panel, in: Capsule())
-                    .overlay(Capsule().stroke(BoardTheme.brass, lineWidth: 1.5))
+                Image(systemName: "ellipsis")
+                    .font(BoardTheme.font(size: 15, weight: .semibold))
                     .foregroundStyle(BoardTheme.text)
+                    .frame(width: 36, height: 36)
+                    .overlay(Circle().stroke(BoardTheme.border, lineWidth: 1))
+                    .frame(width: 44, height: 44)
+                    .contentShape(Circle())
             }
+            .menuStyle(.button)
             .buttonStyle(.plain)
+            .accessibilityLabel("More for \(campaign.title)")
+            Button("Play", systemImage: "play.fill") {
+                onDone()
+                gameManager.continueCampaign(campaign.id)
+            }
+            .buttonStyle(playing ? .boardPrimaryCompact : .boardQuietCompact)
             .accessibilityLabel("Play \(campaign.title)")
         }
         .padding(14)
-        .background(BoardTheme.raised, in: RoundedRectangle(cornerRadius: BoardTheme.Radius.medium))
-        .overlay {
-            if campaign.id == gameManager.continueCampaign?.id {
-                RoundedRectangle(cornerRadius: BoardTheme.Radius.medium).stroke(BoardTheme.brass.opacity(0.6), lineWidth: 1)
-            }
-        }
+        .background(BoardTheme.panel, in: RoundedRectangle(cornerRadius: 14))
+        .overlay(RoundedRectangle(cornerRadius: 14)
+            .stroke(playing ? BoardTheme.brass : BoardTheme.border.opacity(0.45), lineWidth: playing ? 1.5 : 1))
+    }
+
+    /// "Saved on this iPad · 2 campaigns".
+    static func subtitle(count: Int) -> String {
+        #if os(iOS)
+        let place = "Saved on this iPad"
+        #else
+        let place = "Saved on this Mac"
+        #endif
+        return count == 0 ? place : "\(place) \u{00B7} \(count) campaign\(count == 1 ? "" : "s")"
+    }
+
+    /// "Brute, Tinkerer · played Oct 9, 1:15 PM".
+    static func line(detail: String?, played: Date) -> String {
+        let when = "played \(played.formatted(date: .abbreviated, time: .shortened))"
+        return [detail, when].compactMap { $0 }.joined(separator: " \u{00B7} ")
     }
 
     /// "Brute, Tinkerer · #1 Black Barrow, round 2" (the party, when the campaign is named).

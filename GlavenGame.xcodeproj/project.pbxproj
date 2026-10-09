@@ -25,7 +25,6 @@
 		0F5AC7D8BA68483550C50180 /* EventState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7175CB1F50A54A84F38423F7 /* EventState.swift */; };
 		101C9C9AB7FC39F5358E8BFD /* ItemUsePrompt.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2808BBF85E5363980E325C52 /* ItemUsePrompt.swift */; };
 		14511DEB8C59B9436FC95253 /* TownPartyRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = D86B71BFEEBD99C00C1AF649 /* TownPartyRow.swift */; };
-		15D2951A77CC1C086296F86D /* ScenarioMarkerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7050B86E677EE171AD0A3573 /* ScenarioMarkerView.swift */; };
 		1BD1F642825D52D6A6F79626 /* AreaPatternView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BAA69530D042DCA0EDABF5B4 /* AreaPatternView.swift */; };
 		1C036A5F8DFC6D857F5E239E /* CampaignsSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = E76F597E3B673C4DAA422663 /* CampaignsSheet.swift */; };
 		1CC69FD5D69AB9E38536A39E /* EntityValueFunction.swift in Sources */ = {isa = PBXBuildFile; fileRef = EFAF7312A61CA28A484AE10E /* EntityValueFunction.swift */; };
@@ -110,7 +109,6 @@
 		7E73D0A139DFBE1715DA1F44 /* PlayerTurnController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A2BBA0188C2D10D81CAC68B /* PlayerTurnController.swift */; };
 		7E83CFF586BC1BDCB1ADFF2A /* AttackModifierManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69054202832ECCDDB26C8B2B /* AttackModifierManager.swift */; };
 		800B52D79643E5CB76B64F29 /* Fonts in Resources */ = {isa = PBXBuildFile; fileRef = 5D581F71B3F53FBB364E1E22 /* Fonts */; };
-		82234109FFEE89D34817A5C7 /* ScenarioMapDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4901D882DBB4A4409384EE90 /* ScenarioMapDetailView.swift */; };
 		8258D929E98C3247DC890111 /* TownViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9F15394A91633C6E2E08E46 /* TownViews.swift */; };
 		82BD2069DBF2BD8ABEBDC1B0 /* GlavenTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6911D16FDC2CF2B049586221 /* GlavenTheme.swift */; };
 		839A430B4DAB455B45FE0744 /* BoardTopBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = A74028D5DFEC6A3B6D0C3323 /* BoardTopBar.swift */; };
@@ -276,7 +274,6 @@
 		4840A613B6DC796BF25638E0 /* MainMenuView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainMenuView.swift; sourceTree = "<group>"; };
 		487FFAE9CF9ACC5FB5742CD6 /* RewardChoicesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RewardChoicesView.swift; sourceTree = "<group>"; };
 		48C2C89D891BD98C87B15AC7 /* CharacterSheetView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CharacterSheetView.swift; sourceTree = "<group>"; };
-		4901D882DBB4A4409384EE90 /* ScenarioMapDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScenarioMapDetailView.swift; sourceTree = "<group>"; };
 		4A36D7C42F715C8F0B91A909 /* EntityProtocol.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EntityProtocol.swift; sourceTree = "<group>"; };
 		4C2B76831C29EEA9CE98F5A8 /* CardSelectionPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CardSelectionPanel.swift; sourceTree = "<group>"; };
 		4D00189AAD6484D20C66CBC0 /* TableRulesSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TableRulesSheet.swift; sourceTree = "<group>"; };
@@ -311,7 +308,6 @@
 		6B783381A55497EC0CE02DFD /* HexCoord.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HexCoord.swift; sourceTree = "<group>"; };
 		6DC0AE3639F6C6E004323D24 /* ObjectiveManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ObjectiveManager.swift; sourceTree = "<group>"; };
 		6DD7C9704EEC9D2DBAB09937 /* LevelManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LevelManager.swift; sourceTree = "<group>"; };
-		7050B86E677EE171AD0A3573 /* ScenarioMarkerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScenarioMarkerView.swift; sourceTree = "<group>"; };
 		7175CB1F50A54A84F38423F7 /* EventState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EventState.swift; sourceTree = "<group>"; };
 		731574AB55168285AE451F48 /* PartyStatisticsSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PartyStatisticsSheet.swift; sourceTree = "<group>"; };
 		75C223FE093334EB47476FA0 /* UIScale.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UIScale.swift; sourceTree = "<group>"; };
@@ -572,8 +568,6 @@
 			children = (
 				59AFE5E4B839F33A56167E44 /* AchievementStickerView.swift */,
 				CF6C0E1CF27A9ECC9CFC529E /* OverlayStickerView.swift */,
-				4901D882DBB4A4409384EE90 /* ScenarioMapDetailView.swift */,
-				7050B86E677EE171AD0A3573 /* ScenarioMarkerView.swift */,
 				C9ECD4B608FAFAC66D31A536 /* WorldMapView.swift */,
 			);
 			path = WorldMap;
@@ -1149,9 +1143,7 @@
 				95E46FEF3AAB72D60B29700B /* ScenarioManager+Treasure.swift in Sources */,
 				A640E78853965C39A26632DA /* ScenarioManager.swift in Sources */,
 				29E366091BF30CC9A2AC85F9 /* ScenarioMapBuilder.swift in Sources */,
-				82234109FFEE89D34817A5C7 /* ScenarioMapDetailView.swift in Sources */,
 				8D637BC2C5EC03235144944A /* ScenarioMapStore.swift in Sources */,
-				15D2951A77CC1C086296F86D /* ScenarioMarkerView.swift in Sources */,
 				0C9F28E05371C2CD265A5572 /* ScenarioResultsView.swift in Sources */,
 				C2B13B3624B6F7A6EBA5D808 /* ScenarioRule.swift in Sources */,
 				0385D2502165BEC876DC27BD /* ScenarioRulesManager.swift in Sources */,

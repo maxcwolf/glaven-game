@@ -30,7 +30,7 @@ struct EventSheet: View {
                                 outcomeView(event, option: option, outcome: outcome)
                             } else {
                                 Text(event.narrative ?? "")
-                                    .font(.body)
+                                    .font(BoardTheme.font(size: 15))
                                     .foregroundStyle(BoardTheme.text)
                                     .fixedSize(horizontal: false, vertical: true)
                                 ForEach(event.options ?? [], id: \.label) { opt in
@@ -68,14 +68,12 @@ struct EventSheet: View {
                 .font(BoardTheme.display(30))
                 .foregroundStyle(BoardTheme.text)
             Spacer()
-            Text(event.cardId)
-                .font(.headline.monospacedDigit())
-                .foregroundStyle(BoardTheme.secondaryText)
+            TownSmallCaps(text: "Card \(event.cardId)")
             // Until it's resolved the event can be put off; afterwards Continue closes it.
             if let onClose, resolution == nil {
                 Button(action: onClose) {
                     Image(systemName: "xmark")
-                        .font(.headline)
+                        .font(BoardTheme.font(size: 15, weight: .semibold))
                         .foregroundStyle(BoardTheme.secondaryText)
                         .frame(width: 44, height: 44)
                         .contentShape(Rectangle())
@@ -98,14 +96,14 @@ struct EventSheet: View {
                     .font(BoardTheme.display(26))
                     .foregroundStyle(BoardTheme.brass)
                 Text(opt.narrative ?? "")
-                    .font(.body)
+                    .font(BoardTheme.font(size: 15))
                     .foregroundStyle(BoardTheme.text)
                     .multilineTextAlignment(.leading)
                     .fixedSize(horizontal: false, vertical: true)
                 Spacer(minLength: 0)
                 if !available {
                     Text("Not possible")
-                        .font(.caption.weight(.semibold))
+                        .font(BoardTheme.font(size: 12, weight: .semibold))
                         .foregroundStyle(BoardTheme.secondaryText)
                 }
             }
@@ -122,28 +120,23 @@ struct EventSheet: View {
     @ViewBuilder
     private func outcomeView(_ event: EventCardData, option: String, outcome: EventOutcome) -> some View {
         Text(outcome.narrative ?? "")
-            .font(.body)
+            .font(BoardTheme.font(size: 15))
             .foregroundStyle(BoardTheme.text)
             .fixedSize(horizontal: false, vertical: true)
         let chooseSets = manager.choices(in: outcome)
         ForEach(Array(chooseSets.enumerated()), id: \.offset) { index, effects in
             VStack(alignment: .leading, spacing: 6) {
                 sectionTitle("CHOOSE ONE")
-                Picker("Choose one", selection: chosen(index)) {
-                    ForEach(Array(effects.enumerated()), id: \.offset) { pick, effect in
-                        Text(manager.describe(effect)).tag(pick)
-                    }
-                }
-                .pickerStyle(.segmented)
+                TownSegmented(choices: effects.enumerated().map { ($0.offset, manager.describe($0.element)) },
+                              selection: chosen(index))
+                    .accessibilityLabel("Choose one")
             }
         }
         if manager.asksForOneCharacter(outcome) {
             VStack(alignment: .leading, spacing: 6) {
                 sectionTitle("WHICH CHARACTER")
-                Picker("Which character", selection: oneCharacter) {
-                    ForEach(party, id: \.id) { Text(manager.name($0)).tag($0.id) }
-                }
-                .pickerStyle(.segmented)
+                TownSegmented(choices: party.map { ($0.id, manager.name($0)) }, selection: oneCharacter)
+                    .accessibilityLabel("Which character")
             }
         }
         ForEach(party, id: \.id) { character in
@@ -168,8 +161,7 @@ struct EventSheet: View {
                         if isPicked { list.removeAll { $0 == id } } else if list.count < count { list.append(id) }
                         choices.discards[character.id] = list
                     }
-                    .buttonStyle(.bordered)
-                    .tint(isPicked ? BoardTheme.brass : .gray)
+                    .buttonStyle(isPicked ? .boardPrimaryCompact : .boardQuietCompact)
                     .accessibilityAddTraits(isPicked ? .isSelected : [])
                 }
             }
@@ -179,12 +171,12 @@ struct EventSheet: View {
     private func result(_ resolution: EventCardManager.Resolution) -> some View {
         VStack(alignment: .leading, spacing: 10) {
             Text(resolution.narrative)
-                .font(.body)
+                .font(BoardTheme.font(size: 15))
                 .foregroundStyle(BoardTheme.text)
                 .fixedSize(horizontal: false, vertical: true)
             sectionTitle("WHAT HAPPENS")
             ForEach(resolution.effects, id: \.self) { line in
-                Text(line).font(.body.weight(.semibold)).foregroundStyle(BoardTheme.text)
+                Text(line).font(BoardTheme.font(size: 15, weight: .semibold)).foregroundStyle(BoardTheme.text)
             }
         }
     }
@@ -194,24 +186,23 @@ struct EventSheet: View {
         HStack {
             if option != nil && resolution == nil {
                 Button("Back") { withAnimation(.snappy) { option = nil; choices = .init() } }
-                    .buttonStyle(.bordered)
+                    .buttonStyle(.boardQuiet)
             }
             Spacer()
             if resolution != nil {
                 Button("Continue", action: onDone)
-                    .buttonStyle(.borderedProminent).tint(BoardTheme.brass)
+                    .buttonStyle(.boardPrimary)
                     .keyboardShortcut(.defaultAction)
             } else if let option {
                 Button("Accept") {
                     withAnimation(.snappy) { resolution = manager.resolve(deck, option: option, choices: choices) }
                     gameManager.saveGame()
                 }
-                .buttonStyle(.borderedProminent).tint(BoardTheme.brass)
+                .buttonStyle(.boardPrimary)
                 .disabled(!discardsComplete(event, option: option))
                 .keyboardShortcut(.defaultAction)
             }
         }
-        .controlSize(.large)
     }
 
     private var party: [GameCharacter] { gameManager.game.characters.filter { !$0.absent } }
@@ -236,6 +227,6 @@ struct EventSheet: View {
     }
 
     private func sectionTitle(_ text: String) -> some View {
-        Text(text).font(.caption.weight(.bold)).foregroundStyle(BoardTheme.brass)
+        TownSmallCaps(text: text, lit: true)
     }
 }

@@ -155,6 +155,31 @@ struct GameSetupView: View {
         }
         .modifier(TownLearning(key: townLearningKey))
         .overlay {
+            if showCampaign {
+                PartySheetView(onDone: { showCampaign = false })
+                    .transition(.opacity)
+            }
+        }
+        .overlay {
+            if showWorldMap {
+                WorldMapView(onChoose: { selectedScenario = $0 }, onDone: { showWorldMap = false })
+                    .transition(.opacity)
+            }
+        }
+        .overlay {
+            if showTableRules {
+                TableRulesSheet(onDone: { showTableRules = false })
+                    .transition(.opacity)
+            }
+        }
+        .overlay {
+            if let character = handCharacter {
+                HandSheet(character: character, onDone: { handCharacter = nil })
+                    .id(character.id)
+                    .transition(.opacity)
+            }
+        }
+        .overlay {
             if let character = sheetCharacter {
                 CharacterSheetView(character: character,
                                    onShop: { shopCharacter = character },
@@ -177,9 +202,6 @@ struct GameSetupView: View {
                     .transition(.opacity)
             }
         }
-        .sheet(isPresented: $showTableRules) {
-            TableRulesSheet()
-        }
         .sheet(item: $itemsCharacter) { character in
             ItemLoadoutSheet(character: character)
         }
@@ -188,15 +210,6 @@ struct GameSetupView: View {
         }
         .sheet(item: $cardChoiceCharacter) { character in
             LevelUpCardSheet(character: character)
-        }
-        .sheet(item: $handCharacter) { character in
-            HandSheet(character: character)
-        }
-        .sheet(isPresented: $showWorldMap) {
-            WorldMapView { scenario in selectedScenario = scenario }
-        }
-        .sheet(isPresented: $showCampaign) {
-            PartySheetView()
         }
         .confirmationDialog(levelUpTitle, isPresented: Binding(
             get: { levelUpCharacter != nil }, set: { if !$0 { levelUpCharacter = nil } }
