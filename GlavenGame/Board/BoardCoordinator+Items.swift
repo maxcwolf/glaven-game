@@ -793,11 +793,12 @@ extension BoardCoordinator {
               !character.spentItems.contains(key), !character.consumedItems.contains(key),
               item.consumes.map(gameManager.game.isElementAvailable) ?? true,
               let data = itemData(key) else { return false }
+        let generation = boardGeneration
         let use = await withCheckedContinuation { (continuation: CheckedContinuation<Bool, Never>) in
             pendingItemUse = PendingItemUse(characterID: id, itemName: data.name, question: item.question,
                                             attacker: name(attacker), continuation: continuation)
         }
-        guard use else { return false }
+        guard use, isCurrentBoard(generation) else { return false }
         gameManager.characterManager.onBeforeMutate?()
         // An item with use slots (Hide Armor: two) is spent once they are all marked.
         if let element = item.consumes, gameManager.game.consumeElements([element]) != nil {

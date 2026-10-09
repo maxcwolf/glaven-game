@@ -11,9 +11,15 @@ final class MonsterTurnController {
     private weak var gameManager: GameManager?
     var isExecuting: Bool = false
 
+    /// The board this turn belongs to; a turn that outlives it (the board left or restarted
+    /// while it waited) stops without touching the game.
+    private let generation: Int
+    private var isStale: Bool { coordinator?.isCurrentBoard(generation) != true }
+
     init(coordinator: BoardCoordinator, gameManager: GameManager) {
         self.coordinator = coordinator
         self.gameManager = gameManager
+        self.generation = coordinator.boardGeneration
     }
 
     // MARK: - Group Turn
@@ -50,6 +56,7 @@ final class MonsterTurnController {
 
         var anyActed = false
         for entity in sortedEntities {
+            guard !isStale else { return }
             let pieceID = PieceID.monster(name: monster.name, standee: entity.number)
             guard !entity.dead, coordinator.isOnBoard(pieceID) else { continue }
             coordinator.setActing(pieceID)
@@ -68,6 +75,7 @@ final class MonsterTurnController {
                 var turn = MonsterTurnState()
                 await executeCard(actions, pieceID: pieceID, entity: entity, monster: monster,
                                   ability: ability, consumed: consumed ?? [], turn: &turn)
+                guard !isStale else { return }
             }
             // End of this monster's turn: conditions that last "until the end of its next turn" expire.
             if !entity.dead {
@@ -79,7 +87,7 @@ final class MonsterTurnController {
         }
 
         // Infusions on the card become strong at the end of the type's turn.
-        if anyActed {
+        if anyActed && !isStale {
             for element in MonsterAbility.elementInfusions(in: actions, consumed: consumed ?? []) {
                 gameManager.game.infuseElement(element)
                 coordinator.log("\(coordinator.monsterTypeName(monster.name)) infuses \(GameText.elementName(element))", category: .element)
@@ -130,7 +138,7 @@ final class MonsterTurnController {
             MonsterAI.computeTurn(pieceID: pieceID, monster: monster, entity: entity, ability: ability,
                                   board: coordinator.boardState, gameState: game, consumed: consumed)
         }
-        func stillHere() -> Bool { !entity.dead && coordinator.isOnBoard(pieceID) }
+        func stillHere() -> Bool { !isStale && !entity.dead && coordinator.isOnBoard(pieceID) }
 
         // Focus is chosen before performing any action (p.30).
         if !state.focusChosen {
@@ -153,7 +161,7 @@ final class MonsterTurnController {
                 }
                 let plan = currentTurn()
                 if let newFocus = plan.focusTarget { state.focus = newFocus }
-                defer { performPrintedText(texts(in: action, monster: monster), pieceID: pieceID) }
+                defer { if !isStale { performPrintedText(texts(in: action, monster: monster), pieceID: pieceID) } }
                 guard plan.movementPath.count > 1 else { continue }
                 let steps = plan.movementPath.count - 1
                 coordinator.log("\(coordinator.name(pieceID)) moves \(steps) hex\(steps == 1 ? "" : "es")",
@@ -200,6 +208,7 @@ final class MonsterTurnController {
                                                  isRanged: spec.isRanged, pierce: spec.pierce,
                                                  conditions: spec.conditions, push: spec.push, pull: spec.pull,
                                                  advantage: spec.advantage))
+                    guard !isStale else { return }
                     if (coordinator.entity(for: victim)?.health ?? 0) < healthBefore || !coordinator.isOnBoard(victim) { damaged += 1 }
                     // Savvas Lavaflow: "All allies and enemies adjacent to the target suffer 2 damage."
                     for text in printed where text.contains("adjacent to the target suffer") {
@@ -357,6 +366,7 @@ final class MonsterTurnController {
         }
         if reach >= doorIndex && lastFree(upTo: doorIndex - 1) == doorIndex - 1 {
             if doorIndex > 1 { await coordinator.moveAlong(pieceID, path: Array(path.prefix(doorIndex)), style: .normal) }
+            guard !isStale else { return }
             coordinator.openDoor(at: path[doorIndex])
             // The room it reveals may put a figure in the doorway.
             if !coordinator.boardState.isOccupied(path[doorIndex]),
@@ -490,7 +500,7 @@ final class MonsterTurnController {
             case .push, .pull:
                 let steps = part.value?.intValue ?? 0
                 guard steps > 0, let origin = coordinator.boardState.piecePositions[pieceID] else { continue }
-                for target in targets where target != pieceID && coordinator.isOnBoard(target) {
+                for target in targets where target != pieceID && coordinator.isOnBoard(target) && !isStale {
                     await coordinator.performPushPull(target: target, attackerPos: origin, steps: steps,
                                                       isPush: part.type == .push)
                 }

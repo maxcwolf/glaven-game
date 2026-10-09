@@ -58,6 +58,7 @@ extension BoardCoordinator {
         let hazardProof = (entity(for: pieceID) as? GameCharacter).map { PassiveItems.ignoresHazards($0.carriedItems) } ?? false
         let opensDoors: Bool = { if case .character = pieceID { return true }; return false }()
 
+        let generation = boardGeneration
         var segmentStart = 0
         for index in 1..<path.count {
             let hex = path[index]
@@ -72,13 +73,15 @@ extension BoardCoordinator {
             guard hitsTrap || hitsHazard || wadesHazard || opensDoor || isLast else { continue }
 
             await animateMove(pieceID, along: Array(path[segmentStart...index]), as: MoveAnimation(style))
+            // The board was left or restarted while the figure walked: nothing more happens.
+            guard isCurrentBoard(generation) else { return false }
             segmentStart = index
             if !boardState.isOccupied(hex) || boardState.piecePositions[pieceID] == hex {
                 boardState.movePiece(pieceID, to: hex)
             }
 
             if hitsTrap {
-                guard await springTrap(at: hex, on: pieceID) else { return false }
+                guard await springTrap(at: hex, on: pieceID), isCurrentBoard(generation) else { return false }
                 // Immobilize takes effect at once (e.g. a bear trap): the rest of the move is lost.
                 if style != .forced && isConditionActive(.immobilize, on: pieceID) {
                     log("\(name(pieceID)) is immobilized and stops", category: .condition)
@@ -86,7 +89,7 @@ extension BoardCoordinator {
                 }
             }
             if hitsHazard {
-                guard await enterHazard(at: hex, on: pieceID) else { return false }
+                guard await enterHazard(at: hex, on: pieceID), isCurrentBoard(generation) else { return false }
             }
             // Magma Waders: no harm from hazardous terrain, and Heal 2 on a turn that enters it.
             if wadesHazard, let turn = activePlayerTurn,
@@ -332,9 +335,13 @@ extension BoardCoordinator {
     /// Animate a piece along a path (skipped when no scene is attached, e.g. in tests).
     @MainActor func animateMove(_ pieceID: PieceID, along path: [HexCoord], as animation: MoveAnimation = .walk) async {
         guard path.count > 1, let scene = boardScene else { return }
+        // Parked by move until the animation finishes; teardown resumes whatever is still parked
+        // (a scene that's gone never finishes its animations). Whichever comes first resumes it.
+        let move = UUID()
         await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
-            scene.movePiece(id: pieceID, along: path, animation: animation, offsetCol: offsetCol, offsetRow: offsetRow) {
-                continuation.resume()
+            pendingMoveAnimations[move] = continuation
+            scene.movePiece(id: pieceID, along: path, animation: animation, offsetCol: offsetCol, offsetRow: offsetRow) { [weak self] in
+                self?.pendingMoveAnimations.removeValue(forKey: move)?.resume()
             }
         }
     }

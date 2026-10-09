@@ -8,9 +8,15 @@ final class EscortTurnController {
     private weak var gameManager: GameManager?
     var isExecuting: Bool = false
 
+    /// The board this turn belongs to; a turn that outlives it (the board left or restarted
+    /// while it waited) stops without touching the game.
+    private let generation: Int
+    private var isStale: Bool { coordinator?.isCurrentBoard(generation) != true }
+
     init(coordinator: BoardCoordinator, gameManager: GameManager) {
         self.coordinator = coordinator
         self.gameManager = gameManager
+        self.generation = coordinator.boardGeneration
     }
 
     /// Execute all living escort entity turns for an objective container.
@@ -20,6 +26,7 @@ final class EscortTurnController {
         defer { isExecuting = false }
 
         for entity in container.entities where !entity.dead && entity.health > 0 && !entity.off {
+            guard !isStale else { return }
             let pieceID = PieceID.objective(id: entity.number)
             coordinator.setActing(pieceID)
             guard coordinator.isOnBoard(pieceID) else { continue }
@@ -34,6 +41,7 @@ final class EscortTurnController {
                                               board: coordinator.boardState, gameState: gameManager.game)
             await executeEscortTurn(result: result, container: container, entity: entity, pieceID: pieceID)
 
+            guard !isStale else { return }
             if !entity.dead {
                 gameManager.entityManager.expireConditions(entity)
             }
@@ -56,7 +64,7 @@ final class EscortTurnController {
         if result.movementPath.count > 1 {
             let steps = result.movementPath.count - 1
             coordinator.log("\(name) moves \(steps) hex\(steps == 1 ? "" : "es")", category: .move, trace: "to \(result.movementPath.last!)")
-            guard await coordinator.moveAlong(pieceID, path: result.movementPath, style: .normal) else { return }
+            guard await coordinator.moveAlong(pieceID, path: result.movementPath, style: .normal), !isStale else { return }
         }
 
         guard let attack = result.attack, let target = result.attackTarget else { return }

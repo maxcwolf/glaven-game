@@ -10,9 +10,15 @@ final class SummonTurnController {
     private weak var gameManager: GameManager?
     var isExecuting: Bool = false
 
+    /// The board this turn belongs to; a turn that outlives it (the board left or restarted
+    /// while it waited) stops without touching the game.
+    private let generation: Int
+    private var isStale: Bool { coordinator?.isCurrentBoard(generation) != true }
+
     init(coordinator: BoardCoordinator, gameManager: GameManager) {
         self.coordinator = coordinator
         self.gameManager = gameManager
+        self.generation = coordinator.boardGeneration
     }
 
     /// Execute all summon turns for a character.
@@ -22,6 +28,7 @@ final class SummonTurnController {
         defer { isExecuting = false }
 
         for summon in character.summons where !summon.dead {
+            guard !isStale else { return }
             let pieceID = PieceID.summon(id: summon.id)
             coordinator.setActing(pieceID)
             guard coordinator.isOnBoard(pieceID) else { continue }
@@ -41,6 +48,7 @@ final class SummonTurnController {
                                               board: coordinator.boardState, gameState: gameManager.game)
             await executeSummonTurn(result: result, summon: summon, pieceID: pieceID)
 
+            guard !isStale else { return }
             if !summon.dead {
                 gameManager.entityManager.expireConditions(summon)
             }
@@ -66,12 +74,12 @@ final class SummonTurnController {
             let steps = result.movementPath.count - 1
             coordinator.log("\(coordinator.name(pieceID)) moves \(steps) hex\(steps == 1 ? "" : "es")", category: .move, trace: "to \(result.movementPath.last!)")
             guard await coordinator.moveAlong(pieceID, path: result.movementPath,
-                                              style: summon.flying ? .fly : .normal) else { return }
+                                              style: summon.flying ? .fly : .normal), !isStale else { return }
         }
 
         guard let attack = result.attack, !result.attackTargets.isEmpty else { return }
         for target in result.attackTargets {
-            guard !summon.dead, coordinator.isOnBoard(pieceID), coordinator.scenarioResult == nil else { return }
+            guard !isStale, !summon.dead, coordinator.isOnBoard(pieceID), coordinator.scenarioResult == nil else { return }
             await coordinator.performAttack(
                 attacker: pieceID, target: target,
                 attack: AttackParameters(value: attack.value, isRanged: attack.isRanged, pierce: attack.pierce,

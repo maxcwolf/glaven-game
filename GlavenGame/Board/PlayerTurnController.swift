@@ -239,6 +239,8 @@ final class PlayerTurnController {
 
     /// Advance the action index after an async action (attack/summon/condition/heal) resolves.
     func advanceAfterAsyncAction() {
+        // A turn that is no longer the board's (the board was left, or the turn ended) stays put.
+        guard coordinator?.activePlayerTurn === self else { return }
         if defaultAttackPending {
             defaultAttackPending = false
             awaitingAsync = false

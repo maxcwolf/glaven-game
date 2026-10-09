@@ -42,6 +42,8 @@ extension BoardCoordinator {
     @MainActor func performAttack(attacker: PieceID, target aimedAt: PieceID, attack: AttackParameters,
                        drawCard: (() -> AttackModifier?)? = nil, from origin: HexCoord? = nil) async -> Bool {
         let target = provokedTarget(of: attacker, aimingAt: aimedAt)
+        // Every await below may come back to a board that was left or restarted meanwhile.
+        let generation = boardGeneration
         guard let attackerPos = origin ?? boardState.piecePositions[attacker],
               let targetPos = boardState.piecePositions[target],
               let defender = entity(for: target) else { return false }
@@ -88,6 +90,7 @@ extension BoardCoordinator {
         if let scene = boardScene {
             scene.showAttack(from: attacker, to: target, ranged: attack.isRanged || distance > 1)
             if turnDelayNanoseconds > 0 { try? await Task.sleep(nanoseconds: turnDelayNanoseconds / 2) }
+            guard isCurrentBoard(generation) else { return false }
         }
         // Leather Armor, Studded Leather: the attacker gains disadvantage.
         for item in DefenseItem.beforeDraw where !disadvantage && areEnemies(attacker, target) {
@@ -95,6 +98,7 @@ extension BoardCoordinator {
                 disadvantage = true
                 shield += item.shield
             }
+            guard isCurrentBoard(generation) else { return false }
         }
 
         var preDrawn = await performModifierDraw(
@@ -102,6 +106,7 @@ extension BoardCoordinator {
             advantage: advantage, disadvantage: disadvantage,
             drawCard: drawCard ?? modifierDrawer(for: attacker)
         )
+        guard isCurrentBoard(generation) else { return false }
 
         // Iron Helmet: an enemy's ×2 against the wearer counts as +0 (always on, by the data).
         if case .character(let id) = target, areEnemies(attacker, target),
@@ -149,6 +154,7 @@ extension BoardCoordinator {
                 negated = item.negates
                 result = resolve()
             }
+            guard isCurrentBoard(generation) else { return false }
         }
         let breakdown = CombatResolver.damageBreakdown(
             base: attack.value, isPoisoned: isPoisoned, preDrawnCards: preDrawn,
@@ -172,6 +178,7 @@ extension BoardCoordinator {
         } else if result.damage > 0 {
             died = await sufferDamageWithMitigation(result.damage, to: target,
                                                     source: pieceLabel(attacker), killer: attacker)
+            guard isCurrentBoard(generation) else { return died }
         }
 
         // Added effects apply even when no damage was dealt, but not to a dead target (p.19).
@@ -190,9 +197,11 @@ extension BoardCoordinator {
             let pull = attack.pull + result.modifierPull
             if push > 0, let origin = boardState.piecePositions[attacker] {
                 await performPushPull(target: target, attackerPos: origin, steps: push, isPush: true)
+                guard isCurrentBoard(generation) else { return died }
             }
             if pull > 0, let origin = boardState.piecePositions[attacker] {
                 await performPushPull(target: target, attackerPos: origin, steps: pull, isPush: false)
+                guard isCurrentBoard(generation) else { return died }
             }
         }
 
@@ -215,6 +224,7 @@ extension BoardCoordinator {
             }
             await sufferDamageWithMitigation(retaliate, to: attacker,
                                              source: "\(name(target))\u{2019}s retaliate", killer: target)
+            guard isCurrentBoard(generation) else { return died }
         }
         await resolveDeathAttacks()
         return died
@@ -223,7 +233,8 @@ extension BoardCoordinator {
     /// Make the "on death" attacks of monsters that fell (Cultists: Attack +2 on the figures
     /// around where it fell), each from its last hex.
     @MainActor func resolveDeathAttacks() async {
-        while !pendingDeathAttacks.isEmpty {
+        let generation = boardGeneration
+        while !pendingDeathAttacks.isEmpty, isCurrentBoard(generation) {
             let death = pendingDeathAttacks.removeFirst()
             guard let gameManager, let monster = gameManager.game.monsters.first(where: { $0.name == death.monster }) else { continue }
             let game = gameManager.game
@@ -248,7 +259,7 @@ extension BoardCoordinator {
             guard !victims.isEmpty else { continue }
             log("\(name(death.attacker)) attacks as it dies", category: .attack)
             deathAttackInProgress = death
-            for victim in victims where isOnBoard(victim) {
+            for victim in victims where isOnBoard(victim) && isCurrentBoard(generation) {
                 await performAttack(attacker: death.attacker, target: victim,
                                     attack: AttackParameters(value: spec.value, conditions: spec.conditions),
                                     from: death.position)

@@ -285,6 +285,9 @@ final class BoardCoordinator {
 
     /// Non-nil when a monster push/pull is in progress and the async caller is suspended.
     private var pendingPushPullContinuation: CheckedContinuation<Void, Never>?
+    /// Moves waiting for their animation to finish, by move. A scene torn down mid-move never
+    /// finishes them, so teardown resumes them instead.
+    var pendingMoveAnimations: [UUID: CheckedContinuation<Void, Never>] = [:]
 
     /// Finish a pending draw with cards drawn elsewhere (the test policies draw this way).
     func completeModifierDraw(selectedCards: [AttackModifier]) {
@@ -753,11 +756,7 @@ final class BoardCoordinator {
         scenarioData = scenario
         briefPresentation = nil
         boardGeneration += 1
-        pendingShortRest = nil
-        pendingLongRest = nil
-        pendingDamage = nil
-        pendingModifierDraw = nil
-        pendingSummonPlacement = nil
+        abandonPendingPrompts()
         turnOrder = []
         currentTurnIndex = -1
         activePlayerTurn = nil
@@ -770,6 +769,48 @@ final class BoardCoordinator {
         lastAttackTarget = nil
         lastAttackerPos = nil
         characterTraps = [:]
+    }
+
+    /// Whether `generation` (read when a turn task started) is still the board on the table. A
+    /// task that finds it isn't stops without touching the game: the board was left or restarted.
+    func isCurrentBoard(_ generation: Int) -> Bool { boardGeneration == generation }
+
+    /// Resume every turn task waiting on the player or an animation and drop every prompt, as the
+    /// board is torn down: the tasks end (finding the board gone) instead of hanging on, and no
+    /// prompt of the old board surfaces, or is answered, on the next one. Call after bumping
+    /// `boardGeneration`.
+    private func abandonPendingPrompts() {
+        let draw = pendingModifierDraw, damage = pendingDamage, item = pendingItemUse
+        let pushPull = pendingPushPullContinuation, moves = pendingMoveAnimations
+        pendingModifierDraw = nil
+        pendingDamage = nil
+        pendingItemUse = nil
+        pendingPushPullContinuation = nil
+        pendingMoveAnimations = [:]
+        draw?.continuation?.resume(returning: [])
+        damage?.continuation?.resume(returning: .takeDamage)
+        item?.continuation?.resume(returning: false)
+        pushPull?.resume()
+        for move in moves.values { move.resume() }
+
+        pendingShortRest = nil
+        pendingLongRest = nil
+        pendingSummonPlacement = nil
+        pendingRecovery = nil
+        initiativeOffers = []
+        pendingInitiativeChange = nil
+        pendingSufferChoice = nil
+        pendingAllyChoice = nil
+        pendingElementChoice = nil
+        pendingItemRefresh = nil
+        pendingConditionRemoval = nil
+        pendingDeathAttacks = []
+        deathAttackInProgress = nil
+        pendingExtraConditions = []
+        pendingForcedAttack = nil
+        pendingHealConditions = []
+        monsterAttackBonusThisRound = 0
+        disadvantagedThisRound = []
     }
 
     /// Hand round flow and rule-driven spawns over to the board.
@@ -814,9 +855,7 @@ final class BoardCoordinator {
     /// Tear down the board and return to the main menu.
     func exitBoard() {
         boardGeneration += 1
-        pendingLongRest = nil
-        pendingDamage = nil
-        pendingModifierDraw = nil
+        abandonPendingPrompts()
         gameManager?.scenarioRulesManager.onSpawnMonster = nil
         gameManager?.roundManager.figuresTakeOwnTurns = false
         gameManager?.appPhase = .mainMenu
@@ -1132,8 +1171,9 @@ final class BoardCoordinator {
                 let generation = boardGeneration
                 Task { @MainActor in
                     await controller.executeSummonTurns(for: character)
+                    guard self.boardGeneration == generation else { return }
                     self.summonTurnController = nil
-                    guard self.scenarioResult == nil, self.boardGeneration == generation else { return }
+                    guard self.scenarioResult == nil else { return }
                     self.beginCharacterTurn(character, entry: entry)
                 }
             } else {
@@ -1155,8 +1195,8 @@ final class BoardCoordinator {
             let generation = boardGeneration
             Task { @MainActor in
                 await controller.executeMonsterGroup(monster, only: entry.onlyStandees)
-                self.monsterTurnController = nil
                 guard self.boardGeneration == generation else { return }
+                self.monsterTurnController = nil
                 self.checkVictoryDefeat()
                 if self.scenarioResult == nil {
                     self.advanceToNextFigure()
@@ -1174,8 +1214,8 @@ final class BoardCoordinator {
                 let generation = boardGeneration
                 Task { @MainActor in
                     await controller.executeEscortTurns(for: container)
-                    self.escortTurnController = nil
                     guard self.boardGeneration == generation else { return }
+                    self.escortTurnController = nil
                     self.checkVictoryDefeat()
                     if self.scenarioResult == nil {
                         self.advanceToNextFigure()
@@ -1483,8 +1523,10 @@ final class BoardCoordinator {
         interactionMode = .idle
         let style: MovementStyle = mode == .jump ? .jump : (mode == .fly ? .fly : .normal)
         let turn = activePlayerTurn
+        let generation = boardGeneration
         Task { @MainActor in
             await self.moveAlong(pieceID, path: path, style: style)
+            guard self.isCurrentBoard(generation) else { return }
             // The move may end early (a trap that immobilizes, or one that exhausts the figure).
             if let end = self.boardState.piecePositions[pieceID] {
                 let steps = path.firstIndex(of: end) ?? path.count - 1
@@ -1508,8 +1550,10 @@ final class BoardCoordinator {
         boardScene?.clearHighlights()
         interactionMode = .idle
         let turn = activePlayerTurn
+        let generation = boardGeneration
         Task { @MainActor in
             await self.animateMove(pieceID, along: [pos, target], as: .teleport)
+            guard self.isCurrentBoard(generation) else { return }
             self.boardState.movePiece(pieceID, to: target)
             self.log("\(self.name(pieceID)) teleports", category: .move, trace: "to \(target)")
             turn?.advanceAfterAsyncAction()
@@ -1576,12 +1620,15 @@ final class BoardCoordinator {
     /// One attack of the current action against each target in turn, then the action ends.
     private func attackEach(_ targets: [PieceID], from pieceID: PieceID, range: Int) {
         let value = activePlayerTurn?.currentAttackValue() ?? 2
+        let turn = activePlayerTurn, generation = boardGeneration
         Task { @MainActor in
             for target in targets where self.isOnBoard(target) && self.isOnBoard(pieceID) {
+                guard self.isCurrentBoard(generation) else { return }
                 await self.resolvePlayerAttack(attacker: pieceID, target: target, attackValue: value,
                                                range: range, advanceAction: false)
             }
-            self.activePlayerTurn?.advanceAfterAsyncAction()
+            guard self.isCurrentBoard(generation) else { return }
+            turn?.advanceAfterAsyncAction()
         }
     }
 
@@ -1694,6 +1741,7 @@ final class BoardCoordinator {
     /// Pass false when resolving multiple targets — the caller advances after all are resolved.
     @MainActor func resolvePlayerAttack(attacker: PieceID, target: PieceID, attackValue: Int, range: Int, advanceAction: Bool = true) async {
         let turn = activePlayerTurn
+        let generation = boardGeneration
         lastAttackTarget = target
         lastAttackerPos = boardState.piecePositions[attacker]
         boardScene?.clearHighlights()
@@ -1710,6 +1758,7 @@ final class BoardCoordinator {
                                      push: turn?.pendingPush ?? 0,
                                      pull: turn?.pendingPull ?? 0,
                                      advantage: turn?.pendingAdvantage ?? false))
+        guard isCurrentBoard(generation) else { return }
 
         // Massive Boulder: "all allies and enemies adjacent to the target suffer 1 damage".
         for text in turn?.attackTexts ?? [] where text.contains("adjacent to the target suffer") {
@@ -1729,12 +1778,14 @@ final class BoardCoordinator {
     /// "Push/Pull X, all adjacent enemies": each enemy within reach is moved in turn.
     func forceMoveAllEnemies(from pieceID: PieceID, within reach: Int, steps: Int, isPush: Bool) {
         let targets = targetableEnemies(of: pieceID, range: reach).sorted { $0.description < $1.description }
-        let turn = activePlayerTurn
+        let turn = activePlayerTurn, generation = boardGeneration
         Task { @MainActor in
             for target in targets {
+                guard self.isCurrentBoard(generation) else { return }
                 guard let origin = self.boardState.piecePositions[pieceID], self.isOnBoard(target) else { continue }
                 await self.performPushPull(target: target, attackerPos: origin, steps: steps, isPush: isPush)
             }
+            guard self.isCurrentBoard(generation) else { return }
             turn?.advanceAfterAsyncAction()
         }
     }
@@ -1830,8 +1881,10 @@ final class BoardCoordinator {
                 return
             }
         }
+        let generation = boardGeneration
         Task { @MainActor in
             let alive = await self.moveAlong(target, path: [currentPos, destination], style: .forced)
+            guard self.isCurrentBoard(generation) else { return }
             let stepsLeft = remainingSteps - 1
             if alive && stepsLeft > 0 {
                 self.beginPushPull(target: target, attackerPos: attackerPos, remainingSteps: stepsLeft, isPush: isPush)
@@ -2208,9 +2261,11 @@ final class BoardCoordinator {
                 pendingForcedAttack = nil
                 interactionMode = .idle
                 boardScene?.clearHighlights()
+                let turn = activePlayerTurn, generation = boardGeneration
                 Task { @MainActor in
                     await self.performAttack(attacker: attackerID, target: piece, attack: forced)
-                    self.activePlayerTurn?.advanceAfterAsyncAction()
+                    guard self.isCurrentBoard(generation) else { return }
+                    turn?.advanceAfterAsyncAction()
                 }
             } else if validTargets.contains(piece) {
                 let attackValue = activePlayerTurn?.currentAttackValue() ?? 2
@@ -2223,11 +2278,14 @@ final class BoardCoordinator {
                     let areaTexts = activePlayerTurn?.attackTexts ?? []
                     interactionMode = .idle
                     log("\(name(attackerID))\u{2019}s area attack hits \(targets.count) enem\(targets.count == 1 ? "y" : "ies")", category: .attack)
+                    let turn = activePlayerTurn, generation = boardGeneration
                     Task { @MainActor in
                         for target in targets where self.isOnBoard(target) && self.isOnBoard(attackerID) {
+                            guard self.isCurrentBoard(generation) else { return }
                             await self.resolvePlayerAttack(attacker: attackerID, target: target, attackValue: attackValue,
                                                            range: ranged ? max(2, range) : 1, advanceAction: false)
                         }
+                        guard self.isCurrentBoard(generation) else { return }
                         // Unstable Explosives: "All allies in the attack area suffer 3 damage."
                         for text in areaTexts where text.contains("allies in the attack area suffer") {
                             let amount = PlayerTurnController.damageAmount(in: text)
@@ -2249,7 +2307,7 @@ final class BoardCoordinator {
                                 }
                             }
                         }
-                        self.activePlayerTurn?.advanceAfterAsyncAction()
+                        turn?.advanceAfterAsyncAction()
                     }
                 } else if activePlayerTurn?.attackTexts.contains(where: { $0.contains("all enemies on the path to the primary target") }) == true,
                           let from = boardState.piecePositions[attackerID], let to = boardState.piecePositions[piece] {
@@ -2258,12 +2316,15 @@ final class BoardCoordinator {
                     let onTheWay = boardState.piecePositions.filter { path.contains($0.value) && areEnemies(attackerID, $0.key) }
                         .map(\.key).sorted()
                     interactionMode = .idle
+                    let turn = activePlayerTurn, generation = boardGeneration
                     Task { @MainActor in
                         for target in onTheWay + [piece] where self.isOnBoard(target) {
+                            guard self.isCurrentBoard(generation) else { return }
                             await self.resolvePlayerAttack(attacker: attackerID, target: target, attackValue: attackValue,
                                                            range: range, advanceAction: false)
                         }
-                        self.activePlayerTurn?.advanceAfterAsyncAction()
+                        guard self.isCurrentBoard(generation) else { return }
+                        turn?.advanceAfterAsyncAction()
                     }
                 } else {
                     interactionMode = .idle
@@ -2284,11 +2345,14 @@ final class BoardCoordinator {
                     let attackRange = activePlayerTurn?.currentAttackRange() ?? 1
                     let targets = selected
                     interactionMode = .idle
+                    let turn = activePlayerTurn, generation = boardGeneration
                     Task { @MainActor in
                         for target in targets {
+                            guard self.isCurrentBoard(generation) else { return }
                             await self.resolvePlayerAttack(attacker: attackerID, target: target, attackValue: attackValue, range: attackRange, advanceAction: false)
                         }
-                        self.activePlayerTurn?.advanceAfterAsyncAction()
+                        guard self.isCurrentBoard(generation) else { return }
+                        turn?.advanceAfterAsyncAction()
                     }
                 } else {
                     // Update mode with new selected list, highlight remaining valid targets
@@ -2318,9 +2382,10 @@ final class BoardCoordinator {
             if validTargets.contains(piece), let origin = boardState.piecePositions[moverID] {
                 boardScene?.clearHighlights()
                 interactionMode = .idle
-                let turn = activePlayerTurn
+                let turn = activePlayerTurn, generation = boardGeneration
                 Task { @MainActor in
                     await self.performPushPull(target: piece, attackerPos: origin, steps: steps, isPush: isPush)
+                    guard self.isCurrentBoard(generation) else { return }
                     turn?.advanceAfterAsyncAction()
                 }
             }
@@ -2357,11 +2422,14 @@ final class BoardCoordinator {
         let attackRange = activePlayerTurn?.currentAttackRange() ?? 1
         let targets = selected
         interactionMode = .idle
+        let turn = activePlayerTurn, generation = boardGeneration
         Task { @MainActor in
             for target in targets {
+                guard self.isCurrentBoard(generation) else { return }
                 await self.resolvePlayerAttack(attacker: attackerID, target: target, attackValue: attackValue, range: attackRange, advanceAction: false)
             }
-            self.activePlayerTurn?.advanceAfterAsyncAction()
+            guard self.isCurrentBoard(generation) else { return }
+            turn?.advanceAfterAsyncAction()
         }
     }
 

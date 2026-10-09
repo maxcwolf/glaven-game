@@ -184,7 +184,7 @@ extension BoardCoordinator {
         if case .character(let id) = pieceID, !negatesDamage(pieceID, amount: amount),
            let character = gameManager?.game.characters.first(where: { $0.id == id }),
            await promptDamageMitigation(character: character, damage: amount, source: source) {
-            boardScene?.floatText("Prevented", over: pieceID, style: .info)
+            if isOnBoard(pieceID) { boardScene?.floatText("Prevented", over: pieceID, style: .info) }
             return false
         }
         return sufferDamage(amount, to: pieceID, killer: killer)
@@ -204,10 +204,13 @@ extension BoardCoordinator {
         let canLoseDiscard = character.discardedCards.count >= 2
         guard canLoseHand || canLoseDiscard, !autoResolvePrompts else { return false }
 
+        let generation = boardGeneration
         let choice = await withCheckedContinuation { (continuation: CheckedContinuation<DamageMitigationChoice, Never>) in
             pendingDamage = PendingDamage(characterID: character.id, damage: damage,
                                           sourceDescription: source, continuation: continuation)
         }
+        // The board was left while the player chose: nothing is lost and no damage is taken.
+        guard isCurrentBoard(generation) else { return true }
 
         switch choice {
         case .takeDamage:
