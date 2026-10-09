@@ -694,6 +694,34 @@ final class BoardRulesRegressionTests: XCTestCase {
         XCTAssertEqual(rage.currentAttackValue(), 3, "Growing Rage: cards lost")
     }
 
+    func testReinvigoratingElixirLetsAnAdjacentAllyRecoverEverything() throws {
+        let tinkerer = addCharacter("tinkerer", at: HexCoord(3, 3))
+        let brute = addCharacter("brute", at: HexCoord(4, 3))
+        brute.discardedCards = [1, 2, 3]
+        let turn = turn(for: tinkerer, top: try card("Hook Gun", of: "tinkerer"), bottom: try card("Reinvigorating Elixir", of: "tinkerer"),
+                        bottomFirst: true)
+        turn.executeCurrentAction()
+        XCTAssertTrue(brute.discardedCards.isEmpty)
+        XCTAssertTrue([1, 2, 3].allSatisfy(brute.handCards.contains))
+    }
+
+    func testVolatileConcoctionAsksWhichAllyRecovers() throws {
+        let tinkerer = addCharacter("tinkerer", at: HexCoord(3, 3))
+        let brute = addCharacter("brute", at: HexCoord(4, 3))
+        let spellweaver = addCharacter("spellweaver", at: HexCoord(2, 3))
+        brute.discardedCards = [1, 2, 3]
+        spellweaver.discardedCards = [61]
+        let turn = turn(for: tinkerer, top: try card("Hook Gun", of: "tinkerer"), bottom: try card("Volatile Concoction", of: "tinkerer"),
+                        bottomFirst: true)
+        turn.executeCurrentAction()
+        let choice = try XCTUnwrap(coord.pendingAllyChoice)
+        XCTAssertEqual(Set(choice.characterIDs), [brute.id, spellweaver.id])
+        coord.resolveAllyChoice(brute.id)
+        XCTAssertEqual(coord.pendingRecovery?.count, 1, "one card, without Ice to consume")
+        coord.resolveRecovery([2, 3])
+        XCTAssertEqual(brute.discardedCards, [1, 3])
+    }
+
     // MARK: - Mindthief augments
 
     /// Play `augment`'s top (the augment, then its own Attack) against an adjacent Bandit Guard.

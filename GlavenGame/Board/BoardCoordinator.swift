@@ -387,6 +387,9 @@ final class BoardCoordinator {
     var initiativeOffers: [PendingInitiativeChange] = []
     var pendingInitiativeChange: PendingInitiativeChange?
 
+    /// Non-nil while the player picks which ally recovers cards (Volatile Concoction).
+    var pendingAllyChoice: PendingAllyChoice?
+
     /// Non-nil while a character picks elements to infuse (Mana Potions).
     var pendingElementChoice: PendingElementChoice?
 

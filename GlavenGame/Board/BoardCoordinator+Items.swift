@@ -543,6 +543,49 @@ extension BoardCoordinator {
         }
     }
 
+    // MARK: - An ally recovers cards
+
+    /// Which ally recovers discarded cards, when more than one could.
+    struct PendingAllyChoice: Identifiable, Equatable {
+        let id = UUID()
+        let characterIDs: [String]
+        let count: Int
+        let title: String
+    }
+
+    /// "One ally within range N may recover…": the allies with discarded cards, then their cards.
+    func offerAllyRecovery(from piece: PieceID, range: Int, count: Int, title: String) {
+        guard let game = gameManager?.game else { return }
+        let allies = alliesInRange(of: piece, range: range, includeSelf: false).compactMap { ally -> GameCharacter? in
+            guard case .character(let id) = ally else { return nil }
+            return game.characters.first { $0.id == id && !$0.discardedCards.isEmpty }
+        }.sorted { $0.id < $1.id }
+        switch allies.count {
+        case 0:
+            log("\(name(piece)) has no ally in range with discarded cards", category: .info)
+        case 1:
+            letRecover(allies[0], count: count, title: title)
+        default:
+            pendingAllyChoice = PendingAllyChoice(characterIDs: allies.map(\.id), count: count, title: title)
+        }
+    }
+
+    func resolveAllyChoice(_ characterID: String?) {
+        guard let pending = pendingAllyChoice else { return }
+        pendingAllyChoice = nil
+        guard let id = characterID, pending.characterIDs.contains(id),
+              let ally = gameManager?.game.characters.first(where: { $0.id == id }) else { return }
+        letRecover(ally, count: pending.count, title: pending.title)
+    }
+
+    private func letRecover(_ ally: GameCharacter, count: Int, title: String) {
+        if ally.discardedCards.count <= count {
+            recover(ally.discardedCards, for: ally)
+        } else {
+            pendingRecovery = PendingRecovery(characterID: ally.id, count: count, itemName: title)
+        }
+    }
+
     /// Recovering discarded cards: which ones (up to `count`) go back to the hand.
     struct PendingRecovery: Identifiable, Equatable {
         let id = UUID()

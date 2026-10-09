@@ -76,6 +76,29 @@ struct ConditionRemovalPrompt: View {
     }
 }
 
+/// Which ally recovers discarded cards (Volatile Concoction, Reinvigorating Elixir).
+struct AllyChoicePrompt: View {
+    let pending: BoardCoordinator.PendingAllyChoice
+    let coordinator: BoardCoordinator
+
+    var body: some View {
+        ItemChoicePanel(title: pending.title, detail: "Which ally recovers their discarded cards?") {
+            HStack(spacing: 10) {
+                ForEach(pending.characterIDs, id: \.self) { id in
+                    Button(coordinator.characterName(id)) { coordinator.resolveAllyChoice(id) }
+                        .buttonStyle(.borderedProminent)
+                        .tint(BoardTheme.brass)
+                }
+            }
+        } actions: {
+            Button("No One") { coordinator.resolveAllyChoice(nil) }
+                .buttonStyle(.bordered)
+                .tint(BoardTheme.text)
+        }
+        .frame(maxWidth: 560)
+    }
+}
+
 /// The panel both pickers share: the item's name, what to do, the choices and a button row.
 private struct ItemChoicePanel<Choices: View, Actions: View>: View {
     let title: String

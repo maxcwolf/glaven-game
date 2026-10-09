@@ -765,6 +765,19 @@ final class PlayerTurnController {
             // Avalanche: "Create two single-hex obstacles in empty hexes adjacent to you."
             let count = text.contains("two") ? 2 : 1
             return coordinator.beginPlacingTokens(.obstacle, count: count, by: me)
+        } else if text.contains("ally") && text.contains("recover") && text.contains("discarded") {
+            // Reinvigorating Elixir ("one adjacent ally… all of their discarded cards"), Volatile
+            // Concoction ("one ally within Range 2… one of their discarded cards"; consume Ice:
+            // "up to two discarded cards instead").
+            let range = text.contains("adjacent") ? 1 : (text.firstMatch(of: #/range (\d+)/#).flatMap { Int($0.1) } ?? 1)
+            var count = text.contains("all of their discarded") ? Int.max : 1
+            for sub in action.subActions ?? [] where MonsterAbility.isConsume(sub) {
+                guard let game = gameManager?.game, let used = game.consumeElements(MonsterAbility.elements(of: sub)) else { continue }
+                coordinator.log("\(who) consumes \(GameText.list(used.map(GameText.elementName)))", category: .element)
+                if customText(of: sub).contains("up to two") { count = 2 }
+            }
+            let title = (phase == .executeBottomAction ? bottomCard : topCard)?.name ?? "Recover"
+            coordinator.offerAllyRecovery(from: me, range: range, count: count, title: title)
         } else if text.contains("reduce your current hit point value to 1") {
             // Glass Hammer: "This is not considered damage."
             character.health = min(character.health, 1)

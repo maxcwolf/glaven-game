@@ -121,6 +121,11 @@ struct BoardView: View {
                     .id(pending.id)
                     .transition(.opacity)
             }
+            if let pending = coordinator.pendingAllyChoice {
+                AllyChoicePrompt(pending: pending, coordinator: coordinator)
+                    .id(pending.id)
+                    .transition(.opacity)
+            }
             if let pending = coordinator.pendingItemRefresh {
                 ItemRefreshPrompt(pending: pending, coordinator: coordinator)
                     .id(pending.id)
