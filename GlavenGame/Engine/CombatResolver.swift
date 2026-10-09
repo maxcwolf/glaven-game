@@ -26,6 +26,44 @@ struct AttackResult {
     /// Push/pull added by drawn modifier cards.
     var modifierPush: Int = 0
     var modifierPull: Int = 0
+    /// What drawn modifier cards give the attacker (p.19): positive conditions (a Scoundrel's
+    /// Invisible), "Heal X, self", "Shield X, self" for the round, element infusions, and items
+    /// to refresh.
+    var attackerEffects = ModifierSelfEffects()
+}
+
+/// Effects of attack modifier cards that go to the attacker rather than the target.
+struct ModifierSelfEffects: Equatable {
+    var conditions: [ConditionName] = []
+    var heal = 0
+    var shield = 0
+    var infusions: [ElementType] = []
+    var itemsToRefresh = 0
+
+    var isEmpty: Bool { self == ModifierSelfEffects() }
+
+    /// The self effects of `cards`.
+    init(cards: [AttackModifier] = []) {
+        for effect in cards.flatMap(\.effects) {
+            let isSelf = effect.effects?.contains { $0.type == .specialTarget && $0.value?.stringValue == "self" } ?? false
+            switch effect.type {
+            case .condition:
+                if let condition = effect.value.flatMap({ ConditionName(rawValue: $0.stringValue) }), condition.isPositive {
+                    conditions.append(condition)
+                }
+            case .heal where isSelf:
+                heal += effect.value?.intValue ?? 0
+            case .shield where isSelf:
+                shield += effect.value?.intValue ?? 0
+            case .element:
+                if let element = effect.value.flatMap({ ElementType(rawValue: $0.stringValue) }) { infusions.append(element) }
+            case .refreshItem:
+                itemsToRefresh += 1
+            default:
+                break
+            }
+        }
+    }
 }
 
 /// Resolves attacks using the Gloomhaven attack pipeline.
@@ -101,7 +139,8 @@ enum CombatResolver {
         }
         for card in cards {
             for effect in card.effects {
-                if let condition = conditionFromEffect(effect) { modifierConditions.append(condition) }
+                // Positive conditions go to the attacker (ModifierSelfEffects), the rest to the target.
+                if let condition = conditionFromEffect(effect), !condition.isPositive { modifierConditions.append(condition) }
                 if effect.type == .pierce, let value = effect.value?.intValue { modifierPierce += value }
                 if effect.type == .push, let value = effect.value?.intValue { modifierPush += value }
                 if effect.type == .pull, let value = effect.value?.intValue { modifierPull += value }
@@ -146,7 +185,8 @@ enum CombatResolver {
             retaliateDamage: retaliateDamage,
             allConditions: conditions + modifierConditions,
             modifierPush: modifierPush,
-            modifierPull: modifierPull
+            modifierPull: modifierPull,
+            attackerEffects: ModifierSelfEffects(cards: cards)
         )
     }
 

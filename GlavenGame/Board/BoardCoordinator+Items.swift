@@ -494,6 +494,10 @@ extension BoardCoordinator {
         refresh(Array(keys.filter(pending.options.contains).prefix(pending.count)), for: character)
     }
 
+    func refreshItems(_ keys: [String], for character: GameCharacter) {
+        refresh(keys, for: character)
+    }
+
     private func refresh(_ keys: [String], for character: GameCharacter) {
         guard !keys.isEmpty else { return }
         for key in keys {

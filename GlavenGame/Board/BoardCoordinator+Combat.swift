@@ -172,6 +172,8 @@ extension BoardCoordinator {
             boardScene?.pieceUnharmed(id: target, missed: result.isMiss)
         }
 
+        applyModifierSelfEffects(result.attackerEffects, to: attacker)
+
         var died = false
         if negated {
             log("\(name(target)) suffers no damage", category: .damage)
@@ -229,6 +231,39 @@ extension BoardCoordinator {
         }
         await resolveDeathAttacks()
         return died
+    }
+
+    /// What the drawn modifier cards give the attacker, whatever happens to the target (p.19).
+    func applyModifierSelfEffects(_ effects: ModifierSelfEffects, to attacker: PieceID) {
+        guard !effects.isEmpty, isOnBoard(attacker), let gameManager else { return }
+        for condition in effects.conditions {
+            applyCondition(condition, to: attacker)
+        }
+        if effects.heal > 0 {
+            let healed = heal(attacker, amount: effects.heal, source: attacker)
+            log("\(name(attacker)) heals for \(healed)", category: .heal)
+        }
+        if effects.shield > 0, let entity = entity(for: attacker) {
+            // Shield X, self: until the end of the round.
+            let total = (entity.shield?.value?.intValue ?? 0) + effects.shield
+            entity.shield = ActionModel(type: .shield, value: .int(total))
+            log("\(name(attacker)) gains Shield \(effects.shield) this round", category: .info)
+        }
+        for element in effects.infusions {
+            gameManager.game.infuseElement(element)
+            log("\(name(attacker)) infuses \(GameText.elementName(element))", category: .element)
+        }
+        // "Refresh an item": the attacker's spent or lost item, picked when there's a choice.
+        if effects.itemsToRefresh > 0, case .character(let id) = attacker,
+           let character = gameManager.game.characters.first(where: { $0.id == id }) {
+            let options = refreshableItems(of: character, excluding: "", consumedSmallOnly: false)
+            if options.count <= effects.itemsToRefresh || autoResolvePrompts {
+                refreshItems(options.prefix(effects.itemsToRefresh).map(\.itemKey), for: character)
+            } else {
+                pendingItemRefresh = PendingItemRefresh(characterID: character.id, count: effects.itemsToRefresh,
+                                                        options: options.map(\.itemKey), itemName: "Attack modifier")
+            }
+        }
     }
 
     /// Make the "on death" attacks of monsters that fell (Cultists: Attack +2 on the figures
