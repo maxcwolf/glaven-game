@@ -200,6 +200,8 @@ extension BoardCoordinator {
 
     /// Open How to Play, at a topic.
     func openHowToPlay(_ topic: LearnTopic.ID? = nil) {
+        // An explanation's link reads on in the book: the explanation (and its ring) closes.
+        closeExplanation()
         howToPlay = HowToPlayRequest(topic: topic)
     }
 

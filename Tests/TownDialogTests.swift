@@ -179,4 +179,16 @@ final class TownDialogTests: XCTestCase {
         XCTAssertEqual(totals.mostKilled?.count, 7)
         XCTAssertEqual(PartyStatisticsSheet.numbers(brute), [1, 6, 1, 1, brute.experience, brute.loot])
     }
+
+    /// Regression: holding Sanctuary and following the card's link to How to Play left the card
+    /// and the button's ring over the book until the next tap.
+    func testFollowingAnExplanationsLinkClosesIt() throws {
+        let gm = try party()
+        let coord = gm.boardCoordinator
+        coord.explain(.sanctuary)
+        XCTAssertNotNil(coord.explanation)
+        coord.openHowToPlay(coord.explanation?.topic)
+        XCTAssertNil(coord.explanation)
+        XCTAssertEqual(coord.howToPlay?.topic, .sanctuary)
+    }
 }
