@@ -153,7 +153,12 @@ final class ItemManager {
     ///   - to: Maximum item ID range (inclusive, -1 for no maximum)
     /// - Returns: A random item, or nil if none available.
     func drawRandomItem(blueprint: Bool = false, from: Int = -1, to: Int = -1) -> ItemData? {
+        Self.drawRandomItem(game: game, editionStore: editionStore, blueprint: blueprint, from: from, to: to)
+    }
 
+    /// A random item design not yet unlocked (shared with treasure rewards).
+    static func drawRandomItem(game: GameState, editionStore: EditionDataStore,
+                               blueprint: Bool = false, from: Int = -1, to: Int = -1) -> ItemData? {
         let edition = game.edition ?? "gh"
         let allItems = editionStore.items(for: edition)
 
@@ -176,7 +181,7 @@ final class ItemManager {
         return candidates.randomElement(using: &GameRandom.shared)
     }
 
-    /// Unlock a randomly drawn item and return it.
+    /// Draw a random item design and add it to the city's supply.
     func drawAndUnlockRandomItem(blueprint: Bool = false) -> ItemData? {
         guard let drawn = drawRandomItem(blueprint: blueprint) else { return nil }
         onBeforeMutate?()

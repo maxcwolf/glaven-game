@@ -33,13 +33,17 @@ extension ScenarioManager {
 
         guard let reward = editionStore.treasureReward(index: number, edition: edition) else { return nil }
         let recipient = character ?? game.activeCharacters.first
+        var drawn: [String] = []
         for part in reward.split(separator: "|").map(String.init) {
-            applyTreasureReward(part, edition: edition, to: recipient)
+            if let name = applyTreasureReward(part, edition: edition, to: recipient) { drawn.append(name) }
         }
-        return editionStore.treasureLabel(rewardString: reward, edition: edition)
+        let label = editionStore.treasureLabel(rewardString: reward, edition: edition)
+        return drawn.isEmpty ? label : "\(label) (\(drawn.joined(separator: ", ")))"
     }
 
-    private func applyTreasureReward(_ reward: String, edition: String, to character: GameCharacter?) {
+    /// Apply one part of a treasure's reward; returns what a random draw turned up, to name it.
+    @discardableResult
+    private func applyTreasureReward(_ reward: String, edition: String, to character: GameCharacter?) -> String? {
         let components = reward.split(separator: ":", maxSplits: 1).map(String.init)
         let type = components[0]
         let value = components.count > 1 ? components[1] : nil
@@ -84,9 +88,19 @@ extension ScenarioManager {
             }
         case "partyAchievement":
             if let value { game.partyAchievements.insert(value) }
+        case "randomItemDesign":
+            // A random item design joins the city's supply (p.43).
+            guard let item = ItemManager.drawRandomItem(game: game, editionStore: editionStore) else { return nil }
+            game.unlockedItems.insert("\(item.edition)-\(item.id)")
+            return item.name
+        case "randomScenario":
+            // A random side scenario is unlocked (p.43).
+            guard let scenario = drawRandomScenario() else { return nil }
+            game.manualScenarios.insert(scenario.id)
+            return "#\(scenario.index) \(scenario.name)"
         default:
-            // randomItemDesign / randomScenario are drawn through their own dialogs.
             break
         }
+        return nil
     }
 }

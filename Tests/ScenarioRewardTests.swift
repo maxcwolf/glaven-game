@@ -221,4 +221,31 @@ final class ScenarioRewardTests: XCTestCase {
         XCTAssertTrue(party[0].items.isEmpty)
         XCTAssertTrue(game.unlockedItems.isEmpty)
     }
+
+    // MARK: - Treasures
+
+    /// Black Barrow's treasure 7 is a random side scenario (p.43): one is unlocked and named.
+    func testARandomScenarioTreasureUnlocksOne() throws {
+        let brute = addParty("brute")[0]
+        gm.scenarioManager.setScenario(try scenario("1"))
+        let before = game.manualScenarios
+        let label = gm.scenarioManager.lootTreasure("7", by: brute)
+        let unlocked = game.manualScenarios.subtracting(before)
+        XCTAssertEqual(unlocked.count, 1, "a random side scenario is unlocked")
+        let drawn = try XCTUnwrap(gm.editionStore.scenarios(for: "gh").first { unlocked.contains($0.id) })
+        XCTAssertEqual(drawn.random, true)
+        XCTAssertTrue(label?.contains(drawn.name) == true, "the reward names it: \(label ?? "nil")")
+    }
+
+    /// Treasure 1 is a random item design: one joins the city's supply.
+    func testARandomItemDesignTreasureUnlocksOne() throws {
+        let brute = addParty("brute")[0]
+        gm.scenarioManager.setScenario(try scenario("1"))
+        let before = game.unlockedItems
+        gm.scenarioManager.lootTreasure("1", by: brute)
+        let unlocked = game.unlockedItems.subtracting(before)
+        XCTAssertEqual(unlocked.count, 1, "a random item design joins the supply")
+        let item = try XCTUnwrap(gm.editionStore.items(for: "gh").first { unlocked.contains("gh-\($0.id)") })
+        XCTAssertTrue(item.random)
+    }
 }
