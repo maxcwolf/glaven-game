@@ -528,7 +528,7 @@ struct BoardView: View {
         if let instruction = coordinator.instruction(for: coordinator.interactionMode) {
             InstructionBanner(instruction: instruction, onSkip: coordinator.activePlayerTurn.map { turn in
                 { turn.skipCurrentAction() }
-            })
+            }, choices: coordinator.accessibleChoices())
             .transition(.opacity)
             .animation(.easeInOut(duration: 0.2), value: instruction)
         }

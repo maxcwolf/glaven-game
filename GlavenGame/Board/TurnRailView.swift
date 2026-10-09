@@ -103,6 +103,8 @@ struct TurnRailView: View {
 struct InstructionBanner: View {
     let instruction: BoardCoordinator.Instruction
     var onSkip: (() -> Void)?
+    /// What can be picked on the board, offered to VoiceOver as actions (swipe up or down).
+    var choices: [BoardChoice] = []
 
     var body: some View {
         HStack(spacing: 14) {
@@ -128,5 +130,11 @@ struct InstructionBanner: View {
         .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color(red: 0.42, green: 0.33, blue: 0.15), lineWidth: 1))
         .shadow(color: .black.opacity(0.4), radius: 8, y: 3)
         .accessibilityElement(children: .combine)
+        .accessibilityHint(choices.isEmpty ? "" : "\(choices.count) choice\(choices.count == 1 ? "" : "s"): swipe up or down to hear them, double-tap to choose")
+        .accessibilityActions {
+            ForEach(choices) { choice in
+                Button(choice.label, action: choice.perform)
+            }
+        }
     }
 }

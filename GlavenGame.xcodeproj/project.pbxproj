@@ -94,6 +94,7 @@
 		6A2C001DDB53BA14D5172D8E /* ObjectiveManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DC0AE3639F6C6E004323D24 /* ObjectiveManager.swift */; };
 		6D608F3FE34AB04DE2BE8DE6 /* EnhancementSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35D4A8E2CD8880F3B5B21592 /* EnhancementSheet.swift */; };
 		6DB6AB6ED57EBE6DBFCC2A33 /* UIScale.swift in Sources */ = {isa = PBXBuildFile; fileRef = 75C223FE093334EB47476FA0 /* UIScale.swift */; };
+		7071E837491694E5CFCA1CFF /* BoardCoordinator+Choices.swift in Sources */ = {isa = PBXBuildFile; fileRef = CE75E2B3B3818DD9370456F7 /* BoardCoordinator+Choices.swift */; };
 		7341D050CFF3F51B1A40A8D0 /* ElementBoardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8255E1A8F1CC6DC84CBFD242 /* ElementBoardView.swift */; };
 		75DF0BB6FC95C99A2DB187DC /* CombatResolver.swift in Sources */ = {isa = PBXBuildFile; fileRef = D43BC428DB53E9EC54ECA21C /* CombatResolver.swift */; };
 		7BC432AB3D70A08BFC5E87E7 /* WorldMapView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C9ECD4B608FAFAC66D31A536 /* WorldMapView.swift */; };
@@ -362,6 +363,7 @@
 		C9ECD4B608FAFAC66D31A536 /* WorldMapView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorldMapView.swift; sourceTree = "<group>"; };
 		CB48D739CDC747D7E15DB194 /* GameCharacter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameCharacter.swift; sourceTree = "<group>"; };
 		CDF3DCEA5916E8F4B3EBEE21 /* FlowLayout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FlowLayout.swift; sourceTree = "<group>"; };
+		CE75E2B3B3818DD9370456F7 /* BoardCoordinator+Choices.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "BoardCoordinator+Choices.swift"; sourceTree = "<group>"; };
 		CEBB2CD9E70D5ABFA126923B /* MonsterTurnController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MonsterTurnController.swift; sourceTree = "<group>"; };
 		CF6C0E1CF27A9ECC9CFC529E /* OverlayStickerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OverlayStickerView.swift; sourceTree = "<group>"; };
 		CF8DD0E2645A4142BBD870E7 /* AbilityModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AbilityModel.swift; sourceTree = "<group>"; };
@@ -744,6 +746,7 @@
 				800796073F61F4C2A69A6408 /* ActiveCardHalf.swift */,
 				84AAD1A669303376EFE4AB19 /* BoardCamera.swift */,
 				06273638779D4902224E1602 /* BoardCoordinator.swift */,
+				CE75E2B3B3818DD9370456F7 /* BoardCoordinator+Choices.swift */,
 				A6B11F82C5E44D977254134D /* BoardCoordinator+Combat.swift */,
 				B6C9F8BE9CC7A895A0360304 /* BoardCoordinator+Movement.swift */,
 				509EFE74015D273EBFFE3C19 /* BoardCoordinator+Outcome.swift */,
@@ -942,6 +945,7 @@
 				7CC59ABF933C68012195E7B3 /* BattleGoals.swift in Sources */,
 				916FFE7F8E38E482DBC83A94 /* BoardBuilder.swift in Sources */,
 				428795E432235765EB962529 /* BoardCamera.swift in Sources */,
+				7071E837491694E5CFCA1CFF /* BoardCoordinator+Choices.swift in Sources */,
 				B8BA0DCB5F22292931347410 /* BoardCoordinator+Combat.swift in Sources */,
 				BF775F0114B6F567A1A74F92 /* BoardCoordinator+Movement.swift in Sources */,
 				33FD3A501A143207CF670827 /* BoardCoordinator+Outcome.swift in Sources */,

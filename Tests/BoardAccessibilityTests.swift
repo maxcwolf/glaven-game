@@ -1,4 +1,5 @@
 import XCTest
+import SwiftData
 @testable import GlavenGameLib
 
 /// The board is readable and speakable: no text below 11 points, every control says what it
@@ -69,5 +70,80 @@ final class BoardAccessibilityTests: XCTestCase {
             let text = try XCTUnwrap(scene.pieceNode(for: piece)?.spokenDescription)
             XCTAssertEqual(PlayerTextTests.lint(text), [], text)
         }
+    }
+
+    // MARK: - Choosing without seeing the board
+
+    private func boardWithBrute() throws -> (GameManager, BoardCoordinator, PieceID) {
+        let schema = Schema([SettingsModel.self, SavedGameModel.self])
+        let container = try ModelContainer(for: schema, configurations: [ModelConfiguration(isStoredInMemoryOnly: true)])
+        let gm = GameManager(modelContainer: container)
+        retained.append(gm)
+        gm.setEdition("gh")
+        gm.game.level = 1
+        let coord = gm.boardCoordinator
+        coord.boardState = makeBoard(cols: 12, rows: 12)
+        coord.autoResolvePrompts = true
+        coord.turnDelayNanoseconds = 0
+        gm.characterManager.addCharacter(name: "brute", edition: "gh")
+        let brute = PieceID.character(gm.game.characters[0].id)
+        coord.boardState.placePiece(brute, at: HexCoord(3, 3))
+        return (gm, coord, brute)
+    }
+
+    /// The coordinator holds the game manager weakly; keep it alive for the test.
+    private var retained: [GameManager] = []
+
+    func testDirectionsFollowTheMapAsDrawn() {
+        let origin = HexCoord(3, 3)
+        XCTAssertEqual(BoardCoordinator.direction(from: origin, to: HexCoord(4, 3)), "east")
+        XCTAssertEqual(BoardCoordinator.direction(from: origin, to: HexCoord(2, 3)), "west")
+        XCTAssertEqual(Set(origin.neighbors.map { BoardCoordinator.direction(from: origin, to: $0) }),
+                       ["east", "west", "northeast", "northwest", "southeast", "southwest"])
+        XCTAssertEqual(BoardCoordinator.direction(from: origin, to: HexCoord(3, 0)), "north")
+        XCTAssertEqual(BoardCoordinator.direction(from: origin, to: HexCoord(3, 7)), "south")
+    }
+
+    /// Every hex a move can reach is a spoken choice, nearest first, and choosing one moves
+    /// the character there, as tapping it would.
+    func testAMoveCanBeChosenInWords() async throws {
+        let (_, coord, brute) = try boardWithBrute()
+        coord.spawnMonster(name: "bandit-guard", type: .normal, at: HexCoord(5, 3), origin: .placed)
+        coord.beginMoveAction(pieceID: brute, moveRange: 2)
+        guard case .selectingMove(_, _, let hexes, _, _) = coord.interactionMode else { return XCTFail("a move waits for a hex") }
+        let choices = coord.accessibleChoices()
+        XCTAssertEqual(choices.count, hexes.count)
+        XCTAssertEqual(Set(choices.map(\.label)).count, choices.count, "no two choices read alike")
+        XCTAssertTrue(choices[0].label.hasPrefix("Move 1 hex "), choices[0].label)
+        for choice in choices { XCTAssertEqual(PlayerTextTests.lint(choice.label), [], choice.label) }
+
+        let east = try XCTUnwrap(choices.first { $0.label.hasPrefix("Move 1 hex east") })
+        XCTAssertTrue(east.label.contains("next to Bandit Guard 1"), east.label)
+        east.perform()
+        let deadline = Date().addingTimeInterval(3)
+        while coord.boardState.piecePositions[brute] != HexCoord(4, 3) && Date() < deadline {
+            try await Task.sleep(nanoseconds: 1_000_000)
+        }
+        XCTAssertEqual(coord.boardState.piecePositions[brute], HexCoord(4, 3))
+    }
+
+    func testATargetCanBeChosenInWords() throws {
+        let (_, coord, brute) = try boardWithBrute()
+        let near = try XCTUnwrap(coord.spawnMonster(name: "bandit-guard", type: .normal, at: HexCoord(4, 3), origin: .placed))
+        coord.spawnMonster(name: "bandit-guard", type: .normal, at: HexCoord(5, 3), origin: .placed)
+        coord.beginAttackAction(pieceID: brute, range: 2)
+        let choices = coord.accessibleChoices()
+        XCTAssertEqual(choices.count, 2)
+        let entity = try XCTUnwrap(coord.entity(for: near))
+        XCTAssertEqual(choices[0].label, "Attack Bandit Guard 1, \(entity.health) of \(entity.maxHealth) health, next to you")
+        XCTAssertTrue(choices[1].label.hasSuffix("2 hexes away"), choices[1].label)
+        choices[0].perform()
+        if case .selectingAttackTarget = coord.interactionMode { XCTFail("choosing the target attacks it") }
+    }
+
+    func testNothingToChooseWhileMonstersAct() throws {
+        let (_, coord, _) = try boardWithBrute()
+        coord.interactionMode = .watchingMonsterTurn
+        XCTAssertTrue(coord.accessibleChoices().isEmpty)
     }
 }
