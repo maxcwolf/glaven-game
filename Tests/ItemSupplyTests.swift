@@ -32,7 +32,7 @@ final class ItemSupplyTests: XCTestCase {
 
     func testProsperityLevelThresholds() {
         let game = GameState()
-        for (checks, level) in [(-2, 1), (0, 1), (3, 1), (4, 2), (8, 2), (9, 3), (64, 9), (80, 9)] {
+        for (checks, level) in [(-2, 1), (0, 1), (3, 1), (4, 2), (8, 2), (9, 3), (38, 6), (39, 7), (49, 7), (50, 8), (63, 8), (64, 9), (80, 9)] {
             game.partyProsperity = checks
             XCTAssertEqual(game.prosperityLevel, level, "\(checks) prosperity")
         }

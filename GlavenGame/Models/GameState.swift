@@ -120,7 +120,7 @@ final class GameState {
 
     /// Prosperity level (1–9) reached by the party's prosperity checkmarks.
     var prosperityLevel: Int {
-        let thresholds = [0, 4, 9, 15, 22, 30, 39, 49, 64]
+        let thresholds = [0, 4, 9, 15, 22, 30, 39, 50, 64]
         return (thresholds.lastIndex { partyProsperity >= $0 } ?? 0) + 1
     }
 }
