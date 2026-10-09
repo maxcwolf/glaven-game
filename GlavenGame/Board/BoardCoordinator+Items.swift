@@ -250,7 +250,7 @@ extension BoardCoordinator {
     func usableItems() -> [ItemData] {
         guard let turn = activePlayerTurn, let gameManager,
               let character = gameManager.game.characters.first(where: { $0.id == turn.characterID }) else { return [] }
-        return character.items.compactMap { key -> ItemData? in
+        return character.carriedItems.compactMap { key -> ItemData? in
             guard !character.spentItems.contains(key), !character.consumedItems.contains(key),
                   let effect = BoardItemEffect.byItem[key], isMoment(effect.moment, for: turn),
                   effect.consumes.isEmpty || gameManager.game.canConsumeElements(effect.consumes),
@@ -480,7 +480,7 @@ extension BoardCoordinator {
     }
 
     func refreshableItems(of character: GameCharacter, excluding key: String, consumedSmallOnly: Bool) -> [ItemData] {
-        character.items.filter { $0 != key }.compactMap(itemData).filter { item in
+        character.carriedItems.filter { $0 != key }.compactMap(itemData).filter { item in
             consumedSmallOnly
                 ? character.consumedItems.contains(item.itemKey) && item.slot == .small
                 : character.consumedItems.contains(item.itemKey) || character.spentItems.contains(item.itemKey)
@@ -545,7 +545,7 @@ extension BoardCoordinator {
     func initiativeItemOffers() -> [PendingInitiativeChange] {
         guard !autoResolvePrompts, let game = gameManager?.game else { return [] }
         return game.activeCharacters.filter { !$0.exhausted && !$0.absent && !$0.longRest }.compactMap { character in
-            guard let key = character.items.first(where: { Self.initiativeBoots[$0] != nil }),
+            guard let key = character.carriedItems.first(where: { Self.initiativeBoots[$0] != nil }),
                   !character.spentItems.contains(key), let item = itemData(key) else { return nil }
             return PendingInitiativeChange(characterID: character.id, itemKey: key, itemName: item.name,
                                            amount: Self.initiativeBoots[key] ?? 0, initiative: character.initiative)
@@ -580,15 +580,15 @@ extension BoardCoordinator {
         guard let character = gameManager?.game.characters.first(where: { $0.id == turn.characterID }) else { return }
         let me = PieceID.character(character.id)
         let moved = turn.hexesMoved
-        if character.items.contains(PassiveItems.shoesOfHappiness), moved >= 6 {
+        if character.carriedItems.contains(PassiveItems.shoesOfHappiness), moved >= 6 {
             character.experience += 1
             log("\(name(me))\u{2019}s Shoes of Happiness: 1 experience", category: .info)
         }
-        if character.items.contains(PassiveItems.enduranceFootwraps), moved >= 4 {
+        if character.carriedItems.contains(PassiveItems.enduranceFootwraps), moved >= 4 {
             let healed = heal(me, amount: 1, source: me)
             log("\(name(me))\u{2019}s Endurance Footwraps heal \(healed)", category: .heal)
         }
-        if character.items.contains(PassiveItems.steelSabatons), moved <= 1 {
+        if character.carriedItems.contains(PassiveItems.steelSabatons), moved <= 1 {
             let total = (character.shield?.value?.intValue ?? 0) + 1
             character.shield = ActionModel(type: .shield, value: .int(total))
             boardScene?.refreshStatus(of: me)
@@ -599,11 +599,11 @@ extension BoardCoordinator {
     /// Necklace of Teeth and Imposing Blade, when the wearer kills an enemy on their own turn.
     func rewardKillOnOwnTurn(_ character: GameCharacter) {
         let me = PieceID.character(character.id)
-        if character.items.contains(PassiveItems.necklaceOfTeeth) {
+        if character.carriedItems.contains(PassiveItems.necklaceOfTeeth) {
             let healed = heal(me, amount: 1, source: me)
             log("\(name(me))\u{2019}s Necklace of Teeth heals \(healed)", category: .heal)
         }
-        if character.items.contains(PassiveItems.imposingBlade) {
+        if character.carriedItems.contains(PassiveItems.imposingBlade) {
             let total = (character.shield?.value?.intValue ?? 0) + 1
             character.shield = ActionModel(type: .shield, value: .int(total))
             boardScene?.refreshStatus(of: me)
@@ -704,9 +704,7 @@ extension BoardCoordinator {
     }
 
     func itemData(_ key: String) -> ItemData? {
-        let parts = key.split(separator: "-", maxSplits: 1)
-        guard parts.count == 2, let id = Int(parts[1]) else { return nil }
-        return gameManager?.editionStore.itemData(id: id, edition: String(parts[0]))
+        gameManager?.editionStore.itemData(key: key)
     }
 }
 
@@ -791,7 +789,7 @@ extension BoardCoordinator {
         let key = item.key
         guard case .character(let id) = target, !autoResolvePrompts, let gameManager,
               let character = gameManager.game.characters.first(where: { $0.id == id }),
-              character.items.contains(key),
+              character.carriedItems.contains(key),
               !character.spentItems.contains(key), !character.consumedItems.contains(key),
               item.consumes.map(gameManager.game.isElementAvailable) ?? true,
               let data = itemData(key) else { return false }

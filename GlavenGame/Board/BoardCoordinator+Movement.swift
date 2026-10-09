@@ -55,7 +55,7 @@ extension BoardCoordinator {
             activePlayerTurn?.lastMoveLength = path.count - 1
             activePlayerTurn?.hexesPassed.append(contentsOf: path.dropFirst().dropLast())
         }
-        let hazardProof = (entity(for: pieceID) as? GameCharacter).map { PassiveItems.ignoresHazards($0.items) } ?? false
+        let hazardProof = (entity(for: pieceID) as? GameCharacter).map { PassiveItems.ignoresHazards($0.carriedItems) } ?? false
         let opensDoors: Bool = { if case .character = pieceID { return true }; return false }()
 
         var segmentStart = 0
@@ -91,7 +91,7 @@ extension BoardCoordinator {
             // Magma Waders: no harm from hazardous terrain, and Heal 2 on a turn that enters it.
             if wadesHazard, let turn = activePlayerTurn,
                case .character(let id) = pieceID, turn.characterID == id, !turn.magmaWadersHealed,
-               (entity(for: pieceID) as? GameCharacter)?.items.contains(PassiveItems.magmaWaders) == true {
+               (entity(for: pieceID) as? GameCharacter)?.carriedItems.contains(PassiveItems.magmaWaders) == true {
                 turn.magmaWadersHealed = true
                 let healed = heal(pieceID, amount: 2, source: pieceID)
                 log("\(name(pieceID))\u{2019}s Magma Waders heal \(healed)", category: .heal)

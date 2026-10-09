@@ -93,6 +93,7 @@ extension ScenarioManager {
             for copy in 0..<grant.count {
                 if copy < takers.count {
                     takers[copy].items.append(key)
+                    editionStore.fitLoadout(takers[copy])
                     game.campaignLog.append(CampaignLogEntry(
                         type: .itemAcquired,
                         message: "\(GameText.characterName(takers[copy], labels: editionStore)) gained \(itemName)"

@@ -99,12 +99,12 @@ extension BoardCoordinator {
     func applyCondition(_ condition: ConditionName, to pieceID: PieceID) {
         guard let gameManager, let entity = entity(for: pieceID) else { return }
         if condition == .muddle, let character = entity as? GameCharacter,
-           character.items.contains(PassiveItems.muddleToStrengthen) {
+           character.carriedItems.contains(PassiveItems.muddleToStrengthen) {
             log("\(name(pieceID))\u{2019}s Drakescale Helm turns Muddle into Strengthen", category: .condition)
             applyCondition(.strengthen, to: pieceID)
             return
         }
-        let itemImmunity = (entity as? GameCharacter).map { PassiveItems.immune($0.items, to: condition) } ?? false
+        let itemImmunity = (entity as? GameCharacter).map { PassiveItems.immune($0.carriedItems, to: condition) } ?? false
         guard !entity.immunities.contains(condition), !itemImmunity else {
             boardScene?.floatText("Immune", over: pieceID, style: .info)
             log("\(name(pieceID)) is immune to \(GameText.conditionName(condition))", category: .condition)

@@ -276,6 +276,7 @@ final class EventCardManager {
                 let key = "\(edition)-\(id)"
                 if let taker = scenarioManager.eligibleItemRecipients(key).first {
                     taker.items.append(key)
+                    editionStore.fitLoadout(taker)
                     lines.append("\(name(taker)) takes \(itemName(id)).")
                 } else {
                     game.unlockedItems.insert(key)

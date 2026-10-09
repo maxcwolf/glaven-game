@@ -266,6 +266,19 @@ final class EditionDataStore {
         itemIndex[edition]?[id]
     }
 
+    /// An item by its "edition-id" key ("gh-16").
+    func itemData(key: String) -> ItemData? {
+        let parts = key.split(separator: "-", maxSplits: 1)
+        guard parts.count == 2, let id = Int(parts[1]) else { return nil }
+        return itemData(id: id, edition: String(parts[0]))
+    }
+
+    /// Leave behind whatever the character can't bring beside the items before it (GH p.9).
+    func fitLoadout(_ character: GameCharacter) {
+        character.itemsLeftBehind = ItemLoadout.leftBehind(owned: character.items, leftBehind: character.itemsLeftBehind,
+                                                           level: character.level, item: { self.itemData(key: $0) })
+    }
+
     func availableItems(for edition: String, prosperity: Int) -> [ItemData] {
         items(for: edition).filter { $0.availableAtProsperity(prosperity) }
     }

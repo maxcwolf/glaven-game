@@ -253,7 +253,7 @@ Phase VI — the rest of Gloomhaven's town rules
 - [x] Boots of Speed and Quickness: once every card is revealed, the wearer may move their initiative 10 (20) earlier or later (`BoardItemTests`)
 - [x] Shadow Armor (no damage from one attack), Sun Shield (consume Light: Shield 3), Helm of the Mountain, Mask of Death, Flea-Bitten Shawl (`BoardItemTests`)
 - [x] Empowering Talisman, Pendant of Dark Pacts, Utility Belt (an item picker), Focusing Ray, Volatile Elixir, Curious Gear (`BoardItemTests`)
-- [ ] Item carry limits (one head, body and legs; two hands; small items up to half the level, rounded up; Cloak of Pockets +2): every owned item is carried today. By the rules a character owns any number and picks what to bring before each scenario: a loadout choice before the scenario, the shop unlimited
+- [x] Item carry limits (GH p.9): one head, body and legs item, two hands' worth, half the level (rounded up) in small items, Cloak of Pockets +2. Characters own any number; the Items sheet in town brings or leaves each one, an item that doesn't fit stays at home, and the board, −1 cards and passives use only what's brought (`ItemLoadoutTests`)
 - [x] Second Skin: two −1 cards set aside for the scenario, back after it (`testSecondSkinSetsAsideTwoMinusOnes`)
 - [x] Items with their own choice between the turn's steps: Scroll of Healing, Doomed Compass, Staff of Summoning, Resonant Crystal; Elemental Boots (after moving 5), Thief's Hood (`BoardItemTests`)
 - [x] Scroll of Stamina, Robes of Summoning, Pendant of the Plague, Unstable Explosives (area that also hurts allies in it) (`BoardItemTests`)

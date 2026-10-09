@@ -126,6 +126,7 @@
 		93A57D1AE8095C6238BBB1D3 /* RemoteEditionData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 640F58EE8E704179EBE9CF1B /* RemoteEditionData.swift */; };
 		9458CF11BD646363D1E12D72 /* BattleGoalEvaluator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 93D0A3295055885AF38D77C7 /* BattleGoalEvaluator.swift */; };
 		94C095768371C283CC23B948 /* GameSummon.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0429C07F7DA0462F801132A /* GameSummon.swift */; };
+		950D15EB89B2D2D3132949EF /* ItemLoadoutSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1DB3F7B6935C5F3564C9BCB3 /* ItemLoadoutSheet.swift */; };
 		95E46FEF3AAB72D60B29700B /* ScenarioManager+Treasure.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2A627A875740C74A642DC8E7 /* ScenarioManager+Treasure.swift */; };
 		9B0C1F1811587190DFECF3B7 /* BoardState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 93501E1A8B09C90B3224D4E6 /* BoardState.swift */; };
 		9BBD35DFA813946BF409C447 /* VGBScenarioData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46C86055EE9207207274F6C6 /* VGBScenarioData.swift */; };
@@ -159,6 +160,7 @@
 		BEE9E654C2551E67AAF2CBEF /* CharacterRecord.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8BA95AC46998AD48FBDD55E9 /* CharacterRecord.swift */; };
 		BF6BBF8E4D54D670161DA3D0 /* GameText.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5FFE059ED977F411C451EA65 /* GameText.swift */; };
 		BF775F0114B6F567A1A74F92 /* BoardCoordinator+Movement.swift in Sources */ = {isa = PBXBuildFile; fileRef = B6C9F8BE9CC7A895A0360304 /* BoardCoordinator+Movement.swift */; };
+		BF98598080BB09A3ADE09DEC /* ItemLoadout.swift in Sources */ = {isa = PBXBuildFile; fileRef = 62C7F3055E4C1D37FC341453 /* ItemLoadout.swift */; };
 		C0B2D8674061CBC4D28A537D /* ActiveCardHalf.swift in Sources */ = {isa = PBXBuildFile; fileRef = 800796073F61F4C2A69A6408 /* ActiveCardHalf.swift */; };
 		C0E9C5B5B98F723E70B5A5BB /* HexCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = 11CBAC9F034879BB91B54D73 /* HexCell.swift */; };
 		C20C2F095EEAA5871F1BFBF9 /* CharacterItemsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB1B617FED39015D1033829C /* CharacterItemsView.swift */; };
@@ -237,6 +239,7 @@
 		1A6A55C02339D884EA81120B /* PersonalQuestEvaluator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PersonalQuestEvaluator.swift; sourceTree = "<group>"; };
 		1B976E74EDC74601B6166FB8 /* MapTiles.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MapTiles.swift; sourceTree = "<group>"; };
 		1BFD0B71E6987E420B5CBA91 /* DeckData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeckData.swift; sourceTree = "<group>"; };
+		1DB3F7B6935C5F3564C9BCB3 /* ItemLoadoutSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ItemLoadoutSheet.swift; sourceTree = "<group>"; };
 		1E5BE6C620EBFDD27F7F98C0 /* BoardScene.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BoardScene.swift; sourceTree = "<group>"; };
 		1ED388D23F2EFC9F14DE5E4F /* BoardTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BoardTheme.swift; sourceTree = "<group>"; };
 		2808BBF85E5363980E325C52 /* ItemUsePrompt.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ItemUsePrompt.swift; sourceTree = "<group>"; };
@@ -284,6 +287,7 @@
 		5FFE059ED977F411C451EA65 /* GameText.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameText.swift; sourceTree = "<group>"; };
 		61565EFB4C520E3836D050C4 /* SettingsManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsManager.swift; sourceTree = "<group>"; };
 		61963BCD4E4EB2BCD3E9201C /* Images */ = {isa = PBXFileReference; lastKnownFileType = folder; name = Images; path = GlavenGame/Resources/Images; sourceTree = SOURCE_ROOT; };
+		62C7F3055E4C1D37FC341453 /* ItemLoadout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ItemLoadout.swift; sourceTree = "<group>"; };
 		640F58EE8E704179EBE9CF1B /* RemoteEditionData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RemoteEditionData.swift; sourceTree = "<group>"; };
 		6837034E843BAFF4AB496C8A /* EditionData */ = {isa = PBXFileReference; lastKnownFileType = folder; name = EditionData; path = GlavenGame/Resources/EditionData; sourceTree = SOURCE_ROOT; };
 		68C151233315A41E7A116BF5 /* IntOrString.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IntOrString.swift; sourceTree = "<group>"; };
@@ -715,6 +719,7 @@
 				2D9D8344A9522FB4BC90880C /* GameRandom.swift */,
 				11CBAC9F034879BB91B54D73 /* HexCell.swift */,
 				6B783381A55497EC0CE02DFD /* HexCoord.swift */,
+				62C7F3055E4C1D37FC341453 /* ItemLoadout.swift */,
 				C6F0345B431E777E05BD49D6 /* LineOfSight.swift */,
 				F7B89AE0E38F08BEDFE54A49 /* MonsterAbility.swift */,
 				C8C9B002AD05945036550A91 /* MonsterAI.swift */,
@@ -801,6 +806,7 @@
 			children = (
 				AB1B617FED39015D1033829C /* CharacterItemsView.swift */,
 				5F921AE521FD17686B09BE95 /* ItemDetailSheet.swift */,
+				1DB3F7B6935C5F3564C9BCB3 /* ItemLoadoutSheet.swift */,
 				CFAA9E252523C44A71593CDF /* ItemShopSheet.swift */,
 			);
 			path = Items;
@@ -1057,6 +1063,8 @@
 				ABE672BB7787B4520C543562 /* ItemChoicePrompts.swift in Sources */,
 				BA1FC5F02BBBDDBA6ECDE2B3 /* ItemData.swift in Sources */,
 				B189530ED1928A8B077B6949 /* ItemDetailSheet.swift in Sources */,
+				BF98598080BB09A3ADE09DEC /* ItemLoadout.swift in Sources */,
+				950D15EB89B2D2D3132949EF /* ItemLoadoutSheet.swift in Sources */,
 				C3E777BF9C09D52587AB7B2A /* ItemManager.swift in Sources */,
 				68A97D3FCA889DFB1E742B97 /* ItemShopSheet.swift in Sources */,
 				101C9C9AB7FC39F5358E8BFD /* ItemUsePrompt.swift in Sources */,

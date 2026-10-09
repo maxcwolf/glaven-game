@@ -102,7 +102,34 @@ final class ItemManager {
         onBeforeMutate?()
         character.items.append(item.itemKey)
         character.loot -= item.cost
+        editionStore.fitLoadout(character)   // left at home if there's no room for it
         return true
+    }
+
+    /// Bring an owned item to the next scenario, or leave it at home; the reason it can't be
+    /// brought, if it doesn't fit beside the others.
+    @discardableResult
+    func setBringing(_ key: String, _ bringing: Bool, for character: GameCharacter) -> ItemLoadout.Problem? {
+        guard character.items.contains(key) else { return nil }
+        if bringing {
+            guard character.itemsLeftBehind.contains(key) else { return nil }
+            if let problem = bringingProblem(key, for: character) { return problem }
+            onBeforeMutate?()
+            character.itemsLeftBehind.removeAll { $0 == key }
+        } else {
+            guard !character.itemsLeftBehind.contains(key) else { return nil }
+            onBeforeMutate?()
+            character.itemsLeftBehind.append(key)
+            // Leaving Cloak of Pockets at home leaves the small items it made room for.
+            editionStore.fitLoadout(character)
+        }
+        return nil
+    }
+
+    /// Why an item left at home can't be brought beside what the character is bringing.
+    func bringingProblem(_ key: String, for character: GameCharacter) -> ItemLoadout.Problem? {
+        ItemLoadout.problem(bringing: key, beside: character.carriedItems.filter { $0 != key }, level: character.level,
+                            item: { self.editionStore.itemData(key: $0) })
     }
 
     /// Sell an item back to the shop for half its price, rounded down (p.47).
@@ -111,6 +138,7 @@ final class ItemManager {
         guard let index = character.items.firstIndex(of: item.itemKey) else { return false }
         onBeforeMutate?()
         character.items.remove(at: index)
+        character.itemsLeftBehind.removeAll { $0 == item.itemKey }
         character.loot += item.cost / 2
         return true
     }

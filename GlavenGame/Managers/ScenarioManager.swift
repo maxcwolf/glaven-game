@@ -44,8 +44,10 @@ final class ScenarioManager {
     /// deck for the scenario, unless a perk ignores negative item effects (GH p.11).
     private func addItemPenaltyCards() {
         for character in game.characters where !character.absent {
+            // Each brings only what fits beside the items before it.
+            editionStore.fitLoadout(character)
             guard !character.hasCustomPerk("ignoreNegativeItem") else { continue }
-            for key in character.items {
+            for key in character.carriedItems {
                 let parts = key.split(separator: "-")
                 guard let id = parts.last.flatMap({ Int($0) }),
                       let item = editionStore.itemData(id: id, edition: parts.dropLast().joined(separator: "-")),
@@ -55,7 +57,7 @@ final class ScenarioManager {
                 }
             }
             // Second Skin: two −1 cards out of the deck.
-            if character.items.contains(PassiveItems.secondSkin) {
+            if character.carriedItems.contains(PassiveItems.secondSkin) {
                 character.attackModifierDeck.setAsideForScenario(.minus1, count: 2)
             }
         }

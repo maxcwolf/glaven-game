@@ -8,6 +8,7 @@ struct GameSetupView: View {
     @State private var scenarioSearch = ""
     @State private var sheetCharacter: GameCharacter?
     @State private var shopCharacter: GameCharacter?
+    @State private var itemsCharacter: GameCharacter?
     @State private var enhanceCharacter: GameCharacter?
     @State private var levelUpCharacter: GameCharacter?
     @State private var cardChoiceCharacter: GameCharacter?
@@ -191,6 +192,9 @@ struct GameSetupView: View {
         .sheet(item: $sheetCharacter) { character in
             CharacterSheetView(character: character)
         }
+        .sheet(item: $itemsCharacter) { character in
+            ItemLoadoutSheet(character: character)
+        }
         .sheet(item: $shopCharacter) { character in
             ItemShopSheet(character: character)
         }
@@ -348,6 +352,7 @@ struct GameSetupView: View {
                         TownPartyRow(character: character,
                                      onSheet: { sheetCharacter = character },
                                      onShop: { shopCharacter = character },
+                                     onItems: { itemsCharacter = character },
                                      onEnhance: { enhanceCharacter = character },
                                      onLevelUp: { levelUpCharacter = character },
                                      onChooseCard: { cardChoiceCharacter = character },

@@ -52,6 +52,10 @@ final class GameCharacter: Figure, Entity {
 
     // Items: stored as "edition-id" keys
     var items: [String] = []
+    /// Owned items not brought to the scenario (GH p.9: a character brings what fits).
+    var itemsLeftBehind: [String] = []
+    /// The items brought to the scenario: the ones the board uses.
+    var carriedItems: [String] { items.filter { !itemsLeftBehind.contains($0) } }
     /// Items that have been spent this scenario (flipped down; refreshed on long rest).
     var spentItems: Set<String> = []
     /// Items that have been consumed this scenario (removed until scenario end).

@@ -7,6 +7,7 @@ struct TownPartyRow: View {
     let character: GameCharacter
     var onSheet: () -> Void
     var onShop: () -> Void
+    var onItems: () -> Void = {}
     var onEnhance: () -> Void = {}
     var onLevelUp: () -> Void
     var onChooseCard: () -> Void
@@ -71,6 +72,14 @@ struct TownPartyRow: View {
                 Button("Shop", systemImage: "bag.fill", action: onShop)
                     .buttonStyle(.bordered)
                     .tint(.gray)
+                if !character.items.isEmpty {
+                    // Brought / owned, so an item left at home is never a surprise.
+                    Button("Items \(character.carriedItems.count)/\(character.items.count)", systemImage: "shield.lefthalf.filled",
+                           action: onItems)
+                        .buttonStyle(.bordered)
+                        .tint(character.itemsLeftBehind.isEmpty ? .gray : BoardTheme.brass)
+                        .accessibilityLabel("Items, bringing \(character.carriedItems.count) of \(character.items.count)")
+                }
                 if gameManager.enhancementsManager.enhancerOpen(edition: character.edition) {
                     Button("Enhance", systemImage: "sparkles", action: onEnhance)
                         .buttonStyle(.bordered)

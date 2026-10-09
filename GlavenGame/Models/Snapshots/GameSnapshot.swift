@@ -217,6 +217,7 @@ struct CharacterSnapshot: Codable {
     var questChoices: [String]?
     var itemSlotsUsed: [String: Int]?
     var bonusChargesUsed: [Int: Int]?
+    var itemsLeftBehind: [String]?
 
     init(name: String, edition: String, level: Int, off: Bool, active: Bool,
          number: Int, health: Int, maxHealth: Int,
@@ -327,6 +328,7 @@ struct CharacterSnapshot: Codable {
         questChoices = try container.decodeIfPresent([String].self, forKey: .questChoices)
         itemSlotsUsed = try container.decodeIfPresent([String: Int].self, forKey: .itemSlotsUsed)
         bonusChargesUsed = try container.decodeIfPresent([Int: Int].self, forKey: .bonusChargesUsed)
+        itemsLeftBehind = try container.decodeIfPresent([String].self, forKey: .itemsLeftBehind)
     }
 }
 

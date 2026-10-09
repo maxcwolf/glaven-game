@@ -56,7 +56,7 @@ extension BoardCoordinator {
 
         // Helm of the Mountain: attacking its wearer while Earth is strong immobilizes the attacker.
         if case .character(let id) = target, areEnemies(attacker, target),
-           gameManager?.game.characters.first(where: { $0.id == id })?.items.contains(PassiveItems.helmOfTheMountain) == true,
+           gameManager?.game.characters.first(where: { $0.id == id })?.carriedItems.contains(PassiveItems.helmOfTheMountain) == true,
            gameManager?.game.elementBoard.first(where: { $0.type == .earth })?.state == .strong {
             log("\(name(target))\u{2019}s Helm of the Mountain immobilizes \(name(attacker))", category: .condition)
             applyCondition(.immobilize, to: attacker)
@@ -64,7 +64,7 @@ extension BoardCoordinator {
 
         // Chain Hood: Shield 1 while the wearer is beside three or more monsters.
         if case .character(let id) = target,
-           gameManager?.game.characters.first(where: { $0.id == id })?.items.contains(PassiveItems.chainHood) == true,
+           gameManager?.game.characters.first(where: { $0.id == id })?.carriedItems.contains(PassiveItems.chainHood) == true,
            targetPos.neighbors.compactMap({ boardState.piece(at: $0) })
                .filter({ if case .monster = $0 { return true }; return false }).count >= 3 {
             shield += 1
@@ -106,7 +106,7 @@ extension BoardCoordinator {
         // Iron Helmet: an enemy's ×2 against the wearer counts as +0 (always on, by the data).
         if case .character(let id) = target, areEnemies(attacker, target),
            let wearer = gameManager?.game.characters.first(where: { $0.id == id }),
-           wearer.items.contains(DefenseItem.ironHelmet), preDrawn.contains(where: { $0.type == .double_ }) {
+           wearer.carriedItems.contains(DefenseItem.ironHelmet), preDrawn.contains(where: { $0.type == .double_ }) {
             preDrawn = preDrawn.map { $0.type == .double_ ? AttackModifier.standard(.plus0) : $0 }
             log("\(name(target))\u{2019}s Iron Helmet turns the \u{00D7}2 into +0", category: .attack)
         }
