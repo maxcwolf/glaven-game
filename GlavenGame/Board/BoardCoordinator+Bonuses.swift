@@ -50,6 +50,12 @@ enum ChargedBonus: Equatable {
     /// Range (Nature's Lift) or +N Attack (Foul Wind). A charge is marked only when it's consumed.
     case consumeForRange(ElementType, Int)
     case consumeForAttack(ElementType, Int)
+    /// The character's summons suffer no damage instead (Intervening Apparitions).
+    case summonsNegateDamage
+    /// Each Curse the character gives is given twice (Unending Chant).
+    case doubleCurses
+    /// The character's summon heals itself after each of its attacks (Blood Hunger: Heal 2).
+    case summonHealsAfterAttack(Int)
     /// An action the character performs at the start of each turn (Lumbering Bash: Heal 2, Range 2).
     case turnStartAction(ActionModel)
     /// An action the character performs at the end of each turn (Auto Turret: Attack 2, Range 5).
@@ -106,6 +112,9 @@ enum ChargedBonus: Equatable {
         "gh-2": .experiencePerRetaliate,                        // Eye for an Eye
         "gh-98": .negateNextDamage,                             // Trickster's Reversal
         "gh-4": .drawAttacksFromAdjacentAllies,                 // Provoking Roar
+        "gh-257": .summonsNegateDamage,                         // Intervening Apparitions
+        "gh-358": .doubleCurses,                                // Unending Chant
+        "gh-499": .summonHealsAfterAttack(2),                   // Blood Hunger
         "gh-129": .consumeForRange(.air, 2),                    // Nature's Lift
         "gh-298": .consumeForAttack(.air, 1),                   // Foul Wind
         "gh-143": .turnStartAction(ActionModel(type: .heal, value: .int(2),        // Lumbering Bash

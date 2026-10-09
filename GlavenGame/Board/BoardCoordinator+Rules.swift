@@ -142,6 +142,13 @@ extension BoardCoordinator {
     @discardableResult
     func sufferDamage(_ amount: Int, to pieceID: PieceID, killer: PieceID? = nil) -> Bool {
         guard amount > 0, let gameManager, let entity = entity(for: pieceID) else { return false }
+        // Intervening Apparitions: the owner's summons suffer no damage.
+        if case .summon = pieceID, let owner = summonOwner(of: pieceID),
+           useFirstCharge(of: .character(owner.id), where: { $0 == .summonsNegateDamage }) != nil {
+            log("\(name(pieceID)) suffers no damage", category: .damage)
+            boardScene?.pieceUnharmed(id: pieceID, missed: false)
+            return false
+        }
         // Juggernaut, Frost Armor: "suffer no damage instead", a charge each time. Defiance of
         // Death: only damage that would bring the character below 1 hit point.
         if useFirstCharge(of: pieceID, where: { $0 == .negateDamage || $0 == .negateNextDamage }) != nil

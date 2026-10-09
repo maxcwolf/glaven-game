@@ -46,7 +46,7 @@ final class ChargedBonusTests: XCTestCase {
         let warding = try XCTUnwrap(deck.first { $0.cardId == 7 })
         XCTAssertEqual(ChargedBonus.slots(of: warding), [0, 1, 0, 1, 0, 1])
         let all = ["brute", "cragheart", "scoundrel", "spellweaver", "tinkerer", "lightning", "sun", "eclipse",
-                   "saw", "three-spears", "mindthief", "squidface"]
+                   "saw", "three-spears", "mindthief", "squidface", "circles", "music-note", "two-mini"]
             .flatMap { gm.editionStore.abilities(forDeck: $0, edition: "gh") }
         for (key, bonus) in ChargedBonus.byCard where !bonus.isUnlimited && bonus != .negateNextDamage {
             let id = try XCTUnwrap(Int(key.dropFirst(3)))
@@ -353,5 +353,17 @@ final class ChargedBonusTests: XCTestCase {
         XCTAssertEqual(next.currentAttackRange(), 5)
         XCTAssertFalse(gm.game.isElementAvailable(.air))
         XCTAssertEqual(cragheart.bonusChargesUsed[129], 1)
+    }
+
+    func testUnendingChantDoublesCurses() async throws {
+        let soothsinger = add("music-note", at: HexCoord(3, 3))
+        soothsinger.activeCards = [358]
+        let piece = try bandit(at: HexCoord(4, 3))
+        let curses = gm.game.monsterAttackModifierDeck.undrawnCount(of: .curse)
+        await coord.performAttack(attacker: .character(soothsinger.id), target: piece,
+                                  attack: AttackParameters(value: 1, conditions: [.curse]),
+                                  drawCard: { AttackModifier(type: .plus0) })
+        XCTAssertEqual(gm.game.monsterAttackModifierDeck.undrawnCount(of: .curse), curses + 2)
+        XCTAssertEqual(soothsinger.bonusChargesUsed[358], 1)
     }
 }

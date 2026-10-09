@@ -177,6 +177,10 @@ extension BoardCoordinator {
         if !died && isOnBoard(target) {
             for condition in result.allConditions {
                 applyCondition(condition, to: target)
+                // Unending Chant: a Curse the character gives is given twice.
+                if condition == .curse, useFirstCharge(of: attacker, where: { $0 == .doubleCurses }) != nil {
+                    applyCondition(.curse, to: target)
+                }
                 if let credited = creditedCharacter(for: attacker) {
                     gameManager?.scenarioStatsManager.recordConditionApplied(by: credited.name)
                 }
@@ -189,6 +193,14 @@ extension BoardCoordinator {
             if pull > 0, let origin = boardState.piecePositions[attacker] {
                 await performPushPull(target: target, attackerPos: origin, steps: pull, isPush: false)
             }
+        }
+
+        // Blood Hunger: after its attack, the summon heals itself.
+        if case .summon = attacker, isOnBoard(attacker), let owner = summonOwner(of: attacker),
+           case .summonHealsAfterAttack(let amount)? = useFirstCharge(of: .character(owner.id), where: {
+               if case .summonHealsAfterAttack = $0 { return true }; return false }) {
+            let healed = heal(attacker, amount: amount, source: attacker)
+            log("\(name(attacker)) heals for \(healed)", category: .heal)
         }
 
         // Retaliate: after the attack, only if the retaliating figure survived (p.24).
