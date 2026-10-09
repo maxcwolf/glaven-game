@@ -1814,7 +1814,7 @@ final class BoardCoordinator {
 
         // Massive Boulder: "all allies and enemies adjacent to the target suffer 1 damage".
         for text in turn?.attackTexts ?? [] where text.contains("adjacent to the target suffer") {
-            printedDamage(text, amount: PlayerTurnController.damageAmount(in: text), by: attacker, around: targetHex)
+            await printedDamage(text, amount: PlayerTurnController.damageAmount(in: text), by: attacker, around: targetHex)
         }
         if printed.experience > 0, case .character(let id) = attacker,
            let character = gameManager?.game.characters.first(where: { $0.id == id }) {
@@ -2344,10 +2344,11 @@ final class BoardCoordinator {
                             let allies = self.boardState.piecePositions.filter {
                                 areaHexes.contains($0.value) && $0.key != attackerID && !self.areEnemies(attackerID, $0.key)
                             }.map(\.key).sorted()
-                            for ally in allies {
+                            for ally in allies where self.isOnBoard(ally) && self.isCurrentBoard(generation) {
                                 self.log("\(self.name(ally)) suffers \(amount) damage", category: .damage)
-                                self.sufferDamage(amount, to: ally, killer: attackerID)
+                                await self.sufferDamageWithMitigation(amount, to: ally, source: "the explosion", killer: attackerID)
                             }
+                            guard self.isCurrentBoard(generation) else { return }
                         }
                         // Dirt Tornado: "Muddle all allies and enemies in the targeted area."
                         for text in areaTexts where text.contains("in the targeted area") && text.contains("allies and enemies") {

@@ -554,7 +554,7 @@ final class BoardRulesRegressionTests: XCTestCase {
 
     /// Regression: Crater's Move 4 was wrapped in its text, so it never happened; its "all
     /// adjacent allies and enemies suffer 1 damage" didn't either.
-    func testCraterHurtsItsNeighboursAndMoves() throws {
+    func testCraterHurtsItsNeighboursAndMoves() async throws {
         let cragheart = addCharacter("cragheart", at: HexCoord(3, 3))
         let brute = addCharacter("brute", at: HexCoord(4, 3))
         let bandit = addMonster("bandit-guard", at: HexCoord(2, 3))
@@ -562,6 +562,7 @@ final class BoardRulesRegressionTests: XCTestCase {
         let turn = turn(for: cragheart, top: try card("Avalanche", of: "cragheart"), bottom: try card("Crater", of: "cragheart"),
                         bottomFirst: true)
         turn.executeCurrentAction()   // all adjacent allies and enemies suffer 1 damage
+        _ = await waitUntil { turn.currentActionIndex > 0 }
         XCTAssertEqual(brute.health, bruteHealth - 1)
         XCTAssertEqual(bandit.health, banditHealth - 1)
         XCTAssertEqual(cragheart.health, cragheart.maxHealth, "not the Cragheart")
@@ -572,13 +573,14 @@ final class BoardRulesRegressionTests: XCTestCase {
     }
 
     /// Regression: Unstable Upheaval's Shield 2 (for every ally) was wrapped in its text.
-    func testUnstableUpheavalShieldsEveryAlly() throws {
+    func testUnstableUpheavalShieldsEveryAlly() async throws {
         let cragheart = addCharacter("cragheart", at: HexCoord(3, 3))
         let brute = addCharacter("brute", at: HexCoord(8, 8))
         let health = brute.health
         let turn = turn(for: cragheart, top: try card("Avalanche", of: "cragheart"),
                         bottom: try card("Unstable Upheaval", of: "cragheart"), bottomFirst: true)
         turn.executeCurrentAction()   // all allies suffer 1 damage
+        _ = await waitUntil { turn.currentActionIndex > 0 }
         turn.executeCurrentAction()   // Shield 2, affect all allies
         XCTAssertEqual(brute.health, health - 1)
         XCTAssertEqual(cragheart.shield?.value?.intValue, 2)

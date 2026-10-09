@@ -1138,7 +1138,14 @@ final class PlayerTurnController {
                 if Self.damageAmount(in: instead) > 0 { amount = Self.damageAmount(in: instead) }
                 if let xp = instead.firstMatch(of: #/xp \+(\d+)/#).flatMap({ Int($0.1) }) { grantExperience(xp) }
             }
-            coordinator.printedDamage(text, amount: amount, by: me, around: coordinator.boardState.piecePositions[me])
+            // Characters may negate it by losing cards: the turn waits for them.
+            let generation = coordinator.boardGeneration
+            Task { @MainActor in
+                await coordinator.printedDamage(text, amount: amount, by: me, around: coordinator.boardState.piecePositions[me])
+                guard coordinator.isCurrentBoard(generation) else { return }
+                self.advanceAfterAsyncAction()
+            }
+            return true
         }
         return false
     }

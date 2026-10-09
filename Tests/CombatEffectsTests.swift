@@ -125,4 +125,25 @@ final class CombatEffectsTests: XCTestCase {
         XCTAssertGreaterThan(healthAtPrompt, 0)
         XCTAssertEqual(sim.violations, [])
     }
+
+    /// Damage printed outside an attack (a Flame Demon's "all adjacent enemies suffer 2 damage")
+    /// can be negated too.
+    func testPrintedDamageCanBeNegated() async throws {
+        let brute = addCharacter("brute", at: HexCoord(3, 3))
+        brute.handCards = [1, 2, 3]
+        let demon = addMonster("flame-demon", at: HexCoord(4, 3))
+        coord.autoResolvePrompts = false
+        let health = brute.health
+        let damage = Task { @MainActor in
+            await self.coord.printedDamage("all adjacent enemies suffer 2 damage", amount: 2,
+                                           by: .monster(name: "flame-demon", standee: demon.number), around: HexCoord(4, 3))
+        }
+        let asked = await waitUntil { self.coord.pendingDamage != nil }
+        XCTAssertTrue(asked, "the Brute is asked whether to lose a card")
+        XCTAssertEqual(coord.pendingDamage?.damage, 2)
+        coord.resolvePendingDamage(choice: .loseHandCard(cardId: 1))
+        _ = await damage.value
+        XCTAssertEqual(brute.health, health)
+        XCTAssertEqual(brute.lostCards, [1])
+    }
 }

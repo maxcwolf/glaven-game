@@ -161,14 +161,16 @@ final class MonsterTurnController {
                 }
                 let plan = currentTurn()
                 if let newFocus = plan.focusTarget { state.focus = newFocus }
-                defer { if !isStale { performPrintedText(texts(in: action, monster: monster), pieceID: pieceID) } }
-                guard plan.movementPath.count > 1 else { continue }
-                let steps = plan.movementPath.count - 1
-                coordinator.log("\(coordinator.name(pieceID)) moves \(steps) hex\(steps == 1 ? "" : "es")",
-                                category: .move, trace: "to \(plan.movementPath.last!)")
-                let style: MovementStyle = monster.monsterData?.flying == true ? .fly : (plan.jumping ? .jump : .normal)
-                await coordinator.moveAlong(pieceID, path: plan.movementPath, style: style)
-                state.hexesMoved += plan.movementPath.count - 1
+                if plan.movementPath.count > 1 {
+                    let steps = plan.movementPath.count - 1
+                    coordinator.log("\(coordinator.name(pieceID)) moves \(steps) hex\(steps == 1 ? "" : "es")",
+                                    category: .move, trace: "to \(plan.movementPath.last!)")
+                    let style: MovementStyle = monster.monsterData?.flying == true ? .fly : (plan.jumping ? .jump : .normal)
+                    await coordinator.moveAlong(pieceID, path: plan.movementPath, style: style)
+                    state.hexesMoved += plan.movementPath.count - 1
+                }
+                // Text printed with the move happens whether or not it moved.
+                if !isStale { await performPrintedText(texts(in: action, monster: monster), pieceID: pieceID) }
 
             case .attack:
                 if MonsterAI.isActive(.disarm, on: entity) {
@@ -212,7 +214,7 @@ final class MonsterTurnController {
                     if (coordinator.entity(for: victim)?.health ?? 0) < healthBefore || !coordinator.isOnBoard(victim) { damaged += 1 }
                     // Savvas Lavaflow: "All allies and enemies adjacent to the target suffer 2 damage."
                     for text in printed where text.contains("adjacent to the target suffer") {
-                        coordinator.printedDamage(text, amount: PlayerTurnController.damageAmount(in: text), by: pieceID,
+                        await coordinator.printedDamage(text, amount: PlayerTurnController.damageAmount(in: text), by: pieceID,
                                                   around: victimHex)
                     }
                 }
@@ -221,7 +223,7 @@ final class MonsterTurnController {
                     let healed = coordinator.heal(pieceID, amount: amount, source: pieceID)
                     coordinator.log("\(coordinator.name(pieceID)) heals for \(healed)", category: .heal)
                 }
-                if stillHere() { performPrintedText(printed.filter { !$0.contains("adjacent to the target") }, pieceID: pieceID) }
+                if stillHere() { await performPrintedText(printed.filter { !$0.contains("adjacent to the target") }, pieceID: pieceID) }
                 // Deep Terror: "Summon a Deep Terror in a hex adjacent to the target."
                 for summon in (action.subActions ?? []) where summon.type == .summon {
                     guard let near = targets.first(where: { coordinator.isOnBoard($0) }) ?? (stillHere() ? pieceID : nil) else { continue }
@@ -285,7 +287,7 @@ final class MonsterTurnController {
 
             case .custom:
                 // Text printed as its own line ("All enemies suffer 2 damage"), and what it wraps.
-                performPrintedText(texts(in: ActionModel(type: .concatenation, subActions: [action]), monster: monster), pieceID: pieceID)
+                await performPrintedText(texts(in: ActionModel(type: .concatenation, subActions: [action]), monster: monster), pieceID: pieceID)
                 let wrapped = (action.subActions ?? []).filter { $0.type != .custom }
                 if !wrapped.isEmpty {
                     await executeCard(wrapped, pieceID: pieceID, entity: entity, monster: monster,
@@ -403,7 +405,7 @@ final class MonsterTurnController {
     /// What a monster's printed text does, after its attack or move: damage around it ("All
     /// adjacent enemies suffer 2 damage"), a trap ("Create a 3 damage trap in an adjacent empty
     /// hex closest to an enemy"), disadvantage against it this round (Giant Viper).
-    private func performPrintedText(_ texts: [String], pieceID: PieceID) {
+    @MainActor private func performPrintedText(_ texts: [String], pieceID: PieceID) async {
         guard let coordinator, let position = coordinator.boardState.piecePositions[pieceID] else { return }
         for text in texts {
             if text.contains("trap in an adjacent empty hex") {
@@ -420,12 +422,14 @@ final class MonsterTurnController {
             } else if text.contains("suffer") && text.contains("damage") {
                 let amount = PlayerTurnController.damageAmount(in: text)
                 if text.contains("all enemies suffer") {
-                    for enemy in coordinator.boardState.piecePositions.keys.filter({ coordinator.areEnemies(pieceID, $0) }).sorted() {
+                    for enemy in coordinator.boardState.piecePositions.keys.filter({ coordinator.areEnemies(pieceID, $0) }).sorted()
+                    where coordinator.isOnBoard(enemy) && !isStale {
                         coordinator.log("\(coordinator.name(enemy)) suffers \(amount) damage", category: .damage)
-                        coordinator.sufferDamage(amount, to: enemy, killer: pieceID)
+                        await coordinator.sufferDamageWithMitigation(amount, to: enemy, source: coordinator.name(pieceID),
+                                                                     killer: pieceID)
                     }
                 } else {
-                    coordinator.printedDamage(text, amount: amount, by: pieceID, around: position)
+                    await coordinator.printedDamage(text, amount: amount, by: pieceID, around: position)
                 }
             }
         }

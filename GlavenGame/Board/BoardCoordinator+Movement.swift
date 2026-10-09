@@ -117,7 +117,7 @@ extension BoardCoordinator {
                 } else if text.contains("every hex you enter") {
                     lootHexes(for: pieceID, coords: Array(path.dropFirst()))
                 } else if text.contains("suffer") {
-                    printedDamage(text, amount: PlayerTurnController.damageAmount(in: text), by: pieceID,
+                    await printedDamage(text, amount: PlayerTurnController.damageAmount(in: text), by: pieceID,
                                   around: boardState.piecePositions[pieceID])
                 }
             }
@@ -137,7 +137,9 @@ extension BoardCoordinator {
 
     /// Damage printed on a card: "all adjacent allies and enemies", "all adjacent allies",
     /// "all allies", or (with `around` the target's hex) "adjacent to the target".
-    func printedDamage(_ text: String, amount: Int, by pieceID: PieceID, around hex: HexCoord?) {
+    /// Damage printed outside an attack ("all adjacent enemies suffer 2 damage"); characters may
+    /// negate it by losing cards, as any damage (p.22).
+    @MainActor func printedDamage(_ text: String, amount: Int, by pieceID: PieceID, around hex: HexCoord?) async {
         guard amount > 0 else { return }
         var victims: [PieceID] = []
         if text.contains("all allies suffer") {
@@ -152,9 +154,10 @@ extension BoardCoordinator {
                 victims = besides.filter { areEnemies(pieceID, $0) }
             }
         }
-        for victim in victims.sorted() where isOnBoard(victim) {
+        let generation = boardGeneration
+        for victim in victims.sorted() where isOnBoard(victim) && isCurrentBoard(generation) {
             log("\(name(victim)) suffers \(amount) damage", category: .damage)
-            sufferDamage(amount, to: victim, killer: pieceID)
+            await sufferDamageWithMitigation(amount, to: victim, source: name(pieceID), killer: pieceID)
         }
     }
 
