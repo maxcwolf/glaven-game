@@ -65,6 +65,9 @@ final class MonsterTurnController {
             // Start of this monster's turn: its conditions become active and tick (wound).
             gameManager.entityManager.restoreConditions(entity)
             gameManager.entityManager.applyConditionsTurn(entity)
+            // Race to the Grave: a doomed monster suffers damage as its turn starts.
+            await coordinator.applyDoomTurnStart(pieceID)
+            guard !isStale else { return }
             coordinator.sweepDeadFigures()
             guard !entity.dead, coordinator.isOnBoard(pieceID) else { continue }
 
@@ -195,6 +198,7 @@ final class MonsterTurnController {
                       let focusPos = coordinator.boardState.piecePositions[target] else { continue }
                 let spec = MonsterAbility.attack(action, stat: stat, baseAttack: baseAttack(),
                                                  baseRange: baseRange, consumed: consumed)
+                    .reduced(by: entity.doomPenalty)
                 let enemies = MonsterAI.gatherEnemies(board: coordinator.boardState, monster: monster, gameState: game)
                 let targets = MonsterAI.targets(for: spec, from: position, focus: target, focusPos: focusPos,
                                                 enemies: enemies, board: coordinator.boardState, gameState: game)

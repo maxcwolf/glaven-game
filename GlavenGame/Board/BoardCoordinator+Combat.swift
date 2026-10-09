@@ -41,8 +41,9 @@ extension BoardCoordinator {
     /// conditions and push/pull on a surviving target, then retaliate.
     /// Returns true if the target died.
     @discardableResult
-    @MainActor func performAttack(attacker: PieceID, target aimedAt: PieceID, attack: AttackParameters,
+    @MainActor func performAttack(attacker: PieceID, target aimedAt: PieceID, attack printedAttack: AttackParameters,
                        drawCard: (() -> AttackModifier?)? = nil, from origin: HexCoord? = nil) async -> Bool {
+        var attack = printedAttack
         // Every await below may come back to a board that was left or restarted meanwhile.
         let generation = boardGeneration
         let target = await attackTarget(of: attacker, aimingAt: aimedAt, range: attack.range)
@@ -52,6 +53,8 @@ extension BoardCoordinator {
         attackObserver?(attacker, target)
 
         let distance = attackerPos.distance(to: targetPos)
+        // The Doomstalker's dooms on the target: +Attack, Pierce, advantage, Curse.
+        applyDoomBonuses(to: &attack, attacker: attacker, target: target, distance: distance)
         let isPoisoned = defender.entityConditions.contains { $0.name == .poison && !$0.expired }
         var shield = CombatResolver.totalShield(shield: defender.shield, shieldPersistent: defender.shieldPersistent)
         var retaliate = CombatResolver.retaliateDamage(retaliate: defender.retaliate,
@@ -81,6 +84,10 @@ extension BoardCoordinator {
         if case .monster(let name, _) = target, let monsterEntity = defender as? GameMonsterEntity,
            let stat = gameManager?.game.monsters.first(where: { $0.name == name })?.stat(for: monsterEntity.type),
            stat.attackersGainDisadvantage {
+            disadvantage = true
+        }
+        // Dancing Shadows, Terror Blade: attacks targeting the character have disadvantage this round.
+        if chargedBonuses(of: target).contains(where: { $0.bonus == .attackersGainDisadvantage }) {
             disadvantage = true
         }
         if let attackerEntity = entity(for: attacker) {
@@ -249,6 +256,7 @@ extension BoardCoordinator {
             guard isCurrentBoard(generation) else { return died }
         }
         await resolveDeathAttacks()
+        await resolveDoomDeaths()
         return died
     }
 
@@ -438,21 +446,27 @@ extension BoardCoordinator {
         let title: String
         let question: String
         let options: [PieceID]
+        /// The answer for none of them ("No one"), when the choice may be declined.
+        var declineTitle: String? = nil
         var continuation: CheckedContinuation<PieceID?, Never>?
     }
 
-    @MainActor func chooseFigure(_ options: [PieceID], title: String, question: String) async -> PieceID? {
+    /// Ask which of `options`; with a `declineTitle` the player may choose none (nil).
+    @MainActor func chooseFigure(_ options: [PieceID], title: String, question: String,
+                                 declineTitle: String? = nil) async -> PieceID? {
         guard !autoResolvePrompts else { return options.first }
         return await withCheckedContinuation { continuation in
             pendingFigureChoice = PendingFigureChoice(title: title, question: question, options: options,
-                                                      continuation: continuation)
+                                                      declineTitle: declineTitle, continuation: continuation)
         }
     }
 
+    /// The figure chosen; nil declines a choice that may be declined, or takes the first otherwise.
     func resolveFigureChoice(_ piece: PieceID?) {
         guard let pending = pendingFigureChoice else { return }
         pendingFigureChoice = nil
-        pending.continuation?.resume(returning: piece.flatMap { pending.options.contains($0) ? $0 : nil } ?? pending.options.first)
+        let chosen = piece.flatMap { pending.options.contains($0) ? $0 : nil }
+        pending.continuation?.resume(returning: chosen ?? (pending.declineTitle == nil ? pending.options.first : nil))
     }
 
     // MARK: - Dampening Ring

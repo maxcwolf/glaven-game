@@ -248,8 +248,11 @@ struct FigureChoicePrompt: View {
         } actions: {
             ForEach(pending.options, id: \.self) { piece in
                 Button(coordinator.name(piece)) { coordinator.resolveFigureChoice(piece) }
-                    .buttonStyle(.borderedProminent)
-                    .tint(BoardTheme.brass)
+                    .buttonStyle(.boardPrimaryCompact)
+            }
+            if let decline = pending.declineTitle {
+                Button(decline) { coordinator.resolveFigureChoice(nil) }
+                    .buttonStyle(.boardQuietCompact)
             }
         }
     }

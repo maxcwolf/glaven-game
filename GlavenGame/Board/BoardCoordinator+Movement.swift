@@ -162,7 +162,7 @@ extension BoardCoordinator {
     }
 
     /// Figures (not objectives) for printed damage.
-    private func isFigure(_ piece: PieceID) -> Bool {
+    func isFigure(_ piece: PieceID) -> Bool {
         if case .objective = piece { return false }
         return true
     }

@@ -125,12 +125,15 @@ enum MonsterAI {
         let chillReduction = entity.entityConditions
             .filter { $0.name == .chill && !$0.expired }
             .reduce(0) { $0 + max(1, $1.value) }
-        let totalMove = (isImmobilized || moveSpec == nil) ? 0 : max(0, (moveSpec?.value ?? 0) - chillReduction)
+        // Crippling Noose (a doom): Attack, Move and Range reduced.
+        let doomPenalty = entity.doomPenalty
+        let totalMove = (isImmobilized || moveSpec == nil) ? 0 : max(0, (moveSpec?.value ?? 0) - chillReduction - doomPenalty)
 
         // Attack: the card's first Attack action. A card without an attack still finds a focus
         // as if it had a melee attack (p.30).
         let attackSpec = actions.first(where: { $0.type == .attack }).map {
             MonsterAbility.attack($0, stat: stat, baseAttack: baseAttack, baseRange: baseRange, consumed: consumed)
+                .reduced(by: doomPenalty)
         }
         let focusRange = attackSpec?.range ?? 1
         let isRanged = attackSpec?.isRanged ?? false

@@ -89,6 +89,10 @@ final class PlayerTurnController {
     /// Cards whose persistent half was performed this turn: their charged bonus is in effect
     /// before they reach the active area. A bonus used up this turn never gets there.
     var persistentCardsThisTurn: [Int] = []
+    /// Of those, the cards whose round half (not a persistent one) was played.
+    var roundCardsThisTurn: [Int] = []
+    /// Targets the next attack gains (Grim Bargain: Curse an ally for two).
+    private var extraTargetsForNextAttack = 0
     /// Conditions the current move gives every enemy it passes over (Feedback Loop), and whether
     /// the move must end where it started for them to apply.
     var movedThroughConditions: [ConditionName] = []
@@ -225,6 +229,77 @@ final class PlayerTurnController {
         }
     }
 
+    /// Steps from charged bonuses that go with the half's own moves and attacks: Wings of the
+    /// Night's Move 2 before an attack, Black Knives' Attack 2, Range 3 after one made while
+    /// invisible, Claws of the Night's attack on adjacent enemies after a move while invisible.
+    /// Placed as the step is about to be performed, each tagged with its card for its charge.
+    private func placeActionBonusSteps(at index: Int) {
+        guard let character, let coordinator, index < currentSteps.count else { return }
+        var step = currentSteps[index]
+        // A step is given its bonus steps once (the mark is kept with the steps, so undo agrees).
+        let placed = ActionModel(type: .card, value: .string("bonusStepsPlaced"))
+        guard Self.bonusCard(of: step) == nil,
+              !(step.subActions ?? []).contains(where: { $0.type == .card && $0.value?.stringValue == "bonusStepsPlaced" }) else { return }
+        let invisible = coordinator.isConditionActive(.invisible, on: .character(characterID))
+        var before: [ActionModel] = [], after: [ActionModel] = []
+        for (cardId, bonus) in coordinator.chargedBonuses(of: character) {
+            let tag = ActionModel(type: .card, value: .string("bonus:\(cardId)"))
+            switch bonus {
+            case .curseAllyForTargets(let range, let targets) where step.type == .attack:
+                // Asked before the attack; a charge only if the player takes the bargain.
+                before.append(ActionModel(type: .custom, value: .string("bonusChoice:curseAlly:\(cardId):\(range):\(targets)")))
+            case .moveBeforeAttack(let n) where step.type == .attack:
+                before.append(ActionModel(type: .move, value: .int(n), subActions: [tag]))
+            case .attackAfterAttackWhileInvisible(let value, let range) where step.type == .attack && invisible:
+                after.append(ActionModel(type: .attack, value: .int(value),
+                                         subActions: [ActionModel(type: .range, value: .int(range)), tag]))
+            case .attackAdjacentAfterMoveWhileInvisible(let value) where step.type == .move && invisible:
+                after.append(ActionModel(type: .attack, value: .int(value),
+                                         subActions: [ActionModel(type: .specialTarget, value: .string("enemiesAdjacent")), tag]))
+            default:
+                continue
+            }
+        }
+        guard !before.isEmpty || !after.isEmpty else { return }
+        step.subActions = (step.subActions ?? []) + [placed]
+        var steps = currentSteps
+        steps[index] = step
+        steps.insert(contentsOf: after, at: index + 1)
+        steps.insert(contentsOf: before, at: index)
+        switch phase {
+        case .executeTopAction: topActions = steps
+        case .executeBottomAction: bottomActions = steps
+        case .executeExtraHalf: extraActions = steps
+        default: break
+        }
+    }
+
+    /// Grim Bargain: "Curse one ally within Range 2 to gain two Target" on this attack, if the
+    /// player wants to. A charge is marked only when they do.
+    private func offerCurseForTargets(_ step: ActionModel, coordinator: BoardCoordinator) -> Bool {
+        let parts = (step.value?.stringValue ?? "").split(separator: ":")
+        guard parts.count == 5, let cardId = Int(parts[2]), let range = Int(parts[3]), let targets = Int(parts[4]),
+              let character else { return false }
+        let me = PieceID.character(characterID)
+        let allies = coordinator.alliesInRange(of: me, range: range, includeSelf: false).sorted()
+        guard !allies.isEmpty else { return false }
+        let generation = coordinator.boardGeneration
+        Task { @MainActor in
+            let ally = await coordinator.chooseFigure(allies, title: "Grim Bargain",
+                                                      question: "Curse an ally within Range \(range) for \(targets) more targets on this attack?",
+                                                      declineTitle: "No Bargain")
+            guard coordinator.isCurrentBoard(generation) else { return }
+            if let ally {
+                coordinator.applyCondition(.curse, to: ally)
+                coordinator.useCharge(cardId, of: character)
+                self.extraTargetsForNextAttack += targets
+                coordinator.log("\(self.who) curses \(coordinator.name(ally)) for \(targets) more targets", category: .condition)
+            }
+            self.advanceAfterAsyncAction()
+        }
+        return true
+    }
+
     /// The charged-bonus card a turn step comes from, if any.
     static func bonusCard(of step: ActionModel) -> Int? {
         (step.subActions ?? []).lazy.compactMap { sub -> Int? in
@@ -285,7 +360,8 @@ final class PlayerTurnController {
         finishedHalf = nil
         checkpoint = makeCheckpoint()
         hasActed = true
-        let action = actions[currentActionIndex]
+        placeActionBonusSteps(at: currentActionIndex)
+        let action = currentSteps[currentActionIndex]
         // Async actions (target/hex selection) advance in advanceAfterAsyncAction() — which may
         // already have happened synchronously (e.g. an attack with no valid target).
         awaitingAsync = true
@@ -697,6 +773,7 @@ final class PlayerTurnController {
            let cardId = currentCard?.cardId,
            !persistentCardsThisTurn.contains(cardId) {
             persistentCardsThisTurn.append(cardId)
+            if !markers.contains("persistent") { roundCardsThisTurn.append(cardId) }
         }
 
         switch action.type {
@@ -770,10 +847,19 @@ final class PlayerTurnController {
                 default: break
                 }
             }
-            pendingAttackRange = range
             attackTexts = customTexts(of: action)
+            // Wild Command: "Target one Doomed enemy at any range."
+            if attackTexts.contains(where: { $0.contains("doomed enemy at any range") }) { range = 99 }
+            pendingAttackRange = range
             // This round's bonuses: Wall of Doom, Forceful Storm, an adjacent Enhancement Field.
             pendingAttackValue += coordinator.roundAttackBonus(for: pieceID, ranged: range > 1)
+            // Grim Bargain's targets, taken just before this attack.
+            targetCount += extraTargetsForNextAttack
+            extraTargetsForNextAttack = 0
+            // Eyes of the Night: advantage on every attack.
+            if let character, coordinator.chargedBonuses(of: character).contains(where: { $0.bonus == .advantageAndSeeInvisible }) {
+                pendingAdvantage = true
+            }
             // Mindthief augments shape every melee attack.
             if range <= 1 { applyAugments(coordinator: coordinator) }
             // Charged bonuses: Backup Ammunition (one more target on a ranged attack), Crackling Air.
@@ -834,6 +920,11 @@ final class PlayerTurnController {
                     pendingAttackValue += 1
                     coordinator.log("\(who)\u{2019}s Horned Helm: +1 Attack", category: .attack)
                 }
+            }
+            // Grim Bargain's bottom: this round's next attack is doubled (after every other bonus).
+            if coordinator.useFirstCharge(of: pieceID, where: { $0 == .doubleNextAttack }) != nil {
+                pendingAttackValue *= 2
+                coordinator.log("\(who)\u{2019}s attack is doubled", category: .attack)
             }
             // XP and infusions printed on the attack itself (e.g. Crushing Grasp's earth, Thief's
             // Knack's XP) and on paid augments come with performing it, which needs a target.
@@ -996,6 +1087,9 @@ final class PlayerTurnController {
                     ally.shield = ActionModel(type: .shield, value: .int(total))
                 }
             }
+
+        case .custom where action.value?.stringValue.hasPrefix("bonusChoice:curseAlly:") == true:
+            return offerCurseForTargets(action, coordinator: coordinator)
 
         case .custom:
             return performPrintedText(action, coordinator: coordinator)
@@ -1200,12 +1294,47 @@ final class PlayerTurnController {
         let own = action.value.flatMap { gameManager?.editionStore.resolveCustomText($0.stringValue, edition: character.edition)
             ?? $0.stringValue } ?? ""
         let text = (own + " " + customText(of: action)).lowercased()
-        if text.contains("place your character token on"),
-           character.carriedItems.contains(PassiveItems.cloakOfTheHunter) {
-            // A Doom: its token is still placed by hand, and Cloak of the Hunter muddles its target.
-            coordinator.beginConditionAction(pieceID: me, condition: .muddle, range: 99)
-            coordinator.log("\(who)\u{2019}s Cloak of the Hunter: choose the Doom\u{2019}s target to muddle it", category: .condition)
+        if text.contains("place your character token on"), let cardId = currentCard?.cardId {
+            // A Doom: the character's token on one enemy, the card staying in play while it lasts.
+            let options = coordinator.doomCandidates(for: character, normalOrEliteOnly: text.contains("normal or elite"))
+            guard !options.isEmpty else {
+                coordinator.log("\(who) has no enemy to Doom", category: .info)
+                coordinator.endDoom(Doom(characterID: characterID, cardId: cardId), on: nil, reason: "no enemy to Doom")
+                return false
+            }
+            let generation = coordinator.boardGeneration
+            Task { @MainActor in
+                let target = await coordinator.chooseFigure(options, title: currentCard?.name ?? "Doom",
+                                                            question: "Which enemy does \(who) Doom?")
+                guard coordinator.isCurrentBoard(generation) else { return }
+                if let target { coordinator.placeDoom(cardId: cardId, by: character, on: target) }
+                self.advanceAfterAsyncAction()
+            }
             return true
+        } else if text.contains("transfer all active") {
+            // Lead to Slaughter: every doom to one enemy within range.
+            let range = text.firstMatch(of: #/range (\d+)/#).flatMap { Int($0.1) } ?? 4
+            let options = coordinator.targetableEnemies(of: me, range: range).sorted()
+            guard coordinator.activeDooms.contains(where: { $0.doom.characterID == characterID }), !options.isEmpty else {
+                coordinator.log("\(who) has no Doom to move, or no enemy within range \(range)", category: .info)
+                return false
+            }
+            let generation = coordinator.boardGeneration
+            Task { @MainActor in
+                let target = await coordinator.chooseFigure(options, title: "Lead to Slaughter",
+                                                            question: "Which enemy do the Dooms move to?")
+                guard coordinator.isCurrentBoard(generation) else { return }
+                if let target { coordinator.transferAllDooms(of: character, to: target) }
+                self.advanceAfterAsyncAction()
+            }
+            return true
+        } else if text.contains("when the trap is sprung") {
+            // What a placed trap does when sprung (Detonation, Flight of Flame) isn't for now.
+            return false
+        } else if Self.isDoomDescription(text, className: character.name) {
+            // The Doomstalker's lines about a doom or doomed enemies describe what happens while
+            // the card is in play (BoardCoordinator+Dooms); playing the half does nothing more.
+            return false
         } else if text.contains("trap in an adjacent empty hex"), text.hasPrefix("create") || text.contains(" create") {
             // Proximity Mine: "Create one 6 damage trap…", "Gain XP +2 when the trap is sprung by
             // an enemy" (the next line of the half); Volatile Concoction: "2 damage Poison trap".
@@ -1309,6 +1438,12 @@ final class PlayerTurnController {
             return true
         }
         return false
+    }
+
+    /// A Doomstalker line describing a doom's lasting effect, or a bonus against doomed enemies.
+    static func isDoomDescription(_ text: String, className: String) -> Bool {
+        guard className == "angry-face" else { return false }
+        return text.contains("doom") || text.contains("this enemy") || text.contains("lose invisible")
     }
 
     /// "X" values the card defines in its text (Balanced Measure): hexes moved so far this

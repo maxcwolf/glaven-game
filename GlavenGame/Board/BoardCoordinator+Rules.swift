@@ -65,6 +65,8 @@ extension BoardCoordinator {
 
     func isConditionActive(_ condition: ConditionName, on pieceID: PieceID) -> Bool {
         guard let entity = entity(for: pieceID) else { return false }
+        // Expose: "All enemies lose Invisible and may no longer gain Invisible."
+        if condition == .invisible, case .monster = pieceID, !isPlayerSide(pieceID), invisibilityExposed { return false }
         return entity.entityConditions.contains { $0.name == condition && !$0.expired }
     }
 
@@ -168,6 +170,14 @@ extension BoardCoordinator {
         let (healthBefore, maxHealth) = (entity.health, entity.maxHealth)
         gameManager.entityManager.changeHealth(entity, amount: -amount)
         boardScene?.pieceDamage(id: pieceID, amount: amount)
+        doomEnemyDamaged(pieceID)   // Sap Life
+        // Vengeful Barrage: the character attacks back once the damage is done.
+        if case .character(let id) = pieceID, entity.health > 0, let character = gameManager.game.characters.first(where: { $0.id == id }),
+           let found = chargedBonuses(of: character).first(where: { if case .attackOnDamage = $0.bonus { return true }; return false }),
+           case .attackOnDamage(let value) = found.bonus {
+            useCharge(found.cardId, of: character)
+            pendingDamageAttacks.append((characterID: id, value: value))
+        }
         boardScene?.refreshStatus(of: pieceID)
         if let dealer = creditedCharacter(for: killer), killer != pieceID {
             gameManager.scenarioStatsManager.recordDamageDealt(by: dealer.name, amount: amount)
@@ -274,6 +284,7 @@ extension BoardCoordinator {
             if entity.summonState == nil && entity.type != .boss && !monster.isBoss {
                 dropLoot(for: pieceID)
             }
+            noteDoomedDeath(pieceID)
             removePieceFromBoard(pieceID)
             recordMonsterKill(name: name)
             if let character = creditedCharacter(for: killer) {

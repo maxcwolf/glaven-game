@@ -55,6 +55,15 @@ struct PieceStatus: Equatable {
     var maxHealth: Int
     /// Active conditions, in display order.
     var conditions: [ConditionName]
+    /// Character tokens on the figure (a Doomstalker's dooms): whose, by class and edition.
+    var tokens: [CharacterToken] = []
+
+    struct CharacterToken: Equatable {
+        let edition: String
+        let className: String
+        let name: String
+        let color: String
+    }
 }
 
 /// Visual node for a figure (character, monster, summon, objective) on the board: a round
@@ -73,6 +82,8 @@ class PieceSpriteNode: SKNode {
     private let hpBar = SKNode()
     private let hpFill: SKSpriteNode
     private let conditionLayer = SKNode()
+    private let tokenLayer = SKNode()
+    private var shownTokens: [PieceStatus.CharacterToken] = []
 
     static let maxConditionIcons = 4
     /// Token radius; characters are a little larger than standees, as on the table.
@@ -160,6 +171,8 @@ class PieceSpriteNode: SKNode {
 
         conditionLayer.zPosition = 4
         addChild(conditionLayer)
+        tokenLayer.zPosition = 4
+        addChild(tokenLayer)
     }
 
     required init?(coder aDecoder: NSCoder) {
@@ -196,6 +209,7 @@ class PieceSpriteNode: SKNode {
         if let status, status.maxHealth > 0 {
             parts.append("\(status.health) of \(status.maxHealth) health")
             parts += status.conditions.map(GameText.conditionName)
+            parts += status.tokens.map { "doomed by \($0.name)" }
         }
         return parts.joined(separator: ", ")
     }
@@ -221,6 +235,28 @@ class PieceSpriteNode: SKNode {
             ? SKColor(red: 0.37, green: 0.66, blue: 0.27, alpha: 1)
             : SKColor(red: 0.85, green: 0.28, blue: 0.23, alpha: 1)
         hpBar.isHidden = newStatus.maxHealth <= 0
+
+        if newStatus.tokens != shownTokens {
+            shownTokens = newStatus.tokens
+            tokenLayer.removeAllChildren()
+            // Tokens on the right edge, in their class colour, the class icon inside.
+            let tokenRadius = radius * 0.32
+            for (index, token) in newStatus.tokens.enumerated() {
+                let angle = CGFloat.pi * (0.22 - 0.22 * CGFloat(index))
+                let chip = SKShapeNode(circleOfRadius: tokenRadius)
+                chip.fillColor = SKColor(red: 0.1, green: 0.08, blue: 0.07, alpha: 0.95)
+                chip.strokeColor = SKColor(hex: token.color) ?? SKColor(white: 1, alpha: 0.6)
+                chip.lineWidth = 2
+                chip.position = CGPoint(x: cos(angle) * (radius + 1), y: sin(angle) * (radius + 1))
+                chip.name = "token-\(index)"
+                if let image = ImageLoader.characterIcon(edition: token.edition, name: token.className) {
+                    let icon = SKSpriteNode(texture: SKTexture(image: image),
+                                            size: CGSize(width: tokenRadius * 1.4, height: tokenRadius * 1.4))
+                    chip.addChild(icon)
+                }
+                tokenLayer.addChild(chip)
+            }
+        }
 
         let shown = Array(newStatus.conditions.prefix(Self.maxConditionIcons))
         guard shown != shownConditions else { return }

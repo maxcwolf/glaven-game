@@ -369,6 +369,14 @@ final class EditionDataStore {
     private func resolveInnerPlaceholders(_ text: String) -> String {
         var result = text
 
+        // Nested labels first (the Doomstalker's "%data.custom.gh.angry-face.doomed%" is itself
+        // "%data.characterColored.angry-face:Doomed%…"), so the steps below see their words.
+        for _ in 0..<3 where result.contains("%data.custom.") {
+            result = replacePattern(in: result, pattern: #"%data\.(custom\.[^%]+)%"#) { match in
+                resolveLabel(key: match[1], edition: "gh") ?? match[0]
+            }
+        }
+
         // Replace %game.action.X:N% → "X N" (must come before the no-value variant)
         result = replacePattern(in: result, pattern: #"%game\.action\.([^:%]+):(\d+)%"#) { match in
             let name = match[1].replacingOccurrences(of: "-", with: " ").capitalized

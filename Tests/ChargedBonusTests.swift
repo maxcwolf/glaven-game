@@ -46,7 +46,7 @@ final class ChargedBonusTests: XCTestCase {
         let warding = try XCTUnwrap(deck.first { $0.cardId == 7 })
         XCTAssertEqual(ChargedBonus.slots(of: warding), [0, 1, 0, 1, 0, 1])
         let all = ["brute", "cragheart", "scoundrel", "spellweaver", "tinkerer", "lightning", "sun", "eclipse",
-                   "saw", "three-spears", "mindthief", "squidface", "circles", "music-note", "two-mini"]
+                   "saw", "three-spears", "mindthief", "squidface", "circles", "music-note", "two-mini", "angry-face"]
             .flatMap { gm.editionStore.abilities(forDeck: $0, edition: "gh") }
         for (key, bonus) in ChargedBonus.byCard where !bonus.isUnlimited && bonus != .negateNextDamage {
             let id = try XCTUnwrap(Int(key.dropFirst(3)))
@@ -382,5 +382,130 @@ final class ChargedBonusTests: XCTestCase {
         let far = try bandit(at: HexCoord(6, 3))
         coord.boardState.placeObstacle(at: HexCoord(2, 3))
         XCTAssertEqual(coord.attackValueWithBonuses(3, attacker: .character(cragheart.id), target: far), 3, "not a melee attack")
+    }
+
+    // MARK: - Bonuses around the character's own actions
+
+    private func startTurn(_ character: GameCharacter, top: Int, bottom: Int) throws -> PlayerTurnController {
+        let deck = gm.editionStore.abilities(forDeck: character.name, edition: "gh")
+        let a = try XCTUnwrap(deck.first { $0.cardId == top }), b = try XCTUnwrap(deck.first { $0.cardId == bottom })
+        character.handCards = [top, bottom]
+        let turn = PlayerTurnController(characterID: character.id, coordinator: coord, gameManager: gm)
+        coord.activePlayerTurn = turn
+        turn.selectCards(top: a, bottom: b)
+        return turn
+    }
+
+    /// Vengeful Barrage: each time the Berserker suffers damage, Attack 3 back, a charge each time.
+    func testVengefulBarrageAttacksBack() async throws {
+        let berserker = add("lightning", at: HexCoord(3, 3))
+        berserker.health = 20
+        berserker.maxHealth = 20
+        berserker.activeCards = [345]
+        let piece = try bandit(at: HexCoord(4, 3))
+        await attack(berserker, from: piece)
+        XCTAssertEqual(berserker.health, 17)
+        XCTAssertLessThan(coord.entity(for: piece)?.health ?? 50, 50, "the Berserker attacked back")
+        XCTAssertEqual(berserker.bonusChargesUsed[345], 1)
+    }
+
+    /// A card with a bonus on each half: in play for its round half, Vengeful Barrage is +1
+    /// Attack this round, not the attacks back.
+    func testARoundHalfHasItsOwnBonus() throws {
+        let berserker = add("lightning", at: HexCoord(3, 3))
+        berserker.activeCards = [345]
+        berserker.roundBonusCards = [345]
+        XCTAssertEqual(coord.chargedBonuses(of: berserker).map(\.bonus), [.roundAttackBonus(1, .any)])
+        berserker.roundBonusCards = []
+        XCTAssertEqual(coord.chargedBonuses(of: berserker).map(\.bonus), [.attackOnDamage(3)])
+    }
+
+    /// Grim Bargain: before an attack, Curse an ally within Range 2 for two more targets (a charge
+    /// only if the bargain is taken); its round half doubles the next attack.
+    func testGrimBargainCursesAnAllyForTargets() async throws {
+        let plague = add("squidface", at: HexCoord(3, 3))
+        let ally = add("brute", at: HexCoord(4, 3))
+        _ = try bandit(at: HexCoord(6, 6))
+        plague.activeCards = [316]
+        let turn = try startTurn(plague, top: 289, bottom: 289 == 289 ? 290 : 289)
+        let curses = ally.attackModifierDeck.undrawnCount(of: .curse)
+        turn.executeCurrentAction()
+        for _ in 0..<20 where plague.bonusChargesUsed[316] == nil { await Task.yield() }
+        XCTAssertEqual(ally.attackModifierDeck.undrawnCount(of: .curse), curses + 1, "the ally is cursed")
+        XCTAssertEqual(plague.bonusChargesUsed[316], 1)
+    }
+
+    func testGrimBargainCanBeDeclined() async throws {
+        let plague = add("squidface", at: HexCoord(3, 3))
+        _ = add("brute", at: HexCoord(4, 3))
+        _ = try bandit(at: HexCoord(6, 6))
+        plague.activeCards = [316]
+        coord.autoResolvePrompts = false
+        let turn = try startTurn(plague, top: 289, bottom: 290)
+        turn.executeCurrentAction()
+        for _ in 0..<20 where coord.pendingFigureChoice == nil { await Task.yield() }
+        XCTAssertEqual(coord.pendingFigureChoice?.declineTitle, "No Bargain")
+        coord.resolveFigureChoice(nil)
+        for _ in 0..<20 { await Task.yield() }
+        XCTAssertNil(plague.bonusChargesUsed[316], "declined: no charge")
+    }
+
+    func testGrimBargainsRoundHalfDoublesTheNextAttack() throws {
+        let plague = add("squidface", at: HexCoord(3, 3))
+        _ = try bandit(at: HexCoord(4, 3))
+        plague.activeCards = [316]
+        plague.roundBonusCards = [316]
+        let turn = try startTurn(plague, top: 289, bottom: 290)
+        turn.executeCurrentAction()
+        XCTAssertTrue(coord.turnLog.contains { $0.message.contains("attack is doubled") })
+        XCTAssertFalse(plague.activeCards.contains(316), "once only")
+    }
+
+    /// Wings of the Night: a Move 2 before each attack action, a charge each time.
+    func testWingsOfTheNightMovesBeforeAnAttack() throws {
+        let shroud = add("eclipse", at: HexCoord(3, 3))
+        _ = try bandit(at: HexCoord(6, 6))
+        shroud.activeCards = [270]
+        let turn = try startTurn(shroud, top: 262, bottom: 263)
+        turn.executeCurrentAction()
+        guard case .selectingMove(_, let range, _, _, _) = coord.interactionMode else { return XCTFail("moving first") }
+        XCTAssertEqual(range, 2)
+        XCTAssertEqual(shroud.bonusChargesUsed[270], 1)
+        XCTAssertEqual(turn.currentSteps[1].type, .attack, "then the attack")
+    }
+
+    /// Black Knives: after an attack made while invisible, Attack 2, Range 3.
+    func testBlackKnivesFollowAnAttackWhileInvisible() throws {
+        let shroud = add("eclipse", at: HexCoord(3, 3))
+        _ = try bandit(at: HexCoord(4, 3))
+        shroud.activeCards = [261]
+        coord.applyCondition(.invisible, to: .character(shroud.id))
+        let turn = try startTurn(shroud, top: 262, bottom: 263)
+        let before = turn.currentSteps.count
+        turn.executeCurrentAction()
+        XCTAssertEqual(turn.currentSteps.count, before + 1)
+        let knives = turn.currentSteps[1]
+        XCTAssertEqual(knives.type, .attack)
+        XCTAssertEqual(PlayerTurnController.bonusCard(of: knives), 261)
+    }
+
+    /// Eyes of the Night: invisible enemies can be targeted. Dancing Shadows: attacks on the
+    /// character this round have disadvantage (two cards drawn).
+    func testEyesOfTheNightAndDancingShadows() async throws {
+        let shroud = add("eclipse", at: HexCoord(3, 3))
+        let piece = try bandit(at: HexCoord(4, 3))
+        coord.applyCondition(.invisible, to: piece)
+        XCTAssertFalse(coord.targetableEnemies(of: .character(shroud.id), range: 1).contains(piece))
+        shroud.activeCards = [283]
+        XCTAssertTrue(coord.targetableEnemies(of: .character(shroud.id), range: 1).contains(piece))
+
+        shroud.activeCards = [267]
+        shroud.roundBonusCards = [267]
+        shroud.health = 20
+        shroud.maxHealth = 20
+        var draws = 0
+        await coord.performAttack(attacker: piece, target: .character(shroud.id), attack: AttackParameters(value: 1),
+                                  drawCard: { draws += 1; return AttackModifier(type: .plus0) })
+        XCTAssertEqual(draws, 2, "disadvantage: two cards")
     }
 }

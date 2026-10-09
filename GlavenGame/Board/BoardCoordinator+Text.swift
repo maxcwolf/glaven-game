@@ -271,8 +271,13 @@ extension BoardCoordinator {
     func pieceStatus(_ piece: PieceID) -> PieceStatus? {
         guard let entity = entity(for: piece) else { return nil }
         let active = Set(entity.entityConditions.filter { !$0.expired }.map(\.name))
+        let tokens = dooms(on: piece).compactMap { doom -> PieceStatus.CharacterToken? in
+            guard let owner = gameManager?.game.characters.first(where: { $0.id == doom.characterID }) else { return nil }
+            return PieceStatus.CharacterToken(edition: owner.edition, className: owner.name,
+                                              name: GameText.characterName(owner, labels: gameManager?.editionStore), color: owner.color)
+        }
         return PieceStatus(health: entity.health, maxHealth: entity.maxHealth,
-                           conditions: ConditionName.allCases.filter(active.contains))
+                           conditions: ConditionName.allCases.filter(active.contains), tokens: tokens)
     }
 
     /// Mark whose turn it is: a ring on the board, and `actingPiece` for anything that asks.

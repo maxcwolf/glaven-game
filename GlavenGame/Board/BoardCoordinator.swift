@@ -478,6 +478,13 @@ final class BoardCoordinator {
     /// Traps placed by characters that give experience when an enemy springs them (Proximity Mine).
     var characterTraps: [HexCoord: (characterID: String, experience: Int)] = [:]
 
+    /// Doomed enemies that died, their dooms still to resolve (BoardCoordinator+Dooms).
+    var pendingDoomDeaths: [PendingDoomDeath] = []
+    /// Attacks characters perform because they suffered damage (Vengeful Barrage), still to make.
+    var pendingDamageAttacks: [(characterID: String, value: Int)] = []
+    /// Characters who used Expose's advantage this turn (once each turn).
+    var exposeUsedThisTurn: Set<String> = []
+
     /// Non-nil while a character picks items to refresh (Empowering Talisman, Utility Belt).
     var pendingItemRefresh: PendingItemRefresh?
 
@@ -845,6 +852,9 @@ final class BoardCoordinator {
         lastAttackTarget = nil
         lastAttackerPos = nil
         characterTraps = [:]
+        pendingDoomDeaths = []
+        pendingDamageAttacks = []
+        exposeUsedThisTurn = []
     }
 
     /// Whether `generation` (read when a turn task started) is still the board on the table. A
@@ -1259,6 +1269,16 @@ final class BoardCoordinator {
     /// Advance to the next figure in initiative order.
     func advanceToNextFigure() {
         guard let gameManager = gameManager else { return }
+        // Doomed enemies that died this turn (to a trap, a wound…) resolve their dooms first.
+        if !pendingDoomDeaths.isEmpty || !pendingDamageAttacks.isEmpty {
+            let generation = boardGeneration
+            Task { @MainActor in
+                await self.resolveDoomDeaths()
+                guard self.isCurrentBoard(generation), self.scenarioResult == nil else { return }
+                self.advanceToNextFigure()
+            }
+            return
+        }
         syncPieceVisuals()
 
         // End the current figure's turn (conditions expire), then resolve anything that died.
@@ -1369,6 +1389,22 @@ final class BoardCoordinator {
     /// Start a character's own turn (after its summons acted): conditions tick, then it either
     /// long rests, loses its turn to Stun, or plays its two cards.
     private func beginCharacterTurn(_ character: GameCharacter, entry: TurnOrderEntry) {
+        guard let gameManager = gameManager else { return }
+        exposeUsedThisTurn.remove(character.id)
+        // Inescapable Fate: the marker advances as the owner's turn starts.
+        if activeDooms.contains(where: { $0.doom.characterID == character.id && { if case .countdown = $0 { return true }; return false }($0.doom.effect) }) {
+            let generation = boardGeneration
+            Task { @MainActor in
+                await self.advanceDoomCountdowns(for: character)
+                guard self.isCurrentBoard(generation), self.scenarioResult == nil else { return }
+                self.beginCharacterTurnAfterDooms(character, entry: entry)
+            }
+            return
+        }
+        beginCharacterTurnAfterDooms(character, entry: entry)
+    }
+
+    private func beginCharacterTurnAfterDooms(_ character: GameCharacter, entry: TurnOrderEntry) {
         guard let gameManager = gameManager else { return }
         // The player has the board again: the monsters' pace goes back to normal.
         endPlaybackControls()
@@ -1757,8 +1793,10 @@ final class BoardCoordinator {
     func targetableEnemies(of pieceID: PieceID, range: Int) -> Set<PieceID> {
         guard let pos = boardState.piecePositions[pieceID] else { return [] }
         var targets = Set<PieceID>()
+        // Eyes of the Night: invisible enemies can be targeted.
+        let seesInvisible = chargedBonuses(of: pieceID).contains { $0.bonus == .advantageAndSeeInvisible }
         for (id, coord) in boardState.piecePositions where id != pieceID && areEnemies(pieceID, id) {
-            guard entity(for: id) != nil, !isConditionActive(.invisible, on: id) else { continue }
+            guard entity(for: id) != nil, seesInvisible || !isConditionActive(.invisible, on: id) else { continue }
             guard pos.distance(to: coord) <= max(1, range),
                   LineOfSight.hasLOS(from: pos, to: coord, board: boardState) else { continue }
             targets.insert(id)
@@ -1859,6 +1897,9 @@ final class BoardCoordinator {
         }
 
         var validTargets = targetableEnemies(of: pieceID, range: range)
+        if activePlayerTurn?.attackTexts.contains(where: { $0.contains("doomed enemy at any range") }) == true {
+            validTargets = validTargets.filter(isDoomed)
+        }
         if let pattern = activePlayerTurn?.pendingAreaPattern {
             // Area attack: any enemy the pattern can cover is a valid primary target.
             validTargets = Set(boardState.piecePositions.keys.filter { id in

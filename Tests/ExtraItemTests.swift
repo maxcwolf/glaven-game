@@ -230,8 +230,8 @@ final class ExtraItemTests: XCTestCase {
         try XCTUnwrap(coord.spawnMonster(name: "bandit-guard", type: .normal, at: hex, origin: .placed))
     }
 
-    /// Cloak of the Hunter: a Doom's target is muddled (the Doom's token is still placed by hand).
-    func testCloakOfTheHunterMuddlesTheDoomsTarget() throws {
+    /// Cloak of the Hunter: the enemy a Doom is placed on is muddled.
+    func testCloakOfTheHunterMuddlesTheDoomsTarget() async throws {
         gm.characterManager.addCharacter(name: "angry-face", edition: "gh")
         let stalker = gm.game.characters[1]
         coord.boardState.placePiece(.character(stalker.id), at: HexCoord(6, 6))
@@ -243,23 +243,22 @@ final class ExtraItemTests: XCTestCase {
         turn.selectCards(top: other, bottom: rain)    // Rain of Arrows' bottom is a Doom
         turn.setBottomFirst(true)
 
-        // Without the cloak the Doom asks nothing on the board.
+        // Without the cloak the Doom's target isn't muddled.
         turn.executeCurrentAction()
-        if case .selectingConditionTarget = coord.interactionMode { XCTFail("no cloak, no muddle") }
+        _ = await waitUntil { coord.isDoomed(guardPiece) }
+        XCTAssertTrue(coord.isDoomed(guardPiece))
+        XCTAssertFalse(coord.isConditionActive(.muddle, on: guardPiece), "no cloak, no muddle")
 
+        // With it, the enemy the Doom is placed on is muddled.
+        coord.endDoom(coord.dooms(on: guardPiece)[0], on: guardPiece, reason: "test")
         stalker.items = [PassiveItems.cloakOfTheHunter]
-        turn.cancelChoice()
         let again = PlayerTurnController(characterID: stalker.id, coordinator: coord, gameManager: gm)
         coord.activePlayerTurn = again
+        stalker.handCards = [rain.cardId!, other.cardId!]
         again.selectCards(top: other, bottom: rain)
         again.setBottomFirst(true)
         again.executeCurrentAction()
-        guard case .selectingConditionTarget(_, let condition, let targets) = coord.interactionMode else {
-            return XCTFail("choosing the Doom's target")
-        }
-        XCTAssertEqual(condition, .muddle)
-        XCTAssertTrue(targets.contains(guardPiece), "any enemy in sight, at any range")
-        coord.handlePieceTap(guardPiece)
+        _ = await waitUntil { coord.isDoomed(guardPiece) }
         XCTAssertTrue(coord.isConditionActive(.muddle, on: guardPiece))
     }
 

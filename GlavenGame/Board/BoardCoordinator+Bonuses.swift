@@ -61,11 +61,42 @@ enum ChargedBonus: Equatable {
     /// An action the character performs at the end of each turn (Auto Turret: Attack 2, Range 5).
     case turnEndAction(ActionModel)
 
-    /// Round bonuses don't use charges; every use leaves them in place.
+    // The Doomstalker's cards about doomed enemies.
+    /// The next times a doomed enemy dies, the character performs an attack (Rain of Arrows).
+    case attackOnDoomedDeath(value: Int, range: Int)
+    /// The next times a doomed enemy dies near another enemy, a doom moves to it (Frightening Curse).
+    case transferDoomOnDeath(range: Int)
+    /// Advantage on one attack each turn against a doomed enemy; enemies can't be invisible (Expose).
+    case advantageOncePerTurnVsDoomed
+    /// Two dooms may be on the same enemy (Inescapable Fate).
+    case twoDooms
+    /// +N on attacks against doomed enemies this round (Relentless Offensive, Impending End).
+    case roundAttackBonusVsDoomed(Int)
+
+    /// Each time the character suffers damage, they perform an attack (Vengeful Barrage: Attack 3).
+    case attackOnDamage(Int)
+    /// On each attack action the character may Curse an ally within range for extra targets (Grim Bargain).
+    case curseAllyForTargets(range: Int, targets: Int)
+    /// The character's next attack action this round is doubled (Grim Bargain's bottom).
+    case doubleNextAttack
+    /// Before each attack action, a Move (Wings of the Night: Move 2).
+    case moveBeforeAttack(Int)
+    /// After each attack action made while invisible, an attack (Black Knives: Attack 2, Range 3).
+    case attackAfterAttackWhileInvisible(value: Int, range: Int)
+    /// After each move action made while invisible, an attack on every adjacent enemy (Claws of the Night).
+    case attackAdjacentAfterMoveWhileInvisible(Int)
+    /// Advantage on every attack, and invisible enemies can be targeted (Eyes of the Night).
+    case advantageAndSeeInvisible
+    /// Every attack targeting the character has disadvantage this round (Dancing Shadows, Terror Blade).
+    case attackersGainDisadvantage
+
+    /// Round bonuses and charge-less persistent cards leave every use in place.
     var isUnlimited: Bool {
         switch self {
         case .roundAttackBonus, .roundAttackBonusWithAdjacentAllies, .experiencePerRetaliate,
-             .drawAttacksFromAdjacentAllies: return true
+             .drawAttacksFromAdjacentAllies, .advantageOncePerTurnVsDoomed, .twoDooms, .roundAttackBonusVsDoomed,
+             .advantageAndSeeInvisible, .attackersGainDisadvantage:
+            return true
         default: return false
         }
     }
@@ -126,9 +157,35 @@ enum ChargedBonus: Equatable {
                                                subActions: [ActionModel(type: .range, value: .int(1))])),
         "gh-54": .turnEndAction(ActionModel(type: .attack, value: .int(2),         // Auto Turret
                                             subActions: [ActionModel(type: .range, value: .int(5))])),
+        "gh-376": .attackOnDoomedDeath(value: 2, range: 5),             // Rain of Arrows
+        "gh-383": .transferDoomOnDeath(range: 2),                       // Frightening Curse
+        "gh-391": .advantageOncePerTurnVsDoomed,                        // Expose
+        "gh-397": .twoDooms,                                            // Inescapable Fate
+        "gh-392": .roundAttackBonusVsDoomed(2),                         // Relentless Offensive
+        "gh-401": .roundAttackBonusVsDoomed(3),                         // Impending End
+        "gh-345": .attackOnDamage(3),                                   // Vengeful Barrage
+        "gh-316": .curseAllyForTargets(range: 2, targets: 2),           // Grim Bargain
+        "gh-270": .moveBeforeAttack(2),                                 // Wings of the Night
+        "gh-261": .attackAfterAttackWhileInvisible(value: 2, range: 3), // Black Knives
+        "gh-279": .attackAdjacentAfterMoveWhileInvisible(2),            // Claws of the Night
+        "gh-283": .advantageAndSeeInvisible,                            // Eyes of the Night
+        "gh-267": .attackersGainDisadvantage,                           // Dancing Shadows
+        "gh-275": .attackersGainDisadvantage,                           // Terror Blade
         "gh-53": .turnEndAction(ActionModel(type: .custom,                         // Gas Canister
                                             value: .string("One ally within Range 3 may Recover one of their discarded cards."))),
     ]
+
+    /// The round halves of cards whose other half has its own bonus in `byCard`.
+    static let byRoundHalf: [String: ChargedBonus] = [
+        "gh-345": .roundAttackBonus(1, .any),                           // Vengeful Barrage: +1 this round
+        "gh-316": .doubleNextAttack,                                    // Grim Bargain: double the next attack
+    ]
+
+    /// The bonus of a card in play: its round half's when that's the half played.
+    static func bonus(edition: String, cardId: Int, roundHalf: Bool) -> ChargedBonus? {
+        let key = "\(edition)-\(cardId)"
+        return roundHalf ? (byRoundHalf[key] ?? byCard[key]) : byCard[key]
+    }
 
     /// The experience each charge slot gives, in order (0 for a plain slot).
     static func slots(of card: AbilityModel) -> [Int] {
@@ -157,8 +214,12 @@ extension BoardCoordinator {
             cards += turn.persistentCardsThisTurn.filter { !cards.contains($0) }
             cards.removeAll { turn.usedUpThisTurn.contains($0) }
         }
-        return cards.compactMap { id in
-            ChargedBonus.byCard["\(character.edition)-\(id)"].map { (id, $0) }
+        // A doom card in play is its doom (bottom half), not its top half's bonus.
+        let dooming = Set(activeDooms.filter { $0.doom.characterID == character.id }.map(\.doom.cardId))
+        let roundHalves = Set(character.roundBonusCards + (activePlayerTurn?.characterID == character.id
+                                                            ? activePlayerTurn?.roundCardsThisTurn ?? [] : []))
+        return cards.filter { !dooming.contains($0) }.compactMap { id in
+            ChargedBonus.bonus(edition: character.edition, cardId: id, roundHalf: roundHalves.contains(id)).map { (id, $0) }
         }
     }
 
@@ -171,9 +232,11 @@ extension BoardCoordinator {
     /// Mark one charge of a bonus: experience for an XP slot, and the card leaves the active
     /// area once every charge is marked.
     func useCharge(_ cardId: Int, of character: GameCharacter) {
-        if ChargedBonus.byCard["\(character.edition)-\(cardId)"]?.isUnlimited == true { return }
+        let roundHalf = character.roundBonusCards.contains(cardId) || activePlayerTurn?.roundCardsThisTurn.contains(cardId) == true
+        if ChargedBonus.bonus(edition: character.edition, cardId: cardId, roundHalf: roundHalf)?.isUnlimited == true { return }
         guard let card = gameManager?.characterManager.abilities(for: character).first(where: { $0.cardId == cardId }) else { return }
-        let slots = ChargedBonus.slots(of: card)
+        // A round half's single use (Grim Bargain's doubled attack): the other half's slots aren't its.
+        let slots = roundHalf && ChargedBonus.byRoundHalf["\(character.edition)-\(cardId)"] != nil ? [] : ChargedBonus.slots(of: card)
         let used = character.bonusChargesUsed[cardId, default: 0]
         if used < slots.count, slots[used] > 0 {
             character.experience += slots[used]
@@ -268,7 +331,13 @@ extension BoardCoordinator {
         var attack = 0, experience = 0
         for text in texts {
             let bonus = number(#"\+(\d+) attack"#, in: text), xp = number(#"xp \+(\d+)"#, in: text)
-            if text.contains("adjacent to any of your allies") {
+            if text.contains("if the target is doomed") {
+                // Swift Trickery, Press the Attack.
+                if isDoomed(target) { attack += bonus; experience += xp }
+            } else if text.contains("if the target is undamaged") {
+                // Fresh Kill.
+                if defender.health >= defender.maxHealth { attack += bonus; experience += xp }
+            } else if text.contains("adjacent to any of your allies") {
                 if attackersAllies > 0 { attack += bonus; experience += xp }
             } else if text.contains("adjacent to none of its allies") {
                 if isolated { attack += bonus; experience += xp }
