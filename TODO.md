@@ -485,7 +485,7 @@ Performance & robustness
 - [ ] **Pathfinding visualization** — no debug overlay for monster movement decisions
 - [ ] **"+1 Target" on attack modifier cards** (6 perk cards: Brute, Cragheart, Mindthief…) — the extra target isn't offered
 - [ ] **Scenario-rule damage** (ScenarioRulesManager "damage" figure effects) still bypasses the lose-cards choice
-- [ ] **Battle goals are dealt again** if the app quits between dealing and setting out
+- [x] **Battle goals are dealt again** if the app quits between dealing and setting out: dealt goals are saved and kept until the scenario ends (`testDealtBattleGoalsSurviveARelaunch`)
 - [ ] Latent (no GH card triggers them today): an action that waits (printed "suffer X damage", a target choice) nested inside a box/concatenation step lets the outer step advance before it; a consume step with two rewards that each wait stops after the first. FH: Wound's deferred damage now lands after Regenerate's heal
 - [ ] **Open rule question**: a ranged multi-target monster avoids disadvantage on its focus before maximizing targets (as listed above); the FAQ / JotL reading puts more targets first and counts disadvantage against every target — decide which to follow
 - [ ] **Simulator party rarely wins** — the tactical test policy wins ~2% of full playthroughs (mostly on Easy), so victory paths in late rooms and boss fights get little realistic coverage; a stronger policy (coordinated focus fire, card planning) would exercise them

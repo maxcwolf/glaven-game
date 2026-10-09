@@ -284,6 +284,7 @@ struct GameSetupView: View {
     /// Deal battle goals, then set out once everyone has kept one.
     private func chooseGoals() {
         gameManager.scenarioManager.dealBattleGoals()
+        gameManager.saveGame()   // the dealt goals are kept if the app quits before setting out
         withAnimation(.snappy) { choosingGoals = true }
     }
 

@@ -21,9 +21,13 @@ extension ScenarioManager {
 
     /// Deal two goals to each character in the party, none shared.
     func dealBattleGoals() {
+        // Goals already dealt for this scenario stand (they're cleared when it ends): quitting
+        // while choosing and setting out again mustn't deal a fresh pair.
+        let held = Set(game.characters.flatMap(\.battleGoalCardIds))
         var deck = editionStore.battleGoals(for: game.edition ?? "gh").map(\.cardId)
+            .filter { !held.contains($0) }
             .shuffled(using: &GameRandom.shared)
-        for character in game.characters where !character.absent {
+        for character in game.characters where !character.absent && character.battleGoalCardIds.isEmpty {
             character.battleGoalCardIds = Array(deck.prefix(2))
             character.selectedBattleGoal = nil
             deck.removeFirst(min(2, deck.count))

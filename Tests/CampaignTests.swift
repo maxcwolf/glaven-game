@@ -156,6 +156,25 @@ final class CampaignTests: XCTestCase {
         XCTAssertEqual(relaunched.eventCardManager.topCard(.road)?.cardId, road)
     }
 
+    /// Battle goals dealt before setting out are kept through a relaunch: setting out again
+    /// mustn't deal a fresh pair (a free redraw). A finished scenario clears them for the next.
+    func testDealtBattleGoalsSurviveARelaunch() throws {
+        let store = try container()
+        let gm = manager(store)
+        gm.characterManager.addCharacter(name: "brute", edition: "gh")
+        gm.characterManager.addCharacter(name: "tinkerer", edition: "gh")
+        gm.scenarioManager.dealBattleGoals()
+        gm.saveGame()
+        let dealt = gm.game.characters.map(\.battleGoalCardIds)
+        XCTAssertTrue(dealt.allSatisfy { $0.count == 2 })
+        XCTAssertEqual(Set(dealt.joined()).count, 4, "no card dealt twice")
+
+        let relaunched = manager(store)
+        relaunched.continueGame()
+        relaunched.scenarioManager.dealBattleGoals()
+        XCTAssertEqual(relaunched.game.characters.map(\.battleGoalCardIds), dealt)
+    }
+
     /// `CAMPAIGNS_RENDER_OUT=/tmp/c.png swift test --filter testRenderCampaigns` renders the list.
     func testRenderCampaigns() throws {
         guard let out = ProcessInfo.processInfo.environment["CAMPAIGNS_RENDER_OUT"] else {
