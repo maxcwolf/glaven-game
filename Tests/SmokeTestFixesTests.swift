@@ -11,12 +11,17 @@ final class SmokeTestFixesTests: XCTestCase {
         gm = try SaveAndContinueTestsSupport.manager()
     }
 
-    /// The rest prompts said "spellweaver — Short Rest", the class id.
+    /// The rest prompts said "spellweaver — Short Rest", the class id; they name the character
+    /// as the board does, and say what the rest does in plain words.
     func testRestPromptsNameTheCharacter() {
         gm.characterManager.addCharacter(name: "spellweaver", edition: "gh")
-        let title = BoardView.restTitle("Short Rest", for: gm.game.characters[0], labels: gm.editionStore)
-        XCTAssertEqual(title, "Spellweaver — Short Rest")
-        XCTAssertEqual(PlayerTextTests.lint(title), [])
+        let kicker = RestText.kicker(GameText.characterName(gm.game.characters[0], labels: gm.editionStore))
+        XCTAssertEqual(kicker, "End of round \u{00B7} Spellweaver")
+        for line in [kicker, RestText.redrawUsed] + RestText.shortRestLines(discards: 4, hand: 2)
+            + RestText.longRestLines(discards: 4, hand: 2) {
+            XCTAssertEqual(PlayerTextTests.lint(line), [], line)
+        }
+        XCTAssertEqual(RestText.shortRestLines(discards: 4, hand: 2).last, "Hand 2 \u{2192} 5")
     }
 
     /// After Accept the event's card leaves the deck; the sheet showed the next card's number.
@@ -133,12 +138,6 @@ final class SmokeTestFixesTests: XCTestCase {
         XCTAssertNil(coord.instruction(for: .watchingMonsterTurn))
     }
 
-    /// The long rest panel is as wide as its cards, not the screen.
-    func testTheLongRestPanelFitsItsCards() {
-        XCTAssertEqual(BoardView.longRestWidth(cards: 2), 440, "room for the heading")
-        XCTAssertEqual(BoardView.longRestWidth(cards: 4), 648)
-        XCTAssertEqual(BoardView.longRestWidth(cards: 9), 760, "more scroll")
-    }
 
     /// Damage a scenario rule deals a character (Scenario 51's summoners, 60's late rounds) can
     /// be negated by losing cards, like any damage (p.22); before, it bypassed the choice.

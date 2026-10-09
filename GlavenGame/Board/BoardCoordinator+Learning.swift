@@ -22,6 +22,9 @@ enum LearnSubject: Hashable {
     case pieces([PieceID])
     // In town
     case prosperity, reputation, cityEvent, sanctuary
+    /// A quest's reward: the locked class it unlocks ("plagueherald"), or the envelope it opens.
+    case lockedClass(String)
+    case envelope(String)
 }
 
 /// A rule taught the first time it comes up: the topic, a line about what just happened, and
@@ -104,6 +107,7 @@ extension BoardCoordinator {
     private func showNextTip() {
         guard pendingTip == nil, !tipQueue.isEmpty else { return }
         pendingTip = tipQueue.removeFirst()
+        tipsShownInRun += 1
         if isAutomatedTurn && !isPaused {
             setPaused(true)
             tipPausedPlayback = true
@@ -119,11 +123,24 @@ extension BoardCoordinator {
             settings.saveSettings()
         }
         showNextTip()
+        if pendingTip == nil { tipsShownInRun = 0 }
         if pendingTip == nil && tipPausedPlayback {
             tipPausedPlayback = false
             setPaused(false)
         }
     }
+
+    /// Where the tip showing stands in a run of tips that came up together: (2, 4) is "2 of 4";
+    /// nil when it's alone.
+    var tipPosition: (index: Int, total: Int)? {
+        guard pendingTip != nil else { return nil }
+        let total = tipsShownInRun + tipQueue.count
+        return total > 1 ? (tipsShownInRun, total) : nil
+    }
+
+    /// The tip's button: "Next" while more tips wait (so the next one isn't a surprise that
+    /// catches a tap meant for the board), "Got it" on the last.
+    var tipButtonTitle: String { tipQueue.isEmpty ? "Got it" : "Next" }
 
     /// Tips as a round's cards are chosen: how a round goes, choosing cards, elites on the board,
     /// and a hand running short.
@@ -290,10 +307,34 @@ extension BoardCoordinator {
             return pieces.first.map { explainPiece($0) } ?? Explanation(subject: subject, title: "The board")
         case .prosperity, .reputation, .cityEvent, .sanctuary:
             return Self.townExplanation(subject, game: gameManager?.game ?? GameState())
+        case .lockedClass(let key):
+            return Self.lockedClassExplanation(key, edition: gameManager?.game.edition ?? "gh",
+                                               store: gameManager?.editionStore)
+        case .envelope(let envelope):
+            return Explanation(subject: subject, title: "Envelope \(envelope)", paragraphs: [
+                "A sealed envelope in the game box. Retiring with this quest opens it, and what it holds joins the campaign: new scenarios, a new class, or something stranger.",
+                "Its contents stay a surprise until then."])
         case .board:
             return Explanation(subject: subject, title: "The board",
                                paragraphs: ["Long-press a figure or a hex to learn what it is."], topic: .moving)
         }
+    }
+
+    /// A locked class, as a quest's reward names it: what unlocking it means, and the little
+    /// the box shows of it.
+    static func lockedClassExplanation(_ key: String, edition: String, store: EditionDataStore?) -> Explanation {
+        let name = GameText.className(key, edition: edition, labels: store)
+        let data = store?.characters(for: edition).first { $0.name == key }
+        var rows: [Explanation.Row] = []
+        if let health = data?.stats.first(where: { $0.level == 1 })?.health {
+            rows.append(.init(label: "Health", value: "\(health) at level 1"))
+        }
+        if let hand = data?.handSize?.stringValue {
+            rows.append(.init(label: "Hand", value: "\(hand) cards"))
+        }
+        return Explanation(subject: .lockedClass(key), title: "The \(name)", subtitle: "A locked class", rows: rows, paragraphs: [
+            "Retiring with this quest opens the \(name)\u{2019}s box. From then on anyone can recruit one, whether a new player or a retired character\u{2019}s owner starting again.",
+            "Its cards and its story stay a surprise until then."], topic: .personalQuest)
     }
 
     /// The town's standing and places, with this campaign's numbers.

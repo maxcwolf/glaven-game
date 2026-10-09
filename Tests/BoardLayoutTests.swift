@@ -134,3 +134,22 @@ final class PartyScreenLayoutTests: XCTestCase {
         XCTAssertEqual(wrapped.height, 68, accuracy: 0.5, "wraps to two rows when narrow")
     }
 }
+
+/// The board's dialogs are drawn in its own look: its fonts, colours and buttons, not the
+/// system's steppers, pickers and caption styles (iPad playthrough 2026-10-09: the rest
+/// dialogs and the gold split were still in the old style).
+@MainActor
+final class BoardDialogStyleTests: XCTestCase {
+    func testTheRestAndRewardDialogsUseTheBoardsLook() throws {
+        let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
+        for file in ["GlavenGame/Board/RestSheets.swift", "GlavenGame/Board/RewardChoicesView.swift"] {
+            let source = try String(contentsOf: root.appendingPathComponent(file), encoding: .utf8)
+            for old in ["GlavenTheme", " Stepper(", " Picker(", ".font(.caption", ".font(.title", ".font(.headline", ".foregroundStyle(.orange"] {
+                XCTAssertFalse(source.contains(old), "\(file) uses \(old)")
+            }
+        }
+        let board = try String(contentsOf: root.appendingPathComponent("GlavenGame/Board/BoardView.swift"), encoding: .utf8)
+        XCTAssertFalse(board.contains("func shortRestOverlay"), "the old rest overlays are gone")
+        XCTAssertFalse(board.contains("func longRestOverlay"))
+    }
+}

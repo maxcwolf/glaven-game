@@ -29,6 +29,25 @@ final class PersonalQuestTests: XCTestCase {
         XCTAssertTrue(manager.personalQuest("523")?.reward?.hasPrefix("Unlocks the ") == true)
     }
 
+    /// Held in the quest picker, "Unlocks the …" explains the class, and "Opens Envelope X"
+    /// the envelope (asked for in the iPad playthrough of 2026-10-09).
+    func testAQuestsRewardExplainsItself() throws {
+        let quest = try XCTUnwrap(manager.personalQuest("523"))
+        let key = try XCTUnwrap(quest.unlocksClass)
+        let explanation = BoardCoordinator.lockedClassExplanation(key, edition: "gh", store: gm.editionStore)
+        XCTAssertEqual(explanation.title, "The \(try XCTUnwrap(quest.unlocks))")
+        XCTAssertEqual(explanation.subtitle, "A locked class")
+        XCTAssertTrue(explanation.rows.contains { $0.label == "Health" }, "\(explanation.rows)")
+        XCTAssertTrue(explanation.rows.contains { $0.label == "Hand" })
+        for text in explanation.paragraphs { XCTAssertEqual(PlayerTextTests.lint(text), [], text) }
+
+        gm.boardCoordinator.explain(.lockedClass(key))
+        XCTAssertEqual(gm.boardCoordinator.explanation?.title, explanation.title)
+        gm.boardCoordinator.closeExplanation()
+        gm.boardCoordinator.explain(.envelope("X"))
+        XCTAssertEqual(gm.boardCoordinator.explanation?.title, "Envelope X")
+    }
+
     private func give(_ questId: String, to character: GameCharacter) {
         character.questChoices = [questId]
         manager.chooseQuest(questId, for: character)

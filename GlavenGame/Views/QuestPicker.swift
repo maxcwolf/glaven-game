@@ -61,9 +61,12 @@ struct QuestPicker: View {
             }
             Spacer(minLength: 0)
             if let reward = quest.reward {
+                // Held, it says what the class or envelope is.
                 Label(reward, systemImage: quest.unlocks == nil ? "envelope" : "lock.open")
                     .font(BoardTheme.font(size: 12, weight: .semibold))
                     .foregroundStyle(BoardTheme.secondaryText)
+                    .contentShape(Rectangle())
+                    .learnable(quest.unlocksClass.map(LearnSubject.lockedClass) ?? .envelope(quest.envelope ?? ""))
             }
             Button("Keep This Quest", action: choose)
                 .buttonStyle(.boardPrimaryCompact)

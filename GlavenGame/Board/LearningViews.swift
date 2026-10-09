@@ -91,7 +91,8 @@ struct TipCard: View {
 
     var body: some View {
         let topic = LearnTopic.topic(tip.topic)
-        LearnCard(coordinator: coordinator, badge: "First time \u{00B7} \(topic.chapter.rawValue)", title: topic.title) {
+        let position = coordinator.tipPosition.map { " \u{00B7} \($0.index) of \($0.total)" } ?? ""
+        LearnCard(coordinator: coordinator, badge: "First time \u{00B7} \(topic.chapter.rawValue)\(position)", title: topic.title) {
             if let lead = tip.lead {
                 Text(lead)
                     .font(BoardTheme.font(size: 15, weight: .semibold))
@@ -103,7 +104,7 @@ struct TipCard: View {
                 Button("More in How to Play") { coordinator.openHowToPlay(tip.topic) }
                     .buttonStyle(.boardQuietCompact)
                 Spacer()
-                Button("Got it") { coordinator.dismissTip() }
+                Button(coordinator.tipButtonTitle) { coordinator.dismissTip() }
                     .buttonStyle(.boardPrimary)
                     .keyboardShortcut(.defaultAction)
             }

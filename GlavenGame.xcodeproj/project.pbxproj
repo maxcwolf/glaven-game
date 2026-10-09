@@ -208,6 +208,7 @@
 		E6E25B46F9DD8E50E5312036 /* MonsterAI.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8C9B002AD05945036550A91 /* MonsterAI.swift */; };
 		E7997C6FB6C26787F21CABBF /* MapTiles.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B976E74EDC74601B6166FB8 /* MapTiles.swift */; };
 		ED9D3F8E14B8D7CFBE91954D /* TurnRailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 83EB9921D52AC61A5ADD3F0A /* TurnRailView.swift */; };
+		EDF769F82A96160E2072907B /* RestSheets.swift in Sources */ = {isa = PBXBuildFile; fileRef = 16FBFE5EB0AA0C0EE505DD2A /* RestSheets.swift */; };
 		EE068B973BD6453ACA2B41F7 /* LearningViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 286ABB372E04BBC0C25DDC0E /* LearningViews.swift */; };
 		EE8A5ED34D7EB4585DBC98DD /* OverlayStickerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CF6C0E1CF27A9ECC9CFC529E /* OverlayStickerView.swift */; };
 		EEA4E83E55E0054C52800227 /* CardImages in Resources */ = {isa = PBXBuildFile; fileRef = 59BB047B07D1F118633A3DAF /* CardImages */; };
@@ -241,6 +242,7 @@
 		10C608B0B9CEFDBCA152D834 /* HexMath.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HexMath.swift; sourceTree = "<group>"; };
 		11CBAC9F034879BB91B54D73 /* HexCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HexCell.swift; sourceTree = "<group>"; };
 		14ABB7C34DDD57BF9162EA76 /* AbilityCardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AbilityCardView.swift; sourceTree = "<group>"; };
+		16FBFE5EB0AA0C0EE505DD2A /* RestSheets.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RestSheets.swift; sourceTree = "<group>"; };
 		18D02F667561B11569B262B7 /* ModifierTrayView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModifierTrayView.swift; sourceTree = "<group>"; };
 		192975CBA7A72969B78836A7 /* SoundPlayer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SoundPlayer.swift; sourceTree = "<group>"; };
 		19BA4A9C5EF312918BD519DA /* EventCardData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EventCardData.swift; sourceTree = "<group>"; };
@@ -818,6 +820,7 @@
 				E5A96A1A09275E5237EAD66B /* PlayedCardsView.swift */,
 				8A2BBA0188C2D10D81CAC68B /* PlayerTurnController.swift */,
 				D2ED778C971FD3AFE9B4F991 /* RecoveryPicker.swift */,
+				16FBFE5EB0AA0C0EE505DD2A /* RestSheets.swift */,
 				487FFAE9CF9ACC5FB5742CD6 /* RewardChoicesView.swift */,
 				B97936FE7C6DC6879E3A5861 /* ScenarioBriefCard.swift */,
 				FF546B2E6909F44E7930DB07 /* ScenarioResultsView.swift */,
@@ -1138,6 +1141,7 @@
 				8FC70B94B68CE136535F98DA /* QuestPicker.swift in Sources */,
 				36DAE2BE1201D56F92C06BC6 /* RecoveryPicker.swift in Sources */,
 				93A57D1AE8095C6238BBB1D3 /* RemoteEditionData.swift in Sources */,
+				EDF769F82A96160E2072907B /* RestSheets.swift in Sources */,
 				BC3BC6A84314049CE3D9E374 /* RewardChoicesView.swift in Sources */,
 				4B2BA4139D0D27B42EE7818E /* RoundManager.swift in Sources */,
 				C52F441575A9B4779E09B7F6 /* SanctuarySheet.swift in Sources */,

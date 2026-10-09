@@ -727,12 +727,85 @@ final class PlayerTurnController {
     /// The Psychic Knife: an attack an augment shapes gets +1 more.
     static let psychicKnife = "gh-139"
 
-    /// Pay for every element-consume augment on the action that can be paid for and return
-    /// their bonus effects (GH p.24: all listed elements are needed for one augment).
+    // MARK: - Consuming elements, by choice
+
+    /// An element bonus printed on the current step, which the player may pay for or not
+    /// (consuming is optional: an element may be kept for an ally — iPad playthrough 2026-10-09,
+    /// Mana Bolt took the Earth the Cragheart had infused for Earthen Clod).
+    struct ConsumeOption: Identifiable, Equatable {
+        /// Its place among the step's consume bonuses.
+        let id: Int
+        let elements: [ElementType]
+        /// "Earth: Push 2", "Fire: Wound".
+        let label: String
+        /// The elements are there to consume.
+        let payable: Bool
+        /// The player chose to keep the elements.
+        let declined: Bool
+    }
+
+    /// Consume bonuses of the current step the player turned down, by `ConsumeOption.id`.
+    private var declinedConsumes: Set<Int> = []
+    /// The step those choices belong to; another step starts with every bonus taken.
+    private var declinedConsumesStep: String = ""
+
+    private var stepKey: String { "\(phase)-\(currentActionIndex)" }
+
+    /// The element bonuses on `action`, whether each can be paid and whether it's turned down.
+    func consumeOptions(for action: ActionModel) -> [ConsumeOption] {
+        guard let game = gameManager?.game else { return [] }
+        let declined = declinedConsumesStep == stepKey ? declinedConsumes : []
+        return (action.subActions ?? []).filter(MonsterAbility.isConsume).enumerated().map { index, sub in
+            let elements = MonsterAbility.elements(of: sub)
+            let names = GameText.list(elements.map { $0 == .wild ? "any element" : GameText.elementName($0) })
+            let reward = bonusWords(sub)
+            return ConsumeOption(id: index, elements: elements,
+                                 label: reward.isEmpty ? names : "\(names): \(reward)",
+                                 payable: game.canConsumeElements(elements), declined: declined.contains(index))
+        }
+    }
+
+    /// Take or turn down one of the current step's element bonuses.
+    func toggleConsume(_ id: Int) {
+        if declinedConsumesStep != stepKey {
+            declinedConsumes = []
+            declinedConsumesStep = stepKey
+        }
+        if declinedConsumes.contains(id) { declinedConsumes.remove(id) } else { declinedConsumes.insert(id) }
+    }
+
+    /// What a consume bonus gives, in words: "Push 2", "Wound", "+1 Attack".
+    private func bonusWords(_ consume: ActionModel) -> String {
+        var words: [String] = []
+        for effect in consume.subActions ?? [] {
+            switch effect.type {
+            case .concatenation: words += (effect.subActions ?? []).filter { $0.type != .experience }.map(GameText.actionTitle)
+            case .experience: continue
+            case .custom:
+                if let key = effect.value?.stringValue, let character,
+                   let text = gameManager?.editionStore.resolveCustomText(key, edition: character.edition) {
+                    words.append(text.trimmingCharacters(in: CharacterSet(charactersIn: ". ")))
+                }
+            default:
+                words.append(GameText.actionTitle(effect))
+            }
+        }
+        return words.joined(separator: ", ")
+    }
+
+    /// Pay for every element-consume augment on the action that can be paid for and that the
+    /// player hasn't turned down, and return their bonus effects (GH p.24: all listed elements
+    /// are needed for one augment).
     private func consumeAugments(of action: ActionModel) -> [ActionModel] {
         guard let game = gameManager?.game else { return [] }
+        let declined = declinedConsumesStep == stepKey ? declinedConsumes : []
         var bonus: [ActionModel] = []
-        for sub in action.subActions ?? [] where MonsterAbility.isConsume(sub) {
+        for (index, sub) in (action.subActions ?? []).filter(MonsterAbility.isConsume).enumerated() {
+            if declined.contains(index) {
+                guard game.canConsumeElements(MonsterAbility.elements(of: sub)) else { continue }
+                coordinator?.log("\(who) keeps \(GameText.list(MonsterAbility.elements(of: sub).map(GameText.elementName)))", category: .element)
+                continue
+            }
             let elements = MonsterAbility.elements(of: sub)
             guard let used = game.consumeElements(elements) else { continue }
             coordinator?.log("\(who) consumes \(GameText.list(used.map(GameText.elementName)))", category: .element)

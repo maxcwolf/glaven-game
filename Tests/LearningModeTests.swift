@@ -93,6 +93,30 @@ final class LearningModeTests: XCTestCase {
         XCTAssertNil(coord.pendingTip, "a tip shows once ever")
     }
 
+    /// Tips that come up together say so: "1 of 3" and Next, then Got it on the last (iPad
+    /// playthrough 2026-10-09: the first attack brought four, one after another, and the next
+    /// one caught a tap meant for the board).
+    func testTipsThatComeTogetherAreCounted() throws {
+        let sim = try board(learning: true)
+        let coord = sim.coord
+        coord.teach(.elements)
+        XCTAssertNil(coord.tipPosition, "a tip alone isn't numbered")
+        coord.teach(.attacking)
+        coord.teach(.modifiers)
+        XCTAssertEqual(coord.tipPosition?.index, 1)
+        XCTAssertEqual(coord.tipPosition?.total, 3)
+        XCTAssertEqual(coord.tipButtonTitle, "Next")
+        coord.dismissTip()
+        XCTAssertEqual(coord.tipPosition?.index, 2)
+        coord.dismissTip()
+        XCTAssertEqual(coord.tipPosition?.index, 3)
+        XCTAssertEqual(coord.tipButtonTitle, "Got it")
+        coord.dismissTip()
+        XCTAssertNil(coord.pendingTip)
+        coord.teach(.shieldAndRetaliate)
+        XCTAssertNil(coord.tipPosition, "a new run starts over")
+    }
+
     func testATipHoldsTheMonstersTurnUntilItsClosed() throws {
         let sim = try board(learning: true)
         let coord = sim.coord

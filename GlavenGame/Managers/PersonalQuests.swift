@@ -16,6 +16,8 @@ struct PersonalQuest: Equatable, Identifiable {
     let unlocks: String?
     /// The envelope it opens on retirement instead ("X"), if any.
     var envelope: String? = nil
+    /// The class it unlocks, as the edition names it ("plagueherald"), for its explanation.
+    var unlocksClass: String? = nil
 
     /// What retiring with it brings: "Unlocks the Plagueherald", "Opens Envelope X".
     var reward: String? {
@@ -42,7 +44,8 @@ extension CharacterManager {
         }
         let unlocks = data.unlockCharacter.map { GameText.className($0, edition: edition, labels: editionStore) }
         return PersonalQuest(id: cardId, name: labels?[""] as? String ?? "Quest \(cardId)",
-                             requirements: requirements, unlocks: unlocks, envelope: data.openEnvelope)
+                             requirements: requirements, unlocks: unlocks, envelope: data.openEnvelope,
+                             unlocksClass: data.unlockCharacter)
     }
 
     private static func requirementText(_ raw: String, labels: String?, store: EditionDataStore, edition: String) -> String {

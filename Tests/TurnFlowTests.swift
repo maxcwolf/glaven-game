@@ -233,6 +233,36 @@ final class TurnFlowTests: XCTestCase {
         XCTAssertEqual(coord.scenarioResult, .victory)
     }
 
+    // MARK: - Consuming elements
+
+    /// An element bonus is the player's choice: by default it's taken, but turned down the
+    /// element stays for an ally and the bonus doesn't happen (iPad playthrough 2026-10-09).
+    func testAnElementBonusCanBeTurnedDown() async throws {
+        let spellweaver = add("spellweaver", at: HexCoord(3, 3))
+        let piece = try XCTUnwrap(coord.spawnMonster(name: "bandit-guard", type: .normal, at: HexCoord(3, 4), origin: .placed))
+        let guardian = try XCTUnwrap(coord.entity(for: piece))
+        guardian.health = 20; guardian.maxHealth = 20
+        let strike = try XCTUnwrap(deck("spellweaver").first { $0.cardId == 67 })   // Flame Strike: consume Fire, Wound
+        let other = try XCTUnwrap(deck("spellweaver").first { $0.cardId != 67 })
+        let index = try XCTUnwrap(gm.game.elementBoard.firstIndex { $0.type == .fire })
+        gm.game.elementBoard[index].state = .strong
+        let turn = turn(for: spellweaver, top: strike, bottom: other)
+        let options = turn.consumeOptions(for: turn.currentSteps[turn.currentActionIndex])
+        XCTAssertEqual(options.map(\.label), ["Fire: Wound"])
+        XCTAssertEqual(options.map(\.payable), [true])
+        XCTAssertEqual(options.map(\.declined), [false], "taken unless turned down")
+
+        turn.toggleConsume(0)
+        XCTAssertEqual(turn.consumeOptions(for: turn.currentSteps[turn.currentActionIndex]).map(\.declined), [true])
+        turn.executeCurrentAction()
+        coord.handlePieceTap(piece)
+        _ = await waitUntil { !turn.isWaiting }
+        XCTAssertEqual(gm.game.elementBoard[index].state, .strong, "the Fire is kept")
+        XCTAssertTrue(coord.turnLog.contains { $0.message == "Spellweaver keeps Fire" })
+        XCTAssertTrue(coord.turnLog.contains { $0.message.contains("attacks Bandit Guard") }, "the attack was made")
+        XCTAssertFalse(guardian.entityConditions.contains { $0.name == .wound })
+    }
+
     // MARK: - Move 0
 
     /// A move whose text happens as it ends can be Move 0: the character taps themselves and
@@ -258,6 +288,23 @@ final class TurnFlowTests: XCTestCase {
         _ = await waitUntil { !turn.isWaiting }
         XCTAssertEqual(coord.boardState.piecePositions[.character(cragheart.id)], HexCoord(3, 3))
         XCTAssertEqual(guardian.health, before - 1, "the adjacent guard suffers 1 damage")
+    }
+
+    /// A move that can reach a closed door says, before the tap, that it opens it (iPad
+    /// playthrough 2026-10-09: a tap two hexes away opened a door on the way).
+    func testAMoveWarnsItCanOpenADoor() throws {
+        let brute = add("brute", at: HexCoord(3, 3))
+        coord.boardState.doors.append(DoorInfo(coord: HexCoord(3, 4), childTileRef: "x", subType: "stone",
+                                               refPoint: HexCoord(3, 4), origin: HexCoord(0, 0)))
+        coord.boardState.cells[HexCoord(3, 4)]?.overlay = .door
+        let trample = try XCTUnwrap(deck("brute").first { $0.name == "Trample" })
+        let dagger = try XCTUnwrap(deck("brute").first { $0.name == "Spare Dagger" })
+        let turn = turn(for: brute, top: dagger, bottom: trample)
+        turn.skipRemainingActions()
+        turn.executeCurrentAction()
+        let detail = try XCTUnwrap(coord.instruction(for: coord.interactionMode)?.detail)
+        XCTAssertTrue(detail.contains("closed door opens it"), detail)
+        XCTAssertEqual(PlayerTextTests.lint(detail), [])
     }
 
     /// A plain move doesn't offer staying put.

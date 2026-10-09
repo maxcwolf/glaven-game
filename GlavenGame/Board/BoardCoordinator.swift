@@ -430,6 +430,9 @@ final class BoardCoordinator {
     /// The tip on screen, and the ones waiting their turn.
     var pendingTip: LearnTip?
     var tipQueue: [LearnTip] = []
+    /// Tips shown since the queue was last empty: the one showing is this one of
+    /// `tipsShownInRun + tipQueue.count`, so a run of tips says "2 of 4" and "Next".
+    var tipsShownInRun = 0
     /// The monsters' turns were paused for a tip, and go on once it's closed.
     var tipPausedPlayback = false
     /// What a long-press (or the "?") is explaining, or a monster's "Why?".

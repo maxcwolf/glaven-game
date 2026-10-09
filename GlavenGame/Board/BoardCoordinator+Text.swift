@@ -161,11 +161,17 @@ extension BoardCoordinator {
         case .placingCharacter(let id):
             return Instruction(title: "Place \(characterName(id))", detail: "Tap a highlighted starting hex",
                                canSkip: false)
-        case .selectingMove(let mover, let range, _, let teleport, let moveMode):
+        case .selectingMove(let mover, let range, let hexes, let teleport, let moveMode):
             let verb = teleport ? "Teleport" : (moveMode == .jump ? "Jump" : (moveMode == .fly ? "Fly" : "Move"))
-            let detail = canStayPut(mover) && !teleport
+            var detail = canStayPut(mover) && !teleport
                 ? "Tap a highlighted hex to move there, or \(name(mover)) to stay"
                 : "Tap a highlighted hex to move there"
+            // Stepping on a closed door opens it and reveals the room behind (p.17): say so
+            // before the tap, not after.
+            if !teleport, case .character = mover,
+               boardState.doors.contains(where: { !$0.isOpen && hexes.contains($0.coord) }) {
+                detail += ". Moving onto or through a closed door opens it"
+            }
             return Instruction(title: "\(verb) \(range)", detail: detail, canSkip: ownTurn)
         case .selectingAttackTarget(_, let range, _):
             let value = activePlayerTurn?.currentAttackValue()

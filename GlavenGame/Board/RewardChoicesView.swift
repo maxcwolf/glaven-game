@@ -1,15 +1,13 @@
 import SwiftUI
 
 /// The choices a scenario's rewards need (GH p.47): who takes each item, how the collective gold
-/// is split, which location opens. Used by the results screen on the board and the old sheet.
+/// is split, which location opens, on the results screen in the board's look: names as chips,
+/// gold handed out with − and +.
 struct RewardChoicesView: View {
     @Environment(GameManager.self) private var gameManager
     let rewards: ScenarioRewards
     let edition: String
     @Binding var choices: ScenarioRewardChoices
-    /// Colours, so the view sits on the board's panels as well as the menus'.
-    var textColor: Color = GlavenTheme.primaryText
-    var surface: Color = GlavenTheme.cardBackground
 
     /// The defaults the choices start from: the first eligible characters take the items, the
     /// gold is split evenly, the first location opens.
@@ -41,11 +39,8 @@ struct RewardChoicesView: View {
     private var manager: ScenarioManager { gameManager.scenarioManager }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("Choose Rewards")
-                .font(.headline)
-                .foregroundStyle(textColor)
-
+        VStack(alignment: .leading, spacing: 14) {
+            TownSmallCaps(text: "Rewards to hand out", lit: true)
             ForEach(ScenarioManager.rewardItemGrants(rewards), id: \.id) { grant in
                 itemPicker(id: grant.id, count: grant.count)
             }
@@ -56,14 +51,33 @@ struct RewardChoicesView: View {
                 locationPicker(locations)
             }
         }
-        .padding()
+        .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(surface)
-        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .background(BoardTheme.raised, in: RoundedRectangle(cornerRadius: BoardTheme.Radius.large))
+        .overlay(RoundedRectangle(cornerRadius: BoardTheme.Radius.large).stroke(BoardTheme.border.opacity(0.45), lineWidth: 1))
     }
 
     private func displayName(_ character: GameCharacter) -> String {
         GameText.characterName(character, labels: gameManager.editionStore)
+    }
+
+    private func heading(_ text: String) -> some View {
+        Text(text)
+            .font(BoardTheme.font(size: 15, weight: .semibold))
+            .foregroundStyle(BoardTheme.text)
+    }
+
+    private func note(_ text: String, warning: Bool = false) -> some View {
+        Text(text)
+            .font(BoardTheme.font(size: 13, weight: warning ? .semibold : .regular))
+            .foregroundStyle(warning ? BoardTheme.brass : BoardTheme.secondaryText)
+    }
+
+    /// A choice among names, as chips: the chosen one lit.
+    private func chip(_ title: String, on: Bool, action: @escaping () -> Void) -> some View {
+        Button(title, action: action)
+            .buttonStyle(on ? .boardPrimaryCompact : .boardQuietCompact)
+            .accessibilityAddTraits(on ? .isSelected : [])
     }
 
     @ViewBuilder
@@ -71,24 +85,23 @@ struct RewardChoicesView: View {
         let key = "\(edition)-\(id)"
         let name = gameManager.editionStore.itemData(id: id, edition: edition)?.name ?? "Item \(id)"
         let eligible = manager.eligibleItemRecipients(key)
-        VStack(alignment: .leading, spacing: 4) {
-            Text(count > 1 ? "\(count)× \(name)" : name)
-                .font(.subheadline)
-                .fontWeight(.medium)
-                .foregroundStyle(textColor)
+        VStack(alignment: .leading, spacing: 6) {
+            heading(count > 1 ? "\(count)\u{00D7} \(name)" : name)
             if eligible.isEmpty {
-                Text("Everyone already owns one — it goes to the city's supply")
-                    .font(.subheadline)
-                    .foregroundStyle(textColor.opacity(0.7))
+                note("Everyone already owns one \u{2014} it goes to the city\u{2019}s supply")
             }
             ForEach(0..<min(count, eligible.count), id: \.self) { copy in
-                Picker(count > 1 ? "Copy \(copy + 1) goes to" : "Goes to", selection: recipient(key, copy: copy)) {
-                    ForEach(eligible, id: \.id) { character in
-                        Text(displayName(character)).tag(character.id)
+                let binding = recipient(key, copy: copy)
+                HStack(spacing: 8) {
+                    note(count > 1 ? "Copy \(copy + 1) to" : "Goes to")
+                    FlowLayout(spacing: 6) {
+                        ForEach(eligible, id: \.id) { character in
+                            chip(displayName(character), on: binding.wrappedValue == character.id) {
+                                binding.wrappedValue = character.id
+                            }
+                        }
                     }
                 }
-                .font(.subheadline)
-                .foregroundStyle(textColor)
             }
         }
     }
@@ -113,23 +126,38 @@ struct RewardChoicesView: View {
     @ViewBuilder
     private func collectiveGoldSplit(total: Int) -> some View {
         let assigned = choices.collectiveGold.values.reduce(0, +)
-        VStack(alignment: .leading, spacing: 4) {
-            Text("Split \(total) collective gold")
-                .font(.subheadline)
-                .fontWeight(.medium)
-                .foregroundStyle(textColor)
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 8) {
+                heading("Share the party\u{2019}s gold")
+                TownGold(amount: total, size: 13)
+            }
             ForEach(manager.rewardParty, id: \.id) { character in
                 let share = choices.collectiveGold[character.id] ?? 0
-                Stepper(value: goldShare(character.id), in: 0...max(0, share + total - assigned)) {
-                    Text("\(displayName(character)): \(share) gold")
-                        .font(.subheadline)
-                        .foregroundStyle(textColor)
+                let most = share + total - assigned
+                HStack(spacing: 10) {
+                    Text(displayName(character))
+                        .font(BoardTheme.font(size: 14, weight: .semibold))
+                        .foregroundStyle(BoardTheme.text)
+                        .frame(width: 140, alignment: .leading)
+                    Button { goldShare(character.id).wrappedValue = max(0, share - 1) } label: {
+                        Image(systemName: "minus")
+                    }
+                    .buttonStyle(.boardQuietCompact)
+                    .disabled(share == 0)
+                    .accessibilityLabel("One gold less for \(displayName(character))")
+                    TownGold(amount: share, size: 13)
+                        .frame(minWidth: 44)
+                    Button { goldShare(character.id).wrappedValue = min(most, share + 1) } label: {
+                        Image(systemName: "plus")
+                    }
+                    .buttonStyle(.boardQuietCompact)
+                    .disabled(share >= most)
+                    .accessibilityLabel("One gold more for \(displayName(character))")
                 }
+                .accessibilityElement(children: .contain)
             }
             if assigned != total {
-                Text("\(total - assigned) gold still to hand out")
-                    .font(.subheadline)
-                    .foregroundStyle(.orange)
+                note("\(total - assigned) gold still to hand out", warning: true)
             }
         }
     }
@@ -143,16 +171,17 @@ struct RewardChoicesView: View {
 
     @ViewBuilder
     private func locationPicker(_ locations: [String]) -> some View {
-        Picker("Unlock one location", selection: Binding(
-            get: { choices.location ?? locations[0] },
-            set: { choices.location = $0 }
-        )) {
-            ForEach(locations, id: \.self) { index in
-                let name = gameManager.editionStore.scenarioData(index: index, edition: edition)?.name
-                Text(name.map { "#\(index) \($0)" } ?? "Scenario \(index)").tag(index)
+        let chosen = choices.location ?? locations[0]
+        VStack(alignment: .leading, spacing: 6) {
+            heading("Unlock one location")
+            FlowLayout(spacing: 6) {
+                ForEach(locations, id: \.self) { index in
+                    let name = gameManager.editionStore.scenarioData(index: index, edition: edition)?.name
+                    chip(name.map { "#\(index) \($0)" } ?? "Scenario \(index)", on: chosen == index) {
+                        choices.location = index
+                    }
+                }
             }
         }
-        .font(.subheadline)
-        .foregroundStyle(textColor)
     }
 }

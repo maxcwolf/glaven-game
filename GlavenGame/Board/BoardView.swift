@@ -172,13 +172,17 @@ struct BoardView: View {
             // Long rest card choice prompt
             if let pending = coordinator.pendingLongRest,
                let character = gameManager.game.characters.first(where: { $0.id == pending.characterID }) {
-                longRestOverlay(character: character)
+                LongRestSheet(character: character, coordinator: coordinator)
+                    .id(pending.id)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
             }
 
             // Short rest prompt
             if let pending = coordinator.pendingShortRest,
                let character = gameManager.game.characters.first(where: { $0.id == pending.characterID }) {
-                shortRestOverlay(pending: pending, character: character)
+                ShortRestSheet(pending: pending, character: character, coordinator: coordinator)
+                    .id(pending.characterID)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
             }
 
             // Monster ability card preview (tap on monster group in info panel)
@@ -472,6 +476,17 @@ struct BoardView: View {
                             Label("No enemy in range", systemImage: "exclamationmark.triangle")
                                 .font(BoardTheme.font(size: 12))
                                 .foregroundStyle(BoardTheme.secondaryText)
+                        }
+                        // Element bonuses there's an element for: taken unless turned down.
+                        ForEach(playerTurn.consumeOptions(for: action).filter(\.payable)) { option in
+                            Button {
+                                playerTurn.toggleConsume(option.id)
+                            } label: {
+                                Label(option.label, systemImage: option.declined ? "circle" : "checkmark.circle.fill")
+                            }
+                            .buttonStyle(option.declined ? .boardQuietCompact : .boardPrimaryCompact)
+                            .accessibilityLabel(option.declined ? "Consume for \(option.label): off" : "Consume for \(option.label): on")
+                            .help("Tap to keep the element for an ally instead")
                         }
                     }
                 } else {
@@ -1014,206 +1029,6 @@ struct BoardView: View {
     }
 
     // MARK: - Damage Mitigation Overlay
-
-    // MARK: - Long Rest Overlay
-
-    @ViewBuilder
-    private func longRestOverlay(character: GameCharacter) -> some View {
-        let charColor = Color(hex: character.color) ?? .blue
-        let deckName = character.characterData?.deck ?? character.name
-        let deckData = gameManager.editionStore.deckData(
-            name: deckName, edition: character.edition
-        )
-        let resolver = labelResolver(for: character.edition)
-
-        Color.black.opacity(0.5)
-            .ignoresSafeArea()
-            .overlay {
-                VStack(spacing: 16) {
-                    // Header
-                    VStack(spacing: 6) {
-                        Image(systemName: "bed.double.fill")
-                            .font(BoardTheme.font(size: 36))
-                            .foregroundStyle(.orange)
-
-                        Text(Self.restTitle("Long Rest", for: character, labels: gameManager.editionStore))
-                            .font(.title3.weight(.bold))
-                            .foregroundStyle(charColor)
-
-                        Text("Heal 2 HP, recover all other discard cards to hand.\nChoose one discard card to lose permanently.")
-                            .font(.caption)
-                            .foregroundStyle(.white.opacity(0.7))
-                            .multilineTextAlignment(.center)
-                    }
-
-                    Divider().overlay(.white.opacity(0.2))
-
-                    // Discard cards to choose from: as wide as they are, scrolling only when they
-                    // don't fit, so the panel isn't the width of the screen for two cards.
-                    ViewThatFits(in: .horizontal) {
-                        longRestCards(character: character, deckData: deckData, color: charColor, resolver: resolver)
-                        ScrollView(.horizontal, showsIndicators: false) {
-                            longRestCards(character: character, deckData: deckData, color: charColor, resolver: resolver)
-                        }
-                    }
-                }
-                .padding(24)
-                .frame(width: Self.longRestWidth(cards: character.discardedCards.count))
-                .fixedSize(horizontal: false, vertical: true)   // as tall as its contents
-                .boardPanel()
-                .padding(40)
-            }
-    }
-
-    private func longRestCards(character: GameCharacter, deckData: DeckData?, color charColor: Color,
-                               resolver: @escaping (String) -> String?) -> some View {
-        HStack(spacing: 10) {
-            ForEach(Array(character.discardedCards.enumerated()), id: \.offset) { index, cardId in
-                if let card = deckData?.abilities.first(where: { $0.cardId == cardId }) {
-                    BoardAbilityCardView(
-                        card: card,
-                        characterColor: charColor,
-                        highlight: .none,
-                        width: 140,
-                        height: 240,
-                        labelResolver: resolver,
-                        onPreview: previewAction(card: card)
-                    )
-                    .overlay(alignment: .bottom) {
-                        Text("LOSE THIS CARD")
-                            .font(BoardTheme.font(size: 11, weight: .heavy))
-                            .foregroundStyle(.white)
-                            .padding(.horizontal, 10)
-                            .padding(.vertical, 4)
-                            .background(.red.opacity(0.8))
-                            .clipShape(Capsule())
-                            .padding(.bottom, 8)
-                    }
-                    .onTapGesture {
-                        coordinator.resolveLongRest(characterID: character.id, discardIndex: index)
-                    }
-                    .accessibilityAddTraits(.isButton)
-                    .accessibilityLabel("Lose \(card.name ?? "this card")")
-                }
-            }
-        }
-        .padding(.horizontal)
-    }
-
-    /// The long rest panel's width: its cards side by side (140 pt each), at least room for the
-    /// heading, at most 760 pt (more cards scroll).
-    static func longRestWidth(cards: Int) -> CGFloat {
-        min(760, max(440, CGFloat(cards) * 150 + 48))
-    }
-
-    /// "Spellweaver — Short Rest": the character's name as the board shows it, not their class id.
-    static func restTitle(_ rest: String, for character: GameCharacter, labels: EditionDataStore) -> String {
-        "\(GameText.characterName(character, labels: labels)) — \(rest)"
-    }
-
-    // MARK: - Short Rest Overlay
-
-    @ViewBuilder
-    private func shortRestOverlay(pending: BoardCoordinator.PendingShortRest, character: GameCharacter) -> some View {
-        let charColor = Color(hex: character.color) ?? .blue
-        let deckName = character.characterData?.deck ?? character.name
-        let deckData = gameManager.editionStore.deckData(
-            name: deckName, edition: character.edition
-        )
-        let resolver = labelResolver(for: character.edition)
-
-        Color.black.opacity(0.5)
-            .ignoresSafeArea()
-            .overlay {
-                VStack(spacing: 16) {
-                    // Header
-                    VStack(spacing: 6) {
-                        Image(systemName: "moon.zzz.fill")
-                            .font(BoardTheme.font(size: 36))
-                            .foregroundStyle(BoardTheme.brass)
-
-                        Text(Self.restTitle("Short Rest", for: character, labels: gameManager.editionStore))
-                            .font(.title3.weight(.bold))
-                            .foregroundStyle(charColor)
-
-                        Text("Recover all discarded cards to hand.\nRandomly lose one card.")
-                            .font(.caption)
-                            .foregroundStyle(.white.opacity(0.7))
-                            .multilineTextAlignment(.center)
-                    }
-
-                    Divider().overlay(.white.opacity(0.2))
-
-                    // The random card is only revealed once the player has decided to rest (p.25).
-                    if pending.committed, let card = deckData?.abilities.first(where: { $0.cardId == pending.randomCardId }) {
-                        VStack(spacing: 8) {
-                            Text("This card will be lost:")
-                                .font(.caption.weight(.medium))
-                                .foregroundStyle(.white.opacity(0.6))
-
-                            BoardAbilityCardView(
-                                card: card,
-                                characterColor: charColor,
-                                highlight: .none,
-                                width: 140,
-                                height: 240,
-                                labelResolver: resolver,
-                                onPreview: previewAction(card: card)
-                            )
-                            .overlay(alignment: .bottom) {
-                                Text("WILL BE LOST")
-                                    .font(BoardTheme.font(size: 11, weight: .heavy))
-                                    .foregroundStyle(.white)
-                                    .padding(.horizontal, 10)
-                                    .padding(.vertical, 4)
-                                    .background(.red.opacity(0.8))
-                                    .clipShape(Capsule())
-                                    .padding(.bottom, 8)
-                            }
-                        }
-                        Divider().overlay(.white.opacity(0.2))
-                    }
-
-                    // Action buttons
-                    HStack(spacing: 12) {
-                        if pending.committed {
-                            Button {
-                                coordinator.resolveShortRest()
-                            } label: {
-                                Label("Accept", systemImage: "checkmark")
-                            }
-                            .buttonStyle(.boardPrimary)
-
-                            Button {
-                                coordinator.rerollShortRest()
-                            } label: {
-                                Label("Take 1 Damage to Re-pick", systemImage: "arrow.triangle.2.circlepath")
-                            }
-                            .buttonStyle(.boardQuiet)
-                            .disabled(pending.rerollUsed)
-                        } else {
-                            Button {
-                                coordinator.commitShortRest()
-                            } label: {
-                                Label("Short Rest", systemImage: "moon.zzz.fill")
-                            }
-                            .buttonStyle(.boardPrimary)
-
-                            Button {
-                                coordinator.skipShortRest()
-                            } label: {
-                                Label("Skip Rest", systemImage: "forward.fill")
-                            }
-                            .buttonStyle(.boardQuiet)
-                        }
-                    }
-                }
-                .padding(24)
-                .fixedSize()   // the size of its contents: a card and two buttons, not the screen
-                .boardPanel()
-                .padding(40)
-            }
-    }
 
     // MARK: - Modifier Card Popup
 

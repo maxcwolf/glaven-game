@@ -35,8 +35,7 @@ struct ScenarioResultsView: View {
                 .fixedSize(horizontal: false, vertical: true)   // cards share the tallest card's height
                 if !outcome.rewards.isEmpty { rewards }
                 if let (rewards, edition) = rewardsToChoose {
-                    RewardChoicesView(rewards: rewards, edition: edition, choices: $choices,
-                                      textColor: BoardTheme.text, surface: BoardTheme.raised)
+                    RewardChoicesView(rewards: rewards, edition: edition, choices: $choices)
                 }
                 Text(outcome.note)
                     .font(.footnote)
