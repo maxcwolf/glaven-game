@@ -6,19 +6,24 @@ enum PlacedToken: Equatable {
     /// when an enemy springs it.
     case trap(damage: Int, subType: String?, experience: Int)
     case obstacle
+    /// Not placed but taken away: an adjacent obstacle destroyed (Rock Tunnel, Explosive Punch).
+    case destroyObstacle
 
     var name: String {
         switch self {
         case .trap(let damage, let subType, _):
             return subType == "poison" ? "a \(damage) damage poison trap" : "a \(damage) damage trap"
-        case .obstacle: return "an obstacle"
+        case .obstacle, .destroyObstacle: return "an obstacle"
         }
     }
+
+    /// What the player does with it: "Place an obstacle", "Destroy an obstacle".
+    var verb: String { self == .destroyObstacle ? "Destroy" : "Place" }
 
     var imageName: String {
         switch self {
         case .trap(_, let subType, _): return subType == "poison" ? "trap-poison" : "trap-spike"
-        case .obstacle: return "obstacle-boulder-1"
+        case .obstacle, .destroyObstacle: return "obstacle-boulder-1"
         }
     }
 }
@@ -188,9 +193,12 @@ extension BoardCoordinator {
     /// there's no room (the rest of the action is lost).
     func beginPlacingTokens(_ token: PlacedToken, count: Int, by pieceID: PieceID) -> Bool {
         guard count > 0, let position = boardState.piecePositions[pieceID] else { return false }
-        let hexes = Set(position.neighbors.filter(isEmptyHex))
+        let hexes = Set(position.neighbors.filter { hex in
+            token == .destroyObstacle ? boardState.cells[hex]?.overlay == .obstacle : isEmptyHex(hex)
+        })
         guard !hexes.isEmpty else {
-            log("\(name(pieceID)) has no empty hex beside them for \(token.name)", category: .info)
+            log(token == .destroyObstacle ? "\(name(pieceID)) has no obstacle beside them"
+                                          : "\(name(pieceID)) has no empty hex beside them for \(token.name)", category: .info)
             return false
         }
         interactionMode = .placingToken(pieceID: pieceID, token: token, remaining: count, validHexes: hexes)
@@ -205,10 +213,16 @@ extension BoardCoordinator {
             if experience > 0, case .character(let id) = pieceID { characterTraps[hex] = (id, experience) }
         case .obstacle:
             boardState.placeObstacle(at: hex)
+        case .destroyObstacle:
+            boardState.removeObstacle(at: hex)
         }
-        boardScene?.addOverlaySprite(imageName: token.imageName, at: hex, offsetCol: offsetCol, offsetRow: offsetRow)
+        if token == .destroyObstacle {
+            boardScene?.removeOverlaySprite(at: hex, offsetCol: offsetCol, offsetRow: offsetRow)
+        } else {
+            boardScene?.addOverlaySprite(imageName: token.imageName, at: hex, offsetCol: offsetCol, offsetRow: offsetRow)
+        }
         boardScene?.clearHighlights()
-        log("\(name(pieceID)) places \(token.name)", category: .info, trace: "at \(hex)")
+        log("\(name(pieceID)) \(token.verb.lowercased())s \(token.name)", category: .info, trace: "at \(hex)")
         interactionMode = .idle
         if remaining > 1, beginPlacingTokens(token, count: remaining - 1, by: pieceID) { return }
         activePlayerTurn?.advanceAfterAsyncAction()

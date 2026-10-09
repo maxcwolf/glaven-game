@@ -774,6 +774,9 @@ final class PlayerTurnController {
             let trap = PlacedToken.trap(damage: Self.damageAmount(in: text), subType: text.contains("poison") ? "poison" : nil,
                                         experience: xp)
             return coordinator.beginPlacingTokens(trap, count: 1, by: me)
+        } else if text.contains("destroy one adjacent obstacle") {
+            // Rock Tunnel, Explosive Punch.
+            return coordinator.beginPlacingTokens(.destroyObstacle, count: 1, by: me)
         } else if text.contains("obstacle") && text.contains("create") {
             // Avalanche: "Create two single-hex obstacles in empty hexes adjacent to you."
             let count = text.contains("two") ? 2 : 1

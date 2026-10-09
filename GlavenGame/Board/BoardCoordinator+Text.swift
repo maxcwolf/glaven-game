@@ -106,6 +106,9 @@ extension BoardCoordinator {
             return Instruction(title: GameText.actionTitle(action),
                                detail: enemies ? "Tap the enemy to control" : "Tap the ally who performs it", canSkip: ownTurn)
         case .placingToken(_, let token, let remaining, _):
+            if token == .destroyObstacle {
+                return Instruction(title: "Destroy an obstacle", detail: "Tap an obstacle next to you", canSkip: ownTurn)
+            }
             return Instruction(title: "Place \(token.name)",
                                detail: remaining > 1 ? "Tap an empty hex next to you (\(remaining) to place)"
                                                      : "Tap an empty hex next to you", canSkip: false)

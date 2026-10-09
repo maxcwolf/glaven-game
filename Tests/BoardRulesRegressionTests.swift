@@ -866,6 +866,18 @@ final class BoardRulesRegressionTests: XCTestCase {
         XCTAssertFalse(cragheart.entityConditions.contains { $0.name == .muddle }, "not the Cragheart")
     }
 
+    func testRockTunnelDestroysAnAdjacentObstacle() throws {
+        let cragheart = addCharacter("cragheart", at: HexCoord(3, 3))
+        coord.boardState.placeObstacle(at: HexCoord(4, 3))
+        let turn = turn(for: cragheart, top: try card("Rock Tunnel", of: "cragheart"), bottom: try card("Avalanche", of: "cragheart"))
+        turn.executeCurrentAction()
+        guard case .placingToken(_, .destroyObstacle, _, let hexes) = coord.interactionMode else { return XCTFail("an obstacle to pick") }
+        XCTAssertEqual(hexes, [HexCoord(4, 3)])
+        coord.handleHexTap(HexCoord(4, 3))
+        XCTAssertEqual(coord.boardState.cells[HexCoord(4, 3)]?.passable, true)
+        XCTAssertNil(coord.boardState.cells[HexCoord(4, 3)]?.overlay)
+    }
+
     // MARK: - Mindthief augments
 
     /// Play `augment`'s top (the augment, then its own Attack) against an adjacent Bandit Guard.
