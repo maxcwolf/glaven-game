@@ -918,6 +918,28 @@ final class BoardRulesRegressionTests: XCTestCase {
         XCTAssertGreaterThanOrEqual(cragheart.experience, xp + 1)
     }
 
+    /// Growing Rage's bottom is the Berserker's own attack, below half hit points only; it was
+    /// offered to an ally.
+    func testGrowingRageAttacksOnlyBelowHalfHitPoints() throws {
+        let berserker = addCharacter("lightning", at: HexCoord(3, 3))
+        addMonster("bandit-guard", at: HexCoord(4, 3))
+        let rage = try card("Growing Rage", of: "lightning")
+        let other = try XCTUnwrap(gm.editionStore.abilities(forDeck: "lightning", edition: "gh").first { $0.cardId != rage.cardId })
+        berserker.health = berserker.maxHealth
+        let healthy = turn(for: berserker, top: other, bottom: rage, bottomFirst: true)
+        healthy.skipCurrentAction()      // Move 3
+        healthy.executeCurrentAction()   // "If you have fewer hit points than half…, perform Attack 2"
+        if case .choosingPerformer = coord.interactionMode { XCTFail("not an ally's") }
+        if case .selectingAttackTarget = coord.interactionMode { XCTFail("not at full health") }
+
+        berserker.health = 2
+        let hurt = turn(for: berserker, top: other, bottom: rage, bottomFirst: true)
+        hurt.skipCurrentAction()
+        hurt.executeCurrentAction()
+        guard case .selectingAttackTarget(let attacker, _, _) = coord.interactionMode else { return XCTFail("the Berserker attacks") }
+        XCTAssertEqual(attacker, .character(berserker.id))
+    }
+
     // MARK: - Mindthief augments
 
     /// Play `augment`'s top (the augment, then its own Attack) against an adjacent Bandit Guard.

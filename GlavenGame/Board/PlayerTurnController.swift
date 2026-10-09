@@ -866,17 +866,38 @@ final class PlayerTurnController {
             // Avalanche: "Create two single-hex obstacles in empty hexes adjacent to you."
             let count = text.contains("two") ? 2 : 1
             return coordinator.beginPlacingTokens(.obstacle, count: count, by: me)
-        } else if text.contains("perform"), let performed = (action.subActions ?? []).first(where: { [.attack, .move].contains($0.type) }) {
+        } else if text.contains("perform") {
+            let performed = (action.subActions ?? []).filter { [.attack, .move, .heal].contains($0.type) }
+            let someoneElse = text.contains("ally") || text.contains("allies") || text.contains("enemy") || text.contains("enemies")
+            if !someoneElse {
+                // Growing Rage: "If you have fewer hit points than half your maximum hit point
+                // value (rounded up), perform Attack…": the character's own, if the condition holds.
+                let halfRoundedUp = (character.maxHealth + 1) / 2
+                guard text.contains("fewer hit points than half"), let own = performed.first else {
+                    coordinator.log("\(who): resolve this by hand", category: .info)
+                    return false
+                }
+                guard character.health < halfRoundedUp else {
+                    coordinator.log("\(who) isn't below half their hit points", category: .info)
+                    return false
+                }
+                return executeAction(own, coordinator: coordinator)
+            }
             // Possession ("One adjacent ally may perform Attack 6"), Parasitic Influence ("Force
-            // one enemy within Range 4 to perform Move 1"). A forced enemy's attack (Submissive
-            // Affliction) is left to the players: its value is relative to the monster.
+            // one enemy within Range 4 to perform Move 1"). Left to the players: a forced enemy's
+            // attack (relative to the monster's stats), several performers ("all allies", "two
+            // summoned allies"), and several actions for one performer (Move, then Attack).
             let enemy = text.contains("enemy")
-            guard !(enemy && performed.type == .attack) else {
-                coordinator.log("\(who): resolve the forced attack by hand", category: .info)
+            guard performed.count == 1, let one = performed.first, !(enemy && one.type == .attack),
+                  !text.contains("all "), !text.contains("two ") else {
+                coordinator.log("\(who): resolve this by hand", category: .info)
                 return false
             }
-            let range = text.contains("adjacent") ? 1 : (text.firstMatch(of: #/range (\d+)/#).flatMap { Int($0.1) } ?? 1)
-            return coordinator.beginChoosingPerformer(for: performed, by: me, enemies: enemy, range: range)
+            let range = text.contains("adjacent") ? 1
+                : text.contains("any one") ? 99
+                : (text.firstMatch(of: #/range (\d+)/#).flatMap { Int($0.1) } ?? 1)
+            return coordinator.beginChoosingPerformer(for: one, by: me, enemies: enemy, range: range,
+                                                     summonsOnly: text.contains("summoned"))
         } else if text.contains("you may suffer up to") {
             // The Berserker: "You may suffer up to 4 damage", then "X is the amount you suffered".
             let most = Self.damageAmount(in: text)
