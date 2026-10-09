@@ -32,3 +32,6 @@ the game does now; change any of them and I'll follow.
     could clash with the next action's slot; the new address is `(index + 1) × 100 + sub`. Any
     old saves with enhancements would read them on the wrong line. I assumed there are none worth
     migrating. Now: no migration.
+13. **Iron Helmet.** The game data gives it neither the spent nor the consumed mark, so it's
+    always on: every enemy ×2 against the wearer counts as +0. If your copy of the card has a
+    spent mark, it should be offered once per rest like Leather Armor. Now: always on.

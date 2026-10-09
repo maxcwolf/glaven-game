@@ -5,7 +5,7 @@ import Foundation
 /// refreshed by a long rest; a consumed one is gone for the scenario.
 ///
 /// Played so far: the starting shop's on-turn items, and Leather Armor and Heater Shield, offered
-/// when an enemy attacks. The Iron Helmet is still marked by hand on the character sheet.
+/// when an enemy attacks; the Iron Helmet always applies.
 enum BoardItemEffect: Equatable {
     case extraMove(Int)
     case jump
@@ -171,6 +171,9 @@ enum DefenseItem: String, CaseIterable {
     case heaterShield = "gh-8"
     /// Hide Armor: the same, twice, before it is spent.
     case hideArmor = "gh-3"
+
+    /// Iron Helmet's key: not offered, it always applies.
+    static let ironHelmet = "gh-7"
 
     /// Items that guard against one attack's damage with Shield 1.
     static let shields: [DefenseItem] = [.heaterShield, .hideArmor]

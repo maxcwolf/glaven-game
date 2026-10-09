@@ -76,12 +76,19 @@ extension BoardCoordinator {
             disadvantage = true
         }
 
-        let preDrawn = await performModifierDraw(
+        var preDrawn = await performModifierDraw(
             attacker: attacker, defender: target, baseAttack: attack.value,
             advantage: advantage, disadvantage: disadvantage,
             drawCard: drawCard ?? modifierDrawer(for: attacker)
         )
 
+        // Iron Helmet: an enemy's ×2 against the wearer counts as +0 (always on, by the data).
+        if case .character(let id) = target, areEnemies(attacker, target),
+           let wearer = gameManager?.game.characters.first(where: { $0.id == id }),
+           wearer.items.contains(DefenseItem.ironHelmet), preDrawn.contains(where: { $0.type == .double_ }) {
+            preDrawn = preDrawn.map { $0.type == .double_ ? AttackModifier.standard(.plus0) : $0 }
+            log("\(name(target))\u{2019}s Iron Helmet turns the \u{00D7}2 into +0", category: .attack)
+        }
         func resolve() -> AttackResult {
             CombatResolver.resolveAttack(
                 attacker: attacker, defender: target, baseAttack: attack.value,

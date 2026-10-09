@@ -182,6 +182,20 @@ final class BoardItemTests: XCTestCase {
         XCTAssertTrue(brute.spentItems.isEmpty)
     }
 
+    func testTheIronHelmetTurnsAnEnemysDoubleIntoPlusZero() async throws {
+        let piece = try XCTUnwrap(coord.spawnMonster(name: "bandit-guard", type: .normal, at: HexCoord(4, 3), origin: .placed))
+        let double = { AttackModifier.standard(.double_) }
+        brute.items = []
+        var health = brute.health
+        await coord.performAttack(attacker: piece, target: .character(brute.id), attack: AttackParameters(value: 3), drawCard: double)
+        XCTAssertEqual(brute.health, health - 6, "without the helmet: Attack 3, \u{00D7}2")
+
+        brute.items = ["gh-7"]
+        health = brute.health
+        await coord.performAttack(attacker: piece, target: .character(brute.id), attack: AttackParameters(value: 3), drawCard: double)
+        XCTAssertEqual(brute.health, health - 3)
+    }
+
     func testHeadlessPlayNeverSpendsDefenceItems() async throws {
         brute.items = ["gh-4", "gh-8"]
         let piece = try XCTUnwrap(coord.spawnMonster(name: "bandit-guard", type: .normal, at: HexCoord(4, 3), origin: .placed))

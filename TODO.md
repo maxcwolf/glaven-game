@@ -243,7 +243,8 @@ Phase VI — the rest of Gloomhaven's town rules
 - [x] Defence items offered mid-attack: Leather Armor (disadvantage, before the draw) and Heater Shield (Shield 1 once the attack would damage); headless play declines them (`BoardItemTests`)
 - [x] Minor Stamina Potion: recovers up to two discards, picked when there are more (`BoardItemTests`)
 - [x] Hide Armor: Shield 1 against two attacks before it's spent; use slots saved and cleared with the item's refresh (`BoardItemTests`)
-- [ ] Iron Helmet (spend type unclear in the data); the other 136 items' effects are text only in the data and need coding one by one
+- [x] Iron Helmet: an enemy's ×2 against the wearer counts as +0 (always on, as the data has it; see open question 13)
+- [ ] the other 136 items' effects are text only in the data and need coding one by one
 - [x] Personal quests: two dealt on recruiting, one kept; a campaign record per character (wins, kills by monster, elite kills, exhaustions) counts every requirement the game can see, after wins and losses; progress in town and on the sheet; by-hand counting only for map-region, enhancement and Skullbane requirements (`PersonalQuestTests`, `PersonalQuestAutotrackTests`)
 - [x] Retirement from town when the quest is complete (unlock, prosperity, log); a new recruit takes the slot
 - [x] Sanctuary donation in town: 10 gold once per visit for two blessings in the next scenario; prosperity +1 per 100 gold given; counts for Piety in All Things (`TownTests`)
