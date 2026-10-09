@@ -402,6 +402,7 @@ struct PartySheetView: View {
         case .itemAcquired: return "bag"
         case .levelUp: return "arrow.up.circle"
         case .characterUnlocked: return "lock.open"
+        case .questCompleted: return "scroll.fill"
         case .eventResolved: return "scroll"
         }
     }

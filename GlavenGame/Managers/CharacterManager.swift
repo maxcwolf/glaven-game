@@ -43,7 +43,7 @@ final class CharacterManager {
         game.figures.removeAll { $0.id == "char-\(character.edition)-\(character.name)" }
     }
 
-    func retireCharacter(_ character: GameCharacter) {
+    func retireCharacter(_ character: GameCharacter, addRetirementEvents: Bool = true) {
         onBeforeMutate?()
 
         // Mark as retired
@@ -61,7 +61,9 @@ final class CharacterManager {
                                  labels: editionStore)
             }
         }
-        game.addRetirementEvents(of: character.name, edition: character.edition, labels: editionStore)
+        if addRetirementEvents {
+            game.addRetirementEvents(of: character.name, edition: character.edition, labels: editionStore)
+        }
 
         // +1 prosperity on retirement
         game.partyProsperity += 1

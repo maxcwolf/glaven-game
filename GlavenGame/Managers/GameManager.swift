@@ -359,13 +359,42 @@ final class GameManager {
 
     /// Finish the scenario on the board (rewards on a success), leave the board and save.
     func completeScenario(success: Bool, choices: ScenarioRewardChoices = ScenarioRewardChoices()) {
+        let questReward = success ? game.scenario.flatMap { scenario in
+            scenario.data.rewards?.custom.flatMap { editionStore.resolveCustomText($0, edition: scenario.data.edition) }
+        } : nil
         scenarioManager.finishScenario(success: success, choices: choices)
+        if let questReward { applyQuestReward(questReward) }
         roundCheckpoint = nil
         boardCoordinator.exitBoard()
         // Back to town: spend gold, level up, pick the next scenario — after a city event.
         game.events.cityEventDue = true
         appPhase = .gameSetup
         saveGame()
+    }
+
+    /// Scenario rewards about a personal quest (GH 54–62): '"Vengeance" quest complete' completes
+    /// it for whoever holds it; "Immediately retire the Seeker of Xorn" retires them, the
+    /// scenario's own events replacing the class's retirement events.
+    func applyQuestReward(_ text: String) {
+        func holder(of questName: String) -> GameCharacter? {
+            game.characters.first { character in
+                guard let id = character.personalQuest else { return false }
+                return characterManager.personalQuest(id, edition: character.edition)?.name.lowercased() == questName.lowercased()
+            }
+        }
+        func complete(_ character: GameCharacter) {
+            guard let id = character.personalQuest,
+                  let quest = characterManager.personalQuest(id, edition: character.edition) else { return }
+            character.personalQuestProgress = quest.requirements.map(\.target)
+            game.campaignLog.append(CampaignLogEntry(type: .questCompleted,
+                message: "\(GameText.characterName(character, labels: editionStore))\u{2019}s quest \(quest.name) is complete"))
+        }
+        if let match = text.firstMatch(of: #/"(.+)" quest complete/#), let character = holder(of: String(match.1)) {
+            complete(character)
+        } else if let match = text.firstMatch(of: #/[Ii]mmediately retire the ([^.]+)\./#), let character = holder(of: String(match.1)) {
+            complete(character)
+            characterManager.retireCharacter(character, addRetirementEvents: false)
+        }
     }
 
     /// Shows the main menu's "Start a new campaign?" confirmation.

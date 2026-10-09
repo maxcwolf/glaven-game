@@ -164,6 +164,32 @@ final class PersonalQuestTests: XCTestCase {
         XCTAssertEqual(gm.game.campaignLog.filter { $0.type == .characterUnlocked }.count, 1)
     }
 
+    // MARK: - Scenario rewards about quests
+
+    private func questID(named name: String) throws -> String {
+        try XCTUnwrap(gm.editionStore.personalQuests(for: "gh").map(\.cardId).first { manager.personalQuest($0)?.name == name }, name)
+    }
+
+    /// Bloody Shack (58): '"Vengeance" quest complete' for whoever holds it.
+    func testAScenarioCanCompleteAQuest() throws {
+        give(try questID(named: "Vengeance"), to: brute)
+        try play("58", success: true)
+        XCTAssertTrue(manager.questComplete(brute))
+        XCTAssertTrue(gm.game.campaignLog.contains { $0.type == .questCompleted })
+    }
+
+    /// Palace of Ice (54): "Immediately retire the Seeker of Xorn", with the scenario's events
+    /// instead of the class's own retirement events.
+    func testPalaceOfIceRetiresTheSeekerOfXorn() throws {
+        give("510", to: brute)
+        let seeker = brute
+        try play("54", success: true)
+        XCTAssertTrue(seeker.retired)
+        XCTAssertFalse(gm.game.characters.contains { $0 === seeker })
+        XCTAssertTrue(gm.game.events.cards("city").contains("59"))
+        XCTAssertFalse(gm.game.events.cards("city").contains("42"), "not the Brute's retirement event")
+    }
+
     func testRecordsAndDealtQuestsAreSaved() {
         brute.record.kills = ["ooze": 2]
         brute.questChoices = ["520", "521"]

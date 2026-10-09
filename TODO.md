@@ -397,7 +397,7 @@ Scenario rewards (2026-10-08)
 - [x] **Scenario reward: add events** (GH 21, 35, 36, 51, 54) — the decks now start as cards 01–30 and scenario rewards shuffle cards in
 - [x] **Events from class unlocks and retirements** (Phase VI)
 - [ ] **Scenario reward: envelopes** (GH 58, 60: envelope X) — there's no envelope or sealed-content state to open
-- [ ] **Scenario reward: custom text** (GH 54, 56, 58, 60, 62) — personal-quest outcomes ("immediately retire the Seeker of Xorn", "'Vengeance' quest complete") that depend on whose quest it is; shown on the conclusion sheet but not applied
+- [x] **Scenario reward: personal quests** (GH 54, 56, 58, 60, 62): the named quest is completed for whoever holds it; Palace of Ice retires the Seeker of Xorn with its own events (`PersonalQuestTests`)
 
 - [ ] **Objectives/escorts aren't placed on the board** — the map data has no objective positions (22 scenarios use objectives)
 - [ ] **Scenario spawn markers** — map data has no marker positions, so rule spawns are placed near the other monsters
@@ -420,7 +420,7 @@ Scenario rewards (2026-10-08)
 - [x] **Destroying an adjacent obstacle** (Rock Tunnel, Explosive Punch), the player picking which (`testRockTunnelDestroysAnAdjacentObstacle`)
 - [x] **Crackling Air**: +1, or +2 by consuming Air (`testCracklingAirAddsTwoByConsumingAir`)
 - [ ] **Moving in a loop**: moves pick a destination, so a move can't end where it started; Feedback Loop's muddle (which needs that) can't happen yet
-- [ ] **Other custom-text abilities** (e.g. Reviving Ether's "recover all lost cards", Flanking Strike's bonus) need manual resolution — on the board they have no effect
+- [ ] **Other custom-text abilities** (e.g. Heaving Swing's push into obstacles, Stone Pummel, the Doomstalker's dooms) need manual resolution — on the board they have no effect
 - [x] **Persistent bonus charges**: the starting classes' charged cards (Warding Strength, Juggernaut, Opposing Strike, Backup Ammunition, Single Out, Smoke Bomb, Cull the Weak, Spring the Trap, Frost Armor, Crackling Air, Engulfed in Flames, Cold Front, Potent Potables) mark a charge per use, give their slot XP and leave the active area when used up (`ChargedBonusTests`)
 - [x] Locked classes' charged cards: Immortality, Purifying Aura, Angelic Ascension, Voice of the Night, Cauterize, Master Physician, Defiance of Death, Nightfall, Beacon of Light, Fortified Position (`ChargedBonusTests`)
 - [x] **Start- and end-of-turn bonuses**: Lumbering Bash and Triage (a heal at the start of the turn), Auto Turret (an attack at the end), Gas Canister (an ally recovers a card at the end), as steps of the turn (`ChargedBonusTests`)
