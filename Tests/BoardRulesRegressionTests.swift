@@ -898,6 +898,26 @@ final class BoardRulesRegressionTests: XCTestCase {
         XCTAssertNil(coord.boardState.cells[HexCoord(4, 3)]?.overlay)
     }
 
+    /// Heaving Swing: a push into an obstacle destroys it, the target suffers 2, the Cragheart gains 1 XP.
+    func testHeavingSwingPushesIntoAnObstacle() async throws {
+        let cragheart = addCharacter("cragheart", at: HexCoord(3, 3))
+        let bandit = addMonster("bandit-guard", at: HexCoord(4, 3))
+        bandit.health = 50
+        bandit.maxHealth = 50
+        let behind = HexCoord(4, 3).pushCandidates(awayFrom: HexCoord(3, 3))
+        for hex in behind { coord.boardState.placeObstacle(at: hex) }   // every way back is an obstacle
+        let turn = turn(for: cragheart, top: try card("Heaving Swing", of: "cragheart"), bottom: try card("Avalanche", of: "cragheart"))
+        let xp = cragheart.experience
+        turn.executeCurrentAction()
+        guard let piece = coord.boardState.piecePositions.first(where: { $0.value == HexCoord(4, 3) })?.key else { return XCTFail() }
+        coord.handlePieceTap(piece)
+        _ = await waitUntil { turn.currentActionIndex > 0 }
+        let landed = try XCTUnwrap(coord.boardState.piecePositions[piece])
+        XCTAssertTrue(behind.contains(landed), "pushed into an obstacle hex")
+        XCTAssertNil(coord.boardState.cells[landed]?.overlay, "that obstacle is gone")
+        XCTAssertGreaterThanOrEqual(cragheart.experience, xp + 1)
+    }
+
     // MARK: - Mindthief augments
 
     /// Play `augment`'s top (the augment, then its own Attack) against an adjacent Bandit Guard.

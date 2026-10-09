@@ -1740,8 +1740,11 @@ final class BoardCoordinator {
 
         // Each step must be into an empty-of-figures, passable hex; figures can't be forced
         // through a closed door. Difficult terrain doesn't matter (p.20, p.42).
+        // Heaving Swing: "You may push the target into hexes containing obstacles."
+        let intoObstacles = isPush && pushesIntoObstacles
         let valid = candidates.filter { coord in
-            boardState.isPassable(coord) && !boardState.isOccupied(coord) && !boardState.isClosedDoor(coord)
+            (boardState.isPassable(coord) || (intoObstacles && boardState.cells[coord]?.overlay == .obstacle))
+                && !boardState.isOccupied(coord) && !boardState.isClosedDoor(coord)
         }
 
         if valid.isEmpty {
@@ -1771,6 +1774,21 @@ final class BoardCoordinator {
         boardScene?.clearHighlights()
         interactionMode = .idle
 
+        // Heaving Swing: pushed into an obstacle, it's destroyed; the target suffers 2 damage and
+        // the character gains 1 experience.
+        if isPush, pushesIntoObstacles, boardState.cells[destination]?.overlay == .obstacle {
+            boardState.removeObstacle(at: destination)
+            boardScene?.removeOverlaySprite(at: destination, offsetCol: offsetCol, offsetRow: offsetRow)
+            log("\(name(target)) is driven into an obstacle and suffers 2 damage", category: .damage)
+            if let id = activePlayerTurn?.characterID, let character = gameManager?.game.characters.first(where: { $0.id == id }) {
+                character.experience += 1
+                log("\(name(.character(id))) gains 1 XP", category: .info)
+            }
+            if sufferDamage(2, to: target, killer: activePlayerTurn.map { .character($0.characterID) }) {
+                completePushPullAction()
+                return
+            }
+        }
         Task { @MainActor in
             let alive = await self.moveAlong(target, path: [currentPos, destination], style: .forced)
             let stepsLeft = remainingSteps - 1
@@ -1782,6 +1800,11 @@ final class BoardCoordinator {
                 self.completePushPullAction()
             }
         }
+    }
+
+    /// Whether the attack being made may push into obstacles (Heaving Swing).
+    private var pushesIntoObstacles: Bool {
+        activePlayerTurn?.attackTexts.contains { $0.contains("push the target into hexes containing obstacles") } == true
     }
 
     /// Resume the active player turn OR the pending push/pull continuation.
