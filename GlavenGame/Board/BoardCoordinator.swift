@@ -418,6 +418,9 @@ final class BoardCoordinator {
     /// Non-nil while a character picks Attack or Move (Master's Lute).
     var pendingActionChoice: PendingActionChoice?
 
+    /// Non-nil while the player picks a figure from a list mid-turn (Heart of the Betrayer).
+    var pendingFigureChoice: PendingFigureChoice?
+
     /// Boots of Speed / Quickness offers still to make this round, and the one being made.
     var initiativeOffers: [PendingInitiativeChange] = []
     var pendingInitiativeChange: PendingInitiativeChange?
@@ -835,6 +838,9 @@ final class BoardCoordinator {
     private func abandonPendingPrompts() {
         let draw = pendingModifierDraw, damage = pendingDamage, item = pendingItemUse
         let pushPull = pendingPushPullContinuation, moves = pendingMoveAnimations
+        let figure = pendingFigureChoice
+        pendingFigureChoice = nil
+        figure?.continuation?.resume(returning: nil)
         pendingModifierDraw = nil
         pendingDamage = nil
         pendingItemUse = nil

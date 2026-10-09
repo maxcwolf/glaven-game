@@ -236,3 +236,21 @@ struct ActionChoicePrompt: View {
         }
     }
 }
+
+/// A figure to pick from a list while a monster's turn waits (Heart of the Betrayer).
+struct FigureChoicePrompt: View {
+    let pending: BoardCoordinator.PendingFigureChoice
+    let coordinator: BoardCoordinator
+
+    var body: some View {
+        ItemChoicePanel(title: pending.title, detail: pending.question) {
+            EmptyView()
+        } actions: {
+            ForEach(pending.options, id: \.self) { piece in
+                Button(coordinator.name(piece)) { coordinator.resolveFigureChoice(piece) }
+                    .buttonStyle(.borderedProminent)
+                    .tint(BoardTheme.brass)
+            }
+        }
+    }
+}

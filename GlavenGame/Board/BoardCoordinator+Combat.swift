@@ -11,6 +11,8 @@ struct AttackParameters {
     var pull: Int = 0
     /// Extra advantage source (e.g. a monster stat trait) on top of Strengthen.
     var advantage: Bool = false
+    /// How far the attack reaches (Heart of the Betrayer turns it on an ally within it).
+    var range: Int = 1
 }
 
 extension BoardCoordinator {
@@ -41,10 +43,10 @@ extension BoardCoordinator {
     @discardableResult
     @MainActor func performAttack(attacker: PieceID, target aimedAt: PieceID, attack: AttackParameters,
                        drawCard: (() -> AttackModifier?)? = nil, from origin: HexCoord? = nil) async -> Bool {
-        let target = provokedTarget(of: attacker, aimingAt: aimedAt)
         // Every await below may come back to a board that was left or restarted meanwhile.
         let generation = boardGeneration
-        guard let attackerPos = origin ?? boardState.piecePositions[attacker],
+        let target = await attackTarget(of: attacker, aimingAt: aimedAt, range: attack.range)
+        guard isCurrentBoard(generation), let attackerPos = origin ?? boardState.piecePositions[attacker],
               let targetPos = boardState.piecePositions[target],
               let defender = entity(for: target) else { return false }
         attackObserver?(attacker, target)
@@ -385,5 +387,91 @@ extension BoardCoordinator {
         }.compactMap { target in
             attackPreview(attacker: attacker, target: target).map { "\(name(target)): \($0)" }
         }
+    }
+}
+
+// MARK: - Turning an attack
+
+extension BoardCoordinator {
+
+    /// Whom an attack aimed at `aimedAt` hits: a character with Provoking Roar beside the target
+    /// draws it, and Heart of the Betrayer turns an adjacent normal enemy's attack on one of its
+    /// own allies.
+    @MainActor func attackTarget(of attacker: PieceID, aimingAt aimedAt: PieceID, range: Int) async -> PieceID {
+        let target = provokedTarget(of: attacker, aimingAt: aimedAt)
+        return await betrayedTarget(of: attacker, aimingAt: target, range: range) ?? target
+    }
+
+    /// Heart of the Betrayer: "When attacked by an adjacent normal enemy, force the enemy to
+    /// attack one of its allies within its range instead." The wearer chooses that ally.
+    @MainActor private func betrayedTarget(of attacker: PieceID, aimingAt target: PieceID, range: Int) async -> PieceID? {
+        guard case .character = target, case .monster = attacker, areEnemies(attacker, target),
+              (entity(for: attacker) as? GameMonsterEntity)?.type == .normal,
+              let from = boardState.piecePositions[attacker], let at = boardState.piecePositions[target],
+              from.isAdjacent(to: at) else { return nil }
+        let allies = alliesInRange(of: attacker, range: max(1, range), includeSelf: false)
+            .filter { entity(for: $0) != nil && areEnemies($0, target) }.sorted()
+        guard !allies.isEmpty else { return nil }
+        let generation = boardGeneration
+        guard await offerDefenseItem(DefenseItem.heartOfTheBetrayer, to: target, from: attacker),
+              isCurrentBoard(generation) else { return nil }
+        let ally = allies.count == 1 ? allies[0] : await chooseFigure(
+            allies, title: "Heart of the Betrayer",
+            question: "Which of its allies does \(name(attacker)) attack?")
+        guard let ally, isCurrentBoard(generation) else { return nil }
+        log("\(name(attacker)) turns on \(name(ally))", category: .attack)
+        return ally
+    }
+
+    /// A figure the player picks from a list, while a monster's turn waits.
+    struct PendingFigureChoice: Identifiable {
+        let id = UUID()
+        let title: String
+        let question: String
+        let options: [PieceID]
+        var continuation: CheckedContinuation<PieceID?, Never>?
+    }
+
+    @MainActor func chooseFigure(_ options: [PieceID], title: String, question: String) async -> PieceID? {
+        guard !autoResolvePrompts else { return options.first }
+        return await withCheckedContinuation { continuation in
+            pendingFigureChoice = PendingFigureChoice(title: title, question: question, options: options,
+                                                      continuation: continuation)
+        }
+    }
+
+    func resolveFigureChoice(_ piece: PieceID?) {
+        guard let pending = pendingFigureChoice else { return }
+        pendingFigureChoice = nil
+        pending.continuation?.resume(returning: piece.flatMap { pending.options.contains($0) ? $0 : nil } ?? pending.options.first)
+    }
+
+    // MARK: - Dampening Ring
+
+    /// "Before an enemy would consume an element, consume that element instead for no effect."
+    /// True when a character's ring took the elements first.
+    @MainActor func dampenedConsume(_ elements: [ElementType], by monster: PieceID) async -> Bool {
+        guard !autoResolvePrompts, !elements.contains(.wild), let gameManager,
+              gameManager.game.canConsumeElements(elements) else { return false }
+        let key = "gh-92"
+        guard let holder = gameManager.game.characters.sorted(by: { $0.id < $1.id }).first(where: {
+                  !$0.exhausted && !$0.absent && $0.carriedItems.contains(key)
+                      && !$0.consumedItems.contains(key) && !$0.spentItems.contains(key)
+              }),
+              let item = itemData(key) else { return false }
+        let generation = boardGeneration
+        let names = GameText.list(elements.map(GameText.elementName))
+        let use = await withCheckedContinuation { (continuation: CheckedContinuation<Bool, Never>) in
+            pendingItemUse = PendingItemUse(characterID: holder.id, itemName: item.name,
+                                            question: "Consume \(names) first, so \(name(monster)) can\u{2019}t?",
+                                            attacker: name(monster), continuation: continuation,
+                                            headline: "\(name(monster)) is about to consume \(names)")
+        }
+        guard use, isCurrentBoard(generation), gameManager.game.consumeElements(elements) != nil else { return false }
+        gameManager.characterManager.onBeforeMutate?()
+        holder.consumedItems.insert(key)
+        gameManager.scenarioStatsManager.recordItemUse(by: holder.name)
+        log("\(name(.character(holder.id)))\u{2019}s Dampening Ring consumes \(names) before \(name(monster)) can", category: .element)
+        return true
     }
 }

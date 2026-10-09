@@ -217,6 +217,10 @@ final class ScenarioSimulator {
             coord.resolveActionChoice(nil)
             return
         }
+        if coord.pendingFigureChoice != nil {
+            coord.resolveFigureChoice(nil)
+            return
+        }
         if coord.pendingItemUse != nil {
             // Policies don't spend items, so seeded games play the same with or without them.
             coord.resolvePendingItemUse(false)

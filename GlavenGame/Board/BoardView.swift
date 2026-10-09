@@ -128,6 +128,11 @@ struct BoardView: View {
                     .id(pending.id)
                     .transition(.opacity)
             }
+            if let pending = coordinator.pendingFigureChoice {
+                FigureChoicePrompt(pending: pending, coordinator: coordinator)
+                    .id(pending.id)
+                    .transition(.opacity)
+            }
 
             // Elements to infuse, a condition to remove (Mana Potions, Minor Cure Potion)
             if let pending = coordinator.pendingElementChoice {
@@ -455,7 +460,8 @@ struct BoardView: View {
 
             // Items whose moment has come: during this move, this attack, the turn, or its end.
             let items = coordinator.usableItems()
-            if !items.isEmpty {
+            let allyItems = coordinator.allyItems()
+            if !items.isEmpty || !allyItems.isEmpty {
                 FlowLayout(spacing: 8) {
                     ForEach(items, id: \.itemKey) { item in
                         Button {
@@ -466,6 +472,16 @@ struct BoardView: View {
                         .buttonStyle(.boardQuietCompact)
                         .accessibilityHint(item.consumed ? "Used up for the scenario"
                                            : item.spent ? "Spent until a long rest" : "Can be used again")
+                    }
+                    // An ally's item for this attack (Scroll of Power).
+                    ForEach(allyItems, id: \.owner.id) { offer in
+                        Button {
+                            coordinator.useAllyItem(offer.item, of: offer.owner)
+                        } label: {
+                            Label("Use \(coordinator.characterName(offer.owner.id))\u{2019}s \(offer.item.name)", systemImage: "flask")
+                        }
+                        .buttonStyle(.boardQuietCompact)
+                        .accessibilityHint("Used up for the scenario")
                     }
                 }
             }

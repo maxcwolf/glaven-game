@@ -813,6 +813,40 @@ extension BoardCoordinator {
         gameManager?.editionStore.itemData(key: key)
     }
 
+    // MARK: - An ally's items
+
+    /// Items another character uses during the acting character's attack, and how much they add
+    /// to it (Scroll of Power: "+1 Attack to their entire attack action").
+    static let allyAttackBonus: [String: Int] = ["gh-93": 1]
+
+    /// Other characters' items that can be used on the attack being targeted now.
+    func allyItems() -> [(owner: GameCharacter, item: ItemData)] {
+        guard let turn = activePlayerTurn, let game = gameManager?.game else { return [] }
+        let me = PieceID.character(turn.characterID)
+        switch interactionMode {
+        case .selectingAttackTarget(let attacker, _, _) where attacker == me: break
+        case .selectingMultiAttackTargets(let attacker, _, _, _, let selected) where attacker == me && selected.isEmpty: break
+        default: return []
+        }
+        return game.characters.filter { $0.id != turn.characterID && !$0.exhausted && !$0.absent }
+            .sorted { $0.id < $1.id }
+            .compactMap { owner in
+                guard let key = owner.carriedItems.first(where: {
+                          Self.allyAttackBonus[$0] != nil && !owner.consumedItems.contains($0) && !owner.spentItems.contains($0)
+                      }),
+                      let item = itemData(key) else { return nil }
+                return (owner, item)
+            }
+    }
+
+    func useAllyItem(_ item: ItemData, of owner: GameCharacter) {
+        guard allyItems().contains(where: { $0.owner === owner && $0.item.itemKey == item.itemKey }),
+              let turn = activePlayerTurn, let bonus = Self.allyAttackBonus[item.itemKey] else { return }
+        markUsed(item, by: owner)
+        turn.addToAttack(bonus)
+        log("\(name(.character(turn.characterID))): +\(bonus) Attack", category: .attack)
+    }
+
     // MARK: - Playing more cards
 
     /// A card (or two) to play from the hand for an item: for one half now, or for another turn.
@@ -949,6 +983,8 @@ struct DefenseItem: Equatable {
     var consumes: ElementType? = nil
     /// Offered for the owner's summons, not the owner (Phasing Idol).
     var forSummons = false
+    /// Turns an adjacent normal enemy's attack on one of its allies (Heart of the Betrayer).
+    var betrays = false
 
     static let all: [DefenseItem] = [
         DefenseItem(key: "gh-4", disadvantage: true),              // Leather Armor
@@ -970,11 +1006,14 @@ struct DefenseItem: Equatable {
     ]
     static let beforeDraw = all.filter(\.disadvantage)
     static let onDamage = all.filter { !$0.disadvantage }
+    /// Offered as an adjacent normal enemy attacks, before anything else.
+    static let heartOfTheBetrayer = DefenseItem(key: "gh-131", betrays: true)
 
     /// Iron Helmet's key: not offered, it always applies.
     static let ironHelmet = "gh-7"
 
     var question: String {
+        if betrays { return "Force the attacker to attack one of its allies within its range instead?" }
         if negates && forSummons { return "Your summon suffers no damage from this attack?" }
         if negates { return "Suffer no damage from this attack?" }
         if let element = consumes {
@@ -1000,6 +1039,8 @@ extension BoardCoordinator {
         let question: String
         let attacker: String
         var continuation: CheckedContinuation<Bool, Never>?
+        /// What's happening, when it isn't an attack ("Bandit Archer is about to consume Fire").
+        var headline: String? = nil
     }
 
     /// Called from the UI: use the offered item, or not.

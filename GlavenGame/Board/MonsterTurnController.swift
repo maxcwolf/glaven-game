@@ -71,7 +71,7 @@ final class MonsterTurnController {
                 coordinator.log("\(coordinator.name(pieceID)) is stunned and loses the turn", category: .condition)
             } else {
                 anyActed = true
-                if consumed == nil { consumed = consumeElements(in: actions) }
+                if consumed == nil { consumed = await consumeElements(in: actions, by: pieceID) }
                 var turn = MonsterTurnState()
                 await executeCard(actions, pieceID: pieceID, entity: entity, monster: monster,
                                   ability: ability, consumed: consumed ?? [], turn: &turn)
@@ -96,10 +96,12 @@ final class MonsterTurnController {
     }
 
     /// Consume every element the card asks for that is available; returns the paid-for actions.
-    private func consumeElements(in actions: [ActionModel]) -> Set<UUID> {
+    @MainActor private func consumeElements(in actions: [ActionModel], by pieceID: PieceID) async -> Set<UUID> {
         guard let coordinator, let game = gameManager?.game else { return [] }
         var paid = Set<UUID>()
         for action in MonsterAbility.elementConsumes(in: actions) {
+            // Dampening Ring: a character may consume it first, for nothing.
+            if await coordinator.dampenedConsume(MonsterAbility.elements(of: action), by: pieceID) { continue }
             if let used = game.consumeElements(MonsterAbility.elements(of: action)) {
                 paid.insert(action.id)
                 coordinator.log("\(GameText.list(used.map(GameText.elementName))) consumed", category: .element)
@@ -209,7 +211,7 @@ final class MonsterTurnController {
                                                      + coordinator.monsterAttackBonusThisRound,
                                                  isRanged: spec.isRanged, pierce: spec.pierce,
                                                  conditions: spec.conditions, push: spec.push, pull: spec.pull,
-                                                 advantage: spec.advantage))
+                                                 advantage: spec.advantage, range: max(1, spec.range)))
                     guard !isStale else { return }
                     if (coordinator.entity(for: victim)?.health ?? 0) < healthBefore || !coordinator.isOnBoard(victim) { damaged += 1 }
                     // Savvas Lavaflow: "All allies and enemies adjacent to the target suffer 2 damage."

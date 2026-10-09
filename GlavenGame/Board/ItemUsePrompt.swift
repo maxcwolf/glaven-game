@@ -9,7 +9,7 @@ struct ItemUsePrompt: View {
         VStack {
             Spacer()
             VStack(alignment: .leading, spacing: 10) {
-                Text("\(pending.attacker) attacks \(coordinator.characterName(pending.characterID))")
+                Text(pending.headline ?? "\(pending.attacker) attacks \(coordinator.characterName(pending.characterID))")
                     .font(.subheadline)
                     .foregroundStyle(BoardTheme.secondaryText)
                 Label("Use \(pending.itemName)?", systemImage: "shield.lefthalf.filled")

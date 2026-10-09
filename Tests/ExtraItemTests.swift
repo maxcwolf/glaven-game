@@ -262,4 +262,94 @@ final class ExtraItemTests: XCTestCase {
         coord.handlePieceTap(guardPiece)
         XCTAssertTrue(coord.isConditionActive(.muddle, on: guardPiece))
     }
+
+    // MARK: - On another figure's turn
+
+    private func waitUntil(_ condition: () -> Bool) async -> Bool {
+        let deadline = Date().addingTimeInterval(3)
+        while !condition() && Date() < deadline { try? await Task.sleep(nanoseconds: 5_000_000) }
+        return condition()
+    }
+
+    /// Scroll of Power: another character adds +1 Attack to the acting character's attack.
+    func testScrollOfPowerAddsToAnAllysAttack() throws {
+        gm.characterManager.addCharacter(name: "spellweaver", edition: "gh")
+        let spellweaver = gm.game.characters[1]
+        spellweaver.items = ["gh-93"]
+        _ = try addGuard(at: HexCoord(4, 3))
+        let turn = try startTurn()
+        XCTAssertTrue(coord.allyItems().isEmpty, "only during an attack")
+        turn.executeCurrentAction()   // Trample: Attack 3
+        guard case .selectingAttackTarget = coord.interactionMode else { return XCTFail("attacking") }
+        let offer = try XCTUnwrap(coord.allyItems().first)
+        XCTAssertTrue(offer.owner === spellweaver)
+        let before = turn.currentAttackValue()
+        coord.useAllyItem(offer.item, of: offer.owner)
+        XCTAssertEqual(turn.currentAttackValue(), before + 1)
+        XCTAssertTrue(spellweaver.consumedItems.contains("gh-93"))
+        XCTAssertTrue(coord.allyItems().isEmpty)
+    }
+
+    /// Heart of the Betrayer: an adjacent normal enemy attacks one of its allies instead, the
+    /// one the wearer picks.
+    func testHeartOfTheBetrayerTurnsTheAttackOnAnAlly() async throws {
+        brute.items = ["gh-131"]
+        coord.autoResolvePrompts = false
+        let attacker = try addGuard(at: HexCoord(4, 3))
+        let first = try addGuard(at: HexCoord(5, 3)), second = try addGuard(at: HexCoord(4, 4))
+        var hit: PieceID?
+        coord.attackObserver = { _, target in hit = target }
+        let attack = Task { @MainActor in
+            await self.coord.performAttack(attacker: attacker, target: .character(self.brute.id), attack: AttackParameters(value: 2))
+        }
+        let offered = await waitUntil { coord.pendingItemUse != nil }
+        XCTAssertTrue(offered, "the heart is offered")
+        coord.resolvePendingItemUse(true)
+        let asked = await waitUntil { coord.pendingFigureChoice != nil }
+        XCTAssertTrue(asked)
+        XCTAssertEqual(Set(coord.pendingFigureChoice?.options ?? []), [first, second], "allies within its range")
+        coord.resolveFigureChoice(second)
+        while coord.pendingModifierDraw != nil || coord.pendingDamage != nil { await Task.yield() }
+        _ = await attack.value
+        XCTAssertEqual(hit, second)
+        XCTAssertTrue(brute.consumedItems.contains("gh-131"))
+    }
+
+    func testHeartOfTheBetrayerIsntOfferedAgainstAnEliteOrFromAfar() async throws {
+        brute.items = ["gh-131"]
+        coord.autoResolvePrompts = false
+        let elite = try XCTUnwrap(coord.spawnMonster(name: "bandit-guard", type: .elite, at: HexCoord(4, 3), origin: .placed))
+        _ = try addGuard(at: HexCoord(5, 3))
+        let target = await coord.attackTarget(of: elite, aimingAt: .character(brute.id), range: 1)
+        XCTAssertEqual(target, .character(brute.id))
+        XCTAssertNil(coord.pendingItemUse, "an elite isn't a normal enemy")
+    }
+
+    private func setStrong(_ element: ElementType) {
+        if let index = gm.game.elementBoard.firstIndex(where: { $0.type == element }) {
+            gm.game.elementBoard[index].state = .strong
+        }
+    }
+
+    /// Dampening Ring: the element is consumed before the monster can, for no effect.
+    func testDampeningRingConsumesTheElementFirst() async throws {
+        brute.items = ["gh-92"]
+        coord.autoResolvePrompts = false
+        let guardPiece = try addGuard(at: HexCoord(8, 8))
+        setStrong(.fire)
+        XCTAssertTrue(gm.game.canConsumeElements([.fire]))
+        let dampened = Task { @MainActor in await self.coord.dampenedConsume([.fire], by: guardPiece) }
+        let offered = await waitUntil { coord.pendingItemUse != nil }
+        XCTAssertTrue(offered)
+        XCTAssertEqual(coord.pendingItemUse?.headline, "Bandit Guard 1 is about to consume Fire")
+        coord.resolvePendingItemUse(true)
+        let result = await dampened.value
+        XCTAssertTrue(result)
+        XCTAssertFalse(gm.game.canConsumeElements([.fire]), "the ring consumed it")
+        XCTAssertTrue(brute.consumedItems.contains("gh-92"))
+
+        setStrong(.fire)
+        let again = await coord.dampenedConsume([.fire], by: guardPiece)
+        XCTAssertFalse(again, "the ring is used up")
+    }
 }
