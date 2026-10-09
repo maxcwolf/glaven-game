@@ -106,6 +106,7 @@ final class BoardItemTests: XCTestCase {
         let keys = Array(BoardItemEffect.byItem.keys) + DefenseItem.all.map(\.key)
             + Array(PassiveItems.defaultAttack.keys) + Array(PassiveItems.defaultMove.keys)
             + Array(PassiveItems.flying) + Array(PassiveItems.immunities.keys) + Array(PassiveItems.meleePierce.keys)
+            + Array(PassiveItems.meleePush.keys)
         XCTAssertEqual(Set(keys).count, keys.count, "no item in two tables")
         for key in keys {
             let id = try XCTUnwrap(Int(key.dropFirst(3)))
@@ -157,7 +158,59 @@ final class BoardItemTests: XCTestCase {
         XCTAssertNotNil(coord.entity(for: piece))
     }
 
+    func testABladeNeedsItsElementAndConsumesIt() throws {
+        brute.items = ["gh-79"]   // Inferno Blade
+        coord.spawnMonster(name: "bandit-guard", type: .normal, at: HexCoord(4, 3), origin: .placed)
+        let turn = try startTurn()
+        turn.executeCurrentAction()   // Attack 3, melee
+        XCTAssertEqual(usable(), [], "no fire to consume")
+        gm.game.elementBoard[gm.game.elementBoard.firstIndex { $0.type == .fire }!].state = .strong
+        XCTAssertEqual(usable(), ["gh-79"])
+        try use("gh-79")
+        XCTAssertEqual(turn.currentAttackValue(), 5)
+        XCTAssertFalse(gm.game.isElementAvailable(.fire))
+        XCTAssertTrue(brute.spentItems.isEmpty, "the blade has no use limit but its element")
+    }
+
+    func testTheHawkHelmReachesFurther() throws {
+        brute.items = ["gh-31"]
+        coord.spawnMonster(name: "bandit-guard", type: .normal, at: HexCoord(6, 3), origin: .placed)   // 3 away
+        let far = try XCTUnwrap(coord.spawnMonster(name: "bandit-guard", type: .normal, at: HexCoord(7, 3), origin: .placed))
+        let dagger = try card("Spare Dagger"), trample = try card("Trample")
+        brute.handCards = [dagger.cardId!, trample.cardId!]
+        let turn = PlayerTurnController(characterID: brute.id, coordinator: coord, gameManager: gm)
+        coord.activePlayerTurn = turn
+        turn.selectCards(top: dagger, bottom: trample)
+        turn.executeCurrentAction()   // Attack 3, Range 3
+        guard case .selectingAttackTarget(_, _, let before) = coord.interactionMode else { return XCTFail() }
+        XCTAssertFalse(before.contains(far))
+        try use("gh-31")
+        guard case .selectingAttackTarget(_, let range, let after) = coord.interactionMode else { return XCTFail() }
+        XCTAssertEqual(range, 4)
+        XCTAssertTrue(after.contains(far))
+        XCTAssertEqual(turn.currentAttackRange(), 4)
+    }
+
+    func testTheBloodyAxeCostsHealth() throws {
+        brute.items = ["gh-117"]
+        coord.spawnMonster(name: "bandit-guard", type: .normal, at: HexCoord(4, 3), origin: .placed)
+        let turn = try startTurn()
+        turn.executeCurrentAction()
+        let health = brute.health
+        try use("gh-117")
+        XCTAssertEqual(brute.health, health - 2)
+        XCTAssertEqual(turn.currentAttackValue(), 4)
+    }
+
     // MARK: - Always on
+
+    func testTheMaskOfTerrorPushesOnMeleeAttacks() throws {
+        brute.items = ["gh-66"]
+        coord.spawnMonster(name: "bandit-guard", type: .normal, at: HexCoord(4, 3), origin: .placed)
+        let turn = try startTurn()
+        turn.executeCurrentAction()
+        XCTAssertEqual(turn.pendingPush, 1)
+    }
 
     func testBladesAndSandalsMakeTheBasicActionsStronger() throws {
         brute.items = ["gh-67", "gh-57", "gh-71"]

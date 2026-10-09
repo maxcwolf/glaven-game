@@ -219,6 +219,7 @@ final class PlayerTurnController {
             topUsedAsDefault = true
             resetPendingAttack(value: value, range: 1)
             pendingPierce += PassiveItems.meleePierce(for: character?.items ?? [])
+            pendingPush += PassiveItems.meleePush(for: character?.items ?? [])
             defaultAttackPending = true
             coordinator.log("\(who) uses the basic Attack \(value)", category: .attack)
             coordinator.beginAttackAction(pieceID: pieceID, range: 1)
@@ -250,6 +251,9 @@ final class PlayerTurnController {
 
     /// Add to the attack being resolved (Minor Power Potion).
     func addToAttack(_ bonus: Int) { pendingAttackValue += bonus }
+
+    /// More range for the attack being targeted (Hawk Helm).
+    func extendAttackRange(by extra: Int) { pendingAttackRange += extra }
 
     /// The range of the attack currently being resolved.
     func currentAttackRange() -> Int { pendingAttackRange }
@@ -389,7 +393,10 @@ final class PlayerTurnController {
             }
             pendingAttackRange = range
             // Silent Stiletto: Pierce 1 on every melee attack.
-            if range <= 1 { pendingPierce += PassiveItems.meleePierce(for: character?.items ?? []) }
+            if range <= 1 {
+                pendingPierce += PassiveItems.meleePierce(for: character?.items ?? [])
+                pendingPush += PassiveItems.meleePush(for: character?.items ?? [])   // Mask of Terror
+            }
             // XP and infusions printed on the attack itself (e.g. Crushing Grasp's earth, Thief's
             // Knack's XP) and on paid augments come with performing it, which needs a target.
             func applyPerformedEffects() {

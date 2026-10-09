@@ -28,14 +28,26 @@ struct BoardItemEffect: Equatable {
         case adjacentEnemies(ConditionName)
         case enemiesInRange(ConditionName, Int)
         case selfAndAdjacentAllies(ConditionName)
+        /// More range for the attack being targeted.
+        case extraRange(Int)
+        case sufferDamage(Int)
+        case loot(Int)
     }
 
     let moment: Moment
     let parts: [Part]
+    /// Elements the item consumes to work ("wild": any one); it can't be used without them.
+    var consumes: [ElementType] = []
 
     init(_ moment: Moment, _ parts: Part...) {
         self.moment = moment
         self.parts = parts
+    }
+
+    init(_ moment: Moment, consuming elements: [ElementType], _ parts: Part...) {
+        self.moment = moment
+        self.parts = parts
+        self.consumes = elements
     }
 
     /// The board's effects, by item key.
@@ -80,6 +92,21 @@ struct BoardItemEffect: Equatable {
         "gh-126": .init(.turn, .adjacentEnemies(.poison)),                    // Remote Spider
         "gh-128": .init(.turn, .enemiesInRange(.muddle, 2)),                  // Black Censer
         "gh-143": .init(.turn, .selfCondition(.invisible), .infuse(.dark)),   // Smoke Elixir
+        "gh-31": .init(.rangedAttack, .extraRange(1)),                        // Hawk Helm
+        "gh-59": .init(.rangedAttack, .extraRange(2)),                        // Telescopic Lens
+        "gh-37": .init(.attack, consuming: [.wild], .attackBonus(1)),         // Robes of Evocation
+        "gh-54": .init(.rangedAttack, consuming: [.wild], .attackBonus(1)),   // Staff of Eminence
+        "gh-77": .init(.meleeAttack, consuming: [.ice], .attackBonus(2)),     // Frigid Blade
+        "gh-78": .init(.meleeAttack, consuming: [.air], .attackBonus(2)),     // Storm Blade
+        "gh-79": .init(.meleeAttack, consuming: [.fire], .attackBonus(2)),    // Inferno Blade
+        "gh-80": .init(.meleeAttack, consuming: [.earth], .attackBonus(2)),   // Tremor Blade
+        "gh-81": .init(.meleeAttack, consuming: [.light], .attackBonus(2)),   // Brilliant Blade
+        "gh-82": .init(.meleeAttack, consuming: [.dark], .attackBonus(2)),    // Night Blade
+        "gh-121": .init(.turn, consuming: [.dark], .infuse(.light)),          // Orb of Dawn
+        "gh-122": .init(.turn, consuming: [.light], .infuse(.dark)),          // Orb of Twilight
+        "gh-102": .init(.rangedAttack, .sufferDamage(3), .attackBonus(1)),    // Sacrificial Robes
+        "gh-117": .init(.meleeAttack, .sufferDamage(2), .attackBonus(1)),     // Bloody Axe
+        "gh-127": .init(.turn, .loot(1)),                                     // Giant Remote Spider
     ]
 }
 
@@ -97,6 +124,8 @@ enum PassiveItems {
     ]
     /// Silent Stiletto: every melee attack gains Pierce 1.
     static let meleePierce: [String: Int] = ["gh-137": 1]
+    /// Mask of Terror: every melee attack gains Push 1.
+    static let meleePush: [String: Int] = ["gh-66": 1]
 
     static func defaultAttack(for items: [String]) -> Int { items.compactMap { defaultAttack[$0] }.max() ?? 2 }
     static func defaultMove(for items: [String]) -> Int { items.compactMap { defaultMove[$0] }.max() ?? 2 }
@@ -105,6 +134,7 @@ enum PassiveItems {
         items.contains { immunities[$0]?.contains(condition) == true }
     }
     static func meleePierce(for items: [String]) -> Int { items.compactMap { meleePierce[$0] }.reduce(0, +) }
+    static func meleePush(for items: [String]) -> Int { items.compactMap { meleePush[$0] }.reduce(0, +) }
 }
 
 extension BoardCoordinator {
@@ -116,6 +146,7 @@ extension BoardCoordinator {
         return character.items.compactMap { key -> ItemData? in
             guard !character.spentItems.contains(key), !character.consumedItems.contains(key),
                   let effect = BoardItemEffect.byItem[key], isMoment(effect.moment, for: turn),
+                  effect.consumes.isEmpty || gameManager.game.canConsumeElements(effect.consumes),
                   let item = itemData(key) else { return nil }
             return item
         }
@@ -153,10 +184,18 @@ extension BoardCoordinator {
               let effect = BoardItemEffect.byItem[item.itemKey] else { return false }
         let me = PieceID.character(character.id)
         gameManager.characterManager.onBeforeMutate?()
-        if item.consumed { character.consumedItems.insert(item.itemKey) } else { character.spentItems.insert(item.itemKey) }
+        // Items with neither mark (the element blades and orbs) can be used again.
+        if item.consumed {
+            character.consumedItems.insert(item.itemKey)
+        } else if item.spent {
+            character.spentItems.insert(item.itemKey)
+        }
         gameManager.scenarioStatsManager.recordItemUse(by: character.name)
         log("\(name(me)) uses \(item.name)", category: .info)
 
+        if !effect.consumes.isEmpty, let used = gameManager.game.consumeElements(effect.consumes) {
+            log("\(name(me)) consumes \(GameText.list(used.map(GameText.elementName)))", category: .element)
+        }
         for part in effect.parts {
             perform(part, of: item, character: character, turn: turn)
         }
@@ -213,6 +252,22 @@ extension BoardCoordinator {
         case .selfAndAdjacentAllies(let condition):
             applyCondition(condition, to: me)
             applyConditionToAllAllies(from: me, condition: condition, range: 1)
+        case .extraRange(let extra):
+            switch interactionMode {
+            case .selectingAttackTarget(_, let range, _):
+                turn.extendAttackRange(by: extra)
+                beginAttackAction(pieceID: me, range: range + extra)
+            case .selectingMultiAttackTargets(_, let range, _, let count, let selected) where selected.isEmpty:
+                turn.extendAttackRange(by: extra)
+                beginAttackAction(pieceID: me, range: range + extra, targetCount: count)
+            default:
+                break
+            }
+        case .sufferDamage(let amount):
+            log("\(name(me)) suffers \(amount) damage", category: .damage)
+            sufferDamage(amount, to: me)
+        case .loot(let range):
+            collectLootInRange(pieceID: me, range: range)
         }
     }
 
