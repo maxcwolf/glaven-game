@@ -214,7 +214,8 @@ Scoundrel attacks Living Bones 1: 2 + 1 − 1 shield = 2 damage [2 +1(mod) -1(sh
 Scoundrel ends the turn
 Cragheart’s turn: Crater and Backup Ammunition
 Cragheart consumes Earth
-Cragheart: Attack 3, Range 3
+Cragheart: Attack 3, Range 3, Push 2
+Cragheart gains 1 XP
 Cragheart attacks Living Bones 1: 3 ×2 − 1 shield = 5 damage [3 ×2(mod) -1(shield) = 5]
 Living Bones 1 dies
 Cragheart: Move 3

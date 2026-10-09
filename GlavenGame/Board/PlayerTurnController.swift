@@ -328,6 +328,10 @@ final class PlayerTurnController {
             for effect in sub.subActions ?? [] {
                 if effect.type == .concatenation {
                     bonus.append(contentsOf: effect.subActions ?? [])
+                } else if effect.type == .custom, let key = effect.value?.stringValue, let character,
+                          let text = gameManager?.editionStore.resolveCustomText(key, edition: character.edition) {
+                    // A bonus printed as text ("Immobilize, XP +1", "Push 2"): read what the board can.
+                    bonus.append(contentsOf: Self.actions(fromText: text))
                 } else {
                     bonus.append(effect)
                 }
@@ -843,6 +847,36 @@ final class PlayerTurnController {
             return nil
         }
         return base + x
+    }
+
+    /// The structured actions a short printed bonus names: conditions, "Push 2", "Pierce 1",
+    /// "+1 Attack", "+1 Range", "XP +1", "target all enemies up to two hexes away".
+    static func actions(fromText raw: String) -> [ActionModel] {
+        let text = raw.lowercased()
+        var result: [ActionModel] = []
+        let words = Set(text.split(whereSeparator: { !$0.isLetter }).map(String.init))
+        // Only true conditions: "shield", "heal", "push"… are values, not conditions to give.
+        for condition in ConditionName.allCases
+        where (condition.isNegative || condition.isPositive) && words.contains(condition.rawValue) {
+            result.append(ActionModel(type: .condition, value: .string(condition.rawValue)))
+        }
+        for (type, pattern) in [(ActionType.push, #/push (\d+)/#), (.pull, #/pull (\d+)/#), (.pierce, #/pierce (\d+)/#)] {
+            if let match = text.firstMatch(of: pattern), let n = Int(match.1) { result.append(ActionModel(type: type, value: .int(n))) }
+        }
+        if let match = text.firstMatch(of: #/\+(\d+) attack/#), let n = Int(match.1) {
+            result.append(ActionModel(type: .attack, value: .int(n), valueType: .plus))
+        }
+        if let match = text.firstMatch(of: #/\+(\d+) range/#), let n = Int(match.1) {
+            result.append(ActionModel(type: .range, value: .int(n), valueType: .add))
+        }
+        if let match = text.firstMatch(of: #/xp \+(\d+)/#), let n = Int(match.1) {
+            result.append(ActionModel(type: .card, value: .string("experience:\(n)")))
+        }
+        let numbers = ["one": 1, "two": 2, "three": 3, "four": 4]
+        if let match = text.firstMatch(of: #/all enemies up to (\w+)/#), let n = Int(match.1) ?? numbers[String(match.1)] {
+            result.append(ActionModel(type: .specialTarget, value: .string("enemiesRange:\(n)")))
+        }
+        return result
     }
 
     static func damageAmount(in text: String) -> Int {

@@ -765,6 +765,37 @@ final class BoardRulesRegressionTests: XCTestCase {
         XCTAssertEqual(aside.health, aside.maxHealth)
     }
 
+    func testPrintedBonusTextBecomesActions() {
+        let clod = PlayerTurnController.actions(fromText: "Immobilize, XP +1")
+        XCTAssertEqual(clod.map(\.type), [.condition, .card])
+        XCTAssertEqual(clod.first?.value?.stringValue, "immobilize")
+        let crater = PlayerTurnController.actions(fromText: "Push 2, XP +1")
+        XCTAssertEqual(crater.first?.type, .push)
+        XCTAssertEqual(crater.first?.value?.intValue, 2)
+        let upheaval = PlayerTurnController.actions(fromText: "Target all enemies up to two")
+        XCTAssertEqual(upheaval.first?.value?.stringValue, "enemiesRange:2")
+        XCTAssertEqual(PlayerTurnController.actions(fromText: "+1 Attack").first?.valueType, .plus)
+    }
+
+    /// Regression: Earthen Clod's "Immobilize, XP +1" for consuming Earth was printed text, so
+    /// consuming the element gave nothing.
+    func testEarthenClodsEarthImmobilizes() async throws {
+        let cragheart = addCharacter("cragheart", at: HexCoord(3, 3))
+        let bandit = addMonster("bandit-guard", at: HexCoord(5, 3))
+        bandit.health = 50
+        bandit.maxHealth = 50
+        gm.game.elementBoard[gm.game.elementBoard.firstIndex { $0.type == .earth }!].state = .strong
+        let turn = turn(for: cragheart, top: try card("Earthen Clod", of: "cragheart"), bottom: try card("Avalanche", of: "cragheart"))
+        let xp = cragheart.experience
+        turn.executeCurrentAction()
+        guard case .selectingAttackTarget = coord.interactionMode,
+              let piece = coord.boardState.piecePositions.first(where: { $0.value == HexCoord(5, 3) })?.key else { return XCTFail() }
+        coord.handlePieceTap(piece)
+        _ = await waitUntil { turn.currentActionIndex > 0 }
+        XCTAssertTrue(bandit.entityConditions.contains { $0.name == .immobilize })
+        XCTAssertEqual(cragheart.experience, xp + 1)
+    }
+
     // MARK: - Mindthief augments
 
     /// Play `augment`'s top (the augment, then its own Attack) against an adjacent Bandit Guard.
