@@ -537,6 +537,61 @@ final class BoardRulesRegressionTests: XCTestCase {
         XCTAssertFalse(squid.entityConditions.contains { $0.name == .poison })
     }
 
+    // MARK: - Mindthief augments
+
+    /// Play `augment`'s top (the augment, then its own Attack) against an adjacent Bandit Guard.
+    private func playAugment(_ augment: String, other: String = "Corrupting Embrace") throws
+        -> (mindthief: GameCharacter, turn: PlayerTurnController, bandit: GameMonsterEntity) {
+        let mindthief = gm.game.characters.first { $0.name == "mindthief" } ?? addCharacter("mindthief", at: HexCoord(3, 3))
+        let bandit = coord.monsterEntity(name: "bandit-guard", standee: 1) ?? addMonster("bandit-guard", at: HexCoord(4, 3))
+        bandit.health = 50
+        bandit.maxHealth = 50
+        let played = try card(augment, of: "mindthief"), second = try card(other, of: "mindthief")
+        mindthief.handCards = [played.cardId!, second.cardId!]
+        let turn = PlayerTurnController(characterID: mindthief.id, coordinator: coord, gameManager: gm)
+        coord.activePlayerTurn = turn
+        turn.selectCards(top: played, bottom: second)
+        turn.executeCurrentAction()   // the augment
+        turn.executeCurrentAction()   // its Attack
+        return (mindthief, turn, bandit)
+    }
+
+    /// Regression: an augment's box was performed when played (Parasitic Influence healed at
+    /// once, Withering Claw asked for a target); it now shapes the melee attacks instead.
+    func testAnAugmentShapesMeleeAttacks() throws {
+        let weakness = try playAugment("The Mind's Weakness")
+        XCTAssertEqual(weakness.turn.currentAttackValue(), 3, "Attack 1, +2 from the augment")
+
+        let (mindthief, claw, _) = try playAugment("Withering Claw")
+        XCTAssertEqual(Set(claw.pendingConditions), [.muddle, .poison])
+        if case .selectingConditionTarget = coord.interactionMode { XCTFail("the augment isn't a condition to place") }
+        XCTAssertFalse(mindthief.entityConditions.contains { $0.name == .muddle })
+    }
+
+    func testParasiticInfluenceHealsOnTheAttackNotWhenPlayed() throws {
+        let mindthief = addCharacter("mindthief", at: HexCoord(3, 3))
+        mindthief.health = 3
+        addMonster("bandit-guard", at: HexCoord(4, 3))
+        let parasitic = try card("Parasitic Influence", of: "mindthief"), other = try card("Corrupting Embrace", of: "mindthief")
+        mindthief.handCards = [parasitic.cardId!, other.cardId!]
+        let turn = PlayerTurnController(characterID: mindthief.id, coordinator: coord, gameManager: gm)
+        coord.activePlayerTurn = turn
+        turn.selectCards(top: parasitic, bottom: other)
+        turn.executeCurrentAction()
+        XCTAssertEqual(mindthief.health, 3, "playing the augment heals no one")
+        turn.executeCurrentAction()
+        XCTAssertEqual(mindthief.health, 5, "its melee attack: Heal 2, self")
+    }
+
+    func testANewAugmentDiscardsTheOld() throws {
+        let mindthief = addCharacter("mindthief", at: HexCoord(3, 3))
+        let weakness = try card("The Mind's Weakness", of: "mindthief")
+        mindthief.activeCards = [weakness.cardId!]
+        _ = try playAugment("Withering Claw")
+        XCTAssertFalse(mindthief.activeCards.contains(weakness.cardId!))
+        XCTAssertTrue(mindthief.discardedCards.contains(weakness.cardId!))
+    }
+
     /// Regression: "Attack 2, all enemies moved through" (Trample) attacked no one.
     func testTrampleAttacksEveryEnemyJumpedOver() async throws {
         let character = addCharacter(at: HexCoord(3, 3))

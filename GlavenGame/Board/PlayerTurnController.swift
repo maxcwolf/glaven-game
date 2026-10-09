@@ -431,6 +431,8 @@ final class PlayerTurnController {
             attackTexts = customTexts(of: action)
             // This round's bonuses: Wall of Doom, Forceful Storm, an adjacent Enhancement Field.
             pendingAttackValue += coordinator.roundAttackBonus(for: pieceID, ranged: range > 1)
+            // Mindthief augments shape every melee attack.
+            if range <= 1 { applyAugments(coordinator: coordinator) }
             // Charged bonuses: Backup Ammunition (one more target on a ranged attack), Crackling Air.
             if range > 1, coordinator.useFirstCharge(of: pieceID, where: { $0 == .extraTargetOnRanged }) != nil {
                 targetCount += 1
@@ -622,6 +624,12 @@ final class PlayerTurnController {
                 coordinator.log("\(who) becomes immune to \(GameText.conditionName(cond))", category: .condition)
             }
 
+        case .box where Self.isAugment(action):
+            // A Mindthief augment isn't performed: it shapes the character's melee attacks while
+            // the card is active. Playing it discards any other augment, as the card says.
+            retireOtherAugments(coordinator: coordinator)
+            coordinator.log("\(who)\u{2019}s augment: on melee attacks, \(augmentSummary(action))", category: .round)
+
         case .box, .concatenation, .grid:
             for sub in action.subActions ?? [] {
                 executeAction(sub, coordinator: coordinator)
@@ -693,10 +701,10 @@ final class PlayerTurnController {
 
     /// Shield/Retaliate bonuses stack (GH p.24). A persistent bonus lasts while the card is in
     /// the active area; a round bonus until the end of the round.
-    private func applyDefensiveBonus(_ action: ActionModel) {
+    private func applyDefensiveBonus(_ action: ActionModel, forTheRound: Bool = false) {
         guard let character, let coordinator else { return }
         let value = action.value?.intValue ?? 0
-        let persistent = halfMarkers(for: phase).contains("persistent")
+        let persistent = !forTheRound && halfMarkers(for: phase).contains("persistent")
         if action.type == .shield {
             let existing = persistent ? character.shieldPersistent : character.shield
             let total = (existing?.value?.intValue ?? 0) + value
@@ -710,6 +718,102 @@ final class PlayerTurnController {
                                     subActions: range > 1 ? [ActionModel(type: .range, value: .int(range))] : nil)
             if persistent { character.retaliatePersistent.append(bonus) } else { character.retaliate.append(bonus) }
             coordinator.log("\(who): Retaliate \(value)\(range > 1 ? ", Range \(range)" : "")", category: .condition)
+        }
+    }
+
+    // MARK: - Mindthief augments
+
+    static func isAugment(_ action: ActionModel) -> Bool {
+        action.type == .box && action.value?.stringValue.contains(".augment%") == true
+    }
+
+    /// The effects an augment gives melee attacks (everything in its box but the "On your melee
+    /// attacks:" heading and markers).
+    private static func augmentEffects(_ box: ActionModel) -> [ActionModel] {
+        func flatten(_ actions: [ActionModel]) -> [ActionModel] {
+            actions.flatMap { $0.type == .grid ? flatten($0.subActions ?? []) : [$0] }
+        }
+        return flatten(box.subActions ?? []).filter { $0.type != .card }
+    }
+
+    /// The character's active augment cards: in the active area, or played this turn.
+    private func activeAugments() -> [(cardId: Int, box: ActionModel)] {
+        guard let character, let gameManager else { return [] }
+        let deck = gameManager.characterManager.abilities(for: character)
+        let ids = character.activeCards + persistentCardsThisTurn.filter { !character.activeCards.contains($0) }
+        return ids.compactMap { id in
+            guard !usedUpThisTurn.contains(id),
+                  let box = deck.first(where: { $0.cardId == id })?.actions?.first(where: Self.isAugment) else { return nil }
+            return (id, box)
+        }
+    }
+
+    /// "When another augment is played, discard this card."
+    private func retireOtherAugments(coordinator: BoardCoordinator) {
+        guard let character, let playing = (phase == .executeBottomAction ? bottomCard : topCard)?.cardId else { return }
+        for (id, _) in activeAugments() where id != playing {
+            if character.activeCards.contains(id) {
+                character.removeFromActiveArea(id)
+            } else {
+                usedUpThisTurn.insert(id)
+            }
+            coordinator.log("\(who) discards an earlier augment", category: .round)
+        }
+    }
+
+    private func augmentSummary(_ box: ActionModel) -> String {
+        let store = gameManager?.editionStore, edition = character?.edition ?? "gh"
+        return Self.augmentEffects(box).compactMap { effect -> String? in
+            if effect.type == .custom {
+                let text = effect.value.flatMap { store?.resolveCustomText($0.stringValue, edition: edition) } ?? ""
+                return text.lowercased().hasPrefix("on your melee attacks") ? nil : text
+            }
+            return GameText.actionTitle(effect)
+        }.joined(separator: ", ")
+    }
+
+    /// Apply the active augments to the melee attack being made.
+    private func applyAugments(coordinator: BoardCoordinator) {
+        guard let character else { return }
+        let me = PieceID.character(characterID)
+        let store = gameManager?.editionStore
+        for (_, box) in activeAugments() {
+            for effect in Self.augmentEffects(box) {
+                switch effect.type {
+                case .custom:
+                    let text = (effect.value.flatMap { store?.resolveCustomText($0.stringValue, edition: character.edition) } ?? "").lowercased()
+                    if let match = text.firstMatch(of: #/\+(\d+) attack/#), let bonus = Int(match.1) {
+                        pendingAttackValue += bonus   // The Mind's Weakness
+                    } else if text.hasPrefix("gain"), let match = text.firstMatch(of: #/shield (\d+)/#), let amount = Int(match.1) {
+                        applyDefensiveBonus(ActionModel(type: .shield, value: .int(amount)), forTheRound: true)   // Feedback Loop
+                    } else if text.hasPrefix("gain") {
+                        for sub in effect.subActions ?? [] where sub.type == .retaliate || sub.type == .shield {
+                            applyDefensiveBonus(sub, forTheRound: true)   // Vicious Blood
+                        }
+                    }
+                case .heal where (effect.subActions ?? []).contains(where: { $0.type == .specialTarget && $0.value?.stringValue == "self" }):
+                    let amount = effect.value?.intValue ?? 0   // Parasitic Influence
+                    let healed = coordinator.heal(me, amount: amount, source: me)
+                    coordinator.log("\(who) heals for \(healed)", category: .heal, trace: "Heal \(amount), self")
+                case .concatenation, .condition:
+                    let conditions = effect.type == .condition ? [effect] : (effect.subActions ?? [])
+                    for condition in conditions where condition.type == .condition {   // Withering Claw
+                        if let cond = condition.value.flatMap({ ConditionName(rawValue: $0.stringValue) }) {
+                            pendingConditions.append(cond)
+                        }
+                    }
+                case .element:
+                    // Frozen Mind: consume the element for what it adds.
+                    let elements = MonsterAbility.elements(of: effect)
+                    guard let game = gameManager?.game, let used = game.consumeElements(elements) else { continue }
+                    coordinator.log("\(who) consumes \(GameText.list(used.map(GameText.elementName)))", category: .element)
+                    for sub in effect.subActions ?? [] where sub.type == .condition {
+                        if let cond = sub.value.flatMap({ ConditionName(rawValue: $0.stringValue) }) { pendingConditions.append(cond) }
+                    }
+                default:
+                    continue
+                }
+            }
         }
     }
 
