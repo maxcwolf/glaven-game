@@ -64,6 +64,7 @@ final class RenderPurityTests: XCTestCase {
             ("enhancer", AnyView(EnhancementSheet(character: brute, scrolls: false))),
             ("hand", AnyView(HandSheet(character: brute))),
             ("shop", AnyView(ItemShopSheet(character: brute))),
+            ("character sheet", AnyView(CharacterSheetView(character: brute, onDone: {}))),
             ("party sheet", AnyView(PartySheetView())),
             ("world map", AnyView(WorldMapView())),
         ]

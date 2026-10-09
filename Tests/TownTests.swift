@@ -259,4 +259,84 @@ extension TownTests {
                                                              size: ScenarioBanner.cropSize))
         XCTAssertEqual(corner.size.width, ScenarioBanner.cropSize.width, accuracy: 1, "slid back inside at the edge")
     }
+
+    /// Each shop tile says what it offers the buyer: Buy, Sell for half, how much more gold is
+    /// needed, or Sold out; and the header says how reputation moves the prices.
+    func testShopTilesSayWhatTheyOffer() throws {
+        let gm = try party(["brute", "tinkerer", "spellweaver"])
+        let shop = gm.itemManager
+        let item = try XCTUnwrap(shop.availableItems().filter { $0.count == 2 && $0.cost >= 10 }.min { $0.cost < $1.cost })
+        let (a, b, c) = (gm.game.characters[0], gm.game.characters[1], gm.game.characters[2])
+        a.loot = item.cost
+        XCTAssertEqual(ItemShopSheet.offer(item, for: a, items: shop), .buy)
+        a.loot = item.cost - 3
+        XCTAssertEqual(ItemShopSheet.offer(item, for: a, items: shop), .short(3))
+        a.loot = item.cost
+        XCTAssertTrue(shop.buy(item, for: a))
+        XCTAssertEqual(ItemShopSheet.offer(item, for: a, items: shop), .sell(item.cost / 2))
+        b.loot = item.cost
+        XCTAssertTrue(shop.buy(item, for: b))
+        c.loot = 100
+        XCTAssertEqual(ItemShopSheet.offer(item, for: c, items: shop), .soldOut)
+
+        XCTAssertEqual(ItemShopSheet.subtitle(prosperity: 1, reputation: 0), "Prosperity 1 \u{00B7} reputation 0, prices as printed")
+        XCTAssertEqual(ItemShopSheet.subtitle(prosperity: 2, reputation: 7), "Prosperity 2 \u{00B7} reputation 7, prices 2 gold lower")
+        XCTAssertEqual(ItemShopSheet.subtitle(prosperity: 2, reputation: -3), "Prosperity 2 \u{00B7} reputation -3, prices 1 gold higher")
+    }
+
+    /// Regression: item text lost its icons' words and left gaps ("consider any  attack modifier
+    /// card … to be a  instead", "Refresh  one of your consumed  items"). Every item says what it
+    /// does in whole words.
+    func testEveryItemSaysWhatItDoes() throws {
+        let gm = try party(["brute"])
+        let store = gm.editionStore
+        for item in store.items(for: "gh") {
+            let rule = GameText.itemRule(item, labels: store)
+            XCTAssertFalse(rule.isEmpty, "#\(item.id) \(item.name)")
+            XCTAssertNil(rule.range(of: #"%|  | [.,]|\bConsume\.|\b[a-z]+[A-Z]"#, options: .regularExpression),
+                         "#\(item.id) \(item.name): \(rule)")
+        }
+        func rule(_ id: Int) throws -> String { GameText.itemRule(try XCTUnwrap(store.itemData(id: id, edition: "gh")), labels: store) }
+        XCTAssertEqual(try rule(7), "When attacked, consider any \u{00D7}2 attack modifier card the enemy draws to be a +0 instead.")
+        XCTAssertEqual(try rule(17), "During your turn, Refresh one of your consumed small items.")
+        XCTAssertEqual(try rule(77), "During your melee attack, consume Ice to add +2 Attack to a single attack.")
+        XCTAssertEqual(try rule(75), "During your turn, consume any element to create any element.")
+        XCTAssertTrue(try rule(139).hasPrefix("Any time you perform an Augment action"))
+        XCTAssertEqual(try rule(1), "During your movement, add +2 Move to the movement.")
+        XCTAssertEqual(try rule(35), "During your turn, summon a Jade Falcon: 2 health, Move 3, Attack 2, flying.")
+    }
+
+    // MARK: - Character sheet
+
+    /// The sheet's level line: how far through the level, what's left, and the next threshold.
+    func testTheSheetSaysHowFarToTheNextLevel() {
+        let mid = CharacterSheetView.levelProgress(level: 3, experience: 120)
+        XCTAssertEqual(mid.fraction, 25.0 / 55.0, accuracy: 0.001)
+        XCTAssertEqual(mid.toNext, "30 XP to level 4")
+        XCTAssertEqual(mid.next, "Level 4 at 150")
+        XCTAssertEqual(CharacterSheetView.levelProgress(level: 1, experience: 0).toNext, "45 XP to level 2")
+        XCTAssertEqual(CharacterSheetView.levelProgress(level: 1, experience: 50).toNext, "Ready to level up")
+        XCTAssertEqual(CharacterSheetView.levelProgress(level: 1, experience: 50).fraction, 1)
+        XCTAssertEqual(CharacterSheetView.levelProgress(level: 9, experience: 600).toNext, "Highest level")
+
+        XCTAssertEqual(CharacterSheetView.subtitle(className: "Brute", named: false, level: 1, won: 0),
+                       "Level 1 \u{00B7} no scenarios won yet")
+        XCTAssertEqual(CharacterSheetView.subtitle(className: "Brute", named: true, level: 3, won: 6),
+                       "Brute \u{00B7} Level 3 \u{00B7} 6 scenarios won")
+        XCTAssertEqual(CharacterSheetView.battleGoalNote(checkmarks: 4), "Every three checkmarks earn a perk. One earned.")
+        XCTAssertEqual(CharacterSheetView.battleGoalNote(checkmarks: 2), "Every three checkmarks earn a perk. None earned.")
+    }
+
+    /// The sheet and the shop open over the town at its full size, as large dialogs.
+    func testTheSheetAndShopFitTheScreen() throws {
+        let gm = try party(["brute", "spellweaver"])
+        let brute = gm.game.characters[0]
+        for screen in [CGSize(width: 1210, height: 834), CGSize(width: 1376, height: 1032)] {
+            for view in [AnyView(CharacterSheetView(character: brute, onDone: {})), AnyView(ItemShopSheet(character: brute))] {
+                let size = NSHostingController(rootView: view.environment(gm)).sizeThatFits(in: screen)
+                XCTAssertLessThanOrEqual(size.width, screen.width + 0.5, "\(screen)")
+                XCTAssertLessThanOrEqual(size.height, screen.height + 0.5, "\(screen)")
+            }
+        }
+    }
 }

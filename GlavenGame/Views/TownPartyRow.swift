@@ -128,11 +128,13 @@ struct TownPartyRow: View {
 /// Progress toward the next level, in brass.
 struct XPBar: View {
     let progress: Double
+    /// The empty part: darker than a party card; on a panel, the raised colour shows it.
+    var track: Color = BoardTheme.sheet
 
     var body: some View {
         GeometryReader { geo in
             ZStack(alignment: .leading) {
-                Capsule().fill(BoardTheme.sheet)
+                Capsule().fill(track)
                 Capsule().fill(BoardTheme.brass).frame(width: geo.size.width * max(0, min(1, progress)))
             }
         }

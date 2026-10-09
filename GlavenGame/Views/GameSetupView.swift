@@ -155,23 +155,33 @@ struct GameSetupView: View {
         }
         .modifier(TownLearning(key: townLearningKey))
         .overlay {
+            if let character = sheetCharacter {
+                CharacterSheetView(character: character,
+                                   onShop: { shopCharacter = character },
+                                   onDone: { sheetCharacter = nil })
+                    .id(character.id)
+                    .transition(.opacity)
+            }
+        }
+        .overlay {
+            if let character = shopCharacter {
+                ItemShopSheet(character: character) { shopCharacter = nil }
+                    .id(character.id)
+                    .transition(.opacity)
+            }
+        }
+        .overlay {
             if let deck = events.first {
                 EventSheet(deck: deck, onDone: { finishEvent(deck) }, onClose: closeEvents)
                     .id("\(deck)-\(events.count)")
                     .transition(.opacity)
             }
         }
-        .sheet(item: $sheetCharacter) { character in
-            CharacterSheetView(character: character)
-        }
         .sheet(isPresented: $showTableRules) {
             TableRulesSheet()
         }
         .sheet(item: $itemsCharacter) { character in
             ItemLoadoutSheet(character: character)
-        }
-        .sheet(item: $shopCharacter) { character in
-            ItemShopSheet(character: character)
         }
         .sheet(item: $enhanceCharacter) { character in
             EnhancementSheet(character: character)

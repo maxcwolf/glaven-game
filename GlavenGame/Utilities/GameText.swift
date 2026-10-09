@@ -183,6 +183,27 @@ enum GameText {
         return parts
     }
 
+    /// What an item does, as printed on its card ("During your movement, add +2 Move to the
+    /// movement."); for an item without printed text, its actions ("Heal 3, Shield 1").
+    static func itemRule(_ item: ItemData, labels: EditionDataStore) -> String {
+        let actions = item.actions ?? []
+        let printed = actions.compactMap { action -> String? in
+            guard action.type == .custom, let raw = action.value?.stringValue, raw.hasPrefix("%") else { return nil }
+            return labels.resolveCustomText(raw, edition: item.edition)
+        }.filter { !$0.isEmpty }
+        if !printed.isEmpty { return printed.joined(separator: " ") }
+        if let summon = item.summon {
+            // "During your turn, summon a Jade Falcon: 2 health, Move 3, Attack 2, flying."
+            var stats = ["\(summon.health.stringValue) health"]
+            if let move = summon.movement?.stringValue, move != "0" { stats.append("Move \(move)") }
+            if let attack = summon.attack?.stringValue { stats.append("Attack \(attack)") }
+            if let range = summon.range?.stringValue, range != "0" { stats.append("Range \(range)") }
+            if summon.flying == true { stats.append("flying") }
+            return "During your turn, summon a \(titleCased(summon.name)): \(stats.joined(separator: ", "))."
+        }
+        return actions.filter { $0.type != .custom }.map(actionTitle).joined(separator: ", ")
+    }
+
     /// A perk in the rulebook's words: "Remove two \u{2212}1 cards", "Replace one +0 card with one
     /// +2 card", "Add three rolling Push 1 cards", "Ignore negative item effects and add one +1 card".
     static func perkText(_ perk: PerkModel) -> String {

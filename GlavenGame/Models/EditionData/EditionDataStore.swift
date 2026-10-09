@@ -384,6 +384,26 @@ final class EditionDataStore {
             match[1].replacingOccurrences(of: "-", with: " ").capitalized
         }
 
+        // Replace %game.element.consume.X% → "consume X" (wild: any element)
+        result = replacePattern(in: result, pattern: #"%game\.element\.consume\.([^%]+)%"#) { match in
+            match[1] == "wild" ? "consume any element" : "consume \(match[1].capitalized)"
+        }
+
+        // Replace %game.attackmodifier.X% → "+0", "\u{2212}1", "\u{00D7}2"
+        result = replacePattern(in: result, pattern: #"%game\.attackmodifier\.([^%]+)%"#) { match in
+            AttackModifierType(rawValue: match[1]).map(GameText.modifierValue) ?? match[1]
+        }
+
+        // Replace %game.items.slots.X% → "small", "one-hand"
+        result = replacePattern(in: result, pattern: #"%game\.items\.slots\.([^%]+)%"#) { match in
+            ["onehand": "one-hand", "twohand": "two-hand"][match[1]] ?? match[1]
+        }
+
+        // Replace %data.characterColored.class:Word% → "Word" (a class's own word, such as Augment)
+        result = replacePattern(in: result, pattern: #"%data\.characterColored\.[^:%]+:([^%]+)%"#) { match in
+            match[1]
+        }
+
         // Replace %game.element.X% → "X"
         result = replacePattern(in: result, pattern: #"%game\.element\.([^%]+)%"#) { match in
             match[1].capitalized
@@ -410,8 +430,10 @@ final class EditionDataStore {
         // Strip any remaining %...% patterns
         result = replacePattern(in: result, pattern: #"%[^%]+%"#) { _ in "" }
 
-        // Clean up HTML line breaks
+        // Clean up HTML line breaks, and the gaps left where an icon was
         result = result.replacingOccurrences(of: "<br>", with: "\n")
+        result = replacePattern(in: result, pattern: #" {2,}"#) { _ in " " }
+        result = replacePattern(in: result, pattern: #" ([.,])"#) { match in match[1] }
 
         return result.trimmingCharacters(in: .whitespaces)
     }
