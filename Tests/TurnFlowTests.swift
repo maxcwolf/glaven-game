@@ -214,4 +214,24 @@ final class TurnFlowTests: XCTestCase {
         XCTAssertNil(coord.boardState.lootTokens[HexCoord(3, 3)], "the token is picked up")
         XCTAssertGreaterThan(brute.loot, gold)
     }
+
+    // MARK: - Reach
+
+    /// With the Halberd a single-target melee attack reaches 2 hexes, and an enemy that far is a
+    /// target for everything the attack prints: Crushing Grasp's Earth is infused.
+    func testAHalberdAttackOnAFarEnemyPaysItsInfusion() throws {
+        let cragheart = add("cragheart", at: HexCoord(3, 3))
+        cragheart.items = [PassiveItems.halberd]
+        coord.spawnMonster(name: "bandit-guard", type: .normal, at: HexCoord(5, 3), origin: .placed)
+        let grasp = try XCTUnwrap(deck("cragheart").first { $0.cardId == 117 })   // Crushing Grasp
+        let other = try XCTUnwrap(deck("cragheart").first { $0.cardId != 117 })
+        let turn = turn(for: cragheart, top: grasp, bottom: other)
+        while turn.phase == .executeTopAction && turn.topActions[turn.currentActionIndex].type != .attack {
+            turn.executeCurrentAction()
+        }
+        turn.executeCurrentAction()
+        guard case .selectingAttackTarget(_, _, let targets) = coord.interactionMode else { return XCTFail("a target 2 hexes away") }
+        XCTAssertEqual(targets.count, 1)
+        XCTAssertEqual(gm.game.elementBoard.first { $0.type == .earth }?.state, .new, "the attack's infusion")
+    }
 }

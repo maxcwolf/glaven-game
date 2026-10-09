@@ -1047,8 +1047,14 @@ final class PlayerTurnController {
     }
 
     /// Range of an attack action before augments (melee = 1).
+    /// How far the attack reaches: its printed range, or 2 for a single-target melee attack
+    /// with the Halberd.
     private func attackRange(of action: ActionModel) -> Int {
-        action.subActions?.first { $0.type == .range }?.value?.intValue ?? 1
+        let subs = action.subActions ?? []
+        let printed = subs.first { $0.type == .range }?.value?.intValue ?? 1
+        let single = !subs.contains { $0.type == .area || ($0.type == .target && ($0.value?.intValue ?? 1) > 1) }
+        if printed <= 1, single, character?.carriedItems.contains(PassiveItems.halberd) == true { return 2 }
+        return printed
     }
 
     private func hasSpecialTargetSelf(_ action: ActionModel) -> Bool {
