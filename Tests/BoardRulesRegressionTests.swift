@@ -739,6 +739,32 @@ final class BoardRulesRegressionTests: XCTestCase {
         XCTAssertEqual(turn.currentAttackValue(), 3)
     }
 
+    func testHexLinesRunStraight() {
+        XCTAssertEqual(HexCoord(1, 3).line(to: HexCoord(5, 3)), (1...5).map { HexCoord($0, 3) })
+        let diagonal = HexCoord(3, 3).line(to: HexCoord(5, 7))
+        XCTAssertEqual(diagonal.count, 5)
+        for (a, b) in zip(diagonal, diagonal.dropFirst()) { XCTAssertTrue(a.isAdjacent(to: b), "\(a) \(b)") }
+    }
+
+    /// Impaling Eruption: "Additionally, target all enemies on the path to the primary target."
+    func testImpalingEruptionHitsEveryEnemyOnTheWay() async throws {
+        let spellweaver = addCharacter("spellweaver", at: HexCoord(1, 3))
+        for col in 2...4 {
+            let bandit = addMonster("bandit-guard", at: HexCoord(col, 3))
+            bandit.health = 50
+            bandit.maxHealth = 50
+        }
+        let aside = addMonster("bandit-guard", at: HexCoord(3, 5))
+        let turn = turn(for: spellweaver, top: try card("Impaling Eruption", of: "spellweaver"), bottom: try card("Frost Armor", of: "spellweaver"))
+        turn.executeCurrentAction()
+        guard let far = coord.boardState.piecePositions.first(where: { $0.value == HexCoord(4, 3) })?.key else { return XCTFail() }
+        coord.handlePieceTap(far)
+        _ = await waitUntil { turn.currentActionIndex > 0 }
+        let attacked = coord.turnLog.filter { $0.message.contains("attacks Bandit Guard") }
+        XCTAssertEqual(attacked.count, 3, attacked.map(\.message).joined(separator: " / "))
+        XCTAssertEqual(aside.health, aside.maxHealth)
+    }
+
     // MARK: - Mindthief augments
 
     /// Play `augment`'s top (the augment, then its own Attack) against an adjacent Bandit Guard.

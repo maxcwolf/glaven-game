@@ -2134,6 +2134,20 @@ final class BoardCoordinator {
                         }
                         self.activePlayerTurn?.advanceAfterAsyncAction()
                     }
+                } else if activePlayerTurn?.attackTexts.contains(where: { $0.contains("all enemies on the path to the primary target") }) == true,
+                          let from = boardState.piecePositions[attackerID], let to = boardState.piecePositions[piece] {
+                    // Impaling Eruption: every enemy on the way to the target is attacked too.
+                    let path = Set(from.line(to: to).dropFirst().dropLast())
+                    let onTheWay = boardState.piecePositions.filter { path.contains($0.value) && areEnemies(attackerID, $0.key) }
+                        .map(\.key).sorted()
+                    interactionMode = .idle
+                    Task { @MainActor in
+                        for target in onTheWay + [piece] where self.isOnBoard(target) {
+                            await self.resolvePlayerAttack(attacker: attackerID, target: target, attackValue: attackValue,
+                                                           range: range, advanceAction: false)
+                        }
+                        self.activePlayerTurn?.advanceAfterAsyncAction()
+                    }
                 } else {
                     interactionMode = .idle
                     Task { @MainActor in
