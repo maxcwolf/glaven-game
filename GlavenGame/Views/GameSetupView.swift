@@ -41,6 +41,11 @@ struct GameSetupView: View {
         Set(gameManager.game.characters.map(\.name))
     }
 
+    /// The scenario to preselect: the only one available, if there's just one.
+    static func onlyChoice(_ scenarios: [ScenarioData]) -> ScenarioData? {
+        scenarios.count == 1 ? scenarios.first : nil
+    }
+
     private var availableScenarios: [ScenarioData] {
         gameManager.scenarioManager.availableScenarios(for: edition)
     }
@@ -140,13 +145,17 @@ struct GameSetupView: View {
                         }
                         .padding(.horizontal, 36)
                         .padding(.vertical, 12)
-                        .background(canStart ? Color.accentColor : GlavenTheme.primaryText.opacity(0.08))
+                        .background(canStart ? BoardTheme.brass : GlavenTheme.primaryText.opacity(0.08))
                         .foregroundStyle(canStart ? .white : GlavenTheme.secondaryText)
                         .clipShape(Capsule())
-                        .shadow(color: canStart ? Color.accentColor.opacity(0.4) : .clear, radius: 8, y: 2)
+                        .shadow(color: canStart ? BoardTheme.brass.opacity(0.4) : .clear, radius: 8, y: 2)
                     }
                     .buttonStyle(.plain)
                     .disabled(!canStart)
+                    // With only one scenario to play (a new campaign's Black Barrow), it's chosen.
+                    .onAppear {
+                        if selectedScenario == nil { selectedScenario = Self.onlyChoice(availableScenarios) }
+                    }
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             }

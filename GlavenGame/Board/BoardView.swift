@@ -203,8 +203,15 @@ struct BoardView: View {
         var rail: CGRect = .zero
         var left: CGRect = .zero
         var right: CGRect = .zero
-        var bottomLeading: CGRect = .zero
+        /// The largest the bottom-left bar has been this scenario: the board keeps clear of all of
+        /// it, so it doesn't jump each time the bar changes (actions, End Turn, a monster's turn).
+        private(set) var bottomLeading: CGRect = .zero
         var bottomTrailing: CGRect = .zero
+
+        mutating func reportBottomLeading(_ frame: CGRect) {
+            guard !frame.isEmpty else { return }
+            bottomLeading = bottomLeading.isEmpty ? frame : bottomLeading.union(frame)
+        }
 
         /// The panels over the board, in board view points. The side panels count as whole
         /// columns: they grow and shrink as the turn goes on, and the board shouldn't chase them.
@@ -348,7 +355,7 @@ struct BoardView: View {
                     setupBottomBar
                         .padding(10)
                         .background(.black.opacity(0.45), in: RoundedRectangle(cornerRadius: 14))
-                        .reportFrame { hudFrames.bottomLeading = $0 }
+                        .reportFrame { hudFrames.reportBottomLeading($0) }
                 } else if coordinator.boardPhase == .execution {
                     executionBottomBar
                 } else {
@@ -378,7 +385,7 @@ struct BoardView: View {
         VStack(spacing: 10) {
             // Instruction
             if !allPlaced {
-                Label("Tap a character, then tap a starting hex to place them", systemImage: "hand.tap.fill")
+                Label("Tap a lit starting hex to place the chosen character, or pick another first", systemImage: "hand.tap.fill")
                     .font(.caption)
                     .foregroundStyle(.white.opacity(0.7))
             }
@@ -402,7 +409,7 @@ struct BoardView: View {
                             BundledImage(ImageLoader.characterIcon(edition: character.edition, name: character.name), size: 20, systemName: "person.fill")
                                 .foregroundStyle(placed ? .white.opacity(0.4) : charColor)
 
-                            Text(character.title.isEmpty ? character.name.replacingOccurrences(of: "-", with: " ").capitalized : character.title)
+                            Text(GameText.characterName(character, labels: gameManager.editionStore))
                                 .font(BoardTheme.font(size: 13, weight: .bold))
                                 .foregroundStyle(placed ? .white.opacity(0.4) : .white)
 
@@ -471,15 +478,26 @@ struct BoardView: View {
                             let actions = playerTurn.phase == .executeTopAction ? playerTurn.topActions : playerTurn.bottomActions
                             let idx = playerTurn.currentActionIndex
 
-                            if idx < actions.count {
+                            // While a step waits for a hex or a target, the banner has its Skip and
+                            // Cancel; the step's own button would do nothing.
+                            if playerTurn.isWaiting {
+                                EmptyView()
+                            } else if idx < actions.count {
                                 let action = actions[idx]
+                                let noTarget = playerTurn.attackHasNoTarget(action)
                                 Button {
                                     playerTurn.executeCurrentAction()
                                 } label: {
                                     Label(GameText.actionTitle(action), systemImage: "play.fill")
                                 }
                                 .buttonStyle(.borderedProminent)
-                                .tint(.blue)
+                                .tint(noTarget ? .gray : BoardTheme.brass)
+                                if noTarget {
+                                    // Performing it now does nothing: a move first, or Skip, may be better.
+                                    Label("No enemy in range", systemImage: "exclamationmark.triangle")
+                                        .font(.caption)
+                                        .foregroundStyle(BoardTheme.secondaryText)
+                                }
                             } else {
                                 Button {
                                     playerTurn.executeCurrentAction()
@@ -510,6 +528,7 @@ struct BoardView: View {
                                 }
                             }
 
+                            if !playerTurn.isWaiting {
                             HStack(spacing: 8) {
                                 let defaultLabel = playerTurn.phase == .executeTopAction ? "Use Basic Attack 2" : "Use Basic Move 2"
                                 Button(defaultLabel) {
@@ -525,6 +544,7 @@ struct BoardView: View {
                                 .buttonStyle(.bordered)
                                 .tint(.orange)
                                 .controlSize(.small)
+                            }
                             }
 
                             // Items whose moment has come: during this move, this attack, or the turn.
@@ -578,12 +598,12 @@ struct BoardView: View {
                 }
                 .padding(.trailing, 8)
                 .background(.black.opacity(0.45), in: RoundedRectangle(cornerRadius: 14))
-                .reportFrame { hudFrames.bottomLeading = $0 }
+                .reportFrame { hudFrames.reportBottomLeading($0) }
                 Spacer()
             }
         } else {
             instructionBanner
-                .reportFrame { hudFrames.bottomLeading = $0 }
+                .reportFrame { hudFrames.reportBottomLeading($0) }
             Spacer()
         }
     }
@@ -688,7 +708,7 @@ struct BoardView: View {
                 BundledImage(ImageLoader.characterIcon(edition: character.edition, name: character.name), size: 14, systemName: "person.fill")
                     .foregroundStyle(charColor)
                     .opacity(isExhausted ? 0.4 : 1.0)
-                Text(character.title.isEmpty ? character.name.replacingOccurrences(of: "-", with: " ").capitalized : character.title)
+                Text(GameText.characterName(character, labels: gameManager.editionStore))
                     .font(BoardTheme.font(size: 11, weight: .bold))
                     .foregroundStyle(isExhausted ? .white.opacity(0.4) : .white)
                     .lineLimit(1)
@@ -1092,7 +1112,7 @@ struct BoardView: View {
                             .font(BoardTheme.font(size: 36))
                             .foregroundStyle(.orange)
 
-                        Text("\(character.title.isEmpty ? character.name : character.title) — Long Rest")
+                        Text(Self.restTitle("Long Rest", for: character, labels: gameManager.editionStore))
                             .font(.title3.weight(.bold))
                             .foregroundStyle(charColor)
 
@@ -1140,15 +1160,15 @@ struct BoardView: View {
                     }
                 }
                 .padding(24)
-                .frame(maxHeight: 420)
-                .background(.black.opacity(0.92))
-                .clipShape(RoundedRectangle(cornerRadius: 16))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 16)
-                        .stroke(.orange.opacity(0.4), lineWidth: 1)
-                )
+                .fixedSize(horizontal: false, vertical: true)   // as tall as its contents
+                .boardPanel()
                 .padding(40)
             }
+    }
+
+    /// "Spellweaver — Short Rest": the character's name as the board shows it, not their class id.
+    static func restTitle(_ rest: String, for character: GameCharacter, labels: EditionDataStore) -> String {
+        "\(GameText.characterName(character, labels: labels)) — \(rest)"
     }
 
     // MARK: - Short Rest Overlay
@@ -1170,9 +1190,9 @@ struct BoardView: View {
                     VStack(spacing: 6) {
                         Image(systemName: "moon.zzz.fill")
                             .font(BoardTheme.font(size: 36))
-                            .foregroundStyle(.cyan)
+                            .foregroundStyle(BoardTheme.brass)
 
-                        Text("\(character.title.isEmpty ? character.name : character.title) — Short Rest")
+                        Text(Self.restTitle("Short Rest", for: character, labels: gameManager.editionStore))
                             .font(.title3.weight(.bold))
                             .foregroundStyle(charColor)
 
@@ -1224,7 +1244,7 @@ struct BoardView: View {
                                 Label("Accept", systemImage: "checkmark.circle.fill")
                             }
                             .buttonStyle(.borderedProminent)
-                            .tint(.green)
+                            .tint(BoardTheme.brass)
 
                             Button {
                                 coordinator.rerollShortRest()
@@ -1241,7 +1261,7 @@ struct BoardView: View {
                                 Label("Short Rest", systemImage: "moon.zzz.fill")
                             }
                             .buttonStyle(.borderedProminent)
-                            .tint(.cyan)
+                            .tint(BoardTheme.brass)
 
                             Button {
                                 coordinator.skipShortRest()
@@ -1254,13 +1274,9 @@ struct BoardView: View {
                     }
                 }
                 .padding(24)
-                .frame(maxHeight: 500)
-                .background(.black.opacity(0.92))
-                .clipShape(RoundedRectangle(cornerRadius: 16))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 16)
-                        .stroke(.cyan.opacity(0.4), lineWidth: 1)
-                )
+                .frame(maxWidth: 520)
+                .fixedSize(horizontal: false, vertical: true)   // as tall as its contents
+                .boardPanel()
                 .padding(40)
             }
     }

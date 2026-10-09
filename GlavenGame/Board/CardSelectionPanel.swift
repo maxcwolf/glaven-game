@@ -76,8 +76,9 @@ struct CardSelectionPanel: View {
                             characterColor: characterColor,
                             highlight: highlight,
                             width: 130,
-                            height: (isTop || isBtm) ? 240 : 220,
-                            roleBadge: isTop ? "LEAD · INITIATIVE \(card.initiative)" : (isBtm ? "SECOND" : nil),
+                            // One height for every card, so choosing one doesn't resize the panel.
+                            height: 240,
+                            roleBadge: isTop ? "LEAD · \(card.initiative)" : (isBtm ? "SECOND" : nil),
                             roleBadgeColor: isTop ? .yellow : .cyan,
                             labelResolver: labelResolver,
                             onPreview: card.cardId.map { id in { coordinator.showCardPreview(cardId: id) } }
@@ -117,7 +118,8 @@ struct CardSelectionPanel: View {
         .padding(.vertical, 12)
         .background(
             ZStack {
-                Color.black.opacity(0.85)
+                // Opaque: the battle log behind mustn't show through the cards.
+                Color.black
                 characterColor.opacity(0.2)
                 LinearGradient(
                     colors: [characterColor.opacity(0.1), Color.clear],

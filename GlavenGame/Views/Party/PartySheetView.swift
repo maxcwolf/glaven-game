@@ -427,7 +427,7 @@ struct PartySheetView: View {
                             fallbackColor: .gray
                         )
                         VStack(alignment: .leading, spacing: 2) {
-                            Text(character.title.isEmpty ? character.name.replacingOccurrences(of: "-", with: " ").capitalized : character.title)
+                            Text(GameText.characterName(character, labels: gameManager.editionStore))
                                 .font(.subheadline)
                                 .fontWeight(.medium)
                             Text("Level \(character.level) | XP: \(character.experience) | Gold: \(character.loot)")

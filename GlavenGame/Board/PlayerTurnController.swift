@@ -95,6 +95,7 @@ final class PlayerTurnController {
         let cells: [HexCoord: HexCell]
         let logCount: Int
         let hasActed: Bool
+        let topUsedAsDefault: Bool, bottomUsedAsDefault: Bool
         let topActions: [ActionModel], bottomActions: [ActionModel]
         let hexesMoved: Int, damageInflicted: Int, lootBonus: Int, damageSuffered: Int, lastMoveLength: Int
         let hexesPassed: [HexCoord]
@@ -305,6 +306,7 @@ final class PlayerTurnController {
             character: character.toSnapshot(), elements: game.elementBoard,
             positions: coordinator.boardState.piecePositions, cells: coordinator.boardState.cells,
             logCount: coordinator.turnLog.count, hasActed: hasActed,
+            topUsedAsDefault: topUsedAsDefault, bottomUsedAsDefault: bottomUsedAsDefault,
             topActions: topActions, bottomActions: bottomActions,
             hexesMoved: hexesMoved, damageInflicted: damageInflicted, lootBonus: lootBonus,
             damageSuffered: damageSuffered, lastMoveLength: lastMoveLength, hexesPassed: hexesPassed,
@@ -319,7 +321,7 @@ final class PlayerTurnController {
     /// printed action, nothing on the board has changed since the action began, and no other
     /// question is open.
     var canCancelChoice: Bool {
-        guard let checkpoint, let coordinator, awaitingAsync, !defaultAttackPending else { return false }
+        guard let checkpoint, let coordinator, awaitingAsync || defaultAttackPending else { return false }
         switch coordinator.interactionMode {
         case .selectingMove, .selectingAttackTarget, .selectingMultiAttackTargets, .placingSummon, .placingToken,
              .choosingPerformer, .selectingConditionTarget, .selectingHealTarget, .selectingForcedMoveTarget:
@@ -336,6 +338,15 @@ final class PlayerTurnController {
             && coordinator.pendingDamage == nil && coordinator.pendingSummonPlacement == nil
     }
 
+    /// Whether `action` is a single-target attack with no enemy in range right now, so its
+    /// button can say so before it's spent on nothing.
+    func attackHasNoTarget(_ action: ActionModel) -> Bool {
+        guard action.type == .attack, let coordinator,
+              !(action.subActions ?? []).contains(where: { $0.type == .area || $0.type == .specialTarget }) else { return false }
+        let range = (action.subActions ?? []).first { $0.type == .range }?.value?.intValue ?? 1
+        return coordinator.targetableEnemies(of: .character(characterID), range: max(1, range)).isEmpty
+    }
+
     /// The player answered the board's question: from here the action can't be cancelled.
     func choiceMade() { checkpoint = nil }
 
@@ -348,6 +359,9 @@ final class PlayerTurnController {
             coordinator.turnLog.removeLast(coordinator.turnLog.count - checkpoint.logCount)
         }
         hasActed = checkpoint.hasActed
+        topUsedAsDefault = checkpoint.topUsedAsDefault
+        bottomUsedAsDefault = checkpoint.bottomUsedAsDefault
+        defaultAttackPending = false
         topActions = checkpoint.topActions
         bottomActions = checkpoint.bottomActions
         hexesMoved = checkpoint.hexesMoved
@@ -382,10 +396,11 @@ final class PlayerTurnController {
             endForExhaustion()
             return
         }
+        guard !awaitingAsync else { return }
+        checkpoint = makeCheckpoint()
         hasActed = true
 
         let pieceID = PieceID.character(characterID)
-        guard !awaitingAsync else { return }
         switch phase {
         case .executeTopAction:
             // Versatile Dagger, Balanced Blade: a stronger basic attack.

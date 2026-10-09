@@ -18,7 +18,8 @@ struct EventSheet: View {
     var body: some View {
         ZStack {
             BoardTheme.scrim.ignoresSafeArea()
-            if let event = manager.topCard(deck) ?? resolvedEvent {
+            // Once resolved the card has left the deck: keep showing it, not the next one.
+            if let event = Self.shownEvent(resolved: resolution != nil, kept: resolvedEvent, top: manager.topCard(deck)) {
                 VStack(alignment: .leading, spacing: 16) {
                     header(event)
                     // Event texts fit an iPad without scrolling (the longest is about 800 characters).
@@ -54,6 +55,12 @@ struct EventSheet: View {
 
     /// Kept so the result can still show after the card leaves the top of the deck.
     @State private var resolvedEvent: EventCardData?
+
+    /// The card the sheet shows: the top of the deck until it's resolved, then the card kept
+    /// from before (the deck's new top card is a different event).
+    static func shownEvent(resolved: Bool, kept: EventCardData?, top: EventCardData?) -> EventCardData? {
+        resolved ? (kept ?? top) : (top ?? kept)
+    }
 
     private func header(_ event: EventCardData) -> some View {
         HStack(alignment: .firstTextBaseline) {

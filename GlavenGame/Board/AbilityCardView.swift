@@ -62,9 +62,13 @@ struct BoardAbilityCardView: View {
                     }
                     Text(badge)
                         .font(BoardTheme.font(size: 11, weight: .bold))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.7)
                 }
                 .foregroundStyle(roleBadgeColor)
                 .frame(maxWidth: .infinity)
+                // Clear of the preview button in the corner.
+                .padding(.trailing, onPreview != nil ? scaledFont(18) : 0)
                 .padding(.vertical, 3)
                 .background(roleBadgeColor.opacity(0.15))
             }

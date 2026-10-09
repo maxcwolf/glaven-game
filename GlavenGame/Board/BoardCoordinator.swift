@@ -722,6 +722,15 @@ final class BoardCoordinator {
         turnLog = []
         log("Scenario \(scenario.id): \(scenario.title)", category: .setup)
         log("\(boardState.startingLocations.count) starting locations available", category: .setup)
+        beginNextPlacement()
+    }
+
+    /// Ready the next character to place, its starting hexes lit, so setup is a tap per character.
+    func beginNextPlacement() {
+        guard boardPhase == .setup,
+              let next = gameManager?.game.activeCharacters.first(where: { boardState.piecePositions[.character($0.id)] == nil })
+        else { return }
+        beginPlaceCharacter(characterID: next.id)
     }
 
     /// Put a saved scenario back on the board at the start of a round. The game (figures, decks,
@@ -860,6 +869,7 @@ final class BoardCoordinator {
         boardScene?.clearHighlights()
         interactionMode = .idle
         log("\(characterName(characterID)) takes position", category: .setup, trace: "at \(coord)")
+        beginNextPlacement()
     }
 
     /// Place a summon on a chosen hex during interactive summon placement.
