@@ -14,6 +14,15 @@ struct PersonalQuest: Equatable, Identifiable {
     let requirements: [Requirement]
     /// The class it unlocks on retirement, if any.
     let unlocks: String?
+    /// The envelope it opens on retirement instead ("X"), if any.
+    var envelope: String? = nil
+
+    /// What retiring with it brings: "Unlocks the Plagueherald", "Opens Envelope X".
+    var reward: String? {
+        if let unlocks { return "Unlocks the \(unlocks)" }
+        if let envelope { return "Opens Envelope \(envelope)" }
+        return nil
+    }
 }
 
 /// Dealing personal quests (GH p.12): a recruit is dealt two and keeps one; on completing it the
@@ -33,7 +42,7 @@ extension CharacterManager {
         }
         let unlocks = data.unlockCharacter.map { GameText.className($0, edition: edition, labels: editionStore) }
         return PersonalQuest(id: cardId, name: labels?[""] as? String ?? "Quest \(cardId)",
-                             requirements: requirements, unlocks: unlocks)
+                             requirements: requirements, unlocks: unlocks, envelope: data.openEnvelope)
     }
 
     private static func requirementText(_ raw: String, labels: String?, store: EditionDataStore, edition: String) -> String {

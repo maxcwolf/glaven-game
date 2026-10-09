@@ -17,6 +17,18 @@ final class PersonalQuestTests: XCTestCase {
         manager.addCharacter(name: "tinkerer", edition: "gh")
     }
 
+    /// Every quest says what retiring with it brings: a class, or Envelope X (iPad playthrough
+    /// 2026-10-09: 513 and 526 showed nothing).
+    func testEveryQuestSaysWhatItBrings() throws {
+        for data in gm.editionStore.personalQuests(for: "gh") {
+            let quest = try XCTUnwrap(manager.personalQuest(data.cardId))
+            XCTAssertNotNil(quest.reward, "quest \(data.cardId)")
+        }
+        XCTAssertEqual(manager.personalQuest("513")?.reward, "Opens Envelope X")
+        XCTAssertEqual(manager.personalQuest("526")?.reward, "Opens Envelope X")
+        XCTAssertTrue(manager.personalQuest("523")?.reward?.hasPrefix("Unlocks the ") == true)
+    }
+
     private func give(_ questId: String, to character: GameCharacter) {
         character.questChoices = [questId]
         manager.chooseQuest(questId, for: character)

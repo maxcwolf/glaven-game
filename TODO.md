@@ -477,16 +477,16 @@ Performance & robustness
 - [x] Short-rest re-pick offered more than once — it was already disabled after one use, just not visibly (restyle below)
 - [ ] Element consumption should be the player's choice, not automatic
 - [ ] Move 0 with a rider (Rumbling Advance)
-- [ ] A new campaign isn't saved on recruiting; no save during a scenario
-- [ ] Verify #2's "3 Curses each" start rule
+- [x] A new campaign is saved once a recruit keeps a quest (it was already saved on leaving the app and at each round's start)
+- [x] Verify #2's "3 Curses each" start rule (`testScenario2CursesAddedOnceNotPerKill`)
 - [ ] Learning tips: four at once on the first attack (one swallows a tap); Resting tip after the rest prompt
 - [x] No rest prompts once the scenario is won
 - [x] "Special Effect" buttons should name what the half does
 - [ ] Warn when a move's path opens a door
 - [x] Heal log on a poisoned figure ("for 0" → "removes Poison")
-- [ ] Town header says "In town" as soon as a recruit joins
+- [x] Town header says "In town" as soon as a recruit joins
 - [x] Easy hint repeats itself
-- [ ] Envelope quest rewards; −1 cards on item tiles
+- [x] Envelope quest rewards; −1 cards on item tiles
 - [x] Road Event header icon
 - [ ] Short/Long Rest and gold-sharing dialogs in the board's look
 - [ ] Hold "Unlocks the …" in the quest picker to learn about the class

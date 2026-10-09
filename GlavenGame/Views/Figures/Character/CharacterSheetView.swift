@@ -148,7 +148,7 @@ struct CharacterSheetView: View {
                 ForEach(Array(quest.requirements.enumerated()), id: \.offset) { index, requirement in
                     requirementRow(requirement, index: index, quest: quest)
                 }
-                Text(quest.unlocks.map { "Fulfil it to retire. Retiring unlocks the \($0)." } ?? "Fulfil it to retire.")
+                Text(quest.reward.map { "Fulfil it to retire. Retiring \($0.prefix(1).lowercased() + $0.dropFirst())." } ?? "Fulfil it to retire.")
                     .font(BoardTheme.font(size: 12))
                     .foregroundStyle(BoardTheme.secondaryText)
                     .fixedSize(horizontal: false, vertical: true)

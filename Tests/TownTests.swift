@@ -30,6 +30,16 @@ final class TownTests: XCTestCase {
         XCTAssertTrue(open().contains("82"), "an event's scenario is open")
     }
 
+    /// A new party stays a "New Campaign" while it recruits and shops; it's in town once a
+    /// scenario has been played, won or lost.
+    func testANewPartyIsInTownOnlyAfterAScenario() throws {
+        let gm = try party(["cragheart", "spellweaver"])
+        XCTAssertFalse(gm.game.campaignLog.isEmpty, "joining is logged")
+        XCTAssertFalse(GameSetupView.isInTown(gm.game))
+        gm.game.campaignLog.append(CampaignLogEntry(type: .scenarioFailed, message: "Failed #1 Black Barrow"))
+        XCTAssertTrue(GameSetupView.isInTown(gm.game))
+    }
+
     // MARK: - Layout
 
     /// Regression: the parchment background sized the town wider than the screen, pushing the
@@ -321,6 +331,11 @@ extension TownTests {
         XCTAssertTrue(try rule(139).hasPrefix("Any time you perform an Augment action"))
         XCTAssertEqual(try rule(1), "During your movement, add +2 Move to the movement.")
         XCTAssertEqual(try rule(35), "During your turn, summon a Jade Falcon: 2 health, Move 3, Attack 2, flying.")
+        // Heavy armor says what it costs (iPad playthrough 2026-10-09: Hide Armor's two −1 cards).
+        let hide = try rule(3), hood = try rule(76)
+        XCTAssertTrue(hide.hasSuffix("Adds two \u{2212}1 cards to your attack modifier deck."), hide)
+        XCTAssertTrue(hood.hasSuffix("Shield 1. Adds one \u{2212}1 card to your attack modifier deck."), hood)
+        XCTAssertFalse(try rule(7).contains("\u{2212}1 card"))
     }
 
     // MARK: - Character sheet

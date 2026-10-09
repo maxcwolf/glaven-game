@@ -60,8 +60,8 @@ struct QuestPicker: View {
                 .accessibilityElement(children: .combine)
             }
             Spacer(minLength: 0)
-            if let unlocks = quest.unlocks {
-                Label("Unlocks the \(unlocks)", systemImage: "lock.open")
+            if let reward = quest.reward {
+                Label(reward, systemImage: quest.unlocks == nil ? "envelope" : "lock.open")
                     .font(BoardTheme.font(size: 12, weight: .semibold))
                     .foregroundStyle(BoardTheme.secondaryText)
             }

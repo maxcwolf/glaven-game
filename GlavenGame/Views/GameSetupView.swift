@@ -104,8 +104,14 @@ struct GameSetupView: View {
     /// A hold on a button explains it; letting go then mustn't also press it.
     private var heldToLearn: Bool { gameManager.boardCoordinator.explanation != nil }
 
-    private var inTown: Bool {
-        !gameManager.game.completedScenarios.isEmpty || !gameManager.game.campaignLog.isEmpty
+    private var inTown: Bool { Self.isInTown(gameManager.game) }
+
+    /// The party is back in town once it has played a scenario, won, lost or abandoned —
+    /// recruiting, buying and the first road event don't count (iPad playthrough 2026-10-09:
+    /// the first recruit's "joined" entry turned "New Campaign" into "Gloomhaven · In town").
+    static func isInTown(_ game: GameState) -> Bool {
+        !game.completedScenarios.isEmpty
+            || game.campaignLog.contains { $0.type == .scenarioCompleted || $0.type == .scenarioFailed }
     }
 
     private var edition: String { gameManager.game.edition ?? "gh" }
@@ -180,7 +186,10 @@ struct GameSetupView: View {
                                 gameManager.characterManager.undoRecruit(character)
                                 questCharacter = nil
                             },
-                            onDone: { questCharacter = nil })
+                            onDone: {
+                                questCharacter = nil
+                                Self.questKept(gameManager)
+                            })
                     .transition(.opacity)
             }
         }
@@ -756,6 +765,12 @@ struct GameSetupView: View {
     /// Always present, so the rows below never move as the party changes.
     private var difficultyHint: some View {
         ScenarioLevelLine(text: Self.difficultyHint(for: gameManager))
+    }
+
+    /// A quest kept (a recruit's, or a new one after retiring): the campaign is saved, so the
+    /// party isn't lost if the app is closed before setting out.
+    static func questKept(_ gameManager: GameManager) {
+        gameManager.saveGame()
     }
 
     static func difficultyHint(for gameManager: GameManager) -> String {

@@ -20,6 +20,19 @@ final class CampaignTests: XCTestCase {
         return gm
     }
 
+    /// A recruit who has kept a quest is saved at once (iPad playthrough 2026-10-09: a new
+    /// party lived only in memory until something else saved it).
+    func testARecruitsKeptQuestSavesTheCampaign() throws {
+        let gm = manager(try container())
+        gm.characterManager.addCharacter(name: "cragheart", edition: "gh")
+        let character = gm.game.characters[0]
+        gm.characterManager.dealQuests(to: character)
+        gm.characterManager.chooseQuest(try XCTUnwrap(character.questChoices.first), for: character)
+        XCTAssertEqual(gm.campaigns, [])
+        GameSetupView.questKept(gm)
+        XCTAssertEqual(gm.campaigns.count, 1)
+    }
+
     /// A store kept in memory (tests, previews) never writes to the player's own campaigns.
     func testATestStoreKeepsItsCampaignsInATemporaryFolder() throws {
         let gm = manager(try container())

@@ -186,6 +186,17 @@ enum GameText {
     /// What an item does, as printed on its card ("During your movement, add +2 Move to the
     /// movement."); for an item without printed text, its actions ("Heal 3, Shield 1").
     static func itemRule(_ item: ItemData, labels: EditionDataStore) -> String {
+        let rule = printedItemRule(item, labels: labels)
+        guard item.minusOne > 0 else { return rule }
+        // Heavy armor's penalty, printed on the card as −1 icons (Hide Armor: two).
+        let words = ["no", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine"]
+        let count = item.minusOne < words.count ? words[item.minusOne] : "\(item.minusOne)"
+        let penalty = "Adds \(count) \u{2212}1 card\(item.minusOne == 1 ? "" : "s") to your attack modifier deck."
+        guard !rule.isEmpty else { return penalty }
+        return (rule.hasSuffix(".") ? rule : rule + ".") + " " + penalty
+    }
+
+    private static func printedItemRule(_ item: ItemData, labels: EditionDataStore) -> String {
         let actions = item.actions ?? []
         let printed = actions.compactMap { action -> String? in
             guard action.type == .custom, let raw = action.value?.stringValue, raw.hasPrefix("%") else { return nil }
