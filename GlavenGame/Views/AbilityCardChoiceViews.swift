@@ -101,7 +101,7 @@ struct LevelUpCardSheet: View {
                 }
                 .padding(20)
             }
-            .background(Color(red: 0.09, green: 0.075, blue: 0.065))
+            .background(BoardTheme.sheet)
             .navigationTitle("\(name) — Level \(character.level)")
             #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
@@ -158,7 +158,7 @@ struct HandSheet: View {
                 }
                 .padding(20)
             }
-            .background(Color(red: 0.09, green: 0.075, blue: 0.065))
+            .background(BoardTheme.sheet)
             .navigationTitle("\(GameText.characterName(character, labels: gameManager.editionStore))'s Hand")
             #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)

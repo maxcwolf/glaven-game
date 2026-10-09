@@ -6,6 +6,8 @@ enum BoardTheme {
     // Surfaces
     static let panel = Color(red: 0.11, green: 0.09, blue: 0.08).opacity(0.94)
     static let raised = Color(red: 0.17, green: 0.14, blue: 0.11)
+    /// Behind full-screen sheets and menus.
+    static let sheet = Color(red: 0.09, green: 0.075, blue: 0.065)
     static let scrim = Color.black.opacity(0.72)
     static let border = Color(red: 0.42, green: 0.33, blue: 0.15)
 

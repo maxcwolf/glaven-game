@@ -66,7 +66,7 @@ struct EnhancementSheet: View {
                 }
                 .frame(width: 380)
             }
-            .background(Color(red: 0.09, green: 0.075, blue: 0.065))
+            .background(BoardTheme.sheet)
     }
 
     private var sheet: some View {

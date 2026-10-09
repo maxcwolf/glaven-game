@@ -49,7 +49,7 @@ struct CreditsSheet: View {
                 .padding(24)
                 .frame(maxWidth: .infinity)
             }
-            .background(Color(red: 0.09, green: 0.075, blue: 0.065))
+            .background(BoardTheme.sheet)
             .navigationTitle("Credits")
             #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)

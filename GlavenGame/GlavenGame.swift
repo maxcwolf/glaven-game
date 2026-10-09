@@ -23,6 +23,8 @@ private struct ScaledContentView: View {
             .environment(\.isCompact, false)
             .dynamicTypeSize(dynamicTypeForScale(gameManager.settingsManager.uiScale))
             .preferredColorScheme(isLight ? .light : .dark)
+            // Controls take the theme's accent (brass by default) rather than system blue.
+            .tint(GlavenTheme.accentText)
             .onChange(of: scenePhase) { _, newPhase in
                 if newPhase == .background || newPhase == .inactive {
                     gameManager.settingsManager.saveSettings()

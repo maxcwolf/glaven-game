@@ -247,7 +247,7 @@ Phase VI — the rest of Gloomhaven's town rules
 - [ ] Hex (area) and any-element enhancements: not sold yet — areas need the added hex placed, any element needs an infusion picker (printed "infuse any element" is also skipped on the board today)
 - [x] Unlocking a class (by retirement or scenario reward) shuffles its unlock event into the city and road decks; retiring adds the class's retirement event (`PersonalQuestTests`)
 - [x] VoiceOver play on the board: every pick (move, start hex, summon, push/pull hex, attack/heal/condition/forced-move target, multi-target confirm) is a spoken action on the prompt banner — distance, direction, what's there and who's beside it — doing exactly what the tap does (`BoardAccessibilityTests`); the unused Majalla font is gone
-- [ ] The remaining menus on the board theme
+- [x] The remaining menus on the board theme: the default dark theme is the board's palette (warm dark, brass accent, warm text) and controls take the accent app-wide; Frosthaven/Modern/B&B themes keep theirs (`ThemeTests`)
 - Open questions for the user: docs/open-questions.md
 
 Found along the way
