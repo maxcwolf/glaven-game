@@ -796,6 +796,27 @@ final class BoardRulesRegressionTests: XCTestCase {
         XCTAssertEqual(cragheart.experience, xp + 1)
     }
 
+    /// Actions another figure performs ("Force one enemy… to perform Attack 2", "One adjacent
+    /// ally may perform Attack 6") are not the character's: they mustn't become its steps.
+    func testActionsForSomeoneElseAreNotTheCharacters() throws {
+        let affliction = try card("Submissive Affliction", of: "mindthief")
+        let steps = PlayerTurnController.steps(affliction.bottomActions ?? [], labels: gm.editionStore, edition: "gh")
+        XCTAssertFalse(steps.contains { $0.type == .attack }, "the forced Attack is the enemy's")
+        let possession = try card("Possession", of: "mindthief")
+        XCTAssertFalse(PlayerTurnController.steps(possession.actions ?? [], labels: gm.editionStore, edition: "gh")
+            .contains { $0.type == .attack }, "the ally's Attack 6")
+    }
+
+    /// Regression: Sinister Opportunity's Move 3 added the forced enemy's Move 1 (Move 4).
+    func testSinisterOpportunityMovesThree() throws {
+        let scoundrel = addCharacter("scoundrel", at: HexCoord(3, 3))
+        let turn = turn(for: scoundrel, top: try card("Backstab", of: "scoundrel"), bottom: try card("Sinister Opportunity", of: "scoundrel"),
+                        bottomFirst: true)
+        turn.executeCurrentAction()
+        guard case .selectingMove(_, let range, _, _, _) = coord.interactionMode else { return XCTFail() }
+        XCTAssertEqual(range, 3)
+    }
+
     // MARK: - Mindthief augments
 
     /// Play `augment`'s top (the augment, then its own Attack) against an adjacent Bandit Guard.

@@ -97,10 +97,11 @@ final class PlayerTurnController {
         self.bottomCard = bottom
         // Enhancements bought in town are part of the card (GH p.42).
         let enhancements = character?.enhancements ?? []
+        let labels = gameManager?.editionStore, edition = character?.edition ?? "gh"
         self.topActions = Self.steps(Self.attachingTargets(
-            CardEnhancing.apply(enhancements, to: top.actions ?? [], cardId: top.cardId, half: "top")))
+            CardEnhancing.apply(enhancements, to: top.actions ?? [], cardId: top.cardId, half: "top")), labels: labels, edition: edition)
         self.bottomActions = Self.steps(Self.attachingTargets(
-            CardEnhancing.apply(enhancements, to: bottom.bottomActions ?? [], cardId: bottom.cardId, half: "bottom")))
+            CardEnhancing.apply(enhancements, to: bottom.bottomActions ?? [], cardId: bottom.cardId, half: "bottom")), labels: labels, edition: edition)
         self.phase = bottomFirst ? .executeBottomAction : .executeTopAction
         self.currentActionIndex = 0
     }
@@ -381,10 +382,13 @@ final class PlayerTurnController {
             let bonus = consumeAugments(of: action)
             var moveValue = variableValue(action) ?? action.value?.intValue ?? 2
             var mode: MoveMode = action.type == .jump ? .jump : (action.type == .fly ? .fly : .normal)
+            // Sinister Opportunity: "Force one adjacent enemy to perform Move 1" is printed inside
+            // the move; that Move 1 is the enemy's, not added to the character's.
+            let movesForSomeoneElse = customText(of: action).contains("perform")
             for effect in (action.subActions ?? []) + bonus {
                 if effect.type == .jump { mode = .jump }
                 if effect.type == .fly { mode = .fly }
-                if effect.type == .move { moveValue += MonsterAbility.signedValue(effect) }
+                if effect.type == .move && !movesForSomeoneElse { moveValue += MonsterAbility.signedValue(effect) }
             }
             // Boots of Levitation, Cloak of Phasing: every move is a flight.
             if PassiveItems.flies(character?.items ?? []) { mode = .fly }
@@ -1002,14 +1006,15 @@ final class PlayerTurnController {
     /// boxes) and text that wraps printed actions (Crater's "suffer 1 damage" around its Move) are
     /// opened up, so a move or a target choice inside them is a step of its own and the turn
     /// waits for it. Augments stay whole: they aren't performed.
-    static func steps(_ actions: [ActionModel]) -> [ActionModel] {
+    static func steps(_ actions: [ActionModel], labels: EditionDataStore? = nil, edition: String = "gh") -> [ActionModel] {
         actions.flatMap { action -> [ActionModel] in
             switch action.type {
             case .concatenation, .grid:
                 return steps(action.subActions ?? [])
             case .box where !isAugment(action):
                 return steps(action.subActions ?? [])
-            case .custom where (action.subActions ?? []).contains(where: { isWrapped($0) }):
+            case .custom where (action.subActions ?? []).contains(where: { isWrapped($0) })
+                && !performedBySomeoneElse(action, labels: labels, edition: edition):
                 // The text stays a step (with the element it may consume, "2 damage instead");
                 // the actions it wraps become steps of their own.
                 var text = action
@@ -1019,6 +1024,14 @@ final class PlayerTurnController {
                 return [action]
             }
         }
+    }
+
+    /// Text that hands its actions to another figure ("Force one enemy… to perform", "One
+    /// adjacent ally may perform"): those actions aren't the character's to perform.
+    static func performedBySomeoneElse(_ action: ActionModel, labels: EditionDataStore?, edition: String) -> Bool {
+        guard let key = action.value?.stringValue else { return false }
+        let text = (labels?.resolveCustomText(key, edition: edition) ?? key).lowercased()
+        return text.contains("perform") || key.contains("perform")
     }
 
     /// A printed action wrapped by text (not a marker, more text, or an element it consumes).
