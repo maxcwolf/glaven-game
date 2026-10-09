@@ -173,6 +173,7 @@ enum GameText {
             case .or_: return "Choice"
             case .custom, .specialTarget, .changeType: return "Special"
             case .sufferDamage: return raw.isEmpty ? "Suffer Damage" : "Suffer \(raw) Damage"
+            case .target: return "Add Target"
             default:
                 let name = words(fromCamelCase: effect.type.rawValue)
                 return raw.isEmpty ? name : "\(name) \(raw)"
@@ -180,6 +181,62 @@ enum GameText {
         }
         if card.rolling { parts.insert("Rolling", at: 0) }
         return parts
+    }
+
+    /// A perk in the rulebook's words: "Remove two \u{2212}1 cards", "Replace one +0 card with one
+    /// +2 card", "Add three rolling Push 1 cards", "Ignore negative item effects and add one +1 card".
+    static func perkText(_ perk: PerkModel) -> String {
+        let cards = perk.cards ?? []
+        let phrases = cards.map { cardPhrase($0.attackModifier, count: $0.count) }
+        if let custom = perk.custom, !custom.isEmpty {
+            let rule = perkRules[custom] ?? custom
+            guard !phrases.isEmpty else { return rule }
+            return "\(rule) and add \(list(phrases))"
+        }
+        switch perk.type {
+        case .add: return "Add \(list(phrases))"
+        case .remove: return "Remove \(list(phrases))"
+        case .replace:
+            guard let first = phrases.first, phrases.count > 1 else { return "Replace \(list(phrases))" }
+            return "Replace \(first) with \(list(Array(phrases.dropFirst())))"
+        case .custom: return "A special rule"
+        }
+    }
+
+    /// The perks that are rules rather than cards, named by placeholder in the edition data.
+    private static let perkRules = [
+        "%game.custom.perks.ignoreNegativeItem%": "Ignore negative item effects",
+        "%game.custom.perks.ignoreNegativeScenario%": "Ignore negative scenario effects",
+    ]
+
+    /// "one \u{2212}1 card", "three rolling Push 1 cards", "two +1 Wound cards".
+    private static func cardPhrase(_ card: AttackModifier, count: Int) -> String {
+        let numbers = ["no", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine"]
+        var words = [count < numbers.count ? numbers[count] : "\(count)"]
+        if card.rolling { words.append("rolling") }
+        let effects = modifierEffects(card).filter { $0 != "Rolling" }
+        // A rolling +0 card is named by what it does ("rolling Push 1"), as the cards print it.
+        if !(card.rolling && card.type == .plus0 && !effects.isEmpty) { words.append(modifierValue(card.type)) }
+        words += effects
+        words.append(count == 1 ? "card" : "cards")
+        return words.joined(separator: " ")
+    }
+
+    /// "+1", "\u{2212}2", "\u{00D7}2", "Null".
+    static func modifierValue(_ type: AttackModifierType) -> String {
+        switch type {
+        case .plus0: return "+0"
+        case .plus1: return "+1"
+        case .plus2: return "+2"
+        case .plus3: return "+3"
+        case .plus4: return "+4"
+        case .plusX: return "+X"
+        case .minus1, .minus1extra: return "\u{2212}1"
+        case .minus2: return "\u{2212}2"
+        case .double_: return "\u{00D7}2"
+        case .null_: return "Null"
+        default: return words(fromCamelCase: type.rawValue).capitalized
+        }
     }
 
     /// "Fire", "Fire and Ice", "Fire, Ice and Air".

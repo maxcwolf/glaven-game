@@ -163,6 +163,30 @@ final class PlayerTextTests: XCTestCase {
                        "Attack 3, Range 2")
     }
 
+    /// Regression: the "ignore negative effects" perks showed their data placeholder
+    /// ("%game.custom.perks.ignoreNegativeItem%") and dropped the card that comes with them;
+    /// other perks read "Add 1x rolling +0 condition" without naming the condition.
+    func testPerksReadAsTheRulebookWritesThem() throws {
+        let gm = try SaveAndContinueTestsSupport.manager()
+        for edition in gm.editionStore.editions.map(\.edition) {
+            for character in gm.editionStore.characters(for: edition) {
+                for perk in character.perks ?? [] {
+                    let text = GameText.perkText(perk)
+                    XCTAssertFalse(text.contains("%") || text.lowercased().contains("custom") || text.contains("x "),
+                                   "\(edition) \(character.name): \(text)")
+                    XCTAssertEqual(Self.lint(text), [], "\(edition) \(character.name): \(text)")
+                }
+            }
+        }
+        let brute = try XCTUnwrap(gm.editionStore.characters(for: "gh").first { $0.name == "brute" }?.perks)
+            .map(GameText.perkText)
+        XCTAssertEqual(brute.last, "Ignore negative item effects and add one +1 card")
+        XCTAssertTrue(brute.contains("Replace one \u{2212}1 card with one +1 card"))
+        XCTAssertTrue(brute.contains("Add three rolling Push 1 cards"))
+        XCTAssertTrue(brute.contains("Add one rolling Disarm card and one rolling Muddle card"))
+        XCTAssertTrue(brute.contains("Add one rolling Add Target card"))
+    }
+
     func testConditionAndElementNames() {
         for condition in ConditionName.allCases {
             XCTAssertEqual(Self.lint(GameText.conditionName(condition)), [], "\(condition)")
