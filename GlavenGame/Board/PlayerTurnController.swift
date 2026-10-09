@@ -619,7 +619,10 @@ final class PlayerTurnController {
             var range = 0
             var conditions: [ConditionName] = []
             for sub in (action.subActions ?? []) + bonus {
-                if sub.type == .range, let r = sub.value?.intValue { range = r }
+                if sub.type == .range, let r = sub.value?.intValue {
+                    // "+1 Range" from an element adds to the printed range.
+                    range = [.add, .addition, .plus].contains(sub.valueType) ? range + r : r
+                }
                 if sub.type == .heal { healValue += MonsterAbility.signedValue(sub) }
                 if sub.type == .condition, let name = sub.value?.stringValue, let cond = ConditionName(rawValue: name) {
                     conditions.append(cond)
@@ -763,6 +766,18 @@ final class PlayerTurnController {
             coordinator.sufferDamage(sufferValue, to: pieceID)
 
         case .element:
+            // A consume printed as its own step, with what it gives inside (Wretched Creature:
+            // "consume Dark: Curse one adjacent enemy"): the reward happens if it's paid.
+            let rewards = (action.subActions ?? []).filter { $0.type != .custom }
+            if MonsterAbility.isConsume(action), !rewards.isEmpty, let game = gameManager?.game {
+                guard let used = game.consumeElements(MonsterAbility.elements(of: action)) else { break }
+                coordinator.log("\(who) consumes \(GameText.list(used.map(GameText.elementName)))", category: .element)
+                var waits = false
+                for reward in Self.attachingTargets(rewards) where reward.type != .specialTarget {
+                    if executeAction(reward, coordinator: coordinator) { waits = true; break }
+                }
+                return waits
+            }
             applyElementAction(action, coordinator: coordinator)
 
         case .refreshItem, .refreshSpent, .forceRefresh:
@@ -1195,19 +1210,60 @@ final class PlayerTurnController {
     /// opened up, so a move or a target choice inside them is a step of its own and the turn
     /// waits for it. Augments stay whole: they aren't performed.
     static func steps(_ actions: [ActionModel], labels: EditionDataStore? = nil, edition: String = "gh") -> [ActionModel] {
+        attachingModifierConsumes(flatSteps(actions, labels: labels, edition: edition))
+    }
+
+    /// A consume printed as its own step whose reward only modifies the action before it
+    /// ("Heal 5, Range 3 / consume Air: +1 Heal, +1 Range"; an area for the attack before it)
+    /// belongs to that action: it's paid and applied when that action is performed.
+    private static func attachingModifierConsumes(_ steps: [ActionModel]) -> [ActionModel] {
+        var result: [ActionModel] = []
+        for step in steps {
+            if MonsterAbility.isConsume(step), let host = modifiedType(by: step),
+               let index = result.lastIndex(where: { $0.type == host }) {
+                result[index].subActions = (result[index].subActions ?? []) + [step]
+                continue
+            }
+            result.append(step)
+        }
+        return result
+    }
+
+    /// The one action type a consume's reward modifies, if all of it is a modifier.
+    private static func modifiedType(by consume: ActionModel) -> ActionType? {
+        func flatten(_ actions: [ActionModel]) -> [ActionModel] {
+            actions.flatMap { $0.type == .concatenation ? flatten($0.subActions ?? []) : [$0] }
+        }
+        let rewards = flatten(consume.subActions ?? []).filter { $0.type != .card && $0.type != .custom }
+        guard !rewards.isEmpty else { return nil }
+        var hosts = Set<ActionType>()
+        for reward in rewards {
+            switch reward.type {
+            case .area: hosts.insert(.attack)
+            case .range: continue   // whichever action it goes with
+            default:
+                guard [.add, .addition, .plus].contains(reward.valueType) else { return nil }
+                hosts.insert(reward.type)
+            }
+        }
+        if hosts.isEmpty { return nil }
+        return hosts.count == 1 ? hosts.first : nil
+    }
+
+    private static func flatSteps(_ actions: [ActionModel], labels: EditionDataStore?, edition: String) -> [ActionModel] {
         actions.flatMap { action -> [ActionModel] in
             switch action.type {
             case .concatenation, .grid:
-                return steps(action.subActions ?? [])
+                return flatSteps(action.subActions ?? [], labels: labels, edition: edition)
             case .box where !isAugment(action):
-                return steps(action.subActions ?? [])
+                return flatSteps(action.subActions ?? [], labels: labels, edition: edition)
             case .custom where (action.subActions ?? []).contains(where: { isWrapped($0) })
                 && !performedBySomeoneElse(action, labels: labels, edition: edition):
                 // The text stays a step (with the element it may consume, "2 damage instead");
                 // the actions it wraps become steps of their own.
                 var text = action
                 text.subActions = (action.subActions ?? []).filter { !isWrapped($0) }
-                return [text] + steps((action.subActions ?? []).filter(isWrapped))
+                return [text] + flatSteps((action.subActions ?? []).filter(isWrapped), labels: labels, edition: edition)
             default:
                 return [action]
             }

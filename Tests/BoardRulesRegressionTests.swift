@@ -977,6 +977,37 @@ final class BoardRulesRegressionTests: XCTestCase {
         XCTAssertEqual(tinkerer.health, 3, "not the Tinkerer")
     }
 
+    /// Wretched Creature: "consume Dark: Curse one adjacent enemy" printed as its own step.
+    func testAConsumeStepGivesWhatItPrints() throws {
+        let mindthief = addCharacter("mindthief", at: HexCoord(3, 3))
+        let bandit = addMonster("bandit-guard", at: HexCoord(4, 3))
+        _ = bandit
+        gm.game.elementBoard[gm.game.elementBoard.firstIndex { $0.type == .dark }!].state = .strong
+        let turn = turn(for: mindthief, top: try card("Scurry", of: "mindthief"), bottom: try card("Wretched Creature", of: "mindthief"),
+                        bottomFirst: true)
+        turn.skipCurrentAction()      // Move 3
+        turn.executeCurrentAction()   // consume Dark: Curse one adjacent enemy
+        XCTAssertFalse(gm.game.isElementAvailable(.dark))
+        guard case .selectingConditionTarget(_, .curse, _) = coord.interactionMode else { return XCTFail("a curse to aim") }
+    }
+
+    /// Natural Remedy: "Heal 5, Range 3 / consume Air: +1 Heal, +1 Range" is one heal.
+    func testAModifierConsumeBelongsToTheActionBeforeIt() throws {
+        let remedy = try card("Natural Remedy", of: "two-mini")
+        let steps = PlayerTurnController.steps(remedy.actions ?? [], labels: gm.editionStore, edition: "gh")
+        XCTAssertEqual(steps.map(\.type), [.heal], "the consume rides on the heal")
+
+        let tyrant = addCharacter("two-mini", at: HexCoord(3, 3))
+        _ = addCharacter("brute", at: HexCoord(5, 3))
+        gm.game.elementBoard[gm.game.elementBoard.firstIndex { $0.type == .air }!].state = .strong
+        let other = try XCTUnwrap(gm.editionStore.abilities(forDeck: "two-mini", edition: "gh").first { $0.cardId != remedy.cardId })
+        let turn = turn(for: tyrant, top: remedy, bottom: other)
+        turn.executeCurrentAction()
+        guard case .selectingHealTarget(_, let value, _) = coord.interactionMode else { return XCTFail("a heal to aim") }
+        XCTAssertEqual(value, 6)
+        XCTAssertFalse(gm.game.isElementAvailable(.air))
+    }
+
     // MARK: - Mindthief augments
 
     /// Play `augment`'s top (the augment, then its own Attack) against an adjacent Bandit Guard.
