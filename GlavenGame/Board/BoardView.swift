@@ -462,7 +462,9 @@ struct BoardView: View {
                         Button {
                             playerTurn.executeCurrentAction()
                         } label: {
-                            Label(GameText.actionTitle(action), systemImage: "play.fill")
+                            Label(playerTurn.stepTitle(action), systemImage: "play.fill")
+                                .lineLimit(2)
+                                .multilineTextAlignment(.leading)
                         }
                         .buttonStyle(noTarget ? BoardButtonStyle(kind: .quiet) : BoardButtonStyle(kind: .primary))
                         if noTarget {

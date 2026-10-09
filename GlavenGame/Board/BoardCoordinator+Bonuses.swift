@@ -370,7 +370,7 @@ extension BoardCoordinator {
             case .endOfTurnHealAdjacent(let amount):
                 for ally in alliesInRange(of: me, range: 1, includeSelf: false).sorted() {
                     let healed = heal(ally, amount: amount, source: me)
-                    log("\(name(me)) heals \(name(ally)) for \(healed)", category: .heal)
+                    log(healLine(me, healed: ally, for: healed), category: .heal)
                 }
                 useCharge(cardId, of: character)
             default:

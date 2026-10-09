@@ -87,10 +87,22 @@ extension BoardCoordinator {
             if case .healedBonus = $0 { return true }; return false }) {
             amount += extra
         }
+        let before = Set(entity.entityConditions.map(\.name))
         let healed = gameManager.entityManager.heal(entity, amount: amount)
+        lastHealRemoved = before.subtracting(entity.entityConditions.map(\.name)).sorted { $0.rawValue < $1.rawValue }
         if healed > 0 { boardScene?.pieceHeal(id: pieceID, amount: healed) }
         boardScene?.refreshStatus(of: pieceID)
         return healed
+    }
+
+    /// The log line for a heal just made: "Spellweaver heals Cragheart for 3", "… and removes
+    /// Wound", or "Spellweaver removes Cragheart's Poison" when the heal only removed Poison.
+    func healLine(_ healer: PieceID, healed target: PieceID, for amount: Int) -> String {
+        let removed = GameText.list(lastHealRemoved.map(GameText.conditionName))
+        if amount == 0 && !lastHealRemoved.isEmpty {
+            return "\(name(healer)) removes \(name(target))\u{2019}s \(removed)"
+        }
+        return "\(name(healer)) heals \(name(target)) for \(amount)" + (lastHealRemoved.isEmpty ? "" : " and removes \(removed)")
     }
 
     // MARK: - Conditions

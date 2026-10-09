@@ -281,6 +281,8 @@ final class BoardCoordinator {
 
     /// The most recent attack's modifier cards, shown in the tray until the next attack.
     var lastModifierReveal: ModifierReveal?
+    /// The conditions the latest heal removed (Poison, Wound), for its log line.
+    @ObservationIgnored var lastHealRemoved: [ConditionName] = []
 
     /// Resolve modifier draws, damage-negation prompts and forced-movement choices automatically
     /// (no player input). Used for headless simulation and tests.
@@ -851,6 +853,8 @@ final class BoardCoordinator {
         currentTurnToggled = false
         lastAttackTarget = nil
         lastAttackerPos = nil
+        lastModifierReveal = nil   // the last scenario's draw isn't this one's
+        lastDrawnModifier = nil
         characterTraps = [:]
         pendingDoomDeaths = []
         pendingDamageAttacks = []
@@ -1583,8 +1587,13 @@ final class BoardCoordinator {
         for character in gameManager?.game.characters ?? [] {
             for cardId in character.roundBonusCards { character.removeFromActiveArea(cardId) }
         }
-        // Offer short rests before transitioning to the next round
-        offerShortRests()
+        // Offer short rests before transitioning to the next round — unless the scenario ends
+        // with this round, when a rest changes nothing.
+        if pendingResult != nil {
+            proceedAfterShortRests()
+        } else {
+            offerShortRests()
+        }
     }
 
     // MARK: - Victory / Defeat
@@ -2675,7 +2684,7 @@ final class BoardCoordinator {
         case .selectingHealTarget(let healerID, let healValue, let validTargets):
             if validTargets.contains(piece) {
                 let healed = heal(piece, amount: healValue, source: healerID)
-                log("\(name(healerID)) heals \(name(piece)) for \(healed)", category: .heal, trace: "Heal \(healValue)")
+                log(healLine(healerID, healed: piece, for: healed), category: .heal, trace: "Heal \(healValue)")
                 for condition in pendingHealConditions { applyCondition(condition, to: piece) }
                 pendingHealConditions = []
                 boardScene?.clearHighlights()

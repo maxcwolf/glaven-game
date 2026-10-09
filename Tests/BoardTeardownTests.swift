@@ -145,6 +145,25 @@ final class BoardTeardownTests: XCTestCase {
     }
 }
 
+extension BoardTeardownTests {
+    /// The modifier tray shows the last scenario's last draw no more once the next one begins
+    /// (iPad playthrough 2026-10-09: "Cragheart → Bandit Archer 2" greeted #2 Barrow Lair).
+    func testTheNextScenarioStartsWithNoDrawShown() throws {
+        let gm = try SaveAndContinueTestsSupport.manager()
+        gm.characterManager.addCharacter(name: "brute", edition: "gh")
+        let scenarios = gm.editionStore.scenarios(for: "gh").filter { $0.solo == nil }
+        gm.startScenarioOnBoard(try XCTUnwrap(scenarios.first { $0.index == "1" }))
+        let coord = gm.boardCoordinator
+        let brute = PieceID.character(gm.game.characters[0].id)
+        let card = AttackModifier(type: .plus0)
+        coord.lastModifierReveal = .init(attacker: brute, defender: brute, drawn: [card], selected: [card],
+                                         advantage: false, disadvantage: false, drawnByPlayer: true)
+        coord.exitBoard()
+        gm.startScenarioOnBoard(try XCTUnwrap(scenarios.first { $0.index == "2" }))
+        XCTAssertNil(coord.lastModifierReveal)
+    }
+}
+
 /// A board scene whose move animations never finish.
 private final class StalledScene: BoardScene {
     override func movePiece(id: PieceID, along path: [HexCoord], animation: MoveAnimation = .walk,

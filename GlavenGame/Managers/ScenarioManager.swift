@@ -313,16 +313,16 @@ final class ScenarioManager {
             if scenario.group == "solo" || scenario.group == "randomDungeon"
                 || scenario.group == "randomMonsterCard" || scenario.group == "randomDungeonCard" { return false }
 
-            // Initial scenarios are always available
-            if scenario.isInitial { return true }
-
-            // Already completed and not repeatable
+            // Already completed and not repeatable (an initial scenario too)
             if game.completedScenarios.contains(scenario.id) && !scenario.isRepeatable {
                 return false
             }
 
-            // Check if unlocked via completed scenarios
-            let isUnlocked = isScenarioUnlocked(scenario, edition: edition)
+            // Initial scenarios are always available
+            if scenario.isInitial { return true }
+
+            // Unlocked by a completed scenario, or by an event, treasure or reward
+            let isUnlocked = isScenarioUnlocked(scenario, edition: edition) || game.manualScenarios.contains(scenario.id)
 
             // Check requirements (achievements, etc.)
             let meetsRequirements = checkRequirements(scenario)

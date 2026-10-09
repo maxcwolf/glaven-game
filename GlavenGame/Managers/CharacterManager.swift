@@ -133,6 +133,13 @@ final class CharacterManager {
         return true
     }
 
+    /// The hand the character brings into the next scenario: the one they chose, or the default
+    /// from their pool if they haven't chosen one (it's dealt as the board is entered).
+    func nextHand(for character: GameCharacter) -> [Int] {
+        guard character.handCards.isEmpty else { return character.handCards }
+        return CardPool.defaultHand(abilities(for: character), chosen: character.chosenCards, handSize: character.handSize)
+    }
+
     /// Set the hand the character brings into the next scenario: cards from their pool, as many
     /// as their hand size (or the whole pool, if it's smaller).
     @discardableResult

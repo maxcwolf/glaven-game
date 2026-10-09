@@ -165,6 +165,36 @@ final class EventCardTests: XCTestCase {
         XCTAssertTrue(game.events.nextScenario.isEmpty, "applied once")
     }
 
+    /// Each deck's header symbol is a real one, and the road's reads as a road sign (iPad
+    /// playthrough 2026-10-09: `road.lanes` looked like "/ : \\").
+    func testEachDeckHasASymbol() {
+        for deck in EventCardManager.Deck.allCases {
+            XCTAssertNotNil(NSImage(systemSymbolName: EventSheet.icon(deck), accessibilityDescription: nil), deck.rawValue)
+        }
+        XCTAssertEqual(EventSheet.icon(.road), "signpost.right.fill")
+    }
+
+    /// Before the first scenario nobody has a hand yet (iPad playthrough 2026-10-09: road event
+    /// 24's "discard 2" offered no cards, Accept went ahead, and nothing was discarded): the
+    /// cards come from the hand they'll be dealt, Accept waits for them, and they're discarded.
+    func testDiscardsBeforeTheFirstScenarioComeFromTheHandToBeDealt() throws {
+        XCTAssertTrue(brute.handCards.isEmpty)
+        top(.road, "24")
+        let card = try XCTUnwrap(events.topCard(.road))
+        let cards = EventSheet.discardableCards(brute, gameManager: gm).compactMap(\.cardId)
+        XCTAssertEqual(cards.count, brute.handSize)
+        var choices = EventCardManager.Choices()
+        XCTAssertFalse(EventSheet.discardsComplete(card, option: "A", choices: choices, gameManager: gm))
+        choices.discards = [brute.id: Array(cards.prefix(2)),
+                            tinkerer.id: Array(EventSheet.discardableCards(tinkerer, gameManager: gm).compactMap(\.cardId).prefix(2))]
+        XCTAssertTrue(EventSheet.discardsComplete(card, option: "A", choices: choices, gameManager: gm))
+        events.resolve(.road, option: "A", choices: choices)
+
+        let scenario = try XCTUnwrap(gm.editionStore.scenarios(for: "gh").first { $0.index == "1" && $0.solo == nil })
+        gm.startScenarioOnBoard(scenario)
+        XCTAssertEqual(Set(brute.discardedCards), Set(cards.prefix(2)))
+    }
+
     /// GH 51's rewards add city event 81 and road event 69 to the decks.
     func testAScenarioRewardShufflesEventsIntoTheDecks() throws {
         let scenario = try XCTUnwrap(gm.editionStore.scenarios(for: "gh").first { $0.index == "51" && $0.solo == nil })

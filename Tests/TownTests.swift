@@ -13,6 +13,23 @@ final class TownTests: XCTestCase {
         return gm
     }
 
+    // MARK: - Open scenarios
+
+    /// The town's scenario list (iPad playthrough 2026-10-09): a scenario an event unlocked
+    /// (road event 24: #82 Burning Mountain) is open, and a won #1 Black Barrow isn't, though
+    /// it's where the campaign starts.
+    func testTheOpenScenariosFollowTheCampaign() throws {
+        let gm = try party(["cragheart"])
+        func open() -> [String] { gm.scenarioManager.availableScenarios(for: "gh").map(\.index) }
+        XCTAssertEqual(open(), ["1"])
+        gm.game.completedScenarios.insert("gh-1")
+        gm.game.partyAchievements.insert("first-steps")
+        gm.game.manualScenarios.insert("gh-82")
+        XCTAssertFalse(open().contains("1"), "a won scenario isn't open again")
+        XCTAssertTrue(open().contains("2"))
+        XCTAssertTrue(open().contains("82"), "an event's scenario is open")
+    }
+
     // MARK: - Layout
 
     /// Regression: the parchment background sized the town wider than the screen, pushing the

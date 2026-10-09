@@ -212,8 +212,9 @@ final class BoardRulesRegressionTests: XCTestCase {
         let turn = PlayerTurnController(characterID: character.id, coordinator: coord, gameManager: gm)
         coord.activePlayerTurn = turn
         turn.selectCards(top: shieldBash, bottom: wardingStrength)
-        turn.skipRemainingActions() // top half (lost icon)
-        turn.skipRemainingActions() // bottom half (persistent)
+        // Both halves performed (a half skipped whole is discarded: TurnFlowTests).
+        while turn.phase == .executeTopAction { turn.executeCurrentAction() }      // top half (lost icon)
+        while turn.phase == .executeBottomAction { turn.executeCurrentAction() }   // bottom half (persistent)
         XCTAssertEqual(turn.phase, .turnComplete)
         XCTAssertEqual(character.lostCards, [shieldBash.cardId!])
         XCTAssertEqual(character.activeCards, [wardingStrength.cardId!])

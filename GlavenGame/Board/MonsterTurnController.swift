@@ -502,7 +502,7 @@ final class MonsterTurnController {
             return lostA < lostB
         } ?? pieceID
         let healed = coordinator.heal(target, amount: amount, source: pieceID)
-        coordinator.log("\(coordinator.name(pieceID)) heals \(coordinator.name(target)) for \(healed)",
+        coordinator.log(coordinator.healLine(pieceID, healed: target, for: healed),
                         category: .heal, trace: "Heal \(amount)")
     }
 

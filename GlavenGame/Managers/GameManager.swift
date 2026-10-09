@@ -221,8 +221,7 @@ final class GameManager {
 
         // A character who hasn't chosen a hand brings the default one from their card pool.
         for character in game.activeCharacters where character.handCards.isEmpty {
-            character.handCards = CardPool.defaultHand(characterManager.abilities(for: character),
-                                                       chosen: character.chosenCards, handSize: character.handSize)
+            character.handCards = characterManager.nextHand(for: character)
         }
 
         let playerCount = max(2, game.characters.filter { !$0.absent }.count)

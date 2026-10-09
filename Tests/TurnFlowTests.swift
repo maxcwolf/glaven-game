@@ -147,6 +147,36 @@ final class TurnFlowTests: XCTestCase {
         XCTAssertFalse(turn.canUseDefaultAction)
     }
 
+    // MARK: - Putting cards away
+
+    /// A half skipped whole puts its card in the discard pile, its persistent or lost icon
+    /// notwithstanding: Backup Ammunition's top doesn't reach the active area, Crater's bottom
+    /// isn't lost (found in the iPad playthrough of 2026-10-09).
+    func testAHalfSkippedWholeIsDiscarded() throws {
+        let cragheart = add("cragheart", at: HexCoord(3, 3))
+        let ammunition = try XCTUnwrap(deck("cragheart").first { $0.cardId == 121 })
+        let crater = try XCTUnwrap(deck("cragheart").first { $0.cardId == 124 })
+        let turn = turn(for: cragheart, top: ammunition, bottom: crater)
+        turn.skipRemainingActions()   // Backup Ammunition's persistent top
+        turn.skipRemainingActions()   // Crater's lost bottom
+        XCTAssertEqual(turn.phase, .turnComplete)
+        XCTAssertEqual(Set(cragheart.discardedCards), [121, 124])
+        XCTAssertTrue(cragheart.activeCards.isEmpty)
+        XCTAssertTrue(cragheart.lostCards.isEmpty)
+    }
+
+    /// A persistent half that is performed still goes to the active area.
+    func testAPerformedPersistentHalfStaysActive() throws {
+        let cragheart = add("cragheart", at: HexCoord(3, 3))
+        let ammunition = try XCTUnwrap(deck("cragheart").first { $0.cardId == 121 })
+        let clod = try XCTUnwrap(deck("cragheart").first { $0.cardId == 126 })
+        let turn = turn(for: cragheart, top: ammunition, bottom: clod)
+        while turn.phase == .executeTopAction { turn.executeCurrentAction() }
+        turn.skipRemainingActions()
+        XCTAssertEqual(cragheart.activeCards, [121])
+        XCTAssertEqual(cragheart.discardedCards, [126])
+    }
+
     // MARK: - The end of the round
 
     /// A round bonus card leaves the active area before the short rest is offered, so the rest
@@ -166,6 +196,63 @@ final class TurnFlowTests: XCTestCase {
         XCTAssertNotNil(coord.pendingShortRest, "two discards: a short rest is offered")
         XCTAssertEqual(Set(brute.discardedCards), [1, 2])
         XCTAssertTrue(brute.activeCards.isEmpty)
+    }
+
+    /// Once the scenario is won (or lost) this round, no short rest is offered before the end
+    /// (iPad playthrough 2026-10-09: two rest prompts came between the last kill and victory).
+    func testNoShortRestOnceTheScenarioIsDecided() {
+        coord.autoResolvePrompts = false
+        let brute = add("brute", at: HexCoord(3, 3))
+        coord.boardPhase = .execution
+        gm.game.state = .next
+        brute.handCards = [3, 4, 5]
+        brute.discardedCards = [1, 2]
+        coord.pendingResult = .victory
+        coord.turnOrder = []
+        coord.currentTurnIndex = -1
+        coord.advanceToNextFigure()   // the round ends
+        XCTAssertNil(coord.pendingShortRest)
+        XCTAssertEqual(coord.scenarioResult, .victory)
+    }
+
+    // MARK: - The log
+
+    /// A heal that only removes Poison says so (iPad playthrough 2026-10-09: "Spellweaver heals
+    /// Cragheart for 0"); one that also cures a Wound says that too.
+    func testAHealsLogLineSaysWhatItRemoved() {
+        let spellweaver = add("spellweaver", at: HexCoord(3, 3))
+        let cragheart = add("cragheart", at: HexCoord(3, 4))
+        let healer = PieceID.character(spellweaver.id), patient = PieceID.character(cragheart.id)
+        cragheart.health = 3
+        coord.applyCondition(.poison, to: patient)
+        let healed = coord.heal(patient, amount: 4, source: healer)
+        XCTAssertEqual(coord.healLine(healer, healed: patient, for: healed), "Spellweaver removes Cragheart\u{2019}s Poison")
+        coord.applyCondition(.wound, to: patient)
+        let more = coord.heal(patient, amount: 2, source: healer)
+        XCTAssertEqual(coord.healLine(healer, healed: patient, for: more), "Spellweaver heals Cragheart for 2 and removes Wound")
+    }
+
+    /// A step the board performs from the card's text is named by that text, not "Special
+    /// Effect" (iPad playthrough 2026-10-09: Reviving Ether, Backup Ammunition, Crater).
+    func testATextStepIsNamedByItsWords() throws {
+        let spellweaver = add("spellweaver", at: HexCoord(3, 3))
+        let ether = try XCTUnwrap(deck("spellweaver").first { $0.cardId == 63 })
+        let other = try XCTUnwrap(deck("spellweaver").first { $0.cardId != 63 })
+        let turn = turn(for: spellweaver, top: ether, bottom: other)
+        let title = turn.stepTitle(turn.currentSteps[0])
+        XCTAssertTrue(title.hasPrefix("Recover"), title)
+        XCTAssertTrue(title.contains("lost cards"), title)
+        XCTAssertEqual(PlayerTextTests.lint(title), [])
+
+        let cragheart = add("cragheart", at: HexCoord(5, 5))
+        let ammunition = try XCTUnwrap(deck("cragheart").first { $0.cardId == 121 })
+        let crater = try XCTUnwrap(deck("cragheart").first { $0.cardId == 124 })
+        let second = self.turn(for: cragheart, top: ammunition, bottom: crater)
+        XCTAssertEqual(second.stepTitle(second.currentSteps[0]), "On your next four ranged Attack actions, gain ADD TARGET")
+        second.skipRemainingActions()
+        let bottom = second.stepTitle(second.currentSteps[0])
+        XCTAssertFalse(bottom.contains("Special Effect"), bottom)
+        XCTAssertEqual(bottom, "All adjacent allies and enemies suffer 1 damage")
     }
 
     // MARK: - Choosing two cards

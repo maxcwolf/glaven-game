@@ -58,6 +58,9 @@ final class PlayerTurnController {
     /// Halves played as the default Attack 2 / Move 2 — such cards always go to the discard pile.
     private(set) var topUsedAsDefault = false
     private(set) var bottomUsedAsDefault = false
+    /// Halves ("top", "bottom", "extra") with at least one printed ability performed. A half
+    /// skipped whole puts its card in the discard pile, lost or persistent icon or not (GH p.16).
+    private(set) var performedHalves: Set<String> = []
     /// A default Attack 2 / Move 2 is waiting for its target or destination.
     private var defaultAttackPending = false
     /// An action is waiting for player input or still resolving (attack, summon placement…).
@@ -122,6 +125,7 @@ final class PlayerTurnController {
         let logCount: Int
         let hasActed: Bool
         let topUsedAsDefault: Bool, bottomUsedAsDefault: Bool
+        let performedHalves: Set<String>
         let topActions: [ActionModel], bottomActions: [ActionModel], extraActions: [ActionModel]
         let hexesMoved: Int, damageInflicted: Int, lootBonus: Int, damageSuffered: Int, lastMoveLength: Int
         let hexesPassed: [HexCoord]
@@ -178,6 +182,7 @@ final class PlayerTurnController {
               cardId != bottomCard?.cardId || phase == .turnComplete else { return }
         extraPlay = ExtraPlay(card: card, top: top, resumePhase: phase, resumeIndex: currentActionIndex)
         extraActions = halfSteps(of: card, top: top)
+        performedHalves.remove("extra")
         finishedHalf = nil
         phase = .executeExtraHalf
         currentActionIndex = 0
@@ -362,6 +367,7 @@ final class PlayerTurnController {
         hasActed = true
         placeActionBonusSteps(at: currentActionIndex)
         let action = currentSteps[currentActionIndex]
+        if Self.bonusCard(of: action) == nil, let half = halfKey { performedHalves.insert(half) }
         // Async actions (target/hex selection) advance in advanceAfterAsyncAction() — which may
         // already have happened synchronously (e.g. an attack with no valid target).
         awaitingAsync = true
@@ -448,7 +454,7 @@ final class PlayerTurnController {
             positions: coordinator.boardState.piecePositions, cells: coordinator.boardState.cells,
             logCount: coordinator.turnLog.count, hasActed: hasActed,
             topUsedAsDefault: topUsedAsDefault, bottomUsedAsDefault: bottomUsedAsDefault,
-            topActions: topActions, bottomActions: bottomActions, extraActions: extraActions,
+            performedHalves: performedHalves, topActions: topActions, bottomActions: bottomActions, extraActions: extraActions,
             hexesMoved: hexesMoved, damageInflicted: damageInflicted, lootBonus: lootBonus,
             damageSuffered: damageSuffered, lastMoveLength: lastMoveLength, hexesPassed: hexesPassed,
             persistentCardsThisTurn: persistentCardsThisTurn, movedThroughConditions: movedThroughConditions,
@@ -503,6 +509,7 @@ final class PlayerTurnController {
         hasActed = checkpoint.hasActed
         topUsedAsDefault = checkpoint.topUsedAsDefault
         bottomUsedAsDefault = checkpoint.bottomUsedAsDefault
+        performedHalves = checkpoint.performedHalves
         defaultAttackPending = false
         topActions = checkpoint.topActions
         bottomActions = checkpoint.bottomActions
@@ -538,6 +545,16 @@ final class PlayerTurnController {
         case .executeBottomAction: return bottomActions
         case .executeExtraHalf: return extraActions
         default: return []
+        }
+    }
+
+    /// The half being performed, as `performedHalves` keys it.
+    private var halfKey: String? {
+        switch phase {
+        case .executeTopAction: return "top"
+        case .executeBottomAction: return "bottom"
+        case .executeExtraHalf: return "extra"
+        default: return nil
         }
     }
 
@@ -683,7 +700,7 @@ final class PlayerTurnController {
         guard let extra = extraPlay else { return }
         if let character, !character.exhausted {
             putAway(extra.card, half: extraActions, lostFlag: extra.top ? extra.card.lost == true : extra.card.bottomLost == true,
-                    usedAsDefault: false, character: character)
+                    usedAsDefault: false, performed: performedHalves.contains("extra"), character: character)
         }
         extraPlay = nil
         extraActions = []
@@ -1011,7 +1028,7 @@ final class PlayerTurnController {
                 for figure in reach.pieces {
                     let healed = coordinator.heal(figure, amount: healValue, source: pieceID)
                     for cond in conditions { coordinator.applyCondition(cond, to: figure) }
-                    coordinator.log("\(who) heals \(coordinator.name(figure)) for \(healed)", category: .heal, trace: "Heal \(healValue)")
+                    coordinator.log(coordinator.healLine(pieceID, healed: figure, for: healed), category: .heal, trace: "Heal \(healValue)")
                 }
                 return false
             }
@@ -1210,6 +1227,28 @@ final class PlayerTurnController {
     }
 
     /// The player-facing text of an action's custom sub-actions, lowercased.
+    /// The step's button: "Attack 3, Range 2", or for text the board performs, the card's own
+    /// words ("Recover all of your lost cards", "All adjacent allies and enemies suffer 1
+    /// damage") rather than "Special Effect"; an ability inside the text leads ("Move 4: …").
+    func stepTitle(_ action: ActionModel) -> String {
+        guard action.type == .custom || action.type == .special,
+              let store = gameManager?.editionStore, let edition = character?.edition,
+              let key = action.value?.stringValue, var text = store.resolveCustomText(key, edition: edition)?
+                .trimmingCharacters(in: .whitespacesAndNewlines), !text.isEmpty else {
+            return GameText.actionTitle(action)
+        }
+        if text.hasSuffix(".") { text.removeLast() }
+        func firstAbility(_ actions: [ActionModel]) -> ActionModel? {
+            for sub in actions {
+                if [.move, .attack, .heal, .loot, .jump].contains(sub.type) { return sub }
+                if let found = firstAbility(sub.subActions ?? []) { return found }
+            }
+            return nil
+        }
+        if let ability = firstAbility(action.subActions ?? []) { text = "\(GameText.actionTitle(ability)): \(text)" }
+        return text
+    }
+
     private func customText(of action: ActionModel) -> String {
         customTexts(of: action).joined(separator: " ")
     }
@@ -1871,24 +1910,26 @@ final class PlayerTurnController {
         return result
     }
 
-    /// Put both played cards away (GH p.16): a card played for a default action is discarded;
-    /// otherwise an active bonus (persistent or round) goes to the active area, a half with the
-    /// lost icon goes to the lost pile, and the rest are discarded.
+    /// Put both played cards away (GH p.16): a card played for a default action, or whose half was
+    /// skipped whole, is discarded; otherwise an active bonus (persistent or round) goes to the
+    /// active area, a half with the lost icon goes to the lost pile, and the rest are discarded.
     private func finishTurn() {
         guard let character, !character.exhausted else { return }
         putAway(topCard, half: topActions, lostFlag: topCard?.lost == true, usedAsDefault: topUsedAsDefault,
-                character: character)
+                performed: performedHalves.contains("top"), character: character)
         putAway(bottomCard, half: bottomActions, lostFlag: bottomCard?.bottomLost == true,
-                usedAsDefault: bottomUsedAsDefault, character: character)
+                usedAsDefault: bottomUsedAsDefault, performed: performedHalves.contains("bottom"), character: character)
         coordinator?.log("\(who) ends the turn", category: .round)
     }
 
     private func putAway(_ card: AbilityModel?, half: [ActionModel], lostFlag: Bool, usedAsDefault: Bool,
-                         character: GameCharacter) {
+                         performed: Bool, character: GameCharacter) {
         guard let cardId = card?.cardId, let index = character.handCards.firstIndex(of: cardId) else { return }
         character.handCards.remove(at: index)
 
-        if usedAsDefault {
+        // A basic action, or a half none of whose abilities was performed: discarded.
+        let skippedWhole = !performed && half.contains { Self.bonusCard(of: $0) == nil }
+        if usedAsDefault || skippedWhole {
             character.discardedCards.append(cardId)
             return
         }

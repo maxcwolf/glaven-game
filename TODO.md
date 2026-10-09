@@ -468,25 +468,27 @@ Performance & robustness
 
 ### iPad playthrough 2026-10-09 (`docs/playthroughs/2026-10-09-ipad/`)
 
-- [ ] Skipping a persistent half still puts the card in the active area (Backup Ammunition)
-- [ ] Skipping a loss half still loses the card (Crater's bottom)
-- [ ] Event discards before the first scenario: no hand to pick from, nothing discarded, result says otherwise
-- [ ] Event-unlocked scenarios (`manualScenarios`) missing from the town list
-- [ ] A completed initial scenario is still listed as open
-- [ ] The last-draw panel carries over into the next scenario
-- [ ] Short-rest re-pick offered more than once
+- [x] Skipping a persistent half still puts the card in the active area (Backup Ammunition)
+- [x] Skipping a loss half still loses the card (Crater's bottom)
+- [x] Event discards before the first scenario: no hand to pick from, nothing discarded, result says otherwise
+- [x] Event-unlocked scenarios (`manualScenarios`) missing from the town list
+- [x] A completed initial scenario is still listed as open
+- [x] The last-draw panel carries over into the next scenario
+- [x] Short-rest re-pick offered more than once — it was already disabled after one use, just not visibly (restyle below)
 - [ ] Element consumption should be the player's choice, not automatic
 - [ ] Move 0 with a rider (Rumbling Advance)
 - [ ] A new campaign isn't saved on recruiting; no save during a scenario
 - [ ] Verify #2's "3 Curses each" start rule
 - [ ] Learning tips: four at once on the first attack (one swallows a tap); Resting tip after the rest prompt
-- [ ] No rest prompts once the scenario is won
-- [ ] "Special Effect" buttons should name what the half does
+- [x] No rest prompts once the scenario is won
+- [x] "Special Effect" buttons should name what the half does
 - [ ] Warn when a move's path opens a door
-- [ ] Heal log on a poisoned figure ("for 0" → "removes Poison")
-- [ ] Town header says "In town" as soon as a recruit joins; Easy hint repeats itself
+- [x] Heal log on a poisoned figure ("for 0" → "removes Poison")
+- [ ] Town header says "In town" as soon as a recruit joins
+- [x] Easy hint repeats itself
 - [ ] Envelope quest rewards; −1 cards on item tiles
-- [ ] Road Event header icon; Short/Long Rest and gold-sharing dialogs in the board's look
+- [x] Road Event header icon
+- [ ] Short/Long Rest and gold-sharing dialogs in the board's look
 - [ ] Hold "Unlocks the …" in the quest picker to learn about the class
 - [ ] Game option: go back to the start of the previous turn
 

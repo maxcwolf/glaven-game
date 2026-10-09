@@ -107,6 +107,19 @@ final class PartyScreenLayoutTests: XCTestCase {
         XCTAssertEqual(lineHeight(), before, accuracy: 0.5, "and the same space after")
     }
 
+    /// The hint says the scenario level once, then what the difficulty does (iPad playthrough
+    /// 2026-10-09: "Scenario level 0 · Scenario level −1 (min 0).").
+    func testTheDifficultyHintDoesNotRepeatItself() throws {
+        let gm = try SaveAndContinueTestsSupport.manager()
+        gm.characterManager.addCharacter(name: "brute", edition: "gh")
+        for mode in DifficultyMode.allCases {
+            gm.game.difficulty = mode
+            let hint = GameSetupView.difficultyHint(for: gm)
+            XCTAssertEqual(hint.components(separatedBy: "Scenario level").count, 2, hint)
+            XCTAssertTrue(hint.contains(mode.shortLabel == "V.Hard" ? "Very hard" : mode.shortLabel), hint)
+        }
+    }
+
     /// Regression: FlowLayout reported all the width it was offered, so the turn controls'
     /// buttons stretched the action panel across the screen, leaving an empty block beside them.
     func testAFlowIsAsWideAsItsRows() {
