@@ -54,6 +54,8 @@ final class PlayerTurnController {
     var hexesMoved = 0
     /// Damage the character has dealt this turn (Balanced Measure's Move X).
     var damageInflicted = 0
+    /// Hexes moved by the latest move action (Hook and Chain).
+    var lastMoveLength = 0
     /// Hexes passed over (not ended on) during the latest move action, for "enemies moved through".
     var hexesPassed: [HexCoord] = []
     /// Cards whose persistent half was performed this turn: their charged bonus is in effect
@@ -763,6 +765,11 @@ final class PlayerTurnController {
             // Avalanche: "Create two single-hex obstacles in empty hexes adjacent to you."
             let count = text.contains("two") ? 2 : 1
             return coordinator.beginPlacingTokens(.obstacle, count: count, by: me)
+        } else if text.contains("reduce your current hit point value to 1") {
+            // Glass Hammer: "This is not considered damage."
+            character.health = min(character.health, 1)
+            coordinator.boardScene?.refreshStatus(of: me)
+            coordinator.log("\(who) drops to 1 hit point", category: .info)
         } else if text.contains("all of your lost cards") && text.contains("recover") {
             let lost = character.lostCards
             character.handCards.append(contentsOf: lost)
@@ -789,11 +796,29 @@ final class PlayerTurnController {
     /// "X" values the card defines in its text (Balanced Measure): hexes moved so far this
     /// turn, or damage inflicted so far this turn.
     private func variableValue(_ action: ActionModel) -> Int? {
-        guard case .string(let printed)? = action.value, Int(printed) == nil else { return nil }
+        guard case .string(let printed)? = action.value, Int(printed) == nil, let character else { return nil }
+        // "4+X": a printed base plus X.
+        let base = printed.split(separator: "+").first.flatMap { Int($0) } ?? 0
         let text = customText(of: action)
-        if text.contains("hexes you have moved") { return hexesMoved }
-        if text.contains("damage you have inflicted") { return damageInflicted }
-        return nil
+        let x: Int
+        if text.contains("hexes you have moved") {
+            x = hexesMoved
+        } else if text.contains("hexes you moved with this action") {
+            x = lastMoveLength
+        } else if text.contains("damage you have inflicted") {
+            x = damageInflicted
+        } else if text.contains("difference between your maximum hit point value and current hit point value") {
+            x = max(0, character.maxHealth - character.health)
+        } else if text.contains("number of cards you have lost") {
+            x = character.lostCards.count
+        } else if text.contains("your current hit point value") {
+            x = character.health
+        } else if text.contains("number of all summoned allies") {
+            x = (gameManager?.game.characters ?? []).flatMap(\.summons).filter { !$0.dead }.count
+        } else {
+            return nil
+        }
+        return base + x
     }
 
     static func damageAmount(in text: String) -> Int {

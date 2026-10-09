@@ -676,6 +676,24 @@ final class BoardRulesRegressionTests: XCTestCase {
         XCTAssertEqual(range, 3)
     }
 
+    /// The Berserker's X: missing hit points, lost cards, current hit points.
+    func testTheBerserkersXValues() throws {
+        let berserker = addCharacter("lightning", at: HexCoord(3, 3))
+        let bandit = addMonster("bandit-guard", at: HexCoord(4, 3))
+        bandit.health = 50
+        bandit.maxHealth = 50
+        berserker.health = berserker.maxHealth - 6
+        berserker.lostCards = [1, 2, 3]
+        let other = try XCTUnwrap(gm.editionStore.abilities(forDeck: "lightning", edition: "gh").first { $0.name == "Spiteful Cut" }
+                                  ?? gm.editionStore.abilities(forDeck: "lightning", edition: "gh").first)
+        let stand = turn(for: berserker, top: try card("Resolute Stand", of: "lightning"), bottom: other)
+        stand.executeCurrentAction()
+        XCTAssertEqual(stand.currentAttackValue(), 6, "Resolute Stand: missing hit points")
+        let rage = turn(for: berserker, top: try card("Growing Rage", of: "lightning"), bottom: other)
+        rage.executeCurrentAction()
+        XCTAssertEqual(rage.currentAttackValue(), 3, "Growing Rage: cards lost")
+    }
+
     // MARK: - Mindthief augments
 
     /// Play `augment`'s top (the augment, then its own Attack) against an adjacent Bandit Guard.
