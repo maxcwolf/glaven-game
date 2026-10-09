@@ -211,7 +211,12 @@ reaches; `ContentView` only shows the main menu, the party screen and the board.
 - [x] World map in the board's look (`docs/mockups/worldmap-11in.png`): a large dialog, stickers only for scenarios the party has found (open in brass, won in green) instead of every scenario, a detail panel beside the map instead of a second sheet
 - [x] Hand in the board's look (`docs/mockups/hand-11in.png`): all of the class's cards on one screen, chosen ones ringed in brass, the count as a brass chip
 - [x] Table rules, campaigns, credits and the event card in the board's look (`docs/mockups/small-dialogs.png`), as dialogs over the town and menu
-- [ ] Still to mock up: items loadout, enhancer, level-up card choice, statistics, quest and battle-goal pickers, sanctuary
+- [ ] Items loadout in the board's look (`docs/mockups/loadout-11in.png`): owned items as tiles saying what each does, brass switches to bring or leave at home, why one can't be brought
+- [ ] Enhancer in the board's look (`docs/mockups/enhancer-11in.png`): the class's cards on the left, the chosen card large with each slot and its priced options (unaffordable ones dimmed), gold in the header
+- [ ] Level-up card choice in the board's look (`docs/mockups/levelup-11in.png`): the new level's cards large, chosen one ringed in brass, Add Card / Later
+- [ ] Statistics in the board's look (`docs/mockups/statistics-11in.png`): won, lost, kills, exhaustions; per character won, kills, elites, exhausted, XP, gold (from character records); names from labels, not `.capitalized`
+- [ ] Personal quest, battle goal and sanctuary dialogs in the shared header style (`docs/mockups/pickers.png`), Keep buttons on each choice, sanctuary progress to the next prosperity
+- [ ] Hold Prosperity, Reputation, City Event and Sanctuary in town to learn about them (`docs/mockups/town-hold-*.png`): the board's explanation card under the chip, with How to Play topics for each
 - [x] Unlocking looked won scenarios up by number in load order, so a solo scenario sharing the number could unlock nothing (#4 Crypt of the Damned → #5, #6) (`testWinningAScenarioUnlocksWhatItsCampaignCardSays`)
 - [x] Event text showed raw `<br><br>` (city event 11 and 13 others): line breaks become paragraphs (`testEventTextHasNoMarkup`)
 - [ ] Board action panel: a tall empty area above the turn controls on the 11-inch iPad
