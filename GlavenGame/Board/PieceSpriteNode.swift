@@ -10,6 +10,9 @@ struct PieceAppearance {
     var rank: Rank
     /// Character or monster portrait; nil draws `initials` instead.
     var portrait: PlatformImage?
+    /// Which portrait it is ("monster gh bandit-guard"), so its circular texture is made once and
+    /// shared by every token showing it. Nil: made for this token only.
+    var portraitKey: String?
     /// Rim colour: the character's colour, a summon's owner's colour, or the monster rank's colour.
     var rimColor: SKColor
     /// Standee number for monsters.
@@ -105,7 +108,8 @@ class PieceSpriteNode: SKNode {
         addChild(shadow)
         addChild(rimNode)
 
-        if let portrait = appearance.portrait, let texture = Self.circularTexture(portrait, diameter: radius * 2 - 4) {
+        if let portrait = appearance.portrait,
+           let texture = Self.circularTexture(portrait, key: appearance.portraitKey, diameter: radius * 2 - 4) {
             let sprite = SKSpriteNode(texture: texture, size: CGSize(width: radius * 2 - 4, height: radius * 2 - 4))
             sprite.zPosition = 1
             sprite.name = "portrait"
@@ -252,12 +256,14 @@ class PieceSpriteNode: SKNode {
         return texture
     }
 
-    private static var portraitTextures: [ObjectIdentifier: SKTexture] = [:]
+    /// Circular portraits by what they show and their size. (Keyed by name, not by the image
+    /// object: a freed image's address is soon reused by another portrait's image.)
+    private static var portraitTextures: [String: SKTexture] = [:]
 
     /// The portrait cut to a circle once, so tokens need no crop node and batch together.
-    static func circularTexture(_ image: PlatformImage, diameter: CGFloat) -> SKTexture? {
-        let key = ObjectIdentifier(image)
-        if let cached = portraitTextures[key] { return cached }
+    static func circularTexture(_ image: PlatformImage, key portraitKey: String?, diameter: CGFloat) -> SKTexture? {
+        let key = portraitKey.map { "\($0) \(Int(diameter * 2))" }
+        if let key, let cached = portraitTextures[key] { return cached }
         let pixels = Int(diameter * 2)
         #if os(macOS)
         var rect = CGRect(origin: .zero, size: image.size)
@@ -279,7 +285,7 @@ class PieceSpriteNode: SKNode {
         context.draw(square, in: bounds)
         guard let circular = context.makeImage() else { return nil }
         let texture = SKTexture(cgImage: circular)
-        portraitTextures[key] = texture
+        if let key { portraitTextures[key] = texture }
         return texture
     }
 

@@ -177,11 +177,13 @@ extension BoardCoordinator {
         case .character(let id):
             guard let character = game.characters.first(where: { $0.id == id }) else { break }
             appearance.portrait = ImageLoader.characterThumbnail(edition: character.edition, name: character.name)
+            appearance.portraitKey = "character \(character.edition) \(character.name)"
             appearance.rimColor = SKColor(hex: character.color) ?? appearance.rimColor
             appearance.initials = String(GameText.characterName(character).prefix(2)).uppercased()
         case .monster(let name, let standee):
             guard let monster = game.monsters.first(where: { $0.name == name }) else { break }
             appearance.portrait = ImageLoader.monsterThumbnail(edition: monster.edition, name: monster.name)
+            appearance.portraitKey = "monster \(monster.edition) \(monster.name)"
             switch monsterEntity(name: name, standee: standee)?.type ?? .normal {
             case .normal: appearance.rank = .normal; appearance.rimColor = PieceAppearance.normalRim
             case .elite: appearance.rank = .elite; appearance.rimColor = PieceAppearance.eliteRim

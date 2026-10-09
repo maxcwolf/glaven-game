@@ -14,12 +14,18 @@ struct UniqueTile: Identifiable {
 /// Caches loaded CGImages to avoid repeated disk I/O on every render pass.
 final class MapImageCache {
     static let shared = MapImageCache()
-    private var cache: [String: CGImage] = [:]
+    /// Decoded map tiles. A scenario uses a handful of the ~80 tiles (about 1 MB each decoded),
+    /// so the cache is bounded rather than keeping every tile seen over a campaign.
+    private let cache: NSCache<NSString, CGImage> = {
+        let cache = NSCache<NSString, CGImage>()
+        cache.totalCostLimit = 48 * 1024 * 1024
+        return cache
+    }()
 
     private init() {}
 
     func image(named name: String) -> CGImage? {
-        if let cached = cache[name] { return cached }
+        if let cached = cache.object(forKey: name as NSString) { return cached }
 
         guard let url = appResourceBundle.url(
             forResource: name,
@@ -44,7 +50,7 @@ final class MapImageCache {
         #endif
 
         if let img = loaded {
-            cache[name] = img
+            cache.setObject(img, forKey: name as NSString, cost: img.bytesPerRow * img.height)
         }
         return loaded
     }

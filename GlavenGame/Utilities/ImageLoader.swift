@@ -184,7 +184,29 @@ enum ImageLoader {
         return URL(string: base + path)
     }
 
+    /// Decoded images by path, shared by every view and token: views ask for the same icons on
+    /// every render. Bounded by an estimate of the decoded size; the system may also empty it.
+    private static let cache: NSCache<NSString, PlatformImage> = {
+        let cache = NSCache<NSString, PlatformImage>()
+        cache.totalCostLimit = 96 * 1024 * 1024
+        return cache
+    }()
+    /// Paths with no image, so a missing one isn't looked for on every render either.
+    private static let missing = NSCache<NSString, NSNull>()
+
     private static func loadImage(subdirectory: String, filename: String, ext: String) -> PlatformImage? {
+        let key = "\(subdirectory)/\(filename).\(ext)" as NSString
+        if let cached = cache.object(forKey: key) { return cached }
+        if missing.object(forKey: key) != nil { return nil }
+        guard let image = decodeImage(subdirectory: subdirectory, filename: filename, ext: ext) else {
+            missing.setObject(NSNull(), forKey: key)
+            return nil
+        }
+        cache.setObject(image, forKey: key, cost: max(1, Int(image.size.width * image.size.height * 4)))
+        return image
+    }
+
+    private static func decodeImage(subdirectory: String, filename: String, ext: String) -> PlatformImage? {
         // Try PNG first (pre-rendered, reliable), then fall back to original format
         let pngResult: PlatformImage? = {
             if ext != "png", let url = appResourceBundle.url(forResource: filename, withExtension: "png", subdirectory: subdirectory) {

@@ -135,4 +135,51 @@ final class BoardTokenTests: XCTestCase {
         XCTAssertEqual(rebuilt.status?.health, entity.health)
         XCTAssertEqual(rebuilt.shownConditions, [.wound])
     }
+
+    /// Each figure's token shows its own portrait. The circular texture was cached by the image
+    /// object, and a freed image's address is soon reused by the next figure's image, so a new
+    /// monster could show a dead one's face.
+    func testEachTokenShowsItsOwnPortrait() throws {
+        func image(_ shade: CGFloat) -> PlatformImage {
+            #if os(macOS)
+            let image = NSImage(size: NSSize(width: 8, height: 8))
+            image.lockFocus()
+            NSColor(white: shade, alpha: 1).setFill()
+            NSRect(x: 0, y: 0, width: 8, height: 8).fill()
+            image.unlockFocus()
+            return image
+            #else
+            return UIGraphicsImageRenderer(size: CGSize(width: 8, height: 8)).image { context in
+                UIColor(white: shade, alpha: 1).setFill()
+                context.fill(CGRect(x: 0, y: 0, width: 8, height: 8))
+            }
+            #endif
+        }
+        // Images made and freed one after another, as tokens come and go.
+        var textures: [String: SKTexture] = [:]
+        for (index, name) in ["one", "two", "three", "four", "five", "six"].enumerated() {
+            autoreleasepool {
+                textures[name] = PieceSpriteNode.circularTexture(image(CGFloat(index) / 6), key: "test \(name)", diameter: 30)
+            }
+        }
+        XCTAssertEqual(Set(textures.values.map(ObjectIdentifier.init)).count, 6, "a texture of its own for each portrait")
+        let again = PieceSpriteNode.circularTexture(image(0.9), key: "test one", diameter: 30)
+        XCTAssertTrue(again === textures["one"], "the same portrait shares its texture")
+
+        // On the board: two kinds of monster have different portraits.
+        let guardPiece = try XCTUnwrap(monsterPieces.first)
+        let archer = try XCTUnwrap(coord.spawnMonster(name: "bandit-archer", type: .normal, at: try freeHex(), origin: .placed))
+        let keys = [guardPiece, archer].map { coord.pieceAppearance($0).portraitKey }
+        XCTAssertNotNil(keys[0])
+        XCTAssertNotEqual(keys[0], keys[1])
+    }
+
+    /// Views ask for the same icons and portraits on every render: they are decoded once.
+    func testImagesAreDecodedOnce() throws {
+        let poison = try XCTUnwrap(ImageLoader.conditionIcon("poison"))
+        XCTAssertTrue(ImageLoader.conditionIcon("poison") === poison)
+        let guardImage = try XCTUnwrap(ImageLoader.monsterThumbnail(edition: "gh", name: "bandit-guard"))
+        XCTAssertTrue(ImageLoader.monsterThumbnail(edition: "gh", name: "bandit-guard") === guardImage)
+        XCTAssertNil(ImageLoader.monsterThumbnail(edition: "gh", name: "no-such-monster"))
+    }
 }
