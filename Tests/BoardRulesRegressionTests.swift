@@ -940,6 +940,28 @@ final class BoardRulesRegressionTests: XCTestCase {
         XCTAssertEqual(attacker, .character(berserker.id))
     }
 
+    /// "One ally within range 3" (Protective Blessing) was read as every adjacent ally.
+    func testAOneAllyConditionAsksWhichAlly() throws {
+        let sun = addCharacter("sun", at: HexCoord(3, 3))
+        let brute = addCharacter("brute", at: HexCoord(5, 3))
+        let tinkerer = addCharacter("tinkerer", at: HexCoord(3, 5))
+        let blessing = try card("Protective Blessing", of: "sun")
+        let other = try XCTUnwrap(gm.editionStore.abilities(forDeck: "sun", edition: "gh").first { $0.cardId != blessing.cardId })
+        let turn = turn(for: sun, top: blessing, bottom: other)
+        var guardSteps = 0
+        while guardSteps < 5, !{ if case .selectingConditionTarget = self.coord.interactionMode { return true }; return false }() {
+            turn.executeCurrentAction()
+            guardSteps += 1
+        }
+        guard case .selectingConditionTarget(_, let condition, let targets) = coord.interactionMode else {
+            return XCTFail("an ally to choose")
+        }
+        XCTAssertEqual(targets, [.character(brute.id), .character(tinkerer.id)])
+        coord.handlePieceTap(.character(brute.id))
+        XCTAssertTrue(brute.entityConditions.contains { $0.name == condition } || brute.attackModifierDeck.undrawnCount(of: .bless) > 0)
+        XCTAssertFalse(tinkerer.entityConditions.contains { $0.name == condition })
+    }
+
     // MARK: - Mindthief augments
 
     /// Play `augment`'s top (the augment, then its own Attack) against an adjacent Bandit Guard.

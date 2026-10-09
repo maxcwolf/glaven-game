@@ -675,6 +675,11 @@ final class PlayerTurnController {
             case .everyoneElse:
                 coordinator.applyConditionToAllEnemies(from: pieceID, condition: cond, range: 99)
                 coordinator.applyConditionToAllAllies(from: pieceID, condition: cond, range: 99)
+            case .singleAlly(let range):
+                if coordinator.beginConditionAction(pieceID: pieceID, condition: cond, range: range, onAllies: true) {
+                    coordinator.log("\(who): \(GameText.conditionName(cond)). Choose an ally", category: .condition)
+                    return true
+                }
             }
 
         case .shield, .retaliate:
@@ -1123,6 +1128,8 @@ final class PlayerTurnController {
         case enemiesBesideEnemiesWith(ConditionName)
         /// Every other figure, enemy or ally (Mass Extinction).
         case everyoneElse
+        /// One ally within range, the player choosing (Protective Blessing: "allyAffectRange:3").
+        case singleAlly(range: Int)
     }
 
     /// A half as the steps the player performs one by one: groupings (concatenations, grids,
@@ -1233,7 +1240,9 @@ final class PlayerTurnController {
             return .allEnemies(range: nil)
         case "alliesenemies":
             return .everyoneElse
-        case "allyadjacent", "alliesadjacent", "alliesadjacentaffect":
+        case "allyadjacent", "allyaffectadjacent":
+            return .singleAlly(range: 1)
+        case "alliesadjacent", "alliesadjacentaffect":
             return .allAllies(range: 1)
         case "alliesaffect":
             return .allAllies(range: nil)
@@ -1241,6 +1250,8 @@ final class PlayerTurnController {
             return .selfAndAllAllies(range: lower.contains("adjacent") ? 1 : nil)
         default:
             if let r = embeddedRange("enemiesrange:") { return .allEnemies(range: r) }
+            if let r = embeddedRange("allyaffectrange:") { return .singleAlly(range: r) }
+            if let r = embeddedRange("selfalliesaffectrange:") { return .selfAndAllAllies(range: r) }
             if let r = embeddedRange("alliesrangeaffect:") { return .allAllies(range: r) }
             if lower.contains("enemy") || lower.contains("enemies") { return .singleEnemy(range: 1) }
             if lower.contains("allie") || lower.contains("ally") { return .allAllies(range: 1) }

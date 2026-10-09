@@ -1608,18 +1608,24 @@ final class BoardCoordinator {
     }
 
     /// Begin an interactive condition-apply action (player taps a single enemy target).
-    func beginConditionAction(pieceID: PieceID, condition: ConditionName, range: Int) {
-        let validTargets = targetableEnemies(of: pieceID, range: range)
+    /// Choose who gets a condition: an enemy, or (`onAllies`) an ally. Returns false when no one
+    /// is in range (the action is over).
+    @discardableResult
+    func beginConditionAction(pieceID: PieceID, condition: ConditionName, range: Int, onAllies: Bool = false) -> Bool {
+        let validTargets = onAllies ? alliesInRange(of: pieceID, range: range, includeSelf: false)
+                                    : targetableEnemies(of: pieceID, range: range)
         if validTargets.isEmpty {
-            log("\(name(pieceID)) has no target within range \(range) for \(GameText.conditionName(condition))", category: .condition)
+            log("\(name(pieceID)) has no \(onAllies ? "ally" : "target") within range \(range) for \(GameText.conditionName(condition))",
+                category: .condition)
             interactionMode = .idle
-            activePlayerTurn?.advanceAfterAsyncAction()
-            return
+            if !onAllies { activePlayerTurn?.advanceAfterAsyncAction() }
+            return false
         }
 
         interactionMode = .selectingConditionTarget(pieceID: pieceID, condition: condition, validTargets: validTargets)
         let targetHexes = Set(validTargets.compactMap { boardState.piecePositions[$0] })
         boardScene?.highlightHexes(targetHexes, style: .condition, offsetCol: offsetCol, offsetRow: offsetRow)
+        return true
     }
 
     /// Begin an interactive heal action — the player picks themself or an ally (character or
