@@ -58,7 +58,7 @@ final class EnhancementTests: XCTestCase {
         let attack = CardEnhancing.options(for: try slot(trample, half: "top", action: 0), edition: "gh")
         XCTAssertEqual(attack, [.plus1, .poison, .wound, .muddle, .immobilize, .curse, .disarm])
         let move = CardEnhancing.options(for: try slot(trample, half: "bottom", action: 0), edition: "gh")
-        XCTAssertEqual(move, [.plus1, .fire, .ice, .air, .earth, .light, .dark], "any element isn't played yet")
+        XCTAssertEqual(move, [.plus1, .fire, .ice, .air, .earth, .light, .dark, .wild])
 
         let novas = try card("Freezing Nova", of: "spellweaver")
         let heal = CardEnhancing.options(for: try slot(novas, half: "bottom", action: 0), edition: "gh")
@@ -110,7 +110,7 @@ final class EnhancementTests: XCTestCase {
                        "one enhancement to a slot")
 
         let move = try slot(trample, half: "bottom", action: 0)
-        XCTAssertEqual(enhancer.purchaseProblem(.wild, in: move, card: trample, for: brute), .notPlayable)
+        XCTAssertEqual(enhancer.purchaseProblem(.hex, in: move, card: trample, for: brute), .notPlayable)
         brute.loot = 30
         XCTAssertEqual(enhancer.purchaseProblem(.fire, in: move, card: trample, for: brute), .tooExpensive)
         XCTAssertFalse(enhancer.buy(.fire, in: move, card: trample, for: brute))
@@ -250,5 +250,21 @@ final class EnhancementTests: XCTestCase {
         let image = try XCTUnwrap(renderer.cgImage)
         try XCTUnwrap(NSBitmapImageRep(cgImage: image).representation(using: .png, properties: [:]))
             .write(to: URL(fileURLWithPath: out))
+    }
+
+    /// An any-element enhancement lets the player pick the element when the action is performed.
+    func testAnAnyElementEnhancementAsksWhichElement() throws {
+        let brute = addCharacter("brute", at: HexCoord(3, 3))
+        let trample = try card("Trample", of: "brute"), other = try card("Spare Dagger", of: "brute")
+        brute.handCards = [trample.cardId!, other.cardId!]
+        brute.enhancements = [Enhancement(cardId: trample.cardId!, actionHalf: "bottom", actionIndex: 0, slotIndex: 0, action: .wild)]
+        let turn = PlayerTurnController(characterID: brute.id, coordinator: coord, gameManager: gm)
+        coord.activePlayerTurn = turn
+        turn.selectCards(top: other, bottom: trample)
+        turn.setBottomFirst(true)
+        turn.executeCurrentAction()   // Move 4: the any-element infusion
+        XCTAssertEqual(coord.pendingElementChoice?.count, 1)
+        coord.resolveElementChoice([.light])
+        XCTAssertEqual(gm.game.elementBoard.first { $0.type == .light }?.state, .new)
     }
 }

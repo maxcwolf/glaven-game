@@ -53,8 +53,8 @@ enum CardEnhancing {
 
     // MARK: - What a slot can take
 
-    /// The enhancements a slot can take that the board plays. Hex (area) and any-element
-    /// enhancements aren't played yet, so they aren't sold.
+    /// The enhancements a slot can take that the board plays. Hex (area) enhancements aren't
+    /// played yet, so they aren't sold.
     static func options(for slot: Slot, edition: String) -> [EnhancementAction] {
         EnhancementsManager.availableActions(for: slot.type, actionType: slot.action.type, isSummon: false, edition: edition)
             .filter { plays($0, in: slot) }
@@ -66,8 +66,10 @@ enum CardEnhancing {
             return slot.action.value?.intValue != nil && plusOneTypes.contains(slot.action.type)
         case .jump:
             return slot.action.type == .move && slot.host.type == .move
-        case .hex, .wild:
+        case .hex:
             return false
+        case .wild:
+            return [.attack, .move, .heal, .shield, .retaliate].contains(slot.host.type)
         default:
             if enhancement.isNegativeCondition {
                 return slot.host.type == .attack && ConditionName(rawValue: enhancement.rawValue) != nil

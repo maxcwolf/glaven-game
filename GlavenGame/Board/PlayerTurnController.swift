@@ -1193,6 +1193,12 @@ final class PlayerTurnController {
                 game.infuseElement(element)
                 coordinator.log("\(who) infuses \(GameText.elementName(element))", category: .element)
             }
+            // "Infuse any element" (Chromatic Explosion, an any-element enhancement): the player picks.
+            let wild = elements.filter { $0 == .wild }.count
+            if wild > 0 {
+                coordinator.pendingElementChoice = BoardCoordinator.PendingElementChoice(
+                    characterID: characterID, count: wild, itemName: "Any Element")
+            }
         }
     }
 
