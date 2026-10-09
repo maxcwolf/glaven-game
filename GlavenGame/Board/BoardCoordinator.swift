@@ -119,6 +119,8 @@ struct TurnOrderEntry: Identifiable {
     var completed: Bool = false
     /// For a monster type that already acted this round: only these newly revealed standees act.
     var onlyStandees: Set<Int>? = nil
+    /// A character's second turn this round (Second Chance Ring): their summons don't act again.
+    var anotherTurn = false
 }
 
 /// Bridge between SpriteKit scene and SwiftUI state.
@@ -409,6 +411,12 @@ final class BoardCoordinator {
 
     /// Non-nil while a character picks discarded cards to recover (Minor Stamina Potion).
     var pendingRecovery: PendingRecovery?
+
+    /// Non-nil while a character picks a card to play for an item (Ring of Haste).
+    var pendingCardPlay: PendingCardPlay?
+
+    /// Non-nil while a character picks Attack or Move (Master's Lute).
+    var pendingActionChoice: PendingActionChoice?
 
     /// Boots of Speed / Quickness offers still to make this round, and the one being made.
     var initiativeOffers: [PendingInitiativeChange] = []
@@ -844,6 +852,8 @@ final class BoardCoordinator {
         pendingSummonPlacement = nil
         woundDue = []
         pendingRecovery = nil
+        pendingCardPlay = nil
+        pendingActionChoice = nil
         initiativeOffers = []
         pendingInitiativeChange = nil
         pendingSufferChoice = nil
@@ -1258,7 +1268,8 @@ final class BoardCoordinator {
             setActing(.character(character.id))
 
             // A summon's turn comes directly before its summoner's — even a resting one (p.26).
-            let livingSummons = character.summons.filter { !$0.dead && isOnBoard(.summon(id: $0.id)) }
+            let livingSummons = entry.anotherTurn ? []
+                : character.summons.filter { !$0.dead && isOnBoard(.summon(id: $0.id)) }
             if !livingSummons.isEmpty {
                 interactionMode = .watchingMonsterTurn
                 log("\(characterName(character.id))\u{2019}s summons act first", category: .round)

@@ -214,3 +214,25 @@ struct ItemRefreshPrompt: View {
         .frame(maxWidth: 560)
     }
 }
+
+/// Attack or Move, the player's choice (Master's Lute after a Song).
+struct ActionChoicePrompt: View {
+    let pending: BoardCoordinator.PendingActionChoice
+    let coordinator: BoardCoordinator
+
+    var body: some View {
+        ItemChoicePanel(title: pending.title,
+                        detail: "After the Song: Attack \(pending.value) or Move \(pending.value).") {
+            EmptyView()
+        } actions: {
+            Button("Neither") { coordinator.resolveActionChoice(nil) }
+                .buttonStyle(.bordered)
+            Button("Move \(pending.value)") { coordinator.resolveActionChoice("move") }
+                .buttonStyle(.borderedProminent)
+                .tint(BoardTheme.brass)
+            Button("Attack \(pending.value)") { coordinator.resolveActionChoice("attack") }
+                .buttonStyle(.borderedProminent)
+                .tint(BoardTheme.brass)
+        }
+    }
+}

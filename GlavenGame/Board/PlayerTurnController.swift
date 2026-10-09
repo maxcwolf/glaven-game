@@ -5,6 +5,9 @@ enum PlayerTurnPhase {
     case selectTopCard
     case executeTopAction
     case executeBottomAction
+    /// A card played in addition to the turn's two (Ring of Haste, Staff of Command): one of
+    /// its halves, before the turn goes on from where it was.
+    case executeExtraHalf
     case turnComplete
 }
 
@@ -28,6 +31,25 @@ final class PlayerTurnController {
     var bottomActions: [ActionModel] = []
     var currentActionIndex: Int = 0
     var isLongRest: Bool = false
+
+    /// A card played in addition to the turn's two, while its half is performed.
+    struct ExtraPlay {
+        let card: AbilityModel
+        let top: Bool
+        /// Where the turn goes on from once the half is done.
+        let resumePhase: PlayerTurnPhase
+        let resumeIndex: Int
+    }
+    private(set) var extraPlay: ExtraPlay?
+    var extraActions: [ActionModel] = []
+
+    /// The half just finished, for the items that follow a kind of action (Staff of Command
+    /// after a Command, Master's Lute after a Song): its side, and those kinds.
+    struct FinishedHalf: Equatable {
+        let top: Bool
+        var kinds: Set<String>
+    }
+    var finishedHalf: FinishedHalf?
 
     /// Perform the bottom half before the top half.
     private(set) var bottomFirst: Bool = false
@@ -96,7 +118,7 @@ final class PlayerTurnController {
         let logCount: Int
         let hasActed: Bool
         let topUsedAsDefault: Bool, bottomUsedAsDefault: Bool
-        let topActions: [ActionModel], bottomActions: [ActionModel]
+        let topActions: [ActionModel], bottomActions: [ActionModel], extraActions: [ActionModel]
         let hexesMoved: Int, damageInflicted: Int, lootBonus: Int, damageSuffered: Int, lastMoveLength: Int
         let hexesPassed: [HexCoord]
         let persistentCardsThisTurn: [Int]
@@ -125,16 +147,51 @@ final class PlayerTurnController {
     func selectCards(top: AbilityModel, bottom: AbilityModel) {
         self.topCard = top
         self.bottomCard = bottom
-        // Enhancements bought in town are part of the card (GH p.42).
-        let enhancements = character?.enhancements ?? []
-        let labels = gameManager?.editionStore, edition = character?.edition ?? "gh"
-        self.topActions = Self.steps(Self.attachingTargets(
-            CardEnhancing.apply(enhancements, to: top.actions ?? [], cardId: top.cardId, half: "top")), labels: labels, edition: edition)
-        self.bottomActions = Self.steps(Self.attachingTargets(
-            CardEnhancing.apply(enhancements, to: bottom.bottomActions ?? [], cardId: bottom.cardId, half: "bottom")), labels: labels, edition: edition)
+        self.topActions = halfSteps(of: top, top: true)
+        self.bottomActions = halfSteps(of: bottom, top: false)
         self.phase = bottomFirst ? .executeBottomAction : .executeTopAction
         self.currentActionIndex = 0
         placeTurnBonusSteps()
+    }
+
+    /// A half of a card as the turn's steps, with the enhancements bought in town (GH p.42).
+    private func halfSteps(of card: AbilityModel, top: Bool) -> [ActionModel] {
+        let enhancements = character?.enhancements ?? []
+        let labels = gameManager?.editionStore, edition = character?.edition ?? "gh"
+        let printed = (top ? card.actions : card.bottomActions) ?? []
+        return Self.steps(Self.attachingTargets(
+            CardEnhancing.apply(enhancements, to: printed, cardId: card.cardId, half: top ? "top" : "bottom")),
+            labels: labels, edition: edition)
+    }
+
+    /// Play another card from the hand and perform one of its halves now (Ring of Haste: the
+    /// bottom; Ring of Brutality: the top). The turn goes on afterwards from where it was, and
+    /// the card goes to the discard pile, or the lost pile or the active area as its half says.
+    func playExtraHalf(_ card: AbilityModel, top: Bool) {
+        guard extraPlay == nil, !isWaiting, let cardId = card.cardId,
+              character?.handCards.contains(cardId) == true,
+              cardId != topCard?.cardId || phase == .turnComplete,
+              cardId != bottomCard?.cardId || phase == .turnComplete else { return }
+        extraPlay = ExtraPlay(card: card, top: top, resumePhase: phase, resumeIndex: currentActionIndex)
+        extraActions = halfSteps(of: card, top: top)
+        finishedHalf = nil
+        phase = .executeExtraHalf
+        currentActionIndex = 0
+        coordinator?.log("\(who) plays \(card.name ?? "a card") for its \(top ? "top" : "bottom") half", category: .round)
+    }
+
+    /// Kinds of action a printed half is, from the class tag at its start ("command", "song").
+    static func halfKinds(_ printed: [ActionModel]) -> Set<String> {
+        var kinds = Set<String>()
+        func visit(_ action: ActionModel) {
+            if action.type == .box, let tag = action.value?.stringValue {
+                if tag.hasSuffix(".command%") { kinds.insert("command") }
+                if tag.hasSuffix(".song%") { kinds.insert("song") }
+            }
+            (action.subActions ?? []).forEach(visit)
+        }
+        printed.forEach(visit)
+        return kinds
     }
 
     /// Steps from charged bonuses that act at the start or end of the turn (Lumbering Bash,
@@ -216,6 +273,7 @@ final class PlayerTurnController {
         switch phase {
         case .executeTopAction: actions = topActions
         case .executeBottomAction: actions = bottomActions
+        case .executeExtraHalf: actions = extraActions
         default: return
         }
 
@@ -224,6 +282,7 @@ final class PlayerTurnController {
             return
         }
 
+        finishedHalf = nil
         checkpoint = makeCheckpoint()
         hasActed = true
         let action = actions[currentActionIndex]
@@ -294,8 +353,8 @@ final class PlayerTurnController {
                 awaitingAsync = false
             }
         }
-        let count = phase == .executeTopAction ? topActions.count : bottomActions.count
-        guard phase == .executeTopAction || phase == .executeBottomAction else { return }
+        let count = currentSteps.count
+        guard phase == .executeTopAction || phase == .executeBottomAction || phase == .executeExtraHalf else { return }
         hasActed = true
         if currentActionIndex + 1 < count {
             currentActionIndex += 1
@@ -313,7 +372,7 @@ final class PlayerTurnController {
             positions: coordinator.boardState.piecePositions, cells: coordinator.boardState.cells,
             logCount: coordinator.turnLog.count, hasActed: hasActed,
             topUsedAsDefault: topUsedAsDefault, bottomUsedAsDefault: bottomUsedAsDefault,
-            topActions: topActions, bottomActions: bottomActions,
+            topActions: topActions, bottomActions: bottomActions, extraActions: extraActions,
             hexesMoved: hexesMoved, damageInflicted: damageInflicted, lootBonus: lootBonus,
             damageSuffered: damageSuffered, lastMoveLength: lastMoveLength, hexesPassed: hexesPassed,
             persistentCardsThisTurn: persistentCardsThisTurn, movedThroughConditions: movedThroughConditions,
@@ -371,6 +430,7 @@ final class PlayerTurnController {
         defaultAttackPending = false
         topActions = checkpoint.topActions
         bottomActions = checkpoint.bottomActions
+        extraActions = checkpoint.extraActions
         hexesMoved = checkpoint.hexesMoved
         damageInflicted = checkpoint.damageInflicted
         lootBonus = checkpoint.lootBonus
@@ -396,11 +456,22 @@ final class PlayerTurnController {
     }
 
     /// The steps of the half being played.
-    private var currentSteps: [ActionModel] {
+    var currentSteps: [ActionModel] {
         switch phase {
         case .executeTopAction: return topActions
         case .executeBottomAction: return bottomActions
+        case .executeExtraHalf: return extraActions
         default: return []
+        }
+    }
+
+    /// The card whose half is being performed.
+    var currentCard: AbilityModel? {
+        switch phase {
+        case .executeTopAction: return topCard
+        case .executeBottomAction: return bottomCard
+        case .executeExtraHalf: return extraPlay?.card
+        default: return nil
         }
     }
 
@@ -436,6 +507,7 @@ final class PlayerTurnController {
             return
         }
         guard canUseDefaultAction else { return }
+        finishedHalf = nil
         checkpoint = makeCheckpoint()
         hasActed = true
         // The basic action replaces the half's printed abilities; the turn's bonus steps in it
@@ -501,6 +573,18 @@ final class PlayerTurnController {
     // MARK: - Private
 
     private func advancePhase() {
+        // The tag is printed on the card (the steps leave it out).
+        switch phase {
+        case .executeTopAction: finishedHalf = FinishedHalf(top: true, kinds: Self.halfKinds(topCard?.actions ?? []))
+        case .executeBottomAction:
+            finishedHalf = FinishedHalf(top: false, kinds: Self.halfKinds(bottomCard?.bottomActions ?? []))
+        case .executeExtraHalf:
+            if let extra = extraPlay {
+                finishedHalf = FinishedHalf(top: extra.top,
+                                            kinds: Self.halfKinds((extra.top ? extra.card.actions : extra.card.bottomActions) ?? []))
+            }
+        default: break
+        }
         switch (phase, bottomFirst) {
         case (.executeTopAction, false):
             phase = .executeBottomAction
@@ -511,9 +595,24 @@ final class PlayerTurnController {
         case (.executeTopAction, true), (.executeBottomAction, false):
             phase = .turnComplete
             finishTurn()
+        case (.executeExtraHalf, _):
+            finishExtraHalf()
         default:
             break
         }
+    }
+
+    /// The extra card's half is done: the card is put away, and the turn goes on.
+    private func finishExtraHalf() {
+        guard let extra = extraPlay else { return }
+        if let character, !character.exhausted {
+            putAway(extra.card, half: extraActions, lostFlag: extra.top ? extra.card.lost == true : extra.card.bottomLost == true,
+                    usedAsDefault: false, character: character)
+        }
+        extraPlay = nil
+        extraActions = []
+        phase = extra.resumePhase
+        currentActionIndex = extra.resumeIndex
     }
 
     private func resetPendingAttack(value: Int, range: Int) {
@@ -594,7 +693,7 @@ final class PlayerTurnController {
         // A persistent or round half's bonus applies once the half is being performed.
         let markers = halfMarkers(for: phase)
         if markers.contains("persistent") || markers.contains("round"),
-           let cardId = (phase == .executeBottomAction ? bottomCard : topCard)?.cardId,
+           let cardId = currentCard?.cardId,
            !persistentCardsThisTurn.contains(cardId) {
             persistentCardsThisTurn.append(cardId)
         }
@@ -1100,10 +1199,16 @@ final class PlayerTurnController {
         let own = action.value.flatMap { gameManager?.editionStore.resolveCustomText($0.stringValue, edition: character.edition)
             ?? $0.stringValue } ?? ""
         let text = (own + " " + customText(of: action)).lowercased()
-        if text.contains("trap in an adjacent empty hex"), text.hasPrefix("create") || text.contains(" create") {
+        if text.contains("place your character token on"),
+           character.carriedItems.contains(PassiveItems.cloakOfTheHunter) {
+            // A Doom: its token is still placed by hand, and Cloak of the Hunter muddles its target.
+            coordinator.beginConditionAction(pieceID: me, condition: .muddle, range: 99)
+            coordinator.log("\(who)\u{2019}s Cloak of the Hunter: choose the Doom\u{2019}s target to muddle it", category: .condition)
+            return true
+        } else if text.contains("trap in an adjacent empty hex"), text.hasPrefix("create") || text.contains(" create") {
             // Proximity Mine: "Create one 6 damage trap…", "Gain XP +2 when the trap is sprung by
             // an enemy" (the next line of the half); Volatile Concoction: "2 damage Poison trap".
-            let half = phase == .executeBottomAction ? bottomActions : topActions
+            let half = currentSteps
             let following = half.dropFirst(currentActionIndex + 1).first.map(customText(of:)) ?? ""
             let nextLine = half.dropFirst(currentActionIndex + 1).first.flatMap { $0.value }
                 .flatMap { gameManager?.editionStore.resolveCustomText($0.stringValue, edition: character.edition) }?.lowercased() ?? following
@@ -1168,7 +1273,7 @@ final class PlayerTurnController {
                 coordinator.log("\(who) consumes \(GameText.list(used.map(GameText.elementName)))", category: .element)
                 if customText(of: sub).contains("up to two") { count = 2 }
             }
-            let title = (phase == .executeBottomAction ? bottomCard : topCard)?.name ?? "Recover"
+            let title = currentCard?.name ?? "Recover"
             coordinator.offerAllyRecovery(from: me, range: range, count: count, title: title)
         } else if text.contains("reduce your current hit point value to 1") {
             // Glass Hammer: "This is not considered damage."
@@ -1298,7 +1403,7 @@ final class PlayerTurnController {
 
     /// "When another augment is played, discard this card."
     private func retireOtherAugments(coordinator: BoardCoordinator) {
-        guard let character, let playing = (phase == .executeBottomAction ? bottomCard : topCard)?.cardId else { return }
+        guard let character, let playing = currentCard?.cardId else { return }
         for (id, _) in activeAugments() where id != playing {
             if character.activeCards.contains(id) {
                 character.removeFromActiveArea(id)
@@ -1579,36 +1684,7 @@ final class PlayerTurnController {
             return false
         }
 
-        let pieceID = PieceID.character(characterID)
-        guard let charPos = coordinator.boardState.piecePositions[pieceID] else { return false }
-
-        // Summons are placed in an empty hex adjacent to the summoner (p.26).
-        let emptyNeighbors = charPos.neighbors.filter { coordinator.isEmptyHex($0) }
-        guard !emptyNeighbors.isEmpty else {
-            coordinator.log("\(who) can\u{2019}t summon \(GameText.titleCased(summonName)): no empty hex next to them", category: .info)
-            return false
-        }
-
-        gameManager.characterManager.addSummon(from: summonData, for: character)
-        guard let summon = character.summons.last else { return false }
-
-        let validHexes = Set(emptyNeighbors)
-        coordinator.pendingSummonPlacement = BoardCoordinator.PendingSummonPlacement(
-            summonID: summon.id,
-            characterID: characterID,
-            summonName: summonName,
-            validHexes: validHexes,
-            remaining: max(0, (summonData.count ?? 1) - 1),
-            summonData: summonData
-        )
-        coordinator.interactionMode = .placingSummon(
-            summonID: summon.id,
-            characterID: characterID,
-            validHexes: validHexes
-        )
-        coordinator.boardScene?.highlightHexes(validHexes, style: .summon, offsetCol: coordinator.offsetCol, offsetRow: coordinator.offsetRow)
-        coordinator.log("\(who) summons \(GameText.titleCased(summonName)). Choose a hex next to them", category: .info)
-        return true
+        return coordinator.beginSummonPlacement(summonData, for: character)
     }
 
     /// Infuse or consume an element based on the action's valueType.
@@ -1639,7 +1715,12 @@ final class PlayerTurnController {
 
     /// "card" markers (persistent / round / lost) printed on a half, at any nesting depth.
     private func halfMarkers(for phase: PlayerTurnPhase) -> Set<String> {
-        let actions = phase == .executeBottomAction ? bottomActions : topActions
+        let actions: [ActionModel]
+        switch phase {
+        case .executeBottomAction: actions = bottomActions
+        case .executeExtraHalf: actions = extraActions
+        default: actions = topActions
+        }
         return Self.markers(in: actions)
     }
 

@@ -20,6 +20,10 @@ struct PlayedCardsView: View {
             if let bottom = turn.bottomCard {
                 card(bottom, half: .bottom, active: turn.phase == .executeBottomAction)
             }
+            // A card played in addition (Ring of Haste), while its half is performed.
+            if let extra = turn.extraPlay {
+                card(extra.card, half: extra.top ? .top : .bottom, active: true)
+            }
         }
     }
 
@@ -44,8 +48,8 @@ struct PlayedCardsView: View {
                 // The half this card doesn't give is dimmed; so is all of it once the turn is done.
                 GeometryReader { geo in
                     VStack(spacing: 0) {
-                        Rectangle().fill(.black.opacity(dimsTop(half) ? 0.62 : 0))
-                        Rectangle().fill(.black.opacity(dimsBottom(half) ? 0.62 : 0))
+                        Rectangle().fill(.black.opacity(dimsTop(half, active: active) ? 0.62 : 0))
+                        Rectangle().fill(.black.opacity(dimsBottom(half, active: active) ? 0.62 : 0))
                     }
                     .frame(width: geo.size.width, height: geo.size.height)
                 }
@@ -63,9 +67,10 @@ struct PlayedCardsView: View {
             }
     }
 
-    private var done: Bool { turn.phase == .turnComplete }
-    private func dimsTop(_ half: Half) -> Bool { done || half == .bottom }
-    private func dimsBottom(_ half: Half) -> Bool { done || half == .top }
+    /// The two cards are done with once the turn is (an extra card played after it is not).
+    private var done: Bool { turn.phase == .turnComplete || turn.extraPlay?.resumePhase == .turnComplete }
+    private func dimsTop(_ half: Half, active: Bool) -> Bool { (done && !active) || half == .bottom }
+    private func dimsBottom(_ half: Half, active: Bool) -> Bool { (done && !active) || half == .top }
 
     @ViewBuilder
     private func face(_ card: AbilityModel) -> some View {

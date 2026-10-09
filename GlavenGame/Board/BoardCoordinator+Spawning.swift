@@ -129,3 +129,42 @@ extension BoardCoordinator {
         return nil
     }
 }
+
+// MARK: - Character summons
+
+extension BoardCoordinator {
+
+    /// Summon a figure for a character, from a card or an item: it goes in an empty hex next to
+    /// them (p.26), which the player picks. False when there's no room (nothing is summoned).
+    @discardableResult
+    func beginSummonPlacement(_ summonData: SummonDataModel, for character: GameCharacter) -> Bool {
+        guard let gameManager else { return false }
+        let summoner = PieceID.character(character.id)
+        let who = characterName(character.id)
+        let summonName = summonData.name
+        guard let charPos = boardState.piecePositions[summoner] else { return false }
+
+        let emptyNeighbors = charPos.neighbors.filter { isEmptyHex($0) }
+        guard !emptyNeighbors.isEmpty else {
+            log("\(who) can\u{2019}t summon \(GameText.titleCased(summonName)): no empty hex next to them", category: .info)
+            return false
+        }
+
+        gameManager.characterManager.addSummon(from: summonData, for: character)
+        guard let summon = character.summons.last else { return false }
+
+        let validHexes = Set(emptyNeighbors)
+        pendingSummonPlacement = PendingSummonPlacement(
+            summonID: summon.id,
+            characterID: character.id,
+            summonName: summonName,
+            validHexes: validHexes,
+            remaining: max(0, (summonData.count ?? 1) - 1),
+            summonData: summonData
+        )
+        interactionMode = .placingSummon(summonID: summon.id, characterID: character.id, validHexes: validHexes)
+        boardScene?.highlightHexes(validHexes, style: .summon, offsetCol: offsetCol, offsetRow: offsetRow)
+        log("\(who) summons \(GameText.titleCased(summonName)). Choose a hex next to them", category: .info)
+        return true
+    }
+}

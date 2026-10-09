@@ -116,6 +116,19 @@ struct BoardView: View {
                     .transition(.opacity)
             }
 
+            // A card to play for an item (Ring of Haste, Second Chance Ring)
+            if let pending = coordinator.pendingCardPlay,
+               let character = gameManager.game.characters.first(where: { $0.id == pending.characterID }) {
+                CardPlayPicker(pending: pending, character: character, coordinator: coordinator)
+                    .id(pending.id)
+                    .transition(.opacity)
+            }
+            if let pending = coordinator.pendingActionChoice {
+                ActionChoicePrompt(pending: pending, coordinator: coordinator)
+                    .id(pending.id)
+                    .transition(.opacity)
+            }
+
             // Elements to infuse, a condition to remove (Mana Potions, Minor Cure Potion)
             if let pending = coordinator.pendingElementChoice {
                 ElementChoicePrompt(pending: pending, coordinator: coordinator)
@@ -386,12 +399,14 @@ struct BoardView: View {
     @ViewBuilder
     private func turnControls(_ playerTurn: PlayerTurnController) -> some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text(Self.halfHeading(phase: playerTurn.phase, top: playerTurn.topCard, bottom: playerTurn.bottomCard))
+            Text(Self.halfHeading(phase: playerTurn.phase, top: playerTurn.topCard, bottom: playerTurn.bottomCard,
+                                  extra: playerTurn.extraPlay))
                 .font(BoardTheme.font(size: 11, weight: .semibold))
                 .foregroundStyle(BoardTheme.brass)
 
-            if playerTurn.phase == .executeTopAction || playerTurn.phase == .executeBottomAction {
-                let actions = playerTurn.phase == .executeTopAction ? playerTurn.topActions : playerTurn.bottomActions
+            if playerTurn.phase == .executeTopAction || playerTurn.phase == .executeBottomAction
+                || playerTurn.phase == .executeExtraHalf {
+                let actions = playerTurn.currentSteps
                 let idx = playerTurn.currentActionIndex
 
                 // While a step waits for a hex or a target, the instruction says what to tap and
@@ -429,28 +444,29 @@ struct BoardView: View {
                     TurnChoiceButtons(turn: playerTurn)
                 }
 
-                // Items whose moment has come: during this move, this attack, or the turn.
-                let items = coordinator.usableItems()
-                if !items.isEmpty {
-                    FlowLayout(spacing: 8) {
-                        ForEach(items, id: \.itemKey) { item in
-                            Button {
-                                coordinator.useItem(item)
-                            } label: {
-                                Label("Use \(item.name)", systemImage: item.consumed ? "flask" : "shield.lefthalf.filled")
-                            }
-                            .buttonStyle(.boardQuietCompact)
-                            .accessibilityHint(item.consumed ? "Used up for the scenario" : "Spent until a long rest")
-                        }
-                    }
-                }
-
                 // Multi-target attacks: attack fewer targets than allowed.
                 if case .selectingMultiAttackTargets(_, _, _, _, let selected) = coordinator.interactionMode, !selected.isEmpty {
                     Button("Attack \(selected.count) Target\(selected.count == 1 ? "" : "s")") {
                         coordinator.confirmMultiAttack()
                     }
                     .buttonStyle(.boardPrimary)
+                }
+            }
+
+            // Items whose moment has come: during this move, this attack, the turn, or its end.
+            let items = coordinator.usableItems()
+            if !items.isEmpty {
+                FlowLayout(spacing: 8) {
+                    ForEach(items, id: \.itemKey) { item in
+                        Button {
+                            coordinator.useItem(item)
+                        } label: {
+                            Label("Use \(item.name)", systemImage: item.consumed ? "flask" : "shield.lefthalf.filled")
+                        }
+                        .buttonStyle(.boardQuietCompact)
+                        .accessibilityHint(item.consumed ? "Used up for the scenario"
+                                           : item.spent ? "Spent until a long rest" : "Can be used again")
+                    }
                 }
             }
 
@@ -468,10 +484,13 @@ struct BoardView: View {
     }
 
     /// "Top half · Provoking Roar", "Bottom half · Overwhelming Assault", "Turn done".
-    static func halfHeading(phase: PlayerTurnPhase, top: AbilityModel?, bottom: AbilityModel?) -> String {
+    static func halfHeading(phase: PlayerTurnPhase, top: AbilityModel?, bottom: AbilityModel?,
+                            extra: PlayerTurnController.ExtraPlay? = nil) -> String {
         switch phase {
         case .executeTopAction: return "Top half · \(top?.name ?? "")"
         case .executeBottomAction: return "Bottom half · \(bottom?.name ?? "")"
+        case .executeExtraHalf:
+            return "Extra card, \(extra?.top == true ? "top" : "bottom") half · \(extra?.card.name ?? "")"
         case .turnComplete: return "Turn done"
         default: return "Your turn"
         }
@@ -1348,6 +1367,7 @@ struct BoardView: View {
         case .selectTopCard: return "Select Top"
         case .executeTopAction: return "Top Action"
         case .executeBottomAction: return "Bottom Action"
+        case .executeExtraHalf: return "Extra Card"
         case .turnComplete: return "Done"
         }
     }

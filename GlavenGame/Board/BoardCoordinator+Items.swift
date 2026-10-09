@@ -18,6 +18,10 @@ struct BoardItemEffect: Equatable {
         case singleMeleeAttack, singleRangedAttack
         /// While the character places obstacles from a card (Stone Charm).
         case placingObstacle
+        /// Once the turn's two halves are done, before it ends (Ring of Haste).
+        case endOfTurn
+        /// Right after a half that is a Command (Staff of Command) or a Song (Master's Lute).
+        case afterCommand, afterSong
     }
 
     enum Part: Equatable {
@@ -81,6 +85,18 @@ struct BoardItemEffect: Equatable {
         case attackBonusAgainst([String], Int)
         /// One more obstacle to place (Stone Charm).
         case extraObstacle
+        /// Summon the item's figure next to the character (Ring of Skulls, Power Core…).
+        case summonFromItem
+        /// Play a card from the hand and perform its top or bottom half now (Ring of Brutality,
+        /// Ring of Haste).
+        case playCardHalf(top: Bool)
+        /// The same, on the side of the half just performed (Staff of Command).
+        case playCardHalfSameSide
+        /// Play two more cards for another turn this round, at their later initiative (Second
+        /// Chance Ring).
+        case extraTurn
+        /// Attack N or Move N, the player's choice (Master's Lute).
+        case attackOrMove(Int)
     }
 
     let moment: Moment
@@ -194,6 +210,15 @@ struct BoardItemEffect: Equatable {
         "gh-73": .init(.betweenSteps, .selfMove(4, jump: true)),              // Blinking Cape
         "gh-130": .init(.turn, consuming: [.light, .dark], .heal(25)),        // Helix Ring
         "gh-138": .init(.placingObstacle, .extraObstacle),                    // Stone Charm
+        "gh-35": .init(.betweenSteps, .summonFromItem),                       // Falcon Figurine
+        "gh-115": .init(.betweenSteps, .summonFromItem),                      // Mountain Hammer
+        "gh-123": .init(.betweenSteps, .summonFromItem),                      // Ring of Skulls
+        "gh-132": .init(.betweenSteps, .summonFromItem),                      // Power Core
+        "gh-42": .init(.endOfTurn, .playCardHalf(top: false)),               // Ring of Haste
+        "gh-56": .init(.endOfTurn, .playCardHalf(top: true)),                // Ring of Brutality
+        "gh-70": .init(.endOfTurn, .extraTurn),                              // Second Chance Ring
+        "gh-150": .init(.afterCommand, .playCardHalfSameSide),               // Staff of Command
+        "gh-146": .init(.afterSong, .attackOrMove(2)),                       // Master's Lute
         "gh-113": .init(.singleMeleeAttack,                                   // Skullbane Axe
                         .attackBonusAgainst(["living-corpse", "living-spirit", "living-bones"], 5)),
     ]
@@ -250,6 +275,9 @@ enum PassiveItems {
     /// Halberd: a single-target melee attack reaches any enemy within 2 hexes.
     static let halberd = "gh-68"
 
+    /// Cloak of the Hunter: the target of the wearer's Doom is muddled.
+    static let cloakOfTheHunter = "gh-147"
+
     static func defaultAttack(for items: [String]) -> Int { items.compactMap { defaultAttack[$0] }.max() ?? 2 }
     static func defaultMove(for items: [String]) -> Int { items.compactMap { defaultMove[$0] }.max() ?? 2 }
     static func flies(_ items: [String]) -> Bool { items.contains(where: flying.contains) }
@@ -273,9 +301,17 @@ extension BoardCoordinator {
                   turn.hexesMoved >= effect.minimumMoved,
                   !(effect.parts.allSatisfy { if case .recover = $0 { return true }; return false }
                     && character.discardedCards.isEmpty),   // a stamina potion with nothing to recover
+                  !(effect.parts.contains(.summonFromItem) && !hasRoomToSummon(next: character)),
+                  !(effect.playsACard && playableHandCards(of: character).isEmpty),
+                  !(effect.parts.contains(.extraTurn) && !canTakeAnotherTurn(character)),
                   let item = itemData(key) else { return nil }
             return item
         }
+    }
+
+    /// Whether a summon would have an empty hex next to the character.
+    private func hasRoomToSummon(next character: GameCharacter) -> Bool {
+        boardState.piecePositions[.character(character.id)]?.neighbors.contains(where: isEmptyHex) ?? false
     }
 
     private func isMoment(_ moment: BoardItemEffect.Moment, for turn: PlayerTurnController) -> Bool {
@@ -284,7 +320,7 @@ extension BoardCoordinator {
         case (.turn, .watchingMonsterTurn), (.turn, .placingCharacter):
             return false
         case (.turn, _):
-            return turn.phase == .executeTopAction || turn.phase == .executeBottomAction
+            return turn.phase == .executeTopAction || turn.phase == .executeBottomAction || turn.phase == .executeExtraHalf
         case (.move, .selectingMove(let mover, _, _, let teleport, _)):
             return mover == me && !teleport
         case (.attack, .selectingAttackTarget(let attacker, _, _)),
@@ -299,13 +335,20 @@ extension BoardCoordinator {
         case (.heal, .selectingHealTarget(let healer, _, _)):
             return healer == me
         case (.betweenSteps, .idle):
-            return (turn.phase == .executeTopAction || turn.phase == .executeBottomAction) && !turn.isWaiting
+            return (turn.phase == .executeTopAction || turn.phase == .executeBottomAction
+                    || turn.phase == .executeExtraHalf) && !turn.isWaiting
         case (.singleMeleeAttack, .selectingAttackTarget(let attacker, _, _)):
             return attacker == me && turn.currentAttackRange() <= 1 && turn.pendingAreaPattern == nil
         case (.singleRangedAttack, .selectingAttackTarget(let attacker, _, _)):
             return attacker == me && turn.currentAttackRange() > 1 && turn.pendingAreaPattern == nil
         case (.placingObstacle, .placingToken(let placer, .obstacle, _, _)):
             return placer == me
+        case (.endOfTurn, .idle):
+            return turn.phase == .turnComplete && !turn.isLongRest
+        case (.afterCommand, .idle):
+            return turn.finishedHalf?.kinds.contains("command") == true && !turn.isWaiting
+        case (.afterSong, .idle):
+            return turn.finishedHalf?.kinds.contains("song") == true && !turn.isWaiting
         default:
             return false
         }
@@ -319,15 +362,22 @@ extension BoardCoordinator {
               let character = gameManager.game.characters.first(where: { $0.id == turn.characterID }),
               let effect = BoardItemEffect.byItem[item.itemKey] else { return false }
         let me = PieceID.character(character.id)
-        gameManager.characterManager.onBeforeMutate?()
-        // Items with neither mark (the element blades and orbs) can be used again.
-        if item.consumed {
-            character.consumedItems.insert(item.itemKey)
-        } else if item.spent {
-            character.spentItems.insert(item.itemKey)
+        // Playing another card: the item is used once the card is chosen.
+        if effect.playsACard || effect.parts.contains(.extraTurn) {
+            let kind: PendingCardPlay.Kind
+            if effect.parts.contains(.extraTurn) {
+                kind = .anotherTurn(after: character.initiative)
+            } else if let side = effect.parts.lazy.compactMap({ part -> Bool? in
+                if case .playCardHalf(let top) = part { return top }; return nil }).first {
+                kind = .half(top: side)
+            } else {
+                kind = .half(top: turn.finishedHalf?.top ?? true)
+            }
+            pendingCardPlay = PendingCardPlay(characterID: character.id, itemKey: item.itemKey, itemName: item.name,
+                                              kind: kind, options: playableHandCards(of: character).compactMap(\.cardId))
+            return true
         }
-        gameManager.scenarioStatsManager.recordItemUse(by: character.name)
-        log("\(name(me)) uses \(item.name)", category: .info)
+        markUsed(item, by: character)
 
         if !effect.consumes.isEmpty, let used = gameManager.game.consumeElements(effect.consumes) {
             log("\(name(me)) consumes \(GameText.list(used.map(GameText.elementName)))", category: .element)
@@ -336,6 +386,20 @@ extension BoardCoordinator {
             perform(part, of: item, character: character, turn: turn)
         }
         return true
+    }
+
+    /// The item is spent or consumed (the element blades and orbs, with neither mark, can be used
+    /// again), and counted for battle goals.
+    private func markUsed(_ item: ItemData, by character: GameCharacter) {
+        guard let gameManager else { return }
+        gameManager.characterManager.onBeforeMutate?()
+        if item.consumed {
+            character.consumedItems.insert(item.itemKey)
+        } else if item.spent {
+            character.spentItems.insert(item.itemKey)
+        }
+        gameManager.scenarioStatsManager.recordItemUse(by: character.name)
+        log("\(name(.character(character.id))) uses \(item.name)", category: .info)
     }
 
     private func perform(_ part: BoardItemEffect.Part, of item: ItemData, character: GameCharacter,
@@ -466,6 +530,14 @@ extension BoardCoordinator {
             beginAttackAction(pieceID: me, range: range)
         case .infuseAny(let count):
             pendingElementChoice = PendingElementChoice(characterID: character.id, count: count, itemName: item.name)
+        case .summonFromItem:
+            guard let data = item.summon else { break }
+            beginSummonPlacement(data, for: character)
+        case .playCardHalf, .playCardHalfSameSide, .extraTurn:
+            break   // these wait for the card (resolveCardPlay)
+        case .attackOrMove(let value):
+            turn.finishedHalf?.kinds.remove("song")
+            pendingActionChoice = PendingActionChoice(characterID: character.id, title: item.name, value: value)
         case .removeOneNegativeCondition:
             let negatives = character.entityConditions.filter { $0.name.isNegative && !$0.permanent }.map(\.name)
             if negatives.count == 1 {
@@ -739,6 +811,122 @@ extension BoardCoordinator {
 
     func itemData(_ key: String) -> ItemData? {
         gameManager?.editionStore.itemData(key: key)
+    }
+
+    // MARK: - Playing more cards
+
+    /// A card (or two) to play from the hand for an item: for one half now, or for another turn.
+    struct PendingCardPlay: Identifiable, Equatable {
+        enum Kind: Equatable {
+            case half(top: Bool)
+            /// Two cards, the first leading, whose initiative must come after this one.
+            case anotherTurn(after: Int)
+        }
+        let id = UUID()
+        let characterID: String
+        let itemKey: String
+        let itemName: String
+        let kind: Kind
+        /// The cards that may be played.
+        let options: [Int]
+
+        var count: Int { if case .anotherTurn = kind { return 2 }; return 1 }
+    }
+
+    /// The hand's cards that can still be played: not the two this turn is playing (they stay
+    /// in the hand until the turn ends), nor an extra one being performed.
+    func playableHandCards(of character: GameCharacter) -> [AbilityModel] {
+        guard let gameManager else { return [] }
+        let turn = activePlayerTurn?.characterID == character.id ? activePlayerTurn : nil
+        var inPlay = Set<Int>()
+        if let turn, turn.phase != .turnComplete {
+            inPlay.formUnion([turn.topCard?.cardId, turn.bottomCard?.cardId].compactMap { $0 })
+        }
+        if let extra = turn?.extraPlay?.card.cardId { inPlay.insert(extra) }
+        let deck = gameManager.characterManager.abilities(for: character)
+        return character.handCards.filter { !inPlay.contains($0) }.compactMap { id in deck.first { $0.cardId == id } }
+    }
+
+    /// Second Chance Ring: two cards in hand, one of them later than the turn just taken.
+    private func canTakeAnotherTurn(_ character: GameCharacter) -> Bool {
+        let hand = playableHandCards(of: character)
+        return hand.count >= 2 && hand.contains { $0.initiative > character.initiative }
+    }
+
+    /// The player's cards (or none, to change their mind: the item stays unused).
+    func resolveCardPlay(_ cardIds: [Int]) {
+        guard let pending = pendingCardPlay else { return }
+        pendingCardPlay = nil
+        guard let gameManager, let turn = activePlayerTurn, turn.characterID == pending.characterID,
+              let character = gameManager.game.characters.first(where: { $0.id == pending.characterID }),
+              let item = itemData(pending.itemKey) else { return }
+        let hand = playableHandCards(of: character)
+        let cards = cardIds.filter(pending.options.contains).compactMap { id in hand.first { $0.cardId == id } }
+        switch pending.kind {
+        case .half(let top):
+            guard let card = cards.first else { return }
+            markUsed(item, by: character)
+            turn.playExtraHalf(card, top: top)
+        case .anotherTurn(let after):
+            guard cards.count == 2, cards[0].initiative > after else { return }
+            markUsed(item, by: character)
+            scheduleAnotherTurn(for: character, lead: cards[0], second: cards[1])
+        }
+    }
+
+    /// Another turn this round at the lead card's initiative, with the two cards played (Second
+    /// Chance Ring). It comes after every figure still to act at an earlier initiative.
+    private func scheduleAnotherTurn(for character: GameCharacter, lead: AbilityModel, second: AbilityModel) {
+        character.initiative = lead.initiative
+        selectedCardPairs[character.id] = (top: lead, bottom: second)
+        let entry = TurnOrderEntry(figure: .character(character), initiative: Double(lead.initiative), anotherTurn: true)
+        let insertAt = turnOrder.indices.first { $0 > currentTurnIndex && turnOrder[$0].initiative > entry.initiative }
+            ?? turnOrder.count
+        turnOrder.insert(entry, at: insertAt)
+        log("\(name(.character(character.id))) will take another turn this round at initiative \(lead.initiative)", category: .round)
+    }
+
+    // MARK: - Attack or move
+
+    /// Attack N or Move N, the player's choice (Master's Lute after a Song).
+    struct PendingActionChoice: Identifiable, Equatable {
+        let id = UUID()
+        let characterID: String
+        let title: String
+        let value: Int
+    }
+
+    /// "attack", "move", or nil for neither.
+    func resolveActionChoice(_ choice: String?) {
+        guard let pending = pendingActionChoice else { return }
+        pendingActionChoice = nil
+        guard let turn = activePlayerTurn, turn.characterID == pending.characterID,
+              let character = gameManager?.game.characters.first(where: { $0.id == pending.characterID }) else { return }
+        let me = PieceID.character(character.id)
+        switch choice {
+        case "attack":
+            log("\(name(me)): Attack \(pending.value)", category: .attack)
+            turn.preparePerformedAttack(value: pending.value, range: 1)
+            beginAttackAction(pieceID: me, range: 1)
+        case "move":
+            log("\(name(me)): Move \(pending.value)", category: .move)
+            beginMoveAction(pieceID: me, moveRange: pending.value,
+                            mode: PassiveItems.flies(character.carriedItems) ? .fly : .normal)
+        default:
+            break
+        }
+    }
+}
+
+extension BoardItemEffect {
+    /// Whether using the item plays a card from the hand for one of its halves.
+    var playsACard: Bool {
+        parts.contains { part in
+            switch part {
+            case .playCardHalf, .playCardHalfSameSide: return true
+            default: return false
+            }
+        }
     }
 }
 

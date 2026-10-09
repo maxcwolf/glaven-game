@@ -89,6 +89,7 @@
 		593ED53896934CF7F83863D3 /* BoardScene.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1E5BE6C620EBFDD27F7F98C0 /* BoardScene.swift */; };
 		5B13B2FCD96C798F2DF93DE9 /* CardPool.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1F121B39DF61999A92908F6 /* CardPool.swift */; };
 		5BBB61E7EDF1269CF6D4BA28 /* PersonalQuestView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F6788E5A9839E00B97E24EDB /* PersonalQuestView.swift */; };
+		5BE153B9B73E3CBCF97D5578 /* CardPlayPicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2C75B78EAE14DFDBA9E0FEF7 /* CardPlayPicker.swift */; };
 		5C5298E665D4DFFC39A68DEF /* AbilityCardChoiceViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = D0F512D593B3AEA9F219C2FC /* AbilityCardChoiceViews.swift */; };
 		5F89475755C4F71171E0D9DD /* MonsterTurnController.swift in Sources */ = {isa = PBXBuildFile; fileRef = CEBB2CD9E70D5ABFA126923B /* MonsterTurnController.swift */; };
 		613E1571F485E87A36D138D1 /* SoundPlayer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 192975CBA7A72969B78836A7 /* SoundPlayer.swift */; };
@@ -251,6 +252,7 @@
 		2A627A875740C74A642DC8E7 /* ScenarioManager+Treasure.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ScenarioManager+Treasure.swift"; sourceTree = "<group>"; };
 		2A76D126F0BA77D9B298FE07 /* ScenarioRule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScenarioRule.swift; sourceTree = "<group>"; };
 		2B612F3F758BA3A91D1CEACF /* ActionHex.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActionHex.swift; sourceTree = "<group>"; };
+		2C75B78EAE14DFDBA9E0FEF7 /* CardPlayPicker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CardPlayPicker.swift; sourceTree = "<group>"; };
 		2D9D8344A9522FB4BC90880C /* GameRandom.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameRandom.swift; sourceTree = "<group>"; };
 		2F82064F5AB4E5914334FEA9 /* GameState+Elements.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "GameState+Elements.swift"; sourceTree = "<group>"; };
 		33A6C1188659B67AC3B2FFC8 /* BoardSnapshot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BoardSnapshot.swift; sourceTree = "<group>"; };
@@ -789,6 +791,7 @@
 				1ED388D23F2EFC9F14DE5E4F /* BoardTheme.swift */,
 				A74028D5DFEC6A3B6D0C3323 /* BoardTopBar.swift */,
 				972A40BE4DE4A8FA037B3C54 /* BoardView.swift */,
+				2C75B78EAE14DFDBA9E0FEF7 /* CardPlayPicker.swift */,
 				4C2B76831C29EEA9CE98F5A8 /* CardSelectionPanel.swift */,
 				EA732C1B11B1FD79F496753D /* DamageChoiceSheet.swift */,
 				BA5C6A163BDEB897E9993360 /* EscortTurnController.swift */,
@@ -1007,6 +1010,7 @@
 				91336D3AC6A42177636507B2 /* CampaignStore.swift in Sources */,
 				1C036A5F8DFC6D857F5E239E /* CampaignsSheet.swift in Sources */,
 				D7CE1CE9C11E696DD3D22EA9 /* CardEnhancing.swift in Sources */,
+				5BE153B9B73E3CBCF97D5578 /* CardPlayPicker.swift in Sources */,
 				5B13B2FCD96C798F2DF93DE9 /* CardPool.swift in Sources */,
 				264672DD5FA11BF550313E8D /* CardSelectionPanel.swift in Sources */,
 				9BF3482C20F2CC41F462F7AC /* CharacterClass.swift in Sources */,
