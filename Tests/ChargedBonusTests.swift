@@ -262,4 +262,15 @@ final class ChargedBonusTests: XCTestCase {
         await attack(brute, from: piece, value: 1)
         XCTAssertEqual(brute.experience, xp + 1)
     }
+
+    func testProvokingRoarDrawsAttacksMeantForAdjacentAllies() async throws {
+        let brute = add("brute", at: HexCoord(3, 3))
+        let tinkerer = add("tinkerer", at: HexCoord(4, 3))
+        brute.activeCards = [4]
+        let piece = try bandit(at: HexCoord(5, 3))
+        let (bruteHealth, tinkererHealth) = (brute.health, tinkerer.health)
+        await attack(tinkerer, from: piece, value: 2)
+        XCTAssertEqual(tinkerer.health, tinkererHealth)
+        XCTAssertEqual(brute.health, bruteHealth - 2, "the Brute takes it, though it's out of melee range")
+    }
 }

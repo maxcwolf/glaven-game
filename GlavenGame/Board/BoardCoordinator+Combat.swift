@@ -39,8 +39,9 @@ extension BoardCoordinator {
     /// conditions and push/pull on a surviving target, then retaliate.
     /// Returns true if the target died.
     @discardableResult
-    @MainActor func performAttack(attacker: PieceID, target: PieceID, attack: AttackParameters,
+    @MainActor func performAttack(attacker: PieceID, target aimedAt: PieceID, attack: AttackParameters,
                        drawCard: (() -> AttackModifier?)? = nil) async -> Bool {
+        let target = provokedTarget(of: attacker, aimingAt: aimedAt)
         guard let attackerPos = boardState.piecePositions[attacker],
               let targetPos = boardState.piecePositions[target],
               let defender = entity(for: target) else { return false }

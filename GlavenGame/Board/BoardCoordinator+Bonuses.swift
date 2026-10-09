@@ -42,11 +42,14 @@ enum ChargedBonus: Equatable {
     case experiencePerRetaliate
     /// The next damage this round is negated (Trickster's Reversal: a single use).
     case negateNextDamage
+    /// Enemies attacking an ally beside the character attack the character instead (Provoking Roar).
+    case drawAttacksFromAdjacentAllies
 
     /// Round bonuses don't use charges; every use leaves them in place.
     var isUnlimited: Bool {
         switch self {
-        case .roundAttackBonus, .roundAttackBonusWithAdjacentAllies, .experiencePerRetaliate: return true
+        case .roundAttackBonus, .roundAttackBonusWithAdjacentAllies, .experiencePerRetaliate,
+             .drawAttacksFromAdjacentAllies: return true
         default: return false
         }
     }
@@ -92,6 +95,7 @@ enum ChargedBonus: Equatable {
         "gh-40": .roundAttackBonusWithAdjacentAllies(1),        // Enhancement Field
         "gh-2": .experiencePerRetaliate,                        // Eye for an Eye
         "gh-98": .negateNextDamage,                             // Trickster's Reversal
+        "gh-4": .drawAttacksFromAdjacentAllies,                 // Provoking Roar
     ]
 
     /// The experience each charge slot gives, in order (0 for a plain slot).
@@ -174,6 +178,21 @@ extension BoardCoordinator {
         return chargedBonuses(of: piece).contains {
             $0.bonus == .negateDamage || $0.bonus == .negateNextDamage || ($0.bonus == .negateLethal && amount >= health)
         }
+    }
+
+    /// Provoking Roar: an enemy attacking an ally beside a provoking character attacks that
+    /// character instead, whatever the range. Returns who is really attacked.
+    func provokedTarget(of attacker: PieceID, aimingAt target: PieceID) -> PieceID {
+        guard let game = gameManager?.game, let position = boardState.piecePositions[target] else { return target }
+        for character in game.characters {
+            let provoker = PieceID.character(character.id)
+            guard provoker != target, areEnemies(attacker, provoker), !areEnemies(provoker, target),
+                  let theirs = boardState.piecePositions[provoker], theirs.isAdjacent(to: position),
+                  chargedBonuses(of: character).contains(where: { $0.bonus == .drawAttacksFromAdjacentAllies }) else { continue }
+            log("\(name(provoker)) draws the attack meant for \(name(target))", category: .attack)
+            return provoker
+        }
+        return target
     }
 
     /// This round's attack bonuses for an attack by `attacker` (its own, and Enhancement Field
