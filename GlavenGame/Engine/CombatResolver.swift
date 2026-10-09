@@ -39,6 +39,9 @@ struct ModifierSelfEffects: Equatable {
     var shield = 0
     var infusions: [ElementType] = []
     var itemsToRefresh = 0
+    /// "+1 Target" (perk cards): the attack ability may add another target, attacked with its
+    /// own draw.
+    var extraTargets = 0
 
     var isEmpty: Bool { self == ModifierSelfEffects() }
 
@@ -59,6 +62,8 @@ struct ModifierSelfEffects: Equatable {
                 if let element = effect.value.flatMap({ ElementType(rawValue: $0.stringValue) }) { infusions.append(element) }
             case .refreshItem:
                 itemsToRefresh += 1
+            case .target:
+                extraTargets += effect.value?.intValue ?? 1
             default:
                 break
             }

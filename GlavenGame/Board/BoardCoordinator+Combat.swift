@@ -173,6 +173,11 @@ extension BoardCoordinator {
         }
 
         applyModifierSelfEffects(result.attackerEffects, to: attacker)
+        // "+1 Target": the character's attack ability may take in one more enemy (offered when it ends).
+        if result.attackerEffects.extraTargets > 0, case .character(let id) = attacker, activePlayerTurn?.characterID == id {
+            extraTargetsEarned += result.attackerEffects.extraTargets
+            log("\(name(attacker)) may add a target to this attack", category: .attack)
+        }
 
         var died = false
         if negated {

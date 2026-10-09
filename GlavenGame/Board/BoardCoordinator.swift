@@ -1786,6 +1786,8 @@ final class BoardCoordinator {
 
     /// Begin a player's attack action.
     func beginAttackAction(pieceID: PieceID, range: Int, targetCount: Int = 1) {
+        abilityTargets = []
+        extraTargetsEarned = 0
         if isConditionActive(.disarm, on: pieceID) {
             log("\(name(pieceID)) is disarmed and can\u{2019}t attack", category: .condition)
             interactionMode = .idle
@@ -1873,6 +1875,7 @@ final class BoardCoordinator {
     @MainActor func resolvePlayerAttack(attacker: PieceID, target: PieceID, attackValue: Int, range: Int, advanceAction: Bool = true) async {
         let turn = activePlayerTurn
         let generation = boardGeneration
+        abilityTargets.insert(target)
         lastAttackTarget = target
         lastAttackerPos = boardState.piecePositions[attacker]
         boardScene?.clearHighlights()
@@ -1901,7 +1904,33 @@ final class BoardCoordinator {
             log("\(name(attacker)) gains \(printed.experience) XP", category: .info)
         }
         interactionMode = .idle
-        if advanceAction { turn?.advanceAfterAsyncAction() }
+        if advanceAction { finishPlayerAttack(attacker: attacker, range: range, turn: turn) }
+    }
+
+    // MARK: - +1 Target
+
+    /// Enemies the current attack ability has attacked, so an added target is another one.
+    @ObservationIgnored var abilityTargets: Set<PieceID> = []
+    /// Targets "+1 Target" modifier cards added to the current attack ability, not yet offered.
+    @ObservationIgnored var extraTargetsEarned = 0
+
+    /// End a character's attack ability: first offer the target a "+1 Target" card added (another
+    /// enemy in range, attacked with its own draw; Skip declines), then move on.
+    func finishPlayerAttack(attacker: PieceID, range: Int, turn: PlayerTurnController?) {
+        if extraTargetsEarned > 0, turn?.pendingAreaPattern == nil, isOnBoard(attacker) {
+            extraTargetsEarned -= 1
+            let options = targetableEnemies(of: attacker, range: range).subtracting(abilityTargets)
+            if !options.isEmpty {
+                log("\(name(attacker)): choose another target", category: .attack)
+                interactionMode = .selectingAttackTarget(pieceID: attacker, range: range, validTargets: options)
+                let hexes = Set(options.compactMap { boardState.piecePositions[$0] })
+                boardScene?.highlightHexes(hexes, style: .attack, offsetCol: offsetCol, offsetRow: offsetRow)
+                return
+            }
+            log("\(name(attacker)) has no other enemy in range to add", category: .attack)
+        }
+        extraTargetsEarned = 0
+        turn?.advanceAfterAsyncAction()
     }
 
     // MARK: - Push / Pull
@@ -2486,7 +2515,7 @@ final class BoardCoordinator {
                             await self.resolvePlayerAttack(attacker: attackerID, target: target, attackValue: attackValue, range: attackRange, advanceAction: false)
                         }
                         guard self.isCurrentBoard(generation) else { return }
-                        turn?.advanceAfterAsyncAction()
+                        self.finishPlayerAttack(attacker: attackerID, range: attackRange, turn: turn)
                     }
                 } else {
                     // Update mode with new selected list, highlight remaining valid targets
@@ -2563,7 +2592,7 @@ final class BoardCoordinator {
                 await self.resolvePlayerAttack(attacker: attackerID, target: target, attackValue: attackValue, range: attackRange, advanceAction: false)
             }
             guard self.isCurrentBoard(generation) else { return }
-            turn?.advanceAfterAsyncAction()
+            self.finishPlayerAttack(attacker: attackerID, range: attackRange, turn: turn)
         }
     }
 

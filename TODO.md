@@ -483,7 +483,7 @@ Performance & robustness
 - [ ] **Multi-hex obstacles** — one overlay per hex
 - [ ] **Random dungeon mode**
 - [ ] **Pathfinding visualization** — no debug overlay for monster movement decisions
-- [ ] **"+1 Target" on attack modifier cards** (6 perk cards: Brute, Cragheart, Mindthief…) — the extra target isn't offered
+- [x] **"+1 Target" on attack modifier cards** (6 perk cards): when the character's attack ability ends, another enemy in range it hasn't attacked is offered (its own draw; Skip declines); not for area attacks (`testAPlusOneTargetCardAddsATarget`)
 - [x] **Scenario-rule damage** (Scenario 51's summoners, 60's late rounds) goes through the lose-cards choice on the board, before play continues (`testScenarioRuleDamageCanBeNegated`)
 - [x] **Battle goals are dealt again** if the app quits between dealing and setting out: dealt goals are saved and kept until the scenario ends (`testDealtBattleGoalsSurviveARelaunch`)
 - [ ] Latent (no GH card triggers them today): an action that waits (printed "suffer X damage", a target choice) nested inside a box/concatenation step lets the outer step advance before it; a consume step with two rewards that each wait stops after the first. FH: Wound's deferred damage now lands after Regenerate's heal

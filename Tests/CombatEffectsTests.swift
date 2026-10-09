@@ -192,4 +192,41 @@ final class CombatEffectsTests: XCTestCase {
         coord.applyCondition(.curse, to: .character(brute.id))
         XCTAssertEqual(brute.attackModifierDeck.undrawnCount(of: .curse), 0, "the players' 10 are all in use")
     }
+
+    // MARK: - +1 Target (perk cards)
+
+    /// "+0 rolling, +1 Target" (the Brute's perk): after the attack, the Brute may attack another
+    /// enemy in range with the same ability, drawing for it; never the same target again.
+    func testAPlusOneTargetCardAddsATarget() async throws {
+        let brute = addCharacter("brute", at: HexCoord(3, 3))
+        let first = addMonster("bandit-guard", at: HexCoord(4, 3)), second = addMonster("bandit-guard", at: HexCoord(2, 3))
+        for bandit in [first, second] { bandit.health = 20; bandit.maxHealth = 20 }
+        let target = AttackModifier(type: .plus0, effects: [AttackModifierEffect(type: .target, value: .int(1))], rolling: true)
+        let zeros = (0..<10).map { _ in AttackModifier.standard(.plus0) }
+        brute.attackModifierDeck = AttackModifierDeck(attackModifiers: [target] + zeros, cards: [target] + zeros)
+
+        let deck = gm.editionStore.abilities(forDeck: "brute", edition: "gh")
+        let trample = try XCTUnwrap(deck.first { $0.name == "Trample" }), blow = try XCTUnwrap(deck.first { $0.name == "Sweeping Blow" })
+        brute.handCards = [trample.cardId!, blow.cardId!]
+        let turn = PlayerTurnController(characterID: brute.id, coordinator: coord, gameManager: gm)
+        coord.activePlayerTurn = turn
+        turn.selectCards(top: trample, bottom: blow)
+        turn.executeCurrentAction()   // Trample's Attack 3
+        let firstPiece = PieceID.monster(name: "bandit-guard", standee: first.number)
+        let secondPiece = PieceID.monster(name: "bandit-guard", standee: second.number)
+        coord.handlePieceTap(firstPiece)
+        _ = await waitUntil {
+            if case .selectingAttackTarget(_, _, let targets) = self.coord.interactionMode { return targets == [secondPiece] }
+            return false
+        }
+        guard case .selectingAttackTarget(_, _, let targets) = coord.interactionMode else {
+            return XCTFail("another target is offered, got \(coord.interactionMode)")
+        }
+        XCTAssertEqual(targets, [secondPiece], "not the enemy already attacked")
+        XCTAssertEqual(turn.currentActionIndex, 0, "still the same attack")
+        coord.handlePieceTap(secondPiece)
+        _ = await waitUntil { turn.currentActionIndex > 0 }
+        XCTAssertLessThan(second.health, 20, "the added target is attacked")
+        XCTAssertEqual(turn.currentActionIndex, 1, "then the turn moves on")
+    }
 }
