@@ -537,4 +537,28 @@ final class BoardItemTests: XCTestCase {
         try XCTUnwrap(NSBitmapImageRep(cgImage: image).representation(using: .png, properties: [:]))
             .write(to: URL(fileURLWithPath: out))
     }
+
+    // MARK: - Initiative
+
+    /// Boots of Speed, once the cards are revealed: the Brute's 45 becomes 35 and the boots are spent.
+    func testBootsOfSpeedMoveTheInitiative() throws {
+        brute.items = ["gh-15"]
+        brute.initiative = 45
+        coord.autoResolvePrompts = false
+        let offers = coord.initiativeItemOffers()
+        XCTAssertEqual(offers.map(\.amount), [10])
+        coord.initiativeOffers = offers
+        coord.offerNextInitiativeChange()
+        XCTAssertEqual(coord.pendingInitiativeChange?.initiative, 45)
+        coord.resolveInitiativeChange(-7)
+        XCTAssertEqual(brute.initiative, 45, "only by the boots' amount")
+        XCTAssertNil(coord.pendingInitiativeChange)
+
+        coord.initiativeOffers = coord.initiativeItemOffers()
+        coord.offerNextInitiativeChange()
+        coord.resolveInitiativeChange(-10)
+        XCTAssertEqual(brute.initiative, 35)
+        XCTAssertTrue(brute.spentItems.contains("gh-15"))
+        XCTAssertTrue(coord.initiativeItemOffers().isEmpty, "spent until a long rest")
+    }
 }

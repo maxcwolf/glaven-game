@@ -184,6 +184,10 @@ final class ScenarioSimulator {
             coord.resolveRecovery([])
             return
         }
+        if coord.pendingInitiativeChange != nil {
+            coord.resolveInitiativeChange(0)
+            return
+        }
         if coord.pendingElementChoice != nil {
             coord.resolveElementChoice([])
             return

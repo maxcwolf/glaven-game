@@ -381,6 +381,54 @@ extension BoardCoordinator {
         log("\(name(.character(character.id))) is no longer \(GameText.conditionName(condition).lowercased())", category: .condition)
     }
 
+    // MARK: - Initiative
+
+    /// Boots of Speed (10) and Boots of Quickness (20): after every card is revealed, the
+    /// wearer's leading initiative may go up or down by that much.
+    static let initiativeBoots: [String: Int] = ["gh-15": 10, "gh-43": 20]
+
+    struct PendingInitiativeChange: Identifiable, Equatable {
+        let id = UUID()
+        let characterID: String
+        let itemKey: String
+        let itemName: String
+        let amount: Int
+        let initiative: Int
+    }
+
+    func initiativeItemOffers() -> [PendingInitiativeChange] {
+        guard !autoResolvePrompts, let game = gameManager?.game else { return [] }
+        return game.activeCharacters.filter { !$0.exhausted && !$0.absent && !$0.longRest }.compactMap { character in
+            guard let key = character.items.first(where: { Self.initiativeBoots[$0] != nil }),
+                  !character.spentItems.contains(key), let item = itemData(key) else { return nil }
+            return PendingInitiativeChange(characterID: character.id, itemKey: key, itemName: item.name,
+                                           amount: Self.initiativeBoots[key] ?? 0, initiative: character.initiative)
+        }
+    }
+
+    func offerNextInitiativeChange() {
+        if initiativeOffers.isEmpty {
+            pendingInitiativeChange = nil
+            buildTurnOrderAndStart()
+        } else {
+            pendingInitiativeChange = initiativeOffers.removeFirst()
+        }
+    }
+
+    /// The player's answer: change the initiative by `delta` (± the boots' amount; 0 keeps it).
+    func resolveInitiativeChange(_ delta: Int) {
+        guard let pending = pendingInitiativeChange, let gameManager,
+              let character = gameManager.game.characters.first(where: { $0.id == pending.characterID }) else { return }
+        if delta != 0 && abs(delta) == pending.amount {
+            gameManager.characterManager.onBeforeMutate?()
+            character.initiative = min(99, max(1, character.initiative + delta))
+            character.spentItems.insert(pending.itemKey)
+            gameManager.scenarioStatsManager.recordItemUse(by: character.name)
+            log("\(name(.character(character.id))) uses \(pending.itemName): initiative \(character.initiative)", category: .round)
+        }
+        offerNextInitiativeChange()
+    }
+
     /// Items that look at how far the character moved, as their turn ends.
     func applyEndOfTurnItems(_ turn: PlayerTurnController) {
         guard let character = gameManager?.game.characters.first(where: { $0.id == turn.characterID }) else { return }

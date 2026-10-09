@@ -380,6 +380,10 @@ final class BoardCoordinator {
     /// Non-nil while a character picks discarded cards to recover (Minor Stamina Potion).
     var pendingRecovery: PendingRecovery?
 
+    /// Boots of Speed / Quickness offers still to make this round, and the one being made.
+    var initiativeOffers: [PendingInitiativeChange] = []
+    var pendingInitiativeChange: PendingInitiativeChange?
+
     /// Non-nil while a character picks elements to infuse (Mana Potions).
     var pendingElementChoice: PendingElementChoice?
 
@@ -974,6 +978,14 @@ final class BoardCoordinator {
             }
         }
 
+        // Every card is revealed: Boots of Speed and Quickness may change an initiative now.
+        initiativeOffers = initiativeItemOffers()
+        offerNextInitiativeChange()
+    }
+
+    /// Order the round's figures by initiative and start the first turn.
+    func buildTurnOrderAndStart() {
+        guard let gameManager = gameManager else { return }
         // Build turn order from sorted figures
         turnOrder = gameManager.game.figures.compactMap { figure in
             switch figure {

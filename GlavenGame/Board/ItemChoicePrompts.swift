@@ -103,3 +103,29 @@ private struct ItemChoicePanel<Choices: View, Actions: View>: View {
         .padding()
     }
 }
+
+/// Boots of Speed / Quickness, once every card is revealed: go earlier, keep, or go later.
+struct InitiativeChangePrompt: View {
+    let pending: BoardCoordinator.PendingInitiativeChange
+    let coordinator: BoardCoordinator
+
+    var body: some View {
+        let earlier = max(1, pending.initiative - pending.amount)
+        let later = min(99, pending.initiative + pending.amount)
+        ItemChoicePanel(title: pending.itemName,
+                        detail: "\(coordinator.characterName(pending.characterID)) leads with initiative \(pending.initiative). Every card is revealed: change it by \(pending.amount)?") {
+            EmptyView()
+        } actions: {
+            Button("Earlier (\(earlier))") { coordinator.resolveInitiativeChange(-pending.amount) }
+                .buttonStyle(.borderedProminent)
+                .tint(BoardTheme.brass)
+            Button("Keep \(pending.initiative)") { coordinator.resolveInitiativeChange(0) }
+                .buttonStyle(.bordered)
+                .tint(.gray)
+            Button("Later (\(later))") { coordinator.resolveInitiativeChange(pending.amount) }
+                .buttonStyle(.borderedProminent)
+                .tint(BoardTheme.brass)
+        }
+        .frame(maxWidth: 560)
+    }
+}
