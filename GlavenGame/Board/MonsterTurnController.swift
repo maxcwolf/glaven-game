@@ -249,7 +249,7 @@ final class MonsterTurnController {
                 performLoot(range: action.value?.intValue ?? 1, pieceID: pieceID)
 
             case .summon:
-                performSummon(action, pieceID: pieceID)
+                performSummon(action, pieceID: pieceID, summoner: entity, monster: monster)
 
             case .shield, .retaliate:
                 // The card's own Shield/Retaliate was given when it was revealed; a paid element
@@ -480,14 +480,23 @@ final class MonsterTurnController {
 
     /// Monster summon: place the summoned monster in an empty adjacent hex, as close to an enemy
     /// as possible. It doesn't act this round and drops no money token (p.31).
-    private func performSummon(_ action: ActionModel, pieceID: PieceID) {
+    private func performSummon(_ action: ActionModel, pieceID: PieceID, summoner: GameMonsterEntity, monster: GameMonster) {
         guard let coordinator, let game = gameManager?.game,
               let specs = action.monsterSummons else { return }
         let characterCount = max(2, game.characters.filter { !$0.absent }.count)
         for spec in specs {
             let type = spec.type(forPlayerCount: characterCount)
+            let before = Set(game.monsters.first { $0.name == spec.name }?.aliveEntities.map(\.number) ?? [])
             if !coordinator.summonMonster(name: spec.name, type: type, near: pieceID) {
                 coordinator.log("\(coordinator.name(pieceID)) can\u{2019}t summon \(coordinator.monsterTypeName(spec.name)): no room", category: .info)
+                continue
+            }
+            // The Ooze splits: "with H equal to the summoning Ooze's current hit point value
+            // (limited by a normal Ooze's maximum)".
+            if spec.health?.stringValue == "H",
+               let summoned = game.monsters.first(where: { $0.name == spec.name })?.aliveEntities
+                .first(where: { !before.contains($0.number) }) {
+                summoned.health = min(summoner.health, summoned.maxHealth)
             }
         }
     }

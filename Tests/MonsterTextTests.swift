@@ -126,4 +126,21 @@ final class MonsterTextTests: XCTestCase {
         await MonsterTurnController(coordinator: coord, gameManager: gm).executeMonsterGroup(monster)
         XCTAssertEqual((entity.shield?.value?.intValue ?? 0) - before, 1, "Shield 1 became Shield 2")
     }
+
+    /// Ooze (696): suffer 2 damage, then split: the new Ooze has the summoner's hit points.
+    func testAnOozeSplitsWithItsHitPoints() async throws {
+        _ = character("brute", at: HexCoord(8, 3))
+        let piece = try XCTUnwrap(coord.spawnMonster(name: "ooze", type: .normal, at: HexCoord(3, 3), origin: .placed))
+        let parent = try XCTUnwrap(coord.entity(for: piece) as? GameMonsterEntity)
+        parent.health = 5
+        let monster = try XCTUnwrap(gm.game.monsters.first { $0.name == "ooze" })
+        let deck = gm.monsterManager.abilities(for: monster)
+        monster.abilities = [try XCTUnwrap(deck.firstIndex { $0.cardId == 696 })]
+        monster.ability = 0
+        monster.abilityDrawn = true
+        await MonsterTurnController(coordinator: coord, gameManager: gm).executeMonsterGroup(monster)
+        XCTAssertEqual(parent.health, 3, "it suffers 2 first")
+        let child = try XCTUnwrap(monster.aliveEntities.first { $0.number != parent.number })
+        XCTAssertEqual(child.health, 3)
+    }
 }
