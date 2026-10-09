@@ -53,6 +53,14 @@ extension BoardCoordinator {
                                                        retaliatePersistent: defender.retaliatePersistent,
                                                        distance: distance)
 
+        // Chain Hood: Shield 1 while the wearer is beside three or more monsters.
+        if case .character(let id) = target,
+           gameManager?.game.characters.first(where: { $0.id == id })?.items.contains(PassiveItems.chainHood) == true,
+           targetPos.neighbors.compactMap({ boardState.piece(at: $0) })
+               .filter({ if case .monster = $0 { return true }; return false }).count >= 3 {
+            shield += 1
+        }
+
         var advantage = attack.advantage
         var disadvantage = attack.isRanged && attackerPos.isAdjacent(to: targetPos)
         // Some monsters' stat cards give every attack against them disadvantage (e.g. Night Demon).

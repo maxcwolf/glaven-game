@@ -108,6 +108,8 @@ final class BoardItemTests: XCTestCase {
             + Array(PassiveItems.defaultAttack.keys) + Array(PassiveItems.defaultMove.keys)
             + Array(PassiveItems.flying) + Array(PassiveItems.immunities.keys) + Array(PassiveItems.meleePierce.keys)
             + Array(PassiveItems.meleePush.keys)
+            + [PassiveItems.unmovable, PassiveItems.muddleToStrengthen, PassiveItems.chainHood,
+               PassiveItems.necklaceOfTeeth, PassiveItems.imposingBlade, DefenseItem.ironHelmet]
         XCTAssertEqual(Set(keys).count, keys.count, "no item in two tables")
         for key in keys {
             let id = try XCTUnwrap(Int(key.dropFirst(3)))
@@ -225,6 +227,41 @@ final class BoardItemTests: XCTestCase {
         guard case .selectingMove(_, let range, _, _, let mode) = coord.interactionMode else { return XCTFail() }
         XCTAssertEqual(range, 4, "Serene Sandals: Move 4")
         XCTAssertEqual(mode, .fly, "Boots of Levitation")
+    }
+
+    func testTheDrakescaleHelmTurnsMuddleIntoStrengthen() {
+        brute.items = ["gh-108"]
+        coord.applyCondition(.muddle, to: .character(brute.id))
+        XCTAssertEqual(brute.entityConditions.map(\.name), [.strengthen])
+    }
+
+    func testHeavyGreavesCantBePushed() async {
+        brute.items = ["gh-22"]
+        await coord.performPushPull(target: .character(brute.id), attackerPos: HexCoord(2, 3), steps: 2, isPush: true)
+        XCTAssertEqual(coord.boardState.piecePositions[.character(brute.id)], HexCoord(3, 3))
+        if case .selectingPushPullHex = coord.interactionMode { XCTFail("no push to choose") }
+    }
+
+    func testAKillOnYourTurnFeedsTheNecklaceAndTheBlade() throws {
+        brute.items = ["gh-106", "gh-134"]
+        let piece = try XCTUnwrap(coord.spawnMonster(name: "bandit-guard", type: .normal, at: HexCoord(4, 3), origin: .placed))
+        _ = try startTurn()
+        brute.health = 5
+        coord.sufferDamage(99, to: piece, killer: .character(brute.id))
+        XCTAssertEqual(brute.health, 6, "Necklace of Teeth: Heal 1")
+        XCTAssertEqual(brute.shield?.value?.intValue, 1, "Imposing Blade: Shield 1 this round")
+    }
+
+    func testTheChainHoodShieldsTheSurrounded() async throws {
+        brute.items = ["gh-76"]
+        var attacker: PieceID?
+        for hex in [HexCoord(4, 3), HexCoord(2, 3), HexCoord(3, 2)] {
+            attacker = try XCTUnwrap(coord.spawnMonster(name: "bandit-guard", type: .normal, at: hex, origin: .placed))
+        }
+        let health = brute.health
+        await coord.performAttack(attacker: try XCTUnwrap(attacker), target: .character(brute.id),
+                                  attack: AttackParameters(value: 3), drawCard: { AttackModifier.standard(.plus0) })
+        XCTAssertEqual(brute.health, health - 2)
     }
 
     func testProtectiveCharmMakesTheWearerImmune() {

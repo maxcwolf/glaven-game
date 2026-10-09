@@ -136,6 +136,17 @@ enum PassiveItems {
     /// Mask of Terror: every melee attack gains Push 1.
     static let meleePush: [String: Int] = ["gh-66": 1]
 
+    /// Heavy Greaves: no forced movement.
+    static let unmovable = "gh-22"
+    /// Drakescale Helm: muddle becomes strengthen.
+    static let muddleToStrengthen = "gh-108"
+    /// Chain Hood: Shield 1 while adjacent to three or more monsters.
+    static let chainHood = "gh-76"
+    /// Kills on the wearer's own turn: Necklace of Teeth heals 1, Imposing Blade gives Shield 1
+    /// for the round.
+    static let necklaceOfTeeth = "gh-106"
+    static let imposingBlade = "gh-134"
+
     static func defaultAttack(for items: [String]) -> Int { items.compactMap { defaultAttack[$0] }.max() ?? 2 }
     static func defaultMove(for items: [String]) -> Int { items.compactMap { defaultMove[$0] }.max() ?? 2 }
     static func flies(_ items: [String]) -> Bool { items.contains(where: flying.contains) }
@@ -333,6 +344,21 @@ extension BoardCoordinator {
         character.entityConditions.removeAll { $0.name == condition && !$0.permanent }
         boardScene?.refreshStatus(of: .character(character.id))
         log("\(name(.character(character.id))) is no longer \(GameText.conditionName(condition).lowercased())", category: .condition)
+    }
+
+    /// Necklace of Teeth and Imposing Blade, when the wearer kills an enemy on their own turn.
+    func rewardKillOnOwnTurn(_ character: GameCharacter) {
+        let me = PieceID.character(character.id)
+        if character.items.contains(PassiveItems.necklaceOfTeeth) {
+            let healed = heal(me, amount: 1, source: me)
+            log("\(name(me))\u{2019}s Necklace of Teeth heals \(healed)", category: .heal)
+        }
+        if character.items.contains(PassiveItems.imposingBlade) {
+            let total = (character.shield?.value?.intValue ?? 0) + 1
+            character.shield = ActionModel(type: .shield, value: .int(total))
+            boardScene?.refreshStatus(of: me)
+            log("\(name(me))\u{2019}s Imposing Blade: Shield 1 this round", category: .condition)
+        }
     }
 
     /// Recovering discarded cards: which ones (up to `count`) go back to the hand.

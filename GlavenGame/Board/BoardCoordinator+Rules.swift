@@ -88,6 +88,12 @@ extension BoardCoordinator {
     /// their owner's deck; allied monsters use the ally deck).
     func applyCondition(_ condition: ConditionName, to pieceID: PieceID) {
         guard let gameManager, let entity = entity(for: pieceID) else { return }
+        if condition == .muddle, let character = entity as? GameCharacter,
+           character.items.contains(PassiveItems.muddleToStrengthen) {
+            log("\(name(pieceID))\u{2019}s Drakescale Helm turns Muddle into Strengthen", category: .condition)
+            applyCondition(.strengthen, to: pieceID)
+            return
+        }
         let itemImmunity = (entity as? GameCharacter).map { PassiveItems.immune($0.items, to: condition) } ?? false
         guard !entity.immunities.contains(condition), !itemImmunity else {
             boardScene?.floatText("Immune", over: pieceID, style: .info)
@@ -224,6 +230,10 @@ extension BoardCoordinator {
             if let character = creditedCharacter(for: killer) {
                 gameManager.scenarioStatsManager.recordKill(by: character.name, monster: name, elite: entity.type == .elite,
                                                            overkill: max(0, overkill), fromFullHealth: fromFullHealth)
+            }
+            if case .character(let id) = killer, activePlayerTurn?.characterID == id,
+               let character = gameManager.game.characters.first(where: { $0.id == id }) {
+                rewardKillOnOwnTurn(character)
             }
             gameManager.scenarioRulesManager.evaluateRules()
         case .summon(let id):

@@ -1719,6 +1719,11 @@ final class BoardCoordinator {
     /// (either auto-executed or after the player selects the direction).
     @MainActor func performPushPull(target: PieceID, attackerPos: HexCoord, steps: Int, isPush: Bool) async {
         guard steps > 0, boardState.piecePositions[target] != nil else { return }
+        if case .character(let id) = target,
+           gameManager?.game.characters.first(where: { $0.id == id })?.items.contains(PassiveItems.unmovable) == true {
+            log("\(name(target))\u{2019}s Heavy Greaves hold them in place", category: .move)
+            return
+        }
         await withCheckedContinuation { [weak self] continuation in
             self?.pendingPushPullContinuation = continuation
             self?.beginPushPull(target: target, attackerPos: attackerPos, remainingSteps: steps, isPush: isPush)
