@@ -112,6 +112,34 @@ final class SaveAndContinueTests: XCTestCase {
         XCTAssertEqual(gm.game.completedScenarios, ["gh-1"])
     }
 
+    /// Quitting while the characters are being placed keeps the town as the party left it: the
+    /// next Continue sets out again from town, and the scenario's setup (item −1 cards, the
+    /// events' damage) isn't applied twice.
+    func testQuittingBeforeTheFirstRoundSetsOutAgainFromTown() throws {
+        let gm = try SaveAndContinueTestsSupport.manager()
+        gm.characterManager.addCharacter(name: "brute", edition: "gh")
+        let brute = gm.game.characters[0]
+        brute.items = ["gh-3"]   // Hide Armor: two −1 cards for the scenario
+        gm.game.events.nextScenario.damage = 2
+        let minusOnes = brute.attackModifierDeck.cards.filter { $0.type == .minus1 }.count
+        let scenario = try XCTUnwrap(gm.editionStore.scenarios(for: "gh").first { $0.index == "1" && $0.solo == nil })
+
+        gm.startScenarioOnBoard(scenario)
+        XCTAssertEqual(gm.boardCoordinator.boardPhase, .setup)
+        gm.saveAndQuitScenario()
+        gm.continueGame()
+
+        XCTAssertEqual(gm.appPhase, .gameSetup, "back in town, ready to set out")
+        let again = gm.game.characters[0]
+        XCTAssertEqual(again.attackModifierDeck.cards.filter { $0.type == .minus1 }.count, minusOnes)
+        XCTAssertEqual(gm.game.events.nextScenario.damage, 2, "the events' damage still waits for the scenario")
+        XCTAssertEqual(again.health, again.maxHealth)
+
+        gm.startScenarioOnBoard(scenario)
+        let once = gm.game.characters[0]
+        XCTAssertEqual(once.health, once.maxHealth - 2, "taken once")
+    }
+
     /// Save & Quit leaves for the main menu; Continue brings the same round back, even after the
     /// app saved again at the menu.
     func testSaveAndQuitThenContinueResumesTheSameRound() async throws {

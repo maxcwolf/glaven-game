@@ -50,6 +50,8 @@ final class GameManager {
     /// The game as it stood at the start of the current round on the board. While a scenario is
     /// in progress this is what the autosave holds, and Continue resumes there.
     private(set) var roundCheckpoint: GameSnapshot?
+    /// The town as the party set out, saved instead of the board until the first round begins.
+    private(set) var departureCheckpoint: GameSnapshot?
 
     // Undo/Redo snapshots
     private var undoStack: [Data] = []
@@ -181,6 +183,7 @@ final class GameManager {
         if boardCoordinator.scenarioData != nil { boardCoordinator.exitBoard() }
         currentCampaignID = nil
         roundCheckpoint = nil
+        departureCheckpoint = nil
         appPhase = .mainMenu
         game.resetToNewCampaign()
         undoStack = []
@@ -190,6 +193,10 @@ final class GameManager {
 
     /// Set scenario and initialize the game board.
     func startScenarioOnBoard(_ scenarioData: ScenarioData) {
+        // Until the first round begins, a save is the town as the party left it: quitting while
+        // placing characters sets out again later, without the scenario's setup (item −1 cards,
+        // the events' effects) applied twice.
+        departureCheckpoint = game.toSnapshot()
         // Scenario level (and so monster level, trap damage, gold and bonus XP) is fixed at the
         // start of the scenario from the party's levels and difficulty (p.15).
         levelManager.calculateAndApplyLevel()
@@ -324,7 +331,7 @@ final class GameManager {
     }
 
     func saveGame() {
-        let snapshot = roundCheckpoint ?? game.toSnapshot()
+        let snapshot = roundCheckpoint ?? departureCheckpoint ?? game.toSnapshot()
         let now = Date()
         if let id = currentCampaignID, var file = campaignStore.load(id) {
             file.snapshot = snapshot
@@ -345,6 +352,7 @@ final class GameManager {
         var snapshot = game.toSnapshot()
         snapshot.boardSnapshot = boardCoordinator.snapshot()
         roundCheckpoint = snapshot
+        departureCheckpoint = nil
         saveGame()
     }
 
@@ -365,6 +373,7 @@ final class GameManager {
         let snapshot = file.snapshot
         game.restore(from: snapshot, editionStore: editionStore)
         roundCheckpoint = snapshot.boardSnapshot != nil && game.scenario != nil ? snapshot : nil
+        departureCheckpoint = nil
         return true
     }
 
@@ -412,6 +421,7 @@ final class GameManager {
         scenarioManager.finishScenario(success: success, choices: choices)
         if let questReward { applyQuestReward(questReward) }
         roundCheckpoint = nil
+        departureCheckpoint = nil
         boardCoordinator.exitBoard()
         forgetHistory()   // a finished scenario can't be undone
         // Back to town: spend gold, level up, pick the next scenario — after a city event.
