@@ -1074,6 +1074,13 @@ final class BoardRulesRegressionTests: XCTestCase {
         XCTAssertFalse(mindthief.entityConditions.contains { $0.name == .muddle })
     }
 
+    /// Psychic Knife: an attack an augment shapes gets +1 more.
+    func testThePsychicKnifeAddsToAugmentedAttacks() throws {
+        addCharacter("mindthief", at: HexCoord(3, 3)).items = [PlayerTurnController.psychicKnife]
+        let knife = try playAugment("The Mind's Weakness")
+        XCTAssertEqual(knife.turn.currentAttackValue(), 4, "Attack 1, +2 from the augment, +1 from the knife")
+    }
+
     func testParasiticInfluenceHealsOnTheAttackNotWhenPlayed() throws {
         let mindthief = addCharacter("mindthief", at: HexCoord(3, 3))
         mindthief.health = 3

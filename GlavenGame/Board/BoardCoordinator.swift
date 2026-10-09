@@ -1882,7 +1882,12 @@ final class BoardCoordinator {
 
         let targetHex = boardState.piecePositions[target]
         // Bonuses in the attack's own text, judged for this target (Backstab, Perverse Edge…).
-        let printed = turn.map { attackTextBonus($0.attackTexts, attacker: attacker, target: target) } ?? (attack: 0, experience: 0)
+        var printed = turn.map { attackTextBonus($0.attackTexts, attacker: attacker, target: target) } ?? (attack: 0, experience: 0)
+        // Skullbane Axe: more against the undead only.
+        if case .monster(let monsterName, _) = target, let bonus = turn?.attackBonusAgainst[monsterName] {
+            printed.attack += bonus
+            turn?.attackBonusAgainst = [:]   // "to a single attack"
+        }
         await performAttack(
             attacker: attacker, target: target,
             attack: AttackParameters(value: attackValueWithBonuses(attackValue + printed.attack, attacker: attacker, target: target),

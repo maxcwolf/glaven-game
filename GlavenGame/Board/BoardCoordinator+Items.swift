@@ -71,6 +71,12 @@ struct BoardItemEffect: Equatable {
         case attackText(String)
         /// Remove one negative condition of the player's choosing.
         case removeOneNegativeCondition
+        /// Pull added to the whole attack (Hooked Chain).
+        case pull(Int)
+        /// The character's own move, between the turn's steps (Blinking Cape: Move 4, Jump).
+        case selfMove(Int, jump: Bool)
+        /// More attack against these monster types only (Skullbane Axe: +5 against the undead).
+        case attackBonusAgainst([String], Int)
     }
 
     let moment: Moment
@@ -180,6 +186,11 @@ struct BoardItemEffect: Equatable {
         "gh-144": .init(.betweenSteps, .conditionsOnOneEnemy([.poison, .curse], range: 3)), // Pendant of the Plague
         "gh-60": .init(.singleRangedAttack, .areaFromItem,                    // Unstable Explosives
                        .attackText("all allies in the attack area suffer 3 damage")),
+        "gh-39": .init(.rangedAttack, .pull(2)),                              // Hooked Chain
+        "gh-73": .init(.betweenSteps, .selfMove(4, jump: true)),              // Blinking Cape
+        "gh-130": .init(.turn, consuming: [.light, .dark], .heal(25)),        // Helix Ring
+        "gh-113": .init(.singleMeleeAttack,                                   // Skullbane Axe
+                        .attackBonusAgainst(["living-corpse", "living-spirit", "living-bones"], 5)),
     ]
 }
 
@@ -344,6 +355,12 @@ extension BoardCoordinator {
             turn.addToAttack(bonus)
         case .pierce(let amount):
             turn.pendingPierce += amount
+        case .pull(let amount):
+            turn.pendingPull += amount
+        case .selfMove(let hexes, let jump):
+            beginMoveAction(pieceID: me, moveRange: hexes, mode: jump ? .jump : .normal)
+        case .attackBonusAgainst(let monsters, let bonus):
+            for monster in monsters { turn.attackBonusAgainst[monster, default: 0] += bonus }
         case .heal(let amount):
             let healed = heal(me, amount: amount, source: me)
             log("\(name(me)) heals for \(healed)", category: .heal, trace: "Heal \(amount), self")

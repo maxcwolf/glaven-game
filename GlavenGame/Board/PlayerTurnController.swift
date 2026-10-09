@@ -526,7 +526,14 @@ final class PlayerTurnController {
         pendingPush = 0
         pendingPull = 0
         pendingConditions = []
+        attackBonusAgainst = [:]
     }
+
+    /// More attack against monsters of these types only, for the attack being made (Skullbane Axe).
+    var attackBonusAgainst: [String: Int] = [:]
+
+    /// The Psychic Knife: an attack an augment shapes gets +1 more.
+    static let psychicKnife = "gh-139"
 
     /// Pay for every element-consume augment on the action that can be paid for and return
     /// their bonus effects (GH p.24: all listed elements are needed for one augment).
@@ -1318,6 +1325,10 @@ final class PlayerTurnController {
         guard let character else { return }
         let me = PieceID.character(characterID)
         let store = gameManager?.editionStore
+        // Psychic Knife: "any time you perform an Augment action, add +1 Attack to the entire action".
+        if !activeAugments().isEmpty, character.carriedItems.contains(Self.psychicKnife) {
+            pendingAttackValue += 1
+        }
         for (_, box) in activeAugments() {
             for effect in Self.augmentEffects(box) {
                 switch effect.type {

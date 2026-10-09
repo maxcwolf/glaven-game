@@ -749,4 +749,59 @@ final class BoardItemTests: XCTestCase {
         try use("gh-95")
         XCTAssertTrue(tinkerer.discardedCards.isEmpty, "two cards: both come back")
     }
+
+    // MARK: - Hooked Chain, Blinking Cape, Helix Ring, Skullbane Axe
+
+    func testHookedChainAddsPullToARangedAttack() throws {
+        brute.items = ["gh-39"]
+        _ = try coord.spawnMonster(name: "bandit-guard", type: .normal, at: HexCoord(6, 3), origin: .placed)
+        let turn = try startTurn()
+        turn.preparePerformedAttack(value: 2, range: 3)
+        coord.beginAttackAction(pieceID: .character(brute.id), range: 3)
+        try use("gh-39")
+        XCTAssertEqual(turn.pendingPull, 2)
+        XCTAssertTrue(brute.spentItems.contains("gh-39"))
+    }
+
+    func testBlinkingCapeIsAMoveFourJumpBetweenSteps() throws {
+        brute.items = ["gh-73"]
+        let turn = try startTurn()
+        XCTAssertEqual(usable(), ["gh-73"])
+        try use("gh-73")
+        guard case .selectingMove(_, let range, _, _, let mode) = coord.interactionMode else { return XCTFail("a move") }
+        XCTAssertEqual(range, 4)
+        XCTAssertEqual(mode, .jump)
+        XCTAssertEqual(turn.currentActionIndex, 0, "the card's steps are untouched")
+        XCTAssertTrue(brute.consumedItems.contains("gh-73"))
+    }
+
+    func testHelixRingConsumesLightAndDarkToHealTwentyFive() throws {
+        brute.items = ["gh-130"]
+        brute.health = 2
+        _ = try startTurn()
+        XCTAssertFalse(usable().contains("gh-130"), "not without Light and Dark")
+        for i in gm.game.elementBoard.indices where [.light, .dark].contains(gm.game.elementBoard[i].type) {
+            gm.game.elementBoard[i].state = .strong
+        }
+        try use("gh-130")
+        XCTAssertEqual(brute.health, brute.maxHealth)
+        XCTAssertFalse(gm.game.elementBoard.contains { [.light, .dark].contains($0.type) && $0.state != .inert && $0.state != .consumed })
+    }
+
+    func testSkullbaneAxeAddsFiveAgainstTheUndeadOnly() async throws {
+        brute.items = ["gh-113"]
+        let zeros = (0..<20).map { _ in AttackModifier.standard(.plus0) }
+        brute.attackModifierDeck = AttackModifierDeck(attackModifiers: zeros, cards: zeros)
+        let bones = try XCTUnwrap(coord.spawnMonster(name: "living-bones", type: .normal, at: HexCoord(4, 3), origin: .placed))
+        let entity = try XCTUnwrap(coord.entity(for: bones))
+        entity.health = 99
+        entity.maxHealth = 99
+        let turn = try startTurn()
+        turn.executeCurrentAction()   // Trample: Attack 3, Pierce 2
+        try use("gh-113")
+        coord.handlePieceTap(bones)
+        let deadline = Date().addingTimeInterval(3)
+        while turn.currentActionIndex == 0 && Date() < deadline { try await Task.sleep(nanoseconds: 1_000_000) }
+        XCTAssertEqual(entity.health, 99 - 8, "Attack 3 + 5")
+    }
 }
