@@ -722,6 +722,23 @@ final class BoardRulesRegressionTests: XCTestCase {
         XCTAssertEqual(brute.discardedCards, [1, 3])
     }
 
+    /// Flurry of Axes: suffer up to 4 damage, then Attack X where X is what was suffered.
+    func testFlurryOfAxesAttacksWithTheDamageSuffered() throws {
+        let berserker = addCharacter("lightning", at: HexCoord(3, 3))
+        addMonster("bandit-guard", at: HexCoord(5, 3))
+        coord.autoResolvePrompts = false
+        let other = try XCTUnwrap(gm.editionStore.abilities(forDeck: "lightning", edition: "gh").first { $0.name != "Flurry of Axes" })
+        let turn = turn(for: berserker, top: try card("Flurry of Axes", of: "lightning"), bottom: other)
+        let health = berserker.health
+        turn.executeCurrentAction()
+        XCTAssertEqual(coord.pendingSufferChoice?.most, 4)
+        coord.resolveSufferChoice(3)
+        XCTAssertEqual(berserker.health, health - 3)
+        XCTAssertEqual(turn.currentActionIndex, 1)
+        turn.executeCurrentAction()
+        XCTAssertEqual(turn.currentAttackValue(), 3)
+    }
+
     // MARK: - Mindthief augments
 
     /// Play `augment`'s top (the augment, then its own Attack) against an adjacent Bandit Guard.

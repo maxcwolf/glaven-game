@@ -387,6 +387,9 @@ final class BoardCoordinator {
     var initiativeOffers: [PendingInitiativeChange] = []
     var pendingInitiativeChange: PendingInitiativeChange?
 
+    /// Non-nil while the character decides how much damage to suffer (Flurry of Axes).
+    var pendingSufferChoice: PendingSufferChoice?
+
     /// Non-nil while the player picks which ally recovers cards (Volatile Concoction).
     var pendingAllyChoice: PendingAllyChoice?
 

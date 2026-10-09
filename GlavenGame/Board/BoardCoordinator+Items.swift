@@ -543,6 +543,28 @@ extension BoardCoordinator {
         }
     }
 
+    // MARK: - Suffering damage by choice
+
+    /// "You may suffer up to N damage": how much the character takes on.
+    struct PendingSufferChoice: Identifiable, Equatable {
+        let id = UUID()
+        let characterID: String
+        let most: Int
+    }
+
+    func resolveSufferChoice(_ amount: Int) {
+        guard let pending = pendingSufferChoice else { return }
+        pendingSufferChoice = nil
+        let chosen = max(0, min(amount, pending.most))
+        let me = PieceID.character(pending.characterID)
+        if chosen > 0 {
+            log("\(name(me)) suffers \(chosen) damage", category: .damage)
+            sufferDamage(chosen, to: me)
+        }
+        activePlayerTurn?.damageSuffered += chosen
+        activePlayerTurn?.advanceAfterAsyncAction()
+    }
+
     // MARK: - An ally recovers cards
 
     /// Which ally recovers discarded cards, when more than one could.

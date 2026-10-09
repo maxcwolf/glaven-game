@@ -99,6 +99,29 @@ struct AllyChoicePrompt: View {
     }
 }
 
+/// "You may suffer up to N damage" (the Berserker): how much.
+struct SufferChoicePrompt: View {
+    let pending: BoardCoordinator.PendingSufferChoice
+    let coordinator: BoardCoordinator
+
+    var body: some View {
+        ItemChoicePanel(title: "Suffer Damage?",
+                        detail: "\(coordinator.characterName(pending.characterID)) may suffer up to \(pending.most) damage. The more suffered, the stronger the action.") {
+            HStack(spacing: 10) {
+                ForEach(0...pending.most, id: \.self) { amount in
+                    Button(amount == 0 ? "None" : "\(amount)") { coordinator.resolveSufferChoice(amount) }
+                        .buttonStyle(.borderedProminent)
+                        .tint(amount == 0 ? .gray : BoardTheme.defeat)
+                        .accessibilityLabel(amount == 0 ? "Suffer no damage" : "Suffer \(amount) damage")
+                }
+            }
+        } actions: {
+            EmptyView()
+        }
+        .frame(maxWidth: 560)
+    }
+}
+
 /// The panel both pickers share: the item's name, what to do, the choices and a button row.
 private struct ItemChoicePanel<Choices: View, Actions: View>: View {
     let title: String

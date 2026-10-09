@@ -54,6 +54,8 @@ final class PlayerTurnController {
     var hexesMoved = 0
     /// Damage the character has dealt this turn (Balanced Measure's Move X).
     var damageInflicted = 0
+    /// Damage the character chose to suffer this turn (Flurry of Axes' X).
+    var damageSuffered = 0
     /// Hexes moved by the latest move action (Hook and Chain).
     var lastMoveLength = 0
     /// Hexes passed over (not ended on) during the latest move action, for "enemies moved through".
@@ -765,6 +767,13 @@ final class PlayerTurnController {
             // Avalanche: "Create two single-hex obstacles in empty hexes adjacent to you."
             let count = text.contains("two") ? 2 : 1
             return coordinator.beginPlacingTokens(.obstacle, count: count, by: me)
+        } else if text.contains("you may suffer up to") {
+            // The Berserker: "You may suffer up to 4 damage", then "X is the amount you suffered".
+            let most = Self.damageAmount(in: text)
+            guard most > 0 else { return false }
+            coordinator.pendingSufferChoice = BoardCoordinator.PendingSufferChoice(characterID: characterID, most: most)
+            if coordinator.autoResolvePrompts { coordinator.resolveSufferChoice(0) }
+            return true
         } else if text.contains("ally") && text.contains("recover") && text.contains("discarded") {
             // Reinvigorating Elixir ("one adjacent ally… all of their discarded cards"), Volatile
             // Concoction ("one ally within Range 2… one of their discarded cards"; consume Ice:
@@ -826,6 +835,8 @@ final class PlayerTurnController {
             x = character.lostCards.count
         } else if text.contains("your current hit point value") {
             x = character.health
+        } else if text.contains("amount of damage you suffered") {
+            x = damageSuffered
         } else if text.contains("number of all summoned allies") {
             x = (gameManager?.game.characters ?? []).flatMap(\.summons).filter { !$0.dead }.count
         } else {

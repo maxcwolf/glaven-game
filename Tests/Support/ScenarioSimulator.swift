@@ -188,6 +188,10 @@ final class ScenarioSimulator {
             coord.resolveInitiativeChange(0)
             return
         }
+        if coord.pendingSufferChoice != nil {
+            coord.resolveSufferChoice(0)
+            return
+        }
         if let pending = coord.pendingAllyChoice {
             coord.resolveAllyChoice(pending.characterIDs.first)
             return
