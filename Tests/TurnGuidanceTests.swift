@@ -133,7 +133,7 @@ final class TurnGuidanceTests: XCTestCase {
 
     /// The side column's notes: the last three events, no round headers or setup lines.
     func testRecentEventsAreTheLastThree() {
-        let log = [TurnLogEntry(message: "Scenario 1", category: .setup),
+        let log = [TurnLogEntry(message: "Scenario 1", category: .setup), TurnLogEntry(message: "Turn order", category: .round),
                    TurnLogEntry(message: "a", category: .attack), TurnLogEntry(message: "b", category: .move),
                    TurnLogEntry(message: "c", category: .damage), TurnLogEntry(message: "d", category: .attack)]
         XCTAssertEqual(BoardView.recentEvents(log).map(\.message), ["b", "c", "d"])

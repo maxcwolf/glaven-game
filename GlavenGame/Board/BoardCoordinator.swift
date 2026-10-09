@@ -1148,7 +1148,8 @@ final class BoardCoordinator {
         // Log monster ability draws
         for monster in gameManager.game.monsters where !monster.off && !monster.aliveEntities.isEmpty {
             if let ability = gameManager.monsterManager.currentAbility(for: monster) {
-                log("\(monsterTypeName(monster.name)) draws \(ability.name ?? "an ability card") (\(ability.initiative))")
+                log("\(monsterTypeName(monster.name)) draws \(ability.name ?? "an ability card") (\(ability.initiative))",
+                    category: .round)
             }
         }
 

@@ -933,9 +933,10 @@ struct BoardView: View {
         .animation(.snappy, value: coordinator.turnLog.count)
     }
 
-    /// The latest events worth a note: no round headers or setup lines, at most three, newest last.
+    /// The latest events worth a note: what figures did, not round bookkeeping (turn order, card
+    /// plays and draws, setup); at most three, newest last.
     static func recentEvents(_ log: [TurnLogEntry]) -> [TurnLogEntry] {
-        Array(log.filter { !$0.isRoundHeader && $0.category != .setup }.suffix(3))
+        Array(log.filter { !$0.isRoundHeader && $0.category != .setup && $0.category != .round }.suffix(3))
     }
 
     @ViewBuilder
