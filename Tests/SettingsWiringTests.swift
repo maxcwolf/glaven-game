@@ -63,3 +63,19 @@ final class SettingsWiringTests: XCTestCase {
         XCTAssertEqual(GameText.elementStateDescription(.fire, .new), "Fire: infused this turn, usable from the next turn")
     }
 }
+
+/// The settings dialog's named stops.
+final class SettingsStopsTests: XCTestCase {
+    func testEachValueShowsItsNearestStop() {
+        XCTAssertEqual(PreferencesSheet.nearest(1, in: PreferencesSheet.speedStops).name, "Normal")
+        XCTAssertEqual(PreferencesSheet.nearest(0.5, in: PreferencesSheet.speedStops).name, "Fast")
+        XCTAssertEqual(PreferencesSheet.nearest(1.25, in: PreferencesSheet.speedStops).name, "Normal",
+                       "a value between stops (an older save) shows the nearer, or first, of the two")
+        XCTAssertEqual(PreferencesSheet.nearest(1.7, in: PreferencesSheet.speedStops).name, "Slow")
+        XCTAssertEqual(PreferencesSheet.nearest(1, in: PreferencesSheet.sizeStops).name, "Default")
+        XCTAssertEqual(PreferencesSheet.nearest(1.45, in: PreferencesSheet.sizeStops).name, "Maximum")
+        // Every stop is inside the range the settings accept.
+        XCTAssertTrue(PreferencesSheet.speedStops.allSatisfy { (0.5...2).contains($0.value) })
+        XCTAssertTrue(PreferencesSheet.sizeStops.allSatisfy { (0.85...1.5).contains($0.value) })
+    }
+}

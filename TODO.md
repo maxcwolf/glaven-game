@@ -202,6 +202,7 @@ reaches; `ContentView` only shows the main menu, the party screen and the board.
 - [x] Learning mode beyond the board's monsters: "Why?" for summons' turns too (the enemies a summon weighed, its move and attacks); tips in town as each thing becomes possible (levelling up, perks, personal quests, retirement, the shop, enhancing) with How to Play in the town bar; a "Special rules" tip for scenarios that have them; a "Between Scenarios" chapter in How to Play (`LearningBeyondMonstersTests`)
 - [x] Fills every iPad screen: a launch screen, so iOS no longer letterboxes the app to an older iPad's size (black bars on the 11-inch iPad Pro M4); checked on the 13-inch and 11-inch iPad Pro and the iPad mini (`ProjectSettingsTests`)
 - [x] Town screen in the board's look (`docs/mockups/town-*.png`): a top bar with the town's standing and what can be done there; the party as cards (portrait, brass XP bar, gold, quest, actions) with the classes to recruit pinned below so a tap never lands on the wrong class; the chosen scenario with its spot on the world map, goal, monsters and rewards; difficulty and the scenario level it gives; Set Out saying what comes next; the open scenarios on the right (`TownTests`)
+- [x] Settings in the board's look: sections as panels, brass switches, animation speed and text size as named stops (Fast … Very Slow, Compact … Maximum) instead of sliders, with a text preview (`SettingsStopsTests`)
 - [ ] Learning mode, still to write: "Why?" for escorts; FH topics (loot cards, outposts) when FH play comes
 
 Phase I — safety & words (done)
