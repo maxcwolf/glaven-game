@@ -99,4 +99,30 @@ final class CombatEffectsTests: XCTestCase {
                                   attack: AttackParameters(value: 2), drawCard: sequence([refresh]))
         XCTAssertTrue(brute.spentItems.isEmpty)
     }
+
+    // MARK: - Damage from every source can be negated (p.22)
+
+    /// Wound's damage as the turn starts is damage like any other: the character may lose a hand
+    /// card to negate it.
+    func testWoundDamageCanBeNegatedByLosingACard() async throws {
+        let sim = try ScenarioSimulator(scenario: "1", options: .init(seed: 2))
+        await sim.play(rounds: 1)
+        let brute = try XCTUnwrap(sim.gm.game.characters.first { $0.name == "brute" })
+        XCTAssertFalse(brute.longRest)
+        brute.entityConditions.append(EntityCondition(name: .wound))
+        var lostCard: Int?
+        var healthAtPrompt = 0
+        await sim.play(rounds: 2) {
+            guard lostCard == nil, let pending = sim.coord.pendingDamage, pending.sourceDescription == "Wound",
+                  let card = sim.coord.losableHandCards(of: brute).first else { return }
+            healthAtPrompt = brute.health
+            lostCard = card
+            sim.coord.resolvePendingDamage(choice: .loseHandCard(cardId: card))
+        }
+        let card = try XCTUnwrap(lostCard, "the wound's damage offered the choice")
+        XCTAssertTrue(brute.lostCards.contains(card))
+        XCTAssertTrue(sim.coord.turnLog.contains { $0.message.contains("loses a card from hand to prevent 1 damage") })
+        XCTAssertGreaterThan(healthAtPrompt, 0)
+        XCTAssertEqual(sim.violations, [])
+    }
 }

@@ -807,6 +807,7 @@ final class BoardCoordinator {
         pendingShortRest = nil
         pendingLongRest = nil
         pendingSummonPlacement = nil
+        woundDue = []
         pendingRecovery = nil
         initiativeOffers = []
         pendingInitiativeChange = nil
@@ -827,6 +828,9 @@ final class BoardCoordinator {
     /// Hand round flow and rule-driven spawns over to the board.
     private func attachToGame() {
         gameManager?.roundManager.figuresTakeOwnTurns = true
+        gameManager?.entityManager.takesWoundDamage = { [weak self] entity in
+            self?.deferWoundDamage(of: entity) ?? false
+        }
 
         // Monsters spawned by scenario rules go onto the board, not only into game state.
         gameManager?.scenarioRulesManager.onSpawnMonster = { [weak self] name, type, marker, health in
@@ -868,6 +872,7 @@ final class BoardCoordinator {
         boardGeneration += 1
         abandonPendingPrompts()
         gameManager?.scenarioRulesManager.onSpawnMonster = nil
+        gameManager?.entityManager.takesWoundDamage = nil
         gameManager?.roundManager.figuresTakeOwnTurns = false
         gameManager?.appPhase = .mainMenu
         boardScene = nil
@@ -1244,6 +1249,42 @@ final class BoardCoordinator {
         guard let gameManager = gameManager else { return }
         gameManager.roundManager.toggleFigure(entry.figure)
         currentTurnToggled = true
+
+        // Wound: 1 damage as the turn starts, which the character may negate by losing cards.
+        if woundDue.remove(character.id) != nil {
+            let piece = PieceID.character(character.id)
+            log("\(characterName(character.id)) suffers 1 damage from their wound", category: .damage)
+            if !autoResolvePrompts, !negatesDamage(piece, amount: 1),
+               !losableHandCards(of: character).isEmpty || character.discardedCards.count >= 2 {
+                interactionMode = .idle
+                let generation = boardGeneration
+                Task { @MainActor in
+                    await self.sufferDamageWithMitigation(1, to: piece, source: "Wound")
+                    guard self.isCurrentBoard(generation) else { return }
+                    self.continueCharacterTurn(character, entry: entry)
+                }
+                return
+            }
+            sufferDamage(1, to: piece)
+        }
+        continueCharacterTurn(character, entry: entry)
+    }
+
+    /// Characters whose wound damage is due as their turn starts (taken by the board, so it can
+    /// be negated).
+    @ObservationIgnored private var woundDue: Set<String> = []
+
+    private func deferWoundDamage(of entity: any Entity) -> Bool {
+        // A long rester's heal follows the wound's damage in the same step (and removes the
+        // wound), so that damage stays where it is.
+        guard let character = entity as? GameCharacter, !character.longRest,
+              isOnBoard(.character(character.id)) else { return false }
+        woundDue.insert(character.id)
+        return true
+    }
+
+    private func continueCharacterTurn(_ character: GameCharacter, entry: TurnOrderEntry) {
+        guard let gameManager = gameManager else { return }
         gameManager.scenarioRulesManager.evaluateTurnRules(.turnStart, for: character)
         sweepDeadFigures()
         if scenarioResult != nil { return }
