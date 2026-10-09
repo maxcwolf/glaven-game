@@ -88,7 +88,8 @@ extension BoardCoordinator {
     /// their owner's deck; allied monsters use the ally deck).
     func applyCondition(_ condition: ConditionName, to pieceID: PieceID) {
         guard let gameManager, let entity = entity(for: pieceID) else { return }
-        guard !entity.immunities.contains(condition) else {
+        let itemImmunity = (entity as? GameCharacter).map { PassiveItems.immune($0.items, to: condition) } ?? false
+        guard !entity.immunities.contains(condition), !itemImmunity else {
             boardScene?.floatText("Immune", over: pieceID, style: .info)
             log("\(name(pieceID)) is immune to \(GameText.conditionName(condition))", category: .condition)
             return

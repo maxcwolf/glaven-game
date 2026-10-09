@@ -214,16 +214,22 @@ final class PlayerTurnController {
         guard !awaitingAsync else { return }
         switch phase {
         case .executeTopAction:
+            // Versatile Dagger, Balanced Blade: a stronger basic attack.
+            let value = PassiveItems.defaultAttack(for: character?.items ?? [])
             topUsedAsDefault = true
-            resetPendingAttack(value: 2, range: 1)
+            resetPendingAttack(value: value, range: 1)
+            pendingPierce += PassiveItems.meleePierce(for: character?.items ?? [])
             defaultAttackPending = true
-            coordinator.log("\(who) uses the basic Attack 2", category: .attack)
+            coordinator.log("\(who) uses the basic Attack \(value)", category: .attack)
             coordinator.beginAttackAction(pieceID: pieceID, range: 1)
         case .executeBottomAction:
+            // Comfortable Shoes, Serene Sandals: a longer basic move.
+            let value = PassiveItems.defaultMove(for: character?.items ?? [])
             bottomUsedAsDefault = true
             defaultAttackPending = true // ends the half once the move resolves
-            coordinator.log("\(who) uses the basic Move 2", category: .move)
-            coordinator.beginMoveAction(pieceID: pieceID, moveRange: 2)
+            coordinator.log("\(who) uses the basic Move \(value)", category: .move)
+            coordinator.beginMoveAction(pieceID: pieceID, moveRange: value,
+                                        mode: PassiveItems.flies(character?.items ?? []) ? .fly : .normal)
         default:
             break
         }
@@ -336,6 +342,8 @@ final class PlayerTurnController {
                 if effect.type == .fly { mode = .fly }
                 if effect.type == .move { moveValue += MonsterAbility.signedValue(effect) }
             }
+            // Boots of Levitation, Cloak of Phasing: every move is a flight.
+            if PassiveItems.flies(character?.items ?? []) { mode = .fly }
             grantBonusExperience(bonus)
             let label = mode == .jump ? "Jump" : (mode == .fly ? "Fly" : "Move")
             coordinator.log("\(who): \(label) \(moveValue)", category: .move)
@@ -380,6 +388,8 @@ final class PlayerTurnController {
                 }
             }
             pendingAttackRange = range
+            // Silent Stiletto: Pierce 1 on every melee attack.
+            if range <= 1 { pendingPierce += PassiveItems.meleePierce(for: character?.items ?? []) }
             // XP and infusions printed on the attack itself (e.g. Crushing Grasp's earth, Thief's
             // Knack's XP) and on paid augments come with performing it, which needs a target.
             func applyPerformedEffects() {

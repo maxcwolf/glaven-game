@@ -4,45 +4,107 @@ import Foundation
 /// — during their move, during their attack, or any time in their turn. A spent item is
 /// refreshed by a long rest; a consumed one is gone for the scenario.
 ///
-/// Played so far: the starting shop's on-turn items, and Leather Armor and Heater Shield, offered
-/// when an enemy attacks; the Iron Helmet always applies.
-enum BoardItemEffect: Equatable {
-    case extraMove(Int)
-    case jump
-    case invisible
-    case advantage
-    case ignoreShields
-    case attackCondition(ConditionName)
-    case attackBonus(Int)
-    case heal(Int)
-    /// Recover up to this many discarded cards to the hand.
-    case recover(Int)
-
+/// "To a single attack" is played as the whole attack action for now. Items whose effects the
+/// board doesn't play yet are still marked used by hand on the character sheet.
+struct BoardItemEffect: Equatable {
     enum Moment: Equatable { case turn, move, attack, meleeAttack, rangedAttack }
 
-    var moment: Moment {
-        switch self {
-        case .extraMove, .jump: return .move
-        case .advantage, .attackBonus: return .attack
-        case .ignoreShields: return .rangedAttack
-        case .attackCondition: return .meleeAttack
-        case .invisible, .heal, .recover: return .turn
-        }
+    enum Part: Equatable {
+        case extraMove(Int)
+        case jump
+        case selfCondition(ConditionName)
+        case advantage
+        case ignoreShields
+        case attackConditions([ConditionName])
+        case attackBonus(Int)
+        case pierce(Int)
+        case heal(Int)
+        /// Recover up to this many discarded cards to the hand.
+        case recover(Int)
+        case infuse(ElementType)
+        /// Refresh every spent item.
+        case refreshSpent
+        case removeNegativeConditions
+        case adjacentEnemies(ConditionName)
+        case enemiesInRange(ConditionName, Int)
+        case selfAndAdjacentAllies(ConditionName)
+    }
+
+    let moment: Moment
+    let parts: [Part]
+
+    init(_ moment: Moment, _ parts: Part...) {
+        self.moment = moment
+        self.parts = parts
     }
 
     /// The board's effects, by item key.
     static let byItem: [String: BoardItemEffect] = [
-        "gh-1": .extraMove(2),               // Boots of Striding
-        "gh-2": .jump,                       // Winged Shoes
-        "gh-5": .invisible,                  // Cloak of Invisibility
-        "gh-6": .advantage,                  // Eagle-Eye Goggles
-        "gh-9": .ignoreShields,              // Piercing Bow
-        "gh-10": .attackCondition(.stun),    // War Hammer
-        "gh-11": .attackCondition(.poison),  // Poison Dagger
-        "gh-12": .heal(3),                   // Minor Healing Potion
-        "gh-13": .recover(2),                // Minor Stamina Potion
-        "gh-14": .attackBonus(1),            // Minor Power Potion
+        "gh-1": .init(.move, .extraMove(2)),                                  // Boots of Striding
+        "gh-2": .init(.move, .jump),                                          // Winged Shoes
+        "gh-5": .init(.turn, .selfCondition(.invisible)),                     // Cloak of Invisibility
+        "gh-6": .init(.attack, .advantage),                                   // Eagle-Eye Goggles
+        "gh-9": .init(.rangedAttack, .ignoreShields),                         // Piercing Bow
+        "gh-10": .init(.meleeAttack, .attackConditions([.stun])),             // War Hammer
+        "gh-11": .init(.meleeAttack, .attackConditions([.poison])),           // Poison Dagger
+        "gh-12": .init(.turn, .heal(3)),                                      // Minor Healing Potion
+        "gh-13": .init(.turn, .recover(2)),                                   // Minor Stamina Potion
+        "gh-14": .init(.attack, .attackBonus(1)),                             // Minor Power Potion
+        "gh-19": .init(.rangedAttack, .attackConditions([.immobilize])),      // Weighted Net
+        "gh-21": .init(.attack, .attackConditions([.stun])),                  // Stun Powder
+        "gh-24": .init(.turn, .heal(1)),                                      // Amulet of Life
+        "gh-25": .init(.meleeAttack, .attackConditions([.wound])),            // Jagged Sword
+        "gh-27": .init(.turn, .heal(5)),                                      // Major Healing Potion
+        "gh-28": .init(.turn, .refreshSpent),                                 // Moon Earring
+        "gh-34": .init(.turn, .recover(3)),                                   // Major Stamina Potion
+        "gh-36": .init(.move, .extraMove(3)),                                 // Boots of Dashing
+        "gh-41": .init(.attack, .attackBonus(2)),                             // Major Power Potion
+        "gh-49": .init(.turn, .refreshSpent, .heal(3)),                       // Sun Earring
+        "gh-53": .init(.meleeAttack, .attackConditions([.curse])),            // Black Knife
+        "gh-55": .init(.turn, .heal(7)),                                      // Super Healing Potion
+        "gh-62": .init(.attack, .attackConditions([.stun, .poison, .curse])), // Doom Powder
+        "gh-63": .init(.turn, .selfAndAdjacentAllies(.strengthen)),           // Lucky Eye
+        "gh-64": .init(.move, .extraMove(4)),                                 // Boots of Sprinting
+        "gh-69": .init(.turn, .refreshSpent, .heal(3), .recover(2)),          // Star Earring
+        "gh-83": .init(.turn, .infuse(.ice)),                                 // Wand of Frost
+        "gh-84": .init(.turn, .infuse(.air)),                                 // Wand of Storms
+        "gh-85": .init(.turn, .infuse(.fire)),                                // Wand of Infernos
+        "gh-86": .init(.turn, .infuse(.earth)),                               // Wand of Tremors
+        "gh-87": .init(.turn, .infuse(.light)),                               // Wand of Brilliance
+        "gh-88": .init(.turn, .infuse(.dark)),                                // Wand of Darkness
+        "gh-90": .init(.turn, .removeNegativeConditions),                     // Major Cure Potion
+        "gh-96": .init(.move, .extraMove(3), .jump),                          // Rocket Boots
+        "gh-112": .init(.meleeAttack, .attackBonus(2), .pierce(2)),           // Ancient Drill
+        "gh-114": .init(.rangedAttack, .attackConditions([.poison, .muddle])), // Staff of Xorn
+        "gh-119": .init(.turn, .adjacentEnemies(.curse)),                     // Skull of Hatred
+        "gh-126": .init(.turn, .adjacentEnemies(.poison)),                    // Remote Spider
+        "gh-128": .init(.turn, .enemiesInRange(.muddle, 2)),                  // Black Censer
+        "gh-143": .init(.turn, .selfCondition(.invisible), .infuse(.dark)),   // Smoke Elixir
     ]
+}
+
+/// Items that are always on (no use, no spending).
+enum PassiveItems {
+    /// The basic Attack 2 / Move 2 becomes stronger (Versatile Dagger, Balanced Blade;
+    /// Comfortable Shoes, Serene Sandals).
+    static let defaultAttack: [String: Int] = ["gh-40": 3, "gh-67": 4]
+    static let defaultMove: [String: Int] = ["gh-29": 3, "gh-57": 4]
+    /// Boots of Levitation, Cloak of Phasing.
+    static let flying: Set<String> = ["gh-71", "gh-58"]
+    /// Heavy Basinet; Protective Charm; Drakescale Armor.
+    static let immunities: [String: [ConditionName]] = [
+        "gh-38": [.stun, .muddle], "gh-52": [.poison, .wound], "gh-103": [.poison, .wound],
+    ]
+    /// Silent Stiletto: every melee attack gains Pierce 1.
+    static let meleePierce: [String: Int] = ["gh-137": 1]
+
+    static func defaultAttack(for items: [String]) -> Int { items.compactMap { defaultAttack[$0] }.max() ?? 2 }
+    static func defaultMove(for items: [String]) -> Int { items.compactMap { defaultMove[$0] }.max() ?? 2 }
+    static func flies(_ items: [String]) -> Bool { items.contains(where: flying.contains) }
+    static func immune(_ items: [String], to condition: ConditionName) -> Bool {
+        items.contains { immunities[$0]?.contains(condition) == true }
+    }
+    static func meleePierce(for items: [String]) -> Int { items.compactMap { meleePierce[$0] }.reduce(0, +) }
 }
 
 extension BoardCoordinator {
@@ -95,25 +157,36 @@ extension BoardCoordinator {
         gameManager.scenarioStatsManager.recordItemUse(by: character.name)
         log("\(name(me)) uses \(item.name)", category: .info)
 
-        switch effect {
+        for part in effect.parts {
+            perform(part, of: item, character: character, turn: turn)
+        }
+        return true
+    }
+
+    private func perform(_ part: BoardItemEffect.Part, of item: ItemData, character: GameCharacter,
+                         turn: PlayerTurnController) {
+        let me = PieceID.character(character.id)
+        switch part {
         case .extraMove(let extra):
             if case .selectingMove(_, let range, _, _, let mode) = interactionMode {
                 beginMoveAction(pieceID: me, moveRange: range + extra, mode: mode)
             }
         case .jump:
-            if case .selectingMove(_, let range, _, _, _) = interactionMode {
+            if case .selectingMove(_, let range, _, _, let mode) = interactionMode, mode != .fly {
                 beginMoveAction(pieceID: me, moveRange: range, mode: .jump)
             }
-        case .invisible:
-            applyCondition(.invisible, to: me)
+        case .selfCondition(let condition):
+            applyCondition(condition, to: me)
         case .advantage:
             turn.pendingAdvantage = true
         case .ignoreShields:
             turn.pendingPierce += 99
-        case .attackCondition(let condition):
-            turn.pendingConditions.append(condition)
+        case .attackConditions(let conditions):
+            turn.pendingConditions.append(contentsOf: conditions)
         case .attackBonus(let bonus):
             turn.addToAttack(bonus)
+        case .pierce(let amount):
+            turn.pendingPierce += amount
         case .heal(let amount):
             let healed = heal(me, amount: amount, source: me)
             log("\(name(me)) heals for \(healed)", category: .heal, trace: "Heal \(amount), self")
@@ -123,8 +196,24 @@ extension BoardCoordinator {
             } else {
                 pendingRecovery = PendingRecovery(characterID: character.id, count: count, itemName: item.name)
             }
+        case .infuse(let element):
+            gameManager?.game.infuseElement(element)
+            log("\(name(me)) infuses \(GameText.elementName(element))", category: .element)
+        case .refreshSpent:
+            character.spentItems.removeAll()
+            log("\(name(me)) refreshes their spent items", category: .info)
+        case .removeNegativeConditions:
+            character.entityConditions.removeAll { $0.name.isNegative && !$0.permanent }
+            boardScene?.refreshStatus(of: me)
+            log("\(name(me)) removes negative conditions", category: .condition)
+        case .adjacentEnemies(let condition):
+            applyConditionToAllEnemies(from: me, condition: condition, range: 1)
+        case .enemiesInRange(let condition, let range):
+            applyConditionToAllEnemies(from: me, condition: condition, range: range)
+        case .selfAndAdjacentAllies(let condition):
+            applyCondition(condition, to: me)
+            applyConditionToAllAllies(from: me, condition: condition, range: 1)
         }
-        return true
     }
 
     /// Recovering discarded cards: which ones (up to `count`) go back to the hand.
@@ -163,26 +252,48 @@ extension BoardCoordinator {
 
 // MARK: - When an enemy attacks
 
-/// Items offered while an enemy attacks the character.
-enum DefenseItem: String, CaseIterable {
-    /// Leather Armor: the attacker gains disadvantage (offered before the draw).
-    case leatherArmor = "gh-4"
-    /// Heater Shield: Shield 1 against an attack that damages (offered once the damage is known).
-    case heaterShield = "gh-8"
-    /// Hide Armor: the same, twice, before it is spent.
-    case hideArmor = "gh-3"
+/// Items offered while an enemy attacks the character: before the draw (disadvantage), or once
+/// the attack would damage (a shield for the attack). Items with use slots (the armours) are
+/// spent once every slot is marked.
+struct DefenseItem: Equatable {
+    let key: String
+    /// Offered before the draw: the attacker gains disadvantage.
+    var disadvantage = false
+    /// Shield for this attack.
+    var shield = 0
+    /// Retaliate for this attack (an adjacent attacker).
+    var retaliate = 0
+
+    static let all: [DefenseItem] = [
+        DefenseItem(key: "gh-4", disadvantage: true),              // Leather Armor
+        DefenseItem(key: "gh-30", disadvantage: true, shield: 1),  // Studded Leather
+        DefenseItem(key: "gh-8", shield: 1),                       // Heater Shield
+        DefenseItem(key: "gh-3", shield: 1),                       // Hide Armor (2 uses)
+        DefenseItem(key: "gh-23", shield: 1),                      // Chainmail (3)
+        DefenseItem(key: "gh-44", shield: 1),                      // Splintmail (4)
+        DefenseItem(key: "gh-65", shield: 1),                      // Platemail (5)
+        DefenseItem(key: "gh-104", shield: 1),                     // Steam Armor (5)
+        DefenseItem(key: "gh-74", shield: 1, retaliate: 1),        // Swordedge Armor (3)
+        DefenseItem(key: "gh-46", shield: 1, retaliate: 2),        // Spiked Shield
+        DefenseItem(key: "gh-32", shield: 2),                      // Tower Shield
+        DefenseItem(key: "gh-61", shield: 4),                      // Wall Shield
+        DefenseItem(key: "gh-91", shield: 4),                      // Steel Ring
+    ]
+    static let beforeDraw = all.filter(\.disadvantage)
+    static let onDamage = all.filter { !$0.disadvantage }
 
     /// Iron Helmet's key: not offered, it always applies.
     static let ironHelmet = "gh-7"
 
-    /// Items that guard against one attack's damage with Shield 1.
-    static let shields: [DefenseItem] = [.heaterShield, .hideArmor]
-
     var question: String {
-        switch self {
-        case .leatherArmor: return "Give the attacker disadvantage?"
-        case .heaterShield, .hideArmor: return "Gain Shield 1 against this attack?"
+        var gains: [String] = []
+        if shield > 0 { gains.append("Shield \(shield)") }
+        if retaliate > 0 { gains.append("Retaliate \(retaliate)") }
+        let gain = "gain \(GameText.list(gains))"
+        if disadvantage {
+            return gains.isEmpty ? "Give the attacker disadvantage?" : "Give the attacker disadvantage and \(gain)?"
         }
+        return "G\(gain.dropFirst()) against this attack?"
     }
 }
 
@@ -207,11 +318,12 @@ extension BoardCoordinator {
     /// Offer a defence item to the character being attacked; true when they use it (it is then
     /// spent and counted). Headless play never uses them.
     @MainActor func offerDefenseItem(_ item: DefenseItem, to target: PieceID, from attacker: PieceID) async -> Bool {
+        let key = item.key
         guard case .character(let id) = target, !autoResolvePrompts, let gameManager,
               let character = gameManager.game.characters.first(where: { $0.id == id }),
-              character.items.contains(item.rawValue),
-              !character.spentItems.contains(item.rawValue), !character.consumedItems.contains(item.rawValue),
-              let data = itemData(item.rawValue) else { return false }
+              character.items.contains(key),
+              !character.spentItems.contains(key), !character.consumedItems.contains(key),
+              let data = itemData(key) else { return false }
         let use = await withCheckedContinuation { (continuation: CheckedContinuation<Bool, Never>) in
             pendingItemUse = PendingItemUse(characterID: id, itemName: data.name, question: item.question,
                                             attacker: name(attacker), continuation: continuation)
@@ -219,14 +331,12 @@ extension BoardCoordinator {
         guard use else { return false }
         gameManager.characterManager.onBeforeMutate?()
         // An item with use slots (Hide Armor: two) is spent once they are all marked.
-        let used = character.itemSlotsUsed[item.rawValue, default: 0] + 1
+        let used = character.itemSlotsUsed[key, default: 0] + 1
         if data.slots > 1 && used < data.slots {
-            character.itemSlotsUsed[item.rawValue] = used
-        } else if data.consumed {
-            character.consumedItems.insert(item.rawValue)
+            character.itemSlotsUsed[key] = used
         } else {
-            character.spentItems.insert(item.rawValue)
-            character.itemSlotsUsed[item.rawValue] = nil
+            if data.consumed { character.consumedItems.insert(key) } else { character.spentItems.insert(key) }
+            character.itemSlotsUsed[key] = nil
         }
         gameManager.scenarioStatsManager.recordItemUse(by: character.name)
         log("\(name(target)) uses \(data.name)", category: .info)

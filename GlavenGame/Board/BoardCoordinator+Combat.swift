@@ -49,7 +49,7 @@ extension BoardCoordinator {
         let distance = attackerPos.distance(to: targetPos)
         let isPoisoned = defender.entityConditions.contains { $0.name == .poison && !$0.expired }
         var shield = CombatResolver.totalShield(shield: defender.shield, shieldPersistent: defender.shieldPersistent)
-        let retaliate = CombatResolver.retaliateDamage(retaliate: defender.retaliate,
+        var retaliate = CombatResolver.retaliateDamage(retaliate: defender.retaliate,
                                                        retaliatePersistent: defender.retaliatePersistent,
                                                        distance: distance)
 
@@ -71,9 +71,12 @@ extension BoardCoordinator {
             scene.showAttack(from: attacker, to: target, ranged: attack.isRanged || distance > 1)
             if turnDelayNanoseconds > 0 { try? await Task.sleep(nanoseconds: turnDelayNanoseconds / 2) }
         }
-        if !disadvantage, areEnemies(attacker, target),
-           await offerDefenseItem(.leatherArmor, to: target, from: attacker) {
-            disadvantage = true
+        // Leather Armor, Studded Leather: the attacker gains disadvantage.
+        for item in DefenseItem.beforeDraw where !disadvantage && areEnemies(attacker, target) {
+            if await offerDefenseItem(item, to: target, from: attacker) {
+                disadvantage = true
+                shield += item.shield
+            }
         }
 
         var preDrawn = await performModifierDraw(
@@ -101,10 +104,11 @@ extension BoardCoordinator {
             )
         }
         var result = resolve()
-        // Heater Shield, Hide Armor: Shield 1 for an attack that would damage (pierce still applies).
-        for item in DefenseItem.shields where result.damage > 0 && areEnemies(attacker, target) {
+        // Shields and armour: a shield for an attack that would damage (pierce still applies).
+        for item in DefenseItem.onDamage where result.damage > 0 && areEnemies(attacker, target) {
             if await offerDefenseItem(item, to: target, from: attacker) {
-                shield += 1
+                shield += item.shield
+                if distance <= 1 { retaliate += item.retaliate }
                 result = resolve()
             }
         }
