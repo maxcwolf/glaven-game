@@ -103,6 +103,7 @@ struct TurnRailView: View {
 struct InstructionBanner: View {
     let instruction: BoardCoordinator.Instruction
     var onSkip: (() -> Void)?
+    var onCancel: (() -> Void)?
     /// What can be picked on the board, offered to VoiceOver as actions (swipe up or down).
     var choices: [BoardChoice] = []
 
@@ -115,6 +116,14 @@ struct InstructionBanner: View {
                 Text(instruction.detail)
                     .font(.subheadline)
                     .foregroundStyle(Color(red: 1.0, green: 0.72, blue: 0.66))
+            }
+            if instruction.canCancel, let onCancel {
+                Button("Cancel", action: onCancel)
+                    .buttonStyle(.bordered)
+                    .tint(.white)
+                    .frame(minHeight: 44)
+                    .keyboardShortcut(.cancelAction)
+                    .accessibilityHint("Takes the ability back to be performed again")
             }
             if instruction.canSkip, let onSkip {
                 Button("Skip This Action", action: onSkip)

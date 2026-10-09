@@ -170,6 +170,14 @@ extension CharacterSnapshot {
     func toRuntime(editionStore: EditionDataStore) -> GameCharacter {
         let charData = editionStore.characterData(name: name, edition: edition)
         let c = GameCharacter(name: name, edition: edition, level: level, characterData: charData)
+        apply(to: c, editionStore: editionStore)
+        return c
+    }
+
+    /// Put this snapshot's state on an existing character, keeping the object (and everything
+    /// that refers to it, such as the round's turn order).
+    func apply(to c: GameCharacter, editionStore: EditionDataStore) {
+        c.level = level
         c.off = off
         c.active = active
         c.number = number
@@ -224,11 +232,11 @@ extension CharacterSnapshot {
             c.chosenCards = chosenCards
         } else {
             // An older save: the higher-level cards the character carries are their choices.
+            let charData = editionStore.characterData(name: name, edition: edition)
             let abilities = editionStore.abilities(forDeck: charData?.deck ?? name, edition: edition)
             c.chosenCards = CardPool.adoptedChoices(abilities, level: level,
                                                     carried: handCards + discardedCards + lostCards + activeCards)
         }
-        return c
     }
 }
 

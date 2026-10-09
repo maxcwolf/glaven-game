@@ -116,4 +116,76 @@ final class TurnGuidanceTests: XCTestCase {
         turn.executeCurrentAction()
         XCTAssertEqual(gm.game.elementBoard.first { $0.type == .earth }?.state, .new, "and still can")
     }
+
+    // MARK: - Cancel a choice
+
+    private func cragheartTurn(top: String, bottom: String, autoResolve: Bool = true) throws -> (GameManager, BoardCoordinator, PlayerTurnController, PieceID) {
+        let gm = try SaveAndContinueTestsSupport.manager()
+        gm.game.level = 1
+        let coord = gm.boardCoordinator
+        coord.boardState = makeBoard()
+        coord.autoResolvePrompts = autoResolve
+        gm.characterManager.addCharacter(name: "cragheart", edition: "gh")
+        let cragheart = gm.game.characters[0]
+        coord.boardState.placePiece(.character(cragheart.id), at: HexCoord(3, 3))
+        let target = try XCTUnwrap(coord.spawnMonster(name: "bandit-guard", type: .normal,
+                                                      at: HexCoord(5, 3), origin: .placed))
+        let turn = PlayerTurnController(characterID: cragheart.id, coordinator: coord, gameManager: gm)
+        coord.activePlayerTurn = turn
+        let deck = gm.editionStore.abilities(forDeck: "cragheart", edition: "gh")
+        let topCard = try XCTUnwrap(deck.first { $0.name == top }), bottomCard = try XCTUnwrap(deck.first { $0.name == bottom })
+        cragheart.handCards = [topCard.cardId!, bottomCard.cardId!]
+        turn.selectCards(top: topCard, bottom: bottomCard)
+        return (gm, coord, turn, target)
+    }
+
+    private func earth(_ gm: GameManager) -> ElementState? {
+        gm.game.elementBoard.first { $0.type == .earth }?.state
+    }
+
+    /// Cancelling a target choice takes the ability back: Earthen Clod's Earth, consumed as the
+    /// attack began, is back, the log forgets it, and the attack can be performed again.
+    func testCancellingATargetChoiceTakesTheAbilityBack() throws {
+        let (gm, coord, turn, target) = try cragheartTurn(top: "Earthen Clod", bottom: "Rumbling Advance")
+        if let i = gm.game.elementBoard.firstIndex(where: { $0.type == .earth }) { gm.game.elementBoard[i].state = .strong }
+        let logBefore = coord.turnLog.count
+
+        turn.executeCurrentAction()
+        guard case .selectingAttackTarget = coord.interactionMode else { return XCTFail("waits for a target") }
+        XCTAssertEqual(earth(gm), .consumed, "Earth consumed as the attack began")
+        XCTAssertTrue(turn.canCancelChoice)
+        XCTAssertEqual(coord.instruction(for: coord.interactionMode)?.canCancel, true)
+
+        turn.cancelChoice()
+        XCTAssertTrue({ if case .idle = coord.interactionMode { return true }; return false }())
+        XCTAssertEqual(earth(gm), .strong, "the Earth is back")
+        XCTAssertEqual(coord.turnLog.count, logBefore, "the log forgets it")
+        XCTAssertEqual(turn.currentActionIndex, 0, "the attack is still to do")
+        XCTAssertFalse(turn.isWaiting)
+        XCTAssertFalse(turn.hasActed, "the cards can still be rearranged")
+
+        turn.executeCurrentAction()
+        guard case .selectingAttackTarget = coord.interactionMode else { return XCTFail("and asks again") }
+        XCTAssertEqual(earth(gm), .consumed)
+        coord.handlePieceTap(target)
+        XCTAssertFalse(turn.canCancelChoice, "a target chosen can't be taken back")
+    }
+
+    /// Once the board has changed (one of Avalanche's two obstacles placed) the choice can't be
+    /// cancelled.
+    func testNoCancelOnceTheBoardHasChanged() throws {
+        // The player places the obstacles.
+        let (gm, coord, turn, _) = try cragheartTurn(top: "Crater", bottom: "Avalanche", autoResolve: false)
+        defer { withExtendedLifetime(gm) {} }   // the turn holds the manager weakly
+        turn.setBottomFirst(true)
+        turn.executeCurrentAction()
+        guard case .placingToken(_, .obstacle, 2, let hexes) = coord.interactionMode else {
+            return XCTFail("two obstacles to place, got \(coord.interactionMode)")
+        }
+        XCTAssertTrue(turn.canCancelChoice, "nothing placed yet")
+        coord.handleHexTap(try XCTUnwrap(hexes.sorted().first))
+        guard case .placingToken(_, .obstacle, 1, _) = coord.interactionMode else { return XCTFail("the second obstacle") }
+        XCTAssertFalse(turn.canCancelChoice, "one obstacle already placed")
+        XCTAssertEqual(coord.instruction(for: coord.interactionMode)?.canCancel, false)
+    }
 }

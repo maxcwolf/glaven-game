@@ -13,7 +13,7 @@ enum OverlayType: String, Codable, Sendable {
 }
 
 /// A single hex cell on the game board.
-struct HexCell: Codable, Sendable {
+struct HexCell: Codable, Sendable, Equatable {
     let coord: HexCoord
     /// Which map tile ref this cell belongs to (e.g. "l1a", "g1b").
     let tileRef: String

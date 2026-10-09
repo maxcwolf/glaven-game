@@ -1,7 +1,7 @@
 import Foundation
 
 /// Information about a door connecting two map tile rooms.
-struct DoorInfo: Codable, Sendable {
+struct DoorInfo: Codable, Sendable, Equatable {
     /// The hex coordinate where the door sits.
     let coord: HexCoord
     /// The tile ref of the child room behind this door (e.g. "g1b").

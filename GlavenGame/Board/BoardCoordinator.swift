@@ -2149,6 +2149,9 @@ final class BoardCoordinator {
     // MARK: - Input Handling
 
     func handleHexTap(_ coord: HexCoord) {
+        let asked = String(describing: interactionMode)
+        // A choice accepted can't be cancelled any more.
+        defer { if String(describing: interactionMode) != asked { activePlayerTurn?.choiceMade() } }
         switch interactionMode {
         case .placingCharacter(let charID):
             placeCharacter(characterID: charID, at: coord)
@@ -2184,6 +2187,8 @@ final class BoardCoordinator {
     }
 
     func handlePieceTap(_ piece: PieceID) {
+        let asked = String(describing: interactionMode)
+        defer { if String(describing: interactionMode) != asked { activePlayerTurn?.choiceMade() } }
         switch interactionMode {
         case .selectingAttackTarget(let attackerID, _, let validTargets):
             if validTargets.contains(piece), let forced = pendingForcedAttack {

@@ -85,6 +85,29 @@ final class PlayerTurnController {
     private weak var coordinator: BoardCoordinator?
     private weak var gameManager: GameManager?
 
+    /// The turn as it stood when the current printed action began, so a target choice can be
+    /// cancelled: everything the action did before asking (an element consumed, a charge
+    /// marked, XP) is put back, and the action waits to be performed again.
+    private struct ActionCheckpoint {
+        let character: CharacterSnapshot
+        let elements: [ElementModel]
+        let positions: [PieceID: HexCoord]
+        let cells: [HexCoord: HexCell]
+        let logCount: Int
+        let hasActed: Bool
+        let topActions: [ActionModel], bottomActions: [ActionModel]
+        let hexesMoved: Int, damageInflicted: Int, lootBonus: Int, damageSuffered: Int, lastMoveLength: Int
+        let hexesPassed: [HexCoord]
+        let persistentCardsThisTurn: [Int]
+        let movedThroughConditions: [ConditionName]
+        let movedThroughNeedsLoop: Bool
+        let afterMoveTexts: [String]
+        let usedUpThisTurn: Set<Int>
+        let magmaWadersHealed: Bool, hornedHelmUsed: Bool
+        let pendingHealConditions: [ConditionName], pendingExtraConditions: [ConditionName]
+    }
+    private var checkpoint: ActionCheckpoint?
+
     init(characterID: String, coordinator: BoardCoordinator, gameManager: GameManager) {
         self.characterID = characterID
         self.coordinator = coordinator
@@ -200,6 +223,7 @@ final class PlayerTurnController {
             return
         }
 
+        checkpoint = makeCheckpoint()
         hasActed = true
         let action = actions[currentActionIndex]
         // Async actions (target/hex selection) advance in advanceAfterAsyncAction() — which may
@@ -271,6 +295,83 @@ final class PlayerTurnController {
         } else {
             advancePhase()
         }
+    }
+
+    // MARK: - Cancelling a choice
+
+    private func makeCheckpoint() -> ActionCheckpoint? {
+        guard let character, let coordinator, let game = gameManager?.game else { return nil }
+        return ActionCheckpoint(
+            character: character.toSnapshot(), elements: game.elementBoard,
+            positions: coordinator.boardState.piecePositions, cells: coordinator.boardState.cells,
+            logCount: coordinator.turnLog.count, hasActed: hasActed,
+            topActions: topActions, bottomActions: bottomActions,
+            hexesMoved: hexesMoved, damageInflicted: damageInflicted, lootBonus: lootBonus,
+            damageSuffered: damageSuffered, lastMoveLength: lastMoveLength, hexesPassed: hexesPassed,
+            persistentCardsThisTurn: persistentCardsThisTurn, movedThroughConditions: movedThroughConditions,
+            movedThroughNeedsLoop: movedThroughNeedsLoop, afterMoveTexts: afterMoveTexts,
+            usedUpThisTurn: usedUpThisTurn, magmaWadersHealed: magmaWadersHealed, hornedHelmUsed: hornedHelmUsed,
+            pendingHealConditions: coordinator.pendingHealConditions,
+            pendingExtraConditions: coordinator.pendingExtraConditions)
+    }
+
+    /// Whether the choice the board is waiting for can be cancelled: it's the first choice of a
+    /// printed action, nothing on the board has changed since the action began, and no other
+    /// question is open.
+    var canCancelChoice: Bool {
+        guard let checkpoint, let coordinator, awaitingAsync, !defaultAttackPending else { return false }
+        switch coordinator.interactionMode {
+        case .selectingMove, .selectingAttackTarget, .selectingMultiAttackTargets, .placingSummon, .placingToken,
+             .choosingPerformer, .selectingConditionTarget, .selectingHealTarget, .selectingForcedMoveTarget:
+            break
+        case .idle, .placingCharacter, .selectingPushPullHex, .watchingMonsterTurn:
+            return false
+        }
+        if case .selectingMultiAttackTargets(_, _, _, _, let selected) = coordinator.interactionMode, !selected.isEmpty {
+            return false
+        }
+        return coordinator.boardState.piecePositions == checkpoint.positions
+            && coordinator.boardState.cells == checkpoint.cells
+            && coordinator.pendingItemUse == nil && coordinator.pendingModifierDraw == nil
+            && coordinator.pendingDamage == nil && coordinator.pendingSummonPlacement == nil
+    }
+
+    /// The player answered the board's question: from here the action can't be cancelled.
+    func choiceMade() { checkpoint = nil }
+
+    /// Cancel the choice: undo what the action did before asking, and wait to perform it again.
+    func cancelChoice() {
+        guard canCancelChoice, let checkpoint, let coordinator, let gameManager, let character else { return }
+        checkpoint.character.apply(to: character, editionStore: gameManager.editionStore)
+        gameManager.game.elementBoard = checkpoint.elements
+        if coordinator.turnLog.count > checkpoint.logCount {
+            coordinator.turnLog.removeLast(coordinator.turnLog.count - checkpoint.logCount)
+        }
+        hasActed = checkpoint.hasActed
+        topActions = checkpoint.topActions
+        bottomActions = checkpoint.bottomActions
+        hexesMoved = checkpoint.hexesMoved
+        damageInflicted = checkpoint.damageInflicted
+        lootBonus = checkpoint.lootBonus
+        damageSuffered = checkpoint.damageSuffered
+        lastMoveLength = checkpoint.lastMoveLength
+        hexesPassed = checkpoint.hexesPassed
+        persistentCardsThisTurn = checkpoint.persistentCardsThisTurn
+        movedThroughConditions = checkpoint.movedThroughConditions
+        movedThroughNeedsLoop = checkpoint.movedThroughNeedsLoop
+        afterMoveTexts = checkpoint.afterMoveTexts
+        usedUpThisTurn = checkpoint.usedUpThisTurn
+        magmaWadersHealed = checkpoint.magmaWadersHealed
+        hornedHelmUsed = checkpoint.hornedHelmUsed
+        resetPendingAttack(value: 2, range: 1)
+        coordinator.pendingHealConditions = checkpoint.pendingHealConditions
+        coordinator.pendingExtraConditions = checkpoint.pendingExtraConditions
+        coordinator.pendingForcedAttack = nil
+        coordinator.interactionMode = .idle
+        coordinator.boardScene?.clearHighlights()
+        coordinator.syncPieceVisuals()
+        awaitingAsync = false
+        self.checkpoint = nil
     }
 
     /// Use the default action for the current half instead of the printed one:

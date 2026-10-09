@@ -75,11 +75,21 @@ extension BoardCoordinator {
         let detail: String
         /// Whether "Skip this action" applies (the player's own ability is waiting for a choice).
         let canSkip: Bool
+        /// Whether the choice can be cancelled, putting the ability back to be performed again.
+        var canCancel = false
     }
 
-    /// The banner for the current interaction. Every mode has wording (the switch has no
-    /// default), so a new kind of choice can't appear on the board without telling the player.
+    /// The banner for the current interaction, with Cancel offered while the action can still
+    /// be taken back.
     func instruction(for mode: InteractionMode) -> Instruction? {
+        guard var instruction = baseInstruction(for: mode) else { return nil }
+        instruction.canCancel = activePlayerTurn?.canCancelChoice ?? false
+        return instruction
+    }
+
+    /// Every mode has wording (the switch has no default), so a new kind of choice can't appear
+    /// on the board without telling the player.
+    private func baseInstruction(for mode: InteractionMode) -> Instruction? {
         let ownTurn = activePlayerTurn != nil
         switch mode {
         case .idle:
