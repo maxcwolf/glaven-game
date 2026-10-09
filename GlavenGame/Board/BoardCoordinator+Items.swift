@@ -255,6 +255,8 @@ extension BoardCoordinator {
                   let effect = BoardItemEffect.byItem[key], isMoment(effect.moment, for: turn),
                   effect.consumes.isEmpty || gameManager.game.canConsumeElements(effect.consumes),
                   turn.hexesMoved >= effect.minimumMoved,
+                  !(effect.parts.allSatisfy { if case .recover = $0 { return true }; return false }
+                    && character.discardedCards.isEmpty),   // a stamina potion with nothing to recover
                   let item = itemData(key) else { return nil }
             return item
         }

@@ -556,6 +556,17 @@ final class BoardItemTests: XCTestCase {
         XCTAssertTrue(brute.discardedCards.isEmpty)
     }
 
+    /// With nothing in the discard pile a stamina potion isn't offered: it would be used up
+    /// for nothing.
+    func testAStaminaPotionWaitsForSomethingToRecover() throws {
+        brute.items = ["gh-13"]
+        _ = try startTurn()
+        brute.discardedCards = []
+        XCTAssertFalse(coord.usableItems().contains { $0.itemKey == "gh-13" })
+        brute.discardedCards = [3]
+        XCTAssertTrue(coord.usableItems().contains { $0.itemKey == "gh-13" })
+    }
+
     // MARK: - Items with a choice
 
     func testAManaPotionInfusesTheChosenElements() throws {
