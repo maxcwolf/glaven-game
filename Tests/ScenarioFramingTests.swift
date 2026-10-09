@@ -59,6 +59,20 @@ final class ScenarioFramingTests: XCTestCase {
         XCTAssertEqual(restored.data.name, barrow.name, "a saved Black Barrow comes back as itself")
     }
 
+    /// Regression: unlocking looked a won scenario up by number in load order, so where a solo
+    /// scenario sharing the number loaded first (as on iPad), winning #4 Crypt of the Damned
+    /// unlocked nothing (#2's own data names #1, which hid it there).
+    func testWinningAScenarioUnlocksWhatItsCampaignCardSays() throws {
+        let gm = try SaveAndContinueTestsSupport.manager()
+        let all = gm.editionStore.scenarios(for: "gh")
+        gm.editionStore.scenariosByEdition["gh"] = all.filter { $0.solo != nil } + all.filter { $0.solo == nil }
+        gm.game.completedScenarios.insert("gh-4")
+        for index in ["5", "6"] {
+            let unlocked = try XCTUnwrap(gm.editionStore.scenarioData(index: index, edition: "gh"))
+            XCTAssertTrue(gm.scenarioManager.isUnlocked(unlocked), "#\(index)")
+        }
+    }
+
     /// The brief names each monster type once, by its key: a level spec ("living-corpse:+2") is
     /// not part of the name, and the key finds the portrait.
     func testBriefMonstersAreKeys() throws {

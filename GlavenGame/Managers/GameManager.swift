@@ -677,7 +677,7 @@ struct AutosaveSummary: Equatable {
             $0.title.isEmpty ? GameText.className($0.name, edition: $0.edition, labels: labels) : $0.title
         }.sorted()
         if let scenario = snapshot.scenario, snapshot.boardSnapshot != nil {
-            let name = labels?.scenarios(for: scenario.edition).first { $0.index == scenario.index }?.name
+            let name = labels?.scenarioData(index: scenario.index, edition: scenario.edition)?.name
             self.scenario = name.map { "#\(scenario.index) \($0)" } ?? "#\(scenario.index)"
             round = snapshot.round + 1
         }

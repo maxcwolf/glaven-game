@@ -288,6 +288,12 @@ final class ScenarioManager {
         isScenarioBlocked(scenario, edition: scenario.edition)
     }
 
+    /// Unlocked by a won scenario (or by hand), whether or not it can be played yet: on the
+    /// board game's map it has its sticker.
+    func isUnlocked(_ scenario: ScenarioData) -> Bool {
+        scenario.isInitial || isScenarioUnlocked(scenario, edition: scenario.edition) || game.manualScenarios.contains(scenario.id)
+    }
+
     func isLocked(_ scenario: ScenarioData) -> Bool {
         let edition = scenario.edition
         let unlocked = isScenarioUnlocked(scenario, edition: edition) || game.manualScenarios.contains(scenario.id)
@@ -508,14 +514,13 @@ final class ScenarioManager {
     // MARK: - Private: Requirements Checking
 
     private func isScenarioUnlocked(_ scenario: ScenarioData, edition: String) -> Bool {
-        let allScenarios = editionStore.scenarios(for: edition)
-
         // Check if any completed scenario unlocks this one
         for completed in game.completedScenarios {
             let parts = completed.split(separator: "-", maxSplits: 1)
             guard parts.count == 2, String(parts[0]) == edition else { continue }
             let completedIndex = String(parts[1])
-            if let completedScenario = allScenarios.first(where: { $0.index == completedIndex }) {
+            // By number: the campaign scenario, never the solo one sharing its number.
+            if let completedScenario = editionStore.scenarioData(index: completedIndex, edition: edition) {
                 if let unlocks = completedScenario.unlocks, unlocks.contains(scenario.index) {
                     return true
                 }
@@ -536,14 +541,13 @@ final class ScenarioManager {
     }
 
     private func isScenarioBlocked(_ scenario: ScenarioData, edition: String) -> Bool {
-        let allScenarios = editionStore.scenarios(for: edition)
-
         // Check if any completed scenario blocks this one
         for completed in game.completedScenarios {
             let parts = completed.split(separator: "-", maxSplits: 1)
             guard parts.count == 2, String(parts[0]) == edition else { continue }
             let completedIndex = String(parts[1])
-            if let completedScenario = allScenarios.first(where: { $0.index == completedIndex }) {
+            // By number: the campaign scenario, never the solo one sharing its number.
+            if let completedScenario = editionStore.scenarioData(index: completedIndex, edition: edition) {
                 if let blocks = completedScenario.blocks, blocks.contains(scenario.index) {
                     return true
                 }
