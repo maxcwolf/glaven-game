@@ -58,4 +58,13 @@ final class DamageChoiceTests: XCTestCase {
         gm.boardCoordinator.resolvePendingDamage(choice: .takeDamage)
         _ = await hit.value
     }
+
+    /// Return confirms the card chosen to lose, and takes the damage only when nothing is chosen
+    /// and it doesn't exhaust the character (that takes a deliberate click).
+    func testReturnFollowsTheChoice() {
+        XCTAssertEqual(DamageChoiceSheet.returnKey(selectedCard: nil, exhausts: false), .takeDamage)
+        XCTAssertEqual(DamageChoiceSheet.returnKey(selectedCard: 12, exhausts: false), .loseCard)
+        XCTAssertEqual(DamageChoiceSheet.returnKey(selectedCard: 12, exhausts: true), .loseCard)
+        XCTAssertEqual(DamageChoiceSheet.returnKey(selectedCard: nil, exhausts: true), .nothing)
+    }
 }

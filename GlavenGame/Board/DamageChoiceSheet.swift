@@ -13,6 +13,15 @@ struct DamageChoiceSheet: View {
 
     private let cardHeight: CGFloat = 200
 
+    enum ReturnKey: Equatable { case takeDamage, loseCard, nothing }
+
+    /// What Return does: confirms the card chosen to lose; otherwise takes the damage — unless
+    /// that exhausts the character, which only a deliberate click does.
+    static func returnKey(selectedCard: Int?, exhausts: Bool) -> ReturnKey {
+        if selectedCard != nil { return .loseCard }
+        return exhausts ? .nothing : .takeDamage
+    }
+
     var body: some View {
         let outcome = coordinator.damageOutcome(pending)
         let losable = coordinator.losableHandCards(of: character)
@@ -44,7 +53,8 @@ struct DamageChoiceSheet: View {
     }
 
     private func summary(_ outcome: BoardCoordinator.DamageOutcome?) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
+        let returnKey = Self.returnKey(selectedCard: selectedCard, exhausts: outcome?.exhausts == true)
+        return VStack(alignment: .leading, spacing: 10) {
             Text("\(GameText.characterName(character, labels: gameManager.editionStore)) is hit")
                 .font(.caption.weight(.semibold))
                 .textCase(.uppercase)
@@ -76,7 +86,7 @@ struct DamageChoiceSheet: View {
             }
             .buttonStyle(.borderedProminent)
             .tint(outcome?.exhausts == true ? .gray : Color(red: 0.78, green: 0.57, blue: 0.18))
-            .keyboardShortcut(.defaultAction)
+            .keyboardShortcut(returnKey == .takeDamage ? .defaultAction : nil)
 
             if let cardId = selectedCard {
                 Button(role: .destructive) {
@@ -88,6 +98,7 @@ struct DamageChoiceSheet: View {
                 }
                 .buttonStyle(.bordered)
                 .tint(.red)
+                .keyboardShortcut(returnKey == .loseCard ? .defaultAction : nil)
                 Text("Lost cards can\u{2019}t be used again this scenario.")
                     .font(.caption2)
                     .foregroundStyle(.white.opacity(0.55))
