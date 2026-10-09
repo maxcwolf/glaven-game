@@ -429,6 +429,55 @@ final class BoardRulesRegressionTests: XCTestCase {
         XCTAssertEqual(offMain, [])
     }
 
+    /// Jump over a Bandit Guard with `card`'s bottom half, then perform its next action.
+    private func jumpOverABandit(_ name: String, card cardName: String, other otherName: String) async throws
+        -> (character: GameCharacter, bandit: GameMonsterEntity) {
+        let character = addCharacter(name, at: HexCoord(3, 3))
+        let bandit = addMonster("bandit-guard", at: HexCoord(4, 3))
+        let played = try card(cardName, of: name), other = try card(otherName, of: name)
+        character.handCards = [played.cardId!, other.cardId!]
+        let turn = PlayerTurnController(characterID: character.id, coordinator: coord, gameManager: gm)
+        coord.activePlayerTurn = turn
+        turn.selectCards(top: other, bottom: played)
+        turn.setBottomFirst(true)
+        turn.executeCurrentAction()   // the move, with Jump
+        coord.handleHexTap(HexCoord(6, 3))
+        _ = await waitUntil { turn.currentActionIndex == 1 }
+        turn.executeCurrentAction()
+        return (character, bandit)
+    }
+
+    /// Regression: Rock Tunnel's "Immobilize, target all enemies moved through" immobilized the
+    /// Cragheart (the target is only in the card's text).
+    func testRockTunnelImmobilizesTheEnemiesJumpedOver() async throws {
+        let (cragheart, bandit) = try await jumpOverABandit("cragheart", card: "Rock Tunnel", other: "Avalanche")
+        XCTAssertTrue(bandit.entityConditions.contains { $0.name == .immobilize })
+        XCTAssertFalse(cragheart.entityConditions.contains { $0.name == .immobilize })
+    }
+
+    /// Regression: Corrupting Embrace's poison asked for one adjacent enemy instead.
+    func testCorruptingEmbracePoisonsTheEnemiesJumpedOver() async throws {
+        let (_, bandit) = try await jumpOverABandit("mindthief", card: "Corrupting Embrace", other: "Feedback Loop")
+        XCTAssertTrue(bandit.entityConditions.contains { $0.name == .poison })
+        if case .selectingConditionTarget = coord.interactionMode { XCTFail("no target to pick") }
+    }
+
+    /// Feedback Loop's muddle is printed inside its move.
+    func testFeedbackLoopMuddlesWhileMoving() async throws {
+        let character = addCharacter("mindthief", at: HexCoord(3, 3))
+        let bandit = addMonster("bandit-guard", at: HexCoord(4, 3))
+        let loop = try card("Feedback Loop", of: "mindthief"), other = try card("Corrupting Embrace", of: "mindthief")
+        character.handCards = [loop.cardId!, other.cardId!]
+        let turn = PlayerTurnController(characterID: character.id, coordinator: coord, gameManager: gm)
+        coord.activePlayerTurn = turn
+        turn.selectCards(top: other, bottom: loop)
+        turn.setBottomFirst(true)
+        turn.executeCurrentAction()
+        coord.handleHexTap(HexCoord(6, 3))
+        _ = await waitUntil { turn.currentActionIndex == 1 }
+        XCTAssertTrue(bandit.entityConditions.contains { $0.name == .muddle })
+    }
+
     /// Regression: "Attack 2, all enemies moved through" (Trample) attacked no one.
     func testTrampleAttacksEveryEnemyJumpedOver() async throws {
         let character = addCharacter(at: HexCoord(3, 3))

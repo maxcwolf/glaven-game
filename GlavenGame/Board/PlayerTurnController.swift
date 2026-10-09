@@ -55,6 +55,8 @@ final class PlayerTurnController {
     /// Cards whose persistent half was performed this turn: their charged bonus is in effect
     /// before they reach the active area. A bonus used up this turn never gets there.
     var persistentCardsThisTurn: [Int] = []
+    /// Conditions the current move gives every enemy it passes over (Feedback Loop).
+    var movedThroughConditions: [ConditionName] = []
     var usedUpThisTurn: Set<Int> = []
     var magmaWadersHealed = false
     private var hornedHelmUsed = false
@@ -369,6 +371,13 @@ final class PlayerTurnController {
             if PassiveItems.flies(character?.items ?? []) { mode = .fly }
             grantBonusExperience(bonus)
             hexesPassed = []
+            // Feedback Loop: "Muddle, all enemies moved through" printed inside the move.
+            if (action.subActions ?? []).contains(where: {
+                $0.type == .specialTarget && $0.value?.stringValue.lowercased() == "enemiesmovedthrough" }) {
+                movedThroughConditions = (action.subActions ?? []).compactMap {
+                    $0.type == .condition ? $0.value.flatMap { ConditionName(rawValue: $0.stringValue) } : nil
+                }
+            }
             let label = mode == .jump ? "Jump" : (mode == .fly ? "Fly" : "Move")
             coordinator.log("\(who): \(label) \(moveValue)", category: .move)
             applyPrintedEffects(of: action, coordinator: coordinator)
@@ -537,6 +546,8 @@ final class PlayerTurnController {
                 coordinator.applyConditionToAllAllies(from: pieceID, condition: cond, range: range ?? 999)
             case .`self`:
                 coordinator.applyCondition(cond, to: pieceID)
+            case .enemiesMovedThrough:
+                coordinator.applyCondition(cond, toEnemiesOn: hexesPassed, from: pieceID)
             }
 
         case .shield, .retaliate:
@@ -637,6 +648,15 @@ final class PlayerTurnController {
         }
     }
 
+    /// The player-facing text of an action's custom sub-actions, lowercased.
+    private func customText(of action: ActionModel) -> String {
+        guard let store = gameManager?.editionStore, let edition = character?.edition else { return "" }
+        return (action.subActions ?? []).filter { $0.type == .custom }
+            .compactMap { $0.value?.stringValue }
+            .compactMap { store.resolveCustomText($0, edition: edition) }
+            .joined(separator: " ").lowercased()
+    }
+
     /// Range of an attack action before augments (melee = 1).
     private func attackRange(of action: ActionModel) -> Int {
         action.subActions?.first { $0.type == .range }?.value?.intValue ?? 1
@@ -677,12 +697,16 @@ final class PlayerTurnController {
         case allEnemies(range: Int?)
         case allAllies(range: Int?)
         case selfAndAllAllies(range: Int?)
+        /// Every enemy passed over in this half's move (Rock Tunnel, Corrupting Embrace).
+        case enemiesMovedThrough
     }
 
     /// Parse the `specialTarget` subaction to determine how a condition should be targeted.
     private func conditionTargetSpec(_ action: ActionModel) -> ConditionTarget {
         guard let specValue = action.subActions?
             .first(where: { $0.type == .specialTarget })?.value?.stringValue else {
+            // Some cards say who in their text only ("Target all enemies moved through").
+            if customText(of: action).contains("moved through") { return .enemiesMovedThrough }
             // A condition with a range targets one enemy in range; otherwise it targets oneself.
             if let range = action.subActions?.first(where: { $0.type == .range })?.value?.intValue {
                 return .singleEnemy(range: range)
@@ -702,8 +726,10 @@ final class PlayerTurnController {
             return .self
         case "enemyadjacent":
             return .singleEnemy(range: 1)
-        case "enemiesadjacent", "enemiesmoved through", "enemiesmoved":
+        case "enemiesadjacent":
             return .allEnemies(range: 1)
+        case "enemiesmovedthrough":
+            return .enemiesMovedThrough
         case "enemies":
             return .allEnemies(range: nil)
         case "allyadjacent", "alliesadjacent", "alliesadjacentaffect":

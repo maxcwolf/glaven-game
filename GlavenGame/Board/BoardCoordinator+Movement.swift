@@ -71,7 +71,25 @@ extension BoardCoordinator {
                 openDoor(at: hex)
             }
         }
+        if let turn = activePlayerTurn, case .character(let id) = pieceID, turn.characterID == id,
+           style != .forced, !turn.movedThroughConditions.isEmpty {
+            for condition in turn.movedThroughConditions {
+                applyCondition(condition, toEnemiesOn: turn.hexesPassed, from: pieceID)
+            }
+            turn.movedThroughConditions = []
+        }
         return isOnBoard(pieceID)
+    }
+
+    /// A condition for every enemy standing on one of `hexes` ("all enemies moved through").
+    func applyCondition(_ condition: ConditionName, toEnemiesOn hexes: [HexCoord], from pieceID: PieceID) {
+        let passed = Set(hexes)
+        let targets = boardState.piecePositions.filter { passed.contains($0.value) && areEnemies(pieceID, $0.key) }
+            .map(\.key).sorted()
+        for target in targets { applyCondition(condition, to: target) }
+        log(targets.isEmpty ? "\(name(pieceID)) moved through no enemy"
+                            : "\(name(pieceID)) gives \(GameText.list(targets.map(name))) \(GameText.conditionName(condition))",
+            category: .condition)
     }
 
     func isOnBoard(_ pieceID: PieceID) -> Bool {
