@@ -102,6 +102,14 @@ struct BoardView: View {
                     .transition(.move(edge: .bottom).combined(with: .opacity))
             }
 
+            // Recovering discarded cards (Minor Stamina Potion)
+            if let pending = coordinator.pendingRecovery,
+               let character = gameManager.game.characters.first(where: { $0.id == pending.characterID }) {
+                RecoveryPicker(pending: pending, character: character, coordinator: coordinator)
+                    .id(pending.id)
+                    .transition(.opacity)
+            }
+
             // Long rest card choice prompt
             if let pending = coordinator.pendingLongRest,
                let character = gameManager.game.characters.first(where: { $0.id == pending.characterID }) {

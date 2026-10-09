@@ -180,6 +180,10 @@ final class ScenarioSimulator {
                 advantage: draw.advantage, disadvantage: draw.disadvantage, draw: draw.drawCard))
             return
         }
+        if coord.pendingRecovery != nil {
+            coord.resolveRecovery([])
+            return
+        }
         if coord.pendingItemUse != nil {
             // Policies don't spend items, so seeded games play the same with or without them.
             coord.resolvePendingItemUse(false)

@@ -165,4 +165,29 @@ final class BoardItemTests: XCTestCase {
         XCTAssertNil(coord.pendingItemUse)
         XCTAssertTrue(brute.spentItems.isEmpty)
     }
+
+    // MARK: - Minor Stamina Potion
+
+    func testAStaminaPotionRecoversTheChosenCards() throws {
+        brute.items = ["gh-13"]
+        _ = try startTurn()
+        brute.discardedCards = [3, 4, 5]
+        let potion = try XCTUnwrap(coord.usableItems().first { $0.itemKey == "gh-13" })
+        XCTAssertTrue(coord.useItem(potion))
+        let pending = try XCTUnwrap(coord.pendingRecovery, "three discards: the player picks two")
+        XCTAssertEqual(pending.count, 2)
+        coord.resolveRecovery([5, 3, 4])
+        XCTAssertEqual(brute.discardedCards, [4], "only two come back")
+        XCTAssertTrue(brute.handCards.contains(5) && brute.handCards.contains(3))
+        XCTAssertTrue(brute.consumedItems.contains("gh-13"))
+    }
+
+    func testWithTwoDiscardsTheyBothComeBack() throws {
+        brute.items = ["gh-13"]
+        _ = try startTurn()
+        brute.discardedCards = [3, 4]
+        XCTAssertTrue(coord.useItem(try XCTUnwrap(coord.usableItems().first)))
+        XCTAssertNil(coord.pendingRecovery)
+        XCTAssertTrue(brute.discardedCards.isEmpty)
+    }
 }

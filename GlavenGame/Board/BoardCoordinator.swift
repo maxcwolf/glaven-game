@@ -377,6 +377,9 @@ final class BoardCoordinator {
     /// Non-nil while a character being attacked is offered a defence item.
     var pendingItemUse: PendingItemUse?
 
+    /// Non-nil while a character picks discarded cards to recover (Minor Stamina Potion).
+    var pendingRecovery: PendingRecovery?
+
     /// Called from the UI when the player makes a damage mitigation choice.
     func resolvePendingDamage(choice: DamageMitigationChoice) {
         guard let pending = pendingDamage else { return }

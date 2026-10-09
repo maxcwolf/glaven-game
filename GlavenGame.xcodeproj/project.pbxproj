@@ -48,6 +48,7 @@
 		34E52CCA39FF59F3296B5135 /* BoardSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = 33A6C1188659B67AC3B2FFC8 /* BoardSnapshot.swift */; };
 		35327ED25730D37C83C265A3 /* Loot.swift in Sources */ = {isa = PBXBuildFile; fileRef = 83845896587772B83CB3E6B8 /* Loot.swift */; };
 		36769205F2999D17E959C581 /* MainMenuView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4840A613B6DC796BF25638E0 /* MainMenuView.swift */; };
+		36DAE2BE1201D56F92C06BC6 /* RecoveryPicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = D2ED778C971FD3AFE9B4F991 /* RecoveryPicker.swift */; };
 		3BA7F9EC1E24B79B3E456175 /* MonsterAbility.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7B89AE0E38F08BEDFE54A49 /* MonsterAbility.swift */; };
 		3CA51576B5FF4BF353869396 /* CharacterSheetView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 48C2C89D891BD98C87B15AC7 /* CharacterSheetView.swift */; };
 		3D70D4B36FC1C27F8205C998 /* BundleHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = 52347FEF6FA67664FBF7BF1A /* BundleHelper.swift */; };
@@ -376,6 +377,7 @@
 		D179B38E24E3F8EE01027D33 /* SpriteKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SpriteKit.framework; path = System/Library/Frameworks/SpriteKit.framework; sourceTree = SDKROOT; };
 		D1EA85C028A0AFE294D1CD52 /* Scenario.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Scenario.swift; sourceTree = "<group>"; };
 		D2399EDB7F011E68F62A5F2F /* MonsterAbilityStripView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MonsterAbilityStripView.swift; sourceTree = "<group>"; };
+		D2ED778C971FD3AFE9B4F991 /* RecoveryPicker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecoveryPicker.swift; sourceTree = "<group>"; };
 		D43BC428DB53E9EC54ECA21C /* CombatResolver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CombatResolver.swift; sourceTree = "<group>"; };
 		D509FC90D805FC2585C9C743 /* AttackModifierEffectType.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AttackModifierEffectType.swift; sourceTree = "<group>"; };
 		D5883A3D9378A826BF8AA541 /* ConditionType.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConditionType.swift; sourceTree = "<group>"; };
@@ -773,6 +775,7 @@
 				E007CE4699064C661EBFDCB7 /* MovePlan.swift */,
 				DD9B9D4203B3CFD7D307E4EE /* PieceSpriteNode.swift */,
 				8A2BBA0188C2D10D81CAC68B /* PlayerTurnController.swift */,
+				D2ED778C971FD3AFE9B4F991 /* RecoveryPicker.swift */,
 				487FFAE9CF9ACC5FB5742CD6 /* RewardChoicesView.swift */,
 				B97936FE7C6DC6879E3A5861 /* ScenarioBriefCard.swift */,
 				FF546B2E6909F44E7930DB07 /* ScenarioResultsView.swift */,
@@ -1078,6 +1081,7 @@
 				7E73D0A139DFBE1715DA1F44 /* PlayerTurnController.swift in Sources */,
 				C7A71268D4ED515FDA566884 /* PreferencesSheet.swift in Sources */,
 				8FC70B94B68CE136535F98DA /* QuestPicker.swift in Sources */,
+				36DAE2BE1201D56F92C06BC6 /* RecoveryPicker.swift in Sources */,
 				93A57D1AE8095C6238BBB1D3 /* RemoteEditionData.swift in Sources */,
 				BC3BC6A84314049CE3D9E374 /* RewardChoicesView.swift in Sources */,
 				4B2BA4139D0D27B42EE7818E /* RoundManager.swift in Sources */,

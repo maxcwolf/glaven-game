@@ -5,8 +5,8 @@ import Foundation
 /// refreshed by a long rest; a consumed one is gone for the scenario.
 ///
 /// Played so far: the starting shop's on-turn items, and Leather Armor and Heater Shield, offered
-/// when an enemy attacks. Hide Armor (two uses), the Iron Helmet and the Minor Stamina Potion (a
-/// card picker) are still marked by hand on the character sheet.
+/// when an enemy attacks. Hide Armor (two uses) and the Iron Helmet are still marked by hand on
+/// the character sheet.
 enum BoardItemEffect: Equatable {
     case extraMove(Int)
     case jump
@@ -16,6 +16,8 @@ enum BoardItemEffect: Equatable {
     case attackCondition(ConditionName)
     case attackBonus(Int)
     case heal(Int)
+    /// Recover up to this many discarded cards to the hand.
+    case recover(Int)
 
     enum Moment: Equatable { case turn, move, attack, meleeAttack, rangedAttack }
 
@@ -25,7 +27,7 @@ enum BoardItemEffect: Equatable {
         case .advantage, .attackBonus: return .attack
         case .ignoreShields: return .rangedAttack
         case .attackCondition: return .meleeAttack
-        case .invisible, .heal: return .turn
+        case .invisible, .heal, .recover: return .turn
         }
     }
 
@@ -39,6 +41,7 @@ enum BoardItemEffect: Equatable {
         "gh-10": .attackCondition(.stun),    // War Hammer
         "gh-11": .attackCondition(.poison),  // Poison Dagger
         "gh-12": .heal(3),                   // Minor Healing Potion
+        "gh-13": .recover(2),                // Minor Stamina Potion
         "gh-14": .attackBonus(1),            // Minor Power Potion
     ]
 }
@@ -115,8 +118,41 @@ extension BoardCoordinator {
         case .heal(let amount):
             let healed = heal(me, amount: amount, source: me)
             log("\(name(me)) heals for \(healed)", category: .heal, trace: "Heal \(amount), self")
+        case .recover(let count):
+            if character.discardedCards.count <= count {
+                recover(character.discardedCards, for: character)
+            } else {
+                pendingRecovery = PendingRecovery(characterID: character.id, count: count, itemName: item.name)
+            }
         }
         return true
+    }
+
+    /// Recovering discarded cards: which ones (up to `count`) go back to the hand.
+    struct PendingRecovery: Identifiable, Equatable {
+        let id = UUID()
+        let characterID: String
+        let count: Int
+        let itemName: String
+    }
+
+    /// Called from the picker with the cards chosen (at most the pending count, all from the discard pile).
+    func resolveRecovery(_ cardIds: [Int]) {
+        guard let pending = pendingRecovery,
+              let character = gameManager?.game.characters.first(where: { $0.id == pending.characterID }) else { return }
+        let chosen = Array(cardIds.filter(character.discardedCards.contains).prefix(pending.count))
+        pendingRecovery = nil
+        recover(chosen, for: character)
+    }
+
+    private func recover(_ cardIds: [Int], for character: GameCharacter) {
+        guard !cardIds.isEmpty else { return }
+        for id in cardIds {
+            if let index = character.discardedCards.firstIndex(of: id) {
+                character.handCards.append(character.discardedCards.remove(at: index))
+            }
+        }
+        log("\(name(.character(character.id))) recovers \(cardIds.count) card\(cardIds.count == 1 ? "" : "s")", category: .info)
     }
 
     func itemData(_ key: String) -> ItemData? {
