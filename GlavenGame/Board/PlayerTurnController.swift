@@ -403,6 +403,10 @@ final class PlayerTurnController {
             if range <= 1 {
                 pendingPierce += PassiveItems.meleePierce(for: character?.items ?? [])
                 pendingPush += PassiveItems.meleePush(for: character?.items ?? [])   // Mask of Terror
+                if character?.health == 1, character?.items.contains(PassiveItems.maskOfDeath) == true {
+                    pendingAttackValue += 2
+                    coordinator.log("\(who)\u{2019}s Mask of Death: +2 Attack", category: .attack)
+                }
                 if !hornedHelmUsed, hexesMoved >= 4, character?.items.contains(PassiveItems.hornedHelm) == true {
                     hornedHelmUsed = true
                     pendingAttackValue += 1

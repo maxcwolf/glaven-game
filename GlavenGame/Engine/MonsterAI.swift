@@ -497,7 +497,8 @@ enum MonsterAI {
         switch pieceID {
         case .character(let charID):
             if let char = gameState.characters.first(where: { $0.id == charID }) {
-                return char.longRest ? 99 : Double(char.initiative)
+                // Flea-Bitten Shawl: the wearer counts as initiative 99 for focus.
+                return char.longRest || char.items.contains("gh-105") ? 99 : Double(char.initiative)
             }
             return 100
         case .summon(let summonID):

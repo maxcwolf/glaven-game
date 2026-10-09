@@ -170,6 +170,11 @@ enum PassiveItems {
 
     static func ignoresHazards(_ items: [String]) -> Bool { items.contains(where: hazardProof.contains) }
 
+    /// Mask of Death: +2 on a melee attack made at exactly 1 hit point.
+    static let maskOfDeath = "gh-145"
+    /// Helm of the Mountain: when attacked while Earth is strong, the attacker is immobilized.
+    static let helmOfTheMountain = "gh-110"
+
     /// Halberd: a single-target melee attack reaches any enemy within 2 hexes.
     static let halberd = "gh-68"
 
@@ -512,6 +517,10 @@ struct DefenseItem: Equatable {
     var shield = 0
     /// Retaliate for this attack (an adjacent attacker).
     var retaliate = 0
+    /// Suffer no damage from this attack (Shadow Armor).
+    var negates = false
+    /// An element the item consumes to work (Sun Shield: light).
+    var consumes: ElementType? = nil
 
     static let all: [DefenseItem] = [
         DefenseItem(key: "gh-4", disadvantage: true),              // Leather Armor
@@ -527,6 +536,8 @@ struct DefenseItem: Equatable {
         DefenseItem(key: "gh-32", shield: 2),                      // Tower Shield
         DefenseItem(key: "gh-61", shield: 4),                      // Wall Shield
         DefenseItem(key: "gh-91", shield: 4),                      // Steel Ring
+        DefenseItem(key: "gh-140", shield: 3, consumes: .light),   // Sun Shield
+        DefenseItem(key: "gh-51", negates: true),                  // Shadow Armor
     ]
     static let beforeDraw = all.filter(\.disadvantage)
     static let onDamage = all.filter { !$0.disadvantage }
@@ -535,6 +546,10 @@ struct DefenseItem: Equatable {
     static let ironHelmet = "gh-7"
 
     var question: String {
+        if negates { return "Suffer no damage from this attack?" }
+        if let element = consumes {
+            return "Consume \(GameText.elementName(element)) to gain Shield \(shield) against this attack?"
+        }
         var gains: [String] = []
         if shield > 0 { gains.append("Shield \(shield)") }
         if retaliate > 0 { gains.append("Retaliate \(retaliate)") }
@@ -572,6 +587,7 @@ extension BoardCoordinator {
               let character = gameManager.game.characters.first(where: { $0.id == id }),
               character.items.contains(key),
               !character.spentItems.contains(key), !character.consumedItems.contains(key),
+              item.consumes.map(gameManager.game.isElementAvailable) ?? true,
               let data = itemData(key) else { return false }
         let use = await withCheckedContinuation { (continuation: CheckedContinuation<Bool, Never>) in
             pendingItemUse = PendingItemUse(characterID: id, itemName: data.name, question: item.question,
@@ -580,11 +596,17 @@ extension BoardCoordinator {
         guard use else { return false }
         gameManager.characterManager.onBeforeMutate?()
         // An item with use slots (Hide Armor: two) is spent once they are all marked.
+        if let element = item.consumes, gameManager.game.consumeElements([element]) != nil {
+            log("\(name(target)) consumes \(GameText.elementName(element))", category: .element)
+        }
         let used = character.itemSlotsUsed[key, default: 0] + 1
         if data.slots > 1 && used < data.slots {
             character.itemSlotsUsed[key] = used
-        } else {
-            if data.consumed { character.consumedItems.insert(key) } else { character.spentItems.insert(key) }
+        } else if data.consumed {
+            character.consumedItems.insert(key)
+            character.itemSlotsUsed[key] = nil
+        } else if data.spent {
+            character.spentItems.insert(key)
             character.itemSlotsUsed[key] = nil
         }
         gameManager.scenarioStatsManager.recordItemUse(by: character.name)

@@ -111,7 +111,8 @@ final class BoardItemTests: XCTestCase {
             + [PassiveItems.unmovable, PassiveItems.muddleToStrengthen, PassiveItems.chainHood,
                PassiveItems.necklaceOfTeeth, PassiveItems.imposingBlade, DefenseItem.ironHelmet,
                PassiveItems.shoesOfHappiness, PassiveItems.enduranceFootwraps, PassiveItems.steelSabatons,
-               PassiveItems.hornedHelm, PassiveItems.halberd] + Array(PassiveItems.hazardProof)
+               PassiveItems.hornedHelm, PassiveItems.halberd, PassiveItems.maskOfDeath, PassiveItems.helmOfTheMountain,
+               "gh-105"] + Array(PassiveItems.hazardProof) + Array(BoardCoordinator.initiativeBoots.keys)
         XCTAssertEqual(Set(keys).count, keys.count, "no item in two tables")
         for key in keys {
             let id = try XCTUnwrap(Int(key.dropFirst(3)))
@@ -233,6 +234,15 @@ final class BoardItemTests: XCTestCase {
         guard case .selectingAttackTarget(_, _, let targets) = coord.interactionMode else { return XCTFail() }
         XCTAssertTrue(targets.contains(far))
         XCTAssertEqual(turn.currentAttackRange(), 1, "still a melee attack")
+    }
+
+    func testTheMaskOfDeathAddsTwoAtOneHitPoint() throws {
+        brute.items = ["gh-145"]
+        brute.health = 1
+        coord.spawnMonster(name: "bandit-guard", type: .normal, at: HexCoord(4, 3), origin: .placed)
+        let turn = try startTurn()
+        turn.executeCurrentAction()
+        XCTAssertEqual(turn.currentAttackValue(), 5)
     }
 
     func testTheMaskOfTerrorPushesOnMeleeAttacks() throws {
@@ -441,6 +451,54 @@ final class BoardItemTests: XCTestCase {
         XCTAssertEqual(offered, "Studded Leather")
         XCTAssertEqual(coord.lastModifierReveal?.disadvantage, true)
         XCTAssertEqual(brute.health, health - 2, "+0 either way, Shield 1")
+    }
+
+    func testShadowArmorTakesNoDamage() async throws {
+        brute.items = ["gh-51"]
+        let health = brute.health
+        let (offered, _) = try await banditAttacks(for: 3, answer: true)
+        XCTAssertEqual(offered, "Shadow Armor")
+        XCTAssertEqual(brute.health, health)
+        XCTAssertTrue(brute.consumedItems.contains("gh-51"))
+    }
+
+    func testTheSunShieldNeedsLight() async throws {
+        brute.items = ["gh-140"]
+        let health = brute.health
+        let piece = try XCTUnwrap(coord.spawnMonster(name: "bandit-guard", type: .normal, at: HexCoord(4, 3), origin: .placed))
+        coord.autoResolvePrompts = false
+        brute.handCards = []
+        await coord.performAttack(attacker: piece, target: .character(brute.id), attack: AttackParameters(value: 3),
+                                  drawCard: { AttackModifier(type: .plus0) })
+        XCTAssertEqual(brute.health, health - 3, "no light, no offer")
+
+        gm.game.elementBoard[gm.game.elementBoard.firstIndex { $0.type == .light }!].state = .strong
+        let attack = Task { @MainActor in
+            await self.coord.performAttack(attacker: piece, target: .character(self.brute.id), attack: AttackParameters(value: 3),
+                                           drawCard: { AttackModifier(type: .plus0) })
+        }
+        let deadline = Date().addingTimeInterval(3)
+        while coord.pendingItemUse == nil && Date() < deadline { try await Task.sleep(nanoseconds: 1_000_000) }
+        XCTAssertEqual(coord.pendingItemUse?.question, "Consume Light to gain Shield 3 against this attack?")
+        coord.resolvePendingItemUse(true)
+        _ = await attack.value
+        XCTAssertEqual(brute.health, health - 3, "Attack 3, Shield 3")
+        XCTAssertFalse(gm.game.isElementAvailable(.light))
+        XCTAssertTrue(brute.spentItems.isEmpty, "the shield has no use limit but its element")
+    }
+
+    func testTheHelmOfTheMountainImmobilizesTheAttacker() async throws {
+        brute.items = ["gh-110"]
+        gm.game.elementBoard[gm.game.elementBoard.firstIndex { $0.type == .earth }!].state = .strong
+        let piece = try XCTUnwrap(coord.spawnMonster(name: "bandit-guard", type: .normal, at: HexCoord(4, 3), origin: .placed))
+        await coord.performAttack(attacker: piece, target: .character(brute.id), attack: AttackParameters(value: 1))
+        XCTAssertTrue(coord.isConditionActive(.immobilize, on: piece))
+    }
+
+    func testTheShawlMakesMonstersLookElsewhere() {
+        brute.items = ["gh-105"]
+        brute.initiative = 10
+        XCTAssertEqual(MonsterAI.enemyInitiative(.character(brute.id), gameState: gm.game), 99)
     }
 
     func testADeclinedItemStaysReady() async throws {

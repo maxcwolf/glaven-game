@@ -53,6 +53,14 @@ extension BoardCoordinator {
                                                        retaliatePersistent: defender.retaliatePersistent,
                                                        distance: distance)
 
+        // Helm of the Mountain: attacking its wearer while Earth is strong immobilizes the attacker.
+        if case .character(let id) = target, areEnemies(attacker, target),
+           gameManager?.game.characters.first(where: { $0.id == id })?.items.contains(PassiveItems.helmOfTheMountain) == true,
+           gameManager?.game.elementBoard.first(where: { $0.type == .earth })?.state == .strong {
+            log("\(name(target))\u{2019}s Helm of the Mountain immobilizes \(name(attacker))", category: .condition)
+            applyCondition(.immobilize, to: attacker)
+        }
+
         // Chain Hood: Shield 1 while the wearer is beside three or more monsters.
         if case .character(let id) = target,
            gameManager?.game.characters.first(where: { $0.id == id })?.items.contains(PassiveItems.chainHood) == true,
@@ -113,10 +121,12 @@ extension BoardCoordinator {
         }
         var result = resolve()
         // Shields and armour: a shield for an attack that would damage (pierce still applies).
-        for item in DefenseItem.onDamage where result.damage > 0 && areEnemies(attacker, target) {
+        var negated = false
+        for item in DefenseItem.onDamage where result.damage > 0 && !negated && areEnemies(attacker, target) {
             if await offerDefenseItem(item, to: target, from: attacker) {
                 shield += item.shield
                 if distance <= 1 { retaliate += item.retaliate }
+                negated = item.negates
                 result = resolve()
             }
         }
@@ -136,7 +146,10 @@ extension BoardCoordinator {
         }
 
         var died = false
-        if result.damage > 0 {
+        if negated {
+            log("\(name(target)) suffers no damage", category: .damage)
+            boardScene?.pieceUnharmed(id: target, missed: false)
+        } else if result.damage > 0 {
             died = await sufferDamageWithMitigation(result.damage, to: target,
                                                     source: pieceLabel(attacker), killer: attacker)
         }
