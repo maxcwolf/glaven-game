@@ -291,4 +291,42 @@ final class ChargedBonusTests: XCTestCase {
         XCTAssertFalse(gm.game.isElementAvailable(.air))
         XCTAssertEqual(spellweaver.bonusChargesUsed[69], 1)
     }
+
+    // MARK: - Start and end of turn
+
+    private func startTurn(_ character: GameCharacter, deck: String) throws -> PlayerTurnController {
+        let cards = gm.editionStore.abilities(forDeck: deck, edition: "gh").filter { !character.activeCards.contains($0.cardId ?? 0) }
+        character.handCards = [cards[0].cardId!, cards[1].cardId!]
+        let turn = PlayerTurnController(characterID: character.id, coordinator: coord, gameManager: gm)
+        coord.activePlayerTurn = turn
+        turn.selectCards(top: cards[0], bottom: cards[1])
+        return turn
+    }
+
+    /// Lumbering Bash: "At the start of your next five turns, perform Heal 2, Range 2."
+    func testLumberingBashHealsAtTheStartOfTheTurn() throws {
+        let cragheart = add("cragheart", at: HexCoord(3, 3))
+        cragheart.activeCards = [143]
+        let turn = try startTurn(cragheart, deck: "cragheart")
+        XCTAssertEqual(turn.topActions.first?.type, .heal)
+        XCTAssertEqual(PlayerTurnController.bonusCard(of: turn.topActions[0]), 143)
+        turn.setBottomFirst(true)
+        XCTAssertEqual(turn.bottomActions.first?.type, .heal, "it moves to whichever half goes first")
+        XCTAssertNotEqual(turn.topActions.first.flatMap(PlayerTurnController.bonusCard), 143)
+        turn.executeCurrentAction()
+        guard case .selectingHealTarget(_, let value, _) = coord.interactionMode else { return XCTFail("a heal to aim") }
+        XCTAssertEqual(value, 2)
+        XCTAssertEqual(cragheart.bonusChargesUsed[143], 1)
+    }
+
+    /// Auto Turret: "At the end of your next five turns, perform Attack 2, Range 5."
+    func testAutoTurretAttacksAtTheEndOfTheTurn() throws {
+        let tinkerer = add("tinkerer", at: HexCoord(3, 3))
+        tinkerer.activeCards = [54]
+        let turn = try startTurn(tinkerer, deck: "tinkerer")
+        let last = try XCTUnwrap(turn.bottomActions.last)
+        XCTAssertEqual(last.type, .attack)
+        XCTAssertEqual(last.value?.intValue, 2)
+        XCTAssertEqual(PlayerTurnController.bonusCard(of: last), 54)
+    }
 }

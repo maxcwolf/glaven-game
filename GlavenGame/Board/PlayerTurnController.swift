@@ -106,6 +106,46 @@ final class PlayerTurnController {
             CardEnhancing.apply(enhancements, to: bottom.bottomActions ?? [], cardId: bottom.cardId, half: "bottom")), labels: labels, edition: edition)
         self.phase = bottomFirst ? .executeBottomAction : .executeTopAction
         self.currentActionIndex = 0
+        placeTurnBonusSteps()
+    }
+
+    /// Steps from charged bonuses that act at the start or end of the turn (Lumbering Bash,
+    /// Auto Turret): before the first half's actions and after the second half's. Each is
+    /// tagged with its card so performing it marks a charge.
+    private func placeTurnBonusSteps() {
+        func untagged(_ steps: [ActionModel]) -> [ActionModel] { steps.filter { Self.bonusCard(of: $0) == nil } }
+        topActions = untagged(topActions)
+        bottomActions = untagged(bottomActions)
+        guard let character, let coordinator else { return }
+        var starts: [ActionModel] = [], ends: [ActionModel] = []
+        for (cardId, bonus) in coordinator.chargedBonuses(of: character) {
+            let tag = ActionModel(type: .card, value: .string("bonus:\(cardId)"))
+            switch bonus {
+            case .turnStartAction(var step):
+                step.subActions = (step.subActions ?? []) + [tag]
+                starts.append(step)
+            case .turnEndAction(var step):
+                step.subActions = (step.subActions ?? []) + [tag]
+                ends.append(step)
+            default:
+                continue
+            }
+        }
+        if bottomFirst {
+            bottomActions = starts + bottomActions
+            topActions += ends
+        } else {
+            topActions = starts + topActions
+            bottomActions += ends
+        }
+    }
+
+    /// The charged-bonus card a turn step comes from, if any.
+    static func bonusCard(of step: ActionModel) -> Int? {
+        (step.subActions ?? []).lazy.compactMap { sub -> Int? in
+            guard sub.type == .card, let value = sub.value?.stringValue, value.hasPrefix("bonus:") else { return nil }
+            return Int(value.dropFirst("bonus:".count))
+        }.first
     }
 
     /// Use the other card for the top half (allowed until the first action is performed).
@@ -121,6 +161,7 @@ final class PlayerTurnController {
         bottomFirst = value
         phase = value ? .executeBottomAction : .executeTopAction
         currentActionIndex = 0
+        placeTurnBonusSteps()
     }
 
     /// Select long rest instead of cards.
@@ -374,6 +415,10 @@ final class PlayerTurnController {
     @discardableResult
     private func executeAction(_ action: ActionModel, coordinator: BoardCoordinator) -> Bool {
         let pieceID = PieceID.character(characterID)
+        // A turn step from a charged bonus marks its charge (Lumbering Bash's heal).
+        if let cardId = Self.bonusCard(of: action), let character {
+            coordinator.useCharge(cardId, of: character)
+        }
         // A persistent or round half's bonus applies once the half is being performed.
         let markers = halfMarkers(for: phase)
         if markers.contains("persistent") || markers.contains("round"),
@@ -774,7 +819,8 @@ final class PlayerTurnController {
     private func performPrintedText(_ action: ActionModel, coordinator: BoardCoordinator) -> Bool {
         guard let character else { return false }
         let me = PieceID.character(characterID)
-        let own = action.value.flatMap { gameManager?.editionStore.resolveCustomText($0.stringValue, edition: character.edition) } ?? ""
+        let own = action.value.flatMap { gameManager?.editionStore.resolveCustomText($0.stringValue, edition: character.edition)
+            ?? $0.stringValue } ?? ""
         let text = (own + " " + customText(of: action)).lowercased()
         if text.contains("trap in an adjacent empty hex"), text.hasPrefix("create") || text.contains(" create") {
             // Proximity Mine: "Create one 6 damage trap…", "Gain XP +2 when the trap is sprung by

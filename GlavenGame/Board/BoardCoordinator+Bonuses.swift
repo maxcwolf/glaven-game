@@ -46,6 +46,10 @@ enum ChargedBonus: Equatable {
     case negateNextDamage
     /// Enemies attacking an ally beside the character attack the character instead (Provoking Roar).
     case drawAttacksFromAdjacentAllies
+    /// An action the character performs at the start of each turn (Lumbering Bash: Heal 2, Range 2).
+    case turnStartAction(ActionModel)
+    /// An action the character performs at the end of each turn (Auto Turret: Attack 2, Range 5).
+    case turnEndAction(ActionModel)
 
     /// Round bonuses don't use charges; every use leaves them in place.
     var isUnlimited: Bool {
@@ -98,6 +102,14 @@ enum ChargedBonus: Equatable {
         "gh-2": .experiencePerRetaliate,                        // Eye for an Eye
         "gh-98": .negateNextDamage,                             // Trickster's Reversal
         "gh-4": .drawAttacksFromAdjacentAllies,                 // Provoking Roar
+        "gh-143": .turnStartAction(ActionModel(type: .heal, value: .int(2),        // Lumbering Bash
+                                               subActions: [ActionModel(type: .range, value: .int(2))])),
+        "gh-415": .turnStartAction(ActionModel(type: .heal, value: .int(2),        // Triage
+                                               subActions: [ActionModel(type: .range, value: .int(1))])),
+        "gh-54": .turnEndAction(ActionModel(type: .attack, value: .int(2),         // Auto Turret
+                                            subActions: [ActionModel(type: .range, value: .int(5))])),
+        "gh-53": .turnEndAction(ActionModel(type: .custom,                         // Gas Canister
+                                            value: .string("One ally within Range 3 may Recover one of their discarded cards."))),
     ]
 
     /// The experience each charge slot gives, in order (0 for a plain slot).

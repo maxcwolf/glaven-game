@@ -423,7 +423,8 @@ Scenario rewards (2026-10-08)
 - [ ] **Other custom-text abilities** (e.g. Reviving Ether's "recover all lost cards", Flanking Strike's bonus) need manual resolution — on the board they have no effect
 - [x] **Persistent bonus charges**: the starting classes' charged cards (Warding Strength, Juggernaut, Opposing Strike, Backup Ammunition, Single Out, Smoke Bomb, Cull the Weak, Spring the Trap, Frost Armor, Crackling Air, Engulfed in Flames, Cold Front, Potent Potables) mark a charge per use, give their slot XP and leave the active area when used up (`ChargedBonusTests`)
 - [x] Locked classes' charged cards: Immortality, Purifying Aura, Angelic Ascension, Voice of the Night, Cauterize, Master Physician, Defiance of Death, Nightfall, Beacon of Light, Fortified Position (`ChargedBonusTests`)
-- [ ] **Charged cards needing a choice or not yet coded**: Lumbering Bash, Auto Turret, Gas Canister, Triage (actions with a target), Stone Pummel, Nature's Lift, Foul Wind; Doomstalker dooms, Eclipse's extra actions, Vengeful Barrage, Unending Chant, Grim Bargain, Intervening Apparitions, Blood Hunger
+- [x] **Start- and end-of-turn bonuses**: Lumbering Bash and Triage (a heal at the start of the turn), Auto Turret (an attack at the end), Gas Canister (an ally recovers a card at the end), as steps of the turn (`ChargedBonusTests`)
+- [ ] **Charged cards needing a choice or not yet coded**: Stone Pummel, Nature's Lift, Foul Wind; Doomstalker dooms, Eclipse's extra actions, Vengeful Barrage, Unending Chant, Grim Bargain, Intervening Apparitions, Blood Hunger
 - [x] **Items during board turns** (Phase VI: about 110 of 150 items play on the board)
 - [ ] **Icy terrain** — no forced-movement mechanic
 - [ ] **Plague / Enfeeble** (FH) — no mechanics
