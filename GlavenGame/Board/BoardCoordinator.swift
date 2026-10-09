@@ -22,6 +22,9 @@ enum InteractionMode {
     /// Multi-target attack selection (targetCount > 1). Player picks targets one by one.
     case selectingMultiAttackTargets(pieceID: PieceID, range: Int, validTargets: Set<PieceID>, targetCount: Int, selected: [PieceID])
     case placingSummon(summonID: String, characterID: String, validHexes: Set<HexCoord>)
+    /// The character picks who performs a printed action: "One adjacent ally may perform Attack
+    /// 6" (Possession), "Force one enemy within Range 4 to perform Move 1" (Parasitic Influence).
+    case choosingPerformer(pieceID: PieceID, action: ActionModel, candidates: Set<PieceID>)
     /// The character places a trap or obstacle from a card in an empty adjacent hex
     /// (Proximity Mine, Avalanche); `remaining` counts this one.
     case placingToken(pieceID: PieceID, token: PlacedToken, remaining: Int, validHexes: Set<HexCoord>)
@@ -2203,6 +2206,13 @@ final class BoardCoordinator {
                     await self.performPushPull(target: piece, attackerPos: origin, steps: steps, isPush: isPush)
                     turn?.advanceAfterAsyncAction()
                 }
+            }
+
+        case .choosingPerformer(_, let action, let candidates):
+            if candidates.contains(piece) {
+                boardScene?.clearHighlights()
+                interactionMode = .idle
+                perform(action, by: piece)
             }
 
         case .selectingHealTarget(let healerID, let healValue, let validTargets):

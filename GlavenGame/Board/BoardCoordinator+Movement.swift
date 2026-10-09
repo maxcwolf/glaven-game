@@ -146,6 +146,42 @@ extension BoardCoordinator {
         return true
     }
 
+    // MARK: - Actions another figure performs
+
+    /// Offer a printed action to another figure (an ally, or an enemy the character controls).
+    /// False when no one can take it.
+    func beginChoosingPerformer(for action: ActionModel, by pieceID: PieceID, enemies: Bool, range: Int) -> Bool {
+        guard let position = boardState.piecePositions[pieceID] else { return false }
+        let candidates = Set(boardState.piecePositions.filter { piece, hex in
+            piece != pieceID && hex.distance(to: position) <= range && entity(for: piece) != nil
+                && areEnemies(pieceID, piece) == enemies && LineOfSight.hasLOS(from: position, to: hex, board: boardState)
+        }.keys)
+        guard !candidates.isEmpty else {
+            log("\(name(pieceID)) has no \(enemies ? "enemy" : "ally") in range to perform it", category: .info)
+            return false
+        }
+        interactionMode = .choosingPerformer(pieceID: pieceID, action: action, candidates: candidates)
+        let hexes = Set(candidates.compactMap { boardState.piecePositions[$0] })
+        boardScene?.highlightHexes(hexes, style: enemies ? .forcedMove : .heal, offsetCol: offsetCol, offsetRow: offsetRow)
+        return true
+    }
+
+    /// The chosen figure performs the action, the character controlling it.
+    func perform(_ action: ActionModel, by performer: PieceID) {
+        let value = action.value?.intValue ?? 0
+        log("\(name(performer)) performs \(GameText.actionTitle(action))", category: .info)
+        switch action.type {
+        case .move:
+            beginMoveAction(pieceID: performer, moveRange: value)
+        case .attack:
+            let range = action.subActions?.first { $0.type == .range }?.value?.intValue ?? 1
+            activePlayerTurn?.preparePerformedAttack(value: value, range: max(1, range))
+            beginAttackAction(pieceID: performer, range: max(1, range))
+        default:
+            activePlayerTurn?.advanceAfterAsyncAction()
+        }
+    }
+
     // MARK: - Traps and obstacles from cards
 
     /// Ask the player to place `count` tokens in empty hexes next to the character; false when

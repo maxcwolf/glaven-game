@@ -820,6 +820,37 @@ final class BoardRulesRegressionTests: XCTestCase {
         XCTAssertEqual(range, 3)
     }
 
+    /// Possession: "One adjacent ally may perform Attack 6": the Brute makes the attack.
+    func testPossessionLetsAnAllyAttack() throws {
+        let mindthief = addCharacter("mindthief", at: HexCoord(3, 3))
+        let brute = addCharacter("brute", at: HexCoord(4, 3))
+        addMonster("bandit-guard", at: HexCoord(5, 3))
+        let turn = turn(for: mindthief, top: try card("Possession", of: "mindthief"), bottom: try card("Scurry", of: "mindthief"))
+        turn.executeCurrentAction()
+        guard case .choosingPerformer(_, _, let candidates) = coord.interactionMode else { return XCTFail("who performs it") }
+        XCTAssertEqual(candidates, [.character(brute.id)])
+        coord.handlePieceTap(.character(brute.id))
+        guard case .selectingAttackTarget(let attacker, _, _) = coord.interactionMode else { return XCTFail("the Brute attacks") }
+        XCTAssertEqual(attacker, .character(brute.id))
+        XCTAssertEqual(turn.currentAttackValue(), 6)
+    }
+
+    /// Parasitic Influence: "Force one enemy within Range 4 to perform Move 1".
+    func testParasiticInfluenceMovesAnEnemy() throws {
+        let mindthief = addCharacter("mindthief", at: HexCoord(3, 3))
+        addMonster("bandit-guard", at: HexCoord(6, 3))
+        let turn = turn(for: mindthief, top: try card("Scurry", of: "mindthief"), bottom: try card("Parasitic Influence", of: "mindthief"),
+                        bottomFirst: true)
+        turn.executeCurrentAction()
+        guard case .choosingPerformer(_, _, let candidates) = coord.interactionMode, let bandit = candidates.first else {
+            return XCTFail("which enemy")
+        }
+        coord.handlePieceTap(bandit)
+        guard case .selectingMove(let mover, let range, _, _, _) = coord.interactionMode else { return XCTFail("the enemy moves") }
+        XCTAssertEqual(mover, bandit)
+        XCTAssertEqual(range, 1)
+    }
+
     // MARK: - Mindthief augments
 
     /// Play `augment`'s top (the augment, then its own Attack) against an adjacent Bandit Guard.

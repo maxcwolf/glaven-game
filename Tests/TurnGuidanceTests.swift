@@ -30,6 +30,7 @@ final class TurnGuidanceTests: XCTestCase {
             .placingToken(pieceID: .character(gm.game.characters[0].id), token: .trap(damage: 6, subType: nil, experience: 2),
                           remaining: 1, validHexes: hexes),
             .placingToken(pieceID: .character(gm.game.characters[0].id), token: .obstacle, remaining: 2, validHexes: hexes),
+            .choosingPerformer(pieceID: brute, action: ActionModel(type: .attack, value: .int(6)), candidates: [brute]),
             .selectingPushPullHex(target: guardPiece, attackerPos: HexCoord(4, 5), validHexes: hexes,
                                   remainingSteps: 2, isPush: true),
             .selectingConditionTarget(pieceID: brute, condition: .poison, validTargets: [guardPiece]),
@@ -45,7 +46,7 @@ final class TurnGuidanceTests: XCTestCase {
             XCTAssertFalse(instruction.title.isEmpty)
         }
         XCTAssertEqual(coord.instruction(for: modes[2])?.title, "Jump 3")
-        XCTAssertEqual(coord.instruction(for: modes[9])?.title, "Push Bandit Guard 1")
+        XCTAssertEqual(coord.instruction(for: modes[10])?.title, "Push Bandit Guard 1")
         XCTAssertEqual(coord.instruction(for: modes[7])?.title, "Place a 6 damage trap")
         XCTAssertEqual(coord.instruction(for: .watchingMonsterTurn)?.canSkip, false)
     }

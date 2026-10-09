@@ -41,3 +41,6 @@ the game does now; change any of them and I'll follow.
     the shop refusing nothing, just what's brought), or enforce it at purchase? Now: no limit.
 15. **Hex enhancements on areas with two marked hexes** (8 cards). The added hex goes on the
     first marked hex. Want a choice of which, when buying? Now: the first.
+16. **Forcing an enemy to attack** (Submissive Affliction's bottom). The data says "Attack 2,
+    Range +0" with no sign on the attack: is it the monster's attack +2, or a flat Attack 2? I
+    left forced enemy attacks to be resolved by hand until you say which. Now: by hand.

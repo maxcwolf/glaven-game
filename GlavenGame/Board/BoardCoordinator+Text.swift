@@ -101,6 +101,10 @@ extension BoardCoordinator {
             return Instruction(title: title,
                                detail: "Tap up to \(count) enemies, then Confirm (\(selected.count) of \(count) chosen)",
                                canSkip: ownTurn)
+        case .choosingPerformer(_, let action, let candidates):
+            let enemies = candidates.contains { if case .monster = $0 { return true }; return false }
+            return Instruction(title: GameText.actionTitle(action),
+                               detail: enemies ? "Tap the enemy to control" : "Tap the ally who performs it", canSkip: ownTurn)
         case .placingToken(_, let token, let remaining, _):
             return Instruction(title: "Place \(token.name)",
                                detail: remaining > 1 ? "Tap an empty hex next to you (\(remaining) to place)"

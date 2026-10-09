@@ -275,6 +275,9 @@ final class PlayerTurnController {
     /// The attack value of the attack currently being resolved.
     func currentAttackValue() -> Int { pendingAttackValue }
 
+    /// The value and range of an attack another figure performs for the character (Possession).
+    func preparePerformedAttack(value: Int, range: Int) { resetPendingAttack(value: value, range: range) }
+
     /// Add to the attack being resolved (Minor Power Potion).
     func addToAttack(_ bonus: Int) { pendingAttackValue += bonus }
 
@@ -775,6 +778,17 @@ final class PlayerTurnController {
             // Avalanche: "Create two single-hex obstacles in empty hexes adjacent to you."
             let count = text.contains("two") ? 2 : 1
             return coordinator.beginPlacingTokens(.obstacle, count: count, by: me)
+        } else if text.contains("perform"), let performed = (action.subActions ?? []).first(where: { [.attack, .move].contains($0.type) }) {
+            // Possession ("One adjacent ally may perform Attack 6"), Parasitic Influence ("Force
+            // one enemy within Range 4 to perform Move 1"). A forced enemy's attack (Submissive
+            // Affliction) is left to the players: its value is relative to the monster.
+            let enemy = text.contains("enemy")
+            guard !(enemy && performed.type == .attack) else {
+                coordinator.log("\(who): resolve the forced attack by hand", category: .info)
+                return false
+            }
+            let range = text.contains("adjacent") ? 1 : (text.firstMatch(of: #/range (\d+)/#).flatMap { Int($0.1) } ?? 1)
+            return coordinator.beginChoosingPerformer(for: performed, by: me, enemies: enemy, range: range)
         } else if text.contains("you may suffer up to") {
             // The Berserker: "You may suffer up to 4 damage", then "X is the amount you suffered".
             let most = Self.damageAmount(in: text)

@@ -307,6 +307,9 @@ final class ScenarioSimulator {
             }
         case .selectingHealTarget(let healer, _, let targets):
             coord.handlePieceTap(policy.healTarget(for: healer, options: targets, sim: self))
+        case .choosingPerformer(_, _, let candidates):
+            // Policies don't plan for other figures: the first in piece order.
+            if let piece = candidates.sorted().first { coord.handlePieceTap(piece) }
         case .placingToken(_, _, _, let hexes):
             // Policies don't plan traps: the first free hex, in map order.
             if let hex = hexes.sorted().first { coord.handleHexTap(hex) }
