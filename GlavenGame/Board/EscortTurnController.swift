@@ -47,7 +47,7 @@ final class EscortTurnController {
             }
             coordinator.sweepDeadFigures()
             if coordinator.scenarioResult != nil { return }
-            if coordinator.turnDelayNanoseconds > 0 { try? await Task.sleep(nanoseconds: coordinator.turnDelayNanoseconds) }
+            await coordinator.beat()
         }
     }
 

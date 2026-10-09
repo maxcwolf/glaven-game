@@ -119,8 +119,24 @@ struct InstructionBanner: View {
     var onCancel: (() -> Void)?
     /// What can be picked on the board, offered to VoiceOver as actions (swipe up or down).
     var choices: [BoardChoice] = []
+    /// Pause and fast-forward, while the monsters (or summons) play their turns.
+    var playback: BoardCoordinator?
 
     var body: some View {
+        HStack(spacing: 14) {
+            prompt
+            // Apart from the prompt, so VoiceOver reaches each on its own.
+            if let playback {
+                PlaybackControls(coordinator: playback)
+            }
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 10)
+        .background(BoardTheme.raised, in: RoundedRectangle(cornerRadius: BoardTheme.Radius.medium))
+        .overlay(RoundedRectangle(cornerRadius: BoardTheme.Radius.medium).stroke(BoardTheme.border, lineWidth: 1))
+    }
+
+    private var prompt: some View {
         HStack(spacing: 14) {
             VStack(alignment: .leading, spacing: 2) {
                 Text(instruction.title)
@@ -147,16 +163,43 @@ struct InstructionBanner: View {
                     .buttonStyle(.boardQuiet)
             }
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 10)
-        .background(BoardTheme.raised, in: RoundedRectangle(cornerRadius: BoardTheme.Radius.medium))
-        .overlay(RoundedRectangle(cornerRadius: BoardTheme.Radius.medium).stroke(BoardTheme.border, lineWidth: 1))
         .accessibilityElement(children: .combine)
         .accessibilityHint(choices.isEmpty ? "" : "\(choices.count) choice\(choices.count == 1 ? "" : "s"): swipe up or down to hear them, double-tap to choose")
         .accessibilityActions {
             ForEach(choices) { choice in
                 Button(choice.label, action: choice.perform)
             }
+        }
+    }
+}
+
+/// Pause and fast-forward for the turns that play themselves. Space pauses and resumes,
+/// F fast-forwards.
+struct PlaybackControls: View {
+    let coordinator: BoardCoordinator
+
+    var body: some View {
+        HStack(spacing: 8) {
+            Button {
+                coordinator.setPaused(!coordinator.isPaused)
+            } label: {
+                Label(coordinator.isPaused ? "Resume" : "Pause",
+                      systemImage: coordinator.isPaused ? "play.fill" : "pause.fill")
+            }
+            .buttonStyle(coordinator.isPaused ? .boardPrimary : .boardQuiet)
+            .keyboardShortcut(.space, modifiers: [])
+            .accessibilityHint(coordinator.isPaused ? "Lets the turns go on" : "Stops the turns before their next step")
+
+            Button {
+                coordinator.setFastForward(!coordinator.isFastForward)
+            } label: {
+                Label(coordinator.isFastForward ? "Normal Speed" : "Fast-Forward",
+                      systemImage: coordinator.isFastForward ? "forward.end.fill" : "forward.fill")
+            }
+            .buttonStyle(.boardQuiet)
+            .keyboardShortcut("f", modifiers: [])
+            .accessibilityHint(coordinator.isFastForward ? "Plays the turns at the usual pace"
+                               : "Plays the turns faster until your next turn")
         }
     }
 }

@@ -52,6 +52,7 @@
 		35327ED25730D37C83C265A3 /* Loot.swift in Sources */ = {isa = PBXBuildFile; fileRef = 83845896587772B83CB3E6B8 /* Loot.swift */; };
 		36769205F2999D17E959C581 /* MainMenuView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4840A613B6DC796BF25638E0 /* MainMenuView.swift */; };
 		36DAE2BE1201D56F92C06BC6 /* RecoveryPicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = D2ED778C971FD3AFE9B4F991 /* RecoveryPicker.swift */; };
+		375BA9334D8B1CD3A07B0510 /* BoardCoordinator+Playback.swift in Sources */ = {isa = PBXBuildFile; fileRef = FEE4B8CCAC34578B98FDB7D1 /* BoardCoordinator+Playback.swift */; };
 		3BA7F9EC1E24B79B3E456175 /* MonsterAbility.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7B89AE0E38F08BEDFE54A49 /* MonsterAbility.swift */; };
 		3CA51576B5FF4BF353869396 /* CharacterSheetView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 48C2C89D891BD98C87B15AC7 /* CharacterSheetView.swift */; };
 		3D70D4B36FC1C27F8205C998 /* BundleHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = 52347FEF6FA67664FBF7BF1A /* BundleHelper.swift */; };
@@ -430,6 +431,7 @@
 		FBB6CC6422C046711137938C /* MonsterData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MonsterData.swift; sourceTree = "<group>"; };
 		FBE537F6F81289C6EEB5CDAD /* SummonColor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SummonColor.swift; sourceTree = "<group>"; };
 		FC8D6BF7B24F45BABD529CA7 /* FigureType.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FigureType.swift; sourceTree = "<group>"; };
+		FEE4B8CCAC34578B98FDB7D1 /* BoardCoordinator+Playback.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "BoardCoordinator+Playback.swift"; sourceTree = "<group>"; };
 		FF546B2E6909F44E7930DB07 /* ScenarioResultsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScenarioResultsView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -779,6 +781,7 @@
 				8AF5F88A83DE6D05C0E02C99 /* BoardCoordinator+Items.swift */,
 				B6C9F8BE9CC7A895A0360304 /* BoardCoordinator+Movement.swift */,
 				509EFE74015D273EBFFE3C19 /* BoardCoordinator+Outcome.swift */,
+				FEE4B8CCAC34578B98FDB7D1 /* BoardCoordinator+Playback.swift */,
 				784104537FFDD30F2652C01D /* BoardCoordinator+Rules.swift */,
 				82764E21991595370066BD2F /* BoardCoordinator+Spawning.swift */,
 				41D94C91FCB1BF3FC44B5F95 /* BoardCoordinator+Text.swift */,
@@ -987,6 +990,7 @@
 				20DF67A50B1E99F5D18B9FDC /* BoardCoordinator+Items.swift in Sources */,
 				BF775F0114B6F567A1A74F92 /* BoardCoordinator+Movement.swift in Sources */,
 				33FD3A501A143207CF670827 /* BoardCoordinator+Outcome.swift in Sources */,
+				375BA9334D8B1CD3A07B0510 /* BoardCoordinator+Playback.swift in Sources */,
 				F8B7262AB904EB81CB8E0AB3 /* BoardCoordinator+Rules.swift in Sources */,
 				69153077728453EBEE92D7D4 /* BoardCoordinator+Spawning.swift in Sources */,
 				4CF3E8304E25558244E5481A /* BoardCoordinator+Text.swift in Sources */,

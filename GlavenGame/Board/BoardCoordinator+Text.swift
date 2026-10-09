@@ -139,6 +139,8 @@ extension BoardCoordinator {
 
     /// The banner for the current interaction, with Cancel offered while the action can still
     /// be taken back.
+    static let pausedDetail = "Paused \u{2014} Resume lets the turns go on"
+
     func instruction(for mode: InteractionMode) -> Instruction? {
         guard var instruction = baseInstruction(for: mode) else { return nil }
         // Not while a card is shown full size on top: Escape (Cancel's key) is for closing that.
@@ -205,11 +207,13 @@ extension BoardCoordinator {
             if case .character(let character) = currentTurnEntry?.figure {
                 guard pendingLongRest == nil, pendingShortRest == nil else { return nil }
                 return Instruction(title: "\(characterName(character.id))\u{2019}s summons are acting",
-                                   detail: "Summons take their turns on their own", canSkip: false)
+                                   detail: isPaused ? Self.pausedDetail : "Summons take their turns on their own",
+                                   canSkip: false)
             }
             let actor = currentTurnEntry.map { figureName($0.figure) } ?? "The monsters"
             return Instruction(title: "\(actor) \(currentTurnEntry == nil ? "are" : "is") acting",
-                               detail: "Monsters and summons take their turns on their own", canSkip: false)
+                               detail: isPaused ? Self.pausedDetail
+                                   : "Monsters and summons take their turns on their own", canSkip: false)
         }
     }
 

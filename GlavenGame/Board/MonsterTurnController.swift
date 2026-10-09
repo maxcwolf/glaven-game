@@ -83,7 +83,7 @@ final class MonsterTurnController {
             }
             coordinator.sweepDeadFigures()
             if coordinator.scenarioResult != nil { return }
-            if coordinator.turnDelayNanoseconds > 0 { try? await Task.sleep(nanoseconds: coordinator.turnDelayNanoseconds) }
+            await coordinator.beat()
         }
 
         // Infusions on the card become strong at the end of the type's turn.

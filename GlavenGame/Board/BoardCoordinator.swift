@@ -287,6 +287,16 @@ final class BoardCoordinator {
 
     /// Pause between automated figures' turns, for readability (scaled by the Animation Speed setting).
     var turnDelayNanoseconds: UInt64 = BoardCoordinator.baseTurnDelayNanoseconds
+    /// The Animation Speed setting last applied (0.5 fast … 2 slow).
+    var animationSpeed: Double = 1
+
+    /// Monsters', summons' and escorts' turns held at their next step until resumed.
+    var isPaused = false
+    /// Monsters', summons' and escorts' turns played at `fastForwardFactor` times the pace,
+    /// until a character's turn comes round.
+    var isFastForward = false
+    /// Automated turns parked by the pause; resuming (or leaving the board) lets them go on.
+    var pauseWaiters: [CheckedContinuation<Void, Never>] = []
 
     /// Called before every attack resolves and every movement starts, with the board as it is at
     /// that moment. The simulation tests use these to check each one against the rules.
@@ -351,9 +361,7 @@ final class BoardCoordinator {
             lastModifierReveal = ModifierReveal(attacker: attacker, defender: defender, drawn: draw.drawn,
                                                 selected: draw.selected, advantage: advantage,
                                                 disadvantage: disadvantage, drawnByPlayer: false)
-            if turnDelayNanoseconds > 0 {
-                try? await Task.sleep(nanoseconds: turnDelayNanoseconds * 2)
-            }
+            await beat(2)
             return draw.selected
         }
         return await withCheckedContinuation { continuation in
@@ -829,6 +837,7 @@ final class BoardCoordinator {
         item?.continuation?.resume(returning: false)
         pushPull?.resume()
         for move in moves.values { move.resume() }
+        endPlaybackControls()
 
         pendingShortRest = nil
         pendingLongRest = nil
@@ -894,7 +903,8 @@ final class BoardCoordinator {
     /// the pause between automated turns.
     func applyAnimationSpeed(_ speed: Double) {
         let speed = min(max(speed, 0.25), 4)
-        boardScene?.speed = CGFloat(1 / speed)
+        animationSpeed = speed
+        boardScene?.speed = CGFloat(Self.sceneSpeed(animationSpeed: speed, fastForward: isFastForward))
         turnDelayNanoseconds = UInt64(Double(Self.baseTurnDelayNanoseconds) * speed)
     }
 
@@ -1040,6 +1050,7 @@ final class BoardCoordinator {
         guard let gameManager = gameManager else { return }
 
         boardPhase = .cardSelection
+        endPlaybackControls()
         cardSelectionsComplete = []
         cardSelectingCharacterID = nil
         selectedCardPairs = [:]
@@ -1316,6 +1327,8 @@ final class BoardCoordinator {
     /// long rests, loses its turn to Stun, or plays its two cards.
     private func beginCharacterTurn(_ character: GameCharacter, entry: TurnOrderEntry) {
         guard let gameManager = gameManager else { return }
+        // The player has the board again: the monsters' pace goes back to normal.
+        endPlaybackControls()
         gameManager.roundManager.toggleFigure(entry.figure)
         currentTurnToggled = true
 

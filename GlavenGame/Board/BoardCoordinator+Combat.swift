@@ -89,7 +89,7 @@ extension BoardCoordinator {
         // Show who attacks whom before the cards are drawn.
         if let scene = boardScene {
             scene.showAttack(from: attacker, to: target, ranged: attack.isRanged || distance > 1)
-            if turnDelayNanoseconds > 0 { try? await Task.sleep(nanoseconds: turnDelayNanoseconds / 2) }
+            await beat(0.5)
             guard isCurrentBoard(generation) else { return false }
         }
         // Leather Armor, Studded Leather: the attacker gains disadvantage.

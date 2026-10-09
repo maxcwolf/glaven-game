@@ -485,7 +485,8 @@ struct BoardView: View {
                 { turn.skipCurrentAction() }
             }, onCancel: coordinator.activePlayerTurn.map { turn in
                 { turn.cancelChoice() }
-            }, choices: coordinator.accessibleChoices())
+            }, choices: coordinator.accessibleChoices(),
+               playback: coordinator.isAutomatedTurn ? coordinator : nil)
             .transition(.opacity)
             .animation(.easeInOut(duration: 0.2), value: instruction)
         }

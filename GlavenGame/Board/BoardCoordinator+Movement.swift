@@ -337,7 +337,9 @@ extension BoardCoordinator {
 
     /// Animate a piece along a path (skipped when no scene is attached, e.g. in tests).
     @MainActor func animateMove(_ pieceID: PieceID, along path: [HexCoord], as animation: MoveAnimation = .walk) async {
-        guard path.count > 1, let scene = boardScene else { return }
+        guard path.count > 1 else { return }
+        await waitWhilePaused()
+        guard let scene = boardScene else { return }
         // Parked by move until the animation finishes; teardown resumes whatever is still parked
         // (a scene that's gone never finishes its animations). Whichever comes first resumes it.
         let move = UUID()
