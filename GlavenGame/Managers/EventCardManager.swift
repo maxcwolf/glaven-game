@@ -45,7 +45,9 @@ final class EventCardManager {
 
     /// The deck, top card first.
     func deck(_ deck: Deck) -> [String] {
-        game.events.cards(deck.rawValue)
+        // A plain read once started: going through the mutating accessor would write the game's
+        // events on every call and keep re-rendering any view that shows a deck.
+        game.events.peek(deck.rawValue) ?? game.events.cards(deck.rawValue)
     }
 
     private func setDeck(_ deck: Deck, _ cards: [String]) {

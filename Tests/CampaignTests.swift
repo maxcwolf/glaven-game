@@ -139,6 +139,23 @@ final class CampaignTests: XCTestCase {
         XCTAssertEqual(gm.game.characters.map(\.name), ["brute"])
     }
 
+    /// A city event drawn is saved with its deck: quitting before resolving it and coming back
+    /// shows the same card, not a fresh shuffle.
+    func testADrawnEventIsTheSameAfterARelaunch() throws {
+        let store = try container()
+        let gm = manager(store)
+        gm.characterManager.addCharacter(name: "brute", edition: "gh")
+        gm.saveGame()
+        gm.prepareEvents([.city, .road])
+        let city = try XCTUnwrap(gm.eventCardManager.topCard(.city)?.cardId)
+        let road = try XCTUnwrap(gm.eventCardManager.topCard(.road)?.cardId)
+
+        let relaunched = manager(store)
+        relaunched.continueGame()
+        XCTAssertEqual(relaunched.eventCardManager.topCard(.city)?.cardId, city)
+        XCTAssertEqual(relaunched.eventCardManager.topCard(.road)?.cardId, road)
+    }
+
     /// `CAMPAIGNS_RENDER_OUT=/tmp/c.png swift test --filter testRenderCampaigns` renders the list.
     func testRenderCampaigns() throws {
         guard let out = ProcessInfo.processInfo.environment["CAMPAIGNS_RENDER_OUT"] else {

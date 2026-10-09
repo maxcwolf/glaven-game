@@ -445,6 +445,14 @@ final class GameManager {
         saveGame()
     }
 
+    /// Draw the events about to be resolved: their decks are started (shuffled) now and saved, so
+    /// quitting before resolving one can't deal a different card next time.
+    func prepareEvents(_ decks: [EventCardManager.Deck]) {
+        let unstarted = decks.contains { game.events.peek($0.rawValue) == nil }
+        for deck in decks { _ = eventCardManager.deck(deck) }
+        if unstarted { saveGame() }
+    }
+
     /// Start a new campaign from scratch and go to the party screen. Other campaigns stay saved.
     func beginNewGame() {
         newGame()

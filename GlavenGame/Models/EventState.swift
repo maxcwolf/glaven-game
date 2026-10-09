@@ -30,16 +30,18 @@ struct EventState: Codable, Equatable {
         donatedThisVisit = try c.decodeIfPresent(Set<String>.self, forKey: .donatedThisVisit) ?? []
     }
 
-    /// A deck, top card first, starting it (cards 01–30, shuffled) on first use.
+    /// A deck, top card first, starting it (cards 01–30, shuffled) on first use. Only that first
+    /// use writes: views read decks, and a write on every read would re-render them forever.
     mutating func cards(_ deck: String) -> [String] {
-        switch deck {
-        case "city":
-            if cityDeck == nil { cityDeck = Self.startingCards.shuffled(using: &GameRandom.shared) }
-            return cityDeck ?? []
-        default:
-            if roadDeck == nil { roadDeck = Self.startingCards.shuffled(using: &GameRandom.shared) }
-            return roadDeck ?? []
-        }
+        if let cards = peek(deck) { return cards }
+        let started = Self.startingCards.shuffled(using: &GameRandom.shared)
+        setCards(deck, started)
+        return started
+    }
+
+    /// A deck as it stands, nil before it's started.
+    func peek(_ deck: String) -> [String]? {
+        deck == "city" ? cityDeck : roadDeck
     }
 
     mutating func setCards(_ deck: String, _ cards: [String]) {

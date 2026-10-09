@@ -95,7 +95,10 @@ struct GameSetupView: View {
                     townChip("Reputation \(gameManager.game.partyReputation)", icon: "shield.lefthalf.filled")
                 }
                 if gameManager.game.events.cityEventDue {
-                    Button("City Event", systemImage: "building.2.fill") { events = [.city] }
+                    Button("City Event", systemImage: "building.2.fill") {
+                        gameManager.prepareEvents([.city])
+                        events = [.city]
+                    }
                         .buttonStyle(.borderedProminent)
                         .tint(BoardTheme.brass)
                         .fixedSize()
@@ -238,7 +241,10 @@ struct GameSetupView: View {
         if gameManager.game.events.cityEventDue { queue.append(.city) }
         if gameManager.eventCardManager.needsRoadEvent(for: scenario) { queue.append(.road) }
         settingOutFor = scenario
-        if queue.isEmpty { chooseGoals() } else { events = queue }
+        if queue.isEmpty { chooseGoals() } else {
+            gameManager.prepareEvents(queue)
+            events = queue
+        }
     }
 
     /// Deal battle goals, then set out once everyone has kept one.
