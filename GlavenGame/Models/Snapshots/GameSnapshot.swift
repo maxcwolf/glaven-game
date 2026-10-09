@@ -39,6 +39,8 @@ struct GameSnapshot: Codable {
     var boardSnapshot: BoardSnapshot?
     var events: EventState?
     var tableRules: TableRules?
+    /// Optional: older saves are Normal.
+    var difficulty: DifficultyMode?
 
     init(edition: String?, conditions: [ConditionName], figures: [FigureSnapshot],
          state: GamePhase, round: Int, level: Int, levelCalculation: Bool,
@@ -114,6 +116,7 @@ struct GameSnapshot: Codable {
         events = try c.decodeIfPresent(EventState.self, forKey: .events)
         tableRules = try c.decodeIfPresent(TableRules.self, forKey: .tableRules)
         boardSnapshot = try c.decodeIfPresent(BoardSnapshot.self, forKey: .boardSnapshot)
+        difficulty = try c.decodeIfPresent(DifficultyMode.self, forKey: .difficulty)
     }
 }
 
@@ -358,6 +361,8 @@ struct MonsterSnapshot: Codable {
     var additionalImmunities: [ConditionName]?
     var statEffectHealthExpr: String?
     var statEffectHealthAbsolute: Bool?
+    /// This round's ability card initiative (nil between rounds, and in older saves).
+    var drawnInitiative: Int?
 }
 
 // MARK: - Monster Entity Snapshot
@@ -469,4 +474,6 @@ struct ScenarioSnapshot: Codable {
     var startingGold: [String: Int]?
     var stats: [String: ScenarioCharacterStats]?
     var partyStats: ScenarioPartyStats?
+    /// "won"/"lost" once a scenario rule has decided the outcome, applied at the end of the round.
+    var pendingFinish: String?
 }

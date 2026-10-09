@@ -53,6 +53,37 @@ final class SaveAndContinueTests: XCTestCase {
         XCTAssertTrue(outcome != .unfinished || relaunched.game.round >= 4, "play continues after resuming")
     }
 
+    /// Everything that steers play survives a save and load: the difficulty (it sets the next
+    /// scenario's level), monsters' initiatives this round (focus ties), a character's traps (the
+    /// XP when one is sprung) and an outcome the rules have decided for the end of the round.
+    func testASaveKeepsWhatSteersPlay() async throws {
+        let sim = try ScenarioSimulator(scenario: "1", options: .init(seed: 2))
+        await sim.play(rounds: 1)
+        let gm = sim.gm, coord = sim.coord
+        gm.game.difficulty = .hard
+        let monster = try XCTUnwrap(gm.game.monsters.first)
+        monster.drawnInitiative = 32
+        let trapHex = HexCoord(0, 3)
+        coord.characterTraps[trapHex] = (characterID: gm.game.characters[0].id, experience: 2)
+        gm.game.scenario?.pendingFinish = "won"
+
+        // As the round checkpoint saves it.
+        var saved = gm.game.toSnapshot()
+        saved.boardSnapshot = coord.snapshot()
+        let snapshot = try JSONDecoder().decode(GameSnapshot.self, from: JSONEncoder().encode(saved))
+        gm.game.difficulty = .normal
+        monster.drawnInitiative = nil
+        coord.characterTraps = [:]
+        gm.game.scenario?.pendingFinish = nil
+        gm.game.restore(from: snapshot, editionStore: gm.editionStore, boardCoordinator: coord)
+
+        XCTAssertEqual(gm.game.difficulty, .hard)
+        XCTAssertEqual(gm.game.monsters.first { $0.name == monster.name }?.drawnInitiative, 32)
+        XCTAssertEqual(coord.characterTraps[trapHex]?.characterID, gm.game.characters[0].id)
+        XCTAssertEqual(coord.characterTraps[trapHex]?.experience, 2)
+        XCTAssertEqual(gm.game.scenario?.pendingFinish, "won")
+    }
+
     /// Save & Quit leaves for the main menu; Continue brings the same round back, even after the
     /// app saved again at the menu.
     func testSaveAndQuitThenContinueResumesTheSameRound() async throws {

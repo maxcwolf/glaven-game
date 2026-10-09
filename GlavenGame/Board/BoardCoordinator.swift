@@ -740,6 +740,7 @@ final class BoardCoordinator {
         let board = BoardState()
         snapshot.restore(to: board)
         boardState = board
+        restoreCharacterTraps(from: snapshot)
         attachToGame()
         buildScene(for: scenario)
         turnLog = []
@@ -768,6 +769,7 @@ final class BoardCoordinator {
         currentTurnToggled = false
         lastAttackTarget = nil
         lastAttackerPos = nil
+        characterTraps = [:]
     }
 
     /// Hand round flow and rule-driven spawns over to the board.
@@ -2366,11 +2368,25 @@ final class BoardCoordinator {
     // MARK: - Snapshot
 
     func snapshot() -> BoardSnapshot {
-        BoardSnapshot.from(boardState)
+        var snapshot = BoardSnapshot.from(boardState)
+        if !characterTraps.isEmpty {
+            snapshot.characterTraps = characterTraps.keys.sorted().map {
+                BoardSnapshot.CharacterTrap(hex: $0, characterID: characterTraps[$0]!.characterID,
+                                            experience: characterTraps[$0]!.experience)
+            }
+        }
+        return snapshot
+    }
+
+    private func restoreCharacterTraps(from snapshot: BoardSnapshot) {
+        characterTraps = Dictionary(uniqueKeysWithValues: (snapshot.characterTraps ?? []).map {
+            ($0.hex, (characterID: $0.characterID, experience: $0.experience))
+        })
     }
 
     func restore(from snapshot: BoardSnapshot) {
         snapshot.restore(to: boardState)
+        restoreCharacterTraps(from: snapshot)
         // Rebuild visuals
         if let scenario = scenarioData {
             boardScene?.buildBoard(from: boardState, scenario: scenario, offsetCol: offsetCol, offsetRow: offsetRow,

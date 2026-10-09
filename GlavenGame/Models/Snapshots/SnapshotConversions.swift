@@ -42,6 +42,7 @@ extension GameState {
         )
         snapshot.events = events
         snapshot.tableRules = tableRules == TableRules() ? nil : tableRules
+        snapshot.difficulty = difficulty
         return snapshot
     }
 
@@ -79,6 +80,7 @@ extension GameState {
         unlockedItems = snapshot.unlockedItems
         events = snapshot.events ?? EventState()
         tableRules = snapshot.tableRules ?? TableRules()
+        difficulty = snapshot.difficulty ?? .normal
 
         // Restore figures
         figures = snapshot.figures.map { $0.toRuntime(editionStore: editionStore) }
@@ -253,7 +255,8 @@ extension GameMonster {
             additionalStatActions: additionalStatActions.isEmpty ? nil : additionalStatActions,
             additionalImmunities: additionalImmunities.isEmpty ? nil : additionalImmunities,
             statEffectHealthExpr: statEffectHealthExpr,
-            statEffectHealthAbsolute: statEffectHealthAbsolute ? true : nil
+            statEffectHealthAbsolute: statEffectHealthAbsolute ? true : nil,
+            drawnInitiative: drawnInitiative
         )
     }
 }
@@ -278,6 +281,7 @@ extension MonsterSnapshot {
         m.additionalImmunities = additionalImmunities ?? []
         m.statEffectHealthExpr = statEffectHealthExpr
         m.statEffectHealthAbsolute = statEffectHealthAbsolute ?? false
+        m.drawnInitiative = drawnInitiative
         return m
     }
 }
@@ -440,7 +444,8 @@ extension Scenario {
             startingExperience: startingExperience,
             startingGold: startingGold,
             stats: stats,
-            partyStats: partyStats
+            partyStats: partyStats,
+            pendingFinish: pendingFinish
         )
     }
 }
@@ -460,6 +465,7 @@ extension ScenarioSnapshot {
         scenario.startingGold = startingGold ?? [:]
         scenario.stats = stats ?? [:]
         scenario.partyStats = partyStats ?? ScenarioPartyStats()
+        scenario.pendingFinish = pendingFinish
         return scenario
     }
 }
