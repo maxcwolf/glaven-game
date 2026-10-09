@@ -24,6 +24,7 @@ extension BoardCoordinator {
         // The acting character's own movement, for the items that count it.
         if style != .forced, case .character(let id) = pieceID, activePlayerTurn?.characterID == id {
             activePlayerTurn?.hexesMoved += path.count - 1
+            activePlayerTurn?.hexesPassed.append(contentsOf: path.dropFirst().dropLast())
         }
         let hazardProof = (entity(for: pieceID) as? GameCharacter).map { PassiveItems.ignoresHazards($0.items) } ?? false
         let opensDoors: Bool = { if case .character = pieceID { return true }; return false }()

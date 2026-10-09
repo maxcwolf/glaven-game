@@ -428,6 +428,30 @@ final class BoardRulesRegressionTests: XCTestCase {
         await MonsterTurnController(coordinator: coord, gameManager: gm).executeMonsterGroup(monster)
         XCTAssertEqual(offMain, [])
     }
+
+    /// Regression: "Attack 2, all enemies moved through" (Trample) attacked no one.
+    func testTrampleAttacksEveryEnemyJumpedOver() async throws {
+        let character = addCharacter(at: HexCoord(3, 3))
+        let first = addMonster("bandit-guard", at: HexCoord(4, 3))
+        let second = addMonster("bandit-guard", at: HexCoord(5, 3))
+        addMonster("bandit-guard", at: HexCoord(3, 5))   // not in the way
+        for bandit in [first, second] { bandit.health = 50; bandit.maxHealth = 50 }
+        let trample = try card("Trample", of: "brute"), other = try card("Spare Dagger", of: "brute")
+        character.handCards = [trample.cardId!, other.cardId!]
+        let turn = PlayerTurnController(characterID: character.id, coordinator: coord, gameManager: gm)
+        coord.activePlayerTurn = turn
+        turn.selectCards(top: other, bottom: trample)
+        turn.setBottomFirst(true)
+        turn.executeCurrentAction()   // Move 4, Jump
+        coord.handleHexTap(HexCoord(6, 3))
+        _ = await waitUntil { turn.currentActionIndex == 1 }
+        XCTAssertEqual(Set(turn.hexesPassed), [HexCoord(4, 3), HexCoord(5, 3)])
+        turn.executeCurrentAction()   // Attack 2, every enemy moved through
+        _ = await waitUntil { turn.currentActionIndex == 2 }
+        let attacked = coord.turnLog.filter { $0.message.contains("attacks Bandit Guard") }.map(\.message)
+        XCTAssertEqual(attacked.count, 2, attacked.joined(separator: " / "))
+        XCTAssertFalse(attacked.contains { $0.contains("Bandit Guard 3") })
+    }
 }
 
 @MainActor
@@ -449,4 +473,5 @@ final class ItemAndPerkRulesTests: XCTestCase {
         XCTAssertEqual(brute.attackModifierDeck.cards.filter { $0.type == .minus1 }.count, before,
                        "item penalty cards leave the deck after the scenario")
     }
+
 }

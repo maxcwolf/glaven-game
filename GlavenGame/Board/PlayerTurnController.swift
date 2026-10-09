@@ -50,6 +50,8 @@ final class PlayerTurnController {
     var pendingAdvantage = false
     /// Hexes the character has moved this turn (not pushed or pulled), for movement items.
     var hexesMoved = 0
+    /// Hexes passed over (not ended on) during the latest move action, for "enemies moved through".
+    var hexesPassed: [HexCoord] = []
     var magmaWadersHealed = false
     private var hornedHelmUsed = false
     /// Attack value and range of the attack being resolved (including element bonuses).
@@ -356,6 +358,7 @@ final class PlayerTurnController {
             // Boots of Levitation, Cloak of Phasing: every move is a flight.
             if PassiveItems.flies(character?.items ?? []) { mode = .fly }
             grantBonusExperience(bonus)
+            hexesPassed = []
             let label = mode == .jump ? "Jump" : (mode == .fly ? "Fly" : "Move")
             coordinator.log("\(who): \(label) \(moveValue)", category: .move)
             applyPrintedEffects(of: action, coordinator: coordinator)
@@ -427,6 +430,12 @@ final class PlayerTurnController {
                 }
             }
 
+            if allTargets?.lowercased() == "enemiesmovedthrough" {
+                coordinator.log("\(who): Attack \(pendingAttackValue) on every enemy moved through", category: .attack)
+                applyPerformedEffects()
+                coordinator.attackEnemiesMovedThrough(from: pieceID, hexes: hexesPassed)
+                return true
+            }
             // "Attack all adjacent enemies" / "all enemies within range N": every such enemy is
             // a separate attack of the same action.
             if let spec = allTargets?.lowercased(), spec.hasPrefix("enemiesadjacent") || spec.hasPrefix("enemiesrange") {

@@ -112,14 +112,14 @@ Brute attacks Bandit Guard 3: miss [MISS]
 Brute gains 1 XP
 Brute: Jump 4
 Brute moves 2 hexes [to (1,2)]
-Brute: Attack 2, Range 1
-Brute attacks Bandit Guard 4: 2 − 1 = 1 damage [2 -1(mod) = 1]
+Brute: Attack 2 on every enemy moved through
+Brute moved through no enemy
 Brute gains 2 XP
 Brute ends the turn
 Cragheart’s turn: Earthen Clod and Massive Boulder
 Cragheart takes the top half from Massive Boulder and the bottom half from Earthen Clod
 Cragheart: Attack 3, Range 3
-Cragheart attacks Bandit Guard 4: 3 + 1 = 4 damage [3 +1(mod) = 4]
+Cragheart attacks Bandit Guard 3: 3 + 1 = 4 damage [3 +1(mod) = 4]
 Cragheart infuses Earth
 Cragheart: Heal 2, Range 3. Choose who to heal
 Cragheart heals Cragheart for 2 [Heal 2]
@@ -147,8 +147,8 @@ spellweaver (4,2) hp 6/6 hand 4 discard 2 lost 2 active 0 xp 0 gold 0
 brute (1,2) hp 7/10 hand 6 discard 2 lost 2 active 0 xp 5 gold 0
 cragheart (1,1) hp 4/10 hand 7 discard 3 lost 1 active 0 xp 1 gold 0
 bandit-guard #2 elite (0,5) hp 1/9 [poison]
-bandit-guard #3 normal (0,1) hp 6/6
-bandit-guard #4 normal (0,2) hp 1/6
+bandit-guard #3 normal (0,1) hp 2/6
+bandit-guard #4 normal (0,2) hp 6/6
 bandit-guard #5 normal (1,4) hp 6/6
 bandit-guard #6 normal (1,6) hp 6/6
 money tokens: (0,1)x1
@@ -171,32 +171,29 @@ Scoundrel ends the turn
 Brute’s turn: Eye for an Eye and Warding Strength
 Brute takes the top half from Warding Strength and the bottom half from Eye for an Eye
 Brute: Attack 3, Range 1, Push 2
-Brute attacks Bandit Guard 4: 3 + 1 = 4 damage [3 +1(mod) = 4]
-Bandit Guard 4 dies
-A money token drops [at (0,2)]
+Brute attacks Bandit Guard 3: 3 + 1 = 4 damage [3 +1(mod) = 4]
+Bandit Guard 3 dies
+A money token drops [at (0,1)]
 Brute: Heal 2, Range 1. Choose who to heal
 Brute heals Cragheart for 2 [Heal 2]
 Brute infuses Earth
 Brute ends the turn
 Spellweaver’s turn: Frost Armor and Reviving Ether
 Spellweaver: Jump 4
-Spellweaver moves 1 hex [to (3,1)]
+Spellweaver moves 1 hex [to (3,3)]
 Spellweaver consumes Earth
 Spellweaver: Attack 3, Range 3
 Spellweaver gains 1 XP
-Spellweaver attacks Bandit Guard 3: 3 − 2 = 1 damage [3 -2(mod) = 1]
+Spellweaver attacks Bandit Guard 5: 3 − 2 = 1 damage [3 -2(mod) = 1]
 Spellweaver ends the turn
 Cragheart’s turn: Crushing Grasp and Opposing Strike
 Cragheart: Attack 3, Range 1, Immobilize
-Cragheart infuses Earth
-Cragheart attacks Bandit Guard 3: 3 + 0 = 3 damage [3 +0(mod) = 3]
-Bandit Guard 3 gains Immobilize
+Cragheart has no target within range 1
 Cragheart ends the turn
 Bandit Guard’s turn: ability card (50)
 Bandit Guard 2 moves 2 hexes [to (0,3)]
 Bandit Guard 2 attacks Brute: 3 + 1 = 4 damage [3 +1(mod) = 4]
-Bandit Guard 3 is immobilized and can’t move
-Bandit Guard 3 attacks Brute: 2 + 1 = 3 damage [2 +1(mod) = 3]
+Bandit Guard 4 attacks Brute: 2 + 1 = 3 damage [2 +1(mod) = 3]
 Brute loses 2 discarded cards to prevent 3 damage
 Bandit Guard 5 moves 1 hex [to (1,3)]
 Bandit Guard 5 attacks Brute: 2 + 0 = 2 damage [2 +0(mod) = 2]

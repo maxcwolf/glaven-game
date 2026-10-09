@@ -1501,6 +1501,26 @@ final class BoardCoordinator {
         let targets = targetableEnemies(of: pieceID, range: range)
             .filter { !exactly || boardState.piecePositions[$0].map { pos.distance(to: $0) == range } == true }
             .sorted { $0.description < $1.description }
+        attackEach(targets, from: pieceID, range: range)
+    }
+
+    /// "Attack all enemies moved through" (Trample): every enemy standing on a hex the
+    /// character passed over in this half's move.
+    func attackEnemiesMovedThrough(from pieceID: PieceID, hexes: [HexCoord]) {
+        if isConditionActive(.disarm, on: pieceID) {
+            log("\(name(pieceID)) is disarmed and can\u{2019}t attack", category: .condition)
+            activePlayerTurn?.advanceAfterAsyncAction()
+            return
+        }
+        let passed = Set(hexes)
+        let targets = boardState.piecePositions.filter { passed.contains($0.value) && areEnemies(pieceID, $0.key) }
+            .map(\.key).sorted { $0.description < $1.description }
+        if targets.isEmpty { log("\(name(pieceID)) moved through no enemy", category: .attack) }
+        attackEach(targets, from: pieceID, range: 1)
+    }
+
+    /// One attack of the current action against each target in turn, then the action ends.
+    private func attackEach(_ targets: [PieceID], from pieceID: PieceID, range: Int) {
         let value = activePlayerTurn?.currentAttackValue() ?? 2
         Task { @MainActor in
             for target in targets where self.isOnBoard(target) && self.isOnBoard(pieceID) {

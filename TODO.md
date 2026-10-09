@@ -230,7 +230,7 @@ Phase IV — the game around the board
 - [x] Campaign log on the Campaign sheet, newest first, in plain words (level-ups now logged too); reputation and prosperity there are read-only, no longer +/− steppers (`CampaignLogTests`)
 - [x] Deleted the companion leftovers: `GameBoardView` and 69 more views only it reached; the live pieces they held moved out (`UniqueTile`/`MapImageCache`, `RewardChoicesView`, `ActionHex`, `FlowLayout`, `Color(hex:)`)
 - [x] Board theme tokens (`BoardTheme`: surfaces, brass, radii, display type) and an 11 pt text floor (31 sizes of 7–10 pt raised; HUD still fits both iPads); every board control has text or a VoiceOver label; tokens on the board are spoken ("Bandit Guard 1, 4 of 6 health, Stun"); source checks guard the floor and the labels (`BoardAccessibilityTests`)
-- [ ] VoiceOver play on the board: choosing hexes (move, attack targets) needs accessible hex elements; GlavenTheme in the remaining menus; drop the unused Majalla font (288 KB)
+- [x] VoiceOver play on the board, the remaining menus themed, Majalla dropped (see Phase VI)
 
 - [x] Compact turn panel: only the half of the card being played (top or bottom), so the panel is ~40% shorter and the board bigger during a turn (`BoardLayoutTests`)
 
@@ -394,16 +394,17 @@ Scenario rewards (2026-10-08)
 ### Remaining gaps
 
 - [x] **Scenario reward: add events** (GH 21, 35, 36, 51, 54) — the decks now start as cards 01–30 and scenario rewards shuffle cards in
-- [ ] **Events from class unlocks and retirements** — unlocking or retiring a class should add its city and road events to the decks
+- [x] **Events from class unlocks and retirements** (Phase VI)
 - [ ] **Scenario reward: envelopes** (GH 58, 60: envelope X) — there's no envelope or sealed-content state to open
 - [ ] **Scenario reward: custom text** (GH 54, 56, 58, 60, 62) — personal-quest outcomes ("immediately retire the Seeker of Xorn", "'Vengeance' quest complete") that depend on whose quest it is; shown on the conclusion sheet but not applied
 
 - [ ] **Objectives/escorts aren't placed on the board** — the map data has no objective positions (22 scenarios use objectives)
 - [ ] **Scenario spawn markers** — map data has no marker positions, so rule spawns are placed near the other monsters
 - [ ] **Scenario-specific goals** beyond "kill all enemies" are only modelled where the scenario data has a `finish` rule
-- [ ] **"Enemies moved through" attacks** (e.g. Brute's Trample) and other custom-text abilities (e.g. Reviving Ether's "recover all lost cards", Flanking Strike's bonus) need manual resolution — on the board they have no effect
+- [x] **"Enemies moved through" attacks** (Trample, two Mindthief cards) attack every enemy passed over in the half's move (`testTrampleAttacksEveryEnemyJumpedOver`)
+- [ ] **Other custom-text abilities** (e.g. Reviving Ether's "recover all lost cards", Flanking Strike's bonus) need manual resolution — on the board they have no effect
 - [ ] **Persistent bonus charges** (e.g. "next 3 attacks") aren't tracked; persistent cards stay in the active area until the scenario ends
-- [ ] **Items during board turns** (use/spend from the turn panel)
+- [x] **Items during board turns** (Phase VI: about 110 of 150 items play on the board)
 - [ ] **Icy terrain** — no forced-movement mechanic
 - [ ] **Plague / Enfeeble** (FH) — no mechanics
 - [ ] **Multi-hex obstacles** — one overlay per hex
