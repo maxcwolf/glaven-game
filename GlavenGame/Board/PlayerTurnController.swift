@@ -263,6 +263,7 @@ final class PlayerTurnController {
             default:
                 coordinator.interactionMode = .idle
                 coordinator.abandonSummonPlacement()
+                coordinator.dropChoiceExtras()
                 coordinator.boardScene?.clearHighlights()
                 defaultAttackPending = false
                 awaitingAsync = false
@@ -288,6 +289,7 @@ final class PlayerTurnController {
                 coordinator.interactionMode = .idle
                 coordinator.pendingForcedAttack = nil
                 coordinator.abandonSummonPlacement()
+                coordinator.dropChoiceExtras()
                 coordinator.boardScene?.clearHighlights()
                 awaitingAsync = false
             }

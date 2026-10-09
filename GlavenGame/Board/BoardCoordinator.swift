@@ -486,6 +486,7 @@ final class BoardCoordinator {
         let cardName = deckData?.abilities.first(where: { $0.cardId == lostCard })?.name ?? "Card \(lostCard)"
         log("\(characterName(characterID)) long rests: loses \(cardName), heals 2 and takes back \(character.handCards.count) cards", category: .rest)
 
+        lootAtEndOfTurn(characterID)
         // Continue to next figure
         advanceToNextFigure()
     }
@@ -930,6 +931,13 @@ final class BoardCoordinator {
     }
 
     /// Place a summon on a chosen hex during interactive summon placement.
+    /// Drop what rode on a target choice that was skipped (Pendant of the Plague's Curse, a
+    /// heal's conditions), so it doesn't land on a later target instead.
+    func dropChoiceExtras() {
+        pendingExtraConditions = []
+        pendingHealConditions = []
+    }
+
     /// Drop a summon placement that won't happen (the ability was skipped or taken back): the
     /// summon waiting for its hex goes with it, so it neither lingers in the character's summons
     /// nor keeps the summon card in the active area.
@@ -1308,6 +1316,7 @@ final class BoardCoordinator {
             if character.discardedCards.count <= 1 {
                 if character.discardedCards.isEmpty {
                     log("\(characterName(character.id)) long rests (no cards to lose)", category: .rest)
+                    lootAtEndOfTurn(character.id)
                     advanceToNextFigure()
                 } else {
                     resolveLongRest(characterID: character.id, discardIndex: 0)
@@ -1329,6 +1338,8 @@ final class BoardCoordinator {
                 }
             }
             log("\(characterName(character.id)) is stunned: no actions, both cards are discarded", category: .condition)
+            // Looting at the end of the turn isn't an ability: a stunned character still loots.
+            lootAtEndOfTurn(character.id)
             advanceToNextFigure()
             return
         }
@@ -1403,15 +1414,20 @@ final class BoardCoordinator {
         applyEndOfTurnItems(ptc)
         applyEndOfTurnBonuses(ptc)
         activePlayerTurn = nil
-        // End-of-turn looting: money tokens and treasure in the character's hex (p.28).
-        let pieceID = PieceID.character(ptc.characterID)
-        if let pos = boardState.piecePositions[pieceID] {
-            lootHexes(for: pieceID, coords: [pos])
-        }
+        lootAtEndOfTurn(ptc.characterID)
 
         checkVictoryDefeat()
         if scenarioResult == nil {
             advanceToNextFigure()
+        }
+    }
+
+    /// End-of-turn looting: money tokens and treasure in the character's hex (p.28), on every
+    /// turn — resting or stunned too, as it isn't an ability.
+    func lootAtEndOfTurn(_ characterID: String) {
+        let pieceID = PieceID.character(characterID)
+        if let pos = boardState.piecePositions[pieceID] {
+            lootHexes(for: pieceID, coords: [pos])
         }
     }
 

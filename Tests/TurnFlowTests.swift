@@ -179,4 +179,39 @@ final class TurnFlowTests: XCTestCase {
         XCTAssertEqual(CardSelectionPanel.selection([4, 7], tapping: 7), [7, 4], "the tapped card leads")
         XCTAssertEqual(CardSelectionPanel.selection([4], tapping: 4), [], "put back")
     }
+
+    // MARK: - Skipping a choice
+
+    /// An item's extra condition rides on the target being chosen; skipping the choice drops it
+    /// instead of putting it on a later target.
+    func testSkippingATargetChoiceDropsWhatRodeOnIt() throws {
+        let brute = add("brute", at: HexCoord(3, 3))
+        coord.spawnMonster(name: "bandit-guard", type: .normal, at: HexCoord(4, 3), origin: .placed)
+        let dagger = try XCTUnwrap(deck("brute").first { $0.name == "Spare Dagger" })
+        let trample = try XCTUnwrap(deck("brute").first { $0.name == "Trample" })
+        let turn = turn(for: brute, top: dagger, bottom: trample)
+        turn.executeCurrentAction()
+        guard case .selectingAttackTarget = coord.interactionMode else { return XCTFail("a target to pick") }
+        coord.pendingExtraConditions = [.curse]
+        turn.skipCurrentAction()
+        XCTAssertEqual(coord.pendingExtraConditions, [])
+    }
+
+    // MARK: - Looting at the end of the turn
+
+    /// Looting at the end of the turn isn't an ability: a stunned character, or one resting,
+    /// still picks up the money token in their hex (p.28).
+    func testAStunnedCharacterStillLootsAtTheEndOfTheTurn() {
+        let brute = add("brute", at: HexCoord(3, 3))
+        coord.boardState.lootTokens[HexCoord(3, 3)] = 1
+        brute.entityConditions = [EntityCondition(name: .stun)]
+        let gold = brute.loot
+        coord.boardPhase = .execution
+        gm.game.state = .next
+        coord.turnOrder = [TurnOrderEntry(figure: .character(brute), initiative: 30)]
+        coord.currentTurnIndex = -1
+        coord.advanceToNextFigure()
+        XCTAssertNil(coord.boardState.lootTokens[HexCoord(3, 3)], "the token is picked up")
+        XCTAssertGreaterThan(brute.loot, gold)
+    }
 }
