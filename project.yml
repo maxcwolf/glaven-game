@@ -55,6 +55,9 @@ targets:
         TARGETED_DEVICE_FAMILY: "1,2"
         INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad: "UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight"
         INFOPLIST_KEY_UIRequiresFullScreen: true
+        # A launch screen tells iOS the app fits any screen: without one it's letterboxed to an
+        # older iPad's size (black bars on an 11-inch iPad Pro M4).
+        INFOPLIST_KEY_UILaunchScreen_Generation: true
         # Campaign files (Documents/Campaigns) show in the Files app on iPad.
         INFOPLIST_KEY_UIFileSharingEnabled: true
         INFOPLIST_KEY_LSSupportsOpeningDocumentsInPlace: true
