@@ -178,6 +178,26 @@ final class EventCardTests: XCTestCase {
         XCTAssertEqual(events.deck(.city).count, 31)
     }
 
+    /// An event resolved before the app is quit isn't owed again: the save that holds its effects
+    /// also says it's done (city), or done for this departure (road), until the party sets out.
+    func testAResolvedEventIsntOwedAgainAfterARelaunch() throws {
+        let scenario = try XCTUnwrap(gm.editionStore.scenarios(for: "gh").first { $0.index == "1" && $0.solo == nil })
+        game.events.cityEventDue = true
+        gm.prepareEvents([.city, .road], departingFor: scenario)
+        events.resolve(.city, option: "A")
+        events.resolve(.road, option: "A")
+        gm.saveGame()
+
+        let relaunched = GameManager(modelContainer: gm.modelContainer)
+        XCTAssertTrue(relaunched.restoreGame())
+        XCTAssertFalse(relaunched.game.events.cityEventDue, "the city event is behind the party")
+        XCTAssertFalse(relaunched.eventCardManager.needsRoadEvent(for: scenario), "the road event too, for this departure")
+
+        relaunched.startScenarioOnBoard(scenario)
+        relaunched.completeScenario(success: true)
+        XCTAssertTrue(relaunched.eventCardManager.needsRoadEvent(for: scenario), "the next time out is another road")
+    }
+
     func testFinishingAScenarioOwesACityEvent() throws {
         let scenario = try XCTUnwrap(gm.editionStore.scenarios(for: "gh").first { $0.index == "1" && $0.solo == nil })
         XCTAssertFalse(game.events.cityEventDue)

@@ -14,6 +14,10 @@ struct EventState: Codable, Equatable {
     var sanctuaryGold = 0
     /// Characters (by id) who have donated on this visit to town.
     var donatedThisVisit: Set<String> = []
+    /// The scenario the party is setting out for while its events are resolved, and the one
+    /// whose road event is already resolved: quitting before departure doesn't deal another.
+    var departingFor: String?
+    var roadEventDoneFor: String?
 
     static let startingCards = (1...30).map { String(format: "%02d", $0) }
 
@@ -28,6 +32,8 @@ struct EventState: Codable, Equatable {
         nextScenario = try c.decodeIfPresent(ScenarioStartEffects.self, forKey: .nextScenario) ?? ScenarioStartEffects()
         sanctuaryGold = try c.decodeIfPresent(Int.self, forKey: .sanctuaryGold) ?? 0
         donatedThisVisit = try c.decodeIfPresent(Set<String>.self, forKey: .donatedThisVisit) ?? []
+        departingFor = try c.decodeIfPresent(String.self, forKey: .departingFor)
+        roadEventDoneFor = try c.decodeIfPresent(String.self, forKey: .roadEventDoneFor)
     }
 
     /// A deck, top card first, starting it (cards 01–30, shuffled) on first use. Only that first

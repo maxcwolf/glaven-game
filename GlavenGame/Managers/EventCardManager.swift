@@ -75,7 +75,7 @@ final class EventCardManager {
     /// Whether setting out for `scenario` takes a road event.
     func needsRoadEvent(for scenario: ScenarioData) -> Bool {
         if game.tableRules.noFirstRoadEvent, game.completedScenarios.isEmpty { return false }
-        return scenario.eventType == "road"
+        return scenario.eventType == "road" && game.events.roadEventDoneFor != scenario.id
     }
 
     // MARK: - Outcomes
@@ -181,6 +181,11 @@ final class EventCardManager {
         cards.removeAll { $0 == event.cardId }
         if returns { cards.append(event.cardId) }
         setDeck(deck, cards)
+        // The event is behind the party, in the same save as its effects: it isn't owed again.
+        switch deck {
+        case .city: game.events.cityEventDue = false
+        case .road: game.events.roadEventDoneFor = game.events.departingFor
+        }
 
         game.campaignLog.append(CampaignLogEntry(
             type: .eventResolved,

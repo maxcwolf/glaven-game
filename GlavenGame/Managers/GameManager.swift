@@ -229,6 +229,8 @@ final class GameManager {
     /// the damage, conditions, −1 cards and discarded cards the events gave them.
     func applyEventEffectsAtScenarioStart() {
         game.events.donatedThisVisit = []   // the party has left town
+        game.events.departingFor = nil
+        game.events.roadEventDoneFor = nil
         let effects = game.events.nextScenario
         guard !effects.isEmpty else { return }
         for character in game.activeCharacters {
@@ -459,9 +461,10 @@ final class GameManager {
 
     /// Draw the events about to be resolved: their decks are started (shuffled) now and saved, so
     /// quitting before resolving one can't deal a different card next time.
-    func prepareEvents(_ decks: [EventCardManager.Deck]) {
+    func prepareEvents(_ decks: [EventCardManager.Deck], departingFor scenario: ScenarioData? = nil) {
         let unstarted = decks.contains { game.events.peek($0.rawValue) == nil }
         for deck in decks { _ = eventCardManager.deck(deck) }
+        game.events.departingFor = scenario?.id
         if unstarted { saveGame() }
     }
 

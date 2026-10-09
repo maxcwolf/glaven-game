@@ -276,7 +276,7 @@ struct GameSetupView: View {
         if gameManager.eventCardManager.needsRoadEvent(for: scenario) { queue.append(.road) }
         settingOutFor = scenario
         if queue.isEmpty { chooseGoals() } else {
-            gameManager.prepareEvents(queue)
+            gameManager.prepareEvents(queue, departingFor: scenario)
             events = queue
         }
     }
