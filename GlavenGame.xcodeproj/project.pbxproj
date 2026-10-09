@@ -18,6 +18,7 @@
 		075D139C0B3F1851901A35A7 /* GameCharacter.swift in Sources */ = {isa = PBXBuildFile; fileRef = CB48D739CDC747D7E15DB194 /* GameCharacter.swift */; };
 		0919DBA057F7F5E67358F0DB /* ElementState.swift in Sources */ = {isa = PBXBuildFile; fileRef = C27216A8BF9D29A97C3B588D /* ElementState.swift */; };
 		092AB5BE3CCA94A1BDF57E91 /* ScenarioExpression.swift in Sources */ = {isa = PBXBuildFile; fileRef = F3E688CD5DBDBC4114FCA3F4 /* ScenarioExpression.swift */; };
+		0BB095A0DDE68D19CD4B5F98 /* PlayedCardsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E5A96A1A09275E5237EAD66B /* PlayedCardsView.swift */; };
 		0C1677F77D3A230F0485CB53 /* BoardSound.swift in Sources */ = {isa = PBXBuildFile; fileRef = A7E2165E5E511B9078052C55 /* BoardSound.swift */; };
 		0C9F28E05371C2CD265A5572 /* ScenarioResultsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF546B2E6909F44E7930DB07 /* ScenarioResultsView.swift */; };
 		0EACFB0AB8BDFFCC7F591795 /* PieceID.swift in Sources */ = {isa = PBXBuildFile; fileRef = 33CE037572CCD1CC45F5F131 /* PieceID.swift */; };
@@ -163,7 +164,6 @@
 		BF6BBF8E4D54D670161DA3D0 /* GameText.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5FFE059ED977F411C451EA65 /* GameText.swift */; };
 		BF775F0114B6F567A1A74F92 /* BoardCoordinator+Movement.swift in Sources */ = {isa = PBXBuildFile; fileRef = B6C9F8BE9CC7A895A0360304 /* BoardCoordinator+Movement.swift */; };
 		BF98598080BB09A3ADE09DEC /* ItemLoadout.swift in Sources */ = {isa = PBXBuildFile; fileRef = 62C7F3055E4C1D37FC341453 /* ItemLoadout.swift */; };
-		C0B2D8674061CBC4D28A537D /* ActiveCardHalf.swift in Sources */ = {isa = PBXBuildFile; fileRef = 800796073F61F4C2A69A6408 /* ActiveCardHalf.swift */; };
 		C0E9C5B5B98F723E70B5A5BB /* HexCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = 11CBAC9F034879BB91B54D73 /* HexCell.swift */; };
 		C20C2F095EEAA5871F1BFBF9 /* CharacterItemsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB1B617FED39015D1033829C /* CharacterItemsView.swift */; };
 		C2B13B3624B6F7A6EBA5D808 /* ScenarioRule.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2A76D126F0BA77D9B298FE07 /* ScenarioRule.swift */; };
@@ -313,7 +313,6 @@
 		7935967456962F4F03B80C2B /* BattleGoalPicker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BattleGoalPicker.swift; sourceTree = "<group>"; };
 		794BBAB32F951E4614E23099 /* RoundManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RoundManager.swift; sourceTree = "<group>"; };
 		7E0C1D4AA6F0D3063582A41E /* LootType.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LootType.swift; sourceTree = "<group>"; };
-		800796073F61F4C2A69A6408 /* ActiveCardHalf.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActiveCardHalf.swift; sourceTree = "<group>"; };
 		81BE25FE48E9D7E8CC4C14A6 /* ClassUnlocks.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClassUnlocks.swift; sourceTree = "<group>"; };
 		81C28FB339301A6F83C1744B /* SummonState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SummonState.swift; sourceTree = "<group>"; };
 		8255DC95DDC21DBA25280177 /* ElementModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ElementModel.swift; sourceTree = "<group>"; };
@@ -412,6 +411,7 @@
 		E007CE4699064C661EBFDCB7 /* MovePlan.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MovePlan.swift; sourceTree = "<group>"; };
 		E27EBD6725F30431BE4E7FA3 /* ImageLoader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageLoader.swift; sourceTree = "<group>"; };
 		E3D72B6EC5F59987FCB0636A /* EventCardManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EventCardManager.swift; sourceTree = "<group>"; };
+		E5A96A1A09275E5237EAD66B /* PlayedCardsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayedCardsView.swift; sourceTree = "<group>"; };
 		E76A7095C8D371EF8B0F04D2 /* ScenarioManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScenarioManager.swift; sourceTree = "<group>"; };
 		E76F597E3B673C4DAA422663 /* CampaignsSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CampaignsSheet.swift; sourceTree = "<group>"; };
 		EA732C1B11B1FD79F496753D /* DamageChoiceSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DamageChoiceSheet.swift; sourceTree = "<group>"; };
@@ -771,7 +771,6 @@
 			isa = PBXGroup;
 			children = (
 				14ABB7C34DDD57BF9162EA76 /* AbilityCardView.swift */,
-				800796073F61F4C2A69A6408 /* ActiveCardHalf.swift */,
 				84AAD1A669303376EFE4AB19 /* BoardCamera.swift */,
 				06273638779D4902224E1602 /* BoardCoordinator.swift */,
 				57AED47A654FB8809E8D584B /* BoardCoordinator+Bonuses.swift */,
@@ -799,6 +798,7 @@
 				CEBB2CD9E70D5ABFA126923B /* MonsterTurnController.swift */,
 				E007CE4699064C661EBFDCB7 /* MovePlan.swift */,
 				DD9B9D4203B3CFD7D307E4EE /* PieceSpriteNode.swift */,
+				E5A96A1A09275E5237EAD66B /* PlayedCardsView.swift */,
 				8A2BBA0188C2D10D81CAC68B /* PlayerTurnController.swift */,
 				D2ED778C971FD3AFE9B4F991 /* RecoveryPicker.swift */,
 				487FFAE9CF9ACC5FB5742CD6 /* RewardChoicesView.swift */,
@@ -964,7 +964,6 @@
 				03A389CA770501F9BD252F73 /* ActionType.swift in Sources */,
 				348B45E0F8996A22336E276D /* ActionValueType.swift in Sources */,
 				AE36609C9943107272FEE51A /* ActionsManager.swift in Sources */,
-				C0B2D8674061CBC4D28A537D /* ActiveCardHalf.swift in Sources */,
 				DA80F59435177C23D8E005E0 /* AoEResolver.swift in Sources */,
 				8CB0FFF5B997D068B2D99954 /* AppPhase.swift in Sources */,
 				1BD1F642825D52D6A6F79626 /* AreaPatternView.swift in Sources */,
@@ -1113,6 +1112,7 @@
 				933131649AE3F77A9CE9E824 /* PersonalQuests.swift in Sources */,
 				0EACFB0AB8BDFFCC7F591795 /* PieceID.swift in Sources */,
 				58612AEA8A8D852B5EEA2FEA /* PieceSpriteNode.swift in Sources */,
+				0BB095A0DDE68D19CD4B5F98 /* PlayedCardsView.swift in Sources */,
 				7E73D0A139DFBE1715DA1F44 /* PlayerTurnController.swift in Sources */,
 				C7A71268D4ED515FDA566884 /* PreferencesSheet.swift in Sources */,
 				8FC70B94B68CE136535F98DA /* QuestPicker.swift in Sources */,

@@ -34,15 +34,26 @@ final class BoardLayoutTests: XCTestCase {
     }
 
     /// Regression: the turn panel showed the whole 240 pt card while one half of it was being
-    /// played, so the panel took a third of the screen and the board shrank to fit above it.
-    func testTheTurnPanelShowsOnlyTheHalfBeingPlayed() throws {
-        let gm = try SaveAndContinueTestsSupport.manager()
-        let card = try XCTUnwrap(gm.editionStore.abilities(forDeck: "brute", edition: "gh").first)
-        for isTop in [true, false] {
-            let half = ActiveCardHalf(card: card, isTop: isTop, characterColor: .red)
-            let height = NSHostingController(rootView: half).sizeThatFits(in: CGSize(width: 400, height: 600)).height
-            XCTAssertLessThanOrEqual(height, 160, "\(isTop ? "top" : "bottom") half: \(height) pt")
-            XCTAssertLessThan(height, ActiveCardHalf.cardSize.height * 0.7)
+    /// played, so the panel took a third of the screen and the board shrank to fit above it. The
+    /// two played cards stay small, with the half being performed lit.
+    func testThePlayedCardsStaySmall() async throws {
+        let sim = try ScenarioSimulator(scenario: "1", options: .init(seed: 2))
+        var checked = false
+        await sim.play(rounds: 2) {
+            guard !checked, let turn = sim.coord.activePlayerTurn, turn.topCard != nil, turn.bottomCard != nil else { return }
+            let view = PlayedCardsView(turn: turn, edition: "gh")
+            let size = NSHostingController(rootView: view).sizeThatFits(in: CGSize(width: 800, height: 600))
+            XCTAssertLessThanOrEqual(size.height, PlayedCardsView.cardHeight + 1)
+            XCTAssertLessThanOrEqual(size.width, 260, "two cards side by side, \(size.width) pt")
+            checked = true
+        }
+        XCTAssertTrue(checked)
+    }
+
+    func testHalfHeadings() {
+        XCTAssertEqual(BoardView.halfHeading(phase: .turnComplete, top: nil, bottom: nil), "Turn done")
+        for phase in [PlayerTurnPhase.executeTopAction, .executeBottomAction, .turnComplete] {
+            XCTAssertEqual(PlayerTextTests.lint(BoardView.halfHeading(phase: phase, top: nil, bottom: nil)), [])
         }
     }
 

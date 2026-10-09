@@ -125,32 +125,26 @@ struct InstructionBanner: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(instruction.title)
                     .font(.headline)
-                    .foregroundStyle(.white)
+                    .foregroundStyle(BoardTheme.text)
                 Text(instruction.detail)
                     .font(.subheadline)
-                    .foregroundStyle(Color(red: 1.0, green: 0.72, blue: 0.66))
+                    .foregroundStyle(BoardTheme.brass)
             }
             if instruction.canCancel, let onCancel {
                 Button("Cancel", action: onCancel)
-                    .buttonStyle(.bordered)
-                    .tint(.white)
-                    .frame(minHeight: 44)
+                    .buttonStyle(.boardQuiet)
                     .keyboardShortcut(.cancelAction)
                     .accessibilityHint("Takes the ability back to be performed again")
             }
             if instruction.canSkip, let onSkip {
                 Button("Skip This Action", action: onSkip)
-                    .buttonStyle(.bordered)
-                    .tint(.white)
-                    .frame(minHeight: 44)
+                    .buttonStyle(.boardQuiet)
             }
         }
-        .padding(.horizontal, 18)
+        .padding(.horizontal, 16)
         .padding(.vertical, 10)
-        .background(Color(red: 0.11, green: 0.09, blue: 0.08).opacity(0.94))
-        .clipShape(RoundedRectangle(cornerRadius: 12))
-        .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color(red: 0.42, green: 0.33, blue: 0.15), lineWidth: 1))
-        .shadow(color: .black.opacity(0.4), radius: 8, y: 3)
+        .background(BoardTheme.raised, in: RoundedRectangle(cornerRadius: BoardTheme.Radius.medium))
+        .overlay(RoundedRectangle(cornerRadius: BoardTheme.Radius.medium).stroke(BoardTheme.border, lineWidth: 1))
         .accessibilityElement(children: .combine)
         .accessibilityHint(choices.isEmpty ? "" : "\(choices.count) choice\(choices.count == 1 ? "" : "s"): swipe up or down to hear them, double-tap to choose")
         .accessibilityActions {

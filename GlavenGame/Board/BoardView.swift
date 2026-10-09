@@ -310,7 +310,7 @@ struct BoardView: View {
                             if placed {
                                 Image(systemName: "checkmark.circle.fill")
                                     .font(BoardTheme.font(size: 14))
-                                    .foregroundStyle(.green)
+                                    .foregroundStyle(BoardTheme.gain)
                             }
                         }
                         .padding(.horizontal, 14)
@@ -336,14 +336,8 @@ struct BoardView: View {
                         coordinator.finishSetup()
                     } label: {
                         Label("Begin Scenario", systemImage: "play.fill")
-                            .font(BoardTheme.font(size: 15, weight: .bold))
-                            .foregroundStyle(.white)
-                            .padding(.horizontal, 20)
-                            .padding(.vertical, 12)
-                            .background(.green)
-                            .clipShape(RoundedRectangle(cornerRadius: 10))
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(.boardPrimary)
                 }
             }
         }
@@ -361,145 +355,138 @@ struct BoardView: View {
     @ViewBuilder
     private var executionBottomBar: some View {
         if let playerTurn = coordinator.activePlayerTurn {
-            HStack(spacing: 0) {
-                HStack(spacing: 0) {
-                    // Active card display
-                    activeCardDisplay(playerTurn: playerTurn)
-
-                    // Action buttons
-                    VStack(alignment: .leading, spacing: 8) {
-                        if playerTurn.phase == .executeTopAction || playerTurn.phase == .executeBottomAction {
-                            let actions = playerTurn.phase == .executeTopAction ? playerTurn.topActions : playerTurn.bottomActions
-                            let idx = playerTurn.currentActionIndex
-
-                            // While a step waits for a hex or a target, the banner has its Skip and
-                            // Cancel; the step's own button would do nothing.
-                            if playerTurn.isWaiting {
-                                EmptyView()
-                            } else if idx < actions.count {
-                                let action = actions[idx]
-                                let noTarget = playerTurn.attackHasNoTarget(action)
-                                Button {
-                                    playerTurn.executeCurrentAction()
-                                } label: {
-                                    Label(GameText.actionTitle(action), systemImage: "play.fill")
-                                }
-                                .buttonStyle(.borderedProminent)
-                                .tint(noTarget ? .gray : BoardTheme.brass)
-                                if noTarget {
-                                    // Performing it now does nothing: a move first, or Skip, may be better.
-                                    Label("No enemy in range", systemImage: "exclamationmark.triangle")
-                                        .font(.caption)
-                                        .foregroundStyle(BoardTheme.secondaryText)
-                                }
-                            } else {
-                                Button {
-                                    playerTurn.executeCurrentAction()
-                                } label: {
-                                    Label(playerTurn.phase == .executeTopAction && !playerTurn.bottomFirst
-                                          ? "Continue to Bottom Half" : "Continue", systemImage: "forward.fill")
-                                }
-                                .buttonStyle(.bordered)
-                                .tint(.gray)
-                            }
-
-                            if !playerTurn.hasActed {
-                                // Either card may provide the top half, and either half may go first.
-                                HStack(spacing: 8) {
-                                    Button("Swap Cards") {
-                                        playerTurn.swapCards()
-                                    }
-                                    .buttonStyle(.bordered)
-                                    .controlSize(.small)
-                                    .help("Use the other card's top half and this card's bottom half")
-
-                                    Toggle("Bottom first", isOn: Binding(
-                                        get: { playerTurn.bottomFirst },
-                                        set: { playerTurn.setBottomFirst($0) }
-                                    ))
-                                    .toggleStyle(.button)
-                                    .controlSize(.small)
-                                }
-                            }
-
-                            if !playerTurn.isWaiting {
-                            HStack(spacing: 8) {
-                                if playerTurn.canUseDefaultAction {
-                                    Button(playerTurn.defaultActionTitle) {
-                                        playerTurn.useDefaultAction()
-                                    }
-                                    .buttonStyle(.bordered)
-                                    .tint(.cyan)
-                                    .controlSize(.small)
-                                }
-
-                                Button("Skip Rest of Half") {
-                                    playerTurn.skipRemainingActions()
-                                }
-                                .buttonStyle(.bordered)
-                                .tint(.orange)
-                                .controlSize(.small)
-                            }
-                            }
-
-                            // Items whose moment has come: during this move, this attack, or the turn.
-                            let items = coordinator.usableItems()
-                            if !items.isEmpty {
-                                HStack(spacing: 8) {
-                                    ForEach(items, id: \.itemKey) { item in
-                                        Button {
-                                            coordinator.useItem(item)
-                                        } label: {
-                                            Label("Use \(item.name)", systemImage: item.consumed ? "flask.fill" : "shield.lefthalf.filled")
-                                        }
-                                        .buttonStyle(.bordered)
-                                        .tint(BoardTheme.brass)
-                                        .controlSize(.small)
-                                        .accessibilityHint(item.consumed ? "Used up for the scenario" : "Spent until a long rest")
-                                    }
-                                }
-                            }
-                        }
-
-                        if playerTurn.phase == .turnComplete {
-                            Button {
-                                coordinator.finishPlayerTurn()
-                            } label: {
-                                Label("End Turn", systemImage: "checkmark.circle.fill")
-                            }
-                            .buttonStyle(.borderedProminent)
-                            .tint(.green)
-                            .controlSize(.large)
-                        }
-                    }
-                    .padding(.horizontal, 16)
-
-                    // Multi-target confirmation
-                    if case .selectingMultiAttackTargets(_, _, _, let targetCount, let selected) = coordinator.interactionMode {
-                        VStack(spacing: 4) {
-                            if !selected.isEmpty {
-                                Button("Confirm \(selected.count) Target\(selected.count == 1 ? "" : "s")") {
-                                    coordinator.confirmMultiAttack()
-                                }
-                                .buttonStyle(.borderedProminent)
-                                .tint(.red)
-                                .controlSize(.small)
-                            }
-                        }
-                        .padding(.horizontal, 8)
-                    }
-
-                    instructionBanner
+            let character = gameManager.game.characters.first { $0.id == playerTurn.characterID }
+            let edition = character?.edition ?? "gh"
+            HStack(alignment: .bottom, spacing: 16) {
+                // The two played cards, the half being performed lit
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(character.map { "Played · initiative \($0.initiative)" } ?? "Played")
+                        .font(BoardTheme.font(size: 11, weight: .semibold))
+                        .foregroundStyle(BoardTheme.secondaryText)
+                    PlayedCardsView(turn: playerTurn, edition: edition, characterColor: activeCharacterColor,
+                                    labelResolver: labelResolver(for: edition),
+                                    onPreview: { card in previewAction(card: card)?() })
                 }
-                .padding(.trailing, 8)
-                .background(.black.opacity(0.45), in: RoundedRectangle(cornerRadius: 14))
-                .reportFrame { hudFrames.reportBottomLeading($0) }
-                Spacer()
+                turnControls(playerTurn)
             }
+            .padding(14)
+            .boardPanel(radius: BoardTheme.Radius.large)
+            .reportFrame { hudFrames.reportBottomLeading($0) }
+            Spacer()
         } else {
             instructionBanner
                 .reportFrame { hudFrames.reportBottomLeading($0) }
             Spacer()
+        }
+    }
+
+    /// The half being performed, its next step as the one brass button, and the quieter choices.
+    @ViewBuilder
+    private func turnControls(_ playerTurn: PlayerTurnController) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text(Self.halfHeading(phase: playerTurn.phase, top: playerTurn.topCard, bottom: playerTurn.bottomCard))
+                .font(BoardTheme.font(size: 11, weight: .semibold))
+                .foregroundStyle(BoardTheme.brass)
+
+            if playerTurn.phase == .executeTopAction || playerTurn.phase == .executeBottomAction {
+                let actions = playerTurn.phase == .executeTopAction ? playerTurn.topActions : playerTurn.bottomActions
+                let idx = playerTurn.currentActionIndex
+
+                // While a step waits for a hex or a target, the instruction says what to tap and
+                // has Skip and Cancel; the step's own button would do nothing.
+                if playerTurn.isWaiting {
+                    instructionBanner
+                } else if idx < actions.count {
+                    let action = actions[idx]
+                    let noTarget = playerTurn.attackHasNoTarget(action)
+                    HStack(spacing: 10) {
+                        Button {
+                            playerTurn.executeCurrentAction()
+                        } label: {
+                            Label(GameText.actionTitle(action), systemImage: "play.fill")
+                        }
+                        .buttonStyle(noTarget ? BoardButtonStyle(kind: .quiet) : BoardButtonStyle(kind: .primary))
+                        if noTarget {
+                            // Performing it now does nothing: a move first, or Skip, may be better.
+                            Label("No enemy in range", systemImage: "exclamationmark.triangle")
+                                .font(BoardTheme.font(size: 12))
+                                .foregroundStyle(BoardTheme.secondaryText)
+                        }
+                    }
+                } else {
+                    Button {
+                        playerTurn.executeCurrentAction()
+                    } label: {
+                        Label(playerTurn.phase == .executeTopAction && !playerTurn.bottomFirst
+                              ? "Continue to Bottom Half" : "Continue", systemImage: "forward.fill")
+                    }
+                    .buttonStyle(.boardPrimary)
+                }
+
+                if !playerTurn.isWaiting {
+                    HStack(spacing: 8) {
+                        if !playerTurn.hasActed {
+                            // Either card may provide the top half, and either half may go first.
+                            Button("Swap Cards") { playerTurn.swapCards() }
+                                .help("Use the other card's top half and this card's bottom half")
+                            Button(playerTurn.bottomFirst ? "Top First" : "Bottom First") {
+                                playerTurn.setBottomFirst(!playerTurn.bottomFirst)
+                            }
+                            .accessibilityValue(playerTurn.bottomFirst ? "Bottom half first" : "Top half first")
+                        }
+                        if playerTurn.canUseDefaultAction {
+                            Button(playerTurn.defaultActionTitle) { playerTurn.useDefaultAction() }
+                        }
+                        Button("Skip Rest of Half") { playerTurn.skipRemainingActions() }
+                    }
+                    .buttonStyle(.boardQuietCompact)
+                }
+
+                // Items whose moment has come: during this move, this attack, or the turn.
+                let items = coordinator.usableItems()
+                if !items.isEmpty {
+                    HStack(spacing: 8) {
+                        ForEach(items, id: \.itemKey) { item in
+                            Button {
+                                coordinator.useItem(item)
+                            } label: {
+                                Label("Use \(item.name)", systemImage: item.consumed ? "flask" : "shield.lefthalf.filled")
+                            }
+                            .buttonStyle(.boardQuietCompact)
+                            .accessibilityHint(item.consumed ? "Used up for the scenario" : "Spent until a long rest")
+                        }
+                    }
+                }
+
+                // Multi-target attacks: attack fewer targets than allowed.
+                if case .selectingMultiAttackTargets(_, _, _, _, let selected) = coordinator.interactionMode, !selected.isEmpty {
+                    Button("Attack \(selected.count) Target\(selected.count == 1 ? "" : "s")") {
+                        coordinator.confirmMultiAttack()
+                    }
+                    .buttonStyle(.boardPrimary)
+                }
+            }
+
+            if playerTurn.phase == .turnComplete {
+                Button {
+                    coordinator.finishPlayerTurn()
+                } label: {
+                    Label("End Turn", systemImage: "checkmark")
+                }
+                .buttonStyle(.boardPrimary)
+                .keyboardShortcut(.defaultAction)
+            }
+        }
+        .frame(minWidth: 300, alignment: .leading)
+    }
+
+    /// "Top half · Provoking Roar", "Bottom half · Overwhelming Assault", "Turn done".
+    static func halfHeading(phase: PlayerTurnPhase, top: AbilityModel?, bottom: AbilityModel?) -> String {
+        switch phase {
+        case .executeTopAction: return "Top half · \(top?.name ?? "")"
+        case .executeBottomAction: return "Bottom half · \(bottom?.name ?? "")"
+        case .turnComplete: return "Turn done"
+        default: return "Your turn"
         }
     }
 
@@ -514,52 +501,6 @@ struct BoardView: View {
             }, choices: coordinator.accessibleChoices())
             .transition(.opacity)
             .animation(.easeInOut(duration: 0.2), value: instruction)
-        }
-    }
-
-    /// Shows the active card (top or bottom) with the relevant half highlighted.
-    @ViewBuilder
-    private func activeCardDisplay(playerTurn: PlayerTurnController) -> some View {
-        let isTop = playerTurn.phase == .executeTopAction
-        let isBtm = playerTurn.phase == .executeBottomAction
-        let card = isTop ? playerTurn.topCard : (isBtm ? playerTurn.bottomCard : nil)
-        let edition = gameManager.game.characters.first(where: { $0.id == playerTurn.characterID })?.edition ?? "gh"
-        let resolver = labelResolver(for: edition)
-
-        if let card {
-            ActiveCardHalf(card: card, isTop: isTop, characterColor: activeCharacterColor,
-                           labelResolver: resolver, onPreview: previewAction(card: card))
-                .padding(.leading, 8)
-                .padding(.vertical, 6)
-        } else if playerTurn.phase == .turnComplete {
-            // Show both cards side by side, dimmed
-            HStack(spacing: 6) {
-                if let top = playerTurn.topCard {
-                    BoardAbilityCardView(
-                        card: top,
-                        characterColor: activeCharacterColor,
-                        highlight: .none,
-                        width: 90,
-                        height: 150,
-                        labelResolver: resolver,
-                        onPreview: previewAction(card: top)
-                    )
-                    .opacity(0.5)
-                }
-                if let btm = playerTurn.bottomCard {
-                    BoardAbilityCardView(
-                        card: btm,
-                        characterColor: activeCharacterColor,
-                        highlight: .none,
-                        width: 90,
-                        height: 150,
-                        labelResolver: resolver,
-                        onPreview: previewAction(card: btm)
-                    )
-                    .opacity(0.5)
-                }
-            }
-            .padding(.leading, 8)
         }
     }
 
@@ -1142,18 +1083,16 @@ struct BoardView: View {
                             Button {
                                 coordinator.resolveShortRest()
                             } label: {
-                                Label("Accept", systemImage: "checkmark.circle.fill")
+                                Label("Accept", systemImage: "checkmark")
                             }
-                            .buttonStyle(.borderedProminent)
-                            .tint(BoardTheme.brass)
+                            .buttonStyle(.boardPrimary)
 
                             Button {
                                 coordinator.rerollShortRest()
                             } label: {
                                 Label("Take 1 Damage to Re-pick", systemImage: "arrow.triangle.2.circlepath")
                             }
-                            .buttonStyle(.borderedProminent)
-                            .tint(.orange)
+                            .buttonStyle(.boardQuiet)
                             .disabled(pending.rerollUsed)
                         } else {
                             Button {
@@ -1161,16 +1100,14 @@ struct BoardView: View {
                             } label: {
                                 Label("Short Rest", systemImage: "moon.zzz.fill")
                             }
-                            .buttonStyle(.borderedProminent)
-                            .tint(BoardTheme.brass)
+                            .buttonStyle(.boardPrimary)
 
                             Button {
                                 coordinator.skipShortRest()
                             } label: {
                                 Label("Skip Rest", systemImage: "forward.fill")
                             }
-                            .buttonStyle(.bordered)
-                            .tint(.gray)
+                            .buttonStyle(.boardQuiet)
                         }
                     }
                 }
@@ -1446,18 +1383,16 @@ struct DiscardCardPicker: View {
             HStack(spacing: 4) {
                 Image(systemName: "arrow.counterclockwise.circle")
                     .font(BoardTheme.font(size: 11))
-                    .foregroundStyle(.cyan)
+                    .foregroundStyle(BoardTheme.brass)
                 Text("Lose 2 discard cards to negate all damage (\(selectedIndices.count)/2 selected)")
                     .font(.caption.weight(.bold))
-                    .foregroundStyle(.cyan)
+                    .foregroundStyle(BoardTheme.brass)
 
                 if selectedIndices.count == 2 {
                     Button("Confirm") {
                         onConfirm(Array(selectedIndices))
                     }
-                    .buttonStyle(.borderedProminent)
-                    .tint(.cyan)
-                    .controlSize(.small)
+                    .buttonStyle(.boardPrimary)
                 }
             }
 

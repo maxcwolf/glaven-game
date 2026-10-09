@@ -53,3 +53,32 @@ extension View {
             .overlay(RoundedRectangle(cornerRadius: BoardTheme.Radius.medium).stroke(BoardTheme.border.opacity(0.35), lineWidth: 1))
     }
 }
+
+/// The board's two button looks: brass for the one thing to do next, quiet for the rest.
+struct BoardButtonStyle: ButtonStyle {
+    enum Kind { case primary, quiet }
+    var kind: Kind = .quiet
+    var compact = false
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .lineLimit(1)
+            .fixedSize()   // a button's words never wrap
+            .font(BoardTheme.font(size: compact ? 13 : 15, weight: kind == .primary ? .semibold : .medium))
+            .foregroundStyle(kind == .primary ? BoardTheme.sheet : BoardTheme.text)
+            .padding(.horizontal, compact ? 12 : 16)
+            .frame(minHeight: compact ? 36 : 44)
+            .background(kind == .primary ? BoardTheme.brass : BoardTheme.raised, in: Capsule())
+            .overlay(Capsule().stroke(kind == .primary ? .clear : BoardTheme.border.opacity(0.6), lineWidth: 1))
+            .opacity(configuration.isPressed ? 0.75 : 1)
+            .contentShape(Capsule())
+    }
+}
+
+extension ButtonStyle where Self == BoardButtonStyle {
+    /// The next thing to do: brass.
+    static var boardPrimary: BoardButtonStyle { BoardButtonStyle(kind: .primary) }
+    /// Everything else: quiet.
+    static var boardQuiet: BoardButtonStyle { BoardButtonStyle(kind: .quiet) }
+    static var boardQuietCompact: BoardButtonStyle { BoardButtonStyle(kind: .quiet, compact: true) }
+}
