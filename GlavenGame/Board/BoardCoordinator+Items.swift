@@ -61,6 +61,14 @@ struct BoardItemEffect: Equatable {
         case healInRange(Int, range: Int)
         /// The next Loot ability loots this much farther (Thief's Hood: Loot 1 becomes Loot 2).
         case lootBonus(Int)
+        /// One ally within range recovers up to this many discarded cards (Scroll of Stamina).
+        case allyRecovers(Int, range: Int)
+        /// Heal one of the character's summons (Robes of Summoning).
+        case healSummon(Int)
+        /// Conditions on one enemy within range (Pendant of the Plague: Poison and Curse).
+        case conditionsOnOneEnemy([ConditionName], range: Int)
+        /// Text added to the attack (Unstable Explosives: its allies in the area suffer damage).
+        case attackText(String)
         /// Remove one negative condition of the player's choosing.
         case removeOneNegativeCondition
     }
@@ -167,6 +175,11 @@ struct BoardItemEffect: Equatable {
         "gh-94": .init(.betweenSteps, .healInRange(3, range: 5)),             // Scroll of Healing
         "gh-149": .init(.turn, afterMoving: 5, .infuseAny(1)),                // Elemental Boots
         "gh-109": .init(.turn, .lootBonus(1)),                                // Thief's Hood
+        "gh-95": .init(.betweenSteps, .allyRecovers(2, range: 5)),            // Scroll of Stamina
+        "gh-100": .init(.betweenSteps, .healSummon(2)),                       // Robes of Summoning
+        "gh-144": .init(.betweenSteps, .conditionsOnOneEnemy([.poison, .curse], range: 3)), // Pendant of the Plague
+        "gh-60": .init(.singleRangedAttack, .areaFromItem,                    // Unstable Explosives
+                       .attackText("all allies in the attack area suffer 3 damage")),
     ]
 }
 
@@ -393,6 +406,21 @@ extension BoardCoordinator {
             beginHealAction(pieceID: me, healValue: amount, range: range)
         case .lootBonus(let extra):
             turn.lootBonus += extra
+        case .allyRecovers(let count, let range):
+            offerAllyRecovery(from: me, range: range, count: count, title: item.name)
+        case .healSummon(let amount):
+            let summons = Set(character.summons.filter { !$0.dead }.map { PieceID.summon(id: $0.id) }
+                .filter { boardState.piecePositions[$0] != nil })
+            guard !summons.isEmpty else { log("\(name(me)) has no summon to heal", category: .heal); break }
+            interactionMode = .selectingHealTarget(pieceID: me, healValue: amount, validTargets: summons)
+            boardScene?.highlightHexes(Set(summons.compactMap { boardState.piecePositions[$0] }), style: .heal,
+                                       offsetCol: offsetCol, offsetRow: offsetRow)
+        case .conditionsOnOneEnemy(let conditions, let range):
+            guard let first = conditions.first else { break }
+            pendingExtraConditions = Array(conditions.dropFirst())
+            beginConditionAction(pieceID: me, condition: first, range: range)
+        case .attackText(let text):
+            turn.attackTexts.append(text)
         case .disarmTraps(let range):
             guard let origin = boardState.piecePositions[me] else { break }
             let traps = boardState.cells.values.filter { $0.isTrap && $0.coord.distance(to: origin) <= range }.map(\.coord).sorted()

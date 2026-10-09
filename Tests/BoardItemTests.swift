@@ -715,4 +715,27 @@ final class BoardItemTests: XCTestCase {
         try use("gh-109")
         XCTAssertEqual(turn.lootBonus, 1)
     }
+
+    func testThePendantOfThePlaguePoisonsAndCursesOneEnemy() throws {
+        brute.items = ["gh-144"]
+        let piece = try XCTUnwrap(coord.spawnMonster(name: "bandit-guard", type: .normal, at: HexCoord(5, 3), origin: .placed))
+        let bandit = try XCTUnwrap(coord.entity(for: piece))
+        _ = try startTurn()
+        let curses = gm.game.monsterAttackModifierDeck.undrawnCount(of: .curse)
+        try use("gh-144")
+        coord.handlePieceTap(piece)
+        XCTAssertTrue(bandit.entityConditions.contains { $0.name == .poison })
+        XCTAssertEqual(gm.game.monsterAttackModifierDeck.undrawnCount(of: .curse), curses + 1)
+    }
+
+    func testAScrollOfStaminaLetsAnAllyRecover() throws {
+        brute.items = ["gh-95"]
+        gm.characterManager.addCharacter(name: "tinkerer", edition: "gh")
+        let tinkerer = gm.game.characters[1]
+        coord.boardState.placePiece(.character(tinkerer.id), at: HexCoord(5, 3))
+        tinkerer.discardedCards = [40, 41]
+        _ = try startTurn()
+        try use("gh-95")
+        XCTAssertTrue(tinkerer.discardedCards.isEmpty, "two cards: both come back")
+    }
 }

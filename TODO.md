@@ -256,7 +256,8 @@ Phase VI — the rest of Gloomhaven's town rules
 - [ ] Item carry limits (one head, body and legs; two hands; small items up to half the level, rounded up; Cloak of Pockets +2): every owned item is carried today. Needs a loadout choice in town; see open question 14
 - [x] Second Skin: two −1 cards set aside for the scenario, back after it (`testSecondSkinSetsAsideTwoMinusOnes`)
 - [x] Items with their own choice between the turn's steps: Scroll of Healing, Doomed Compass, Staff of Summoning, Resonant Crystal; Elemental Boots (after moving 5), Thief's Hood (`BoardItemTests`)
-- [ ] The rest of the items (about 23): Unstable Explosives (area that also hurts allies), the Drakescale Boots' difficult terrain, extra turns (rings), ally/summon items, kill and movement triggers, and items with no text in the data (Falcon Figurine, Mountain Hammer, Ring of Skulls, Power Core)
+- [x] Scroll of Stamina, Robes of Summoning, Pendant of the Plague, Unstable Explosives (area that also hurts allies in it) (`BoardItemTests`)
+- [ ] The rest of the items (about 19): the Drakescale Boots' difficult terrain, extra turns (rings), ally/summon items, kill and movement triggers, and items with no text in the data (Falcon Figurine, Mountain Hammer, Ring of Skulls, Power Core)
 - [x] Personal quests: two dealt on recruiting, one kept; a campaign record per character (wins, kills by monster, elite kills, exhaustions) counts every requirement the game can see, after wins and losses; progress in town and on the sheet; by-hand counting only for map-region, enhancement and Skullbane requirements (`PersonalQuestTests`, `PersonalQuestAutotrackTests`)
 - [x] Retirement from town when the quest is complete (unlock, prosperity, log); a new recruit takes the slot
 - [x] Sanctuary donation in town: 10 gold once per visit for two blessings in the next scenario; prosperity +1 per 100 gold given; counts for Piety in All Things (`TownTests`)

@@ -399,6 +399,9 @@ final class BoardCoordinator {
     /// Non-nil while a character picks elements to infuse (Mana Potions).
     var pendingElementChoice: PendingElementChoice?
 
+    /// Conditions that go with the one being targeted (Pendant of the Plague's Curse).
+    var pendingExtraConditions: [ConditionName] = []
+
     /// Traps placed by characters that give experience when an enemy springs them (Proximity Mine).
     var characterTraps: [HexCoord: (characterID: String, experience: Int)] = [:]
 
@@ -2148,6 +2151,17 @@ final class BoardCoordinator {
                             await self.resolvePlayerAttack(attacker: attackerID, target: target, attackValue: attackValue,
                                                            range: ranged ? max(2, range) : 1, advanceAction: false)
                         }
+                        // Unstable Explosives: "All allies in the attack area suffer 3 damage."
+                        for text in areaTexts where text.contains("allies in the attack area suffer") {
+                            let amount = PlayerTurnController.damageAmount(in: text)
+                            let allies = self.boardState.piecePositions.filter {
+                                areaHexes.contains($0.value) && $0.key != attackerID && !self.areEnemies(attackerID, $0.key)
+                            }.map(\.key).sorted()
+                            for ally in allies {
+                                self.log("\(self.name(ally)) suffers \(amount) damage", category: .damage)
+                                self.sufferDamage(amount, to: ally, killer: attackerID)
+                            }
+                        }
                         // Dirt Tornado: "Muddle all allies and enemies in the targeted area."
                         for text in areaTexts where text.contains("in the targeted area") && text.contains("allies and enemies") {
                             for action in PlayerTurnController.actions(fromText: text) where action.type == .condition {
@@ -2215,6 +2229,9 @@ final class BoardCoordinator {
             if validTargets.contains(piece) {
                 log("\(name(attackerID)) applies \(GameText.conditionName(condition)) to \(name(piece))", category: .condition)
                 applyCondition(condition, to: piece)
+                // Pendant of the Plague: Poison and Curse on the one target.
+                for extra in pendingExtraConditions { applyCondition(extra, to: piece) }
+                pendingExtraConditions = []
                 boardScene?.clearHighlights()
                 interactionMode = .idle
                 activePlayerTurn?.advanceAfterAsyncAction()
