@@ -246,7 +246,7 @@ final class CharacterManager {
 
     func setBattleGoalProgress(_ progress: Int, for character: GameCharacter) {
         onBeforeMutate?()
-        character.battleGoalProgress = max(0, min(18, progress))
+        character.battleGoalProgress = max(0, min(GameCharacter.maxBattleGoalChecks, progress))
     }
 
     /// Perks a character has earned but not taken: one for each level after the first and one

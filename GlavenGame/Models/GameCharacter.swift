@@ -69,6 +69,14 @@ final class GameCharacter: Figure, Entity {
     var notes: String = ""
     var battleGoalProgress: Int = 0
 
+    /// The most battle-goal checkmarks a character can hold: six perks' worth (p.46).
+    static let maxBattleGoalChecks = 18
+
+    /// Add (or with a negative count, remove) battle-goal checkmarks, kept within 0…18.
+    func addBattleGoalChecks(_ count: Int) {
+        battleGoalProgress = max(0, min(Self.maxBattleGoalChecks, battleGoalProgress + count))
+    }
+
     // Personal quest
     var personalQuest: String? = nil  // cardId
     var personalQuestProgress: [Int] = []

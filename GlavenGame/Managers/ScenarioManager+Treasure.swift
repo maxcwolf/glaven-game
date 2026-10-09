@@ -69,7 +69,7 @@ extension ScenarioManager {
         case "itemDesign":
             if let amount { game.unlockedItems.insert("\(edition)-\(amount)") }
         case "battleGoal":
-            if let amount { character?.battleGoalProgress += amount }
+            if let amount { character?.addBattleGoalChecks(amount) }
         case "damage":
             if let amount, let character {
                 character.health = max(0, character.health - amount)

@@ -119,7 +119,7 @@ final class ScenarioManager {
                 for (charID, result) in results {
                     if result.checksAwarded > 0,
                        let character = game.characters.first(where: { $0.id == charID }) {
-                        character.battleGoalProgress += result.checksAwarded
+                        character.addBattleGoalChecks(result.checksAwarded)
                     }
                 }
             }
@@ -648,7 +648,8 @@ final class ScenarioManager {
             }
         }
         if let rep = rewards.reputation {
-            game.partyReputation += resolveRewardInt(rep)
+            // Reputation runs from −20 to +20 (p.48).
+            game.partyReputation = max(-20, min(20, game.partyReputation + resolveRewardInt(rep)))
         }
         if let pros = rewards.prosperity {
             game.partyProsperity += resolveRewardInt(pros)

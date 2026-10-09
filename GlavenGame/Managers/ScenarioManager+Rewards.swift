@@ -38,7 +38,7 @@ extension ScenarioManager {
             }
         }
         if let checks = rewards.battleGoals {
-            for character in rewardParty { character.battleGoalProgress += checks }
+            for character in rewardParty { character.addBattleGoalChecks(checks) }
         }
         if let name = rewards.unlockCharacter {
             unlockRewardCharacter(name, edition: edition)

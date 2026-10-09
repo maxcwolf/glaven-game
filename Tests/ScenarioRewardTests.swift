@@ -168,6 +168,28 @@ final class ScenarioRewardTests: XCTestCase {
         XCTAssertEqual(party.map(\.battleGoalProgress), [2, 2])
     }
 
+    /// Eighteen checkmarks is the most a character can hold (six perks' worth, p.46).
+    func testBattleGoalChecksStopAtEighteen() throws {
+        let party = addParty("brute", "tinkerer")
+        party[0].battleGoalProgress = 17
+        party[1].battleGoalProgress = 18
+        complete(try scenario("41"))  // 2 checkmarks
+
+        XCTAssertEqual(party.map(\.battleGoalProgress), [18, 18])
+        XCTAssertEqual(gm.characterManager.perksAvailable(for: party[1]), 6)
+    }
+
+    /// Reputation from a scenario stays within −20…+20 (p.48).
+    func testScenarioReputationStaysWithinTwenty() throws {
+        addParty("brute")
+        game.partyReputation = 19
+        complete(try scenario("12"))  // reputation +4
+        XCTAssertEqual(game.partyReputation, 20)
+        game.partyReputation = -19
+        complete(try scenario("11"))  // reputation −2
+        XCTAssertEqual(game.partyReputation, -20)
+    }
+
     // MARK: - Character unlocks
 
     func testUnlockCharacterReward_unlocksTheClass() throws {

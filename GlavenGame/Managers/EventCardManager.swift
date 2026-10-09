@@ -244,10 +244,10 @@ final class EventCardManager {
         case "loseCollectiveGold":
             takeCollectiveGold(amount, lines: &lines)
         case "battleGoal":
-            for character in party { character.battleGoalProgress += amount }
+            for character in party { character.addBattleGoalChecks(amount) }
             lines.append("Each character gains \(amount) battle goal checkmark\(amount == 1 ? "" : "s").")
         case "loseBattleGoal":
-            for character in party { character.battleGoalProgress = max(0, character.battleGoalProgress - amount) }
+            for character in party { character.addBattleGoalChecks(-amount) }
             lines.append("Each character loses \(amount) battle goal checkmark\(amount == 1 ? "" : "s").")
         case "partyAchievement":
             for id in values.compactMap(\.stringValue) {
