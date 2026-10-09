@@ -245,7 +245,7 @@ Phase VI — the rest of Gloomhaven's town rules
 - [x] Sanctuary donation in town: 10 gold once per visit for two blessings in the next scenario; prosperity +1 per 100 gold given; counts for Piety in All Things (`TownTests`)
 - [x] Enhancements in town: the Enhancer (after The Power of Enhancement) sells +1, conditions, elements and jump for each card slot at chart prices, paid in the character's gold; enhanced cards play enhanced on the board and show their enhancements on card tiles; heals now apply their own conditions, and moves their printed infusions (`EnhancementTests`)
 - [ ] Hex (area) and any-element enhancements: not sold yet — areas need the added hex placed, any element needs an infusion picker (printed "infuse any element" is also skipped on the board today)
-- [ ] Unlocking or retiring a class adds its city and road events to the decks
+- [x] Unlocking a class (by retirement or scenario reward) shuffles its unlock event into the city and road decks; retiring adds the class's retirement event (`PersonalQuestTests`)
 - [ ] VoiceOver play on the board (accessible hexes for moves and targets); the remaining menus on the board theme; drop the unused Majalla font
 - Open questions for the user: docs/open-questions.md
 

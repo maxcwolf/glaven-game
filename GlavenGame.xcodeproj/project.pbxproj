@@ -27,6 +27,7 @@
 		1CC69FD5D69AB9E38536A39E /* EntityValueFunction.swift in Sources */ = {isa = PBXBuildFile; fileRef = EFAF7312A61CA28A484AE10E /* EntityValueFunction.swift */; };
 		1E105B509AA9841848BDC003 /* Enhancement.swift in Sources */ = {isa = PBXBuildFile; fileRef = EBE9E8D46F66914CB111FEC5 /* Enhancement.swift */; };
 		21FA5E07EC8A712DE13F6A66 /* EntityCondition.swift in Sources */ = {isa = PBXBuildFile; fileRef = 96B5B3B671FF141F5F296A83 /* EntityCondition.swift */; };
+		23EEDDA02650AAB2CEC70482 /* ClassUnlocks.swift in Sources */ = {isa = PBXBuildFile; fileRef = 81BE25FE48E9D7E8CC4C14A6 /* ClassUnlocks.swift */; };
 		24867CD051F861D7479B3148 /* BoardCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06273638779D4902224E1602 /* BoardCoordinator.swift */; };
 		264672DD5FA11BF550313E8D /* CardSelectionPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4C2B76831C29EEA9CE98F5A8 /* CardSelectionPanel.swift */; };
 		27BECA66EE2165B380748F33 /* AttackModifierValueType.swift in Sources */ = {isa = PBXBuildFile; fileRef = EBA2DD6BC94018062A83C98A /* AttackModifierValueType.swift */; };
@@ -295,6 +296,7 @@
 		794BBAB32F951E4614E23099 /* RoundManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RoundManager.swift; sourceTree = "<group>"; };
 		7E0C1D4AA6F0D3063582A41E /* LootType.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LootType.swift; sourceTree = "<group>"; };
 		800796073F61F4C2A69A6408 /* ActiveCardHalf.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActiveCardHalf.swift; sourceTree = "<group>"; };
+		81BE25FE48E9D7E8CC4C14A6 /* ClassUnlocks.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClassUnlocks.swift; sourceTree = "<group>"; };
 		81C28FB339301A6F83C1744B /* SummonState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SummonState.swift; sourceTree = "<group>"; };
 		8255DC95DDC21DBA25280177 /* ElementModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ElementModel.swift; sourceTree = "<group>"; };
 		8255E1A8F1CC6DC84CBFD242 /* ElementBoardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ElementBoardView.swift; sourceTree = "<group>"; };
@@ -806,6 +808,7 @@
 				69054202832ECCDDB26C8B2B /* AttackModifierManager.swift */,
 				0124B0388BD2AA1770320E6B /* BattleGoals.swift */,
 				0A945DF49A79FBC6C6FE4B3C /* CharacterManager.swift */,
+				81BE25FE48E9D7E8CC4C14A6 /* ClassUnlocks.swift */,
 				3477ACD63A2C3231A799AB39 /* EnhancementsManager.swift */,
 				9E6A2CFAF5C759FC39E1C802 /* EntityManager.swift */,
 				E3D72B6EC5F59987FCB0636A /* EventCardManager.swift */,
@@ -964,6 +967,7 @@
 				BEE9E654C2551E67AAF2CBEF /* CharacterRecord.swift in Sources */,
 				3CA51576B5FF4BF353869396 /* CharacterSheetView.swift in Sources */,
 				F182555B5F77F1B49251EEFE /* CharacterStatModel.swift in Sources */,
+				23EEDDA02650AAB2CEC70482 /* ClassUnlocks.swift in Sources */,
 				03A7B62A8C0B7BC75F988E58 /* Color+Hex.swift in Sources */,
 				75DF0BB6FC95C99A2DB187DC /* CombatResolver.swift in Sources */,
 				46C7E8752AD96F15E7F9AF89 /* Condition.swift in Sources */,

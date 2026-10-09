@@ -124,13 +124,6 @@ extension ScenarioManager {
     // MARK: - Characters
 
     private func unlockRewardCharacter(_ name: String, edition: String) {
-        let key = "\(edition)-\(name)"
-        guard !game.unlockedCharacters.contains(key) else { return }
-        game.unlockedCharacters.insert(key)
-        game.campaignLog.append(CampaignLogEntry(
-            type: .characterUnlocked,
-            message: "\(GameText.className(name, edition: edition, labels: editionStore)) unlocked",
-            details: "Scenario reward"
-        ))
+        game.unlockClass(name, edition: edition, how: "Scenario reward", labels: editionStore)
     }
 }

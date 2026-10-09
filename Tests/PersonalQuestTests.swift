@@ -140,6 +140,30 @@ final class PersonalQuestTests: XCTestCase {
         XCTAssertEqual(gm.game.retiredCharacters.count, 1)
     }
 
+    /// Class events (GH p.44–45): retiring shuffles in the retiring class's retirement event, and
+    /// the class it unlocks brings its own; each goes into both the city and the road deck.
+    func testRetiringAddsTheClassEvents() throws {
+        give("519", to: brute)   // unlocks the Soothsinger
+        brute.battleGoalProgress = 15
+        PersonalQuestEvaluator.updateProgress(character: brute, game: gm.game, editionStore: gm.editionStore)
+        manager.retireCharacter(brute)
+        for deck in ["city", "road"] {
+            let cards = gm.game.events.cards(deck)
+            XCTAssertTrue(cards.contains("42"), "the Brute's retirement event, \(deck)")
+            XCTAssertTrue(cards.contains("37"), "the Soothsinger's unlock event, \(deck)")
+            XCTAssertEqual(cards.count, 32)
+        }
+    }
+
+    func testAClassWonInAScenarioBringsItsEvent() throws {
+        let unlocked = gm.game.unlockClass("squidface", edition: "gh", how: "test", labels: gm.editionStore)
+        XCTAssertTrue(unlocked)
+        XCTAssertTrue(gm.game.events.cards("road").contains("35"))
+        XCTAssertFalse(gm.game.unlockClass("squidface", edition: "gh", how: "again", labels: gm.editionStore),
+                       "a class unlocks once")
+        XCTAssertEqual(gm.game.campaignLog.filter { $0.type == .characterUnlocked }.count, 1)
+    }
+
     func testRecordsAndDealtQuestsAreSaved() {
         brute.record.kills = ["ooze": 2]
         brute.questChoices = ["520", "521"]

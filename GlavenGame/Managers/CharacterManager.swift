@@ -56,14 +56,12 @@ final class CharacterManager {
         if let questId = character.personalQuest,
            let quest = editionStore.personalQuest(cardId: questId) {
             if let unlock = quest.unlockCharacter {
-                game.unlockedCharacters.insert("\(character.edition)-\(unlock)")
-                game.campaignLog.append(CampaignLogEntry(
-                    type: .characterUnlocked,
-                    message: "\(GameText.className(unlock, edition: character.edition, labels: editionStore)) unlocked",
-                    details: "Via retirement of \(GameText.characterName(character, labels: editionStore))"
-                ))
+                game.unlockClass(unlock, edition: character.edition,
+                                 how: "Via retirement of \(GameText.characterName(character, labels: editionStore))",
+                                 labels: editionStore)
             }
         }
+        game.addRetirementEvents(of: character.name, edition: character.edition, labels: editionStore)
 
         // +1 prosperity on retirement
         game.partyProsperity += 1
