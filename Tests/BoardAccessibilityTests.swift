@@ -57,7 +57,6 @@ final class BoardAccessibilityTests: XCTestCase {
             for (index, line) in lines.enumerated() where line.contains(".onTapGesture") {
                 let block = lines[index..<min(lines.count, index + 8)].joined(separator: "\n")
                 let isButton = block.contains(".isButton") || block.contains("accessibilityHidden")
-                   
                 XCTAssertTrue(isButton, "\(name):\(index + 1) is tappable but not a button to VoiceOver")
             }
         }
