@@ -43,6 +43,8 @@ extension View {
 // MARK: - The card a tip or an explanation is shown on
 
 struct LearnCard<Content: View>: View {
+    /// Where a "topic:" link in the text opens How to Play.
+    var coordinator: BoardCoordinator?
     var badge: String?
     let title: String
     var width: CGFloat = 400
@@ -64,6 +66,11 @@ struct LearnCard<Content: View>: View {
         }
         .padding(18)
         .frame(width: width, alignment: .leading)
+        .environment(\.openURL, OpenURLAction { url in
+            guard let id = LearnText.topic(of: url) else { return .systemAction }
+            coordinator?.openHowToPlay(id)
+            return .handled
+        })
         .background(BoardTheme.raised, in: RoundedRectangle(cornerRadius: BoardTheme.Radius.large))
         .overlay(RoundedRectangle(cornerRadius: BoardTheme.Radius.large).stroke(BoardTheme.brass.opacity(0.8), lineWidth: 1.5))
         .shadow(color: .black.opacity(0.6), radius: 18, y: 6)
@@ -71,7 +78,7 @@ struct LearnCard<Content: View>: View {
 }
 
 private func learnParagraph(_ text: String) -> some View {
-    Text(text)
+    Text(LearnText.attributed(text))
         .font(BoardTheme.font(size: 15))
         .foregroundStyle(BoardTheme.text)
         .fixedSize(horizontal: false, vertical: true)
@@ -84,7 +91,7 @@ struct TipCard: View {
 
     var body: some View {
         let topic = LearnTopic.topic(tip.topic)
-        LearnCard(badge: "First time \u{00B7} \(topic.chapter.rawValue)", title: topic.title) {
+        LearnCard(coordinator: coordinator, badge: "First time \u{00B7} \(topic.chapter.rawValue)", title: topic.title) {
             if let lead = tip.lead {
                 Text(lead)
                     .font(BoardTheme.font(size: 15, weight: .semibold))
@@ -114,7 +121,7 @@ struct ExplanationCard: View {
     let coordinator: BoardCoordinator
 
     var body: some View {
-        LearnCard(title: explanation.title, width: 420) {
+        LearnCard(coordinator: coordinator, title: explanation.title, width: 420) {
             if explanation.subtitle != nil || explanation.health != nil {
                 HStack(spacing: 12) {
                     if let piece = explanation.portrait {
@@ -341,53 +348,5 @@ struct LearningOverlay: View {
             .frame(width: size.width)
             .offset(y: (anchors[.turnRail]?.maxY ?? 64) + 14)   // just under the top bar
         }
-    }
-}
-
-// MARK: - How to Play
-
-/// Every rule the learning mode teaches, by chapter, opened at a topic.
-struct HowToPlaySheet: View {
-    let topic: LearnTopic.ID?
-    var onDone: () -> Void
-
-    var body: some View {
-        NavigationStack {
-            ScrollViewReader { reader in
-                List {
-                    ForEach(LearnTopic.Chapter.allCases, id: \.self) { chapter in
-                        Section(chapter.rawValue) {
-                            ForEach(LearnTopic.topics(in: chapter)) { item in
-                                VStack(alignment: .leading, spacing: 6) {
-                                    Text(item.title)
-                                        .font(BoardTheme.font(size: 17, weight: .semibold))
-                                        .foregroundStyle(item.id == topic ? BoardTheme.brass : BoardTheme.text)
-                                    ForEach(item.paragraphs, id: \.self) { paragraph in
-                                        Text(paragraph)
-                                            .font(BoardTheme.font(size: 15))
-                                            .foregroundStyle(BoardTheme.text)
-                                            .fixedSize(horizontal: false, vertical: true)
-                                    }
-                                }
-                                .padding(.vertical, 4)
-                                .id(item.id)
-                            }
-                        }
-                    }
-                }
-                .scrollContentBackground(.hidden)
-                .background(BoardTheme.sheet)
-                .onAppear {
-                    if let topic { reader.scrollTo(topic, anchor: .top) }
-                }
-            }
-            .navigationTitle("How to Play")
-            .toolbar {
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Done", action: onDone)
-                }
-            }
-        }
-        .frame(minWidth: 520, minHeight: 600)
     }
 }

@@ -275,7 +275,7 @@ final class LearningModeTests: XCTestCase {
             AnyView(TipCard(tip: LearnTip(topic: .modifiers, lead: "Here Bandit Guard 1 drew \u{2212}1."), coordinator: coord)),
             AnyView(ExplanationCard(explanation: coord.explanation(for: .piece(.character(sim.gm.game.characters[0].id))),
                                     coordinator: coord)),
-            AnyView(HowToPlaySheet(topic: .focus, onDone: {})),
+            AnyView(HowToPlayBook(coordinator: coord, topic: .focus)),
         ]
         for view in views {
             let renderer = ImageRenderer(content: view.environment(sim.gm).frame(width: 600, height: 700))

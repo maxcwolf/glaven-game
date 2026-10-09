@@ -147,6 +147,18 @@ extension BoardCoordinator {
         }
     }
 
+    /// What the player has met of the rules, for How to Play's contents.
+    var learnProgress: LearnProgress {
+        LearnProgress(seen: gameManager?.settingsManager.seenTips ?? [], read: gameManager?.settingsManager.readTopics ?? [])
+    }
+
+    /// A topic opened in How to Play.
+    func markRead(_ id: LearnTopic.ID) {
+        guard let settings = gameManager?.settingsManager, !settings.readTopics.contains(id.rawValue) else { return }
+        settings.readTopics.insert(id.rawValue)
+        settings.saveSettings()
+    }
+
     /// Open How to Play, at a topic.
     func openHowToPlay(_ topic: LearnTopic.ID? = nil) {
         howToPlay = HowToPlayRequest(topic: topic)
@@ -245,7 +257,7 @@ extension BoardCoordinator {
         let conditions = entity?.entityConditions.filter { !$0.expired }.map(\.name) ?? []
         if !conditions.isEmpty {
             rows.append(.init(label: "Conditions", value: GameText.list(conditions.map(GameText.conditionName)),
-                              note: conditions.compactMap { LearnTopic.id(for: $0).map(LearnTopic.topic)?.paragraphs.first }.first))
+                              note: conditions.compactMap { LearnTopic.id(for: $0).map(LearnTopic.topic)?.paragraphs.first }.first.map(LearnTopic.plain)))
         }
 
         switch piece {

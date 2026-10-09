@@ -229,9 +229,15 @@ struct BoardView: View {
             }
             .ignoresSafeArea()   // the dimming reaches the screen's edges, and the holes line up
         }
-        .sheet(item: $coordinator.howToPlay) { request in
-            HowToPlaySheet(topic: request.topic) { coordinator.howToPlay = nil }
+        // How to Play, over everything.
+        .overlay {
+            if let request = coordinator.howToPlay {
+                HowToPlayBook(coordinator: coordinator, topic: request.topic)
+                    .id(request.id)
+                    .transition(.opacity)
+            }
         }
+        .animation(.snappy, value: coordinator.howToPlay)
     }
 
     /// Where a figure or hex on the board is, in the learning overlay's space.
