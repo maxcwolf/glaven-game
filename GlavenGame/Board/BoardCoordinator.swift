@@ -644,12 +644,35 @@ final class BoardCoordinator {
         // End-of-round cleanup (end-of-round scenario rules, elements wane, decks reshuffle)
         gameManager.roundManager.nextGameState()
         log("Round \(gameManager.game.round) complete", category: .round)
-        sweepDeadFigures()
+        afterRuleDamage { [weak self] in
+            guard let self else { return }
+            self.sweepDeadFigures()
+            self.resolvePendingResult()
+            if self.scenarioResult != nil { return }
+            self.beginCardSelection()
+        }
+    }
 
-        resolvePendingResult()
-        if scenarioResult != nil { return }
+    // MARK: - Scenario-rule damage
 
-        beginCardSelection()
+    /// Damage scenario rules dealt characters this step (Scenario 51's summoners, 60's late
+    /// rounds), each taken in turn so the character may lose cards to negate it.
+    @ObservationIgnored var ruleDamageDue: [(characterID: String, amount: Int)] = []
+
+    /// Resolve the rule damage due, then `next`; straight on when there's none.
+    func afterRuleDamage(_ next: @escaping () -> Void) {
+        guard !ruleDamageDue.isEmpty else { return next() }
+        let due = ruleDamageDue
+        ruleDamageDue = []
+        let generation = boardGeneration
+        Task { @MainActor in
+            for (id, amount) in due where self.isCurrentBoard(generation) && self.isOnBoard(.character(id)) {
+                self.log("\(self.characterName(id)) suffers \(amount) damage from the scenario", category: .damage)
+                await self.sufferDamageWithMitigation(amount, to: .character(id), source: "the scenario")
+            }
+            guard self.isCurrentBoard(generation) else { return }
+            next()
+        }
     }
 
     // MARK: - Modifier Card Display
@@ -832,6 +855,11 @@ final class BoardCoordinator {
         gameManager?.entityManager.takesWoundDamage = { [weak self] entity in
             self?.deferWoundDamage(of: entity) ?? false
         }
+        gameManager?.scenarioRulesManager.takesCharacterDamage = { [weak self] character, amount in
+            guard let self, self.isOnBoard(.character(character.id)) else { return false }
+            self.ruleDamageDue.append((character.id, amount))
+            return true
+        }
 
         // Monsters spawned by scenario rules go onto the board, not only into game state.
         gameManager?.scenarioRulesManager.onSpawnMonster = { [weak self] name, type, marker, health in
@@ -874,6 +902,8 @@ final class BoardCoordinator {
         abandonPendingPrompts()
         gameManager?.scenarioRulesManager.onSpawnMonster = nil
         gameManager?.entityManager.takesWoundDamage = nil
+        gameManager?.scenarioRulesManager.takesCharacterDamage = nil
+        ruleDamageDue = []
         gameManager?.roundManager.figuresTakeOwnTurns = false
         gameManager?.appPhase = .mainMenu
         boardScene = nil
@@ -1105,6 +1135,11 @@ final class BoardCoordinator {
 
         // Advance the round (start-of-round rules, monster ability draws, initiative order)
         gameManager.roundManager.nextGameState()
+        afterRuleDamage { [weak self] in self?.continueExecution() }
+    }
+
+    private func continueExecution() {
+        guard let gameManager = gameManager else { return }
         sweepDeadFigures()
         if scenarioResult != nil { return }
 

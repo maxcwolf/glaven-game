@@ -139,4 +139,50 @@ final class SmokeTestFixesTests: XCTestCase {
         XCTAssertEqual(BoardView.longRestWidth(cards: 4), 648)
         XCTAssertEqual(BoardView.longRestWidth(cards: 9), 760, "more scroll")
     }
+
+    /// Damage a scenario rule deals a character (Scenario 51's summoners, 60's late rounds) can
+    /// be negated by losing cards, like any damage (p.22); before, it bypassed the choice.
+    func testScenarioRuleDamageCanBeNegated() async throws {
+        let sim = try ScenarioSimulator(scenario: "1", options: .init(seed: 2))
+        let rules = try JSONDecoder().decode([ScenarioRule].self, from: Data(#"""
+            [{"round": "true", "start": true, "figures": [{"identifier": {"type": "character", "name": ".*"}, "type": "damage", "value": 2}]}]
+            """#.utf8))
+        var data = try XCTUnwrap(sim.gm.game.scenario?.data)
+        data.rules = rules
+        sim.gm.game.scenario = Scenario(data: data)
+        sim.coord.autoResolvePrompts = false
+        let character = sim.gm.game.characters[0]
+        sim.gm.scenarioRulesManager.evaluateRules(phase: .roundStart)
+        XCTAssertEqual(character.health, character.maxHealth, "the board takes it, not the rule")
+        XCTAssertEqual(sim.coord.ruleDamageDue.count, sim.gm.game.characters.count)
+
+        var continued = false
+        sim.coord.afterRuleDamage { continued = true }
+        _ = await waitUntil { sim.coord.pendingDamage != nil }
+        XCTAssertEqual(sim.coord.pendingDamage?.characterID, character.id, "the character is asked")
+        XCTAssertEqual(sim.coord.pendingDamage?.damage, 2)
+        // The first takes the damage, the rest lose a card from hand to negate it.
+        sim.coord.resolvePendingDamage(choice: .takeDamage)
+        let others = Array(sim.gm.game.characters.dropFirst())
+        let hands = others.map(\.handCards.count)
+        for other in others {
+            _ = await waitUntil { sim.coord.pendingDamage?.characterID == other.id }
+            sim.coord.resolvePendingDamage(choice: .loseHandCard(cardId: other.handCards[0]))
+        }
+        _ = await waitUntil { continued }
+        XCTAssertTrue(continued, "the round carries on")
+        XCTAssertEqual(character.health, character.maxHealth - 2)
+        XCTAssertEqual(others.map(\.handCards.count), hands.map { $0 - 1 }, "each lost a card instead")
+        XCTAssertTrue(others.allSatisfy { $0.health == $0.maxHealth })
+    }
+
+    private func waitUntil(timeout: TimeInterval = 3, _ condition: () -> Bool) async -> Bool {
+        let deadline = Date().addingTimeInterval(timeout)
+        while !condition() {
+            if Date() > deadline { return false }
+            await Task.yield()
+            try? await Task.sleep(nanoseconds: 1_000_000)
+        }
+        return true
+    }
 }
