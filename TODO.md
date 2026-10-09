@@ -476,10 +476,11 @@ Performance & robustness
 - [x] The last-draw panel carries over into the next scenario
 - [x] Short-rest re-pick offered more than once — it was already disabled after one use, just not visibly (restyle below)
 - [ ] Element consumption should be the player's choice, not automatic
-- [ ] Move 0 with a rider (Rumbling Advance)
+- [x] Move 0 with a rider (Rumbling Advance): tap the character to stay
 - [x] A new campaign is saved once a recruit keeps a quest (it was already saved on leaving the app and at each round's start)
 - [x] Verify #2's "3 Curses each" start rule (`testScenario2CursesAddedOnceNotPerKill`)
-- [ ] Learning tips: four at once on the first attack (one swallows a tap); Resting tip after the rest prompt
+- [ ] Learning tips: four at once on the first attack (one swallows a tap)
+- [x] Resting tip comes with the first rest offer (short rest, or long rest at card choice)
 - [x] No rest prompts once the scenario is won
 - [x] "Special Effect" buttons should name what the half does
 - [ ] Warn when a move's path opens a door

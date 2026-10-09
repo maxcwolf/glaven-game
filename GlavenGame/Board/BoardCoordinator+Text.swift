@@ -161,10 +161,12 @@ extension BoardCoordinator {
         case .placingCharacter(let id):
             return Instruction(title: "Place \(characterName(id))", detail: "Tap a highlighted starting hex",
                                canSkip: false)
-        case .selectingMove(_, let range, _, let teleport, let moveMode):
+        case .selectingMove(let mover, let range, _, let teleport, let moveMode):
             let verb = teleport ? "Teleport" : (moveMode == .jump ? "Jump" : (moveMode == .fly ? "Fly" : "Move"))
-            return Instruction(title: "\(verb) \(range)", detail: "Tap a highlighted hex to move there",
-                               canSkip: ownTurn)
+            let detail = canStayPut(mover) && !teleport
+                ? "Tap a highlighted hex to move there, or \(name(mover)) to stay"
+                : "Tap a highlighted hex to move there"
+            return Instruction(title: "\(verb) \(range)", detail: detail, canSkip: ownTurn)
         case .selectingAttackTarget(_, let range, _):
             let value = activePlayerTurn?.currentAttackValue()
             let title = value.map { "Attack \($0), Range \(range)" } ?? "Attack, Range \(range)"

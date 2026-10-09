@@ -139,6 +139,10 @@ extension BoardCoordinator {
         if let rules = scenarioBrief?.rules, !rules.isEmpty {
             teach(.specialRules, "This scenario has \(rules.count == 1 ? "a special rule" : "\(rules.count) special rules").", at: .goal)
         }
+        // A long rest is offered with the cards: the tip comes with the first chance to take one.
+        if let tired = game.characters.first(where: { !$0.exhausted && !$0.absent && $0.discardedCards.count >= 2 }) {
+            teach(.resting, "\(characterName(tired.id)) may long rest this round instead of playing cards.", at: .cardPanel)
+        }
         if let short = game.characters.first(where: { !$0.exhausted && !$0.absent && $0.handCards.count <= 4 }) {
             teach(.handIsAClock, "\(characterName(short.id)) has \(short.handCards.count) cards left in hand.", at: .cardPanel)
         }

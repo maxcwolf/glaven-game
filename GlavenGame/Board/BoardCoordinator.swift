@@ -610,6 +610,8 @@ final class BoardCoordinator {
                 characterID: character.id,
                 randomCardId: randomCardId
             )
+            // Before the choice, not after it (the rest's log line taught it too late).
+            teach(.resting, "\(characterName(character.id)) may short rest now.")
             return
         }
 
@@ -1701,7 +1703,9 @@ final class BoardCoordinator {
             occupiedByEnemy: enemies, occupiedByAlly: allies
         )
 
-        let validHexes = Set(reachable.keys).subtracting([pos])
+        var validHexes = Set(reachable.keys).subtracting([pos])
+        // A move with text that happens as it ends may be Move 0: the character's own hex.
+        if canStayPut(pieceID) { validHexes.insert(pos) }
         if validHexes.isEmpty {
             log("\(name(pieceID)) has nowhere to move", category: .move)
             interactionMode = .idle
@@ -1711,6 +1715,13 @@ final class BoardCoordinator {
         interactionMode = .selectingMove(pieceID: pieceID, range: moveRange, validHexes: validHexes, mode: mode)
         let style: HighlightStyle = mode == .jump ? .jump : (mode == .fly ? .fly : .move)
         boardScene?.highlightHexes(validHexes, style: style, offsetCol: offsetCol, offsetRow: offsetRow)
+    }
+
+    /// Whether the acting character's move prints something that happens as it ends, so moving
+    /// no hexes is worth choosing (GH: any ability may be performed for 0).
+    func canStayPut(_ pieceID: PieceID) -> Bool {
+        guard case .character(let id) = pieceID, let turn = activePlayerTurn, turn.characterID == id else { return false }
+        return !turn.afterMoveTexts.isEmpty
     }
 
     /// Begin a jump move action — ignores figures and terrain except on the last hex.
@@ -1751,7 +1762,7 @@ final class BoardCoordinator {
         guard let pos = boardState.piecePositions[pieceID] else { return }
         let (enemies, allies) = movementSets(for: pieceID)
 
-        guard let path = Pathfinder.findPath(
+        guard let path = target == pos ? [pos] : Pathfinder.findPath(
             board: boardState, from: pos, to: target, mode: mode,
             canOpenDoors: true, maxCost: range,
             occupiedByEnemy: enemies, occupiedByAlly: allies
@@ -2539,6 +2550,11 @@ final class BoardCoordinator {
         let asked = String(describing: interactionMode)
         defer { if String(describing: interactionMode) != asked { activePlayerTurn?.choiceMade() } }
         switch interactionMode {
+        case .selectingMove(let mover, let range, let validHexes, false, let mode):
+            // Move 0: the character taps themselves.
+            if piece == mover, let pos = boardState.piecePositions[mover], validHexes.contains(pos) {
+                executeMove(pieceID: mover, to: pos, range: range, mode: mode)
+            }
         case .selectingAttackTarget(let attackerID, _, let validTargets):
             if validTargets.contains(piece), let forced = pendingForcedAttack {
                 pendingForcedAttack = nil

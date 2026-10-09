@@ -198,6 +198,24 @@ final class TurnFlowTests: XCTestCase {
         XCTAssertTrue(brute.activeCards.isEmpty)
     }
 
+    /// In learning mode the Resting tip comes with the first short-rest offer, before the
+    /// choice (iPad playthrough 2026-10-09: it came only after Skip Rest).
+    func testTheRestingTipComesWithTheOffer() {
+        coord.autoResolvePrompts = false
+        gm.game.learningMode = true
+        let brute = add("brute", at: HexCoord(3, 3))
+        coord.boardPhase = .execution
+        gm.game.state = .next
+        brute.handCards = [3, 4, 5]
+        brute.discardedCards = [1, 2]
+        coord.turnOrder = []
+        coord.currentTurnIndex = -1
+        coord.advanceToNextFigure()   // the round ends
+        XCTAssertNotNil(coord.pendingShortRest)
+        let taught = ([coord.pendingTip] + coord.tipQueue).compactMap { $0?.topic }
+        XCTAssertTrue(taught.contains(.resting), "\(taught)")
+    }
+
     /// Once the scenario is won (or lost) this round, no short rest is offered before the end
     /// (iPad playthrough 2026-10-09: two rest prompts came between the last kill and victory).
     func testNoShortRestOnceTheScenarioIsDecided() {
@@ -213,6 +231,45 @@ final class TurnFlowTests: XCTestCase {
         coord.advanceToNextFigure()   // the round ends
         XCTAssertNil(coord.pendingShortRest)
         XCTAssertEqual(coord.scenarioResult, .victory)
+    }
+
+    // MARK: - Move 0
+
+    /// A move whose text happens as it ends can be Move 0: the character taps themselves and
+    /// stays, and Rumbling Advance's adjacent figures still suffer 1 damage (iPad playthrough
+    /// 2026-10-09: the only way to keep the damage was to move away and back).
+    func testAMoveWithARiderCanBeMoveZero() async throws {
+        let cragheart = add("cragheart", at: HexCoord(3, 3))
+        let piece = try XCTUnwrap(coord.spawnMonster(name: "bandit-guard", type: .normal, at: HexCoord(3, 4), origin: .placed))
+        let guardian = try XCTUnwrap(coord.entity(for: piece))
+        let before = guardian.health
+        let advance = try XCTUnwrap(deck("cragheart").first { $0.cardId == 119 })
+        let other = try XCTUnwrap(deck("cragheart").first { $0.cardId == 126 })
+        let turn = turn(for: cragheart, top: other, bottom: advance)
+        turn.skipRemainingActions()   // the top half
+        while turn.phase == .executeBottomAction {
+            turn.executeCurrentAction()
+            if case .selectingMove = coord.interactionMode { break }
+        }
+        guard case .selectingMove(_, _, let hexes, _, _) = coord.interactionMode else { return XCTFail("the move waits") }
+        XCTAssertTrue(hexes.contains(HexCoord(3, 3)), "the character's own hex is a choice")
+        XCTAssertTrue(coord.instruction(for: coord.interactionMode)?.detail.contains("to stay") == true)
+        coord.handlePieceTap(.character(cragheart.id))
+        _ = await waitUntil { !turn.isWaiting }
+        XCTAssertEqual(coord.boardState.piecePositions[.character(cragheart.id)], HexCoord(3, 3))
+        XCTAssertEqual(guardian.health, before - 1, "the adjacent guard suffers 1 damage")
+    }
+
+    /// A plain move doesn't offer staying put.
+    func testAPlainMoveDoesNotOfferTheCharactersHex() throws {
+        let brute = add("brute", at: HexCoord(3, 3))
+        let trample = try XCTUnwrap(deck("brute").first { $0.name == "Trample" })
+        let dagger = try XCTUnwrap(deck("brute").first { $0.name == "Spare Dagger" })
+        let turn = turn(for: brute, top: dagger, bottom: trample)
+        turn.skipRemainingActions()
+        turn.executeCurrentAction()
+        guard case .selectingMove(_, _, let hexes, _, _) = coord.interactionMode else { return XCTFail("a move") }
+        XCTAssertFalse(hexes.contains(HexCoord(3, 3)))
     }
 
     // MARK: - The log

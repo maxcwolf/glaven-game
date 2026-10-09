@@ -47,7 +47,12 @@ extension BoardCoordinator {
     /// Returns false if the figure died (or became exhausted) along the way.
     @discardableResult
     @MainActor func moveAlong(_ pieceID: PieceID, path: [HexCoord], style: MovementStyle) async -> Bool {
-        guard path.count > 1 else { return isOnBoard(pieceID) }
+        guard path.count > 1 else {
+            // Move 0: the character stays put, and what the move prints still happens
+            // (Rumbling Advance's "all adjacent allies and enemies suffer 1 damage").
+            if path.count == 1 { await afterOwnMove(pieceID, path: path, style: style) }
+            return isOnBoard(pieceID)
+        }
         moveObserver?(pieceID, path, style)
         // The acting character's own movement, for the items that count it.
         if style != .forced, case .character(let id) = pieceID, activePlayerTurn?.characterID == id {
@@ -103,6 +108,13 @@ extension BoardCoordinator {
                 openDoor(at: hex)
             }
         }
+        await afterOwnMove(pieceID, path: path, style: style)
+        return isOnBoard(pieceID)
+    }
+
+    /// What the acting character's move does once it ends: text printed inside it, and the
+    /// conditions it gives enemies moved through.
+    @MainActor private func afterOwnMove(_ pieceID: PieceID, path: [HexCoord], style: MovementStyle) async {
         if let turn = activePlayerTurn, case .character(let id) = pieceID, turn.characterID == id,
            style != .forced, !turn.afterMoveTexts.isEmpty {
             for text in turn.afterMoveTexts {
@@ -132,7 +144,6 @@ extension BoardCoordinator {
             }
             turn.movedThroughConditions = []
         }
-        return isOnBoard(pieceID)
     }
 
     /// Damage printed on a card: "all adjacent allies and enemies", "all adjacent allies",
