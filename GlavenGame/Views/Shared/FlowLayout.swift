@@ -22,6 +22,7 @@ struct FlowLayout: Layout {
         var x: CGFloat = 0
         var y: CGFloat = 0
         var rowHeight: CGFloat = 0
+        var widest: CGFloat = 0
 
         for subview in subviews {
             let size = subview.sizeThatFits(.unspecified)
@@ -32,9 +33,11 @@ struct FlowLayout: Layout {
             }
             positions.append(CGPoint(x: x, y: y))
             rowHeight = Swift.max(rowHeight, size.height)
+            widest = Swift.max(widest, x + size.width)
             x += size.width + spacing
         }
 
-        return (CGSize(width: maxWidth, height: y + rowHeight), positions)
+        // As wide as the rows are, not all the width offered: a few buttons don't stretch their panel.
+        return (CGSize(width: widest, height: y + rowHeight), positions)
     }
 }

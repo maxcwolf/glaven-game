@@ -220,7 +220,7 @@ reaches; `ContentView` only shows the main menu, the party screen and the board.
 - [x] Hold Prosperity, Reputation, City Event and Sanctuary in town to learn about them (`docs/mockups/town-hold-*.png`): the board's explanation card under the chip, with How to Play topics for each
 - [x] Unlocking looked won scenarios up by number in load order, so a solo scenario sharing the number could unlock nothing (#4 Crypt of the Damned → #5, #6) (`testWinningAScenarioUnlocksWhatItsCampaignCardSays`)
 - [x] Event text showed raw `<br><br>` (city event 11 and 13 others): line breaks become paragraphs (`testEventTextHasNoMarkup`)
-- [ ] Board action panel: a tall empty area above the turn controls on the 11-inch iPad
+- [x] Board action panel: a tall empty area above and beside the turn controls on the 11-inch iPad; FlowLayout claimed all the width offered (`testAFlowIsAsWideAsItsRows`)
 - [ ] Learning mode, still to write: "Why?" for escorts; FH topics (loot cards, outposts) when FH play comes
 
 Phase I — safety & words (done)

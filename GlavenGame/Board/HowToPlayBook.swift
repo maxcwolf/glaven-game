@@ -341,7 +341,7 @@ struct LearnArtView: View {
                     }
                 }
             }
-            .frame(maxWidth: width, alignment: .leading)
+            .frame(width: width, alignment: .leading)
         case .order(let order):
             FlowLayout(spacing: 10) {
                 ForEach(Array(order.enumerated()), id: \.offset) { index, entry in
@@ -363,7 +363,7 @@ struct LearnArtView: View {
                     }
                 }
             }
-            .frame(maxWidth: width, alignment: .leading)
+            .frame(width: width, alignment: .leading)
         case .cards(let cards):
             HStack(spacing: 14) {
                 ForEach(Array(cards.enumerated()), id: \.offset) { _, card in
@@ -390,13 +390,13 @@ struct LearnArtView: View {
                     }
                 }
             }
-            .frame(maxWidth: width, alignment: .leading)
+            .frame(width: width, alignment: .leading)
         case .advantage:
             FlowLayout(spacing: 28) {
                 draw("Advantage", keep: 0, note: "keep the better")
                 draw("Disadvantage", keep: 1, note: "keep the worse")
             }
-            .frame(maxWidth: width, alignment: .leading)
+            .frame(width: width, alignment: .leading)
         case .condition(let condition):
             HStack(spacing: 18) {
                 BundledImage(ImageLoader.conditionIcon(condition.rawValue), size: 72, systemName: "circle")
@@ -443,7 +443,7 @@ struct LearnArtView: View {
                     chip(part, lit: index == parts.count - 1)
                 }
             }
-            .frame(maxWidth: width, alignment: .leading)
+            .frame(width: width, alignment: .leading)
         case .diagram(let diagram):
             HexDiagramView(diagram: diagram, maxWidth: min(width, 600))
         case .swap(let from, let to):

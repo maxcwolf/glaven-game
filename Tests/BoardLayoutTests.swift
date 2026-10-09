@@ -106,4 +106,18 @@ final class PartyScreenLayoutTests: XCTestCase {
         XCTAssertEqual(PlayerTextTests.lint(GameSetupView.difficultyHint(for: gm)), [])
         XCTAssertEqual(lineHeight(), before, accuracy: 0.5, "and the same space after")
     }
+
+    /// Regression: FlowLayout reported all the width it was offered, so the turn controls'
+    /// buttons stretched the action panel across the screen, leaving an empty block beside them.
+    func testAFlowIsAsWideAsItsRows() {
+        let buttons = FlowLayout(spacing: 8) {
+            ForEach(["Swap Cards", "Bottom First"], id: \.self) { Text($0).frame(width: 100, height: 30) }
+        }
+        let size = NSHostingController(rootView: buttons.fixedSize(horizontal: false, vertical: true))
+            .sizeThatFits(in: CGSize(width: 1000, height: 400))
+        XCTAssertEqual(size.width, 208, accuracy: 0.5, "two buttons and a gap, not the 1000 offered")
+        XCTAssertEqual(size.height, 30, accuracy: 0.5)
+        let wrapped = NSHostingController(rootView: buttons).sizeThatFits(in: CGSize(width: 150, height: 400))
+        XCTAssertEqual(wrapped.height, 68, accuracy: 0.5, "wraps to two rows when narrow")
+    }
 }

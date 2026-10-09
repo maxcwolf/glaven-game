@@ -413,7 +413,7 @@ struct BoardView: View {
         if let playerTurn = coordinator.activePlayerTurn {
             let character = gameManager.game.characters.first { $0.id == playerTurn.characterID }
             let edition = character?.edition ?? "gh"
-            HStack(alignment: .bottom, spacing: 16) {
+            HStack(alignment: .center, spacing: 16) {
                 // The two played cards, the half being performed lit
                 VStack(alignment: .leading, spacing: 6) {
                     Text(character.map { "Played · initiative \($0.initiative)" } ?? "Played")
