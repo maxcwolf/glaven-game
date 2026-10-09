@@ -16,6 +16,8 @@ struct BoardItemEffect: Equatable {
         case betweenSteps
         /// A melee or ranged attack on a single target (not an area or a multi-target attack).
         case singleMeleeAttack, singleRangedAttack
+        /// While the character places obstacles from a card (Stone Charm).
+        case placingObstacle
     }
 
     enum Part: Equatable {
@@ -77,6 +79,8 @@ struct BoardItemEffect: Equatable {
         case selfMove(Int, jump: Bool)
         /// More attack against these monster types only (Skullbane Axe: +5 against the undead).
         case attackBonusAgainst([String], Int)
+        /// One more obstacle to place (Stone Charm).
+        case extraObstacle
     }
 
     let moment: Moment
@@ -189,6 +193,7 @@ struct BoardItemEffect: Equatable {
         "gh-39": .init(.rangedAttack, .pull(2)),                              // Hooked Chain
         "gh-73": .init(.betweenSteps, .selfMove(4, jump: true)),              // Blinking Cape
         "gh-130": .init(.turn, consuming: [.light, .dark], .heal(25)),        // Helix Ring
+        "gh-138": .init(.placingObstacle, .extraObstacle),                    // Stone Charm
         "gh-113": .init(.singleMeleeAttack,                                   // Skullbane Axe
                         .attackBonusAgainst(["living-corpse", "living-spirit", "living-bones"], 5)),
     ]
@@ -299,6 +304,8 @@ extension BoardCoordinator {
             return attacker == me && turn.currentAttackRange() <= 1 && turn.pendingAreaPattern == nil
         case (.singleRangedAttack, .selectingAttackTarget(let attacker, _, _)):
             return attacker == me && turn.currentAttackRange() > 1 && turn.pendingAreaPattern == nil
+        case (.placingObstacle, .placingToken(let placer, .obstacle, _, _)):
+            return placer == me
         default:
             return false
         }
@@ -359,6 +366,10 @@ extension BoardCoordinator {
             turn.pendingPull += amount
         case .selfMove(let hexes, let jump):
             beginMoveAction(pieceID: me, moveRange: hexes, mode: jump ? .jump : .normal)
+        case .extraObstacle:
+            if case .placingToken(let placer, .obstacle, let remaining, let hexes) = interactionMode {
+                interactionMode = .placingToken(pieceID: placer, token: .obstacle, remaining: remaining + 1, validHexes: hexes)
+            }
         case .attackBonusAgainst(let monsters, let bonus):
             for monster in monsters { turn.attackBonusAgainst[monster, default: 0] += bonus }
         case .heal(let amount):
@@ -748,6 +759,8 @@ struct DefenseItem: Equatable {
     var negates = false
     /// An element the item consumes to work (Sun Shield: light).
     var consumes: ElementType? = nil
+    /// Offered for the owner's summons, not the owner (Phasing Idol).
+    var forSummons = false
 
     static let all: [DefenseItem] = [
         DefenseItem(key: "gh-4", disadvantage: true),              // Leather Armor
@@ -765,6 +778,7 @@ struct DefenseItem: Equatable {
         DefenseItem(key: "gh-91", shield: 4),                      // Steel Ring
         DefenseItem(key: "gh-140", shield: 3, consumes: .light),   // Sun Shield
         DefenseItem(key: "gh-51", negates: true),                  // Shadow Armor
+        DefenseItem(key: "gh-142", negates: true, forSummons: true), // Phasing Idol
     ]
     static let beforeDraw = all.filter(\.disadvantage)
     static let onDamage = all.filter { !$0.disadvantage }
@@ -773,6 +787,7 @@ struct DefenseItem: Equatable {
     static let ironHelmet = "gh-7"
 
     var question: String {
+        if negates && forSummons { return "Your summon suffers no damage from this attack?" }
         if negates { return "Suffer no damage from this attack?" }
         if let element = consumes {
             return "Consume \(GameText.elementName(element)) to gain Shield \(shield) against this attack?"
@@ -810,7 +825,13 @@ extension BoardCoordinator {
     /// spent and counted). Headless play never uses them.
     @MainActor func offerDefenseItem(_ item: DefenseItem, to target: PieceID, from attacker: PieceID) async -> Bool {
         let key = item.key
-        guard case .character(let id) = target, !autoResolvePrompts, let gameManager,
+        // The holder: the figure attacked, or for a summon's item (Phasing Idol) its owner.
+        let holderID: String? = {
+            if item.forSummons { return summonOwner(of: target)?.id }
+            if case .character(let id) = target { return id }
+            return nil
+        }()
+        guard let id = holderID, !autoResolvePrompts, let gameManager,
               let character = gameManager.game.characters.first(where: { $0.id == id }),
               character.carriedItems.contains(key),
               !character.spentItems.contains(key), !character.consumedItems.contains(key),
@@ -838,7 +859,7 @@ extension BoardCoordinator {
             character.itemSlotsUsed[key] = nil
         }
         gameManager.scenarioStatsManager.recordItemUse(by: character.name)
-        log("\(name(target)) uses \(data.name)", category: .info)
+        log("\(name(.character(id))) uses \(data.name)", category: .info)
         return true
     }
 }

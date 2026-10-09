@@ -804,4 +804,47 @@ final class BoardItemTests: XCTestCase {
         while turn.currentActionIndex == 0 && Date() < deadline { try await Task.sleep(nanoseconds: 1_000_000) }
         XCTAssertEqual(entity.health, 99 - 8, "Attack 3 + 5")
     }
+
+    /// Phasing Idol: when an enemy's attack would damage one of the character's summons, the
+    /// owner is asked, and the summon suffers no damage; the idol is consumed.
+    func testPhasingIdolSparesASummon() async throws {
+        brute.items = ["gh-142"]
+        coord.autoResolvePrompts = false
+        let summon = GameSummon(name: "bear", health: 6, maxHealth: 6)
+        brute.summons.append(summon)
+        let summonPiece = PieceID.summon(id: summon.id)
+        coord.boardState.placePiece(summonPiece, at: HexCoord(5, 3))
+        let bandit = try XCTUnwrap(coord.spawnMonster(name: "bandit-guard", type: .normal, at: HexCoord(6, 3), origin: .placed))
+        let plusTwo = AttackModifier.standard(.plus2)
+        Task { @MainActor in
+            await self.coord.performAttack(attacker: bandit, target: summonPiece, attack: AttackParameters(value: 3),
+                                           drawCard: { plusTwo })
+        }
+        let deadline = Date().addingTimeInterval(3)
+        while coord.pendingItemUse == nil && Date() < deadline { try await Task.sleep(nanoseconds: 1_000_000) }
+        XCTAssertEqual(coord.pendingItemUse?.characterID, brute.id, "the owner is asked")
+        XCTAssertEqual(coord.pendingItemUse?.question, "Your summon suffers no damage from this attack?")
+        coord.resolvePendingItemUse(true)
+        try await Task.sleep(nanoseconds: 50_000_000)
+        XCTAssertEqual(summon.health, 6)
+        XCTAssertTrue(brute.consumedItems.contains("gh-142"))
+    }
+
+    /// Stone Charm: while placing obstacles from a card, one more (Avalanche's two become three).
+    func testStoneCharmAddsAnObstacle() throws {
+        brute.items = ["gh-138"]
+        coord.autoResolvePrompts = false
+        _ = try startTurn()
+        XCTAssertFalse(usable().contains("gh-138"), "only while obstacles are being placed")
+        XCTAssertTrue(coord.beginPlacingTokens(.obstacle, count: 2, by: .character(brute.id)))
+        try use("gh-138")
+        guard case .placingToken(_, .obstacle, let remaining, _) = coord.interactionMode else { return XCTFail() }
+        XCTAssertEqual(remaining, 3)
+        for _ in 0..<3 {
+            guard case .placingToken(_, _, _, let hexes) = coord.interactionMode else { return XCTFail("more to place") }
+            coord.handleHexTap(try XCTUnwrap(hexes.sorted().first))
+        }
+        XCTAssertEqual(HexCoord(3, 3).neighbors.filter { coord.boardState.cells[$0]?.overlay == .obstacle }.count, 3)
+        XCTAssertTrue(brute.spentItems.contains("gh-138"))
+    }
 }
