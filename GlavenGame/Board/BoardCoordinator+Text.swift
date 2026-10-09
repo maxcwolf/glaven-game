@@ -83,7 +83,8 @@ extension BoardCoordinator {
     /// be taken back.
     func instruction(for mode: InteractionMode) -> Instruction? {
         guard var instruction = baseInstruction(for: mode) else { return nil }
-        instruction.canCancel = activePlayerTurn?.canCancelChoice ?? false
+        // Not while a card is shown full size on top: Escape (Cancel's key) is for closing that.
+        instruction.canCancel = (activePlayerTurn?.canCancelChoice ?? false) && previewCardId == nil
         return instruction
     }
 

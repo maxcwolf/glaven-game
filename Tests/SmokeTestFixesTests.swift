@@ -105,6 +105,10 @@ final class SmokeTestFixesTests: XCTestCase {
         guard case .selectingMove = coord.interactionMode else { return XCTFail("a hex to move to") }
         XCTAssertTrue(turn.canCancelChoice)
         XCTAssertEqual(coord.instruction(for: coord.interactionMode)?.canCancel, true)
+        // With a card shown full size on top, Escape is for closing it, not for the choice.
+        coord.showCardPreview(cardId: 1)
+        XCTAssertEqual(coord.instruction(for: coord.interactionMode)?.canCancel, false)
+        coord.dismissCardPreview()
         turn.cancelChoice()
         XCTAssertTrue({ if case .idle = coord.interactionMode { return true }; return false }())
         XCTAssertFalse(turn.bottomUsedAsDefault, "the card isn't spent as a basic move")

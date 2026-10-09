@@ -1506,6 +1506,7 @@ struct BoardView: View {
                             }
                             .accessibilityLabel("Close")
                             .buttonStyle(.plain)
+                            .keyboardShortcut(.cancelAction)
                             .padding(4)
                         }
                 } else {
