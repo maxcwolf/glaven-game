@@ -40,9 +40,9 @@ extension BoardCoordinator {
     /// Returns true if the target died.
     @discardableResult
     @MainActor func performAttack(attacker: PieceID, target aimedAt: PieceID, attack: AttackParameters,
-                       drawCard: (() -> AttackModifier?)? = nil) async -> Bool {
+                       drawCard: (() -> AttackModifier?)? = nil, from origin: HexCoord? = nil) async -> Bool {
         let target = provokedTarget(of: attacker, aimingAt: aimedAt)
-        guard let attackerPos = boardState.piecePositions[attacker],
+        guard let attackerPos = origin ?? boardState.piecePositions[attacker],
               let targetPos = boardState.piecePositions[target],
               let defender = entity(for: target) else { return false }
         attackObserver?(attacker, target)
@@ -216,6 +216,44 @@ extension BoardCoordinator {
             await sufferDamageWithMitigation(retaliate, to: attacker,
                                              source: "\(name(target))\u{2019}s retaliate", killer: target)
         }
+        await resolveDeathAttacks()
         return died
+    }
+
+    /// Make the "on death" attacks of monsters that fell (Cultists: Attack +2 on the figures
+    /// around where it fell), each from its last hex.
+    @MainActor func resolveDeathAttacks() async {
+        while !pendingDeathAttacks.isEmpty {
+            let death = pendingDeathAttacks.removeFirst()
+            guard let gameManager, let monster = gameManager.game.monsters.first(where: { $0.name == death.monster }) else { continue }
+            let game = gameManager.game
+            let characterCount = max(2, game.characters.filter { !$0.absent }.count)
+            let stat = monster.attackStat(for: death.type)
+            let base = stat?.attackValue(characterCount: characterCount, level: monster.level,
+                                         variables: MonsterAI.attackVariables(for: monster, gameState: game)) ?? 0
+            let spec = MonsterAbility.attack(death.action, stat: stat, baseAttack: base, baseRange: 0)
+            // Every enemy next to where it fell that the area can reach (the pattern turned to hit most).
+            let pattern = death.action.subActions?.first { $0.type == .area }?.value?.stringValue
+            let enemies = boardState.piecePositions.keys.filter { areEnemies(death.attacker, $0) }.sorted()
+            var victims: [PieceID] = []
+            if let pattern {
+                for focus in enemies where boardState.piecePositions[focus].map({ $0.isAdjacent(to: death.position) }) == true {
+                    let hit = AoEResolver.resolveTargets(pattern: pattern, attackerPos: death.position, focusTarget: focus,
+                                                         enemies: enemies, board: boardState)
+                    if hit.count > victims.count { victims = hit }
+                }
+            } else {
+                victims = enemies.filter { boardState.piecePositions[$0].map { $0.isAdjacent(to: death.position) } == true }
+            }
+            guard !victims.isEmpty else { continue }
+            log("\(name(death.attacker)) attacks as it dies", category: .attack)
+            deathAttackInProgress = death
+            for victim in victims where isOnBoard(victim) {
+                await performAttack(attacker: death.attacker, target: victim,
+                                    attack: AttackParameters(value: spec.value, conditions: spec.conditions),
+                                    from: death.position)
+            }
+            deathAttackInProgress = nil
+        }
     }
 }

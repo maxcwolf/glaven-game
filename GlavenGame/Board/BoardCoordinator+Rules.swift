@@ -248,6 +248,15 @@ extension BoardCoordinator {
             }
             entity.dead = true
             log("\(self.name(pieceID)) dies", category: .death)
+            // Cultists: "On death: Attack +2" on this round's card, made from where it fell.
+            if let position = boardState.piecePositions[pieceID],
+               let ability = gameManager.monsterManager.currentAbility(for: monster),
+               let onDeath = (ability.actions ?? []).first(where: {
+                   $0.type == .custom && $0.value?.stringValue.contains("ondeath") == true }),
+               let attack = onDeath.subActions?.first(where: { $0.type == .attack }) {
+                pendingDeathAttacks.append(DeathAttack(attacker: pieceID, monster: name, type: entity.type,
+                                                       position: position, action: attack))
+            }
             // GH p.19: a money token drops where a monster dies unless it was summoned or spawned;
             // bosses and named monsters drop none either.
             if entity.summonState == nil && entity.type != .boss && !monster.isBoss {

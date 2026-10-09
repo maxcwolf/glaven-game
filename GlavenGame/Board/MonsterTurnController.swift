@@ -251,6 +251,10 @@ final class MonsterTurnController {
             case .summon:
                 performSummon(action, pieceID: pieceID)
 
+            case .custom where action.value?.stringValue.contains("ondeath") == true:
+                // "On death: …" (Cultists) is made when the monster dies, not on its turn.
+                continue
+
             case .custom:
                 // Text printed as its own line ("All enemies suffer 2 damage"), and what it wraps.
                 performPrintedText(texts(in: ActionModel(type: .concatenation, subActions: [action]), monster: monster), pieceID: pieceID)

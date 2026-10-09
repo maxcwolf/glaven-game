@@ -399,6 +399,18 @@ final class BoardCoordinator {
     /// Non-nil while a character picks elements to infuse (Mana Potions).
     var pendingElementChoice: PendingElementChoice?
 
+    /// "On death" attacks (Cultists) waiting to be made, from where the monster fell.
+    struct DeathAttack {
+        let attacker: PieceID
+        let monster: String
+        let type: MonsterType
+        let position: HexCoord
+        let action: ActionModel
+    }
+    var pendingDeathAttacks: [DeathAttack] = []
+    /// The fallen monster making its "on death" attack right now, and the hex it fell on.
+    var deathAttackInProgress: DeathAttack?
+
     /// Figures every attack against has disadvantage this round (Giant Viper).
     var disadvantagedThisRound: Set<PieceID> = []
 

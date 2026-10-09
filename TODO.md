@@ -436,7 +436,8 @@ Scenario rewards (2026-10-08)
 - [ ] **Charged cards needing a choice or not yet coded**: Stone Pummel; Doomstalker dooms, Eclipse's extra actions, Vengeful Barrage, Grim Bargain
 - [x] **Items during board turns** (Phase VI: about 110 of 150 items play on the board)
 - [x] **Monster ability text**: traps (Archers, Flame Demon), damage around the monster or its target (Ancient Artillery, Night Demon, Flame Demon, Savvas Lavaflow), +2 against a flanked target (Hound, Giant Viper), disadvantage against the Giant Viper this round, the Harrower's heal per target damaged (`MonsterTextTests`)
-- [ ] **Cultists' "on death" attack** and the Lurker's "Shield 2 instead": not done yet
+- [x] **Cultists' "on death" attack**: made from where the Cultist fell, right after the attack that killed it, never on its own turn (`testACultistAttacksAsItDies`)
+- [ ] The Lurker's "Shield 2 instead" (consume Ice) stacks with its Shield 1
 - [ ] **Icy terrain** — no forced-movement mechanic
 - [ ] **Plague / Enfeeble** (FH) — no mechanics
 - [ ] **Multi-hex obstacles** — one overlay per hex

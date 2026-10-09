@@ -95,4 +95,18 @@ final class MonsterTextTests: XCTestCase {
         _ = first
         XCTAssertEqual(lastAttackValue(), alone + 2)
     }
+
+    /// Cultist (604): "On death: Attack +2" around where it falls, and not on its own turn.
+    func testACultistAttacksAsItDies() async throws {
+        let brute = character("brute", at: HexCoord(4, 3))
+        let piece = try await play("cultist", card: 604, at: HexCoord(3, 3))
+        XCTAssertFalse(coord.turnLog.contains { $0.message.contains("attacks as it dies") }, "alive, it doesn't")
+        let health = brute.health
+        let attacksBefore = coord.turnLog.filter { $0.message.contains("attacks Brute") }.count
+        coord.sufferDamage(99, to: piece, killer: .character(brute.id))
+        await coord.resolveDeathAttacks()
+        XCTAssertTrue(coord.turnLog.contains { $0.message.contains("attacks as it dies") })
+        XCTAssertEqual(coord.turnLog.filter { $0.message.contains("attacks Brute") }.count, attacksBefore + 1)
+        _ = health
+    }
 }

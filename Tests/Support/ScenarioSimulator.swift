@@ -448,7 +448,9 @@ final class ScenarioSimulator {
     /// Every attack: both figures on the board, enemies of each other, the target visible and in
     /// line of sight (GH p.18–19).
     private func checkAttack(_ attacker: PieceID, _ target: PieceID) {
-        guard let from = position(attacker), let to = position(target) else {
+        // A fallen Cultist attacks from the hex it fell on.
+        let fallen = coord.deathAttackInProgress.flatMap { $0.attacker == attacker ? $0.position : nil }
+        guard let from = fallen ?? position(attacker), let to = position(target) else {
             violation("\(attacker) attacks \(target), but one of them is not on the board")
             return
         }
