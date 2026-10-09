@@ -397,6 +397,41 @@ Scenario rewards (2026-10-08)
 - [x] **Choose a location** (GH 13: one of 15, 17, 20) unlocks only the chosen scenario
 - [x] **Shop stocked reward items from the start** — items 96–150 (scenario rewards, treasures, solo items) had no prosperity level and were for sale at prosperity 1; the shop ignored unlocked items (designs, random draws) and sold more copies than exist. It now offers prosperity items up to the prosperity level plus unlocked items, with stock limited to the item's copies
 
+### Full audit 2026-10-09 — fixed (gameplay, rules, UI, performance)
+
+Combat & conditions
+- [x] Attack modifier cards' self effects reach the attacker: a positive condition (the Scoundrel's Invisible) goes to the attacker, not the target; "Heal X, self", "Shield X, self" (for the round), element infusions and "refresh an item" are applied (`CombatEffectsTests`)
+- [x] Advantage/disadvantage compare the attacks the two cards make (on Attack 1, +2 beats ×2); a null is always the worst (`testAdvantageComparesTheAttacksTheCardsMake`)
+- [x] Wound damage at the start of a turn, and damage printed outside attacks (Flame Demon, Massive Boulder, Crater, Unstable Explosives), can be negated by losing cards like any damage (p.22)
+- [x] A monster entering play no longer wipes the round bonuses (a consumed element's Shield/Retaliate) of the others of its type
+- [x] The ten Bless cards are shared by every deck, the ten player Curses by the players' decks (p.23)
+
+Turns & rounds
+- [x] Skipping or taking back a summon's placement leaves no phantom summon (counted for X, kept the card active, hid Cancel for the rest of the scenario)
+- [x] A basic Attack 2 / Move 2 keeps the turn's start/end bonuses (Lumbering Bash's heal, Auto Turret's attack); the button only shows while usable, with its real value (Versatile Dagger)
+- [x] Round bonuses end before the short rest, so those cards can be recovered (p.30)
+- [x] Stunned and resting characters still loot at the end of their turn; a skipped target choice drops the item condition that rode on it
+- [x] An enemy within the Halberd's reach counts as the attack's target (its augments, XP and infusions are paid)
+- [x] Two chosen cards can still be changed before confirming (a third card replaces the second)
+
+Monster & summon AI
+- [x] Melee areas reaching further than 1 hex focus on enemies their pattern can cover (Harrower Infester, Deep Terror, Earth/Wind Demons, Savvas)
+- [x] Flying monsters may attack from over obstacles; an ally where a route runs out no longer shortens the move; a summon stopped by a trap attacks only what it reaches; the Bandit Commander's door run respects Immobilize and difficult terrain (`AIRulesTests`, `MonsterTextTests`)
+
+Campaign, town & saves
+- [x] New Campaign starts from nothing (prosperity, reputation, unlocks, looted treasures, log, events all carried over before) (`testANewCampaignCarriesNothingOver`)
+- [x] Prosperity level 8 at 50 checkmarks; battle goal checks capped at 18; scenario reputation capped at ±20
+- [x] Shop prices follow reputation (p.48); selling asks first and shows the half price; recruits start with 15 × (L + 1) gold and their level's XP, at most the prosperity level; dismissing a veteran asks first
+- [x] Random item design and random side scenario treasures are drawn (20 of the 75 GH treasures did nothing)
+- [x] Difficulty, monster initiatives, placed traps and a decided outcome are saved; a failed save is reported; saves missing fields still load
+- [x] Undo stays in town: on the board it stranded turns (a half-finished move never completed) and it could undo a finished scenario
+- [x] Quitting while placing characters sets out again from town without applying the setup twice; a resolved city/road event isn't owed again after a relaunch
+
+Performance & robustness
+- [x] Leaving or restarting the board resumes every waiting prompt and animation and stops stale turn tasks (they hung forever, or woke up and played on the next board) (`BoardTeardownTests`)
+- [x] Token portraits keyed by name (a freed image's address was reused, so a new monster could wear a dead one's face); decoded images, map tiles, the scenario brief and sound files are cached within bounds; no snapshot is encoded on every change during play
+- [x] UI: Return in the damage choice confirms the chosen card and never exhausts by itself; Escape closes a card preview rather than cancelling the choice under it; a placed character can move before the scenario begins; names come from labels; tappable cards are buttons to VoiceOver (`testTappableViewsAreButtons`)
+
 ### Remaining gaps
 
 - [x] **Scenario reward: add events** (GH 21, 35, 36, 51, 54) — the decks now start as cards 01–30 and scenario rewards shuffle cards in
@@ -448,4 +483,8 @@ Scenario rewards (2026-10-08)
 - [ ] **Multi-hex obstacles** — one overlay per hex
 - [ ] **Random dungeon mode**
 - [ ] **Pathfinding visualization** — no debug overlay for monster movement decisions
+- [ ] **"+1 Target" on attack modifier cards** (6 perk cards: Brute, Cragheart, Mindthief…) — the extra target isn't offered
+- [ ] **Scenario-rule damage** (ScenarioRulesManager "damage" figure effects) still bypasses the lose-cards choice
+- [ ] **Battle goals are dealt again** if the app quits between dealing and setting out
+- [ ] **Open rule question**: a ranged multi-target monster avoids disadvantage on its focus before maximizing targets (as listed above); the FAQ / JotL reading puts more targets first and counts disadvantage against every target — decide which to follow
 - [ ] **Simulator party rarely wins** — the tactical test policy wins ~2% of full playthroughs (mostly on Easy), so victory paths in late rooms and boss fights get little realistic coverage; a stronger policy (coordinated focus fire, card planning) would exercise them
