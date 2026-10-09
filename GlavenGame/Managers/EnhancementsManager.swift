@@ -172,6 +172,53 @@ final class EnhancementsManager {
         }
     }
 
+    // MARK: - The Enhancer
+
+    /// Why an enhancement can't be bought.
+    enum PurchaseProblem: Equatable {
+        /// Gloomhaven's Enhancer opens with The Power of Enhancement (Frozen Hollow).
+        case locked
+        case slotTaken
+        /// The board doesn't play it yet (hex areas, any element), so it isn't sold.
+        case notPlayable
+        case tooExpensive
+    }
+
+    /// The global achievement that opens Gloomhaven's Enhancer (GH p.42).
+    static let enhancerAchievement = "the-power-of-enhancement"
+
+    func enhancerOpen(edition: String) -> Bool {
+        edition != "gh" || game.tableRules.enhancerFromStart || game.globalAchievements.contains(Self.enhancerAchievement)
+    }
+
+    func purchaseProblem(_ enhancement: EnhancementAction, in slot: CardEnhancing.Slot, card: AbilityModel,
+                         for character: GameCharacter) -> PurchaseProblem? {
+        if !enhancerOpen(edition: character.edition) { return .locked }
+        if Self.enhancement(on: slot.cardId, half: slot.half, actionIndex: slot.actionIndex,
+                            slotIndex: slot.slotIndex, in: character.enhancements) != nil { return .slotTaken }
+        if !CardEnhancing.options(for: slot, edition: character.edition).contains(enhancement) { return .notPlayable }
+        let cost = CardEnhancing.cost(enhancement, in: slot, card: card, enhancements: character.enhancements,
+                                      edition: character.edition)
+        if character.loot < cost { return .tooExpensive }
+        return nil
+    }
+
+    /// Buy an enhancement for one of the character's cards: it stays on the card for good, and
+    /// costs its price in the character's gold. Returns whether it was bought.
+    @discardableResult
+    func buy(_ enhancement: EnhancementAction, in slot: CardEnhancing.Slot, card: AbilityModel,
+             for character: GameCharacter) -> Bool {
+        guard purchaseProblem(enhancement, in: slot, card: card, for: character) == nil else { return false }
+        let cost = CardEnhancing.cost(enhancement, in: slot, card: card, enhancements: character.enhancements,
+                                      edition: character.edition)
+        onBeforeMutate?()
+        character.loot -= cost
+        character.enhancements.append(Enhancement(cardId: slot.cardId, actionHalf: slot.half,
+                                                  actionIndex: slot.actionIndex, slotIndex: slot.slotIndex,
+                                                  action: enhancement))
+        return true
+    }
+
     // MARK: - Enhancement Operations
 
     func addEnhancement(_ enhancement: Enhancement, to character: GameCharacter) {

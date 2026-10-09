@@ -9,7 +9,6 @@ import CoreText
 enum GlavenFont {
     static let titleFamily = "PirataOne-Regular"
     static let fhTitleFamily = "GermaniaOne-Regular"
-    static let bodyFamily = "SakkalMajalla-Bold"
 
     private static var registered = false
 
@@ -19,8 +18,7 @@ enum GlavenFont {
 
         let fontFiles = [
             "PirataOne-Gloomhaven.ttf",
-            "germaniaone.ttf",
-            "majallab.ttf"
+            "germaniaone.ttf"
         ]
 
         for filename in fontFiles {
@@ -38,10 +36,5 @@ enum GlavenFont {
     /// Frosthaven title font (GermaniaOne)
     static func fhTitle(size: CGFloat) -> Font {
         .custom(fhTitleFamily, size: size)
-    }
-
-    /// Body text font (Majalla Bold)
-    static func body(size: CGFloat) -> Font {
-        .custom(bodyFamily, size: size)
     }
 }

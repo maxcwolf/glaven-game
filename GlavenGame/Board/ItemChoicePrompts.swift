@@ -1,0 +1,259 @@
+import SwiftUI
+
+/// Which elements an item infuses (Mana Potions, Staff of Elements, Circlet of Elements).
+struct ElementChoicePrompt: View {
+    let pending: BoardCoordinator.PendingElementChoice
+    let coordinator: BoardCoordinator
+    @State private var chosen: [ElementType] = []
+
+    var body: some View {
+        ItemChoicePanel(title: pending.itemName,
+                        detail: pending.count == 1 ? "Infuse one element." : "Infuse \(pending.count) different elements.") {
+            HStack(spacing: 10) {
+                ForEach(ElementType.gameElements, id: \.self) { element in
+                    let on = chosen.contains(element)
+                    Button {
+                        if let index = chosen.firstIndex(of: element) { chosen.remove(at: index) }
+                        else if chosen.count < pending.count { chosen.append(element) }
+                    } label: {
+                        VStack(spacing: 4) {
+                            BundledImage(ImageLoader.elementIcon(element.rawValue), size: 36, systemName: "circle.fill")
+                            Text(GameText.elementName(element))
+                                .font(.caption)
+                                .foregroundStyle(BoardTheme.text)
+                        }
+                        .padding(8)
+                        .background(on ? BoardTheme.brass.opacity(0.35) : BoardTheme.raised,
+                                    in: RoundedRectangle(cornerRadius: BoardTheme.Radius.medium))
+                        .overlay(RoundedRectangle(cornerRadius: BoardTheme.Radius.medium)
+                            .stroke(on ? BoardTheme.brass : .clear, lineWidth: 2))
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(GameText.elementName(element))
+                    .accessibilityAddTraits(on ? [.isButton, .isSelected] : .isButton)
+                }
+            }
+        } actions: {
+            Button(chosen.isEmpty ? "Infuse Nothing" : "Infuse \(GameText.list(chosen.map(GameText.elementName)))") {
+                coordinator.resolveElementChoice(chosen)
+            }
+            .buttonStyle(.borderedProminent)
+            .tint(BoardTheme.brass)
+        }
+    }
+}
+
+/// Which negative condition an item removes (Minor Cure Potion).
+struct ConditionRemovalPrompt: View {
+    let pending: BoardCoordinator.PendingConditionRemoval
+    let coordinator: BoardCoordinator
+
+    var body: some View {
+        ItemChoicePanel(title: pending.itemName, detail: "Remove one negative condition.") {
+            HStack(spacing: 10) {
+                ForEach(pending.options, id: \.self) { condition in
+                    Button {
+                        coordinator.resolveConditionRemoval(condition)
+                    } label: {
+                        VStack(spacing: 4) {
+                            BundledImage(ImageLoader.conditionIcon(condition.rawValue), size: 36, systemName: "bolt.fill")
+                            Text(GameText.conditionName(condition))
+                                .font(.caption)
+                                .foregroundStyle(BoardTheme.text)
+                        }
+                        .padding(8)
+                        .background(BoardTheme.raised, in: RoundedRectangle(cornerRadius: BoardTheme.Radius.medium))
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Remove \(GameText.conditionName(condition))")
+                }
+            }
+        } actions: {
+            Button("Keep Them All") { coordinator.resolveConditionRemoval(nil) }
+                .buttonStyle(.bordered)
+                .tint(BoardTheme.text)
+        }
+    }
+}
+
+/// Which ally recovers discarded cards (Volatile Concoction, Reinvigorating Elixir).
+struct AllyChoicePrompt: View {
+    let pending: BoardCoordinator.PendingAllyChoice
+    let coordinator: BoardCoordinator
+
+    var body: some View {
+        ItemChoicePanel(title: pending.title, detail: "Which ally recovers their discarded cards?") {
+            HStack(spacing: 10) {
+                ForEach(pending.characterIDs, id: \.self) { id in
+                    Button(coordinator.characterName(id)) { coordinator.resolveAllyChoice(id) }
+                        .buttonStyle(.borderedProminent)
+                        .tint(BoardTheme.brass)
+                }
+            }
+        } actions: {
+            Button("No One") { coordinator.resolveAllyChoice(nil) }
+                .buttonStyle(.bordered)
+                .tint(BoardTheme.text)
+        }
+        .frame(maxWidth: 560)
+    }
+}
+
+/// "You may suffer up to N damage" (the Berserker): how much.
+struct SufferChoicePrompt: View {
+    let pending: BoardCoordinator.PendingSufferChoice
+    let coordinator: BoardCoordinator
+
+    var body: some View {
+        ItemChoicePanel(title: "Suffer Damage?",
+                        detail: "\(coordinator.characterName(pending.characterID)) may suffer up to \(pending.most) damage. The more suffered, the stronger the action.") {
+            HStack(spacing: 10) {
+                ForEach(0...pending.most, id: \.self) { amount in
+                    Button(amount == 0 ? "None" : "\(amount)") { coordinator.resolveSufferChoice(amount) }
+                        .buttonStyle(.borderedProminent)
+                        .tint(amount == 0 ? .gray : BoardTheme.defeat)
+                        .accessibilityLabel(amount == 0 ? "Suffer no damage" : "Suffer \(amount) damage")
+                }
+            }
+        } actions: {
+            EmptyView()
+        }
+        .frame(maxWidth: 560)
+    }
+}
+
+/// The panel both pickers share: the item's name, what to do, the choices and a button row.
+private struct ItemChoicePanel<Choices: View, Actions: View>: View {
+    let title: String
+    let detail: String
+    @ViewBuilder let choices: Choices
+    @ViewBuilder let actions: Actions
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text(title)
+                .font(BoardTheme.display(26))
+                .foregroundStyle(BoardTheme.text)
+            Text(detail)
+                .font(.body)
+                .foregroundStyle(BoardTheme.secondaryText)
+            choices
+            HStack {
+                Spacer()
+                actions
+            }
+            .controlSize(.large)
+        }
+        .padding(20)
+        .boardPanel()
+        .padding()
+    }
+}
+
+/// Boots of Speed / Quickness, once every card is revealed: go earlier, keep, or go later.
+struct InitiativeChangePrompt: View {
+    let pending: BoardCoordinator.PendingInitiativeChange
+    let coordinator: BoardCoordinator
+
+    var body: some View {
+        let earlier = max(1, pending.initiative - pending.amount)
+        let later = min(99, pending.initiative + pending.amount)
+        ItemChoicePanel(title: pending.itemName,
+                        detail: "\(coordinator.characterName(pending.characterID)) leads with initiative \(pending.initiative). Every card is revealed: change it by \(pending.amount)?") {
+            EmptyView()
+        } actions: {
+            Button("Earlier (\(earlier))") { coordinator.resolveInitiativeChange(-pending.amount) }
+                .buttonStyle(.borderedProminent)
+                .tint(BoardTheme.brass)
+            Button("Keep \(pending.initiative)") { coordinator.resolveInitiativeChange(0) }
+                .buttonStyle(.bordered)
+                .tint(BoardTheme.text)
+            Button("Later (\(later))") { coordinator.resolveInitiativeChange(pending.amount) }
+                .buttonStyle(.borderedProminent)
+                .tint(BoardTheme.brass)
+        }
+        .frame(maxWidth: 560)
+    }
+}
+
+/// Which items to refresh (Empowering Talisman, Pendant of Dark Pacts, Utility Belt).
+struct ItemRefreshPrompt: View {
+    let pending: BoardCoordinator.PendingItemRefresh
+    let coordinator: BoardCoordinator
+    @State private var chosen: [String] = []
+
+    var body: some View {
+        ItemChoicePanel(title: pending.itemName,
+                        detail: pending.count == 1 ? "Refresh one item." : "Refresh up to \(pending.count) items.") {
+            FlowLayout(spacing: 8) {
+                ForEach(pending.options, id: \.self) { key in
+                    let on = chosen.contains(key)
+                    Button {
+                        if let index = chosen.firstIndex(of: key) { chosen.remove(at: index) }
+                        else if chosen.count < pending.count { chosen.append(key) }
+                    } label: {
+                        Text(coordinator.itemData(key)?.name ?? key)
+                            .font(.subheadline)
+                            .foregroundStyle(BoardTheme.text)
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 8)
+                            .background(on ? BoardTheme.brass.opacity(0.35) : BoardTheme.raised, in: Capsule())
+                            .overlay(Capsule().stroke(on ? BoardTheme.brass : .clear, lineWidth: 2))
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityAddTraits(on ? [.isButton, .isSelected] : .isButton)
+                }
+            }
+        } actions: {
+            Button(chosen.isEmpty ? "Refresh Nothing" : "Refresh \(chosen.count)") {
+                coordinator.resolveItemRefresh(chosen)
+            }
+            .buttonStyle(.borderedProminent)
+            .tint(BoardTheme.brass)
+        }
+        .frame(maxWidth: 560)
+    }
+}
+
+/// Attack or Move, the player's choice (Master's Lute after a Song).
+struct ActionChoicePrompt: View {
+    let pending: BoardCoordinator.PendingActionChoice
+    let coordinator: BoardCoordinator
+
+    var body: some View {
+        ItemChoicePanel(title: pending.title,
+                        detail: "After the Song: Attack \(pending.value) or Move \(pending.value).") {
+            EmptyView()
+        } actions: {
+            Button("Neither") { coordinator.resolveActionChoice(nil) }
+                .buttonStyle(.bordered)
+            Button("Move \(pending.value)") { coordinator.resolveActionChoice("move") }
+                .buttonStyle(.borderedProminent)
+                .tint(BoardTheme.brass)
+            Button("Attack \(pending.value)") { coordinator.resolveActionChoice("attack") }
+                .buttonStyle(.borderedProminent)
+                .tint(BoardTheme.brass)
+        }
+    }
+}
+
+/// A figure to pick from a list while a monster's turn waits (Heart of the Betrayer).
+struct FigureChoicePrompt: View {
+    let pending: BoardCoordinator.PendingFigureChoice
+    let coordinator: BoardCoordinator
+
+    var body: some View {
+        ItemChoicePanel(title: pending.title, detail: pending.question) {
+            EmptyView()
+        } actions: {
+            ForEach(pending.options, id: \.self) { piece in
+                Button(coordinator.name(piece)) { coordinator.resolveFigureChoice(piece) }
+                    .buttonStyle(.boardPrimaryCompact)
+            }
+            if let decline = pending.declineTitle {
+                Button(decline) { coordinator.resolveFigureChoice(nil) }
+                    .buttonStyle(.boardQuietCompact)
+            }
+        }
+    }
+}

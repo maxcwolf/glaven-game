@@ -1,0 +1,1094 @@
+import Foundation
+
+/// Items used on the board (GH p.26): on the character's own turn, when the item's moment comes
+/// — during their move, during their attack, or any time in their turn. A spent item is
+/// refreshed by a long rest; a consumed one is gone for the scenario.
+///
+/// "To a single attack" is played as the whole attack action for now. Items whose effects the
+/// board doesn't play yet are still marked used by hand on the character sheet.
+struct BoardItemEffect: Equatable {
+    enum Moment: Equatable {
+        case turn, move, attack, meleeAttack, rangedAttack
+        /// While the character's own heal waits for a target.
+        case heal
+        /// Between the turn's steps, when nothing waits for a choice: items that start a choice
+        /// of their own (Scroll of Healing, Doomed Compass).
+        case betweenSteps
+        /// A melee or ranged attack on a single target (not an area or a multi-target attack).
+        case singleMeleeAttack, singleRangedAttack
+        /// While the character places obstacles from a card (Stone Charm).
+        case placingObstacle
+        /// Once the turn's two halves are done, before it ends (Ring of Haste).
+        case endOfTurn
+        /// Right after a half that is a Command (Staff of Command) or a Song (Master's Lute).
+        case afterCommand, afterSong
+    }
+
+    enum Part: Equatable {
+        case extraMove(Int)
+        case jump
+        case selfCondition(ConditionName)
+        case advantage
+        case ignoreShields
+        case attackConditions([ConditionName])
+        case attackBonus(Int)
+        case pierce(Int)
+        case heal(Int)
+        /// Recover up to this many discarded cards to the hand.
+        case recover(Int)
+        case infuse(ElementType)
+        /// Refresh every spent item.
+        case refreshSpent
+        case removeNegativeConditions
+        case adjacentEnemies(ConditionName)
+        case enemiesInRange(ConditionName, Int)
+        case selfAndAdjacentAllies(ConditionName)
+        /// More range for the attack being targeted.
+        case extraRange(Int)
+        case sufferDamage(Int)
+        case loot(Int)
+        /// Infuse this many elements of the player's choosing.
+        case infuseAny(Int)
+        /// Turn the attack into the item's printed area (Battle-Axe, Long Spear…).
+        case areaFromItem
+        /// Refresh up to this many of the character's other items (consumed small ones only,
+        /// or spent and consumed ones of any kind).
+        case refreshItems(count: Int, consumedSmallOnly: Bool)
+        /// Double the heal waiting for a target.
+        case doubleHeal
+        /// Disarm every trap within this range.
+        case disarmTraps(Int)
+        /// Another figure (an enemy, or one of the character's summons) moves under the
+        /// character's control (Doomed Compass, Staff of Summoning).
+        case controlledMove(Int, range: Int, enemy: Bool)
+        /// Destroy an adjacent obstacle (Resonant Crystal).
+        case destroyObstacle
+        /// Heal, choosing the target within range (Scroll of Healing).
+        case healInRange(Int, range: Int)
+        /// The next Loot ability loots this much farther (Thief's Hood: Loot 1 becomes Loot 2).
+        case lootBonus(Int)
+        /// One ally within range recovers up to this many discarded cards (Scroll of Stamina).
+        case allyRecovers(Int, range: Int)
+        /// Heal one of the character's summons (Robes of Summoning).
+        case healSummon(Int)
+        /// Conditions on one enemy within range (Pendant of the Plague: Poison and Curse).
+        case conditionsOnOneEnemy([ConditionName], range: Int)
+        /// Text added to the attack (Unstable Explosives: its allies in the area suffer damage).
+        case attackText(String)
+        /// Remove one negative condition of the player's choosing.
+        case removeOneNegativeCondition
+        /// Pull added to the whole attack (Hooked Chain).
+        case pull(Int)
+        /// The character's own move, between the turn's steps (Blinking Cape: Move 4, Jump).
+        case selfMove(Int, jump: Bool)
+        /// More attack against these monster types only (Skullbane Axe: +5 against the undead).
+        case attackBonusAgainst([String], Int)
+        /// One more obstacle to place (Stone Charm).
+        case extraObstacle
+        /// Summon the item's figure next to the character (Ring of Skulls, Power Core…).
+        case summonFromItem
+        /// Play a card from the hand and perform its top or bottom half now (Ring of Brutality,
+        /// Ring of Haste).
+        case playCardHalf(top: Bool)
+        /// The same, on the side of the half just performed (Staff of Command).
+        case playCardHalfSameSide
+        /// Play two more cards for another turn this round, at their later initiative (Second
+        /// Chance Ring).
+        case extraTurn
+        /// Attack N or Move N, the player's choice (Master's Lute).
+        case attackOrMove(Int)
+    }
+
+    let moment: Moment
+    let parts: [Part]
+    /// Elements the item consumes to work ("wild": any one); it can't be used without them.
+    var consumes: [ElementType] = []
+    /// Hexes the character must have moved this turn first (Elemental Boots: 5).
+    var minimumMoved = 0
+
+    init(_ moment: Moment, _ parts: Part...) {
+        self.moment = moment
+        self.parts = parts
+    }
+
+    init(_ moment: Moment, afterMoving hexes: Int, _ parts: Part...) {
+        self.moment = moment
+        self.parts = parts
+        self.minimumMoved = hexes
+    }
+
+    init(_ moment: Moment, consuming elements: [ElementType], _ parts: Part...) {
+        self.moment = moment
+        self.parts = parts
+        self.consumes = elements
+    }
+
+    /// The board's effects, by item key.
+    static let byItem: [String: BoardItemEffect] = [
+        "gh-1": .init(.move, .extraMove(2)),                                  // Boots of Striding
+        "gh-2": .init(.move, .jump),                                          // Winged Shoes
+        "gh-5": .init(.turn, .selfCondition(.invisible)),                     // Cloak of Invisibility
+        "gh-6": .init(.attack, .advantage),                                   // Eagle-Eye Goggles
+        "gh-9": .init(.rangedAttack, .ignoreShields),                         // Piercing Bow
+        "gh-10": .init(.meleeAttack, .attackConditions([.stun])),             // War Hammer
+        "gh-11": .init(.meleeAttack, .attackConditions([.poison])),           // Poison Dagger
+        "gh-12": .init(.turn, .heal(3)),                                      // Minor Healing Potion
+        "gh-13": .init(.turn, .recover(2)),                                   // Minor Stamina Potion
+        "gh-14": .init(.attack, .attackBonus(1)),                             // Minor Power Potion
+        "gh-19": .init(.rangedAttack, .attackConditions([.immobilize])),      // Weighted Net
+        "gh-21": .init(.attack, .attackConditions([.stun])),                  // Stun Powder
+        "gh-24": .init(.turn, .heal(1)),                                      // Amulet of Life
+        "gh-25": .init(.meleeAttack, .attackConditions([.wound])),            // Jagged Sword
+        "gh-27": .init(.turn, .heal(5)),                                      // Major Healing Potion
+        "gh-28": .init(.turn, .refreshSpent),                                 // Moon Earring
+        "gh-34": .init(.turn, .recover(3)),                                   // Major Stamina Potion
+        "gh-36": .init(.move, .extraMove(3)),                                 // Boots of Dashing
+        "gh-41": .init(.attack, .attackBonus(2)),                             // Major Power Potion
+        "gh-49": .init(.turn, .refreshSpent, .heal(3)),                       // Sun Earring
+        "gh-53": .init(.meleeAttack, .attackConditions([.curse])),            // Black Knife
+        "gh-55": .init(.turn, .heal(7)),                                      // Super Healing Potion
+        "gh-62": .init(.attack, .attackConditions([.stun, .poison, .curse])), // Doom Powder
+        "gh-63": .init(.turn, .selfAndAdjacentAllies(.strengthen)),           // Lucky Eye
+        "gh-64": .init(.move, .extraMove(4)),                                 // Boots of Sprinting
+        "gh-69": .init(.turn, .refreshSpent, .heal(3), .recover(2)),          // Star Earring
+        "gh-83": .init(.turn, .infuse(.ice)),                                 // Wand of Frost
+        "gh-84": .init(.turn, .infuse(.air)),                                 // Wand of Storms
+        "gh-85": .init(.turn, .infuse(.fire)),                                // Wand of Infernos
+        "gh-86": .init(.turn, .infuse(.earth)),                               // Wand of Tremors
+        "gh-87": .init(.turn, .infuse(.light)),                               // Wand of Brilliance
+        "gh-88": .init(.turn, .infuse(.dark)),                                // Wand of Darkness
+        "gh-90": .init(.turn, .removeNegativeConditions),                     // Major Cure Potion
+        "gh-96": .init(.move, .extraMove(3), .jump),                          // Rocket Boots
+        "gh-112": .init(.meleeAttack, .attackBonus(2), .pierce(2)),           // Ancient Drill
+        "gh-114": .init(.rangedAttack, .attackConditions([.poison, .muddle])), // Staff of Xorn
+        "gh-119": .init(.turn, .adjacentEnemies(.curse)),                     // Skull of Hatred
+        "gh-126": .init(.turn, .adjacentEnemies(.poison)),                    // Remote Spider
+        "gh-128": .init(.turn, .enemiesInRange(.muddle, 2)),                  // Black Censer
+        "gh-143": .init(.turn, .selfCondition(.invisible), .infuse(.dark)),   // Smoke Elixir
+        "gh-31": .init(.rangedAttack, .extraRange(1)),                        // Hawk Helm
+        "gh-59": .init(.rangedAttack, .extraRange(2)),                        // Telescopic Lens
+        "gh-37": .init(.attack, consuming: [.wild], .attackBonus(1)),         // Robes of Evocation
+        "gh-54": .init(.rangedAttack, consuming: [.wild], .attackBonus(1)),   // Staff of Eminence
+        "gh-77": .init(.meleeAttack, consuming: [.ice], .attackBonus(2)),     // Frigid Blade
+        "gh-78": .init(.meleeAttack, consuming: [.air], .attackBonus(2)),     // Storm Blade
+        "gh-79": .init(.meleeAttack, consuming: [.fire], .attackBonus(2)),    // Inferno Blade
+        "gh-80": .init(.meleeAttack, consuming: [.earth], .attackBonus(2)),   // Tremor Blade
+        "gh-81": .init(.meleeAttack, consuming: [.light], .attackBonus(2)),   // Brilliant Blade
+        "gh-82": .init(.meleeAttack, consuming: [.dark], .attackBonus(2)),    // Night Blade
+        "gh-121": .init(.turn, consuming: [.dark], .infuse(.light)),          // Orb of Dawn
+        "gh-122": .init(.turn, consuming: [.light], .infuse(.dark)),          // Orb of Twilight
+        "gh-102": .init(.rangedAttack, .sufferDamage(3), .attackBonus(1)),    // Sacrificial Robes
+        "gh-117": .init(.meleeAttack, .sufferDamage(2), .attackBonus(1)),     // Bloody Axe
+        "gh-127": .init(.turn, .loot(1)),                                     // Giant Remote Spider
+        "gh-20": .init(.turn, .infuseAny(1)),                                 // Minor Mana Potion
+        "gh-48": .init(.turn, .infuseAny(2)),                                 // Major Mana Potion
+        "gh-118": .init(.turn, .infuseAny(1)),                                // Staff of Elements
+        "gh-75": .init(.turn, consuming: [.wild], .infuseAny(1)),             // Circlet of Elements
+        "gh-89": .init(.turn, .removeOneNegativeCondition),                   // Minor Cure Potion
+        "gh-18": .init(.singleMeleeAttack, .areaFromItem),                    // Battle-Axe
+        "gh-26": .init(.singleMeleeAttack, .areaFromItem),                    // Long Spear
+        "gh-47": .init(.singleMeleeAttack, .areaFromItem),                    // Reaping Scythe
+        "gh-33": .init(.singleRangedAttack, .areaFromItem),                   // Volatile Bomb
+        "gh-17": .init(.turn, .refreshItems(count: 1, consumedSmallOnly: true)),  // Empowering Talisman
+        "gh-45": .init(.turn, .refreshItems(count: 2, consumedSmallOnly: true), .selfCondition(.curse)), // Pendant of Dark Pacts
+        "gh-141": .init(.turn, .refreshItems(count: 1, consumedSmallOnly: false)), // Utility Belt
+        "gh-135": .init(.heal, .doubleHeal),                                  // Focusing Ray
+        "gh-136": .init(.rangedAttack, .attackBonus(2), .advantage, .sufferDamage(2)), // Volatile Elixir
+        "gh-125": .init(.turn, .disarmTraps(2)),                              // Curious Gear
+        "gh-124": .init(.betweenSteps, .controlledMove(2, range: 5, enemy: true)),  // Doomed Compass
+        "gh-120": .init(.betweenSteps, .controlledMove(3, range: 3, enemy: false)), // Staff of Summoning
+        "gh-133": .init(.betweenSteps, .destroyObstacle),                     // Resonant Crystal
+        "gh-94": .init(.betweenSteps, .healInRange(3, range: 5)),             // Scroll of Healing
+        "gh-149": .init(.turn, afterMoving: 5, .infuseAny(1)),                // Elemental Boots
+        "gh-109": .init(.turn, .lootBonus(1)),                                // Thief's Hood
+        "gh-95": .init(.betweenSteps, .allyRecovers(2, range: 5)),            // Scroll of Stamina
+        "gh-100": .init(.betweenSteps, .healSummon(2)),                       // Robes of Summoning
+        "gh-144": .init(.betweenSteps, .conditionsOnOneEnemy([.poison, .curse], range: 3)), // Pendant of the Plague
+        "gh-60": .init(.singleRangedAttack, .areaFromItem,                    // Unstable Explosives
+                       .attackText("all allies in the attack area suffer 3 damage")),
+        "gh-39": .init(.rangedAttack, .pull(2)),                              // Hooked Chain
+        "gh-73": .init(.betweenSteps, .selfMove(4, jump: true)),              // Blinking Cape
+        "gh-130": .init(.turn, consuming: [.light, .dark], .heal(25)),        // Helix Ring
+        "gh-138": .init(.placingObstacle, .extraObstacle),                    // Stone Charm
+        "gh-35": .init(.betweenSteps, .summonFromItem),                       // Falcon Figurine
+        "gh-115": .init(.betweenSteps, .summonFromItem),                      // Mountain Hammer
+        "gh-123": .init(.betweenSteps, .summonFromItem),                      // Ring of Skulls
+        "gh-132": .init(.betweenSteps, .summonFromItem),                      // Power Core
+        "gh-42": .init(.endOfTurn, .playCardHalf(top: false)),               // Ring of Haste
+        "gh-56": .init(.endOfTurn, .playCardHalf(top: true)),                // Ring of Brutality
+        "gh-70": .init(.endOfTurn, .extraTurn),                              // Second Chance Ring
+        "gh-150": .init(.afterCommand, .playCardHalfSameSide),               // Staff of Command
+        "gh-146": .init(.afterSong, .attackOrMove(2)),                       // Master's Lute
+        "gh-113": .init(.singleMeleeAttack,                                   // Skullbane Axe
+                        .attackBonusAgainst(["living-corpse", "living-spirit", "living-bones"], 5)),
+    ]
+}
+
+/// Items that are always on (no use, no spending).
+enum PassiveItems {
+    /// The basic Attack 2 / Move 2 becomes stronger (Versatile Dagger, Balanced Blade;
+    /// Comfortable Shoes, Serene Sandals).
+    static let defaultAttack: [String: Int] = ["gh-40": 3, "gh-67": 4]
+    static let defaultMove: [String: Int] = ["gh-29": 3, "gh-57": 4]
+    /// Boots of Levitation, Cloak of Phasing.
+    static let flying: Set<String> = ["gh-71", "gh-58"]
+    /// Heavy Basinet; Protective Charm; Drakescale Armor.
+    static let immunities: [String: [ConditionName]] = [
+        "gh-38": [.stun, .muddle], "gh-52": [.poison, .wound], "gh-103": [.poison, .wound],
+    ]
+    /// Silent Stiletto: every melee attack gains Pierce 1.
+    static let meleePierce: [String: Int] = ["gh-137": 1]
+    /// Mask of Terror: every melee attack gains Push 1.
+    static let meleePush: [String: Int] = ["gh-66": 1]
+
+    /// Second Skin: two −1 cards out of the attack modifier deck.
+    static let secondSkin = "gh-101"
+    /// Heavy Greaves: no forced movement.
+    static let unmovable = "gh-22"
+    /// Drakescale Helm: muddle becomes strengthen.
+    static let muddleToStrengthen = "gh-108"
+    /// Chain Hood: Shield 1 while adjacent to three or more monsters.
+    static let chainHood = "gh-76"
+    /// Kills on the wearer's own turn: Necklace of Teeth heals 1, Imposing Blade gives Shield 1
+    /// for the round.
+    static let necklaceOfTeeth = "gh-106"
+    static let imposingBlade = "gh-134"
+
+    /// Drakescale Boots, Magma Waders: hazardous terrain does no harm.
+    static let hazardProof: Set<String> = ["gh-98", "gh-99"]
+    static let magmaWaders = "gh-99"
+    /// At the end of the wearer's turn, by hexes moved: Shoes of Happiness (6+: 1 experience),
+    /// Endurance Footwraps (4+: Heal 1), Steel Sabatons (1 or fewer: Shield 1 for the round).
+    static let shoesOfHappiness = "gh-72"
+    static let enduranceFootwraps = "gh-97"
+    static let steelSabatons = "gh-50"
+    /// Horned Helm: after moving 4 or more hexes, +1 on the next melee attack this turn.
+    static let hornedHelm = "gh-107"
+
+    static func ignoresHazards(_ items: [String]) -> Bool { items.contains(where: hazardProof.contains) }
+
+    /// Mask of Death: +2 on a melee attack made at exactly 1 hit point.
+    static let maskOfDeath = "gh-145"
+    /// Helm of the Mountain: when attacked while Earth is strong, the attacker is immobilized.
+    static let helmOfTheMountain = "gh-110"
+
+    /// Halberd: a single-target melee attack reaches any enemy within 2 hexes.
+    static let halberd = "gh-68"
+
+    /// Cloak of the Hunter: the target of the wearer's Doom is muddled.
+    static let cloakOfTheHunter = "gh-147"
+
+    static func defaultAttack(for items: [String]) -> Int { items.compactMap { defaultAttack[$0] }.max() ?? 2 }
+    static func defaultMove(for items: [String]) -> Int { items.compactMap { defaultMove[$0] }.max() ?? 2 }
+    static func flies(_ items: [String]) -> Bool { items.contains(where: flying.contains) }
+    static func immune(_ items: [String], to condition: ConditionName) -> Bool {
+        items.contains { immunities[$0]?.contains(condition) == true }
+    }
+    static func meleePierce(for items: [String]) -> Int { items.compactMap { meleePierce[$0] }.reduce(0, +) }
+    static func meleePush(for items: [String]) -> Int { items.compactMap { meleePush[$0] }.reduce(0, +) }
+}
+
+extension BoardCoordinator {
+
+    /// The acting character's items that can be used right now.
+    func usableItems() -> [ItemData] {
+        guard let turn = activePlayerTurn, let gameManager,
+              let character = gameManager.game.characters.first(where: { $0.id == turn.characterID }) else { return [] }
+        return character.carriedItems.compactMap { key -> ItemData? in
+            guard !character.spentItems.contains(key), !character.consumedItems.contains(key),
+                  let effect = BoardItemEffect.byItem[key], isMoment(effect.moment, for: turn),
+                  effect.consumes.isEmpty || gameManager.game.canConsumeElements(effect.consumes),
+                  turn.hexesMoved >= effect.minimumMoved,
+                  !(effect.parts.allSatisfy { if case .recover = $0 { return true }; return false }
+                    && character.discardedCards.isEmpty),   // a stamina potion with nothing to recover
+                  !(effect.parts.contains(.summonFromItem) && !hasRoomToSummon(next: character)),
+                  !(effect.playsACard && playableHandCards(of: character).isEmpty),
+                  !(effect.parts.contains(.extraTurn) && !canTakeAnotherTurn(character)),
+                  let item = itemData(key) else { return nil }
+            return item
+        }
+    }
+
+    /// Whether a summon would have an empty hex next to the character.
+    private func hasRoomToSummon(next character: GameCharacter) -> Bool {
+        boardState.piecePositions[.character(character.id)]?.neighbors.contains(where: isEmptyHex) ?? false
+    }
+
+    private func isMoment(_ moment: BoardItemEffect.Moment, for turn: PlayerTurnController) -> Bool {
+        let me = PieceID.character(turn.characterID)
+        switch (moment, interactionMode) {
+        case (.turn, .watchingMonsterTurn), (.turn, .placingCharacter):
+            return false
+        case (.turn, _):
+            return turn.phase == .executeTopAction || turn.phase == .executeBottomAction || turn.phase == .executeExtraHalf
+        case (.move, .selectingMove(let mover, _, _, let teleport, _)):
+            return mover == me && !teleport
+        case (.attack, .selectingAttackTarget(let attacker, _, _)),
+             (.attack, .selectingMultiAttackTargets(let attacker, _, _, _, _)):
+            return attacker == me
+        case (.meleeAttack, .selectingAttackTarget(let attacker, _, _)),
+             (.meleeAttack, .selectingMultiAttackTargets(let attacker, _, _, _, _)):
+            return attacker == me && turn.currentAttackRange() <= 1
+        case (.rangedAttack, .selectingAttackTarget(let attacker, _, _)),
+             (.rangedAttack, .selectingMultiAttackTargets(let attacker, _, _, _, _)):
+            return attacker == me && turn.currentAttackRange() > 1
+        case (.heal, .selectingHealTarget(let healer, _, _)):
+            return healer == me
+        case (.betweenSteps, .idle):
+            return (turn.phase == .executeTopAction || turn.phase == .executeBottomAction
+                    || turn.phase == .executeExtraHalf) && !turn.isWaiting
+        case (.singleMeleeAttack, .selectingAttackTarget(let attacker, _, _)):
+            return attacker == me && turn.currentAttackRange() <= 1 && turn.pendingAreaPattern == nil
+        case (.singleRangedAttack, .selectingAttackTarget(let attacker, _, _)):
+            return attacker == me && turn.currentAttackRange() > 1 && turn.pendingAreaPattern == nil
+        case (.placingObstacle, .placingToken(let placer, .obstacle, _, _)):
+            return placer == me
+        case (.endOfTurn, .idle):
+            return turn.phase == .turnComplete && !turn.isLongRest
+        case (.afterCommand, .idle):
+            return turn.finishedHalf?.kinds.contains("command") == true && !turn.isWaiting
+        case (.afterSong, .idle):
+            return turn.finishedHalf?.kinds.contains("song") == true && !turn.isWaiting
+        default:
+            return false
+        }
+    }
+
+    /// Use an item: its effect now, then it's spent or consumed, and counted for battle goals.
+    @discardableResult
+    func useItem(_ item: ItemData) -> Bool {
+        guard usableItems().contains(where: { $0.itemKey == item.itemKey }),
+              let turn = activePlayerTurn, let gameManager,
+              let character = gameManager.game.characters.first(where: { $0.id == turn.characterID }),
+              let effect = BoardItemEffect.byItem[item.itemKey] else { return false }
+        let me = PieceID.character(character.id)
+        // Playing another card: the item is used once the card is chosen.
+        if effect.playsACard || effect.parts.contains(.extraTurn) {
+            let kind: PendingCardPlay.Kind
+            if effect.parts.contains(.extraTurn) {
+                kind = .anotherTurn(after: character.initiative)
+            } else if let side = effect.parts.lazy.compactMap({ part -> Bool? in
+                if case .playCardHalf(let top) = part { return top }; return nil }).first {
+                kind = .half(top: side)
+            } else {
+                kind = .half(top: turn.finishedHalf?.top ?? true)
+            }
+            pendingCardPlay = PendingCardPlay(characterID: character.id, itemKey: item.itemKey, itemName: item.name,
+                                              kind: kind, options: playableHandCards(of: character).compactMap(\.cardId))
+            return true
+        }
+        markUsed(item, by: character)
+
+        if !effect.consumes.isEmpty, let used = gameManager.game.consumeElements(effect.consumes) {
+            log("\(name(me)) consumes \(GameText.list(used.map(GameText.elementName)))", category: .element)
+        }
+        for part in effect.parts {
+            perform(part, of: item, character: character, turn: turn)
+        }
+        return true
+    }
+
+    /// The item is spent or consumed (the element blades and orbs, with neither mark, can be used
+    /// again), and counted for battle goals.
+    private func markUsed(_ item: ItemData, by character: GameCharacter) {
+        guard let gameManager else { return }
+        gameManager.characterManager.onBeforeMutate?()
+        if item.consumed {
+            character.consumedItems.insert(item.itemKey)
+        } else if item.spent {
+            character.spentItems.insert(item.itemKey)
+        }
+        gameManager.scenarioStatsManager.recordItemUse(by: character.name)
+        log("\(name(.character(character.id))) uses \(item.name)", category: .info)
+    }
+
+    private func perform(_ part: BoardItemEffect.Part, of item: ItemData, character: GameCharacter,
+                         turn: PlayerTurnController) {
+        let me = PieceID.character(character.id)
+        switch part {
+        case .extraMove(let extra):
+            if case .selectingMove(_, let range, _, _, let mode) = interactionMode {
+                beginMoveAction(pieceID: me, moveRange: range + extra, mode: mode)
+            }
+        case .jump:
+            if case .selectingMove(_, let range, _, _, let mode) = interactionMode, mode != .fly {
+                beginMoveAction(pieceID: me, moveRange: range, mode: .jump)
+            }
+        case .selfCondition(let condition):
+            applyCondition(condition, to: me)
+        case .advantage:
+            turn.pendingAdvantage = true
+        case .ignoreShields:
+            turn.pendingPierce += 99
+        case .attackConditions(let conditions):
+            turn.pendingConditions.append(contentsOf: conditions)
+        case .attackBonus(let bonus):
+            turn.addToAttack(bonus)
+        case .pierce(let amount):
+            turn.pendingPierce += amount
+        case .pull(let amount):
+            turn.pendingPull += amount
+        case .selfMove(let hexes, let jump):
+            beginMoveAction(pieceID: me, moveRange: hexes, mode: jump ? .jump : .normal)
+        case .extraObstacle:
+            if case .placingToken(let placer, .obstacle, let remaining, let hexes) = interactionMode {
+                interactionMode = .placingToken(pieceID: placer, token: .obstacle, remaining: remaining + 1, validHexes: hexes)
+            }
+        case .attackBonusAgainst(let monsters, let bonus):
+            for monster in monsters { turn.attackBonusAgainst[monster, default: 0] += bonus }
+        case .heal(let amount):
+            let healed = heal(me, amount: amount, source: me)
+            log("\(name(me)) heals for \(healed)", category: .heal, trace: "Heal \(amount), self")
+        case .recover(let count):
+            if character.discardedCards.count <= count {
+                recover(character.discardedCards, for: character)
+            } else {
+                pendingRecovery = PendingRecovery(characterID: character.id, count: count, itemName: item.name)
+            }
+        case .infuse(let element):
+            gameManager?.game.infuseElement(element)
+            log("\(name(me)) infuses \(GameText.elementName(element))", category: .element)
+        case .refreshSpent:
+            character.spentItems.removeAll()
+            log("\(name(me)) refreshes their spent items", category: .info)
+        case .removeNegativeConditions:
+            character.entityConditions.removeAll { $0.name.isNegative && !$0.permanent }
+            boardScene?.refreshStatus(of: me)
+            log("\(name(me)) removes negative conditions", category: .condition)
+        case .adjacentEnemies(let condition):
+            applyConditionToAllEnemies(from: me, condition: condition, range: 1)
+        case .enemiesInRange(let condition, let range):
+            applyConditionToAllEnemies(from: me, condition: condition, range: range)
+        case .selfAndAdjacentAllies(let condition):
+            applyCondition(condition, to: me)
+            applyConditionToAllAllies(from: me, condition: condition, range: 1)
+        case .extraRange(let extra):
+            switch interactionMode {
+            case .selectingAttackTarget(_, let range, _):
+                turn.extendAttackRange(by: extra)
+                beginAttackAction(pieceID: me, range: range + extra)
+            case .selectingMultiAttackTargets(_, let range, _, let count, let selected) where selected.isEmpty:
+                turn.extendAttackRange(by: extra)
+                beginAttackAction(pieceID: me, range: range + extra, targetCount: count)
+            default:
+                break
+            }
+        case .sufferDamage(let amount):
+            log("\(name(me)) suffers \(amount) damage", category: .damage)
+            sufferDamage(amount, to: me)
+        case .loot(let range):
+            collectLootInRange(pieceID: me, range: range)
+        case .refreshItems(let count, let smallOnly):
+            let options = refreshableItems(of: character, excluding: item.itemKey, consumedSmallOnly: smallOnly)
+            if options.count <= count {
+                refresh(options.map(\.itemKey), for: character)
+            } else {
+                pendingItemRefresh = PendingItemRefresh(characterID: character.id, count: count,
+                                                        options: options.map(\.itemKey), itemName: item.name)
+            }
+        case .doubleHeal:
+            if case .selectingHealTarget(let healer, let value, let targets) = interactionMode {
+                interactionMode = .selectingHealTarget(pieceID: healer, healValue: value * 2, validTargets: targets)
+                log("\(name(me)): Heal \(value * 2)", category: .heal)
+            }
+        case .controlledMove(let hexes, let range, let enemy):
+            _ = beginChoosingPerformer(for: ActionModel(type: .move, value: .int(hexes)), by: me, enemies: enemy, range: range,
+                                       summonsOnly: !enemy)
+        case .destroyObstacle:
+            _ = beginPlacingTokens(.destroyObstacle, count: 1, by: me)
+        case .healInRange(let amount, let range):
+            beginHealAction(pieceID: me, healValue: amount, range: range)
+        case .lootBonus(let extra):
+            turn.lootBonus += extra
+        case .allyRecovers(let count, let range):
+            offerAllyRecovery(from: me, range: range, count: count, title: item.name)
+        case .healSummon(let amount):
+            let summons = Set(character.summons.filter { !$0.dead }.map { PieceID.summon(id: $0.id) }
+                .filter { boardState.piecePositions[$0] != nil })
+            guard !summons.isEmpty else { log("\(name(me)) has no summon to heal", category: .heal); break }
+            interactionMode = .selectingHealTarget(pieceID: me, healValue: amount, validTargets: summons)
+            boardScene?.highlightHexes(Set(summons.compactMap { boardState.piecePositions[$0] }), style: .heal,
+                                       offsetCol: offsetCol, offsetRow: offsetRow)
+        case .conditionsOnOneEnemy(let conditions, let range):
+            guard let first = conditions.first else { break }
+            pendingExtraConditions = Array(conditions.dropFirst())
+            beginConditionAction(pieceID: me, condition: first, range: range)
+        case .attackText(let text):
+            turn.attackTexts.append(text)
+        case .disarmTraps(let range):
+            guard let origin = boardState.piecePositions[me] else { break }
+            let traps = boardState.cells.values.filter { $0.isTrap && $0.coord.distance(to: origin) <= range }.map(\.coord).sorted()
+            for hex in traps {
+                boardState.removeTrap(at: hex)
+                boardScene?.removeOverlaySprite(at: hex, offsetCol: offsetCol, offsetRow: offsetRow)
+            }
+            log("\(name(me)) disarms \(traps.count) trap\(traps.count == 1 ? "" : "s")", category: .info)
+        case .areaFromItem:
+            guard let pattern = item.actions?.first(where: { $0.type == .area })?.value?.stringValue,
+                  case .selectingAttackTarget(_, let range, _) = interactionMode else { break }
+            turn.setAreaPattern(pattern)
+            beginAttackAction(pieceID: me, range: range)
+        case .infuseAny(let count):
+            pendingElementChoice = PendingElementChoice(characterID: character.id, count: count, itemName: item.name)
+        case .summonFromItem:
+            guard let data = item.summon else { break }
+            beginSummonPlacement(data, for: character)
+        case .playCardHalf, .playCardHalfSameSide, .extraTurn:
+            break   // these wait for the card (resolveCardPlay)
+        case .attackOrMove(let value):
+            turn.finishedHalf?.kinds.remove("song")
+            pendingActionChoice = PendingActionChoice(characterID: character.id, title: item.name, value: value)
+        case .removeOneNegativeCondition:
+            let negatives = character.entityConditions.filter { $0.name.isNegative && !$0.permanent }.map(\.name)
+            if negatives.count == 1 {
+                removeCondition(negatives[0], from: character)
+            } else if negatives.count > 1 {
+                pendingConditionRemoval = PendingConditionRemoval(characterID: character.id, options: negatives,
+                                                                  itemName: item.name)
+            }
+        }
+    }
+
+    /// Infusing elements of the player's choosing (Mana Potions, Staff of Elements).
+    struct PendingElementChoice: Identifiable, Equatable {
+        let id = UUID()
+        let characterID: String
+        let count: Int
+        let itemName: String
+    }
+
+    /// Called from the picker: infuse the chosen elements (at most the pending count, each once).
+    func resolveElementChoice(_ elements: [ElementType]) {
+        guard let pending = pendingElementChoice, let game = gameManager?.game else { return }
+        pendingElementChoice = nil
+        var chosen: [ElementType] = []
+        for element in elements where element != .wild && !chosen.contains(element) && chosen.count < pending.count {
+            chosen.append(element)
+        }
+        for element in chosen { game.infuseElement(element) }
+        if !chosen.isEmpty {
+            log("\(name(.character(pending.characterID))) infuses \(GameText.list(chosen.map(GameText.elementName)))",
+                category: .element)
+        }
+    }
+
+    /// Refreshing other items of the player's choosing (Empowering Talisman, Utility Belt).
+    struct PendingItemRefresh: Identifiable, Equatable {
+        let id = UUID()
+        let characterID: String
+        let count: Int
+        let options: [String]
+        let itemName: String
+    }
+
+    func refreshableItems(of character: GameCharacter, excluding key: String, consumedSmallOnly: Bool) -> [ItemData] {
+        character.carriedItems.filter { $0 != key }.compactMap(itemData).filter { item in
+            consumedSmallOnly
+                ? character.consumedItems.contains(item.itemKey) && item.slot == .small
+                : character.consumedItems.contains(item.itemKey) || character.spentItems.contains(item.itemKey)
+        }
+    }
+
+    func resolveItemRefresh(_ keys: [String]) {
+        guard let pending = pendingItemRefresh,
+              let character = gameManager?.game.characters.first(where: { $0.id == pending.characterID }) else { return }
+        pendingItemRefresh = nil
+        refresh(Array(keys.filter(pending.options.contains).prefix(pending.count)), for: character)
+    }
+
+    func refreshItems(_ keys: [String], for character: GameCharacter) {
+        refresh(keys, for: character)
+    }
+
+    private func refresh(_ keys: [String], for character: GameCharacter) {
+        guard !keys.isEmpty else { return }
+        for key in keys {
+            character.consumedItems.remove(key)
+            character.spentItems.remove(key)
+            character.itemSlotsUsed[key] = nil
+        }
+        let names = keys.compactMap { itemData($0)?.name }
+        log("\(name(.character(character.id))) refreshes \(GameText.list(names))", category: .info)
+    }
+
+    /// Removing one negative condition of the player's choosing (Minor Cure Potion).
+    struct PendingConditionRemoval: Identifiable, Equatable {
+        let id = UUID()
+        let characterID: String
+        let options: [ConditionName]
+        let itemName: String
+    }
+
+    func resolveConditionRemoval(_ condition: ConditionName?) {
+        guard let pending = pendingConditionRemoval else { return }
+        pendingConditionRemoval = nil
+        guard let condition, pending.options.contains(condition),
+              let character = gameManager?.game.characters.first(where: { $0.id == pending.characterID }) else { return }
+        removeCondition(condition, from: character)
+    }
+
+    private func removeCondition(_ condition: ConditionName, from character: GameCharacter) {
+        character.entityConditions.removeAll { $0.name == condition && !$0.permanent }
+        boardScene?.refreshStatus(of: .character(character.id))
+        log("\(name(.character(character.id))) is no longer \(GameText.conditionName(condition).lowercased())", category: .condition)
+    }
+
+    // MARK: - Initiative
+
+    /// Boots of Speed (10) and Boots of Quickness (20): after every card is revealed, the
+    /// wearer's leading initiative may go up or down by that much.
+    static let initiativeBoots: [String: Int] = ["gh-15": 10, "gh-43": 20]
+
+    struct PendingInitiativeChange: Identifiable, Equatable {
+        let id = UUID()
+        let characterID: String
+        let itemKey: String
+        let itemName: String
+        let amount: Int
+        let initiative: Int
+    }
+
+    func initiativeItemOffers() -> [PendingInitiativeChange] {
+        guard !autoResolvePrompts, let game = gameManager?.game else { return [] }
+        return game.activeCharacters.filter { !$0.exhausted && !$0.absent && !$0.longRest }.compactMap { character in
+            guard let key = character.carriedItems.first(where: { Self.initiativeBoots[$0] != nil }),
+                  !character.spentItems.contains(key), let item = itemData(key) else { return nil }
+            return PendingInitiativeChange(characterID: character.id, itemKey: key, itemName: item.name,
+                                           amount: Self.initiativeBoots[key] ?? 0, initiative: character.initiative)
+        }
+    }
+
+    func offerNextInitiativeChange() {
+        if initiativeOffers.isEmpty {
+            pendingInitiativeChange = nil
+            buildTurnOrderAndStart()
+        } else {
+            pendingInitiativeChange = initiativeOffers.removeFirst()
+        }
+    }
+
+    /// The player's answer: change the initiative by `delta` (± the boots' amount; 0 keeps it).
+    func resolveInitiativeChange(_ delta: Int) {
+        guard let pending = pendingInitiativeChange, let gameManager,
+              let character = gameManager.game.characters.first(where: { $0.id == pending.characterID }) else { return }
+        if delta != 0 && abs(delta) == pending.amount {
+            gameManager.characterManager.onBeforeMutate?()
+            character.initiative = min(99, max(1, character.initiative + delta))
+            character.spentItems.insert(pending.itemKey)
+            gameManager.scenarioStatsManager.recordItemUse(by: character.name)
+            log("\(name(.character(character.id))) uses \(pending.itemName): initiative \(character.initiative)", category: .round)
+        }
+        offerNextInitiativeChange()
+    }
+
+    /// Items that look at how far the character moved, as their turn ends.
+    func applyEndOfTurnItems(_ turn: PlayerTurnController) {
+        guard let character = gameManager?.game.characters.first(where: { $0.id == turn.characterID }) else { return }
+        let me = PieceID.character(character.id)
+        let moved = turn.hexesMoved
+        if character.carriedItems.contains(PassiveItems.shoesOfHappiness), moved >= 6 {
+            character.experience += 1
+            log("\(name(me))\u{2019}s Shoes of Happiness: 1 experience", category: .info)
+        }
+        if character.carriedItems.contains(PassiveItems.enduranceFootwraps), moved >= 4 {
+            let healed = heal(me, amount: 1, source: me)
+            log("\(name(me))\u{2019}s Endurance Footwraps heal \(healed)", category: .heal)
+        }
+        if character.carriedItems.contains(PassiveItems.steelSabatons), moved <= 1 {
+            let total = (character.shield?.value?.intValue ?? 0) + 1
+            character.shield = ActionModel(type: .shield, value: .int(total))
+            boardScene?.refreshStatus(of: me)
+            log("\(name(me))\u{2019}s Steel Sabatons: Shield 1 this round", category: .condition)
+        }
+    }
+
+    /// Necklace of Teeth and Imposing Blade, when the wearer kills an enemy on their own turn.
+    func rewardKillOnOwnTurn(_ character: GameCharacter) {
+        let me = PieceID.character(character.id)
+        if character.carriedItems.contains(PassiveItems.necklaceOfTeeth) {
+            let healed = heal(me, amount: 1, source: me)
+            log("\(name(me))\u{2019}s Necklace of Teeth heals \(healed)", category: .heal)
+        }
+        if character.carriedItems.contains(PassiveItems.imposingBlade) {
+            let total = (character.shield?.value?.intValue ?? 0) + 1
+            character.shield = ActionModel(type: .shield, value: .int(total))
+            boardScene?.refreshStatus(of: me)
+            log("\(name(me))\u{2019}s Imposing Blade: Shield 1 this round", category: .condition)
+        }
+    }
+
+    // MARK: - Suffering damage by choice
+
+    /// "You may suffer up to N damage": how much the character takes on.
+    struct PendingSufferChoice: Identifiable, Equatable {
+        let id = UUID()
+        let characterID: String
+        let most: Int
+    }
+
+    func resolveSufferChoice(_ amount: Int) {
+        guard let pending = pendingSufferChoice else { return }
+        pendingSufferChoice = nil
+        let chosen = max(0, min(amount, pending.most))
+        let me = PieceID.character(pending.characterID)
+        if chosen > 0 {
+            log("\(name(me)) suffers \(chosen) damage", category: .damage)
+            sufferDamage(chosen, to: me)
+        }
+        activePlayerTurn?.damageSuffered += chosen
+        activePlayerTurn?.advanceAfterAsyncAction()
+    }
+
+    // MARK: - An ally recovers cards
+
+    /// Which ally recovers discarded cards, when more than one could.
+    struct PendingAllyChoice: Identifiable, Equatable {
+        let id = UUID()
+        let characterIDs: [String]
+        let count: Int
+        let title: String
+    }
+
+    /// "One ally within range N may recover…": the allies with discarded cards, then their cards.
+    func offerAllyRecovery(from piece: PieceID, range: Int, count: Int, title: String) {
+        guard let game = gameManager?.game else { return }
+        let allies = alliesInRange(of: piece, range: range, includeSelf: false).compactMap { ally -> GameCharacter? in
+            guard case .character(let id) = ally else { return nil }
+            return game.characters.first { $0.id == id && !$0.discardedCards.isEmpty }
+        }.sorted { $0.id < $1.id }
+        switch allies.count {
+        case 0:
+            log("\(name(piece)) has no ally in range with discarded cards", category: .info)
+        case 1:
+            letRecover(allies[0], count: count, title: title)
+        default:
+            pendingAllyChoice = PendingAllyChoice(characterIDs: allies.map(\.id), count: count, title: title)
+        }
+    }
+
+    func resolveAllyChoice(_ characterID: String?) {
+        guard let pending = pendingAllyChoice else { return }
+        pendingAllyChoice = nil
+        guard let id = characterID, pending.characterIDs.contains(id),
+              let ally = gameManager?.game.characters.first(where: { $0.id == id }) else { return }
+        letRecover(ally, count: pending.count, title: pending.title)
+    }
+
+    private func letRecover(_ ally: GameCharacter, count: Int, title: String) {
+        if ally.discardedCards.count <= count {
+            recover(ally.discardedCards, for: ally)
+        } else {
+            pendingRecovery = PendingRecovery(characterID: ally.id, count: count, itemName: title)
+        }
+    }
+
+    /// Recovering discarded cards: which ones (up to `count`) go back to the hand.
+    struct PendingRecovery: Identifiable, Equatable {
+        let id = UUID()
+        let characterID: String
+        let count: Int
+        let itemName: String
+    }
+
+    /// Called from the picker with the cards chosen (at most the pending count, all from the discard pile).
+    func resolveRecovery(_ cardIds: [Int]) {
+        guard let pending = pendingRecovery,
+              let character = gameManager?.game.characters.first(where: { $0.id == pending.characterID }) else { return }
+        let chosen = Array(cardIds.filter(character.discardedCards.contains).prefix(pending.count))
+        pendingRecovery = nil
+        recover(chosen, for: character)
+    }
+
+    private func recover(_ cardIds: [Int], for character: GameCharacter) {
+        guard !cardIds.isEmpty else { return }
+        for id in cardIds {
+            if let index = character.discardedCards.firstIndex(of: id) {
+                character.handCards.append(character.discardedCards.remove(at: index))
+            }
+        }
+        log("\(name(.character(character.id))) recovers \(cardIds.count) card\(cardIds.count == 1 ? "" : "s")", category: .info)
+    }
+
+    func itemData(_ key: String) -> ItemData? {
+        gameManager?.editionStore.itemData(key: key)
+    }
+
+    // MARK: - An ally's items
+
+    /// Items another character uses during the acting character's attack, and how much they add
+    /// to it (Scroll of Power: "+1 Attack to their entire attack action").
+    static let allyAttackBonus: [String: Int] = ["gh-93": 1]
+
+    /// Other characters' items that can be used on the attack being targeted now.
+    func allyItems() -> [(owner: GameCharacter, item: ItemData)] {
+        guard let turn = activePlayerTurn, let game = gameManager?.game else { return [] }
+        let me = PieceID.character(turn.characterID)
+        switch interactionMode {
+        case .selectingAttackTarget(let attacker, _, _) where attacker == me: break
+        case .selectingMultiAttackTargets(let attacker, _, _, _, let selected) where attacker == me && selected.isEmpty: break
+        default: return []
+        }
+        return game.characters.filter { $0.id != turn.characterID && !$0.exhausted && !$0.absent }
+            .sorted { $0.id < $1.id }
+            .compactMap { owner in
+                guard let key = owner.carriedItems.first(where: {
+                          Self.allyAttackBonus[$0] != nil && !owner.consumedItems.contains($0) && !owner.spentItems.contains($0)
+                      }),
+                      let item = itemData(key) else { return nil }
+                return (owner, item)
+            }
+    }
+
+    func useAllyItem(_ item: ItemData, of owner: GameCharacter) {
+        guard allyItems().contains(where: { $0.owner === owner && $0.item.itemKey == item.itemKey }),
+              let turn = activePlayerTurn, let bonus = Self.allyAttackBonus[item.itemKey] else { return }
+        markUsed(item, by: owner)
+        turn.addToAttack(bonus)
+        log("\(name(.character(turn.characterID))): +\(bonus) Attack", category: .attack)
+    }
+
+    // MARK: - Playing more cards
+
+    /// A card (or two) to play from the hand for an item: for one half now, or for another turn.
+    struct PendingCardPlay: Identifiable, Equatable {
+        enum Kind: Equatable {
+            case half(top: Bool)
+            /// Two cards, the first leading, whose initiative must come after this one.
+            case anotherTurn(after: Int)
+        }
+        let id = UUID()
+        let characterID: String
+        let itemKey: String
+        let itemName: String
+        let kind: Kind
+        /// The cards that may be played.
+        let options: [Int]
+
+        var count: Int { if case .anotherTurn = kind { return 2 }; return 1 }
+    }
+
+    /// The hand's cards that can still be played: not the two this turn is playing (they stay
+    /// in the hand until the turn ends), nor an extra one being performed.
+    func playableHandCards(of character: GameCharacter) -> [AbilityModel] {
+        guard let gameManager else { return [] }
+        let turn = activePlayerTurn?.characterID == character.id ? activePlayerTurn : nil
+        var inPlay = Set<Int>()
+        if let turn, turn.phase != .turnComplete {
+            inPlay.formUnion([turn.topCard?.cardId, turn.bottomCard?.cardId].compactMap { $0 })
+        }
+        if let extra = turn?.extraPlay?.card.cardId { inPlay.insert(extra) }
+        let deck = gameManager.characterManager.abilities(for: character)
+        return character.handCards.filter { !inPlay.contains($0) }.compactMap { id in deck.first { $0.cardId == id } }
+    }
+
+    /// Second Chance Ring: two cards in hand, one of them later than the turn just taken.
+    private func canTakeAnotherTurn(_ character: GameCharacter) -> Bool {
+        let hand = playableHandCards(of: character)
+        return hand.count >= 2 && hand.contains { $0.initiative > character.initiative }
+    }
+
+    /// The player's cards (or none, to change their mind: the item stays unused).
+    func resolveCardPlay(_ cardIds: [Int]) {
+        guard let pending = pendingCardPlay else { return }
+        pendingCardPlay = nil
+        guard let gameManager, let turn = activePlayerTurn, turn.characterID == pending.characterID,
+              let character = gameManager.game.characters.first(where: { $0.id == pending.characterID }),
+              let item = itemData(pending.itemKey) else { return }
+        let hand = playableHandCards(of: character)
+        let cards = cardIds.filter(pending.options.contains).compactMap { id in hand.first { $0.cardId == id } }
+        switch pending.kind {
+        case .half(let top):
+            guard let card = cards.first else { return }
+            markUsed(item, by: character)
+            turn.playExtraHalf(card, top: top)
+        case .anotherTurn(let after):
+            guard cards.count == 2, cards[0].initiative > after else { return }
+            markUsed(item, by: character)
+            scheduleAnotherTurn(for: character, lead: cards[0], second: cards[1])
+        }
+    }
+
+    /// Another turn this round at the lead card's initiative, with the two cards played (Second
+    /// Chance Ring). It comes after every figure still to act at an earlier initiative.
+    private func scheduleAnotherTurn(for character: GameCharacter, lead: AbilityModel, second: AbilityModel) {
+        character.initiative = lead.initiative
+        selectedCardPairs[character.id] = (top: lead, bottom: second)
+        let entry = TurnOrderEntry(figure: .character(character), initiative: Double(lead.initiative), anotherTurn: true)
+        let insertAt = turnOrder.indices.first { $0 > currentTurnIndex && turnOrder[$0].initiative > entry.initiative }
+            ?? turnOrder.count
+        turnOrder.insert(entry, at: insertAt)
+        log("\(name(.character(character.id))) will take another turn this round at initiative \(lead.initiative)", category: .round)
+    }
+
+    // MARK: - Attack or move
+
+    /// Attack N or Move N, the player's choice (Master's Lute after a Song).
+    struct PendingActionChoice: Identifiable, Equatable {
+        let id = UUID()
+        let characterID: String
+        let title: String
+        let value: Int
+    }
+
+    /// "attack", "move", or nil for neither.
+    func resolveActionChoice(_ choice: String?) {
+        guard let pending = pendingActionChoice else { return }
+        pendingActionChoice = nil
+        guard let turn = activePlayerTurn, turn.characterID == pending.characterID,
+              let character = gameManager?.game.characters.first(where: { $0.id == pending.characterID }) else { return }
+        let me = PieceID.character(character.id)
+        switch choice {
+        case "attack":
+            log("\(name(me)): Attack \(pending.value)", category: .attack)
+            turn.preparePerformedAttack(value: pending.value, range: 1)
+            beginAttackAction(pieceID: me, range: 1)
+        case "move":
+            log("\(name(me)): Move \(pending.value)", category: .move)
+            beginMoveAction(pieceID: me, moveRange: pending.value,
+                            mode: PassiveItems.flies(character.carriedItems) ? .fly : .normal)
+        default:
+            break
+        }
+    }
+}
+
+extension BoardItemEffect {
+    /// Whether using the item plays a card from the hand for one of its halves.
+    var playsACard: Bool {
+        parts.contains { part in
+            switch part {
+            case .playCardHalf, .playCardHalfSameSide: return true
+            default: return false
+            }
+        }
+    }
+}
+
+// MARK: - When an enemy attacks
+
+/// Items offered while an enemy attacks the character: before the draw (disadvantage), or once
+/// the attack would damage (a shield for the attack). Items with use slots (the armours) are
+/// spent once every slot is marked.
+struct DefenseItem: Equatable {
+    let key: String
+    /// Offered before the draw: the attacker gains disadvantage.
+    var disadvantage = false
+    /// Shield for this attack.
+    var shield = 0
+    /// Retaliate for this attack (an adjacent attacker).
+    var retaliate = 0
+    /// Suffer no damage from this attack (Shadow Armor).
+    var negates = false
+    /// An element the item consumes to work (Sun Shield: light).
+    var consumes: ElementType? = nil
+    /// Offered for the owner's summons, not the owner (Phasing Idol).
+    var forSummons = false
+    /// Turns an adjacent normal enemy's attack on one of its allies (Heart of the Betrayer).
+    var betrays = false
+
+    static let all: [DefenseItem] = [
+        DefenseItem(key: "gh-4", disadvantage: true),              // Leather Armor
+        DefenseItem(key: "gh-30", disadvantage: true, shield: 1),  // Studded Leather
+        DefenseItem(key: "gh-8", shield: 1),                       // Heater Shield
+        DefenseItem(key: "gh-3", shield: 1),                       // Hide Armor (2 uses)
+        DefenseItem(key: "gh-23", shield: 1),                      // Chainmail (3)
+        DefenseItem(key: "gh-44", shield: 1),                      // Splintmail (4)
+        DefenseItem(key: "gh-65", shield: 1),                      // Platemail (5)
+        DefenseItem(key: "gh-104", shield: 1),                     // Steam Armor (5)
+        DefenseItem(key: "gh-74", shield: 1, retaliate: 1),        // Swordedge Armor (3)
+        DefenseItem(key: "gh-46", shield: 1, retaliate: 2),        // Spiked Shield
+        DefenseItem(key: "gh-32", shield: 2),                      // Tower Shield
+        DefenseItem(key: "gh-61", shield: 4),                      // Wall Shield
+        DefenseItem(key: "gh-91", shield: 4),                      // Steel Ring
+        DefenseItem(key: "gh-140", shield: 3, consumes: .light),   // Sun Shield
+        DefenseItem(key: "gh-51", negates: true),                  // Shadow Armor
+        DefenseItem(key: "gh-142", negates: true, forSummons: true), // Phasing Idol
+    ]
+    static let beforeDraw = all.filter(\.disadvantage)
+    static let onDamage = all.filter { !$0.disadvantage }
+    /// Offered as an adjacent normal enemy attacks, before anything else.
+    static let heartOfTheBetrayer = DefenseItem(key: "gh-131", betrays: true)
+
+    /// Iron Helmet's key: not offered, it always applies.
+    static let ironHelmet = "gh-7"
+
+    var question: String {
+        if betrays { return "Force the attacker to attack one of its allies within its range instead?" }
+        if negates && forSummons { return "Your summon suffers no damage from this attack?" }
+        if negates { return "Suffer no damage from this attack?" }
+        if let element = consumes {
+            return "Consume \(GameText.elementName(element)) to gain Shield \(shield) against this attack?"
+        }
+        var gains: [String] = []
+        if shield > 0 { gains.append("Shield \(shield)") }
+        if retaliate > 0 { gains.append("Retaliate \(retaliate)") }
+        let gain = "gain \(GameText.list(gains))"
+        if disadvantage {
+            return gains.isEmpty ? "Give the attacker disadvantage?" : "Give the attacker disadvantage and \(gain)?"
+        }
+        return "G\(gain.dropFirst()) against this attack?"
+    }
+}
+
+extension BoardCoordinator {
+
+    struct PendingItemUse: Identifiable {
+        let id = UUID()
+        let characterID: String
+        let itemName: String
+        let question: String
+        let attacker: String
+        var continuation: CheckedContinuation<Bool, Never>?
+        /// What's happening, when it isn't an attack ("Bandit Archer is about to consume Fire").
+        var headline: String? = nil
+    }
+
+    /// Called from the UI: use the offered item, or not.
+    func resolvePendingItemUse(_ use: Bool) {
+        guard let pending = pendingItemUse else { return }
+        pendingItemUse = nil
+        pending.continuation?.resume(returning: use)
+    }
+
+    /// Offer a defence item to the character being attacked; true when they use it (it is then
+    /// spent and counted). Headless play never uses them.
+    @MainActor func offerDefenseItem(_ item: DefenseItem, to target: PieceID, from attacker: PieceID) async -> Bool {
+        let key = item.key
+        // The holder: the figure attacked, or for a summon's item (Phasing Idol) its owner.
+        let holderID: String? = {
+            if item.forSummons { return summonOwner(of: target)?.id }
+            if case .character(let id) = target { return id }
+            return nil
+        }()
+        guard let id = holderID, !autoResolvePrompts, let gameManager,
+              let character = gameManager.game.characters.first(where: { $0.id == id }),
+              character.carriedItems.contains(key),
+              !character.spentItems.contains(key), !character.consumedItems.contains(key),
+              item.consumes.map(gameManager.game.isElementAvailable) ?? true,
+              let data = itemData(key) else { return false }
+        let generation = boardGeneration
+        let use = await withCheckedContinuation { (continuation: CheckedContinuation<Bool, Never>) in
+            pendingItemUse = PendingItemUse(characterID: id, itemName: data.name, question: item.question,
+                                            attacker: name(attacker), continuation: continuation)
+        }
+        guard use, isCurrentBoard(generation) else { return false }
+        gameManager.characterManager.onBeforeMutate?()
+        // An item with use slots (Hide Armor: two) is spent once they are all marked.
+        if let element = item.consumes, gameManager.game.consumeElements([element]) != nil {
+            log("\(name(target)) consumes \(GameText.elementName(element))", category: .element)
+        }
+        let used = character.itemSlotsUsed[key, default: 0] + 1
+        if data.slots > 1 && used < data.slots {
+            character.itemSlotsUsed[key] = used
+        } else if data.consumed {
+            character.consumedItems.insert(key)
+            character.itemSlotsUsed[key] = nil
+        } else if data.spent {
+            character.spentItems.insert(key)
+            character.itemSlotsUsed[key] = nil
+        }
+        gameManager.scenarioStatsManager.recordItemUse(by: character.name)
+        log("\(name(.character(id))) uses \(data.name)", category: .info)
+        return true
+    }
+}

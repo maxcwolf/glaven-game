@@ -21,7 +21,13 @@ final class SettingsModel {
     var uiScale: Double = 1.0
     var lightMode: Bool = false
     var excludedConditionsData: Data?
+    /// The learning mode's tips already shown (JSON array of topic names).
+    var seenTipsData: Data?
+    /// How to Play topics opened (JSON array of topic names).
+    var readTopicsData: Data?
     var animationSpeed: Double = 1.0
+    /// Draw attack modifier cards by hand for every attack, not only the player's own.
+    var drawAllModifiers: Bool = false
     var hapticFeedback: Bool = true
 
     // FH-specific toggles

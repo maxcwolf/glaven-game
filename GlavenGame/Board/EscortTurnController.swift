@@ -8,9 +8,15 @@ final class EscortTurnController {
     private weak var gameManager: GameManager?
     var isExecuting: Bool = false
 
+    /// The board this turn belongs to; a turn that outlives it (the board left or restarted
+    /// while it waited) stops without touching the game.
+    private let generation: Int
+    private var isStale: Bool { coordinator?.isCurrentBoard(generation) != true }
+
     init(coordinator: BoardCoordinator, gameManager: GameManager) {
         self.coordinator = coordinator
         self.gameManager = gameManager
+        self.generation = coordinator.boardGeneration
     }
 
     /// Execute all living escort entity turns for an objective container.
@@ -20,7 +26,9 @@ final class EscortTurnController {
         defer { isExecuting = false }
 
         for entity in container.entities where !entity.dead && entity.health > 0 && !entity.off {
+            guard !isStale else { return }
             let pieceID = PieceID.objective(id: entity.number)
+            coordinator.setActing(pieceID)
             guard coordinator.isOnBoard(pieceID) else { continue }
 
             // Start of turn: conditions become active and tick (wound, regenerate).
@@ -33,28 +41,30 @@ final class EscortTurnController {
                                               board: coordinator.boardState, gameState: gameManager.game)
             await executeEscortTurn(result: result, container: container, entity: entity, pieceID: pieceID)
 
+            guard !isStale else { return }
             if !entity.dead {
                 gameManager.entityManager.expireConditions(entity)
             }
             coordinator.sweepDeadFigures()
             if coordinator.scenarioResult != nil { return }
-            if coordinator.turnDelayNanoseconds > 0 { try? await Task.sleep(nanoseconds: coordinator.turnDelayNanoseconds) }
+            await coordinator.beat()
         }
     }
 
     @MainActor private func executeEscortTurn(result: EscortTurnResult, container: GameObjectiveContainer,
                                    entity: GameObjectiveEntity, pieceID: PieceID) async {
         guard let coordinator, let gameManager else { return }
-        let name = "\(container.name)#\(entity.number)"
+        let name = coordinator.name(pieceID)
 
         if result.stunned {
-            coordinator.log("  \(name): Stunned — skipped", category: .condition)
+            coordinator.log("\(name) is stunned and loses the turn", category: .condition)
             return
         }
 
         if result.movementPath.count > 1 {
-            coordinator.log("  \(name): Move \(result.movementPath.count - 1)", category: .move)
-            guard await coordinator.moveAlong(pieceID, path: result.movementPath, style: .normal) else { return }
+            let steps = result.movementPath.count - 1
+            coordinator.log("\(name) moves \(steps) hex\(steps == 1 ? "" : "es")", category: .move, trace: "to \(result.movementPath.last!)")
+            guard await coordinator.moveAlong(pieceID, path: result.movementPath, style: .normal), !isStale else { return }
         }
 
         guard let attack = result.attack, let target = result.attackTarget else { return }

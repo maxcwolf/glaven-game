@@ -212,8 +212,9 @@ final class BoardRulesRegressionTests: XCTestCase {
         let turn = PlayerTurnController(characterID: character.id, coordinator: coord, gameManager: gm)
         coord.activePlayerTurn = turn
         turn.selectCards(top: shieldBash, bottom: wardingStrength)
-        turn.skipRemainingActions() // top half (lost icon)
-        turn.skipRemainingActions() // bottom half (persistent)
+        // Both halves performed (a half skipped whole is discarded: TurnFlowTests).
+        while turn.phase == .executeTopAction { turn.executeCurrentAction() }      // top half (lost icon)
+        while turn.phase == .executeBottomAction { turn.executeCurrentAction() }   // bottom half (persistent)
         XCTAssertEqual(turn.phase, .turnComplete)
         XCTAssertEqual(character.lostCards, [shieldBash.cardId!])
         XCTAssertEqual(character.activeCards, [wardingStrength.cardId!])
@@ -378,8 +379,9 @@ final class BoardRulesRegressionTests: XCTestCase {
         turn.selectCards(top: try card("Scurry", of: "mindthief"), bottom: try card("Perverse Edge", of: "mindthief"))
         turn.setBottomFirst(true)
         turn.executeCurrentAction() // Attack 1, Range 2, Stun: no target
-        turn.executeCurrentAction() // ice, +1 XP
-        XCTAssertEqual(coord.turnLog.filter { $0.message.hasSuffix("Infused ice") }.count, 1)
+        turn.executeCurrentAction() // ice
+        turn.executeCurrentAction() // +1 XP
+        XCTAssertEqual(coord.turnLog.filter { $0.message.hasSuffix("infuses Ice") }.count, 1)
         XCTAssertEqual(mindthief.experience, 1)
     }
 
@@ -428,6 +430,705 @@ final class BoardRulesRegressionTests: XCTestCase {
         await MonsterTurnController(coordinator: coord, gameManager: gm).executeMonsterGroup(monster)
         XCTAssertEqual(offMain, [])
     }
+
+    /// Jump over a Bandit Guard with `card`'s bottom half, then perform its next action.
+    private func jumpOverABandit(_ name: String, card cardName: String, other otherName: String) async throws
+        -> (character: GameCharacter, bandit: GameMonsterEntity) {
+        let character = addCharacter(name, at: HexCoord(3, 3))
+        let bandit = addMonster("bandit-guard", at: HexCoord(4, 3))
+        let played = try card(cardName, of: name), other = try card(otherName, of: name)
+        character.handCards = [played.cardId!, other.cardId!]
+        let turn = PlayerTurnController(characterID: character.id, coordinator: coord, gameManager: gm)
+        coord.activePlayerTurn = turn
+        turn.selectCards(top: other, bottom: played)
+        turn.setBottomFirst(true)
+        turn.executeCurrentAction()   // the move, with Jump
+        coord.handleHexTap(HexCoord(6, 3))
+        _ = await waitUntil { turn.currentActionIndex == 1 }
+        turn.executeCurrentAction()
+        return (character, bandit)
+    }
+
+    /// Regression: Rock Tunnel's "Immobilize, target all enemies moved through" immobilized the
+    /// Cragheart (the target is only in the card's text).
+    func testRockTunnelImmobilizesTheEnemiesJumpedOver() async throws {
+        let (cragheart, bandit) = try await jumpOverABandit("cragheart", card: "Rock Tunnel", other: "Avalanche")
+        XCTAssertTrue(bandit.entityConditions.contains { $0.name == .immobilize })
+        XCTAssertFalse(cragheart.entityConditions.contains { $0.name == .immobilize })
+    }
+
+    /// Regression: Corrupting Embrace's poison asked for one adjacent enemy instead.
+    func testCorruptingEmbracePoisonsTheEnemiesJumpedOver() async throws {
+        let (_, bandit) = try await jumpOverABandit("mindthief", card: "Corrupting Embrace", other: "Feedback Loop")
+        XCTAssertTrue(bandit.entityConditions.contains { $0.name == .poison })
+        if case .selectingConditionTarget = coord.interactionMode { XCTFail("no target to pick") }
+    }
+
+    /// Feedback Loop's muddle is printed inside its move, but only for a move that ends where it
+    /// started; an ordinary move muddles no one.
+    func testFeedbackLoopMuddlesOnlyAfterALoop() async throws {
+        let character = addCharacter("mindthief", at: HexCoord(3, 3))
+        let bandit = addMonster("bandit-guard", at: HexCoord(4, 3))
+        let loop = try card("Feedback Loop", of: "mindthief"), other = try card("Corrupting Embrace", of: "mindthief")
+        character.handCards = [loop.cardId!, other.cardId!]
+        let turn = PlayerTurnController(characterID: character.id, coordinator: coord, gameManager: gm)
+        coord.activePlayerTurn = turn
+        turn.selectCards(top: other, bottom: loop)
+        turn.setBottomFirst(true)
+        turn.executeCurrentAction()
+        coord.handleHexTap(HexCoord(6, 3))
+        _ = await waitUntil { turn.currentActionIndex == 1 }
+        XCTAssertFalse(bandit.entityConditions.contains { $0.name == .muddle }, "the move didn't end where it started")
+    }
+
+    /// Regression: a target printed beside a condition (Crippling Offensive's "Immobilize and
+    /// Push 1, one adjacent enemy") left the condition with none, so it immobilized the Brute.
+    func testATargetBesideAConditionIsTheConditionsTarget() throws {
+        let offensive = try card("Crippling Offensive", of: "brute")
+        let bottom = PlayerTurnController.attachingTargets(offensive.bottomActions ?? [])
+        let immobilize = try XCTUnwrap(bottom.flatMap { $0.subActions ?? [] }.first { $0.type == .condition })
+        XCTAssertEqual(immobilize.subActions?.first { $0.type == .specialTarget }?.value?.stringValue, "enemyAdjacent")
+
+        let character = addCharacter(at: HexCoord(3, 3))
+        addMonster("bandit-guard", at: HexCoord(4, 3))
+        let other = try card("Trample", of: "brute")
+        character.handCards = [offensive.cardId!, other.cardId!]
+        let turn = PlayerTurnController(characterID: character.id, coordinator: coord, gameManager: gm)
+        coord.activePlayerTurn = turn
+        turn.selectCards(top: other, bottom: offensive)
+        turn.setBottomFirst(true)
+        turn.skipCurrentAction()      // the move
+        turn.executeCurrentAction()   // Immobilize and Push 1
+        XCTAssertFalse(character.entityConditions.contains { $0.name == .immobilize }, "not the Brute")
+    }
+
+    /// Mass Extinction curses and wounds every other figure, allies included.
+    func testMassExtinctionHitsEveryoneElse() throws {
+        let squid = addCharacter("squidface", at: HexCoord(3, 3))
+        let ally = addCharacter("brute", at: HexCoord(6, 6))
+        let bandit = addMonster("bandit-guard", at: HexCoord(5, 3))
+        let extinction = try card("Mass Extinction", of: "squidface")
+        let other = try XCTUnwrap(gm.editionStore.abilities(forDeck: "squidface", edition: "gh").first { $0.cardId != extinction.cardId })
+        squid.handCards = [extinction.cardId!, other.cardId!]
+        let turn = PlayerTurnController(characterID: squid.id, coordinator: coord, gameManager: gm)
+        coord.activePlayerTurn = turn
+        turn.selectCards(top: extinction, bottom: other)
+        turn.executeCurrentAction()   // Curse
+        turn.executeCurrentAction()   // and Wound
+        XCTAssertTrue(bandit.entityConditions.contains { $0.name == .wound })
+        XCTAssertTrue(ally.entityConditions.contains { $0.name == .wound })
+        XCTAssertFalse(squid.entityConditions.contains { $0.name == .wound })
+        XCTAssertEqual(squid.attackModifierDeck.undrawnCount(of: .curse), 0)
+    }
+
+    /// Virulent Strain: poison every enemy next to a poisoned enemy (the target is in its text).
+    func testVirulentStrainSpreadsPoison() throws {
+        let squid = addCharacter("squidface", at: HexCoord(3, 3))
+        let sick = addMonster("bandit-guard", at: HexCoord(6, 3))
+        let beside = addMonster("bandit-guard", at: HexCoord(7, 3))
+        let far = addMonster("bandit-guard", at: HexCoord(9, 6))
+        sick.entityConditions = [EntityCondition(name: .poison, state: .normal)]
+        let strain = try card("Virulent Strain", of: "squidface")
+        let other = try XCTUnwrap(gm.editionStore.abilities(forDeck: "squidface", edition: "gh").first { $0.cardId != strain.cardId })
+        squid.handCards = [strain.cardId!, other.cardId!]
+        let turn = PlayerTurnController(characterID: squid.id, coordinator: coord, gameManager: gm)
+        coord.activePlayerTurn = turn
+        turn.selectCards(top: other, bottom: strain)
+        turn.setBottomFirst(true)
+        turn.executeCurrentAction()
+        XCTAssertTrue(beside.entityConditions.contains { $0.name == .poison })
+        XCTAssertFalse(far.entityConditions.contains { $0.name == .poison })
+        XCTAssertFalse(squid.entityConditions.contains { $0.name == .poison })
+    }
+
+    // MARK: - Printed text
+
+    private func turn(for character: GameCharacter, top: AbilityModel, bottom: AbilityModel, bottomFirst: Bool = false)
+        -> PlayerTurnController {
+        character.handCards = [top.cardId!, bottom.cardId!]
+        let turn = PlayerTurnController(characterID: character.id, coordinator: coord, gameManager: gm)
+        coord.activePlayerTurn = turn
+        turn.selectCards(top: top, bottom: bottom)
+        if bottomFirst { turn.setBottomFirst(true) }
+        return turn
+    }
+
+    /// Regression: Crater's Move 4 was wrapped in its text, so it never happened; its "all
+    /// adjacent allies and enemies suffer 1 damage" didn't either.
+    func testCraterHurtsItsNeighboursAndMoves() async throws {
+        let cragheart = addCharacter("cragheart", at: HexCoord(3, 3))
+        let brute = addCharacter("brute", at: HexCoord(4, 3))
+        let bandit = addMonster("bandit-guard", at: HexCoord(2, 3))
+        let (bruteHealth, banditHealth) = (brute.health, bandit.health)
+        let turn = turn(for: cragheart, top: try card("Avalanche", of: "cragheart"), bottom: try card("Crater", of: "cragheart"),
+                        bottomFirst: true)
+        turn.executeCurrentAction()   // all adjacent allies and enemies suffer 1 damage
+        _ = await waitUntil { turn.currentActionIndex > 0 }
+        XCTAssertEqual(brute.health, bruteHealth - 1)
+        XCTAssertEqual(bandit.health, banditHealth - 1)
+        XCTAssertEqual(cragheart.health, cragheart.maxHealth, "not the Cragheart")
+        turn.executeCurrentAction()   // Move 4, Jump
+        guard case .selectingMove(_, let range, _, _, let mode) = coord.interactionMode else { return XCTFail("the move happens") }
+        XCTAssertEqual(range, 4)
+        XCTAssertEqual(mode, .jump)
+    }
+
+    /// Regression: Unstable Upheaval's Shield 2 (for every ally) was wrapped in its text.
+    func testUnstableUpheavalShieldsEveryAlly() async throws {
+        let cragheart = addCharacter("cragheart", at: HexCoord(3, 3))
+        let brute = addCharacter("brute", at: HexCoord(8, 8))
+        let health = brute.health
+        let turn = turn(for: cragheart, top: try card("Avalanche", of: "cragheart"),
+                        bottom: try card("Unstable Upheaval", of: "cragheart"), bottomFirst: true)
+        turn.executeCurrentAction()   // all allies suffer 1 damage
+        _ = await waitUntil { turn.currentActionIndex > 0 }
+        turn.executeCurrentAction()   // Shield 2, affect all allies
+        XCTAssertEqual(brute.health, health - 1)
+        XCTAssertEqual(cragheart.shield?.value?.intValue, 2)
+        XCTAssertEqual(brute.shield?.value?.intValue, 2)
+    }
+
+    func testRevivingEtherRecoversTheLostCards() throws {
+        let spellweaver = addCharacter("spellweaver", at: HexCoord(3, 3))
+        spellweaver.lostCards = [61, 62]
+        let turn = turn(for: spellweaver, top: try card("Reviving Ether", of: "spellweaver"), bottom: try card("Frost Armor", of: "spellweaver"))
+        turn.executeCurrentAction()
+        XCTAssertTrue(spellweaver.lostCards.isEmpty)
+        XCTAssertTrue(spellweaver.handCards.contains(61) && spellweaver.handCards.contains(62))
+    }
+
+    func testThiefsKnackDisarmsAnAdjacentTrap() throws {
+        let scoundrel = addCharacter("scoundrel", at: HexCoord(3, 3))
+        coord.boardState.placeTrap(at: HexCoord(4, 3), damage: 3)
+        let turn = turn(for: scoundrel, top: try card("Thief's Knack", of: "scoundrel"), bottom: try card("Backstab", of: "scoundrel"))
+        turn.executeCurrentAction()
+        XCTAssertEqual(coord.boardState.cells[HexCoord(4, 3)]?.isTrap, false)
+    }
+
+    func testMassiveBoulderHurtsThoseBesideTheTarget() async throws {
+        let cragheart = addCharacter("cragheart", at: HexCoord(3, 3))
+        let target = addMonster("bandit-guard", at: HexCoord(6, 3))
+        target.health = 50
+        target.maxHealth = 50
+        let beside = addMonster("bandit-guard", at: HexCoord(7, 3))
+        let health = beside.health
+        let turn = turn(for: cragheart, top: try card("Massive Boulder", of: "cragheart"), bottom: try card("Avalanche", of: "cragheart"))
+        turn.executeCurrentAction()
+        guard case .selectingAttackTarget = coord.interactionMode,
+              let piece = coord.boardState.piecePositions.first(where: { $0.value == HexCoord(6, 3) })?.key else { return XCTFail() }
+        coord.handlePieceTap(piece)
+        _ = await waitUntil { turn.currentActionIndex > 0 }
+        XCTAssertEqual(beside.health, health - 1)
+    }
+
+    /// Proximity Mine: the Tinkerer places a 6 damage trap beside them; an enemy springing it
+    /// gives the Tinkerer 2 experience.
+    func testProximityMinePlacesATrapThatPaysExperience() async throws {
+        let tinkerer = addCharacter("tinkerer", at: HexCoord(3, 3))
+        let turn = turn(for: tinkerer, top: try card("Proximity Mine", of: "tinkerer"), bottom: try card("Hook Gun", of: "tinkerer"))
+        turn.executeCurrentAction()
+        guard case .placingToken(_, let token, _, let hexes) = coord.interactionMode else { return XCTFail("a hex to choose") }
+        XCTAssertEqual(token, .trap(damage: 6, subType: nil, experience: 2))
+        XCTAssertTrue(hexes.contains(HexCoord(4, 3)))
+        coord.handleHexTap(HexCoord(4, 3))
+        XCTAssertEqual(coord.boardState.cells[HexCoord(4, 3)]?.isTrap, true)
+        XCTAssertEqual(coord.boardState.cells[HexCoord(4, 3)]?.trapDamage, 6)
+        XCTAssertEqual(turn.currentActionIndex, 1)
+
+        let bandit = addMonster("bandit-guard", at: HexCoord(5, 3))
+        bandit.health = 50
+        bandit.maxHealth = 50
+        let xp = tinkerer.experience
+        guard let piece = coord.boardState.piecePositions.first(where: { $0.value == HexCoord(5, 3) })?.key else { return XCTFail() }
+        await coord.moveAlong(piece, path: [HexCoord(5, 3), HexCoord(4, 3)], style: .normal)
+        XCTAssertEqual(bandit.health, 44)
+        XCTAssertEqual(tinkerer.experience, xp + 2)
+    }
+
+    /// Avalanche: two obstacles, one hex at a time.
+    func testAvalanchePlacesTwoObstacles() throws {
+        let cragheart = addCharacter("cragheart", at: HexCoord(3, 3))
+        let turn = turn(for: cragheart, top: try card("Crater", of: "cragheart"), bottom: try card("Avalanche", of: "cragheart"),
+                        bottomFirst: true)
+        turn.executeCurrentAction()
+        coord.handleHexTap(HexCoord(4, 3))
+        guard case .placingToken(_, .obstacle, 1, let hexes) = coord.interactionMode else { return XCTFail("a second obstacle") }
+        XCTAssertFalse(hexes.contains(HexCoord(4, 3)))
+        coord.handleHexTap(HexCoord(2, 3))
+        XCTAssertEqual(coord.boardState.cells[HexCoord(4, 3)]?.passable, false)
+        XCTAssertEqual(coord.boardState.cells[HexCoord(2, 3)]?.passable, false)
+        XCTAssertEqual(turn.currentActionIndex, 1)
+    }
+
+    /// Regression: Balanced Measure's "X" (hexes moved; damage inflicted) was played as 2.
+    func testBalancedMeasureCountsTheTurn() async throws {
+        let brute = addCharacter(at: HexCoord(3, 3))
+        let bandit = addMonster("bandit-guard", at: HexCoord(8, 3))
+        bandit.health = 50
+        bandit.maxHealth = 50
+        let measure = try card("Balanced Measure", of: "brute"), other = try card("Trample", of: "brute")
+        let turn = turn(for: brute, top: measure, bottom: other)
+        await coord.moveAlong(.character(brute.id), path: (3...7).map { HexCoord($0, 3) }, style: .normal)
+        turn.executeCurrentAction()   // Attack X: four hexes moved
+        XCTAssertEqual(turn.currentAttackValue(), 4)
+
+        let next = self.turn(for: brute, top: other, bottom: measure, bottomFirst: true)
+        guard let piece = coord.boardState.piecePositions.first(where: { $0.value == HexCoord(8, 3) })?.key else { return XCTFail() }
+        coord.sufferDamage(3, to: piece, killer: .character(brute.id))
+        next.executeCurrentAction()   // Move X: three damage inflicted
+        guard case .selectingMove(_, let range, _, _, _) = coord.interactionMode else { return XCTFail("a move") }
+        XCTAssertEqual(range, 3)
+    }
+
+    /// The Berserker's X: missing hit points, lost cards, current hit points.
+    func testTheBerserkersXValues() throws {
+        let berserker = addCharacter("lightning", at: HexCoord(3, 3))
+        let bandit = addMonster("bandit-guard", at: HexCoord(4, 3))
+        bandit.health = 50
+        bandit.maxHealth = 50
+        berserker.health = berserker.maxHealth - 6
+        berserker.lostCards = [1, 2, 3]
+        let other = try XCTUnwrap(gm.editionStore.abilities(forDeck: "lightning", edition: "gh").first { $0.name == "Spiteful Cut" }
+                                  ?? gm.editionStore.abilities(forDeck: "lightning", edition: "gh").first)
+        let stand = turn(for: berserker, top: try card("Resolute Stand", of: "lightning"), bottom: other)
+        stand.executeCurrentAction()
+        XCTAssertEqual(stand.currentAttackValue(), 6, "Resolute Stand: missing hit points")
+        let rage = turn(for: berserker, top: try card("Growing Rage", of: "lightning"), bottom: other)
+        rage.executeCurrentAction()
+        XCTAssertEqual(rage.currentAttackValue(), 3, "Growing Rage: cards lost")
+    }
+
+    func testReinvigoratingElixirLetsAnAdjacentAllyRecoverEverything() throws {
+        let tinkerer = addCharacter("tinkerer", at: HexCoord(3, 3))
+        let brute = addCharacter("brute", at: HexCoord(4, 3))
+        brute.discardedCards = [1, 2, 3]
+        let turn = turn(for: tinkerer, top: try card("Hook Gun", of: "tinkerer"), bottom: try card("Reinvigorating Elixir", of: "tinkerer"),
+                        bottomFirst: true)
+        turn.executeCurrentAction()
+        XCTAssertTrue(brute.discardedCards.isEmpty)
+        XCTAssertTrue([1, 2, 3].allSatisfy(brute.handCards.contains))
+    }
+
+    func testVolatileConcoctionAsksWhichAllyRecovers() throws {
+        let tinkerer = addCharacter("tinkerer", at: HexCoord(3, 3))
+        let brute = addCharacter("brute", at: HexCoord(4, 3))
+        let spellweaver = addCharacter("spellweaver", at: HexCoord(2, 3))
+        brute.discardedCards = [1, 2, 3]
+        spellweaver.discardedCards = [61]
+        let turn = turn(for: tinkerer, top: try card("Hook Gun", of: "tinkerer"), bottom: try card("Volatile Concoction", of: "tinkerer"),
+                        bottomFirst: true)
+        turn.executeCurrentAction()
+        let choice = try XCTUnwrap(coord.pendingAllyChoice)
+        XCTAssertEqual(Set(choice.characterIDs), [brute.id, spellweaver.id])
+        coord.resolveAllyChoice(brute.id)
+        XCTAssertEqual(coord.pendingRecovery?.count, 1, "one card, without Ice to consume")
+        coord.resolveRecovery([2, 3])
+        XCTAssertEqual(brute.discardedCards, [1, 3])
+    }
+
+    /// Flurry of Axes: suffer up to 4 damage, then Attack X where X is what was suffered.
+    func testFlurryOfAxesAttacksWithTheDamageSuffered() throws {
+        let berserker = addCharacter("lightning", at: HexCoord(3, 3))
+        addMonster("bandit-guard", at: HexCoord(5, 3))
+        coord.autoResolvePrompts = false
+        let other = try XCTUnwrap(gm.editionStore.abilities(forDeck: "lightning", edition: "gh").first { $0.name != "Flurry of Axes" })
+        let turn = turn(for: berserker, top: try card("Flurry of Axes", of: "lightning"), bottom: other)
+        let health = berserker.health
+        turn.executeCurrentAction()
+        XCTAssertEqual(coord.pendingSufferChoice?.most, 4)
+        coord.resolveSufferChoice(3)
+        XCTAssertEqual(berserker.health, health - 3)
+        XCTAssertEqual(turn.currentActionIndex, 1)
+        turn.executeCurrentAction()
+        XCTAssertEqual(turn.currentAttackValue(), 3)
+    }
+
+    func testHexLinesRunStraight() {
+        XCTAssertEqual(HexCoord(1, 3).line(to: HexCoord(5, 3)), (1...5).map { HexCoord($0, 3) })
+        let diagonal = HexCoord(3, 3).line(to: HexCoord(5, 7))
+        XCTAssertEqual(diagonal.count, 5)
+        for (a, b) in zip(diagonal, diagonal.dropFirst()) { XCTAssertTrue(a.isAdjacent(to: b), "\(a) \(b)") }
+    }
+
+    /// Impaling Eruption: "Additionally, target all enemies on the path to the primary target."
+    func testImpalingEruptionHitsEveryEnemyOnTheWay() async throws {
+        let spellweaver = addCharacter("spellweaver", at: HexCoord(1, 3))
+        for col in 2...4 {
+            let bandit = addMonster("bandit-guard", at: HexCoord(col, 3))
+            bandit.health = 50
+            bandit.maxHealth = 50
+        }
+        let aside = addMonster("bandit-guard", at: HexCoord(3, 5))
+        let turn = turn(for: spellweaver, top: try card("Impaling Eruption", of: "spellweaver"), bottom: try card("Frost Armor", of: "spellweaver"))
+        turn.executeCurrentAction()
+        guard let far = coord.boardState.piecePositions.first(where: { $0.value == HexCoord(4, 3) })?.key else { return XCTFail() }
+        coord.handlePieceTap(far)
+        _ = await waitUntil { turn.currentActionIndex > 0 }
+        let attacked = coord.turnLog.filter { $0.message.contains("attacks Bandit Guard") }
+        XCTAssertEqual(attacked.count, 3, attacked.map(\.message).joined(separator: " / "))
+        XCTAssertEqual(aside.health, aside.maxHealth)
+    }
+
+    func testPrintedBonusTextBecomesActions() {
+        let clod = PlayerTurnController.actions(fromText: "Immobilize, XP +1")
+        XCTAssertEqual(clod.map(\.type), [.condition, .card])
+        XCTAssertEqual(clod.first?.value?.stringValue, "immobilize")
+        let crater = PlayerTurnController.actions(fromText: "Push 2, XP +1")
+        XCTAssertEqual(crater.first?.type, .push)
+        XCTAssertEqual(crater.first?.value?.intValue, 2)
+        let upheaval = PlayerTurnController.actions(fromText: "Target all enemies up to two")
+        XCTAssertEqual(upheaval.first?.value?.stringValue, "enemiesRange:2")
+        XCTAssertEqual(PlayerTurnController.actions(fromText: "+1 Attack").first?.valueType, .plus)
+    }
+
+    /// Regression: Earthen Clod's "Immobilize, XP +1" for consuming Earth was printed text, so
+    /// consuming the element gave nothing.
+    func testEarthenClodsEarthImmobilizes() async throws {
+        let cragheart = addCharacter("cragheart", at: HexCoord(3, 3))
+        let bandit = addMonster("bandit-guard", at: HexCoord(5, 3))
+        bandit.health = 50
+        bandit.maxHealth = 50
+        gm.game.elementBoard[gm.game.elementBoard.firstIndex { $0.type == .earth }!].state = .strong
+        let turn = turn(for: cragheart, top: try card("Earthen Clod", of: "cragheart"), bottom: try card("Avalanche", of: "cragheart"))
+        let xp = cragheart.experience
+        turn.executeCurrentAction()
+        guard case .selectingAttackTarget = coord.interactionMode,
+              let piece = coord.boardState.piecePositions.first(where: { $0.value == HexCoord(5, 3) })?.key else { return XCTFail() }
+        coord.handlePieceTap(piece)
+        _ = await waitUntil { turn.currentActionIndex > 0 }
+        XCTAssertTrue(bandit.entityConditions.contains { $0.name == .immobilize })
+        XCTAssertEqual(cragheart.experience, xp + 1)
+    }
+
+    /// Actions another figure performs ("Force one enemy… to perform Attack 2", "One adjacent
+    /// ally may perform Attack 6") are not the character's: they mustn't become its steps.
+    func testActionsForSomeoneElseAreNotTheCharacters() throws {
+        let affliction = try card("Submissive Affliction", of: "mindthief")
+        let steps = PlayerTurnController.steps(affliction.bottomActions ?? [], labels: gm.editionStore, edition: "gh")
+        XCTAssertFalse(steps.contains { $0.type == .attack }, "the forced Attack is the enemy's")
+        let possession = try card("Possession", of: "mindthief")
+        XCTAssertFalse(PlayerTurnController.steps(possession.actions ?? [], labels: gm.editionStore, edition: "gh")
+            .contains { $0.type == .attack }, "the ally's Attack 6")
+        let syringe = try card("Syringe", of: "saw")
+        XCTAssertFalse(PlayerTurnController.steps(syringe.actions ?? [], labels: gm.editionStore, edition: "gh")
+            .contains { $0.type == .shield }, "the ally's Shield 2")
+    }
+
+    /// Sinister Opportunity: after the move, an adjacent enemy moves 1, ending beside the Scoundrel.
+    func testSinisterOpportunityMovesAnEnemyBesideTheScoundrel() async throws {
+        let scoundrel = addCharacter("scoundrel", at: HexCoord(3, 3))
+        addMonster("bandit-guard", at: HexCoord(6, 3))
+        let turn = turn(for: scoundrel, top: try card("Backstab", of: "scoundrel"), bottom: try card("Sinister Opportunity", of: "scoundrel"),
+                        bottomFirst: true)
+        turn.executeCurrentAction()
+        coord.handleHexTap(HexCoord(5, 3))
+        _ = await waitUntil { if case .choosingPerformer = self.coord.interactionMode { return true }; return false }
+        guard case .choosingPerformer(_, _, let candidates) = coord.interactionMode, let bandit = candidates.first else {
+            return XCTFail("an adjacent enemy to move")
+        }
+        coord.handlePieceTap(bandit)
+        guard case .selectingMove(_, let range, let hexes, _, _) = coord.interactionMode else { return XCTFail() }
+        XCTAssertEqual(range, 1)
+        XCTAssertFalse(hexes.isEmpty)
+        XCTAssertTrue(hexes.allSatisfy { $0.isAdjacent(to: HexCoord(5, 3)) }, "ending beside the Scoundrel")
+    }
+
+    /// Regression: Sinister Opportunity's Move 3 added the forced enemy's Move 1 (Move 4).
+    func testSinisterOpportunityMovesThree() throws {
+        let scoundrel = addCharacter("scoundrel", at: HexCoord(3, 3))
+        let turn = turn(for: scoundrel, top: try card("Backstab", of: "scoundrel"), bottom: try card("Sinister Opportunity", of: "scoundrel"),
+                        bottomFirst: true)
+        turn.executeCurrentAction()
+        guard case .selectingMove(_, let range, _, _, _) = coord.interactionMode else { return XCTFail() }
+        XCTAssertEqual(range, 3)
+    }
+
+    /// Possession: "One adjacent ally may perform Attack 6": the Brute makes the attack.
+    func testPossessionLetsAnAllyAttack() throws {
+        let mindthief = addCharacter("mindthief", at: HexCoord(3, 3))
+        let brute = addCharacter("brute", at: HexCoord(4, 3))
+        addMonster("bandit-guard", at: HexCoord(5, 3))
+        let turn = turn(for: mindthief, top: try card("Possession", of: "mindthief"), bottom: try card("Scurry", of: "mindthief"))
+        turn.executeCurrentAction()
+        guard case .choosingPerformer(_, _, let candidates) = coord.interactionMode else { return XCTFail("who performs it") }
+        XCTAssertEqual(candidates, [.character(brute.id)])
+        coord.handlePieceTap(.character(brute.id))
+        guard case .selectingAttackTarget(let attacker, _, _) = coord.interactionMode else { return XCTFail("the Brute attacks") }
+        XCTAssertEqual(attacker, .character(brute.id))
+        XCTAssertEqual(turn.currentAttackValue(), 6)
+    }
+
+    /// Parasitic Influence: "Force one enemy within Range 4 to perform Move 1".
+    func testParasiticInfluenceMovesAnEnemy() throws {
+        let mindthief = addCharacter("mindthief", at: HexCoord(3, 3))
+        addMonster("bandit-guard", at: HexCoord(6, 3))
+        let turn = turn(for: mindthief, top: try card("Scurry", of: "mindthief"), bottom: try card("Parasitic Influence", of: "mindthief"),
+                        bottomFirst: true)
+        turn.executeCurrentAction()
+        guard case .choosingPerformer(_, _, let candidates) = coord.interactionMode, let bandit = candidates.first else {
+            return XCTFail("which enemy")
+        }
+        coord.handlePieceTap(bandit)
+        guard case .selectingMove(let mover, let range, _, _, _) = coord.interactionMode else { return XCTFail("the enemy moves") }
+        XCTAssertEqual(mover, bandit)
+        XCTAssertEqual(range, 1)
+    }
+
+    /// Submissive Affliction: "Force one enemy within Range 5 to perform Attack 2, Range +0,
+    /// targeting another enemy". By the Mindthief FAQ that's a flat Attack 2 at the monster's
+    /// base range, from the monster deck; the Mindthief picks which other enemy.
+    func testSubmissiveAfflictionMakesAnEnemyAttackAnother() async throws {
+        let mindthief = addCharacter("mindthief", at: HexCoord(3, 3))   // beside the forced enemy too
+        let forced = addMonster("bandit-guard", at: HexCoord(4, 3))
+        let victim = addMonster("bandit-guard", at: HexCoord(5, 3))
+        addMonster("bandit-guard", at: HexCoord(7, 3))   // out of a melee monster's reach
+        victim.health = 20
+        victim.maxHealth = 20
+        let zeros = Array(repeating: AttackModifier.standard(.plus0), count: 20)
+        gm.game.monsterAttackModifierDeck = AttackModifierDeck(attackModifiers: zeros, cards: zeros)
+        let turn = turn(for: mindthief, top: try card("Scurry", of: "mindthief"),
+                        bottom: try card("Submissive Affliction", of: "mindthief"), bottomFirst: true)
+        turn.executeCurrentAction()
+        guard case .choosingPerformer(_, _, let candidates) = coord.interactionMode else { return XCTFail("which enemy") }
+        let forcedPiece = try XCTUnwrap(coord.boardState.piecePositions.first { $0.value == HexCoord(4, 3) }?.key)
+        let victimPiece = try XCTUnwrap(coord.boardState.piecePositions.first { $0.value == HexCoord(5, 3) }?.key)
+        XCTAssertTrue(candidates.contains(forcedPiece))
+        coord.handlePieceTap(forcedPiece)
+        guard case .selectingAttackTarget(let attacker, let range, let targets) = coord.interactionMode else {
+            return XCTFail("the enemy attacks, got \(coord.interactionMode)")
+        }
+        XCTAssertEqual(attacker, forcedPiece)
+        XCTAssertEqual(range, 1, "a melee monster's base range +0")
+        XCTAssertEqual(targets, [victimPiece], "another enemy in reach, never the Mindthief")
+        coord.handlePieceTap(victimPiece)
+        _ = await waitUntil { turn.currentActionIndex > 0 || turn.phase != .executeBottomAction }
+        XCTAssertEqual(victim.health, 18, "a flat Attack 2, not the guard's attack +2")
+        XCTAssertEqual(forced.health, forced.maxHealth)
+        XCTAssertNil(coord.pendingForcedAttack)
+    }
+
+    /// Dirt Tornado: "Muddle all allies and enemies in the targeted area."
+    func testDirtTornadoMuddlesEveryoneInTheArea() async throws {
+        let cragheart = addCharacter("cragheart", at: HexCoord(1, 3))
+        let target = addMonster("bandit-guard", at: HexCoord(3, 3))
+        target.health = 50
+        target.maxHealth = 50
+        let turn = turn(for: cragheart, top: try card("Dirt Tornado", of: "cragheart"), bottom: try card("Avalanche", of: "cragheart"))
+        turn.executeCurrentAction()
+        guard let piece = coord.boardState.piecePositions.first(where: { $0.value == HexCoord(3, 3) })?.key else { return XCTFail() }
+        coord.handlePieceTap(piece)
+        _ = await waitUntil { turn.currentActionIndex > 0 }
+        XCTAssertTrue(target.entityConditions.contains { $0.name == .muddle })
+        XCTAssertFalse(cragheart.entityConditions.contains { $0.name == .muddle }, "not the Cragheart")
+    }
+
+    func testRockTunnelDestroysAnAdjacentObstacle() throws {
+        let cragheart = addCharacter("cragheart", at: HexCoord(3, 3))
+        coord.boardState.placeObstacle(at: HexCoord(4, 3))
+        let turn = turn(for: cragheart, top: try card("Rock Tunnel", of: "cragheart"), bottom: try card("Avalanche", of: "cragheart"))
+        turn.executeCurrentAction()
+        guard case .placingToken(_, .destroyObstacle, _, let hexes) = coord.interactionMode else { return XCTFail("an obstacle to pick") }
+        XCTAssertEqual(hexes, [HexCoord(4, 3)])
+        coord.handleHexTap(HexCoord(4, 3))
+        XCTAssertEqual(coord.boardState.cells[HexCoord(4, 3)]?.passable, true)
+        XCTAssertNil(coord.boardState.cells[HexCoord(4, 3)]?.overlay)
+    }
+
+    /// Heaving Swing: a push into an obstacle destroys it, the target suffers 2, the Cragheart gains 1 XP.
+    func testHeavingSwingPushesIntoAnObstacle() async throws {
+        let cragheart = addCharacter("cragheart", at: HexCoord(3, 3))
+        let bandit = addMonster("bandit-guard", at: HexCoord(4, 3))
+        bandit.health = 50
+        bandit.maxHealth = 50
+        let behind = HexCoord(4, 3).pushCandidates(awayFrom: HexCoord(3, 3))
+        for hex in behind { coord.boardState.placeObstacle(at: hex) }   // every way back is an obstacle
+        let turn = turn(for: cragheart, top: try card("Heaving Swing", of: "cragheart"), bottom: try card("Avalanche", of: "cragheart"))
+        let xp = cragheart.experience
+        turn.executeCurrentAction()
+        guard let piece = coord.boardState.piecePositions.first(where: { $0.value == HexCoord(4, 3) })?.key else { return XCTFail() }
+        coord.handlePieceTap(piece)
+        _ = await waitUntil { turn.currentActionIndex > 0 }
+        let landed = try XCTUnwrap(coord.boardState.piecePositions[piece])
+        XCTAssertTrue(behind.contains(landed), "pushed into an obstacle hex")
+        XCTAssertNil(coord.boardState.cells[landed]?.overlay, "that obstacle is gone")
+        XCTAssertGreaterThanOrEqual(cragheart.experience, xp + 1)
+    }
+
+    /// Growing Rage's bottom is the Berserker's own attack, below half hit points only; it was
+    /// offered to an ally.
+    func testGrowingRageAttacksOnlyBelowHalfHitPoints() throws {
+        let berserker = addCharacter("lightning", at: HexCoord(3, 3))
+        addMonster("bandit-guard", at: HexCoord(4, 3))
+        let rage = try card("Growing Rage", of: "lightning")
+        let other = try XCTUnwrap(gm.editionStore.abilities(forDeck: "lightning", edition: "gh").first { $0.cardId != rage.cardId })
+        berserker.health = berserker.maxHealth
+        let healthy = turn(for: berserker, top: other, bottom: rage, bottomFirst: true)
+        healthy.skipCurrentAction()      // Move 3
+        healthy.executeCurrentAction()   // "If you have fewer hit points than half…, perform Attack 2"
+        if case .choosingPerformer = coord.interactionMode { XCTFail("not an ally's") }
+        if case .selectingAttackTarget = coord.interactionMode { XCTFail("not at full health") }
+
+        berserker.health = 2
+        let hurt = turn(for: berserker, top: other, bottom: rage, bottomFirst: true)
+        hurt.skipCurrentAction()
+        hurt.executeCurrentAction()
+        guard case .selectingAttackTarget(let attacker, _, _) = coord.interactionMode else { return XCTFail("the Berserker attacks") }
+        XCTAssertEqual(attacker, .character(berserker.id))
+    }
+
+    /// "One ally within range 3" (Protective Blessing) was read as every adjacent ally.
+    func testAOneAllyConditionAsksWhichAlly() throws {
+        let sun = addCharacter("sun", at: HexCoord(3, 3))
+        let brute = addCharacter("brute", at: HexCoord(5, 3))
+        let tinkerer = addCharacter("tinkerer", at: HexCoord(3, 5))
+        let blessing = try card("Protective Blessing", of: "sun")
+        let other = try XCTUnwrap(gm.editionStore.abilities(forDeck: "sun", edition: "gh").first { $0.cardId != blessing.cardId })
+        let turn = turn(for: sun, top: blessing, bottom: other)
+        var guardSteps = 0
+        while guardSteps < 5, !{ if case .selectingConditionTarget = self.coord.interactionMode { return true }; return false }() {
+            turn.executeCurrentAction()
+            guardSteps += 1
+        }
+        guard case .selectingConditionTarget(_, let condition, let targets) = coord.interactionMode else {
+            return XCTFail("an ally to choose")
+        }
+        XCTAssertEqual(targets, [.character(brute.id), .character(tinkerer.id)])
+        coord.handlePieceTap(.character(brute.id))
+        XCTAssertTrue(brute.entityConditions.contains { $0.name == condition } || brute.attackModifierDeck.undrawnCount(of: .bless) > 0)
+        XCTAssertFalse(tinkerer.entityConditions.contains { $0.name == condition })
+    }
+
+    /// Regression: a heal for allies ("Heal 1, all adjacent allies") healed the character.
+    func testHealsReachTheAllies() throws {
+        let tinkerer = addCharacter("tinkerer", at: HexCoord(3, 3))
+        let brute = addCharacter("brute", at: HexCoord(4, 3))
+        let far = addCharacter("spellweaver", at: HexCoord(8, 8))
+        for character in [tinkerer, brute, far] { character.health = 3 }
+        let turn = turn(for: tinkerer, top: try card("Hook Gun", of: "tinkerer"), bottom: try card("Restorative Mist", of: "tinkerer"),
+                        bottomFirst: true)
+        turn.skipCurrentAction()      // Move 2
+        turn.executeCurrentAction()   // Heal 1, all adjacent allies
+        XCTAssertEqual(brute.health, 4)
+        XCTAssertEqual(far.health, 3, "not out of reach")
+        XCTAssertEqual(tinkerer.health, 3, "not the Tinkerer")
+    }
+
+    /// Wretched Creature: "consume Dark: Curse one adjacent enemy" printed as its own step.
+    func testAConsumeStepGivesWhatItPrints() throws {
+        let mindthief = addCharacter("mindthief", at: HexCoord(3, 3))
+        let bandit = addMonster("bandit-guard", at: HexCoord(4, 3))
+        _ = bandit
+        gm.game.elementBoard[gm.game.elementBoard.firstIndex { $0.type == .dark }!].state = .strong
+        let turn = turn(for: mindthief, top: try card("Scurry", of: "mindthief"), bottom: try card("Wretched Creature", of: "mindthief"),
+                        bottomFirst: true)
+        turn.skipCurrentAction()      // Move 3
+        turn.executeCurrentAction()   // consume Dark: Curse one adjacent enemy
+        XCTAssertFalse(gm.game.isElementAvailable(.dark))
+        guard case .selectingConditionTarget(_, .curse, _) = coord.interactionMode else { return XCTFail("a curse to aim") }
+    }
+
+    /// Natural Remedy: "Heal 5, Range 3 / consume Air: +1 Heal, +1 Range" is one heal.
+    func testAModifierConsumeBelongsToTheActionBeforeIt() throws {
+        let remedy = try card("Natural Remedy", of: "two-mini")
+        let steps = PlayerTurnController.steps(remedy.actions ?? [], labels: gm.editionStore, edition: "gh")
+        XCTAssertEqual(steps.map(\.type), [.heal], "the consume rides on the heal")
+
+        let tyrant = addCharacter("two-mini", at: HexCoord(3, 3))
+        _ = addCharacter("brute", at: HexCoord(5, 3))
+        gm.game.elementBoard[gm.game.elementBoard.firstIndex { $0.type == .air }!].state = .strong
+        let other = try XCTUnwrap(gm.editionStore.abilities(forDeck: "two-mini", edition: "gh").first { $0.cardId != remedy.cardId })
+        let turn = turn(for: tyrant, top: remedy, bottom: other)
+        turn.executeCurrentAction()
+        guard case .selectingHealTarget(_, let value, _) = coord.interactionMode else { return XCTFail("a heal to aim") }
+        XCTAssertEqual(value, 6)
+        XCTAssertFalse(gm.game.isElementAvailable(.air))
+    }
+
+    // MARK: - Mindthief augments
+
+    /// Play `augment`'s top (the augment, then its own Attack) against an adjacent Bandit Guard.
+    private func playAugment(_ augment: String, other: String = "Corrupting Embrace") throws
+        -> (mindthief: GameCharacter, turn: PlayerTurnController, bandit: GameMonsterEntity) {
+        let mindthief = gm.game.characters.first { $0.name == "mindthief" } ?? addCharacter("mindthief", at: HexCoord(3, 3))
+        let bandit = coord.monsterEntity(name: "bandit-guard", standee: 1) ?? addMonster("bandit-guard", at: HexCoord(4, 3))
+        bandit.health = 50
+        bandit.maxHealth = 50
+        let played = try card(augment, of: "mindthief"), second = try card(other, of: "mindthief")
+        mindthief.handCards = [played.cardId!, second.cardId!]
+        let turn = PlayerTurnController(characterID: mindthief.id, coordinator: coord, gameManager: gm)
+        coord.activePlayerTurn = turn
+        turn.selectCards(top: played, bottom: second)
+        turn.executeCurrentAction()   // the augment
+        turn.executeCurrentAction()   // its Attack
+        return (mindthief, turn, bandit)
+    }
+
+    /// Regression: an augment's box was performed when played (Parasitic Influence healed at
+    /// once, Withering Claw asked for a target); it now shapes the melee attacks instead.
+    func testAnAugmentShapesMeleeAttacks() throws {
+        let weakness = try playAugment("The Mind's Weakness")
+        XCTAssertEqual(weakness.turn.currentAttackValue(), 3, "Attack 1, +2 from the augment")
+
+        let (mindthief, claw, _) = try playAugment("Withering Claw")
+        XCTAssertEqual(Set(claw.pendingConditions), [.muddle, .poison])
+        if case .selectingConditionTarget = coord.interactionMode { XCTFail("the augment isn't a condition to place") }
+        XCTAssertFalse(mindthief.entityConditions.contains { $0.name == .muddle })
+    }
+
+    /// Psychic Knife: an attack an augment shapes gets +1 more.
+    func testThePsychicKnifeAddsToAugmentedAttacks() throws {
+        addCharacter("mindthief", at: HexCoord(3, 3)).items = [PlayerTurnController.psychicKnife]
+        let knife = try playAugment("The Mind's Weakness")
+        XCTAssertEqual(knife.turn.currentAttackValue(), 4, "Attack 1, +2 from the augment, +1 from the knife")
+    }
+
+    func testParasiticInfluenceHealsOnTheAttackNotWhenPlayed() throws {
+        let mindthief = addCharacter("mindthief", at: HexCoord(3, 3))
+        mindthief.health = 3
+        addMonster("bandit-guard", at: HexCoord(4, 3))
+        let parasitic = try card("Parasitic Influence", of: "mindthief"), other = try card("Corrupting Embrace", of: "mindthief")
+        mindthief.handCards = [parasitic.cardId!, other.cardId!]
+        let turn = PlayerTurnController(characterID: mindthief.id, coordinator: coord, gameManager: gm)
+        coord.activePlayerTurn = turn
+        turn.selectCards(top: parasitic, bottom: other)
+        turn.executeCurrentAction()
+        XCTAssertEqual(mindthief.health, 3, "playing the augment heals no one")
+        turn.executeCurrentAction()
+        XCTAssertEqual(mindthief.health, 5, "its melee attack: Heal 2, self")
+    }
+
+    func testANewAugmentDiscardsTheOld() throws {
+        let mindthief = addCharacter("mindthief", at: HexCoord(3, 3))
+        let weakness = try card("The Mind's Weakness", of: "mindthief")
+        mindthief.activeCards = [weakness.cardId!]
+        _ = try playAugment("Withering Claw")
+        XCTAssertFalse(mindthief.activeCards.contains(weakness.cardId!))
+        XCTAssertTrue(mindthief.discardedCards.contains(weakness.cardId!))
+    }
+
+    /// Regression: "Attack 2, all enemies moved through" (Trample) attacked no one.
+    func testTrampleAttacksEveryEnemyJumpedOver() async throws {
+        let character = addCharacter(at: HexCoord(3, 3))
+        let first = addMonster("bandit-guard", at: HexCoord(4, 3))
+        let second = addMonster("bandit-guard", at: HexCoord(5, 3))
+        addMonster("bandit-guard", at: HexCoord(3, 5))   // not in the way
+        for bandit in [first, second] { bandit.health = 50; bandit.maxHealth = 50 }
+        let trample = try card("Trample", of: "brute"), other = try card("Spare Dagger", of: "brute")
+        character.handCards = [trample.cardId!, other.cardId!]
+        let turn = PlayerTurnController(characterID: character.id, coordinator: coord, gameManager: gm)
+        coord.activePlayerTurn = turn
+        turn.selectCards(top: other, bottom: trample)
+        turn.setBottomFirst(true)
+        turn.executeCurrentAction()   // Move 4, Jump
+        coord.handleHexTap(HexCoord(6, 3))
+        _ = await waitUntil { turn.currentActionIndex == 1 }
+        XCTAssertEqual(Set(turn.hexesPassed), [HexCoord(4, 3), HexCoord(5, 3)])
+        turn.executeCurrentAction()   // Attack 2, every enemy moved through
+        _ = await waitUntil { turn.currentActionIndex == 2 }
+        let attacked = coord.turnLog.filter { $0.message.contains("attacks Bandit Guard") }.map(\.message)
+        XCTAssertEqual(attacked.count, 2, attacked.joined(separator: " / "))
+        XCTAssertFalse(attacked.contains { $0.contains("Bandit Guard 3") })
+    }
 }
 
 @MainActor
@@ -449,4 +1150,5 @@ final class ItemAndPerkRulesTests: XCTestCase {
         XCTAssertEqual(brute.attackModifierDeck.cards.filter { $0.type == .minus1 }.count, before,
                        "item penalty cards leave the deck after the scenario")
     }
+
 }

@@ -23,15 +23,10 @@ final class ScenarioManager {
         onBeforeMutate?()
         let scenario = Scenario(data: scenarioData)
         game.scenario = scenario
-
-        // Determine if an event should be drawn before this scenario
-        if scenarioData.eventType == "road" {
-            game.pendingEventType = "road"
-        } else if !scenarioData.isInitial {
-            game.pendingEventType = "city"
-        } else {
-            game.pendingEventType = nil
-        }
+        recordStartingTallies()
+        // Every scenario starts with all elements inert (iPad playthrough 2026-10-09: the last
+        // scenario's Earth was still lit as #2 began); its own rules may infuse some below.
+        for index in game.elementBoard.indices { game.elementBoard[index].state = .inert }
 
         applyScenarioData(scenarioData)
         addItemPenaltyCards()
@@ -52,8 +47,10 @@ final class ScenarioManager {
     /// deck for the scenario, unless a perk ignores negative item effects (GH p.11).
     private func addItemPenaltyCards() {
         for character in game.characters where !character.absent {
+            // Each brings only what fits beside the items before it.
+            editionStore.fitLoadout(character, unlimited: game.tableRules.bringEveryItem)
             guard !character.hasCustomPerk("ignoreNegativeItem") else { continue }
-            for key in character.items {
+            for key in character.carriedItems {
                 let parts = key.split(separator: "-")
                 guard let id = parts.last.flatMap({ Int($0) }),
                       let item = editionStore.itemData(id: id, edition: parts.dropLast().joined(separator: "-")),
@@ -61,6 +58,10 @@ final class ScenarioManager {
                 for _ in 0..<item.minusOne {
                     character.attackModifierDeck.addCard(type: .minus1)
                 }
+            }
+            // Second Skin: two −1 cards out of the deck.
+            if character.carriedItems.contains(PassiveItems.secondSkin) {
+                character.attackModifierDeck.setAsideForScenario(.minus1, count: 2)
             }
         }
     }
@@ -82,10 +83,16 @@ final class ScenarioManager {
         game.scenario = nil
     }
 
-    func finishScenario(success: Bool) {
+    /// `choices` holds the players' picks for rewards that need one (who takes an item, the
+    /// collective gold split, a location to unlock); defaults apply where it is silent.
+    func finishScenario(success: Bool, choices: ScenarioRewardChoices = ScenarioRewardChoices()) {
         onBeforeMutate?()
         guard let scenario = game.scenario else { return }
         let data = scenario.data
+
+        // Experience gained in the scenario itself, before the success bonus (for battle goals).
+        let xpGained = scenarioXPGained()
+        recordCampaign(success: success, data: data)
 
         if success {
             // Record completion
@@ -100,7 +107,7 @@ final class ScenarioManager {
 
             // Apply scenario-specific rewards
             if let rewards = data.rewards {
-                applyRewards(rewards, edition: data.edition)
+                applyRewards(rewards, edition: data.edition, choices: choices)
             }
 
             // Evaluate battle goals and award checkmarks
@@ -109,34 +116,21 @@ final class ScenarioManager {
                 let results = BattleGoalEvaluator.evaluateAll(
                     game: game,
                     statsManager: statsManager,
-                    scenarioXPGained: [:],  // XP tracking per-character not needed for most goals
+                    scenarioXPGained: xpGained,
                     battleGoalData: battleGoals
                 )
                 for (charID, result) in results {
                     if result.checksAwarded > 0,
                        let character = game.characters.first(where: { $0.id == charID }) {
-                        character.battleGoalProgress += result.checksAwarded
+                        character.addBattleGoalChecks(result.checksAwarded)
                     }
-                }
-            }
-
-            // Update personal quest progress for all characters
-            for character in game.characters where !character.absent {
-                let complete = PersonalQuestEvaluator.updateProgress(
-                    character: character, game: game, editionStore: editionStore
-                )
-                if complete {
-                    game.campaignLog.append(CampaignLogEntry(
-                        type: .characterRetired,
-                        message: "\(character.name) completed their personal quest and is ready to retire"
-                    ))
                 }
             }
 
             // Campaign log
             game.campaignLog.append(CampaignLogEntry(
                 type: .scenarioCompleted,
-                message: "Completed Scenario #\(data.index): \(data.name)",
+                message: "Completed #\(data.index) \(data.name)",
                 details: "Round \(game.round)"
             ))
         } else {
@@ -144,9 +138,21 @@ final class ScenarioManager {
             // and money they collected (GH p.47).
             game.campaignLog.append(CampaignLogEntry(
                 type: .scenarioFailed,
-                message: "Failed Scenario #\(data.index): \(data.name)",
+                message: "Failed #\(data.index) \(data.name)",
                 details: "Round \(game.round)"
             ))
+        }
+
+        // Personal quest progress, won or lost (kills count either way).
+        for character in game.characters where !character.absent {
+            let wasComplete = PersonalQuestEvaluator.isComplete(character: character, editionStore: editionStore)
+            let complete = PersonalQuestEvaluator.updateProgress(character: character, game: game, editionStore: editionStore)
+            if complete && !wasComplete {
+                game.campaignLog.append(CampaignLogEntry(
+                    type: .characterRetired,
+                    message: "\(GameText.characterName(character, labels: editionStore)) completed their personal quest and can retire"
+                ))
+            }
         }
 
         // Reset character state for the next scenario.
@@ -158,6 +164,9 @@ final class ScenarioManager {
         //   - Clear temporary combat buffs (shield, retaliate, etc.)
         //   - Dismiss summons
         for character in game.characters where !character.absent {
+            // Battle goals are for one scenario; new ones are dealt for the next.
+            character.battleGoalCardIds = []
+            character.selectedBattleGoal = nil
             character.exhausted = false
             character.longRest = false
             character.health = character.maxHealth
@@ -180,6 +189,8 @@ final class ScenarioManager {
             character.summons.removeAll()
             character.spentItems.removeAll()
             character.consumedItems.removeAll()
+            character.itemSlotsUsed.removeAll()
+            character.bonusChargesUsed.removeAll()
         }
 
         game.monsterAttackModifierDeck.removeScenarioCards()
@@ -280,6 +291,12 @@ final class ScenarioManager {
         isScenarioBlocked(scenario, edition: scenario.edition)
     }
 
+    /// Unlocked by a won scenario (or by hand), whether or not it can be played yet: on the
+    /// board game's map it has its sticker.
+    func isUnlocked(_ scenario: ScenarioData) -> Bool {
+        scenario.isInitial || isScenarioUnlocked(scenario, edition: scenario.edition) || game.manualScenarios.contains(scenario.id)
+    }
+
     func isLocked(_ scenario: ScenarioData) -> Bool {
         let edition = scenario.edition
         let unlocked = isScenarioUnlocked(scenario, edition: edition) || game.manualScenarios.contains(scenario.id)
@@ -299,16 +316,16 @@ final class ScenarioManager {
             if scenario.group == "solo" || scenario.group == "randomDungeon"
                 || scenario.group == "randomMonsterCard" || scenario.group == "randomDungeonCard" { return false }
 
-            // Initial scenarios are always available
-            if scenario.isInitial { return true }
-
-            // Already completed and not repeatable
+            // Already completed and not repeatable (an initial scenario too)
             if game.completedScenarios.contains(scenario.id) && !scenario.isRepeatable {
                 return false
             }
 
-            // Check if unlocked via completed scenarios
-            let isUnlocked = isScenarioUnlocked(scenario, edition: edition)
+            // Initial scenarios are always available
+            if scenario.isInitial { return true }
+
+            // Unlocked by a completed scenario, or by an event, treasure or reward
+            let isUnlocked = isScenarioUnlocked(scenario, edition: edition) || game.manualScenarios.contains(scenario.id)
 
             // Check requirements (achievements, etc.)
             let meetsRequirements = checkRequirements(scenario)
@@ -500,14 +517,13 @@ final class ScenarioManager {
     // MARK: - Private: Requirements Checking
 
     private func isScenarioUnlocked(_ scenario: ScenarioData, edition: String) -> Bool {
-        let allScenarios = editionStore.scenarios(for: edition)
-
         // Check if any completed scenario unlocks this one
         for completed in game.completedScenarios {
             let parts = completed.split(separator: "-", maxSplits: 1)
             guard parts.count == 2, String(parts[0]) == edition else { continue }
             let completedIndex = String(parts[1])
-            if let completedScenario = allScenarios.first(where: { $0.index == completedIndex }) {
+            // By number: the campaign scenario, never the solo one sharing its number.
+            if let completedScenario = editionStore.scenarioData(index: completedIndex, edition: edition) {
                 if let unlocks = completedScenario.unlocks, unlocks.contains(scenario.index) {
                     return true
                 }
@@ -528,14 +544,13 @@ final class ScenarioManager {
     }
 
     private func isScenarioBlocked(_ scenario: ScenarioData, edition: String) -> Bool {
-        let allScenarios = editionStore.scenarios(for: edition)
-
         // Check if any completed scenario blocks this one
         for completed in game.completedScenarios {
             let parts = completed.split(separator: "-", maxSplits: 1)
             guard parts.count == 2, String(parts[0]) == edition else { continue }
             let completedIndex = String(parts[1])
-            if let completedScenario = allScenarios.first(where: { $0.index == completedIndex }) {
+            // By number: the campaign scenario, never the solo one sharing its number.
+            if let completedScenario = editionStore.scenarioData(index: completedIndex, edition: edition) {
                 if let blocks = completedScenario.blocks, blocks.contains(scenario.index) {
                     return true
                 }
@@ -614,7 +629,8 @@ final class ScenarioManager {
 
     // MARK: - Private: Rewards
 
-    private func applyRewards(_ rewards: ScenarioRewards, edition: String) {
+    private func applyRewards(_ rewards: ScenarioRewards, edition: String,
+                              choices: ScenarioRewardChoices = ScenarioRewardChoices()) {
         if let globals = rewards.globalAchievements {
             for g in globals { game.globalAchievements.insert(g) }
         }
@@ -639,7 +655,8 @@ final class ScenarioManager {
             }
         }
         if let rep = rewards.reputation {
-            game.partyReputation += resolveRewardInt(rep)
+            // Reputation runs from −20 to +20 (p.48).
+            game.partyReputation = max(-20, min(20, game.partyReputation + resolveRewardInt(rep)))
         }
         if let pros = rewards.prosperity {
             game.partyProsperity += resolveRewardInt(pros)
@@ -656,9 +673,43 @@ final class ScenarioManager {
                 character.experience += amount
             }
         }
+        applyRewardChoices(rewards, edition: edition, choices: choices)
     }
 
-    private func resolveRewardInt(_ value: IntOrString) -> Int {
+    /// Fold the scenario into each character's campaign record, for personal quests: a win,
+    /// their kills, and exhaustions in the party.
+    private func recordCampaign(success: Bool, data: ScenarioData) {
+        let party = game.characters.filter { !$0.absent }
+        let exhaustions = party.filter(\.exhausted).count
+        for character in party {
+            let stats = scenarioStatsManager?.stats(for: character.name) ?? ScenarioCharacterStats()
+            if success { character.record.scenariosCompleted.insert(data.id) }
+            for (monster, count) in stats.killsByMonster { character.record.kills[monster, default: 0] += count }
+            character.record.eliteKills += stats.eliteKills
+            if character.exhausted { character.record.timesExhausted += 1 }
+            character.record.partyExhaustions += exhaustions
+        }
+    }
+
+    /// Experience each character (by id) gained in the current scenario so far.
+    func scenarioXPGained() -> [String: Int] {
+        guard let scenario = game.scenario else { return [:] }
+        return Dictionary(uniqueKeysWithValues: game.characters.map {
+            ($0.id, $0.experience - (scenario.startingExperience[$0.id] ?? $0.experience))
+        })
+    }
+
+    /// Note each character's experience and gold as the scenario begins (characters added
+    /// after the scenario was chosen are noted when the board is entered).
+    func recordStartingTallies() {
+        guard let scenario = game.scenario else { return }
+        for character in game.characters where scenario.startingExperience[character.id] == nil {
+            scenario.startingExperience[character.id] = character.experience
+            scenario.startingGold[character.id] = character.loot
+        }
+    }
+
+    func resolveRewardInt(_ value: IntOrString) -> Int {
         switch value {
         case .int(let v): return v
         case .string(let s): return evaluateEntityValue(.string(s), level: game.level,

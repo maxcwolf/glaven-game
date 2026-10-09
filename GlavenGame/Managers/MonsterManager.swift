@@ -173,12 +173,15 @@ final class MonsterManager {
         }
     }
 
-    /// Apply stat effects (shield, retaliate) from drawn ability card, base stats, and scenario overrides to all alive entities
-    func applyStatEffects(for monster: GameMonster) {
+    /// Apply stat effects (shield, retaliate) from drawn ability card, base stats, and scenario
+    /// overrides to all alive entities — or, for monsters entering play mid-round, only to
+    /// `standees`, so the others keep the round's bonuses they've gained (a consumed element's
+    /// Shield) since the round began.
+    func applyStatEffects(for monster: GameMonster, only standees: Set<Int>? = nil) {
         guard let ability = currentAbility(for: monster) else { return }
         let allActions = (ability.actions ?? []) + (ability.bottomActions ?? [])
 
-        for entity in monster.aliveEntities {
+        for entity in monster.aliveEntities where standees?.contains(entity.number) ?? true {
             // Rebuild from scratch every round so stat/scenario bonuses don't accumulate.
             entity.shield = nil
             entity.shieldPersistent = nil

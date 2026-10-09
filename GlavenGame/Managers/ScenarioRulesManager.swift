@@ -37,6 +37,9 @@ final class ScenarioRulesManager {
     /// Places a rule-spawned monster on the board (entity + piece). Returns false when the board
     /// isn't active, in which case only the game-state entity is created.
     var onSpawnMonster: ((_ name: String, _ type: MonsterType, _ marker: String?, _ health: String?) -> Bool)?
+    /// Damage a rule deals a character, offered to the board (true: the board takes it, so the
+    /// character may lose cards to negate it, p.22).
+    var takesCharacterDamage: ((_ character: GameCharacter, _ amount: Int) -> Bool)?
 
     /// Re-entrancy guard: effects (e.g. `onOpenRooms`) may cause callers to request another
     /// evaluation while one is running; that request is folded into a follow-up pass.
@@ -638,7 +641,9 @@ final class ScenarioRulesManager {
         switch type {
         case "damage":
             let amount = integerValue(value, default: 1)
-            if amount > 0 { entityManager.changeHealth(entity, amount: -amount) }
+            guard amount > 0 else { break }
+            if let character = entity as? GameCharacter, takesCharacterDamage?(character, amount) == true { break }
+            entityManager.changeHealth(entity, amount: -amount)
 
         case "heal":
             let amount = integerValue(value, default: 1)

@@ -4,7 +4,7 @@ import Foundation
 
 extension GameState {
     func toSnapshot(boardCoordinator: BoardCoordinator? = nil) -> GameSnapshot {
-        GameSnapshot(
+        var snapshot = GameSnapshot(
             edition: edition,
             conditions: conditions,
             figures: figures.map { $0.toSnapshot() },
@@ -40,6 +40,11 @@ extension GameState {
             unlockedItems: unlockedItems,
             boardSnapshot: boardCoordinator?.boardScene != nil ? boardCoordinator?.snapshot() : nil
         )
+        snapshot.events = events
+        snapshot.tableRules = tableRules == TableRules() ? nil : tableRules
+        snapshot.learningMode = learningMode ? true : nil
+        snapshot.difficulty = difficulty
+        return snapshot
     }
 
     func restore(from snapshot: GameSnapshot, editionStore: EditionDataStore, boardCoordinator: BoardCoordinator? = nil) {
@@ -74,6 +79,10 @@ extension GameState {
         campaignLog = snapshot.campaignLog
         unlockedCharacters = snapshot.unlockedCharacters
         unlockedItems = snapshot.unlockedItems
+        events = snapshot.events ?? EventState()
+        tableRules = snapshot.tableRules ?? TableRules()
+        learningMode = snapshot.learningMode ?? false
+        difficulty = snapshot.difficulty ?? .normal
 
         // Restore figures
         figures = snapshot.figures.map { $0.toRuntime(editionStore: editionStore) }
@@ -118,7 +127,7 @@ extension FigureSnapshot {
 
 extension GameCharacter {
     func toSnapshot() -> CharacterSnapshot {
-        CharacterSnapshot(
+        var snapshot = CharacterSnapshot(
             name: name, edition: edition, level: level, off: off, active: active,
             number: number, health: health, maxHealth: maxHealth,
             entityConditions: entityConditions, immunities: immunities,
@@ -149,8 +158,15 @@ extension GameCharacter {
             spentItems: spentItems.isEmpty ? nil : Array(spentItems),
             consumedItems: consumedItems.isEmpty ? nil : Array(consumedItems),
             roundBonusCards: roundBonusCards.isEmpty ? nil : roundBonusCards,
-            lostWhenRemoved: lostWhenRemoved.isEmpty ? nil : lostWhenRemoved
+            lostWhenRemoved: lostWhenRemoved.isEmpty ? nil : lostWhenRemoved,
+            chosenCards: chosenCards
         )
+        snapshot.record = record
+        snapshot.questChoices = questChoices.isEmpty ? nil : questChoices
+        snapshot.itemSlotsUsed = itemSlotsUsed.isEmpty ? nil : itemSlotsUsed
+        snapshot.bonusChargesUsed = bonusChargesUsed.isEmpty ? nil : bonusChargesUsed
+        snapshot.itemsLeftBehind = itemsLeftBehind.isEmpty ? nil : itemsLeftBehind
+        return snapshot
     }
 }
 
@@ -158,6 +174,14 @@ extension CharacterSnapshot {
     func toRuntime(editionStore: EditionDataStore) -> GameCharacter {
         let charData = editionStore.characterData(name: name, edition: edition)
         let c = GameCharacter(name: name, edition: edition, level: level, characterData: charData)
+        apply(to: c, editionStore: editionStore)
+        return c
+    }
+
+    /// Put this snapshot's state on an existing character, keeping the object (and everything
+    /// that refers to it, such as the round's turn order).
+    func apply(to c: GameCharacter, editionStore: EditionDataStore) {
+        c.level = level
         c.off = off
         c.active = active
         c.number = number
@@ -203,7 +227,20 @@ extension CharacterSnapshot {
         c.consumedItems = Set(consumedItems ?? [])
         c.roundBonusCards = roundBonusCards ?? []
         c.lostWhenRemoved = lostWhenRemoved ?? []
-        return c
+        c.record = record ?? CharacterRecord()
+        c.questChoices = questChoices ?? []
+        c.itemSlotsUsed = itemSlotsUsed ?? [:]
+        c.bonusChargesUsed = bonusChargesUsed ?? [:]
+        c.itemsLeftBehind = itemsLeftBehind ?? []
+        if let chosenCards {
+            c.chosenCards = chosenCards
+        } else {
+            // An older save: the higher-level cards the character carries are their choices.
+            let charData = editionStore.characterData(name: name, edition: edition)
+            let abilities = editionStore.abilities(forDeck: charData?.deck ?? name, edition: edition)
+            c.chosenCards = CardPool.adoptedChoices(abilities, level: level,
+                                                    carried: handCards + discardedCards + lostCards + activeCards)
+        }
     }
 }
 
@@ -220,7 +257,8 @@ extension GameMonster {
             additionalStatActions: additionalStatActions.isEmpty ? nil : additionalStatActions,
             additionalImmunities: additionalImmunities.isEmpty ? nil : additionalImmunities,
             statEffectHealthExpr: statEffectHealthExpr,
-            statEffectHealthAbsolute: statEffectHealthAbsolute ? true : nil
+            statEffectHealthAbsolute: statEffectHealthAbsolute ? true : nil,
+            drawnInitiative: drawnInitiative
         )
     }
 }
@@ -245,6 +283,7 @@ extension MonsterSnapshot {
         m.additionalImmunities = additionalImmunities ?? []
         m.statEffectHealthExpr = statEffectHealthExpr
         m.statEffectHealthAbsolute = statEffectHealthAbsolute ?? false
+        m.drawnInitiative = drawnInitiative
         return m
     }
 }
@@ -402,7 +441,13 @@ extension Scenario {
             revealedRooms: revealedRooms,
             additionalSections: additionalSections,
             appliedRules: appliedRules,
-            disabledRules: disabledRules
+            disabledRules: disabledRules,
+            killCounts: killCounts,
+            startingExperience: startingExperience,
+            startingGold: startingGold,
+            stats: stats,
+            partyStats: partyStats,
+            pendingFinish: pendingFinish
         )
     }
 }
@@ -417,6 +462,12 @@ extension ScenarioSnapshot {
         scenario.additionalSections = additionalSections
         scenario.appliedRules = appliedRules
         scenario.disabledRules = disabledRules
+        scenario.killCounts = killCounts ?? [:]
+        scenario.startingExperience = startingExperience ?? [:]
+        scenario.startingGold = startingGold ?? [:]
+        scenario.stats = stats ?? [:]
+        scenario.partyStats = partyStats ?? ScenarioPartyStats()
+        scenario.pendingFinish = pendingFinish
         return scenario
     }
 }

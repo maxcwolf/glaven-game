@@ -119,12 +119,36 @@ final class BattleGoalTests: XCTestCase {
         XCTAssertEqual(BattleGoalEvaluator.evaluate(cardId: "476", character: char, stats: stats, scenarioXP: 0, alliesExhausted: false), false)
     }
 
-    func testUnevaluableGoal_returnsNil() {
-        let (char, stats) = makeChar()
-        // Neutralizer (464) needs trap event tracking
-        XCTAssertNil(BattleGoalEvaluator.evaluate(cardId: "464", character: char, stats: stats, scenarioXP: 0, alliesExhausted: false))
-        // Diehard (478) needs continuous HP tracking
-        XCTAssertNil(BattleGoalEvaluator.evaluate(cardId: "478", character: char, stats: stats, scenarioXP: 0, alliesExhausted: false))
+    /// Every Gloomhaven goal is judged now; the ones that used to need tracking each pass and
+    /// fail on the stats they depend on.
+    func testEveryGoalIsJudged() {
+        let (char, _) = makeChar()
+        func judge(_ id: String, _ stats: ScenarioCharacterStats, party: ScenarioPartyStats = ScenarioPartyStats()) -> Bool? {
+            BattleGoalEvaluator.evaluate(cardId: id, character: char, stats: stats, scenarioXP: 0,
+                                         alliesExhausted: false, party: party)
+        }
+        var met = ScenarioCharacterStats()
+        met.trapsTriggered = 1; met.treasuresLooted = 1; met.doorsOpened = 1; met.eliteKills = 1
+        met.itemUses = char.level + 2; met.largestOverkill = 4; met.executions = 1; met.longRests = 1
+        let unmet = ScenarioCharacterStats()
+        for id in ["464", "465", "467", "472", "473", "475", "479", "480"] {
+            XCTAssertEqual(judge(id, met), true, "\(id) met")
+            XCTAssertEqual(judge(id, unmet), false, "\(id) not met")
+        }
+        XCTAssertEqual(judge("475", ScenarioCharacterStats(largestOverkill: 3)), false, "Dynamo needs 4 spare")
+        XCTAssertEqual(judge("473", ScenarioCharacterStats(itemUses: char.level + 1)), false)
+        var short = ScenarioCharacterStats(); short.shortRests = 2
+        XCTAssertEqual(judge("481", short), true, "Scrambler: short rests only")
+        short.longRests = 1
+        XCTAssertEqual(judge("481", short), false)
+        XCTAssertEqual(judge("478", ScenarioCharacterStats()), true, "Diehard: never below half")
+        XCTAssertEqual(judge("478", ScenarioCharacterStats(droppedBelowHalf: true)), false)
+        XCTAssertEqual(judge("474", unmet), true, "Aggressor: monsters every round")
+        XCTAssertEqual(judge("474", unmet, party: ScenarioPartyStats(roundStartedWithoutMonsters: true)), false)
+        XCTAssertEqual(judge("477", unmet, party: ScenarioPartyStats(firstKiller: "brute")), true, "Opener")
+        XCTAssertEqual(judge("477", unmet, party: ScenarioPartyStats(firstKiller: "tinkerer")), false)
+        XCTAssertEqual(judge("469", ScenarioCharacterStats(treasuresLooted: 1)), false, "Indigent: no treasure either")
+        for id in (458...481).map(String.init) { XCTAssertNotNil(judge(id, met), id) }
     }
 
     // MARK: - E2E: Full Scenario Flow
@@ -276,6 +300,11 @@ final class BattleGoalTests: XCTestCase {
         char.selectedBattleGoal = 0
         char.battleGoalProgress = 0
 
+        // Stats belong to the scenario being played.
+        var scenarioData = ScenarioData(index: "1", name: "Test", edition: "gh")
+        scenarioData.rewards = ScenarioRewards()
+        t.game.scenario = Scenario(data: scenarioData)
+
         let statsManager = ScenarioStatsManager(game: t.game)
         statsManager.reset()
 
@@ -283,10 +312,6 @@ final class BattleGoalTests: XCTestCase {
         for _ in 0..<6 {
             statsManager.recordKill(by: char.name)
         }
-
-        var scenarioData = ScenarioData(index: "1", name: "Test", edition: "gh")
-        scenarioData.rewards = ScenarioRewards()
-        t.game.scenario = Scenario(data: scenarioData)
 
         let sm = ScenarioManager(game: t.game, editionStore: t.editionStore,
                                   monsterManager: t.monsterManager, levelManager: t.levelManager)

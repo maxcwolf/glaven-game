@@ -1,167 +1,175 @@
 Scenario 4: Crypt of the Damned
 5 starting locations available
-Placed gh-tinkerer at (1, 2)
-Placed gh-mindthief at (0, 3)
-Placed gh-spellweaver at (1, 4)
+Tinkerer takes position [at (1,2)]
+Mindthief takes position [at (0,3)]
+Spellweaver takes position [at (1,4)]
 === Round 1 ===
 --- state after round 0 ---
 elements: none
-tinkerer (1,2) hp 8/8 hand 12 discard 0 lost 0 active 0 xp 0 gold 0
-mindthief (0,3) hp 6/6 hand 10 discard 0 lost 0 active 0 xp 0 gold 0
-spellweaver (1,4) hp 6/6 hand 8 discard 0 lost 0 active 0 xp 0 gold 0
+tinkerer (1,2) hp 8/8 hand 12 discard 0 lost 0 active 0 xp 0 gold 30
+mindthief (0,3) hp 6/6 hand 10 discard 0 lost 0 active 0 xp 0 gold 30
+spellweaver (1,4) hp 6/6 hand 8 discard 0 lost 0 active 0 xp 0 gold 30
 bandit-archer #1 normal (4,0) hp 5/5
 bandit-archer #2 normal (3,1) hp 5/5
 living-bones #1 elite (2,1) hp 6/6
 living-bones #2 elite (3,2) hp 6/6
 doors open: 0/1
-gh-tinkerer: TOP Toxic Bolt (init 18) / BTM Enhancement Field
-gh-mindthief: TOP Fearsome Blade (init 27) / BTM Submissive Affliction
-gh-spellweaver: TOP Flame Strike (init 36) / BTM Fire Orbs
-bandit-archer: drew ability (initiative 44)
-living-bones: drew ability (initiative 81)
-Turn order: tinkerer(18), mindthief(27), spellweaver(36), bandit-archer(44), living-bones(81)
-gh-tinkerer: Turn begins — TOP: Toxic Bolt / BTM: Enhancement Field
-gh-tinkerer: Top from Enhancement Field, bottom from Toxic Bolt
-gh-tinkerer: Attack 3, Range 3
-tinkerer → bandit-archer #2: 3 -1(mod) = 2
-gh-tinkerer: Attack 5, Range 2
-gh-tinkerer: +2 XP
-tinkerer → living-bones #1: 5 -2(mod) -1(shield) = 2
-gh-tinkerer: Turn complete
-gh-mindthief: Turn begins — TOP: Fearsome Blade / BTM: Submissive Affliction
-gh-mindthief: Top from Submissive Affliction, bottom from Fearsome Blade
-gh-mindthief: Move 4
-char(gh-mindthief): Moved to (1, 1)
-gh-mindthief: Attack 2, Range 1
-mindthief → living-bones #1: 2 +1(mod) -1(shield) = 2
-gh-mindthief: +2 XP
-gh-mindthief: Attack 2, Range 1
-mindthief → living-bones #1: 2 +0(mod) -1(shield) = 1
-gh-mindthief: +1 XP
-gh-mindthief: Turn complete
-gh-spellweaver: Turn begins — TOP: Flame Strike / BTM: Fire Orbs
-gh-spellweaver: Top from Fire Orbs, bottom from Flame Strike
-gh-spellweaver: Attack 3, Range 3, Target 3
-char(gh-spellweaver): Select up to 3 targets
-char(gh-spellweaver): Target 1/3 — living-bones#1
-char(gh-spellweaver): Target 2/3 — living-bones#2
-spellweaver → living-bones #1: 3 +1(mod) -1(shield) = 3
-living-bones #1: Killed!
-Loot token dropped at (2, 1)
-spellweaver → living-bones #2: 3 +0(mod) -1(shield) = 2
-gh-spellweaver: Infused fire
-gh-spellweaver: Attack 2, Range 2
-char(gh-spellweaver): No valid targets in range 2
-gh-spellweaver: Turn complete
-bandit-archer — ability (initiative 44)
-bandit-archer #1 → mindthief: 3 +1(mod) = 4
-bandit-archer #2 → mindthief: 3 -1(mod) = 2
-  gh-mindthief: Lost a hand card to negate 2 damage
-living-bones — ability (initiative 81)
-  living-bones #2: Focus out of reach
+Tinkerer plays Toxic Bolt (18) and Enhancement Field
+Mindthief plays Fearsome Blade (27) and Submissive Affliction
+Spellweaver plays Flame Strike (36) and Fire Orbs
+Bandit Archer draws an ability card (44)
+Living Bones draws an ability card (81)
+Turn order: Tinkerer 18, Mindthief 27, Spellweaver 36, Bandit Archer 44, Living Bones 81
+Tinkerer’s turn: Toxic Bolt and Enhancement Field
+Tinkerer takes the top half from Enhancement Field and the bottom half from Toxic Bolt
+Tinkerer: Attack 3, Range 3
+Tinkerer attacks Bandit Archer 2: 3 − 1 = 2 damage [3 -1(mod) = 2]
+Tinkerer: Attack 5, Range 2
+Tinkerer gains 2 XP
+Tinkerer attacks Living Bones 1: 5 − 2 − 1 shield = 2 damage [5 -2(mod) -1(shield) = 2]
+Tinkerer ends the turn
+Mindthief’s turn: Fearsome Blade and Submissive Affliction
+Mindthief takes the top half from Submissive Affliction and the bottom half from Fearsome Blade
+Mindthief: Move 4
+Mindthief moves 2 hexes [to (1,1)]
+Mindthief: Attack 2, Range 1
+Mindthief attacks Living Bones 1: 2 + 1 − 1 shield = 2 damage [2 +1(mod) -1(shield) = 2]
+Mindthief gains 2 XP
+Mindthief: Attack 2, Range 1
+Mindthief attacks Living Bones 1: 2 + 0 − 1 shield = 1 damage [2 +0(mod) -1(shield) = 1]
+Mindthief gains 1 XP
+Mindthief ends the turn
+Spellweaver’s turn: Flame Strike and Fire Orbs
+Spellweaver takes the top half from Fire Orbs and the bottom half from Flame Strike
+Spellweaver: Attack 3, Range 3, Target 3
+Spellweaver: choose up to 3 targets
+Spellweaver targets Living Bones 1 (1 of 3)
+Spellweaver targets Living Bones 2 (2 of 3)
+Spellweaver attacks Living Bones 1: 3 + 1 − 1 shield = 3 damage [3 +1(mod) -1(shield) = 3]
+Living Bones 1 dies
+A money token drops [at (2,1)]
+Spellweaver gains 1 XP
+Spellweaver attacks Living Bones 2: 3 + 0 − 1 shield = 2 damage [3 +0(mod) -1(shield) = 2]
+Spellweaver gains 1 XP
+Spellweaver infuses Fire
+Spellweaver: Attack 2, Range 2
+Spellweaver has no target within range 2
+Spellweaver ends the turn
+Bandit Archer’s turn: ability card (44)
+Bandit Archer 1 attacks Mindthief: 3 + 1 = 4 damage [3 +1(mod) = 4]
+Bandit Archer 2 attacks Mindthief: 3 − 1 = 2 damage [3 -1(mod) = 2]
+Mindthief loses a card from hand to prevent 2 damage
+Living Bones’s turn: ability card (81)
+Living Bones 2 can’t reach its focus
 Round 1 complete
 === Round 2 ===
 --- state after round 1 ---
 elements: fire waning
-tinkerer (1,2) hp 8/8 hand 10 discard 1 lost 1 active 0 xp 2 gold 0
-mindthief (1,1) hp 2/6 hand 7 discard 1 lost 2 active 0 xp 3 gold 0
-spellweaver (1,4) hp 6/6 hand 6 discard 1 lost 1 active 0 xp 0 gold 0
+tinkerer (1,2) hp 8/8 hand 10 discard 1 lost 1 active 0 xp 2 gold 30
+mindthief (1,1) hp 2/6 hand 7 discard 1 lost 2 active 0 xp 3 gold 30
+spellweaver (1,4) hp 6/6 hand 6 discard 1 lost 1 active 0 xp 2 gold 30
 bandit-archer #1 normal (4,0) hp 5/5
 bandit-archer #2 normal (3,1) hp 3/5
 living-bones #2 elite (3,2) hp 4/6
 money tokens: (2,1)x1
 doors open: 0/1
-gh-tinkerer: TOP Net Shooter (init 19) / BTM Hook Gun
-gh-mindthief: TOP Perverse Edge (init 8) / BTM Scurry
-gh-spellweaver: TOP Mana Bolt (init 7) / BTM Impaling Eruption
-bandit-archer: drew ability (initiative 16)
-living-bones: drew ability (initiative 64)
-Turn order: spellweaver(7), mindthief(8), bandit-archer(16), tinkerer(19), living-bones(64)
-gh-spellweaver: Turn begins — TOP: Mana Bolt / BTM: Impaling Eruption
-gh-spellweaver: Top from Impaling Eruption, bottom from Mana Bolt
-gh-spellweaver: Attack 3, Range 4
-spellweaver → bandit-archer #2: 3 -2(mod) = 1
-gh-spellweaver: Infused earth
-gh-spellweaver: Heal 3, Range 1 — select target
-char(gh-spellweaver) → char(gh-spellweaver): Heal 3 (+0)
-gh-spellweaver: Turn complete
-gh-mindthief: Turn begins — TOP: Perverse Edge / BTM: Scurry
-gh-mindthief: Top from Scurry, bottom from Perverse Edge
-gh-mindthief: Move 3
-char(gh-mindthief): Moved to (2, 2)
-gh-mindthief: Attack 1, Range 1
-mindthief → living-bones #2: 1 +0(mod) -1(shield) = 0
-gh-mindthief: Attack 1, Range 2, Stun
-mindthief → bandit-archer #2: 1 ×2(mod) = 2
-bandit-archer #2: Killed!
-Loot token dropped at (3, 1)
-gh-mindthief: Infused ice
-gh-mindthief: +1 XP
-gh-mindthief: Turn complete
-bandit-archer — ability (initiative 16)
-bandit-archer #1 → mindthief: 1 +1(mod) = 2
-  gh-mindthief: Lost 2 discarded cards to negate 2 damage
-gh-tinkerer: Turn begins — TOP: Net Shooter / BTM: Hook Gun
-gh-tinkerer: Attack 3, Range 3, Immobilize
-char(gh-tinkerer): Area attack hits 1 enemy
-tinkerer → living-bones #2: 3 +1(mod) -1(shield) = 3
-  living-bones #2: immobilize applied
-gh-tinkerer: Loot 2
-gh-tinkerer: Looted 1 money token (+2g)
-gh-tinkerer: +1 XP
-gh-tinkerer: Turn complete
-living-bones — ability (initiative 64)
-  living-bones #2: Immobilized
-living-bones #2 → mindthief: 3 +0(mod) = 3
-  gh-mindthief: Lost a hand card to negate 3 damage
-gh-spellweaver: Skipped short rest
+Tinkerer plays Net Shooter (19) and Hook Gun
+Mindthief plays Perverse Edge (8) and Scurry
+Spellweaver plays Mana Bolt (7) and Impaling Eruption
+Bandit Archer draws an ability card (16)
+Living Bones draws an ability card (64)
+Turn order: Spellweaver 7, Mindthief 8, Bandit Archer 16, Tinkerer 19, Living Bones 64
+Spellweaver’s turn: Mana Bolt and Impaling Eruption
+Spellweaver takes the top half from Impaling Eruption and the bottom half from Mana Bolt
+Spellweaver: Attack 3, Range 4
+Spellweaver attacks Living Bones 2: 3 − 2 − 1 shield = no damage [3 -2(mod) -1(shield) = 0]
+Spellweaver gains 1 XP
+Spellweaver attacks Bandit Archer 2: 3 ×2 = 6 damage [3 ×2(mod) = 6]
+Bandit Archer 2 dies
+A money token drops [at (3,1)]
+Spellweaver gains 1 XP
+Spellweaver infuses Earth
+Spellweaver: Heal 3, Range 1. Choose who to heal
+Spellweaver heals Spellweaver for 0 [Heal 3]
+Spellweaver ends the turn
+Mindthief’s turn: Perverse Edge and Scurry
+Mindthief takes the top half from Scurry and the bottom half from Perverse Edge
+Mindthief: Move 3
+Mindthief moves 1 hex [to (0,1)]
+Mindthief: Attack 1, Range 1
+Mindthief has no target within range 1
+Mindthief: Attack 1, Range 2, Stun
+Mindthief has no target within range 2
+Mindthief infuses Ice
+Mindthief gains 1 XP
+Mindthief ends the turn
+Bandit Archer’s turn: ability card (16)
+Bandit Archer 1 attacks Mindthief: 1 + 1 = 2 damage [1 +1(mod) = 2]
+Mindthief loses 2 discarded cards to prevent 2 damage
+Tinkerer’s turn: Net Shooter and Hook Gun
+Tinkerer: Attack 3, Range 3, Immobilize
+Tinkerer’s area attack hits 1 enemy
+Tinkerer attacks Living Bones 2: 3 + 1 − 1 shield = 3 damage [3 +1(mod) -1(shield) = 3]
+Living Bones 2 gains Immobilize
+Tinkerer gains 1 XP
+Tinkerer: Loot 2
+Tinkerer loots 1 money token (2 gold)
+Tinkerer gains 1 XP
+Tinkerer ends the turn
+Living Bones’s turn: ability card (64)
+Living Bones 2 is immobilized and can’t move
+Living Bones 2 can’t reach its focus
+Spellweaver skips the short rest
 Round 2 complete
 === Round 3 ===
 --- state after round 2 ---
 elements: ice waning, earth waning
-spellweaver (1,4) hp 6/6 hand 4 discard 2 lost 2 active 0 xp 0 gold 0
-mindthief (2,2) hp 2/6 hand 4 discard 1 lost 5 active 0 xp 4 gold 0
-tinkerer (1,2) hp 8/8 hand 8 discard 1 lost 3 active 0 xp 3 gold 2
+spellweaver (1,4) hp 6/6 hand 4 discard 2 lost 2 active 0 xp 4 gold 30
+mindthief (0,1) hp 2/6 hand 5 discard 1 lost 4 active 0 xp 4 gold 30
+tinkerer (1,2) hp 8/8 hand 8 discard 1 lost 3 active 0 xp 4 gold 32
 bandit-archer #1 normal (4,0) hp 5/5
 living-bones #2 elite (3,2) hp 1/6
 money tokens: (3,1)x1
 doors open: 0/1
-gh-spellweaver: TOP Frost Armor (init 20) / BTM Reviving Ether
-gh-mindthief: TOP Empathetic Assault (init 11) / BTM The Mind's Weakness
-gh-tinkerer: TOP Stun Shot (init 20) / BTM Flamethrower
-bandit-archer: drew ability (initiative 32)
-living-bones: drew ability (initiative 74)
-Turn order: mindthief(11), tinkerer(20), spellweaver(20), bandit-archer(32), living-bones(74)
-gh-mindthief: Turn begins — TOP: Empathetic Assault / BTM: The Mind's Weakness
-gh-mindthief: Default Attack 2
-mindthief → living-bones #2: 2 -1(mod) -1(shield) = 0
-gh-mindthief: Attack 1, Range 1, Wound
-mindthief → living-bones #2: 1 -1(mod) -1(shield) = 0
-  living-bones #2: wound applied
-gh-mindthief: Turn complete
-gh-tinkerer: Turn begins — TOP: Stun Shot / BTM: Flamethrower
-gh-tinkerer: Top from Flamethrower, bottom from Stun Shot
-gh-tinkerer: Move 4
-char(gh-tinkerer): Moved to (2, 1)
-gh-tinkerer: Attack 3, Range 1, Wound
-char(gh-tinkerer): Area attack hits 1 enemy
-tinkerer → living-bones #2: 3 +0(mod) -1(shield) = 2
-living-bones #2: Killed!
-Loot token dropped at (3, 2)
-gh-tinkerer: Turn complete
-gh-spellweaver: Turn begins — TOP: Frost Armor / BTM: Reviving Ether
-gh-spellweaver: Jump 4
-char(gh-spellweaver): Moved to (3, 2)
-gh-spellweaver: Consumed ice
-gh-spellweaver: Attack 3, Range 3
-gh-spellweaver: +1 XP
-spellweaver → bandit-archer #1: 3 ×2(mod) = 6
-bandit-archer #1: Killed!
-Loot token dropped at (4, 0)
-gh-spellweaver: Turn complete
-gh-spellweaver: Looted 1 money token (+2g)
-gh-mindthief: Skipped short rest
-gh-spellweaver: Skipped short rest
-gh-tinkerer: Skipped short rest
+Spellweaver plays Frost Armor (20) and Reviving Ether
+Mindthief plays Empathetic Assault (11) and Feedback Loop
+Tinkerer plays Stun Shot (20) and Flamethrower
+Bandit Archer draws an ability card (32)
+Living Bones draws an ability card (74)
+Turn order: Mindthief 11, Tinkerer 20, Spellweaver 20, Bandit Archer 32, Living Bones 74
+Mindthief’s turn: Empathetic Assault and Feedback Loop
+Mindthief: Attack 4, Range 5, Disarm
+Mindthief attacks Living Bones 2: 4 + 0 − 1 shield = 3 damage [4 +0(mod) -1(shield) = 3]
+Living Bones 2 dies
+A money token drops [at (3,2)]
+Mindthief infuses Ice
+Mindthief gains 2 XP
+Mindthief: Jump 4
+Mindthief moves 2 hexes [to (0,3)]
+Mindthief ends the turn
+Tinkerer’s turn: Stun Shot and Flamethrower
+Tinkerer takes the top half from Flamethrower and the bottom half from Stun Shot
+Tinkerer: Move 4
+Tinkerer moves 3 hexes [to (3,1)]
+Tinkerer: Attack 3, Range 1, Wound
+Tinkerer’s area attack hits 1 enemy
+Tinkerer attacks Bandit Archer 1: 3 + 0 = 3 damage [3 +0(mod) = 3]
+Bandit Archer 1 gains Wound
+Tinkerer ends the turn
+Tinkerer loots 1 money token (2 gold)
+Spellweaver’s turn: Frost Armor and Reviving Ether
+Spellweaver: Jump 4
+Spellweaver moves 3 hexes [to (3,2)]
+Spellweaver consumes Ice
+Spellweaver: Attack 3, Range 3
+Spellweaver gains 1 XP
+Spellweaver attacks Bandit Archer 1: 3 − 1 = 2 damage [3 -1(mod) = 2]
+Bandit Archer 1 dies
+A money token drops [at (4,0)]
+Spellweaver ends the turn
+Spellweaver loots 1 money token (2 gold)
+Mindthief skips the short rest
+Spellweaver skips the short rest
+Tinkerer skips the short rest
 Round 3 complete
 === Round 4 ===

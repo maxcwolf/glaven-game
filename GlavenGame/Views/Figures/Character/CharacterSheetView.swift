@@ -1,350 +1,361 @@
 import SwiftUI
 
+/// A character's sheet, one page in the board's look: their level and progress, health, hand and
+/// gold, personal quest, battle-goal checkmarks and notes on the left; their perks, in the
+/// rulebook's words, and the items they own on the right.
 struct CharacterSheetView: View {
     @Bindable var character: GameCharacter
+    var onShop: (() -> Void)? = nil
+    let onDone: () -> Void
     @Environment(GameManager.self) private var gameManager
-    @Environment(\.dismiss) private var dismiss
-    @Environment(\.editionTheme) private var theme
 
-    @State private var selectedTab = 0
-    @State private var editingTitle: String = ""
-    @State private var notesText: String = ""
+    @State private var editingTitle = ""
+    @State private var notesText = ""
 
-    private var characterColor: Color {
-        Color(hex: character.color) ?? .blue
-    }
-
-    private var className: String {
-        character.name.replacingOccurrences(of: "-", with: " ").capitalized
-    }
+    private var manager: CharacterManager { gameManager.characterManager }
+    private var className: String { GameText.className(character.name, edition: character.edition, labels: gameManager.editionStore) }
+    private var classColor: Color { Color(hex: character.color) ?? BoardTheme.border }
 
     var body: some View {
-        NavigationStack {
-            VStack(spacing: 0) {
-                picker
-                tabContent
-            }
-            .background(GlavenTheme.background)
-            .navigationTitle("Character Sheet")
-            #if os(iOS)
-            .navigationBarTitleDisplayMode(.inline)
-            #endif
-            .toolbar {
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Done") {
-                        commitPendingChanges()
-                        dismiss()
+        TownDialog(title: character.title.isEmpty ? className : character.title,
+                   subtitle: Self.subtitle(className: className, named: !character.title.isEmpty, level: character.level,
+                                           won: character.record.scenariosCompleted.count),
+                   portrait: (ImageLoader.characterThumbnail(edition: character.edition, name: character.name), classColor),
+                   onDone: close) {
+            nameField
+        } content: {
+            HStack(alignment: .top, spacing: 14) {
+                ScrollView {
+                    VStack(spacing: 14) {
+                        progress
+                        quest
+                        battleGoals
+                        notes
+                    }
+                }
+                .frame(width: 400)
+                ScrollView {
+                    VStack(spacing: 14) {
+                        perks
+                        items
                     }
                 }
             }
-            .onAppear {
-                editingTitle = character.title
-                notesText = character.notes
+            .padding(18)
+        }
+        .onAppear {
+            editingTitle = character.title
+            notesText = character.notes
+        }
+    }
+
+    // MARK: - Words
+
+    /// "Level 3 · 6 scenarios won", with the class first once the character has a name.
+    static func subtitle(className: String, named: Bool, level: Int, won: Int) -> String {
+        let scenarios = won == 0 ? "no scenarios won yet" : "\(won) scenario\(won == 1 ? "" : "s") won"
+        return (named ? "\(className) \u{00B7} " : "") + "Level \(level) \u{00B7} \(scenarios)"
+    }
+
+    /// The level's progress: how far through the level's experience band, what's left, and the
+    /// next level's threshold ("30 XP to level 4", "Level 4 at 150").
+    static func levelProgress(level: Int, experience: Int) -> (fraction: Double, toNext: String, next: String) {
+        let thresholds = GameCharacter.xpThresholds
+        guard level < thresholds.count else { return (1, "Highest level", "") }
+        let start = thresholds[level - 1], end = thresholds[level]
+        let fraction = Double(experience - start) / Double(max(1, end - start))
+        let left = max(0, end - experience)
+        return (max(0, min(1, fraction)),
+                left == 0 ? "Ready to level up" : "\(left) XP to level \(level + 1)",
+                "Level \(level + 1) at \(end)")
+    }
+
+    /// "Every three checkmarks earn a perk. One earned."
+    static func battleGoalNote(checkmarks: Int) -> String {
+        let earned = checkmarks / 3
+        let numbers = ["None", "One", "Two", "Three", "Four", "Five", "Six"]
+        return "Every three checkmarks earn a perk. \(earned < numbers.count ? numbers[earned] : "\(earned)") earned."
+    }
+
+    // MARK: - Header
+
+    private var nameField: some View {
+        HStack(spacing: 6) {
+            Image(systemName: "pencil")
+                .font(.system(size: 12))
+                .foregroundStyle(BoardTheme.secondaryText)
+                .accessibilityHidden(true)
+            TextField("Name your \(className)", text: $editingTitle)
+                .textFieldStyle(.plain)
+                .font(BoardTheme.font(size: 14))
+                .foregroundStyle(BoardTheme.text)
+                .onSubmit(commit)
+                .accessibilityLabel("Character name")
+        }
+        .padding(.horizontal, 14)
+        .frame(width: 220, height: 36)
+        .background(BoardTheme.raised, in: Capsule())
+        .overlay(Capsule().stroke(BoardTheme.border.opacity(0.6), lineWidth: 1))
+    }
+
+    // MARK: - Left
+
+    private var progress: some View {
+        let level = Self.levelProgress(level: character.level, experience: character.experience)
+        return TownSection(title: "Level \(character.level)", detail: level.toNext) {
+            XPBar(progress: level.fraction, track: BoardTheme.raised)
+            HStack {
+                Text("\(character.experience) XP")
+                    .font(BoardTheme.font(size: 13, weight: .semibold))
+                    .foregroundStyle(BoardTheme.text)
+                Spacer()
+                Text(level.next)
+                    .font(BoardTheme.font(size: 13))
+                    .foregroundStyle(BoardTheme.secondaryText)
+            }
+            HStack(spacing: 8) {
+                tile("heart.fill", "\(character.maxHealth)", "Health", BoardTheme.defeat)
+                tile("rectangle.portrait.on.rectangle.portrait.fill", "\(character.handSize)", "Cards", BoardTheme.brass)
+                tile("circle.fill", "\(character.loot)", "Gold", BoardTheme.victory)
             }
         }
     }
 
-    // MARK: - Tab Picker
-
-    @ViewBuilder
-    private var picker: some View {
-        Picker("Tab", selection: $selectedTab) {
-            Text("Overview").tag(0)
-            Text("Perks").tag(1)
-            Text("Items").tag(2)
-            Text("Quest").tag(3)
-            Text("Notes").tag(4)
-        }
-        .pickerStyle(.segmented)
-        .padding(.horizontal)
-        .padding(.vertical, 8)
-        .onChange(of: selectedTab) { _, _ in
-            commitPendingChanges()
-        }
-    }
-
-    // MARK: - Tab Content
-
-    @ViewBuilder
-    private var tabContent: some View {
-        switch selectedTab {
-        case 0: overviewTab
-        case 1: perksTab
-        case 2: itemsTab
-        case 3: PersonalQuestView(character: character)
-        case 4: notesTab
-        default: overviewTab
-        }
-    }
-
-    // MARK: - Overview Tab
-
-    private var overviewTab: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 16) {
-                characterHeader
-                levelGrid
-                statsSection
-                goldSection
+    private func tile(_ icon: String, _ value: String, _ label: String, _ color: Color) -> some View {
+        VStack(spacing: 3) {
+            HStack(spacing: 5) {
+                Image(systemName: icon).font(.system(size: 13)).foregroundStyle(color)
+                Text(value)
+                    .font(BoardTheme.font(size: 20, weight: .bold))
+                    .monospacedDigit()
+                    .foregroundStyle(BoardTheme.text)
             }
-            .padding()
-        }
-    }
-
-    @ViewBuilder
-    private var characterHeader: some View {
-        HStack(spacing: 14) {
-            ThumbnailImage(
-                image: ImageLoader.characterThumbnail(edition: character.edition, name: character.name),
-                size: 64,
-                cornerRadius: 12,
-                fallbackColor: characterColor
-            )
-
-            VStack(alignment: .leading, spacing: 4) {
-                Text(className)
-                    .font(theme.titleFont(size: 20))
-                    .foregroundStyle(GlavenTheme.primaryText)
-
-                TextField("Character Name", text: $editingTitle)
-                    .textFieldStyle(.roundedBorder)
-                    .font(.subheadline)
-                    .onSubmit {
-                        gameManager.characterManager.setTitle(editingTitle, for: character)
-                    }
-            }
-
-            Spacer()
-        }
-    }
-
-    @ViewBuilder
-    private var levelGrid: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text("Level")
-                .font(.subheadline.weight(.semibold))
-                .foregroundStyle(GlavenTheme.secondaryText)
-
-            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 6), count: 9), spacing: 6) {
-                ForEach(1...9, id: \.self) { lvl in
-                    Button {
-                        gameManager.characterManager.setLevel(lvl, for: character)
-                    } label: {
-                        Text("\(lvl)")
-                            .font(.system(size: 16, weight: lvl == character.level ? .bold : .regular))
-                            .monospacedDigit()
-                            .frame(maxWidth: .infinity)
-                            .frame(height: 36)
-                            .background(lvl == character.level ? characterColor : GlavenTheme.primaryText.opacity(0.08))
-                            .foregroundStyle(lvl == character.level ? .white : GlavenTheme.secondaryText)
-                            .clipShape(RoundedRectangle(cornerRadius: 6))
-                    }
-                    .buttonStyle(.plain)
-                }
-            }
-
-            if character.level < 9 {
-                let nextThreshold = GameCharacter.xpThresholds[character.level]
-                Text("Next level at \(nextThreshold) XP")
-                    .font(.caption)
-                    .foregroundStyle(GlavenTheme.secondaryText)
-            }
-        }
-    }
-
-    @ViewBuilder
-    private var statsSection: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("Stats")
-                .font(.subheadline.weight(.semibold))
-                .foregroundStyle(GlavenTheme.secondaryText)
-
-            HStack(spacing: 20) {
-                statItem(icon: "heart.fill", color: .red, label: "Health", value: "\(character.maxHealth)")
-                statItem(icon: "star.fill", color: .blue, label: "XP", value: "\(character.experience)")
-                statItem(icon: "hand.raised.fill", color: .orange, label: "Hand", value: "\(character.handSize)")
-            }
-        }
-    }
-
-    @ViewBuilder
-    private func statItem(icon: String, color: Color, label: String, value: String) -> some View {
-        VStack(spacing: 4) {
-            Image(systemName: icon)
-                .font(.system(size: 20))
-                .foregroundStyle(color)
-            Text(value)
-                .font(.title3.weight(.semibold))
-                .monospacedDigit()
-                .foregroundStyle(GlavenTheme.primaryText)
             Text(label)
-                .font(.caption)
-                .foregroundStyle(GlavenTheme.secondaryText)
+                .font(BoardTheme.font(size: 11, weight: .medium))
+                .foregroundStyle(BoardTheme.secondaryText)
         }
         .frame(maxWidth: .infinity)
-        .padding(.vertical, 10)
-        .background(GlavenTheme.primaryText.opacity(0.06))
-        .clipShape(RoundedRectangle(cornerRadius: 10))
+        .padding(.vertical, 9)
+        .background(BoardTheme.raised, in: RoundedRectangle(cornerRadius: BoardTheme.Radius.medium))
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("\(label) \(value)")
     }
 
     @ViewBuilder
-    private var goldSection: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("Gold")
-                .font(.subheadline.weight(.semibold))
-                .foregroundStyle(GlavenTheme.secondaryText)
-
-            HStack(spacing: 16) {
-                Button {
-                    gameManager.characterManager.addLoot(-1, to: character)
-                } label: {
-                    Image(systemName: "minus.circle.fill")
-                        .font(.system(size: 28))
-                        .foregroundStyle(GlavenTheme.secondaryText)
+    private var quest: some View {
+        if let id = character.personalQuest, let quest = manager.personalQuest(id, edition: character.edition) {
+            TownSection(title: quest.name, detail: manager.questComplete(character) ? "Complete" : "Personal quest") {
+                ForEach(Array(quest.requirements.enumerated()), id: \.offset) { index, requirement in
+                    requirementRow(requirement, index: index, quest: quest)
                 }
-                .buttonStyle(.plain)
-
-                HStack(spacing: 4) {
-                    GameIcon(image: ImageLoader.statusIcon("loot"), fallbackSystemName: "dollarsign.circle.fill", size: 20, color: .yellow)
-                    Text("\(character.loot)")
-                        .font(.title2.weight(.semibold))
-                        .monospacedDigit()
-                        .foregroundStyle(.yellow)
-                }
-
-                Button {
-                    gameManager.characterManager.addLoot(1, to: character)
-                } label: {
-                    Image(systemName: "plus.circle.fill")
-                        .font(.system(size: 28))
-                        .foregroundStyle(GlavenTheme.secondaryText)
-                }
-                .buttonStyle(.plain)
+                Text(quest.reward.map { "Fulfil it to retire. Retiring \($0.prefix(1).lowercased() + $0.dropFirst())." } ?? "Fulfil it to retire.")
+                    .font(BoardTheme.font(size: 12))
+                    .foregroundStyle(BoardTheme.secondaryText)
+                    .fixedSize(horizontal: false, vertical: true)
             }
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 10)
-            .background(GlavenTheme.primaryText.opacity(0.06))
-            .clipShape(RoundedRectangle(cornerRadius: 10))
+        } else {
+            TownSection(title: "Personal Quest") {
+                Text("No quest yet. Choose one in town.")
+                    .font(BoardTheme.font(size: 14))
+                    .foregroundStyle(BoardTheme.secondaryText)
+            }
         }
     }
 
-    // MARK: - Perks Tab
+    private func requirementRow(_ requirement: PersonalQuest.Requirement, index: Int, quest: PersonalQuest) -> some View {
+        let done = { (i: Int) in i < character.personalQuestProgress.count ? character.personalQuestProgress[i] : 0 }
+        let progress = done(index)
+        let waiting = requirement.after.contains { done($0) < quest.requirements[$0].target }
+        let manual = requirement.tracking == .manual && !waiting
+        return VStack(alignment: .leading, spacing: 6) {
+            HStack(alignment: .firstTextBaseline) {
+                Text(requirement.text)
+                    .font(BoardTheme.font(size: 14))
+                    .foregroundStyle(BoardTheme.text)
+                    .fixedSize(horizontal: false, vertical: true)
+                Spacer(minLength: 8)
+                Text("\(progress) of \(requirement.target)")
+                    .font(BoardTheme.font(size: 13, weight: .semibold))
+                    .monospacedDigit()
+                    .foregroundStyle(progress >= requirement.target ? BoardTheme.gain : BoardTheme.brass)
+            }
+            HStack(spacing: 10) {
+                if manual {
+                    stepper("minus", "One less", disabled: progress <= 0) { manager.adjustQuest(index, by: -1, for: character) }
+                }
+                XPBar(progress: Double(progress) / Double(max(1, requirement.target)), track: BoardTheme.raised)
+                if manual {
+                    stepper("plus", "One more", disabled: progress >= requirement.target) { manager.adjustQuest(index, by: 1, for: character) }
+                }
+            }
+            Text(waiting ? "After the one above." : (requirement.tracking == .manual ? "Counted by hand." : "Counted by the game."))
+                .font(BoardTheme.font(size: 11))
+                .foregroundStyle(BoardTheme.secondaryText)
+        }
+    }
 
-    private var perksTab: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 12) {
-                deckSummary
-                if let perks = character.characterData?.perks {
-                    ForEach(Array(perks.enumerated()), id: \.offset) { index, perk in
-                        PerkRow(
-                            perk: perk,
-                            selected: index < character.selectedPerks.count ? character.selectedPerks[index] : 0
-                        ) {
-                            gameManager.characterManager.togglePerk(at: index, for: character)
+    private func stepper(_ icon: String, _ label: String, disabled: Bool, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Image(systemName: icon)
+                .font(.system(size: 12, weight: .bold))
+                .foregroundStyle(BoardTheme.text)
+                .frame(width: 28, height: 28)
+                .background(BoardTheme.raised, in: Circle())
+                .frame(width: 36, height: 36)
+                .contentShape(Circle())
+        }
+        .buttonStyle(.plain)
+        .disabled(disabled)
+        .opacity(disabled ? 0.4 : 1)
+        .accessibilityLabel(label)
+    }
+
+    private var battleGoals: some View {
+        let checks = character.battleGoalProgress
+        return TownSection(title: "Battle Goals", detail: "\(checks) of \(GameCharacter.maxBattleGoalChecks)") {
+            HStack(spacing: 3) {
+                ForEach(0..<(GameCharacter.maxBattleGoalChecks / 3), id: \.self) { group in
+                    HStack(spacing: 2) {
+                        ForEach(0..<3, id: \.self) { i in
+                            let n = group * 3 + i
+                            Button {
+                                manager.setBattleGoalProgress(n < checks ? n : n + 1, for: character)
+                            } label: {
+                                TownCheckBox(ticked: n < checks)
+                                    .padding(.vertical, 6)
+                                    .contentShape(Rectangle())
+                            }
+                            .buttonStyle(.plain)
+                            .accessibilityLabel("Checkmark \(n + 1)")
+                            .accessibilityAddTraits(n < checks ? .isSelected : [])
+                        }
+                    }
+                    .padding(.horizontal, 3)
+                    .background(checks >= group * 3 + 3 ? BoardTheme.brass.opacity(0.15) : Color.clear,
+                                in: RoundedRectangle(cornerRadius: 6))
+                }
+            }
+            Text(Self.battleGoalNote(checkmarks: checks))
+                .font(BoardTheme.font(size: 12))
+                .foregroundStyle(BoardTheme.secondaryText)
+        }
+    }
+
+    private var notes: some View {
+        TownSection(title: "Notes") {
+            TextEditor(text: $notesText)
+                .scrollContentBackground(.hidden)
+                .font(BoardTheme.font(size: 14))
+                .foregroundStyle(BoardTheme.text)
+                .frame(minHeight: 70)
+                .padding(6)
+                .background(BoardTheme.raised.opacity(0.7), in: RoundedRectangle(cornerRadius: BoardTheme.Radius.medium))
+                .accessibilityLabel("Notes")
+        }
+    }
+
+    // MARK: - Right
+
+    private var perks: some View {
+        let available = manager.perksAvailable(for: character)
+        let deck = character.attackModifierDeck.attackModifiers.count
+        return TownSection(title: "Perks", detail: available > 0 ? "\(available) to take" : nil) {
+            Text(available > 0 ? "Tap a perk to take it. Your attack modifier deck: \(deck) cards."
+                               : "Perks come with each level and every three battle-goal checkmarks. Your attack modifier deck: \(deck) cards.")
+                .font(BoardTheme.font(size: 12))
+                .foregroundStyle(BoardTheme.secondaryText)
+                .fixedSize(horizontal: false, vertical: true)
+            VStack(spacing: 2) {
+                ForEach(Array((character.characterData?.perks ?? []).enumerated()), id: \.offset) { index, perk in
+                    perkRow(perk, taken: index < character.selectedPerks.count ? character.selectedPerks[index] : 0) {
+                        manager.togglePerk(at: index, for: character)
+                    }
+                }
+            }
+        }
+    }
+
+    private func perkRow(_ perk: PerkModel, taken: Int, toggle: @escaping () -> Void) -> some View {
+        let text = GameText.perkText(perk)
+        return Button(action: toggle) {
+            HStack(spacing: 10) {
+                HStack(spacing: 3) {
+                    ForEach(0..<perk.count, id: \.self) { i in TownCheckBox(ticked: i < taken) }
+                }
+                .frame(width: 42, alignment: .leading)
+                Text(text)
+                    .font(BoardTheme.font(size: 14, weight: taken > 0 ? .semibold : .regular))
+                    .foregroundStyle(taken > 0 ? BoardTheme.text : BoardTheme.text.opacity(0.82))
+                    .multilineTextAlignment(.leading)
+                    .fixedSize(horizontal: false, vertical: true)
+                Spacer(minLength: 8)
+                if taken >= perk.count { TownSmallCaps(text: "Taken", lit: true) }
+            }
+            .padding(.horizontal, 10)
+            .padding(.vertical, 4)
+            .frame(minHeight: 32)
+            .background(taken > 0 ? BoardTheme.brass.opacity(0.12) : Color.clear,
+                        in: RoundedRectangle(cornerRadius: BoardTheme.Radius.small + 2))
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(text)
+        .accessibilityValue(perk.count > 1 ? "\(taken) of \(perk.count) taken" : (taken > 0 ? "Taken" : "Not taken"))
+    }
+
+    private var items: some View {
+        let owned = character.items.compactMap { gameManager.editionStore.itemData(key: $0) }
+        return TownSection(title: "Items", detail: owned.isEmpty ? nil : "Brings \(character.carriedItems.count) of \(owned.count)") {
+            HStack(alignment: .top, spacing: 8) {
+                if owned.isEmpty {
+                    Text("No items yet.")
+                        .font(BoardTheme.font(size: 14))
+                        .foregroundStyle(BoardTheme.secondaryText)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                } else {
+                    LazyVGrid(columns: [GridItem(.adaptive(minimum: 150), spacing: 8)], spacing: 8) {
+                        ForEach(owned) { item in
+                            VStack(alignment: .leading, spacing: 4) {
+                                Label(item.slot.displayName.uppercased(), systemImage: item.slot.icon)
+                                    .font(BoardTheme.font(size: 11, weight: .bold))
+                                    .kerning(1.1)
+                                    .foregroundStyle(BoardTheme.secondaryText)
+                                    .lineLimit(1)
+                                Text(item.name)
+                                    .font(BoardTheme.display(16))
+                                    .foregroundStyle(BoardTheme.text)
+                                    .lineLimit(1)
+                                    .minimumScaleFactor(0.8)
+                            }
+                            .padding(10)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .background(BoardTheme.raised, in: RoundedRectangle(cornerRadius: BoardTheme.Radius.medium))
+                            .opacity(character.itemsLeftBehind.contains(item.itemKey) ? 0.55 : 1)
+                            .accessibilityElement(children: .combine)
                         }
                     }
                 }
-
-                Divider().background(GlavenTheme.primaryText.opacity(0.2))
-
-                battleGoalProgressSection
-            }
-            .padding()
-        }
-    }
-
-    @ViewBuilder
-    private var deckSummary: some View {
-        let count = character.attackModifierDeck.attackModifiers.count
-        HStack {
-            Text("Deck: \(count) cards")
-                .font(.subheadline)
-                .foregroundStyle(GlavenTheme.secondaryText)
-            Spacer()
-        }
-        .padding(.bottom, 4)
-    }
-
-    @ViewBuilder
-    private var battleGoalProgressSection: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                Text("Battle Goal Progress")
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(GlavenTheme.secondaryText)
-                Spacer()
-                Text("\(character.battleGoalProgress) / 18")
-                    .font(.subheadline)
-                    .monospacedDigit()
-                    .foregroundStyle(GlavenTheme.secondaryText)
-            }
-
-            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 4), count: 9), spacing: 4) {
-                ForEach(0..<18, id: \.self) { i in
-                    Button {
-                        let newValue = i < character.battleGoalProgress ? i : i + 1
-                        gameManager.characterManager.setBattleGoalProgress(newValue, for: character)
-                    } label: {
-                        Image(systemName: i < character.battleGoalProgress ? "checkmark.square.fill" : "square")
-                            .font(.system(size: 22))
-                            .foregroundStyle(i < character.battleGoalProgress ? GlavenTheme.positive : GlavenTheme.secondaryText.opacity(0.5))
+                if let onShop {
+                    Button("Shop", systemImage: "bag") {
+                        close()
+                        onShop()
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(.boardQuietCompact)
                 }
             }
-
-            let perksEarned = character.battleGoalProgress / 3
-            if perksEarned > 0 {
-                Text("\(perksEarned) perk\(perksEarned == 1 ? "" : "s") earned from battle goals")
-                    .font(.caption)
-                    .foregroundStyle(GlavenTheme.positive)
-            }
         }
     }
 
-    // MARK: - Items Tab
+    // MARK: - Saving
 
-    private var itemsTab: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 12) {
-                if !character.items.isEmpty {
-                    CharacterItemsView(character: character)
-                } else {
-                    Text("No items equipped")
-                        .font(.subheadline)
-                        .foregroundStyle(GlavenTheme.secondaryText)
-                        .frame(maxWidth: .infinity, alignment: .center)
-                        .padding(.vertical, 20)
-                }
-            }
-            .padding()
-        }
+    private func commit() {
+        let title = editingTitle.trimmingCharacters(in: .whitespacesAndNewlines)
+        if title != character.title { manager.setTitle(title, for: character) }
+        if notesText != character.notes { manager.setNotes(notesText, for: character) }
     }
 
-    // MARK: - Notes Tab
-
-    private var notesTab: some View {
-        VStack(spacing: 0) {
-            TextEditor(text: $notesText)
-                .scrollContentBackground(.hidden)
-                .font(.body)
-                .foregroundStyle(GlavenTheme.primaryText)
-                .padding(8)
-                .background(GlavenTheme.primaryText.opacity(0.06))
-                .clipShape(RoundedRectangle(cornerRadius: 10))
-                .padding()
-        }
-    }
-
-    // MARK: - Helpers
-
-    private func commitPendingChanges() {
-        let trimmedTitle = editingTitle.trimmingCharacters(in: .whitespacesAndNewlines)
-        if trimmedTitle != character.title {
-            gameManager.characterManager.setTitle(trimmedTitle, for: character)
-        }
-        if notesText != character.notes {
-            gameManager.characterManager.setNotes(notesText, for: character)
-        }
+    private func close() {
+        commit()
+        onDone()
     }
 }

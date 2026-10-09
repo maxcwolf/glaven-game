@@ -26,6 +26,49 @@ struct AttackResult {
     /// Push/pull added by drawn modifier cards.
     var modifierPush: Int = 0
     var modifierPull: Int = 0
+    /// What drawn modifier cards give the attacker (p.19): positive conditions (a Scoundrel's
+    /// Invisible), "Heal X, self", "Shield X, self" for the round, element infusions, and items
+    /// to refresh.
+    var attackerEffects = ModifierSelfEffects()
+}
+
+/// Effects of attack modifier cards that go to the attacker rather than the target.
+struct ModifierSelfEffects: Equatable {
+    var conditions: [ConditionName] = []
+    var heal = 0
+    var shield = 0
+    var infusions: [ElementType] = []
+    var itemsToRefresh = 0
+    /// "+1 Target" (perk cards): the attack ability may add another target, attacked with its
+    /// own draw.
+    var extraTargets = 0
+
+    var isEmpty: Bool { self == ModifierSelfEffects() }
+
+    /// The self effects of `cards`.
+    init(cards: [AttackModifier] = []) {
+        for effect in cards.flatMap(\.effects) {
+            let isSelf = effect.effects?.contains { $0.type == .specialTarget && $0.value?.stringValue == "self" } ?? false
+            switch effect.type {
+            case .condition:
+                if let condition = effect.value.flatMap({ ConditionName(rawValue: $0.stringValue) }), condition.isPositive {
+                    conditions.append(condition)
+                }
+            case .heal where isSelf:
+                heal += effect.value?.intValue ?? 0
+            case .shield where isSelf:
+                shield += effect.value?.intValue ?? 0
+            case .element:
+                if let element = effect.value.flatMap({ ElementType(rawValue: $0.stringValue) }) { infusions.append(element) }
+            case .refreshItem:
+                itemsToRefresh += 1
+            case .target:
+                extraTargets += effect.value?.intValue ?? 1
+            default:
+                break
+            }
+        }
+    }
 }
 
 /// Resolves attacks using the Gloomhaven attack pipeline.
@@ -76,7 +119,7 @@ enum CombatResolver {
 
         // 3. Determine the modifier cards that apply (interactive UI pre-draws them).
         let cards = preDrawnCards.isEmpty
-            ? drawModifiers(advantage: advantage, disadvantage: disadvantage, draw: drawModifier)
+            ? drawModifiers(advantage: advantage, disadvantage: disadvantage, baseAttack: attackValue, draw: drawModifier)
             : preDrawnCards
 
         // 4. Apply the cards: additive values first, then ×2 / null (the attacker chooses the
@@ -101,7 +144,8 @@ enum CombatResolver {
         }
         for card in cards {
             for effect in card.effects {
-                if let condition = conditionFromEffect(effect) { modifierConditions.append(condition) }
+                // Positive conditions go to the attacker (ModifierSelfEffects), the rest to the target.
+                if let condition = conditionFromEffect(effect), !condition.isPositive { modifierConditions.append(condition) }
                 if effect.type == .pierce, let value = effect.value?.intValue { modifierPierce += value }
                 if effect.type == .push, let value = effect.value?.intValue { modifierPush += value }
                 if effect.type == .pull, let value = effect.value?.intValue { modifierPull += value }
@@ -146,7 +190,8 @@ enum CombatResolver {
             retaliateDamage: retaliateDamage,
             allConditions: conditions + modifierConditions,
             modifierPush: modifierPush,
-            modifierPull: modifierPull
+            modifierPull: modifierPull,
+            attackerEffects: ModifierSelfEffects(cards: cards)
         )
     }
 
@@ -197,18 +242,104 @@ enum CombatResolver {
         return parts.joined(separator: " ") + " = \(finalDamage)"
     }
 
+    /// The same sum in the battle log's words: "2 + 1 − 1 shield = 2 damage", "miss".
+    static func readableBreakdown(
+        base: Int,
+        isPoisoned: Bool,
+        preDrawnCards: [AttackModifier],
+        shield: Int,
+        pierce: Int = 0,
+        isMiss: Bool,
+        finalDamage: Int
+    ) -> String {
+        if isMiss || preDrawnCards.contains(where: { $0.valueType == .multiply && $0.value == 0 }) {
+            return "miss"
+        }
+        var text = "\(base)"
+        if isPoisoned { text += " + 1 poison" }
+        for card in preDrawnCards {
+            if card.valueType == .multiply {
+                text += " ×\(card.value)"
+            } else {
+                text += card.value >= 0 ? " + \(card.value)" : " − \(-card.value)"
+            }
+        }
+        let totalPierce = pierce + preDrawnCards.flatMap(\.effects)
+            .filter { $0.type == .pierce }
+            .compactMap { $0.value?.intValue }
+            .reduce(0, +)
+        let effectiveShield = max(0, shield - totalPierce)
+        if effectiveShield > 0 {
+            text += " − \(effectiveShield) shield"
+        }
+        return text + " = " + (finalDamage == 0 ? "no damage" : "\(finalDamage) damage")
+    }
+
+    /// One step of an attack's sum, for the chips under the drawn card.
+    struct SumChip: Equatable {
+        enum Kind: Equatable { case base, card, shield, result, effect }
+        let text: String
+        let kind: Kind
+    }
+
+    /// The attack's sum as chips: "Attack 2", "+1 poison", "+1 card", "−1 shield", "= 2 damage",
+    /// then what else lands ("Stun", "Push 1"). A miss is one chip.
+    static func sumChips(
+        base: Int,
+        isPoisoned: Bool,
+        cards: [AttackModifier],
+        shield: Int,
+        pierce: Int = 0,
+        isMiss: Bool,
+        finalDamage: Int,
+        conditions: [ConditionName] = []
+    ) -> [SumChip] {
+        if isMiss || cards.contains(where: { $0.valueType == .multiply && $0.value == 0 }) {
+            return [SumChip(text: "Attack \(base)", kind: .base), SumChip(text: "Miss", kind: .result)]
+        }
+        var chips = [SumChip(text: "Attack \(base)", kind: .base)]
+        if isPoisoned { chips.append(SumChip(text: "+1 poison", kind: .card)) }
+        for card in cards {
+            if card.valueType == .multiply {
+                chips.append(SumChip(text: "\u{00D7}\(card.value) card", kind: .card))
+            } else if card.value != 0 || cards.count == 1 {
+                chips.append(SumChip(text: card.value >= 0 ? "+\(card.value) card" : "\u{2212}\(-card.value) card", kind: .card))
+            }
+        }
+        let totalPierce = pierce + cards.flatMap(\.effects).filter { $0.type == .pierce }
+            .compactMap { $0.value?.intValue }.reduce(0, +)
+        let effectiveShield = max(0, shield - totalPierce)
+        if effectiveShield > 0 { chips.append(SumChip(text: "\u{2212}\(effectiveShield) shield", kind: .shield)) }
+        chips.append(SumChip(text: finalDamage == 0 ? "= no damage" : "= \(finalDamage) damage", kind: .result))
+        for condition in conditions {
+            chips.append(SumChip(text: GameText.conditionName(condition), kind: .effect))
+        }
+        return chips
+    }
+
     // MARK: - Advantage / Disadvantage
 
     /// Draw the modifier cards for one attack and return the cards that apply.
-    static func drawModifiers(advantage: Bool, disadvantage: Bool,
+    /// `baseAttack` (with poison) lets advantage and disadvantage compare the attacks the two
+    /// cards make rather than the cards alone (on Attack 1, +2 beats ×2).
+    static func drawModifiers(advantage: Bool, disadvantage: Bool, baseAttack: Int? = nil,
                               draw: () -> AttackModifier?) -> [AttackModifier] {
+        drawModifiersDetailed(advantage: advantage, disadvantage: disadvantage, baseAttack: baseAttack, draw: draw).selected
+    }
+
+    /// Draw the modifier cards for one attack, keeping every card drawn (in draw order) as well as
+    /// the ones that apply, so the board can show both draws of an advantage attack.
+    static func drawModifiersDetailed(advantage: Bool, disadvantage: Bool, baseAttack: Int? = nil,
+                                      draw: () -> AttackModifier?) -> (drawn: [AttackModifier], selected: [AttackModifier]) {
         if advantage == disadvantage {
-            return drawChain(draw)
+            let chain = drawChain(draw)
+            return (chain, chain)
         }
         let first = draw().map { [$0] } ?? []
         let second = drawSecond(after: first, draw)
-        return selectModifierCards(first: first, second: second,
-                                   advantage: advantage, disadvantage: disadvantage)
+        let selected = selectModifierCards(first: first, second: second,
+                                           advantage: advantage, disadvantage: disadvantage, baseAttack: baseAttack)
+        return (first + second, selected)
     }
 
     /// Normal draw: keep drawing while the drawn card is rolling (GH p.19).
@@ -242,7 +373,7 @@ enum CombatResolver {
     ///   (both rolling → only the first non-rolling card drawn after them applies).
     /// - Both or neither: a normal draw — the first chain applies.
     static func selectModifierCards(first: [AttackModifier], second: [AttackModifier],
-                                    advantage: Bool, disadvantage: Bool) -> [AttackModifier] {
+                                    advantage: Bool, disadvantage: Bool, baseAttack: Int? = nil) -> [AttackModifier] {
         guard advantage != disadvantage else { return first }
         let all = first + second
         guard let a = first.last else { return second.last.map { [$0] } ?? [] }
@@ -250,22 +381,32 @@ enum CombatResolver {
         let anyRolling = all.contains { $0.rolling }
 
         if advantage {
-            if !anyRolling { return [betterCard(a, b)] }
+            if !anyRolling { return [betterCard(a, b, base: baseAttack)] }
             return all.filter(\.rolling) + all.filter { !$0.rolling }
         } else {
-            if !anyRolling { return [worseCard(a, b)] }
+            if !anyRolling { return [worseCard(a, b, base: baseAttack)] }
             return all.last(where: { !$0.rolling }).map { [$0] } ?? []
         }
     }
 
     /// Pick the better of two modifier cards (ties → the card drawn first).
-    private static func betterCard(_ a: AttackModifier, _ b: AttackModifier) -> AttackModifier {
-        cardScore(a) >= cardScore(b) ? a : b
+    private static func betterCard(_ a: AttackModifier, _ b: AttackModifier, base: Int?) -> AttackModifier {
+        score(a, base: base) >= score(b, base: base) ? a : b
     }
 
     /// Pick the worse of two modifier cards (ties → the card drawn first).
-    private static func worseCard(_ a: AttackModifier, _ b: AttackModifier) -> AttackModifier {
-        cardScore(a) <= cardScore(b) ? a : b
+    private static func worseCard(_ a: AttackModifier, _ b: AttackModifier, base: Int?) -> AttackModifier {
+        score(a, base: base) <= score(b, base: base) ? a : b
+    }
+
+    /// How good a card is for this attack: the attack value it makes from `base` (a null is
+    /// always the worst), or the card alone when the attack isn't known.
+    static func score(_ card: AttackModifier, base: Int?) -> Int {
+        guard let base else { return cardScore(card) }
+        if card.valueType == .multiply {
+            return card.value == 0 ? Int.min / 2 : max(0, base * card.value)
+        }
+        return max(0, base + card.value)
     }
 
     /// Numeric score for comparing modifier cards (higher = better for attacker).

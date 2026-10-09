@@ -183,4 +183,29 @@ final class AttackModifierRulesTests: XCTestCase {
                                                   drawModifier: { nil }, defenderHealth: 10)
         XCTAssertEqual(result.damage, 3, "Pierce 2 from a modifier card cancels Shield 2")
     }
+
+    /// Advantage keeps the card that makes the better attack, disadvantage the worse (p.20): on
+    /// Attack 1, +2 (3) beats ×2 (2). A null is always the worst; equal attacks keep the first.
+    func testAdvantageComparesTheAttacksTheCardsMake() {
+        func draw(_ cards: [AttackModifier]) -> () -> AttackModifier? {
+            var queue = cards
+            return { queue.isEmpty ? nil : queue.removeFirst() }
+        }
+        let double = AttackModifier.standard(.double_), plus2 = AttackModifier.standard(.plus2)
+        XCTAssertEqual(CombatResolver.drawModifiers(advantage: true, disadvantage: false, baseAttack: 1,
+                                                    draw: draw([double, plus2])).map(\.type), [.plus2])
+        XCTAssertEqual(CombatResolver.drawModifiers(advantage: false, disadvantage: true, baseAttack: 1,
+                                                    draw: draw([plus2, double])).map(\.type), [.double_])
+        XCTAssertEqual(CombatResolver.drawModifiers(advantage: true, disadvantage: false, baseAttack: 3,
+                                                    draw: draw([plus2, double])).map(\.type), [.double_], "on Attack 3, ×2 is better")
+        XCTAssertEqual(CombatResolver.drawModifiers(advantage: false, disadvantage: true, baseAttack: 1,
+                                                    draw: draw([AttackModifier.standard(.minus2), AttackModifier.standard(.null_)])).map(\.type),
+                       [.null_], "a null is the worst even when −2 also makes 0")
+
+        // Through the whole attack: Attack 1 with advantage drawing ×2 then +2 deals 3.
+        let result = CombatResolver.resolveAttack(attacker: .character("a"), defender: .monster(name: "x", standee: 1),
+                                                  baseAttack: 1, advantage: true,
+                                                  drawModifier: draw([double, plus2]), defenderHealth: 10)
+        XCTAssertEqual(result.damage, 3)
+    }
 }

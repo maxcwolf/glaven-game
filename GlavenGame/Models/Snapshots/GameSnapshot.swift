@@ -37,6 +37,12 @@ struct GameSnapshot: Codable {
     var unlockedCharacters: Set<String>
     var unlockedItems: Set<String>
     var boardSnapshot: BoardSnapshot?
+    var events: EventState?
+    var tableRules: TableRules?
+    /// Optional: older saves have no learning mode.
+    var learningMode: Bool?
+    /// Optional: older saves are Normal.
+    var difficulty: DifficultyMode?
 
     init(edition: String?, conditions: [ConditionName], figures: [FigureSnapshot],
          state: GamePhase, round: Int, level: Int, levelCalculation: Bool,
@@ -71,44 +77,51 @@ struct GameSnapshot: Codable {
         self.unlockedCharacters = unlockedCharacters
         self.unlockedItems = unlockedItems
         self.boardSnapshot = boardSnapshot
+        self.events = nil
     }
 
+    /// Every field is optional when reading, so a save missing one (from an older version, or
+    /// edited by hand) still loads with that field's starting value instead of disappearing.
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         edition = try c.decodeIfPresent(String.self, forKey: .edition)
-        conditions = try c.decode([ConditionName].self, forKey: .conditions)
-        figures = try c.decode([FigureSnapshot].self, forKey: .figures)
-        state = try c.decode(GamePhase.self, forKey: .state)
-        round = try c.decode(Int.self, forKey: .round)
-        level = try c.decode(Int.self, forKey: .level)
-        levelCalculation = try c.decode(Bool.self, forKey: .levelCalculation)
-        levelAdjustment = try c.decode(Int.self, forKey: .levelAdjustment)
-        bonusAdjustment = try c.decode(Int.self, forKey: .bonusAdjustment)
-        ge5Player = try c.decode(Bool.self, forKey: .ge5Player)
-        playerCount = try c.decode(Int.self, forKey: .playerCount)
-        solo = try c.decode(Bool.self, forKey: .solo)
-        playSeconds = try c.decode(Int.self, forKey: .playSeconds)
-        totalSeconds = try c.decode(Int.self, forKey: .totalSeconds)
-        elementBoard = try c.decode([ElementModel].self, forKey: .elementBoard)
-        monsterAttackModifierDeck = try c.decode(AttackModifierDeck.self, forKey: .monsterAttackModifierDeck)
-        allyAttackModifierDeck = try c.decode(AttackModifierDeck.self, forKey: .allyAttackModifierDeck)
-        lootDeck = try c.decode(LootDeck.self, forKey: .lootDeck)
-        partyName = try c.decode(String.self, forKey: .partyName)
-        partyReputation = try c.decode(Int.self, forKey: .partyReputation)
-        partyProsperity = try c.decode(Int.self, forKey: .partyProsperity)
+        conditions = try c.decodeIfPresent([ConditionName].self, forKey: .conditions) ?? []
+        figures = try c.decodeIfPresent([FigureSnapshot].self, forKey: .figures) ?? []
+        state = try c.decodeIfPresent(GamePhase.self, forKey: .state) ?? .draw
+        round = try c.decodeIfPresent(Int.self, forKey: .round) ?? 0
+        level = try c.decodeIfPresent(Int.self, forKey: .level) ?? 1
+        levelCalculation = try c.decodeIfPresent(Bool.self, forKey: .levelCalculation) ?? true
+        levelAdjustment = try c.decodeIfPresent(Int.self, forKey: .levelAdjustment) ?? 0
+        bonusAdjustment = try c.decodeIfPresent(Int.self, forKey: .bonusAdjustment) ?? 0
+        ge5Player = try c.decodeIfPresent(Bool.self, forKey: .ge5Player) ?? true
+        playerCount = try c.decodeIfPresent(Int.self, forKey: .playerCount) ?? -1
+        solo = try c.decodeIfPresent(Bool.self, forKey: .solo) ?? false
+        playSeconds = try c.decodeIfPresent(Int.self, forKey: .playSeconds) ?? 0
+        totalSeconds = try c.decodeIfPresent(Int.self, forKey: .totalSeconds) ?? 0
+        elementBoard = try c.decodeIfPresent([ElementModel].self, forKey: .elementBoard) ?? ElementModel.defaultBoard()
+        monsterAttackModifierDeck = try c.decodeIfPresent(AttackModifierDeck.self, forKey: .monsterAttackModifierDeck) ?? .defaultDeck()
+        allyAttackModifierDeck = try c.decodeIfPresent(AttackModifierDeck.self, forKey: .allyAttackModifierDeck) ?? .defaultDeck()
+        lootDeck = try c.decodeIfPresent(LootDeck.self, forKey: .lootDeck) ?? LootDeck()
+        partyName = try c.decodeIfPresent(String.self, forKey: .partyName) ?? ""
+        partyReputation = try c.decodeIfPresent(Int.self, forKey: .partyReputation) ?? 0
+        partyProsperity = try c.decodeIfPresent(Int.self, forKey: .partyProsperity) ?? 0
         scenario = try c.decodeIfPresent(ScenarioSnapshot.self, forKey: .scenario)
-        completedScenarios = try c.decode(Set<String>.self, forKey: .completedScenarios)
+        completedScenarios = try c.decodeIfPresent(Set<String>.self, forKey: .completedScenarios) ?? []
         manualScenarios = try c.decodeIfPresent(Set<String>.self, forKey: .manualScenarios) ?? []
-        globalAchievements = try c.decode(Set<String>.self, forKey: .globalAchievements)
-        partyAchievements = try c.decode(Set<String>.self, forKey: .partyAchievements)
-        campaignStickers = try c.decode(Set<String>.self, forKey: .campaignStickers)
+        globalAchievements = try c.decodeIfPresent(Set<String>.self, forKey: .globalAchievements) ?? []
+        partyAchievements = try c.decodeIfPresent(Set<String>.self, forKey: .partyAchievements) ?? []
+        campaignStickers = try c.decodeIfPresent(Set<String>.self, forKey: .campaignStickers) ?? []
         mapOverlays = try c.decodeIfPresent([WorldMapOverlay].self, forKey: .mapOverlays) ?? []
         lootedTreasures = try c.decodeIfPresent(Set<String>.self, forKey: .lootedTreasures) ?? []
         retiredCharacters = try c.decodeIfPresent([CharacterSnapshot].self, forKey: .retiredCharacters) ?? []
         campaignLog = try c.decodeIfPresent([CampaignLogEntry].self, forKey: .campaignLog) ?? []
         unlockedCharacters = try c.decodeIfPresent(Set<String>.self, forKey: .unlockedCharacters) ?? []
         unlockedItems = try c.decodeIfPresent(Set<String>.self, forKey: .unlockedItems) ?? []
+        events = try c.decodeIfPresent(EventState.self, forKey: .events)
+        tableRules = try c.decodeIfPresent(TableRules.self, forKey: .tableRules)
+        learningMode = try c.decodeIfPresent(Bool.self, forKey: .learningMode)
         boardSnapshot = try c.decodeIfPresent(BoardSnapshot.self, forKey: .boardSnapshot)
+        difficulty = try c.decodeIfPresent(DifficultyMode.self, forKey: .difficulty)
     }
 }
 
@@ -208,6 +221,13 @@ struct CharacterSnapshot: Codable {
     var consumedItems: [String]?
     var roundBonusCards: [Int]?
     var lostWhenRemoved: [Int]?
+    /// Nil in saves from before cards were chosen on levelling up.
+    var chosenCards: [Int]?
+    var record: CharacterRecord?
+    var questChoices: [String]?
+    var itemSlotsUsed: [String: Int]?
+    var bonusChargesUsed: [Int: Int]?
+    var itemsLeftBehind: [String]?
 
     init(name: String, edition: String, level: Int, off: Bool, active: Bool,
          number: Int, health: Int, maxHealth: Int,
@@ -228,7 +248,7 @@ struct CharacterSnapshot: Codable {
          handCards: [Int] = [], discardedCards: [Int] = [], lostCards: [Int] = [], activeCards: [Int] = [],
          resources: [String: Int] = [:], enhancements: [Enhancement] = [],
          spentItems: [String]? = nil, consumedItems: [String]? = nil,
-         roundBonusCards: [Int]? = nil, lostWhenRemoved: [Int]? = nil) {
+         roundBonusCards: [Int]? = nil, lostWhenRemoved: [Int]? = nil, chosenCards: [Int]? = nil) {
         self.name = name; self.edition = edition; self.level = level
         self.off = off; self.active = active; self.number = number
         self.health = health; self.maxHealth = maxHealth
@@ -260,6 +280,7 @@ struct CharacterSnapshot: Codable {
         self.consumedItems = consumedItems
         self.roundBonusCards = roundBonusCards
         self.lostWhenRemoved = lostWhenRemoved
+        self.chosenCards = chosenCards
     }
 
     init(from decoder: Decoder) throws {
@@ -312,6 +333,12 @@ struct CharacterSnapshot: Codable {
         consumedItems = try container.decodeIfPresent([String].self, forKey: .consumedItems)
         roundBonusCards = try container.decodeIfPresent([Int].self, forKey: .roundBonusCards)
         lostWhenRemoved = try container.decodeIfPresent([Int].self, forKey: .lostWhenRemoved)
+        chosenCards = try container.decodeIfPresent([Int].self, forKey: .chosenCards)
+        record = try container.decodeIfPresent(CharacterRecord.self, forKey: .record)
+        questChoices = try container.decodeIfPresent([String].self, forKey: .questChoices)
+        itemSlotsUsed = try container.decodeIfPresent([String: Int].self, forKey: .itemSlotsUsed)
+        bonusChargesUsed = try container.decodeIfPresent([Int: Int].self, forKey: .bonusChargesUsed)
+        itemsLeftBehind = try container.decodeIfPresent([String].self, forKey: .itemsLeftBehind)
     }
 }
 
@@ -339,6 +366,8 @@ struct MonsterSnapshot: Codable {
     var additionalImmunities: [ConditionName]?
     var statEffectHealthExpr: String?
     var statEffectHealthAbsolute: Bool?
+    /// This round's ability card initiative (nil between rounds, and in older saves).
+    var drawnInitiative: Int?
 }
 
 // MARK: - Monster Entity Snapshot
@@ -444,4 +473,12 @@ struct ScenarioSnapshot: Codable {
     var additionalSections: [String]
     var appliedRules: Set<String>
     var disabledRules: Set<Int>
+    // Added later: optional so older saves still load.
+    var killCounts: [String: Int]?
+    var startingExperience: [String: Int]?
+    var startingGold: [String: Int]?
+    var stats: [String: ScenarioCharacterStats]?
+    var partyStats: ScenarioPartyStats?
+    /// "won"/"lost" once a scenario rule has decided the outcome, applied at the end of the round.
+    var pendingFinish: String?
 }

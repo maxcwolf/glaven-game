@@ -1,195 +1,140 @@
 import SwiftUI
 
+/// The campaign in numbers, in the board's look: scenarios won and lost, monsters killed and
+/// exhaustions, then each character's share, from the records the game keeps as it's played.
 struct PartyStatisticsSheet: View {
     @Environment(GameManager.self) private var gameManager
-    @Environment(\.dismiss) private var dismiss
+    var onDone: () -> Void = {}
 
     private var game: GameState { gameManager.game }
+    private var party: [GameCharacter] { game.characters.filter { !$0.retired } }
 
-    private var totalGold: Int {
-        game.characters.reduce(0) { $0 + $1.loot }
+    /// The campaign's totals.
+    struct Totals: Equatable {
+        var won = 0, lost = 0, kills = 0, exhaustions = 0
+        /// The monster killed most, and how many ("bandit-guard", 21).
+        var mostKilled: (name: String, count: Int)?
+
+        static func == (a: Totals, b: Totals) -> Bool {
+            (a.won, a.lost, a.kills, a.exhaustions) == (b.won, b.lost, b.kills, b.exhaustions)
+                && a.mostKilled?.name == b.mostKilled?.name && a.mostKilled?.count == b.mostKilled?.count
+        }
     }
 
-    private var totalXP: Int {
-        game.characters.reduce(0) { $0 + $1.experience }
-    }
-
-    private var totalItems: Int {
-        game.characters.reduce(0) { $0 + $1.items.count }
-    }
-
-    private var totalPerks: Int {
-        game.characters.reduce(0) { $0 + $1.selectedPerks.reduce(0, +) }
-    }
-
-    private var averageLevel: Double {
-        guard !game.characters.isEmpty else { return 0 }
-        return Double(game.characters.reduce(0) { $0 + $1.level }) / Double(game.characters.count)
-    }
-
-    private var completedCount: Int {
-        game.completedScenarios.count
-    }
-
-    private var achievementCount: Int {
-        game.globalAchievements.count + game.partyAchievements.count
+    static func totals(_ game: GameState) -> Totals {
+        var kills: [String: Int] = [:]
+        for character in game.characters { kills.merge(character.record.kills, uniquingKeysWith: +) }
+        let most = kills.max { ($0.value, $1.key) < ($1.value, $0.key) }
+        return Totals(won: game.completedScenarios.count,
+                      lost: game.campaignLog.filter { $0.type == .scenarioFailed }.count,
+                      kills: kills.values.reduce(0, +),
+                      exhaustions: game.characters.reduce(0) { $0 + $1.record.timesExhausted },
+                      mostKilled: most.map { ($0.key, $0.value) })
     }
 
     var body: some View {
-        NavigationStack {
+        let totals = Self.totals(game)
+        TownDialog(title: "Statistics", subtitle: subtitle, size: CGSize(width: 900, height: 600), onDone: onDone) {
             ScrollView {
-                VStack(spacing: 16) {
-                    // Party overview
-                    overviewGrid
-
-                    // Character breakdown
-                    if !game.characters.isEmpty {
-                        characterBreakdown
+                VStack(alignment: .leading, spacing: 14) {
+                    HStack(spacing: 10) {
+                        tile("\(totals.won)", "Scenarios won")
+                        tile("\(totals.lost)", "Lost")
+                        tile("\(totals.kills)", "Monsters killed")
+                        tile("\(totals.exhaustions)", "Exhaustions")
                     }
-
-                    // Campaign stats
-                    campaignStats
+                    TownSection(title: "By Character") {
+                        HStack {
+                            Color.clear.frame(width: 170, height: 1)
+                            ForEach(Self.columns, id: \.self) { TownSmallCaps(text: $0).frame(maxWidth: .infinity) }
+                        }
+                        .accessibilityHidden(true)
+                        ForEach(party, id: \.id) { row($0) }
+                        Rectangle().fill(BoardTheme.border.opacity(0.3)).frame(height: 1)
+                        Text(footnote(totals))
+                            .font(BoardTheme.font(size: 13))
+                            .foregroundStyle(BoardTheme.secondaryText)
+                    }
                 }
-                .padding()
-            }
-            .background(GlavenTheme.background)
-            .navigationTitle("Party Statistics")
-            #if os(iOS)
-            .navigationBarTitleDisplayMode(.inline)
-            #endif
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Done") { dismiss() }
-                }
+                .padding(18)
             }
         }
     }
 
-    @ViewBuilder
-    private var overviewGrid: some View {
-        LazyVGrid(columns: [
-            GridItem(.flexible()),
-            GridItem(.flexible()),
-            GridItem(.flexible())
-        ], spacing: 12) {
-            statCard("Characters", value: "\(game.characters.count)", icon: "person.fill", color: .blue)
-            statCard("Avg Level", value: String(format: "%.1f", averageLevel), icon: "arrow.up.circle", color: .green)
-            statCard("Total Gold", value: "\(totalGold)", icon: "dollarsign.circle.fill", color: .yellow)
-            statCard("Total XP", value: "\(totalXP)", icon: "star.fill", color: .blue)
-            statCard("Total Items", value: "\(totalItems)", icon: "bag.fill", color: .orange)
-            statCard("Total Perks", value: "\(totalPerks)", icon: "checkmark.circle.fill", color: .purple)
-        }
+    static let columns = ["Won", "Kills", "Elites", "Exhausted", "XP", "Gold"]
+
+    /// A character's numbers, in the order of `columns`.
+    static func numbers(_ character: GameCharacter) -> [Int] {
+        let record = character.record
+        return [record.scenariosCompleted.count, record.kills.values.reduce(0, +), record.eliteKills,
+                record.timesExhausted, character.experience, character.loot]
     }
 
-    @ViewBuilder
-    private func statCard(_ label: String, value: String, icon: String, color: Color) -> some View {
-        VStack(spacing: 6) {
-            Image(systemName: icon)
-                .font(.system(size: 20))
-                .foregroundStyle(color)
+    private var subtitle: String {
+        let name = game.partyName.isEmpty ? "This campaign" : game.partyName
+        guard let first = game.campaignLog.first?.timestamp else { return name }
+        return "\(name) \u{00B7} since \(first.formatted(.dateTime.month(.abbreviated).day()))"
+    }
+
+    private func footnote(_ totals: Totals) -> String {
+        var parts: [String] = []
+        if let most = totals.mostKilled {
+            let name = GameText.monsterName(most.name, edition: game.edition ?? "gh", labels: gameManager.editionStore)
+            parts.append("Most kills: \(name) (\(most.count)).")
+        }
+        parts.append("Gold given at the sanctuary: \(game.events.sanctuaryGold).")
+        return parts.joined(separator: " ")
+    }
+
+    private func row(_ character: GameCharacter) -> some View {
+        let name = GameText.characterName(character, labels: gameManager.editionStore)
+        let numbers = Self.numbers(character)
+        return HStack {
+            HStack(spacing: 8) {
+                Group {
+                    if let image = ImageLoader.characterThumbnail(edition: character.edition, name: character.name) {
+                        #if os(macOS)
+                        Image(nsImage: image).resizable().scaledToFill()
+                        #else
+                        Image(uiImage: image).resizable().scaledToFill()
+                        #endif
+                    } else {
+                        BoardTheme.raised
+                    }
+                }
+                .frame(width: 28, height: 28)
+                .clipShape(Circle())
+                Text(name)
+                    .font(BoardTheme.font(size: 14, weight: .semibold))
+                    .foregroundStyle(BoardTheme.text)
+                    .lineLimit(1)
+            }
+            .frame(width: 170, alignment: .leading)
+            ForEach(Array(numbers.enumerated()), id: \.offset) { _, value in
+                Text("\(value)")
+                    .font(BoardTheme.font(size: 15, weight: .semibold).monospacedDigit())
+                    .foregroundStyle(BoardTheme.text)
+                    .frame(maxWidth: .infinity)
+            }
+        }
+        .padding(.vertical, 4)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(name + ": " + zip(Self.columns, numbers).map { "\($0) \($1)" }.joined(separator: ", "))
+    }
+
+    private func tile(_ value: String, _ label: String) -> some View {
+        VStack(spacing: 3) {
             Text(value)
-                .font(.title3)
-                .fontWeight(.bold)
-                .monospacedDigit()
-                .foregroundStyle(GlavenTheme.primaryText)
+                .font(BoardTheme.display(30))
+                .foregroundStyle(BoardTheme.text)
             Text(label)
-                .font(.caption2)
-                .foregroundStyle(GlavenTheme.secondaryText)
+                .font(BoardTheme.font(size: 12, weight: .medium))
+                .foregroundStyle(BoardTheme.secondaryText)
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 12)
-        .background(GlavenTheme.cardBackground)
-        .clipShape(RoundedRectangle(cornerRadius: 10))
-    }
-
-    @ViewBuilder
-    private var characterBreakdown: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("Character Breakdown")
-                .font(.headline)
-                .foregroundStyle(GlavenTheme.primaryText)
-
-            ForEach(game.characters, id: \.id) { char in
-                HStack(spacing: 10) {
-                    ThumbnailImage(
-                        image: ImageLoader.characterThumbnail(edition: char.edition, name: char.name),
-                        size: 32,
-                        cornerRadius: 6,
-                        fallbackColor: Color(hex: char.color) ?? .blue
-                    )
-
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(char.title.isEmpty ? char.name.replacingOccurrences(of: "-", with: " ").capitalized : char.title)
-                            .font(.subheadline)
-                            .fontWeight(.medium)
-                            .foregroundStyle(GlavenTheme.primaryText)
-                        Text("Lv \(char.level)")
-                            .font(.caption)
-                            .foregroundStyle(GlavenTheme.secondaryText)
-                    }
-
-                    Spacer()
-
-                    HStack(spacing: 12) {
-                        miniStat(value: "\(char.loot)", color: .yellow)
-                        miniStat(value: "\(char.experience)", color: .blue)
-                        miniStat(value: "\(char.items.count)", color: .orange)
-                    }
-                }
-                .padding(10)
-                .background(GlavenTheme.cardBackground)
-                .clipShape(RoundedRectangle(cornerRadius: 8))
-            }
-        }
-    }
-
-    @ViewBuilder
-    private func miniStat(value: String, color: Color) -> some View {
-        Text(value)
-            .font(.caption)
-            .fontWeight(.bold)
-            .monospacedDigit()
-            .foregroundStyle(color)
-    }
-
-    @ViewBuilder
-    private var campaignStats: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("Campaign")
-                .font(.headline)
-                .foregroundStyle(GlavenTheme.primaryText)
-
-            HStack(spacing: 12) {
-                campaignRow(icon: "map.fill", label: "Scenarios Completed", value: "\(completedCount)", color: GlavenTheme.accentText)
-            }
-            campaignRow(icon: "trophy.circle", label: "Achievements", value: "\(achievementCount)", color: .orange)
-            campaignRow(icon: "building.2.crop.circle", label: "Prosperity", value: "\(game.partyProsperity)", color: .green)
-            campaignRow(icon: "person.2.circle", label: "Reputation", value: "\(game.partyReputation)", color: reputationColor)
-        }
-        .padding()
-        .background(GlavenTheme.cardBackground)
-        .clipShape(RoundedRectangle(cornerRadius: 12))
-    }
-
-    @ViewBuilder
-    private func campaignRow(icon: String, label: String, value: String, color: Color) -> some View {
-        HStack {
-            Image(systemName: icon)
-                .foregroundStyle(color)
-                .frame(width: 24)
-            Text(label)
-                .font(.subheadline)
-                .foregroundStyle(GlavenTheme.primaryText)
-            Spacer()
-            Text(value)
-                .font(.subheadline)
-                .fontWeight(.bold)
-                .monospacedDigit()
-                .foregroundStyle(color)
-        }
-    }
-
-    private var reputationColor: Color {
-        game.partyReputation >= 0 ? .blue : .red
+        .background(BoardTheme.panel, in: RoundedRectangle(cornerRadius: 14))
+        .overlay(RoundedRectangle(cornerRadius: 14).stroke(BoardTheme.border.opacity(0.45), lineWidth: 1))
+        .accessibilityElement(children: .combine)
     }
 }

@@ -3,9 +3,11 @@ import SwiftUI
 #if os(macOS)
 import AppKit
 typealias PlatformImage = NSImage
+typealias PlatformFont = NSFont
 #else
 import UIKit
 typealias PlatformImage = UIImage
+typealias PlatformFont = UIFont
 #endif
 
 enum ImageLoader {
@@ -63,6 +65,32 @@ enum ImageLoader {
         return loadImage(subdirectory: "Images/world-map/\(edition)/scenarios", filename: filename, ext: "png")
     }
 
+    /// The world map around a scenario's spot (`rect` in the map's pixels), `size` pixels across:
+    /// the banner over a scenario in town.
+    static func worldMapCrop(edition: String, around rect: CGRect, size: CGSize) -> PlatformImage? {
+        let key = "crop/\(edition)/\(Int(rect.midX))-\(Int(rect.midY))-\(Int(size.width))x\(Int(size.height))" as NSString
+        if let cached = cache.object(forKey: key) { return cached }
+        guard let map = worldMapBase(edition: edition) else { return nil }
+        #if os(macOS)
+        guard let full = map.cgImage(forProposedRect: nil, context: nil, hints: nil) else { return nil }
+        #else
+        guard let full = map.cgImage else { return nil }
+        #endif
+        let bounds = CGRect(x: 0, y: 0, width: full.width, height: full.height)
+        var crop = CGRect(x: rect.midX - size.width / 2, y: rect.midY - size.height / 2, width: size.width, height: size.height)
+        // Kept inside the map: slid back in at the edges.
+        crop.origin.x = min(max(0, crop.origin.x), max(0, bounds.width - crop.width))
+        crop.origin.y = min(max(0, crop.origin.y), max(0, bounds.height - crop.height))
+        guard let piece = full.cropping(to: crop.intersection(bounds)) else { return nil }
+        #if os(macOS)
+        let image = NSImage(cgImage: piece, size: NSSize(width: piece.width, height: piece.height))
+        #else
+        let image = UIImage(cgImage: piece)
+        #endif
+        cache.setObject(image, forKey: key, cost: piece.width * piece.height * 4)
+        return image
+    }
+
     static func worldMapOverlay(edition: String, name: String) -> PlatformImage? {
         loadImage(subdirectory: "Images/world-map/\(edition)/overlays", filename: "\(edition)-\(name)", ext: "png")
     }
@@ -83,6 +111,11 @@ enum ImageLoader {
     }
 
     // MARK: - Card Images
+
+    /// The scanned ability card for a character card, if the edition's scans are bundled.
+    static func abilityCardImage(edition: String, cardId: Int) -> PlatformImage? {
+        loadImage(subdirectory: "CardImages/\(edition)", filename: "\(cardId)", ext: "jpeg")
+    }
 
     static func amCardImage(_ type: String) -> PlatformImage? {
         loadImage(subdirectory: "Images/cards/attackmodifier", filename: type, ext: "png")
@@ -177,7 +210,29 @@ enum ImageLoader {
         return URL(string: base + path)
     }
 
+    /// Decoded images by path, shared by every view and token: views ask for the same icons on
+    /// every render. Bounded by an estimate of the decoded size; the system may also empty it.
+    private static let cache: NSCache<NSString, PlatformImage> = {
+        let cache = NSCache<NSString, PlatformImage>()
+        cache.totalCostLimit = 96 * 1024 * 1024
+        return cache
+    }()
+    /// Paths with no image, so a missing one isn't looked for on every render either.
+    private static let missing = NSCache<NSString, NSNull>()
+
     private static func loadImage(subdirectory: String, filename: String, ext: String) -> PlatformImage? {
+        let key = "\(subdirectory)/\(filename).\(ext)" as NSString
+        if let cached = cache.object(forKey: key) { return cached }
+        if missing.object(forKey: key) != nil { return nil }
+        guard let image = decodeImage(subdirectory: subdirectory, filename: filename, ext: ext) else {
+            missing.setObject(NSNull(), forKey: key)
+            return nil
+        }
+        cache.setObject(image, forKey: key, cost: max(1, Int(image.size.width * image.size.height * 4)))
+        return image
+    }
+
+    private static func decodeImage(subdirectory: String, filename: String, ext: String) -> PlatformImage? {
         // Try PNG first (pre-rendered, reliable), then fall back to original format
         let pngResult: PlatformImage? = {
             if ext != "png", let url = appResourceBundle.url(forResource: filename, withExtension: "png", subdirectory: subdirectory) {

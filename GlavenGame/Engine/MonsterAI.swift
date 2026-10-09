@@ -29,6 +29,37 @@ struct MonsterTurnResult {
     var attack: MonsterAttackSpec? = nil
     /// Whether the movement is a jump.
     var jumping: Bool = false
+    /// Every enemy it could focus on, best first (the first is the focus), and why: for the
+    /// learning mode's "Why?".
+    var focusCandidates: [FocusCandidate] = []
+}
+
+/// An enemy a monster could focus on, and what decided it (p.30): first the fewest traps and
+/// hazards on the way, then the least movement to attack it, then the nearest, then the one
+/// acting first.
+struct FocusCandidate: Equatable {
+    let pieceID: PieceID
+    let negativeHexes: Int
+    let pathCost: Int
+    let proximity: Int
+    let initiative: Double
+
+    /// What set the first of two candidates ahead of the second.
+    enum Reason: Equatable { case traps, movement, proximity, initiative }
+
+    static func reason(_ a: FocusCandidate, over b: FocusCandidate) -> Reason {
+        if a.negativeHexes != b.negativeHexes { return .traps }
+        if a.pathCost != b.pathCost { return .movement }
+        if a.proximity != b.proximity { return .proximity }
+        return .initiative
+    }
+
+    static func ordered(_ a: FocusCandidate, _ b: FocusCandidate) -> Bool {
+        if a.negativeHexes != b.negativeHexes { return a.negativeHexes < b.negativeHexes }
+        if a.pathCost != b.pathCost { return a.pathCost < b.pathCost }
+        if a.proximity != b.proximity { return a.proximity < b.proximity }
+        return a.initiative < b.initiative
+    }
 }
 
 /// Implements Gloomhaven's monster AI focus/movement algorithm (GH p.29–31).
@@ -55,6 +86,7 @@ enum MonsterAI {
         let standee = entity.number
         let actions = ability.actions ?? []
 
+        var candidates: [FocusCandidate] = []
         func result(path: [HexCoord] = [], targets: [PieceID] = [], from: HexCoord? = nil,
                     focus: PieceID? = nil, stunned: Bool = false, disarmed: Bool = false,
                     attack: MonsterAttackSpec? = nil, jumping: Bool = false) -> MonsterTurnResult {
@@ -65,7 +97,7 @@ enum MonsterAI {
                 abilityActions: actions.filter { $0.type != .move && $0.type != .attack },
                 initiative: ability.initiative,
                 pendingPush: attack?.push ?? 0, pendingPull: attack?.pull ?? 0,
-                attack: attack, jumping: jumping
+                attack: attack, jumping: jumping, focusCandidates: candidates
             )
         }
 
@@ -93,12 +125,15 @@ enum MonsterAI {
         let chillReduction = entity.entityConditions
             .filter { $0.name == .chill && !$0.expired }
             .reduce(0) { $0 + max(1, $1.value) }
-        let totalMove = (isImmobilized || moveSpec == nil) ? 0 : max(0, (moveSpec?.value ?? 0) - chillReduction)
+        // Crippling Noose (a doom): Attack, Move and Range reduced.
+        let doomPenalty = entity.doomPenalty
+        let totalMove = (isImmobilized || moveSpec == nil) ? 0 : max(0, (moveSpec?.value ?? 0) - chillReduction - doomPenalty)
 
         // Attack: the card's first Attack action. A card without an attack still finds a focus
         // as if it had a melee attack (p.30).
         let attackSpec = actions.first(where: { $0.type == .attack }).map {
             MonsterAbility.attack($0, stat: stat, baseAttack: baseAttack, baseRange: baseRange, consumed: consumed)
+                .reduced(by: doomPenalty)
         }
         let focusRange = attackSpec?.range ?? 1
         let isRanged = attackSpec?.isRanged ?? false
@@ -113,6 +148,17 @@ enum MonsterAI {
         let blockingPositions = movementBlockers(board: board, monster: monster, gameState: gameState)
         let allyPositions = gatherAllyPositions(board: board, monster: monster, excluding: pieceID)
 
+        candidates = focusCandidates(
+            from: currentPos,
+            enemies: enemies,
+            board: board,
+            range: focusRange,
+            isRanged: isRanged,
+            enemyPositions: blockingPositions,
+            gameState: gameState,
+            mode: mode,
+            attack: attackSpec
+        )
         guard let focus = findFocus(
             from: currentPos,
             enemies: enemies,
@@ -121,7 +167,8 @@ enum MonsterAI {
             isRanged: isRanged,
             enemyPositions: blockingPositions,
             gameState: gameState,
-            mode: mode
+            mode: mode,
+            attack: attackSpec
         ), let focusPos = board.piecePositions[focus] else {
             // No focus: the monster neither moves nor attacks (p.30).
             return result(disarmed: isDisarmed, attack: attackSpec)
@@ -211,25 +258,42 @@ enum MonsterAI {
         isRanged: Bool,
         enemyPositions: Set<HexCoord>,
         gameState: GameState,
-        mode: MoveMode = .normal
+        mode: MoveMode = .normal,
+        attack: MonsterAttackSpec? = nil
     ) -> PieceID? {
-        struct FocusCandidate {
-            let pieceID: PieceID
-            let negativeHexes: Int
-            let pathCost: Int
-            let proximity: Int
-            let initiative: Double
-        }
+        focusCandidates(from: position, enemies: enemies, board: board, range: range, isRanged: isRanged,
+                        enemyPositions: enemyPositions, gameState: gameState, mode: mode, attack: attack).first?.pieceID
+    }
 
+    /// Every enemy the monster could attack this turn or later, best focus first.
+    static func focusCandidates(
+        from position: HexCoord,
+        enemies: [PieceID],
+        board: BoardState,
+        range: Int,
+        isRanged: Bool,
+        enemyPositions: Set<HexCoord>,
+        gameState: GameState,
+        mode: MoveMode = .normal,
+        attack: MonsterAttackSpec? = nil
+    ) -> [FocusCandidate] {
         var candidates: [FocusCandidate] = []
 
         for enemy in enemies {
             guard let enemyPos = board.piecePositions[enemy] else { continue }
 
-            let attackHexes = findAttackHexes(
+            var attackHexes = findAttackHexes(
                 target: enemyPos, range: range, board: board,
-                enemyPositions: enemyPositions, sourcePosition: position
+                enemyPositions: enemyPositions, sourcePosition: position, mode: mode
             )
+            // A melee area reaching further than 1 hex attacks the enemy only from hexes where a
+            // turn of the pattern covers it, not from every hex within its reach.
+            if let attack, let area = attack.area, AoEResolver.isMeleePattern(area) {
+                attackHexes = attackHexes.filter {
+                    !targets(for: attack, from: $0, focus: enemy, focusPos: enemyPos,
+                             enemies: enemies, board: board, gameState: gameState).isEmpty
+                }
+            }
             if attackHexes.isEmpty { continue }
 
             // Traps and hazards count as obstacles unless every route needs one; then the
@@ -248,14 +312,7 @@ enum MonsterAI {
             ))
         }
 
-        candidates.sort { a, b in
-            if a.negativeHexes != b.negativeHexes { return a.negativeHexes < b.negativeHexes }
-            if a.pathCost != b.pathCost { return a.pathCost < b.pathCost }
-            if a.proximity != b.proximity { return a.proximity < b.proximity }
-            return a.initiative < b.initiative
-        }
-
-        return candidates.first?.pieceID
+        return candidates.sorted(by: FocusCandidate.ordered)
     }
 
     /// Find all valid attack hexes to hit a target from.
@@ -264,22 +321,28 @@ enum MonsterAI {
         range: Int,
         board: BoardState,
         enemyPositions: Set<HexCoord>,
-        sourcePosition: HexCoord
+        sourcePosition: HexCoord,
+        mode: MoveMode = .normal
     ) -> Set<HexCoord> {
         var hexes = Set<HexCoord>()
+        // Where the monster may end its move: a flying monster may hover over obstacles.
+        func standable(_ hex: HexCoord) -> Bool {
+            guard mode == .fly else { return board.isPassable(hex) }
+            guard let cell = board.cells[hex] else { return false }
+            return cell.overlay != .wall && !board.isClosedDoor(hex)
+        }
 
         if range <= 1 {
             for neighbor in target.neighbors {
-                guard board.isPassable(neighbor) else { continue }
+                guard standable(neighbor) else { continue }
                 // Can be the source position or unoccupied (can't stop on any occupied hex)
                 guard neighbor == sourcePosition || !board.isOccupied(neighbor) else { continue }
                 guard LineOfSight.hasLOS(from: neighbor, to: target, board: board) else { continue }
                 hexes.insert(neighbor)
             }
         } else {
-            for (coord, cell) in board.cells {
-                guard cell.passable else { continue }
-                guard coord.distance(to: target) <= range else { continue }
+            for coord in board.cells.keys {
+                guard coord.distance(to: target) <= range, standable(coord) else { continue }
                 guard coord == sourcePosition || !board.isOccupied(coord) else { continue }
                 guard LineOfSight.hasLOS(from: coord, to: target, board: board) else { continue }
                 hexes.insert(coord)
@@ -312,8 +375,15 @@ enum MonsterAI {
     ) -> (attackHex: HexCoord?, path: [HexCoord]?) {
         var attackHexes = findAttackHexes(
             target: focusPos, range: range, board: board,
-            enemyPositions: enemyPositions, sourcePosition: position
+            enemyPositions: enemyPositions, sourcePosition: position, mode: mode
         )
+        // A melee area attacks the focus only from where a turn of its pattern covers it.
+        if let attack, let area = attack.area, AoEResolver.isMeleePattern(area), let focus, let gameState {
+            attackHexes = attackHexes.filter {
+                !targets(for: attack, from: $0, focus: focus, focusPos: focusPos,
+                         enemies: enemies, board: board, gameState: gameState).isEmpty
+            }
+        }
 
         // Attack hexes reachable this turn (cost within the movement budget). Hexes holding
         // another figure are excluded by findAttackHexes, except the monster's own hex.
@@ -362,14 +432,40 @@ enum MonsterAI {
         }
 
         // Can't attack this turn: move toward the cheapest attack hex.
-        if let result = Pathfinder.cheapestTargetPath(
-            board: board, from: position, targets: attackHexes, mode: mode,
-            avoidTraps: true, canOpenDoors: false,
-            occupiedByEnemy: enemyPositions, occupiedByAlly: allyPositions
-        ) {
-            return (result.target, result.path)
+        func remaining(from hex: HexCoord) -> Pathfinder.PathResult? {
+            Pathfinder.cheapestTargetPath(
+                board: board, from: hex, targets: attackHexes, mode: mode,
+                avoidTraps: true, canOpenDoors: false,
+                occupiedByEnemy: enemyPositions, occupiedByAlly: allyPositions)
         }
-        return (nil, nil)
+        guard let result = remaining(from: position) else { return (nil, nil) }
+        // The route's hex where the movement runs out may hold an ally: the monster can't stop
+        // there, but another hex it can reach may bring it just as close (p.30) rather than
+        // backing up along the route.
+        let stop = Pathfinder.truncatePath(result.path, budget: moveRange, board: board, mode: mode).last ?? position
+        // Only when a figure pushed the stop back (the next hex was affordable but taken): the
+        // search below is a full route search from every reachable hex.
+        let next = (result.path.firstIndex(of: stop) ?? 0) + 1
+        let pushedBack = next < result.path.count && board.isOccupied(result.path[next])
+            && Pathfinder.movementCost(of: Array(result.path.prefix(next + 1)), board: board, mode: mode) <= moveRange
+        let ideal = max(0, result.cost - moveRange)
+        if pushedBack, let left = remaining(from: stop), left.cost > ideal {
+            var best = (negatives: left.negativeHexes, cost: left.cost, move: reachable[stop] ?? 0, hex: stop)
+            for (hex, move) in reachable where hex != stop && !board.isOccupied(hex) {
+                guard let there = remaining(from: hex) else { continue }
+                let candidate = (negatives: there.negativeHexes, cost: there.cost, move: move, hex: hex)
+                if (candidate.negatives, candidate.cost, candidate.move, candidate.hex)
+                    < (best.negatives, best.cost, best.move, best.hex) {
+                    best = candidate
+                }
+            }
+            if best.hex != stop, let path = Pathfinder.findPath(
+                board: board, from: position, to: best.hex, mode: mode, canOpenDoors: false, maxCost: moveRange,
+                occupiedByEnemy: enemyPositions, occupiedByAlly: allyPositions) {
+                return (result.target, path)
+            }
+        }
+        return (result.target, result.path)
     }
 
     /// Cut a path to the hexes the monster can afford this turn, never ending on an occupied hex.
@@ -497,7 +593,8 @@ enum MonsterAI {
         switch pieceID {
         case .character(let charID):
             if let char = gameState.characters.first(where: { $0.id == charID }) {
-                return char.longRest ? 99 : Double(char.initiative)
+                // Flea-Bitten Shawl: the wearer counts as initiative 99 for focus.
+                return char.longRest || char.carriedItems.contains("gh-105") ? 99 : Double(char.initiative)
             }
             return 100
         case .summon(let summonID):

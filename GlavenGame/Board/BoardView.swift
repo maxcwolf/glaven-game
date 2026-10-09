@@ -6,6 +6,13 @@ struct BoardView: View {
     @Environment(GameManager.self) private var gameManager
     @Bindable var coordinator: BoardCoordinator
     @State private var previewMonsterAbility: (GameMonster, AbilityModel)?
+    @State private var confirmingAbandon = false
+    /// The side columns (party, monsters, battle log) can be hidden to see the whole board.
+    @State private var showSidePanels = true
+    @State private var logExpanded = false
+    /// Where the board and the HUD's panels sit, so the board is framed in the clear part.
+    @State private var hudFrames = HUDFrames()
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         ZStack {
@@ -13,6 +20,14 @@ struct BoardView: View {
             if let scene = coordinator.boardScene {
                 SpriteView(scene: scene)
                     .ignoresSafeArea()
+                    .anchorPreference(key: LearnAnchorKey.self, value: .bounds) { [.board: $0] }
+                    .reportFrame { hudFrames.board = $0 }
+                    .onAppear {
+                        scene.reduceMotion = reduceMotion
+                        scene.setHUDObstacles(hudObstacles)
+                    }
+                    .onChange(of: reduceMotion) { _, value in scene.reduceMotion = value }
+                    .onChange(of: hudObstacles) { _, obstacles in scene.setHUDObstacles(obstacles) }
             } else {
                 Color.black
                     .overlay {
@@ -23,16 +38,41 @@ struct BoardView: View {
 
             // HUD overlays
             VStack(spacing: 0) {
-                boardHUD
-                HStack(alignment: .top, spacing: 0) {
-                    // Left: character info cards
-                    characterInfoPanel
-                    Spacer()
-                    // Right: monster info + battle log
-                    VStack(spacing: 4) {
-                        monsterInfoPanel
-                        turnLogPanel
+                BoardTopBar(coordinator: coordinator, showSidePanels: $showSidePanels,
+                            onAbandon: { confirmingAbandon = true })
+                    .reportFrame { hudFrames.hud = $0 }
+                    .padding(.bottom, 8)
+                    .confirmationDialog("Abandon this scenario?", isPresented: $confirmingAbandon, titleVisibility: .visible) {
+                        Button("Abandon Scenario", role: .destructive) {
+                            gameManager.completeScenario(success: false)
+                        }
+                        Button("Keep Playing", role: .cancel) {}
+                    } message: {
+                        Text("It counts as a loss. Your characters keep the experience and gold they've collected.")
                     }
+                if showSidePanels {
+                    HStack(alignment: .top, spacing: 0) {
+                        // Left: the party, and the modifier tray under it
+                        VStack(alignment: .leading, spacing: 8) {
+                            characterInfoPanel
+                            // Only once there's a draw to make or cards to show: no empty box.
+                            if ModifierTrayView.hasContent(coordinator) {
+                                ModifierTrayView(coordinator: coordinator)
+                                    .learnable(.modifierTray)
+                                    .transition(.opacity)
+                            }
+                        }
+                        .reportFrame { hudFrames.left = $0 }
+                        Spacer(minLength: 0)
+                        // Right: monster info + battle log, each capped so the board stays visible
+                        VStack(spacing: 4) {
+                            monsterInfoPanel
+                                .layoutPriority(1)   // the log shrinks before the monsters do
+                            turnLogPanel
+                        }
+                        .reportFrame { hudFrames.right = $0 }
+                    }
+                    .transition(.opacity)
                 }
                 Spacer()
                 bottomBar
@@ -49,35 +89,100 @@ struct BoardView: View {
                         character: character
                     )
                     .id(charID) // Force recreate @State when character changes
-                    .padding()
+                    .learnable(.cardPanel)
+                    .reportFrame { hudFrames.cardPanel = $0 }
                 }
+                .ignoresSafeArea(edges: .bottom)
                 .transition(.move(edge: .bottom))
             }
 
             // Damage mitigation prompt
             if let pending = coordinator.pendingDamage,
                let character = gameManager.game.characters.first(where: { $0.id == pending.characterID }) {
-                damageMitigationOverlay(pending: pending, character: character)
+                DamageChoiceSheet(pending: pending, character: character, coordinator: coordinator)
+                    .id(pending.id)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+            }
+
+            // A defence item offered while an enemy attacks
+            if let pending = coordinator.pendingItemUse {
+                ItemUsePrompt(pending: pending, coordinator: coordinator)
+                    .id(pending.id)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+            }
+
+            // Recovering discarded cards (Minor Stamina Potion)
+            if let pending = coordinator.pendingRecovery,
+               let character = gameManager.game.characters.first(where: { $0.id == pending.characterID }) {
+                RecoveryPicker(pending: pending, character: character, coordinator: coordinator)
+                    .id(pending.id)
+                    .transition(.opacity)
+            }
+
+            // A card to play for an item (Ring of Haste, Second Chance Ring)
+            if let pending = coordinator.pendingCardPlay,
+               let character = gameManager.game.characters.first(where: { $0.id == pending.characterID }) {
+                CardPlayPicker(pending: pending, character: character, coordinator: coordinator)
+                    .id(pending.id)
+                    .transition(.opacity)
+            }
+            if let pending = coordinator.pendingActionChoice {
+                ActionChoicePrompt(pending: pending, coordinator: coordinator)
+                    .id(pending.id)
+                    .transition(.opacity)
+            }
+            if let pending = coordinator.pendingFigureChoice {
+                FigureChoicePrompt(pending: pending, coordinator: coordinator)
+                    .id(pending.id)
+                    .transition(.opacity)
+            }
+
+            // Elements to infuse, a condition to remove (Mana Potions, Minor Cure Potion)
+            if let pending = coordinator.pendingElementChoice {
+                ElementChoicePrompt(pending: pending, coordinator: coordinator)
+                    .id(pending.id)
+                    .transition(.opacity)
+            }
+            if let pending = coordinator.pendingInitiativeChange {
+                InitiativeChangePrompt(pending: pending, coordinator: coordinator)
+                    .id(pending.id)
+                    .transition(.opacity)
+            }
+            if let pending = coordinator.pendingSufferChoice {
+                SufferChoicePrompt(pending: pending, coordinator: coordinator)
+                    .id(pending.id)
+                    .transition(.opacity)
+            }
+            if let pending = coordinator.pendingAllyChoice {
+                AllyChoicePrompt(pending: pending, coordinator: coordinator)
+                    .id(pending.id)
+                    .transition(.opacity)
+            }
+            if let pending = coordinator.pendingItemRefresh {
+                ItemRefreshPrompt(pending: pending, coordinator: coordinator)
+                    .id(pending.id)
+                    .transition(.opacity)
+            }
+            if let pending = coordinator.pendingConditionRemoval {
+                ConditionRemovalPrompt(pending: pending, coordinator: coordinator)
+                    .id(pending.id)
+                    .transition(.opacity)
             }
 
             // Long rest card choice prompt
             if let pending = coordinator.pendingLongRest,
                let character = gameManager.game.characters.first(where: { $0.id == pending.characterID }) {
-                longRestOverlay(character: character)
+                LongRestSheet(character: character, coordinator: coordinator)
+                    .id(pending.id)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
             }
 
             // Short rest prompt
             if let pending = coordinator.pendingShortRest,
                let character = gameManager.game.characters.first(where: { $0.id == pending.characterID }) {
-                shortRestOverlay(pending: pending, character: character)
-            }
-
-            // Interactive attack modifier draw overlay
-            if let pending = coordinator.pendingModifierDraw {
-                AttackModifierDrawOverlay(pending: pending, coordinator: coordinator)
-                    .transition(.opacity.combined(with: .scale(scale: 0.97)))
-                    .animation(.easeInOut(duration: 0.2), value: coordinator.pendingModifierDraw?.id)
-                    .zIndex(10)
+                ShortRestSheet(pending: pending, character: character, coordinator: coordinator)
+                    .id(pending.characterID)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
             }
 
             // Monster ability card preview (tap on monster group in info panel)
@@ -95,88 +200,99 @@ struct BoardView: View {
                     .animation(.easeInOut(duration: 0.2), value: coordinator.previewCardId)
             }
 
-            // Scenario end overlay
-            if let result = coordinator.scenarioResult {
-                scenarioEndOverlay(result: result)
+            // The scenario's intro, or its goal and rules reopened from the HUD
+            if let presentation = coordinator.briefPresentation, let brief = coordinator.scenarioBrief {
+                ScenarioBriefCard(brief: brief, buttonTitle: presentation == .intro ? "Begin" : "Close",
+                                  onDismiss: { withAnimation(.snappy) { coordinator.briefPresentation = nil } },
+                                  battleGoals: gameManager.game.characters.filter { !$0.absent }.compactMap { character in
+                                      gameManager.scenarioManager.chosenBattleGoal(of: character).map {
+                                          (GameText.characterName(character, labels: gameManager.editionStore), $0)
+                                      }
+                                  },
+                                  tableRules: gameManager.game.tableRules.inPlay)
+                .transition(.opacity)
+                .zIndex(9)
+                .onAppear { if presentation == .intro { BoardSoundPlayer.play(.start) } }
             }
+
+            // Results
+            if let outcome = coordinator.scenarioOutcome() {
+                ScenarioResultsView(outcome: outcome) { choices in coordinator.confirmScenarioEnd(choices: choices) }
+                    .transition(.opacity)
+                    .zIndex(10)
+                    .onAppear { BoardSoundPlayer.play(outcome.victory ? .victory : .defeat) }
+            }
+        }
+        // Learning mode: a tip with its spotlight, an explanation, or the "?" outlines.
+        .overlayPreferenceValue(LearnAnchorKey.self) { anchors in
+            GeometryReader { geo in
+                let rects = anchors.mapValues { geo[$0] }
+                LearningOverlay(coordinator: coordinator, anchors: rects.filter { $0.key != .board },
+                                boardRect: { boardRect(of: $0, overlayOrigin: geo.frame(in: .global).origin) },
+                                size: geo.size)
+            }
+            .ignoresSafeArea()   // the dimming reaches the screen's edges, and the holes line up
+        }
+        // How to Play, over everything.
+        .overlay {
+            if let request = coordinator.howToPlay {
+                HowToPlayBook(coordinator: coordinator, topic: request.topic)
+                    .id(request.id)
+                    .transition(.opacity)
+            }
+        }
+        .animation(.snappy, value: coordinator.howToPlay)
+    }
+
+    /// Where a figure or hex on the board is, in the learning overlay's space.
+    private func boardRect(of subject: LearnSubject, overlayOrigin: CGPoint) -> CGRect? {
+        guard let scene = coordinator.boardScene else { return nil }
+        let local: CGRect?
+        switch subject {
+        case .piece(let piece): local = scene.viewRect(of: piece)
+        case .hex(let hex): local = scene.viewRect(of: hex)
+        case .pieces(let pieces):
+            local = pieces.compactMap(scene.viewRect(of:)).reduce(nil) { $0?.union($1) ?? $1 }
+        default: local = nil
+        }
+        return local?.offsetBy(dx: -overlayOrigin.x, dy: -overlayOrigin.y)
+    }
+
+    // MARK: - Board framing
+
+    /// Frames (global, y down) of the board and the panels over it.
+    struct HUDFrames: Equatable {
+        var board: CGRect = .zero
+        var hud: CGRect = .zero
+        var rail: CGRect = .zero
+        var left: CGRect = .zero
+        var right: CGRect = .zero
+        /// The largest the bottom-left bar has been this scenario: the board keeps clear of all of
+        /// it, so it doesn't jump each time the bar changes (actions, End Turn, a monster's turn).
+        private(set) var bottomLeading: CGRect = .zero
+        var bottomTrailing: CGRect = .zero
+        /// The hand while cards are being chosen: the board fits above it.
+        var cardPanel: CGRect = .zero
+
+        mutating func reportBottomLeading(_ frame: CGRect) {
+            guard !frame.isEmpty else { return }
+            bottomLeading = bottomLeading.isEmpty ? frame : bottomLeading.union(frame)
+        }
+
+        /// The panels over the board, in board view points. The side panels count as whole
+        /// columns: they grow and shrink as the turn goes on, and the board shouldn't chase them.
+        func obstacles(showingSidePanels: Bool) -> [CGRect] {
+            func column(_ frame: CGRect) -> CGRect {
+                guard showingSidePanels, !frame.isEmpty else { return .zero }
+                return CGRect(x: frame.minX, y: frame.minY, width: frame.width,
+                              height: max(frame.height, board.maxY - frame.minY))
+            }
+            return BoardViewport.obstacles([hud, rail, column(left), column(right), bottomLeading, bottomTrailing,
+                                            cardPanel], over: board)
         }
     }
 
-    // MARK: - Top HUD
-
-    @ViewBuilder
-    private var boardHUD: some View {
-        HStack(spacing: 16) {
-            // Phase indicator
-            Text(phaseLabel)
-                .font(.headline)
-                .foregroundStyle(.white)
-                .padding(.horizontal, 12)
-                .padding(.vertical, 6)
-                .background(.black.opacity(0.6))
-                .clipShape(Capsule())
-
-            // Current figure info
-            if coordinator.boardPhase == .execution,
-               coordinator.currentTurnIndex >= 0,
-               coordinator.currentTurnIndex < coordinator.turnOrder.count {
-                let entry = coordinator.turnOrder[coordinator.currentTurnIndex]
-                Text("Turn: \(figureName(entry.figure)) (\(Int(entry.initiative.rounded(.up))))")
-                    .font(.subheadline)
-                    .foregroundStyle(.yellow)
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 4)
-                    .background(.black.opacity(0.6))
-                    .clipShape(Capsule())
-            }
-
-            Spacer()
-
-            // Element board
-            ElementBoardView()
-                .padding(.horizontal, 8)
-                .padding(.vertical, 4)
-                .background(.black.opacity(0.5))
-                .clipShape(RoundedRectangle(cornerRadius: 8))
-
-            // Round counter
-            Text("Round \(gameManager.game.round)")
-                .font(.subheadline.monospaced())
-                .foregroundStyle(.white)
-                .padding(.horizontal, 10)
-                .padding(.vertical, 4)
-                .background(.black.opacity(0.6))
-                .clipShape(Capsule())
-
-            // Exit button
-            Button {
-                coordinator.exitBoard()
-            } label: {
-                HStack(spacing: 4) {
-                    Image(systemName: "xmark.circle.fill")
-                    Text("Exit")
-                        .font(.caption.weight(.medium))
-                }
-                .foregroundStyle(.white)
-                .padding(.horizontal, 10)
-                .padding(.vertical, 6)
-                .background(.red.opacity(0.6))
-                .clipShape(Capsule())
-            }
-            .buttonStyle(.plain)
-        }
-        .padding()
-    }
-
-    private var phaseLabel: String {
-        switch coordinator.boardPhase {
-        case .setup: return "Place Characters"
-        case .cardSelection: return "Select Cards"
-        case .execution: return "Turn in Progress"
-        case .roomReveal: return "Room Revealed"
-        case .scenarioEnd: return "Scenario Complete"
-        }
-    }
+    private var hudObstacles: [CGRect] { hudFrames.obstacles(showingSidePanels: showSidePanels) }
 
     // MARK: - Bottom Bar
 
@@ -187,6 +303,9 @@ struct BoardView: View {
             HStack(spacing: 12) {
                 if coordinator.boardPhase == .setup {
                     setupBottomBar
+                        .padding(10)
+                        .background(.black.opacity(0.45), in: RoundedRectangle(cornerRadius: 14))
+                        .reportFrame { hudFrames.reportBottomLeading($0) }
                 } else if coordinator.boardPhase == .execution {
                     executionBottomBar
                 } else {
@@ -199,10 +318,12 @@ struct BoardView: View {
             // Monster ability cards — natural content width, pinned to the right
             if coordinator.boardPhase == .execution {
                 MonsterAbilityStripView(coordinator: coordinator, cardWidth: 140)
+                    .background(.black.opacity(0.45), in: RoundedRectangle(cornerRadius: 12))
+                    .reportFrame { hudFrames.bottomTrailing = $0 }
                     .padding(.trailing, 8)
+                    .padding(.vertical, 8)
             }
         }
-        .background(.black.opacity(0.4))
     }
 
     @ViewBuilder
@@ -214,7 +335,11 @@ struct BoardView: View {
         VStack(spacing: 10) {
             // Instruction
             if !allPlaced {
-                Label("Tap a character, then tap a starting hex to place them", systemImage: "hand.tap.fill")
+                Label("Tap a lit starting hex to place the chosen character, or pick another first", systemImage: "hand.tap.fill")
+                    .font(.caption)
+                    .foregroundStyle(.white.opacity(0.7))
+            } else if case .placingCharacter = coordinator.interactionMode {
+                Label("Tap a lit starting hex to move there", systemImage: "hand.tap.fill")
                     .font(.caption)
                     .foregroundStyle(.white.opacity(0.7))
             }
@@ -238,14 +363,14 @@ struct BoardView: View {
                             BundledImage(ImageLoader.characterIcon(edition: character.edition, name: character.name), size: 20, systemName: "person.fill")
                                 .foregroundStyle(placed ? .white.opacity(0.4) : charColor)
 
-                            Text(character.title.isEmpty ? character.name.replacingOccurrences(of: "-", with: " ").capitalized : character.title)
-                                .font(.system(size: 13, weight: .bold))
+                            Text(GameText.characterName(character, labels: gameManager.editionStore))
+                                .font(BoardTheme.font(size: 13, weight: .bold))
                                 .foregroundStyle(placed ? .white.opacity(0.4) : .white)
 
                             if placed {
                                 Image(systemName: "checkmark.circle.fill")
-                                    .font(.system(size: 14))
-                                    .foregroundStyle(.green)
+                                    .font(BoardTheme.font(size: 14))
+                                    .foregroundStyle(BoardTheme.gain)
                             }
                         }
                         .padding(.horizontal, 14)
@@ -260,7 +385,7 @@ struct BoardView: View {
                         )
                     }
                     .buttonStyle(.plain)
-                    .disabled(placed)
+                    .accessibilityHint(placed ? "Move to another starting hex" : "Choose a starting hex")
                 }
 
                 Spacer()
@@ -271,14 +396,8 @@ struct BoardView: View {
                         coordinator.finishSetup()
                     } label: {
                         Label("Begin Scenario", systemImage: "play.fill")
-                            .font(.system(size: 15, weight: .bold))
-                            .foregroundStyle(.white)
-                            .padding(.horizontal, 20)
-                            .padding(.vertical, 12)
-                            .background(.green)
-                            .clipShape(RoundedRectangle(cornerRadius: 10))
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(.boardPrimary)
                 }
             }
         }
@@ -296,190 +415,169 @@ struct BoardView: View {
     @ViewBuilder
     private var executionBottomBar: some View {
         if let playerTurn = coordinator.activePlayerTurn {
-            HStack(spacing: 0) {
-                // Active card display
-                activeCardDisplay(playerTurn: playerTurn)
-
-                // Action buttons
-                VStack(alignment: .leading, spacing: 8) {
-                    if playerTurn.phase == .executeTopAction || playerTurn.phase == .executeBottomAction {
-                        let actions = playerTurn.phase == .executeTopAction ? playerTurn.topActions : playerTurn.bottomActions
-                        let idx = playerTurn.currentActionIndex
-
-                        if idx < actions.count {
-                            let action = actions[idx]
-                            Button {
-                                playerTurn.executeCurrentAction()
-                            } label: {
-                                Label("Execute: \(action.type.rawValue.capitalized)", systemImage: "play.fill")
-                            }
-                            .buttonStyle(.borderedProminent)
-                            .tint(.blue)
-                        } else {
-                            Button {
-                                playerTurn.executeCurrentAction()
-                            } label: {
-                                Label("Next Phase", systemImage: "forward.fill")
-                            }
-                            .buttonStyle(.bordered)
-                            .tint(.gray)
-                        }
-
-                        if !playerTurn.hasActed {
-                            // Either card may provide the top half, and either half may go first.
-                            HStack(spacing: 8) {
-                                Button("Swap Cards") {
-                                    playerTurn.swapCards()
-                                }
-                                .buttonStyle(.bordered)
-                                .controlSize(.small)
-                                .help("Use the other card's top half and this card's bottom half")
-
-                                Toggle("Bottom first", isOn: Binding(
-                                    get: { playerTurn.bottomFirst },
-                                    set: { playerTurn.setBottomFirst($0) }
-                                ))
-                                .toggleStyle(.button)
-                                .controlSize(.small)
-                            }
-                        }
-
-                        HStack(spacing: 8) {
-                            let defaultLabel = playerTurn.phase == .executeTopAction ? "Default: Attack 2" : "Default: Move 2"
-                            Button(defaultLabel) {
-                                playerTurn.useDefaultAction()
-                            }
-                            .buttonStyle(.bordered)
-                            .tint(.cyan)
-                            .controlSize(.small)
-
-                            Button("Skip Half") {
-                                playerTurn.skipRemainingActions()
-                            }
-                            .buttonStyle(.bordered)
-                            .tint(.orange)
-                            .controlSize(.small)
-                        }
-                    }
-
-                    if playerTurn.phase == .turnComplete {
-                        Button {
-                            coordinator.finishPlayerTurn()
-                        } label: {
-                            Label("End Turn", systemImage: "checkmark.circle.fill")
-                        }
-                        .buttonStyle(.borderedProminent)
-                        .tint(.green)
-                        .controlSize(.large)
-                    }
+            let character = gameManager.game.characters.first { $0.id == playerTurn.characterID }
+            let edition = character?.edition ?? "gh"
+            HStack(alignment: .center, spacing: 16) {
+                // The two played cards, the half being performed lit
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(character.map { "Played · initiative \($0.initiative)" } ?? "Played")
+                        .font(BoardTheme.font(size: 11, weight: .semibold))
+                        .foregroundStyle(BoardTheme.secondaryText)
+                    PlayedCardsView(turn: playerTurn, edition: edition, characterColor: activeCharacterColor,
+                                    labelResolver: labelResolver(for: edition),
+                                    onPreview: { card in previewAction(card: card)?() })
                 }
-                .padding(.horizontal, 16)
-
-                // Multi-target confirmation
-                if case .selectingMultiAttackTargets(_, _, _, let targetCount, let selected) = coordinator.interactionMode {
-                    VStack(spacing: 4) {
-                        Text("Selecting targets: \(selected.count)/\(targetCount)")
-                            .font(.caption.weight(.bold))
-                            .foregroundStyle(.red)
-                        if !selected.isEmpty {
-                            Button("Confirm \(selected.count) Target\(selected.count == 1 ? "" : "s")") {
-                                coordinator.confirmMultiAttack()
-                            }
-                            .buttonStyle(.borderedProminent)
-                            .tint(.red)
-                            .controlSize(.small)
-                        }
-                    }
-                    .padding(.horizontal, 8)
-                }
-
-                Spacer()
+                .learnable(.playedCards)
+                turnControls(playerTurn)
             }
-        } else if case .placingSummon(_, _, _) = coordinator.interactionMode,
-                  let pending = coordinator.pendingSummonPlacement {
-            HStack(spacing: 10) {
-                Image(systemName: "sparkles")
-                    .font(.title3)
-                    .foregroundStyle(.green)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("Place \(pending.summonName)")
-                        .font(.subheadline.weight(.bold))
-                        .foregroundStyle(.green)
-                    Text("Tap a green hex")
-                        .font(.caption)
-                        .foregroundStyle(.white.opacity(0.7))
-                }
-            }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 8)
-            .background(.green.opacity(0.15))
-            .clipShape(RoundedRectangle(cornerRadius: 8))
-            Spacer()
-        } else if case .watchingMonsterTurn = coordinator.interactionMode {
-            Text("Monsters acting...")
-                .font(.subheadline)
-                .foregroundStyle(.white)
+            .padding(14)
+            .boardPanel(radius: BoardTheme.Radius.large)
+            .reportFrame { hudFrames.reportBottomLeading($0) }
             Spacer()
         } else {
+            instructionBanner
+                .reportFrame { hudFrames.reportBottomLeading($0) }
             Spacer()
         }
     }
 
-    /// Shows the active card (top or bottom) with the relevant half highlighted.
+    /// The half being performed, its next step as the one brass button, and the quieter choices.
     @ViewBuilder
-    private func activeCardDisplay(playerTurn: PlayerTurnController) -> some View {
-        let isTop = playerTurn.phase == .executeTopAction
-        let isBtm = playerTurn.phase == .executeBottomAction
-        let card = isTop ? playerTurn.topCard : (isBtm ? playerTurn.bottomCard : nil)
-        let edition = gameManager.game.characters.first(where: { $0.id == playerTurn.characterID })?.edition ?? "gh"
-        let resolver = labelResolver(for: edition)
+    private func turnControls(_ playerTurn: PlayerTurnController) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text(Self.halfHeading(phase: playerTurn.phase, top: playerTurn.topCard, bottom: playerTurn.bottomCard,
+                                  extra: playerTurn.extraPlay))
+                .font(BoardTheme.font(size: 11, weight: .semibold))
+                .foregroundStyle(BoardTheme.brass)
 
-        if let card {
-            let highlight: CardHighlight = isTop ? .top : .bottom
-            let badge = isTop ? "TOP — Init \(card.initiative)" : "BOTTOM"
-            let badgeColor: Color = isTop ? .yellow : .cyan
+            if playerTurn.phase == .executeTopAction || playerTurn.phase == .executeBottomAction
+                || playerTurn.phase == .executeExtraHalf {
+                let actions = playerTurn.currentSteps
+                let idx = playerTurn.currentActionIndex
 
-            BoardAbilityCardView(
-                card: card,
-                characterColor: activeCharacterColor,
-                highlight: highlight,
-                width: 140,
-                height: 240,
-                roleBadge: badge,
-                roleBadgeColor: badgeColor,
-                labelResolver: resolver,
-                onPreview: previewAction(card: card)
-            )
-            .padding(.leading, 8)
-        } else if playerTurn.phase == .turnComplete {
-            // Show both cards side by side, dimmed
-            HStack(spacing: 6) {
-                if let top = playerTurn.topCard {
-                    BoardAbilityCardView(
-                        card: top,
-                        characterColor: activeCharacterColor,
-                        highlight: .none,
-                        width: 90,
-                        height: 150,
-                        labelResolver: resolver,
-                        onPreview: previewAction(card: top)
-                    )
-                    .opacity(0.5)
+                // While a step waits for a hex or a target, the instruction says what to tap and
+                // has Skip and Cancel; the step's own button would do nothing.
+                if playerTurn.isWaiting {
+                    instructionBanner
+                } else if idx < actions.count {
+                    let action = actions[idx]
+                    let noTarget = playerTurn.attackHasNoTarget(action)
+                    HStack(spacing: 10) {
+                        Button {
+                            playerTurn.executeCurrentAction()
+                        } label: {
+                            Label(playerTurn.stepTitle(action), systemImage: "play.fill")
+                                .lineLimit(2)
+                                .multilineTextAlignment(.leading)
+                        }
+                        .buttonStyle(noTarget ? BoardButtonStyle(kind: .quiet) : BoardButtonStyle(kind: .primary))
+                        if noTarget {
+                            // Performing it now does nothing: a move first, or Skip, may be better.
+                            Label("No enemy in range", systemImage: "exclamationmark.triangle")
+                                .font(BoardTheme.font(size: 12))
+                                .foregroundStyle(BoardTheme.secondaryText)
+                        }
+                        // Element bonuses there's an element for: taken unless turned down.
+                        ForEach(playerTurn.consumeOptions(for: action).filter(\.payable)) { option in
+                            Button {
+                                playerTurn.toggleConsume(option.id)
+                            } label: {
+                                Label(option.label, systemImage: option.declined ? "circle" : "checkmark.circle.fill")
+                            }
+                            .buttonStyle(option.declined ? .boardQuietCompact : .boardPrimaryCompact)
+                            .accessibilityLabel(option.declined ? "Consume for \(option.label): off" : "Consume for \(option.label): on")
+                            .help("Tap to keep the element for an ally instead")
+                        }
+                    }
+                } else {
+                    Button {
+                        playerTurn.executeCurrentAction()
+                    } label: {
+                        Label(playerTurn.phase == .executeTopAction && !playerTurn.bottomFirst
+                              ? "Continue to Bottom Half" : "Continue", systemImage: "forward.fill")
+                    }
+                    .buttonStyle(.boardPrimary)
                 }
-                if let btm = playerTurn.bottomCard {
-                    BoardAbilityCardView(
-                        card: btm,
-                        characterColor: activeCharacterColor,
-                        highlight: .none,
-                        width: 90,
-                        height: 150,
-                        labelResolver: resolver,
-                        onPreview: previewAction(card: btm)
-                    )
-                    .opacity(0.5)
+
+                if !playerTurn.isWaiting {
+                    TurnChoiceButtons(turn: playerTurn)
+                }
+
+                // Multi-target attacks: attack fewer targets than allowed.
+                if case .selectingMultiAttackTargets(_, _, _, _, let selected) = coordinator.interactionMode, !selected.isEmpty {
+                    Button("Attack \(selected.count) Target\(selected.count == 1 ? "" : "s")") {
+                        coordinator.confirmMultiAttack()
+                    }
+                    .buttonStyle(.boardPrimary)
                 }
             }
-            .padding(.leading, 8)
+
+            // Items whose moment has come: during this move, this attack, the turn, or its end.
+            let items = coordinator.usableItems()
+            let allyItems = coordinator.allyItems()
+            if !items.isEmpty || !allyItems.isEmpty {
+                FlowLayout(spacing: 8) {
+                    ForEach(items, id: \.itemKey) { item in
+                        Button {
+                            coordinator.useItem(item)
+                        } label: {
+                            Label("Use \(item.name)", systemImage: item.consumed ? "flask" : "shield.lefthalf.filled")
+                        }
+                        .buttonStyle(.boardQuietCompact)
+                        .accessibilityHint(item.consumed ? "Used up for the scenario"
+                                           : item.spent ? "Spent until a long rest" : "Can be used again")
+                    }
+                    // An ally's item for this attack (Scroll of Power).
+                    ForEach(allyItems, id: \.owner.id) { offer in
+                        Button {
+                            coordinator.useAllyItem(offer.item, of: offer.owner)
+                        } label: {
+                            Label("Use \(coordinator.characterName(offer.owner.id))\u{2019}s \(offer.item.name)", systemImage: "flask")
+                        }
+                        .buttonStyle(.boardQuietCompact)
+                        .accessibilityHint("Used up for the scenario")
+                    }
+                }
+            }
+
+            if playerTurn.phase == .turnComplete {
+                Button {
+                    coordinator.finishPlayerTurn()
+                } label: {
+                    Label("End Turn", systemImage: "checkmark")
+                }
+                .buttonStyle(.boardPrimary)
+                .keyboardShortcut(.defaultAction)
+            }
+        }
+        .frame(minWidth: 300, alignment: .leading)
+    }
+
+    /// "Top half · Provoking Roar", "Bottom half · Overwhelming Assault", "Turn done".
+    static func halfHeading(phase: PlayerTurnPhase, top: AbilityModel?, bottom: AbilityModel?,
+                            extra: PlayerTurnController.ExtraPlay? = nil) -> String {
+        switch phase {
+        case .executeTopAction: return "Top half · \(top?.name ?? "")"
+        case .executeBottomAction: return "Bottom half · \(bottom?.name ?? "")"
+        case .executeExtraHalf:
+            return "Extra card, \(extra?.top == true ? "top" : "bottom") half · \(extra?.card.name ?? "")"
+        case .turnComplete: return "Turn done"
+        default: return "Your turn"
+        }
+    }
+
+    /// What the board is waiting for, beside the action buttons so it never covers the board.
+    @ViewBuilder
+    private var instructionBanner: some View {
+        if let instruction = coordinator.instruction(for: coordinator.interactionMode) {
+            InstructionBanner(instruction: instruction, onSkip: coordinator.activePlayerTurn.map { turn in
+                { turn.skipCurrentAction() }
+            }, onCancel: coordinator.activePlayerTurn.map { turn in
+                { turn.cancelChoice() }
+            }, choices: coordinator.accessibleChoices(),
+               playback: coordinator.isAutomatedTurn ? coordinator : nil)
+            .transition(.opacity)
+            .animation(.easeInOut(duration: 0.2), value: instruction)
         }
     }
 
@@ -490,112 +588,113 @@ struct BoardView: View {
         let characters = gameManager.game.characters.filter { !$0.absent }
 
         if !characters.isEmpty {
-            ScrollView {
-                VStack(spacing: 6) {
-                    ForEach(characters, id: \.id) { character in
-                        characterCard(character)
-                    }
+            let cards = VStack(spacing: 8) {
+                ForEach(characters, id: \.id) { character in
+                    characterCard(character)
+                        .learnable(.piece(.character(character.id)))
                 }
-                .padding(6)
             }
-            .frame(width: 260)
-            .background(.black.opacity(0.55))
-            .clipShape(RoundedRectangle(cornerRadius: 10))
-            .overlay(
-                RoundedRectangle(cornerRadius: 10)
-                    .strokeBorder(.white.opacity(0.08), lineWidth: 1)
-            )
-            .padding(8)
+            // Sized to the party; scrolls only when the screen is too short for it.
+            ViewThatFits(in: .vertical) {
+                cards
+                ScrollView { cards }
+            }
+            .frame(width: Self.sidePanelWidth)
+            .padding(.leading, 16)
         }
     }
 
+    /// The side columns' width.
+    static let sidePanelWidth: CGFloat = 240
+
+    /// A party member: portrait, hit points, and their hand and lost cards.
     @ViewBuilder
     private func characterCard(_ character: GameCharacter) -> some View {
-        let charColor = Color(hex: character.color) ?? .blue
         let isExhausted = character.exhausted || character.health <= 0
+        let low = character.health * 3 < character.maxHealth
 
-        VStack(alignment: .leading, spacing: 4) {
-            // Name row
-            HStack(spacing: 6) {
-                BundledImage(ImageLoader.characterIcon(edition: character.edition, name: character.name), size: 14, systemName: "person.fill")
-                    .foregroundStyle(charColor)
-                    .opacity(isExhausted ? 0.4 : 1.0)
-                Text(character.title.isEmpty ? character.name.replacingOccurrences(of: "-", with: " ").capitalized : character.title)
-                    .font(.system(size: 11, weight: .bold))
-                    .foregroundStyle(isExhausted ? .white.opacity(0.4) : .white)
-                    .lineLimit(1)
-                Spacer()
-                if isExhausted {
-                    Text("OUT")
-                        .font(.system(size: 8, weight: .heavy))
-                        .foregroundStyle(.red)
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 10) {
+                portrait(ImageLoader.characterThumbnail(edition: character.edition, name: character.name), size: 40)
+                    .saturation(isExhausted ? 0 : 1)
+                    .opacity(isExhausted ? 0.5 : 1)
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack {
+                        Text(GameText.characterName(character, labels: gameManager.editionStore))
+                            .font(BoardTheme.font(size: 14, weight: .semibold))
+                            .foregroundStyle(isExhausted ? BoardTheme.secondaryText : BoardTheme.text)
+                            .lineLimit(1)
+                        Spacer(minLength: 4)
+                        if isExhausted {
+                            Text("Exhausted")
+                                .font(BoardTheme.font(size: 11, weight: .bold))
+                                .foregroundStyle(BoardTheme.defeat)
+                        } else {
+                            Text("\(character.health)/\(character.maxHealth)")
+                                .font(BoardTheme.font(size: 12, weight: .medium).monospacedDigit())
+                                .foregroundStyle(low ? BoardTheme.defeat : BoardTheme.secondaryText)
+                        }
+                    }
+                    if !isExhausted {
+                        healthBar(current: character.health, max: character.maxHealth, height: 5)
+                        Text("XP \(character.experience) · Hand \(character.handCards.count) · Lost \(character.lostCards.count)")
+                            .font(BoardTheme.font(size: 11).monospacedDigit())
+                            .foregroundStyle(BoardTheme.secondaryText)
+                    }
                 }
             }
 
             if !isExhausted {
-                // HP bar
-                HStack(spacing: 4) {
-                    Image(systemName: "heart.fill")
-                        .font(.system(size: 8))
-                        .foregroundStyle(.red)
-                    GeometryReader { geo in
-                        ZStack(alignment: .leading) {
-                            RoundedRectangle(cornerRadius: 2)
-                                .fill(.white.opacity(0.15))
-                            RoundedRectangle(cornerRadius: 2)
-                                .fill(hpColor(current: character.health, max: character.maxHealth))
-                                .frame(width: geo.size.width * CGFloat(max(0, character.health)) / CGFloat(max(1, character.maxHealth)))
-                        }
-                    }
-                    .frame(height: 6)
-
-                    Text("\(character.health)/\(character.maxHealth)")
-                        .font(.system(size: 9, weight: .medium, design: .monospaced))
-                        .foregroundStyle(.white.opacity(0.8))
-                }
-
-                // Stats row: XP, Hand, Discard
-                HStack(spacing: 8) {
-                    Label("\(character.experience)", systemImage: "star.fill")
-                        .font(.system(size: 9))
-                        .foregroundStyle(.yellow.opacity(0.8))
-                    Label("\(character.handCards.count)", systemImage: "hand.raised.fill")
-                        .font(.system(size: 9))
-                        .foregroundStyle(.cyan.opacity(0.8))
-                    Label("\(character.discardedCards.count)", systemImage: "arrow.counterclockwise")
-                        .font(.system(size: 9))
-                        .foregroundStyle(.orange.opacity(0.7))
-                    Label("\(character.lostCards.count)", systemImage: "xmark.circle")
-                        .font(.system(size: 9))
-                        .foregroundStyle(.red.opacity(0.6))
-                    Spacer()
-                }
-
-                // Active conditions
                 let conditions = character.entityConditions.filter { !$0.expired }
                 if !conditions.isEmpty {
                     HStack(spacing: 3) {
                         ForEach(conditions, id: \.name) { cond in
-                            BundledImage(ImageLoader.conditionIcon(cond.name.rawValue), size: 12, systemName: "bolt.fill")
-                                .help(cond.name.rawValue.capitalized)
+                            BundledImage(ImageLoader.conditionIcon(cond.name.rawValue), size: 14, systemName: "bolt.fill")
+                                .help(GameText.conditionName(cond.name))
+                                .learnable(.condition(cond.name))
                         }
                     }
                 }
-
-                // Summons
                 let livingSummons = character.summons.filter { !$0.dead && $0.health > 0 }
                 ForEach(livingSummons, id: \.id) { summon in
                     summonMiniCard(summon)
                 }
             }
         }
-        .padding(8)
-        .background(charColor.opacity(0.15))
-        .clipShape(RoundedRectangle(cornerRadius: 6))
-        .overlay(
-            RoundedRectangle(cornerRadius: 6)
-                .stroke(charColor.opacity(0.3), lineWidth: 1)
-        )
+        .padding(10)
+        .sidePanelStyle()
+        .accessibilityElement(children: .combine)
+    }
+
+    /// A round portrait from a thumbnail.
+    @ViewBuilder
+    private func portrait(_ image: PlatformImage?, size: CGFloat) -> some View {
+        Group {
+            if let image {
+                #if os(macOS)
+                Image(nsImage: image).resizable().scaledToFill()
+                #else
+                Image(uiImage: image).resizable().scaledToFill()
+                #endif
+            } else {
+                Circle().fill(BoardTheme.raised)
+            }
+        }
+        .frame(width: size, height: size)
+        .clipShape(Circle())
+    }
+
+    /// A slim hit point bar.
+    private func healthBar(current: Int, max: Int, height: CGFloat) -> some View {
+        GeometryReader { geo in
+            ZStack(alignment: .leading) {
+                Capsule().fill(Color.white.opacity(0.1))
+                Capsule()
+                    .fill(hpColor(current: current, max: max))
+                    .frame(width: geo.size.width * CGFloat(Swift.max(0, current)) / CGFloat(Swift.max(1, max)))
+            }
+        }
+        .frame(height: height)
     }
 
     @ViewBuilder
@@ -606,14 +705,14 @@ struct BoardView: View {
                 Circle()
                     .fill(.green)
                     .frame(width: 6, height: 6)
-                Text(summon.name.replacingOccurrences(of: "-", with: " ").capitalized)
-                    .font(.system(size: 9, weight: .bold))
+                Text(coordinator.name(.summon(id: summon.id)))
+                    .font(BoardTheme.font(size: 11, weight: .bold))
                     .foregroundStyle(.green)
                     .lineLimit(1)
                 Spacer()
                 if summon.state == .new {
                     Text("NEW")
-                        .font(.system(size: 7, weight: .heavy))
+                        .font(BoardTheme.font(size: 11, weight: .heavy))
                         .foregroundStyle(.white)
                         .padding(.horizontal, 4)
                         .padding(.vertical, 1)
@@ -625,19 +724,19 @@ struct BoardView: View {
             // Stats row
             HStack(spacing: 6) {
                 Label("\(summon.effectiveAttack)", systemImage: "burst.fill")
-                    .font(.system(size: 8))
+                    .font(BoardTheme.font(size: 11))
                     .foregroundStyle(.red.opacity(0.8))
                 Label("\(summon.movement)", systemImage: "arrow.right")
-                    .font(.system(size: 8))
+                    .font(BoardTheme.font(size: 11))
                     .foregroundStyle(.cyan.opacity(0.8))
                 if summon.range > 0 {
                     Label("\(summon.range)", systemImage: "scope")
-                        .font(.system(size: 8))
+                        .font(BoardTheme.font(size: 11))
                         .foregroundStyle(.orange.opacity(0.8))
                 }
                 Spacer()
                 Text("\(summon.health)/\(summon.maxHealth)")
-                    .font(.system(size: 8, weight: .medium, design: .monospaced))
+                    .font(BoardTheme.font(size: 11, weight: .medium, design: .monospaced))
                     .foregroundStyle(.green.opacity(0.8))
             }
 
@@ -659,7 +758,7 @@ struct BoardView: View {
                 HStack(spacing: 3) {
                     ForEach(summonConditions, id: \.name) { cond in
                         BundledImage(ImageLoader.conditionIcon(cond.name.rawValue), size: 10, systemName: "bolt.fill")
-                            .help(cond.name.rawValue.capitalized)
+                            .help(GameText.conditionName(cond.name))
                     }
                 }
             }
@@ -680,177 +779,217 @@ struct BoardView: View {
         let aliveMonsters = gameManager.game.monsters.filter { !$0.off && !$0.aliveEntities.isEmpty }
 
         if !aliveMonsters.isEmpty {
-            ScrollView {
-                VStack(spacing: 4) {
-                    ForEach(aliveMonsters, id: \.id) { monster in
-                        monsterGroupCard(monster)
-                    }
+            let groups = VStack(spacing: 8) {
+                ForEach(aliveMonsters, id: \.id) { monster in
+                    monsterGroupCard(monster)
+                        .learnable(.monsterGroup(monster.name))
                 }
-                .padding(6)
             }
-            .frame(width: 260)
-            .frame(maxHeight: 200)
-            .background(.black.opacity(0.55))
-            .clipShape(RoundedRectangle(cornerRadius: 10))
-            .overlay(
-                RoundedRectangle(cornerRadius: 10)
-                    .strokeBorder(.white.opacity(0.08), lineWidth: 1)
-            )
-            .padding(.horizontal, 8)
-            .padding(.top, 8)
+            // As tall as its rows; scrolls only when they don't fit.
+            ViewThatFits(in: .vertical) {
+                groups
+                ScrollView { groups }
+            }
+            .frame(width: Self.sidePanelWidth)
+            .padding(.trailing, 16)
         }
     }
 
+    /// A monster type: portrait, name and level, then a row per standee (elites first). Tapping
+    /// it shows this round's ability card.
     @ViewBuilder
     private func monsterGroupCard(_ monster: GameMonster) -> some View {
-        let monsterColor: Color = monster.isBoss ? .purple : .red
         let ability = gameManager.monsterManager.currentAbility(for: monster)
 
-        VStack(alignment: .leading, spacing: 3) {
-            // Monster name
-            HStack(spacing: 4) {
-                Image(systemName: monster.isBoss ? "crown.fill" : "pawprint.fill")
-                    .font(.system(size: 8))
-                    .foregroundStyle(monsterColor)
-                Text(monster.name.replacingOccurrences(of: "-", with: " ").capitalized)
-                    .font(.system(size: 10, weight: .bold))
-                    .foregroundStyle(.white)
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 8) {
+                portrait(ImageLoader.monsterThumbnail(edition: monster.edition, name: monster.name), size: 26)
+                Text(coordinator.monsterTypeName(monster.name) + (monster.aliveEntities.count > 1 ? "s" : ""))
+                    .font(BoardTheme.font(size: 14, weight: .semibold))
+                    .foregroundStyle(BoardTheme.text)
                     .lineLimit(1)
-                Spacer()
-                Text("Lv\(monster.level)")
-                    .font(.system(size: 8, weight: .medium))
-                    .foregroundStyle(.white.opacity(0.5))
-                if ability != nil {
-                    Image(systemName: "rectangle.portrait.on.rectangle.portrait.fill")
-                        .font(.system(size: 8))
-                        .foregroundStyle(monsterColor.opacity(0.7))
+                if monster.isBoss {
+                    Image(systemName: "crown.fill")
+                        .font(BoardTheme.font(size: 11))
+                        .foregroundStyle(BoardTheme.victory)
+                        .accessibilityLabel("Boss")
                 }
+                Spacer(minLength: 4)
+                Text("Lv \(monster.level)")
+                    .font(BoardTheme.font(size: 11))
+                    .foregroundStyle(BoardTheme.secondaryText)
             }
 
-            // Standee rows — elites first, then normals
             let sorted = monster.aliveEntities.sorted { a, b in
                 if a.type != b.type { return a.type == .elite }
                 return a.number < b.number
             }
-
             ForEach(sorted, id: \.id) { entity in
                 monsterEntityRow(entity, monster: monster)
             }
         }
-        .padding(6)
-        .background(monsterColor.opacity(0.1))
-        .clipShape(RoundedRectangle(cornerRadius: 5))
-        .overlay(
-            RoundedRectangle(cornerRadius: 5)
-                .stroke(monsterColor.opacity(0.2), lineWidth: 1)
-        )
+        .padding(10)
+        .sidePanelStyle()
+        .contentShape(Rectangle())
         .onTapGesture {
             if let ability {
                 previewMonsterAbility = (monster, ability)
             }
         }
+        .accessibilityElement(children: .combine)
+        .accessibilityAddTraits(.isButton)
+        .accessibilityHint("Shows this round's ability card")
     }
 
     @ViewBuilder
     private func monsterEntityRow(_ entity: GameMonsterEntity, monster: GameMonster) -> some View {
         let isElite = entity.type == .elite
-        let typeColor: Color = isElite ? .yellow : .white
 
-        HStack(spacing: 4) {
-            // Standee number badge
+        HStack(spacing: 8) {
             Text("\(entity.number)")
-                .font(.system(size: 8, weight: .heavy, design: .monospaced))
-                .foregroundStyle(isElite ? .black : .white)
-                .frame(width: 14, height: 14)
-                .background(isElite ? .yellow : .white.opacity(0.3))
-                .clipShape(RoundedRectangle(cornerRadius: 2))
+                .font(BoardTheme.font(size: 11, weight: .bold).monospacedDigit())
+                .foregroundStyle(isElite ? BoardTheme.sheet : BoardTheme.text)
+                .frame(width: 18, height: 18)
+                .background(isElite ? BoardTheme.victory : BoardTheme.raised, in: RoundedRectangle(cornerRadius: 4))
+                .accessibilityLabel(isElite ? "Elite \(entity.number)" : "Standee \(entity.number)")
 
-            // HP bar
-            GeometryReader { geo in
-                ZStack(alignment: .leading) {
-                    RoundedRectangle(cornerRadius: 2)
-                        .fill(.white.opacity(0.1))
-                    RoundedRectangle(cornerRadius: 2)
-                        .fill(hpColor(current: entity.health, max: entity.maxHealth))
-                        .frame(width: geo.size.width * CGFloat(max(0, entity.health)) / CGFloat(max(1, entity.maxHealth)))
-                }
-            }
-            .frame(height: 5)
+            healthBar(current: entity.health, max: entity.maxHealth, height: 5)
 
-            Text("\(entity.health)/\(entity.maxHealth)")
-                .font(.system(size: 8, weight: .medium, design: .monospaced))
-                .foregroundStyle(typeColor.opacity(0.8))
-
-            // Conditions
             let conditions = entity.entityConditions.filter { !$0.expired }
             ForEach(conditions, id: \.name) { cond in
-                BundledImage(ImageLoader.conditionIcon(cond.name.rawValue), size: 10, systemName: "bolt.fill")
-                    .help(cond.name.rawValue.capitalized)
+                BundledImage(ImageLoader.conditionIcon(cond.name.rawValue), size: 12, systemName: "bolt.fill")
+                    .help(GameText.conditionName(cond.name))
             }
+
+            Text("\(entity.health)/\(entity.maxHealth)")
+                .font(BoardTheme.font(size: 11).monospacedDigit())
+                .foregroundStyle(BoardTheme.secondaryText)
         }
-        .frame(height: 16)
+        .frame(height: 18)
     }
 
     // MARK: - Shared Helpers
 
     private func hpColor(current: Int, max: Int) -> Color {
         let ratio = Double(current) / Double(Swift.max(1, max))
-        if ratio > 0.6 { return .green }
-        if ratio > 0.3 { return .yellow }
-        return .red
+        if ratio > 0.6 { return BoardTheme.gain }
+        if ratio > 0.3 { return BoardTheme.victory }
+        return BoardTheme.defeat
     }
 
     // MARK: - Battle Log
 
+    /// What just happened: the last few entries as short notes, with the whole log a tap away.
     @ViewBuilder
     private var turnLogPanel: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            // Header
-            HStack(spacing: 6) {
-                Image(systemName: "scroll.fill")
-                    .font(.system(size: 11))
-                    .foregroundStyle(.yellow.opacity(0.8))
-                Text("Battle Log")
-                    .font(.system(size: 12, weight: .bold, design: .serif))
-                    .foregroundStyle(.white.opacity(0.85))
-                Spacer()
-                Text("\(coordinator.turnLog.count)")
-                    .font(.system(size: 9, weight: .medium, design: .monospaced))
-                    .foregroundStyle(.white.opacity(0.4))
-            }
-            .padding(.horizontal, 10)
-            .padding(.vertical, 8)
+        if logExpanded || !Self.recentEvents(coordinator.turnLog).isEmpty {
+            logColumn
+                .learnable(.log)
+        }
+    }
 
-            Divider().overlay(.white.opacity(0.15))
-
-            // Log entries
-            ScrollViewReader { proxy in
-                ScrollView {
-                    LazyVStack(alignment: .leading, spacing: 1) {
-                        ForEach(coordinator.turnLog.suffix(100)) { entry in
-                            logEntryRow(entry)
-                                .id(entry.id)
-                        }
-                    }
-                    .padding(.vertical, 4)
+    private var logColumn: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Button {
+                withAnimation(.snappy) { logExpanded.toggle() }
+            } label: {
+                HStack(spacing: 6) {
+                    Image(systemName: "scroll")
+                    Text(logExpanded ? "Battle log" : "Recent")
+                    Spacer()
+                    Image(systemName: logExpanded ? "chevron.up" : "chevron.down")
                 }
-                .onChange(of: coordinator.turnLog.count) { _, _ in
-                    if let last = coordinator.turnLog.last {
-                        withAnimation(.easeOut(duration: 0.2)) {
-                            proxy.scrollTo(last.id, anchor: .bottom)
+                .font(BoardTheme.font(size: 12, weight: .semibold))
+                .foregroundStyle(BoardTheme.secondaryText)
+                .padding(.horizontal, 4)
+                .frame(minHeight: 32)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityHint(logExpanded ? "Shows only the latest events" : "Shows the whole battle log")
+
+            if logExpanded {
+                ScrollViewReader { proxy in
+                    let shown = Array(coordinator.turnLog.suffix(100))
+                    let whys = Self.whyLines(shown)
+                    ScrollView {
+                        LazyVStack(alignment: .leading, spacing: 1) {
+                            ForEach(shown) { entry in
+                                logEntryRow(entry)
+                                    .overlay(alignment: .topTrailing) {
+                                        if whys.contains(entry.id) { whyButton(entry) }
+                                    }
+                                    .id(entry.id)
+                            }
+                        }
+                        .padding(.vertical, 4)
+                    }
+                    .onChange(of: coordinator.turnLog.count) { _, _ in
+                        if let last = coordinator.turnLog.last {
+                            withAnimation(.easeOut(duration: 0.2)) {
+                                proxy.scrollTo(last.id, anchor: .bottom)
+                            }
                         }
                     }
+                    .onAppear {
+                        if let last = coordinator.turnLog.last { proxy.scrollTo(last.id, anchor: .bottom) }
+                    }
+                }
+                .frame(minHeight: 80, maxHeight: 260)
+                .sidePanelStyle()
+            } else {
+                let recent = Self.recentEvents(coordinator.turnLog)
+                let whys = Self.whyLines(recent)
+                ForEach(recent) { entry in
+                    Label {
+                        Text(entry.message).lineLimit(2)
+                    } icon: {
+                        Image(systemName: entry.category.icon)
+                            .foregroundStyle(BoardTheme.brass)
+                    }
+                    .font(BoardTheme.font(size: 12))
+                    .foregroundStyle(BoardTheme.text)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 7)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(BoardTheme.raised, in: RoundedRectangle(cornerRadius: BoardTheme.Radius.small))
+                    .overlay(alignment: .topTrailing) {
+                        if whys.contains(entry.id) { whyButton(entry).offset(y: -9) }
+                    }
+                    .transition(.move(edge: .top).combined(with: .opacity))
                 }
             }
         }
-        .frame(width: 260)
-        .background(.black.opacity(0.65))
-        .clipShape(RoundedRectangle(cornerRadius: 10))
-        .overlay(
-            RoundedRectangle(cornerRadius: 10)
-                .strokeBorder(.white.opacity(0.08), lineWidth: 1)
-        )
-        .padding(8)
+        .frame(width: Self.sidePanelWidth)
+        .padding(.trailing, 16)
+        .animation(.snappy, value: coordinator.turnLog.count)
+    }
+
+    /// The lines that get a "Why?" (in learning mode): the last line of each monster's turn.
+    private static func whyLines(_ entries: [TurnLogEntry]) -> Set<UUID> {
+        var last: [UUID: UUID] = [:]
+        for entry in entries { if let why = entry.whyID { last[why] = entry.id } }
+        return Set(last.values)
+    }
+
+    @ViewBuilder
+    private func whyButton(_ entry: TurnLogEntry) -> some View {
+        if coordinator.learningMode, let why = entry.whyID, coordinator.monsterWhys[why] != nil {
+            Button("Why?") { coordinator.showWhy(why) }
+                .font(BoardTheme.font(size: 12, weight: .bold))
+                .foregroundStyle(BoardTheme.sheet)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 3)
+                .background(BoardTheme.brass, in: Capsule())
+                .buttonStyle(.plain)
+                .accessibilityHint("Shows how the monster chose what to do")
+        }
+    }
+
+    /// The latest events worth a note: what figures did, not round bookkeeping (turn order, card
+    /// plays and draws, setup); at most three, newest last.
+    static func recentEvents(_ log: [TurnLogEntry]) -> [TurnLogEntry] {
+        Array(log.filter { !$0.isRoundHeader && $0.category != .setup && $0.category != .round }.suffix(3))
     }
 
     @ViewBuilder
@@ -862,7 +1001,7 @@ struct BoardView: View {
                     .fill(.yellow.opacity(0.3))
                     .frame(height: 1)
                 Text(entry.message)
-                    .font(.system(size: 10, weight: .bold, design: .serif))
+                    .font(BoardTheme.font(size: 11, weight: .bold, design: .serif))
                     .foregroundStyle(.yellow.opacity(0.8))
                     .padding(.horizontal, 8)
                 Rectangle()
@@ -874,13 +1013,13 @@ struct BoardView: View {
         } else {
             HStack(alignment: .top, spacing: 5) {
                 Image(systemName: entry.category.icon)
-                    .font(.system(size: 8))
+                    .font(BoardTheme.font(size: 11))
                     .foregroundStyle(entry.category.color.opacity(0.7))
                     .frame(width: 12, alignment: .center)
                     .padding(.top, 2)
 
                 Text(entry.message)
-                    .font(.system(size: 10, design: .default))
+                    .font(BoardTheme.font(size: 11, design: .default))
                     .foregroundStyle(.white.opacity(0.7))
                     .lineLimit(3)
             }
@@ -889,513 +1028,7 @@ struct BoardView: View {
         }
     }
 
-    // MARK: - Scenario End Overlay
-
-    @ViewBuilder
-    private func scenarioEndOverlay(result: BoardCoordinator.ScenarioResult) -> some View {
-        let isVictory = result == .victory
-        let accentColor: Color = isVictory ? .yellow : .red
-        let characters = gameManager.game.characters.filter { !$0.absent }
-
-        Color.black.opacity(0.75)
-            .ignoresSafeArea()
-            .overlay {
-                VStack(spacing: 0) {
-                    // Header
-                    VStack(spacing: 8) {
-                        Image(systemName: isVictory ? "checkmark.seal.fill" : "xmark.seal.fill")
-                            .font(.system(size: 56))
-                            .foregroundStyle(accentColor)
-
-                        Text(isVictory ? "Scenario Complete!" : "Scenario Failed")
-                            .font(.system(size: 32, weight: .bold, design: .serif))
-                            .foregroundStyle(.white)
-
-                        Text(isVictory
-                             ? "All enemies have been defeated."
-                             : "All characters are exhausted.")
-                            .font(.subheadline)
-                            .foregroundStyle(.white.opacity(0.65))
-
-                        Text("Round \(gameManager.game.round)")
-                            .font(.caption)
-                            .foregroundStyle(.white.opacity(0.4))
-                    }
-                    .padding(.bottom, 20)
-
-                    Divider().overlay(accentColor.opacity(0.3))
-                        .padding(.horizontal, -24)
-
-                    // Rules reminder (defeat only)
-                    if !isVictory {
-                        HStack(spacing: 8) {
-                            Image(systemName: "info.circle.fill")
-                                .foregroundStyle(.orange.opacity(0.8))
-                                .font(.system(size: 13))
-                            Text("Gold collected this scenario is lost. Experience is kept.")
-                                .font(.caption)
-                                .foregroundStyle(.white.opacity(0.6))
-                        }
-                        .padding(.vertical, 12)
-                    } else {
-                        Spacer().frame(height: 16)
-                    }
-
-                    // Character summary cards
-                    HStack(alignment: .top, spacing: 12) {
-                        ForEach(characters, id: \.id) { character in
-                            scenarioResultCharacterCard(character, isVictory: isVictory)
-                        }
-                    }
-                    .padding(.bottom, 20)
-
-                    Divider().overlay(accentColor.opacity(0.3))
-                        .padding(.horizontal, -24)
-                        .padding(.bottom, 20)
-
-                    // Action button
-                    Button {
-                        coordinator.confirmScenarioEnd()
-                    } label: {
-                        Label(
-                            isVictory ? "Complete Scenario" : "Return to Campaign",
-                            systemImage: isVictory ? "checkmark.circle.fill" : "arrow.uturn.left.circle.fill"
-                        )
-                        .font(.system(size: 17, weight: .semibold))
-                        .foregroundStyle(.white)
-                        .padding(.horizontal, 28)
-                        .padding(.vertical, 14)
-                        .background(isVictory ? Color.green : Color.orange)
-                        .clipShape(RoundedRectangle(cornerRadius: 12))
-                    }
-                    .buttonStyle(.plain)
-
-                    if !isVictory {
-                        Text("The scenario remains available to attempt again.")
-                            .font(.caption2)
-                            .foregroundStyle(.white.opacity(0.35))
-                            .padding(.top, 8)
-                    }
-                }
-                .padding(32)
-                .frame(maxWidth: 640)
-                .background(
-                    RoundedRectangle(cornerRadius: 20)
-                        .fill(.black.opacity(0.92))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 20)
-                                .stroke(accentColor.opacity(0.35), lineWidth: 1.5)
-                        )
-                )
-                .padding(40)
-            }
-    }
-
-    @ViewBuilder
-    private func scenarioResultCharacterCard(_ character: GameCharacter, isVictory: Bool) -> some View {
-        let charColor = Color(hex: character.color) ?? .blue
-        let isExhausted = character.exhausted || character.health <= 0
-
-        VStack(spacing: 8) {
-            // Avatar / icon
-            BundledImage(ImageLoader.characterIcon(edition: character.edition, name: character.name), size: 32, systemName: "person.fill")
-                .foregroundStyle(charColor)
-                .opacity(isExhausted && !isVictory ? 0.5 : 1.0)
-
-            // Name
-            Text(character.title.isEmpty
-                 ? character.name.replacingOccurrences(of: "-", with: " ").capitalized
-                 : character.title)
-                .font(.system(size: 11, weight: .bold))
-                .foregroundStyle(.white)
-                .lineLimit(1)
-                .multilineTextAlignment(.center)
-
-            Divider().overlay(charColor.opacity(0.3))
-
-            // XP gained (kept on both win and loss)
-            HStack(spacing: 4) {
-                Image(systemName: "star.fill")
-                    .font(.system(size: 9))
-                    .foregroundStyle(.yellow)
-                Text("\(character.experience) XP")
-                    .font(.system(size: 10, weight: .medium))
-                    .foregroundStyle(.yellow.opacity(0.9))
-            }
-
-            // Gold / loot
-            if isVictory {
-                HStack(spacing: 4) {
-                    Image(systemName: "circlebadge.fill")
-                        .font(.system(size: 9))
-                        .foregroundStyle(.yellow.opacity(0.8))
-                    Text("\(character.loot)g")
-                        .font(.system(size: 10, weight: .medium))
-                        .foregroundStyle(.yellow.opacity(0.8))
-                }
-            } else {
-                // Defeat: gold is lost — show it crossed out
-                HStack(spacing: 4) {
-                    Image(systemName: "circlebadge.slash.fill")
-                        .font(.system(size: 9))
-                        .foregroundStyle(.red.opacity(0.6))
-                    Text("\(character.loot)g lost")
-                        .font(.system(size: 10, weight: .medium))
-                        .foregroundStyle(.red.opacity(0.6))
-                }
-            }
-
-            // Status badge
-            if isExhausted && !isVictory {
-                Text("EXHAUSTED")
-                    .font(.system(size: 7, weight: .heavy))
-                    .foregroundStyle(.white)
-                    .padding(.horizontal, 6)
-                    .padding(.vertical, 2)
-                    .background(.red.opacity(0.7))
-                    .clipShape(Capsule())
-            }
-        }
-        .padding(12)
-        .frame(minWidth: 90)
-        .background(charColor.opacity(0.12))
-        .clipShape(RoundedRectangle(cornerRadius: 10))
-        .overlay(
-            RoundedRectangle(cornerRadius: 10)
-                .stroke(isExhausted && !isVictory ? .red.opacity(0.4) : charColor.opacity(0.3), lineWidth: 1)
-        )
-    }
-
     // MARK: - Damage Mitigation Overlay
-
-    @ViewBuilder
-    private func damageMitigationOverlay(pending: BoardCoordinator.PendingDamage, character: GameCharacter) -> some View {
-        let charColor = Color(hex: character.color) ?? .blue
-        let deckName = character.characterData?.deck ?? character.name
-        let deckData = gameManager.editionStore.deckData(
-            name: deckName, edition: character.edition
-        )
-        let resolver = labelResolver(for: character.edition)
-
-        Color.black.opacity(0.5)
-            .ignoresSafeArea()
-            .overlay {
-                HStack(spacing: 0) {
-                    // Left side: damage info + take damage button
-                    VStack(spacing: 16) {
-                        // Header
-                        VStack(spacing: 6) {
-                            Image(systemName: "exclamationmark.shield.fill")
-                                .font(.system(size: 36))
-                                .foregroundStyle(.red)
-
-                            Text("\(character.title.isEmpty ? character.name : character.title)")
-                                .font(.title3.weight(.bold))
-                                .foregroundStyle(charColor)
-
-                            Text("takes \(pending.damage) damage from \(pending.sourceDescription)")
-                                .font(.subheadline)
-                                .foregroundStyle(.white.opacity(0.8))
-                        }
-
-                        Divider().overlay(.white.opacity(0.2))
-
-                        // Take damage button
-                        Button {
-                            coordinator.resolvePendingDamage(choice: .takeDamage)
-                        } label: {
-                            HStack {
-                                Image(systemName: "heart.slash.fill")
-                                    .foregroundStyle(.red)
-                                VStack(alignment: .leading) {
-                                    Text("Take \(pending.damage) Damage")
-                                        .fontWeight(.medium)
-                                    Text("HP: \(character.health) → \(max(0, character.health - pending.damage))")
-                                        .font(.caption)
-                                        .foregroundStyle(.white.opacity(0.6))
-                                }
-                                Spacer()
-                            }
-                            .padding(.horizontal, 16)
-                            .padding(.vertical, 10)
-                            .background(.red.opacity(0.2))
-                            .clipShape(RoundedRectangle(cornerRadius: 8))
-                        }
-                        .buttonStyle(.plain)
-
-                        Spacer()
-                    }
-                    .frame(width: 260)
-                    .padding(20)
-
-                    Divider().overlay(.white.opacity(0.15))
-
-                    // Right side: card choices with full card previews
-                    VStack(alignment: .leading, spacing: 12) {
-                        // Lose 1 hand card (not one of the two played this round)
-                        let losable = coordinator.losableHandCards(of: character)
-                        if !losable.isEmpty {
-                            VStack(alignment: .leading, spacing: 6) {
-                                HStack(spacing: 4) {
-                                    Image(systemName: "hand.raised.fill")
-                                        .font(.system(size: 10))
-                                        .foregroundStyle(.yellow)
-                                    Text("Lose 1 hand card to negate all damage")
-                                        .font(.caption.weight(.bold))
-                                        .foregroundStyle(.yellow)
-                                }
-
-                                ScrollView(.horizontal, showsIndicators: false) {
-                                    HStack(spacing: 8) {
-                                        ForEach(losable, id: \.self) { cardId in
-                                            if let card = deckData?.abilities.first(where: { $0.cardId == cardId }) {
-                                                BoardAbilityCardView(
-                                                    card: card,
-                                                    characterColor: charColor,
-                                                    highlight: .none,
-                                                    width: 120,
-                                                    height: 200,
-                                                    labelResolver: resolver,
-                                                    onPreview: previewAction(card: card)
-                                                )
-                                                .overlay(alignment: .bottom) {
-                                                    Text("LOSE")
-                                                        .font(.system(size: 10, weight: .heavy))
-                                                        .foregroundStyle(.white)
-                                                        .padding(.horizontal, 12)
-                                                        .padding(.vertical, 4)
-                                                        .background(.red.opacity(0.8))
-                                                        .clipShape(Capsule())
-                                                        .padding(.bottom, 6)
-                                                }
-                                                .onTapGesture {
-                                                    coordinator.resolvePendingDamage(choice: .loseHandCard(cardId: cardId))
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-
-                        // Lose 2 discard cards
-                        if character.discardedCards.count >= 2 {
-                            DiscardCardPicker(
-                                character: character,
-                                deckData: deckData,
-                                characterColor: charColor,
-                                onConfirm: { indices in
-                                    coordinator.resolvePendingDamage(choice: .loseDiscardCards(indices: indices))
-                                },
-                                labelResolver: resolver,
-                                onPreviewCard: { card in self.previewAction(card: card) }
-                            )
-                        }
-                    }
-                    .padding(16)
-                }
-                .frame(maxHeight: 420)
-                .background(.black.opacity(0.92))
-                .clipShape(RoundedRectangle(cornerRadius: 16))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 16)
-                        .stroke(.red.opacity(0.4), lineWidth: 1)
-                )
-                .padding(40)
-            }
-    }
-
-    // MARK: - Long Rest Overlay
-
-    @ViewBuilder
-    private func longRestOverlay(character: GameCharacter) -> some View {
-        let charColor = Color(hex: character.color) ?? .blue
-        let deckName = character.characterData?.deck ?? character.name
-        let deckData = gameManager.editionStore.deckData(
-            name: deckName, edition: character.edition
-        )
-        let resolver = labelResolver(for: character.edition)
-
-        Color.black.opacity(0.5)
-            .ignoresSafeArea()
-            .overlay {
-                VStack(spacing: 16) {
-                    // Header
-                    VStack(spacing: 6) {
-                        Image(systemName: "bed.double.fill")
-                            .font(.system(size: 36))
-                            .foregroundStyle(.orange)
-
-                        Text("\(character.title.isEmpty ? character.name : character.title) — Long Rest")
-                            .font(.title3.weight(.bold))
-                            .foregroundStyle(charColor)
-
-                        Text("Heal 2 HP, recover all other discard cards to hand.\nChoose one discard card to lose permanently.")
-                            .font(.caption)
-                            .foregroundStyle(.white.opacity(0.7))
-                            .multilineTextAlignment(.center)
-                    }
-
-                    Divider().overlay(.white.opacity(0.2))
-
-                    // Discard cards to choose from
-                    ScrollView(.horizontal, showsIndicators: false) {
-                        HStack(spacing: 10) {
-                            ForEach(Array(character.discardedCards.enumerated()), id: \.offset) { index, cardId in
-                                if let card = deckData?.abilities.first(where: { $0.cardId == cardId }) {
-                                    BoardAbilityCardView(
-                                        card: card,
-                                        characterColor: charColor,
-                                        highlight: .none,
-                                        width: 140,
-                                        height: 240,
-                                        labelResolver: resolver,
-                                        onPreview: previewAction(card: card)
-                                    )
-                                    .overlay(alignment: .bottom) {
-                                        Text("LOSE THIS CARD")
-                                            .font(.system(size: 9, weight: .heavy))
-                                            .foregroundStyle(.white)
-                                            .padding(.horizontal, 10)
-                                            .padding(.vertical, 4)
-                                            .background(.red.opacity(0.8))
-                                            .clipShape(Capsule())
-                                            .padding(.bottom, 8)
-                                    }
-                                    .onTapGesture {
-                                        coordinator.resolveLongRest(characterID: character.id, discardIndex: index)
-                                    }
-                                }
-                            }
-                        }
-                        .padding(.horizontal)
-                    }
-                }
-                .padding(24)
-                .frame(maxHeight: 420)
-                .background(.black.opacity(0.92))
-                .clipShape(RoundedRectangle(cornerRadius: 16))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 16)
-                        .stroke(.orange.opacity(0.4), lineWidth: 1)
-                )
-                .padding(40)
-            }
-    }
-
-    // MARK: - Short Rest Overlay
-
-    @ViewBuilder
-    private func shortRestOverlay(pending: BoardCoordinator.PendingShortRest, character: GameCharacter) -> some View {
-        let charColor = Color(hex: character.color) ?? .blue
-        let deckName = character.characterData?.deck ?? character.name
-        let deckData = gameManager.editionStore.deckData(
-            name: deckName, edition: character.edition
-        )
-        let resolver = labelResolver(for: character.edition)
-
-        Color.black.opacity(0.5)
-            .ignoresSafeArea()
-            .overlay {
-                VStack(spacing: 16) {
-                    // Header
-                    VStack(spacing: 6) {
-                        Image(systemName: "moon.zzz.fill")
-                            .font(.system(size: 36))
-                            .foregroundStyle(.cyan)
-
-                        Text("\(character.title.isEmpty ? character.name : character.title) — Short Rest")
-                            .font(.title3.weight(.bold))
-                            .foregroundStyle(charColor)
-
-                        Text("Recover all discarded cards to hand.\nRandomly lose one card.")
-                            .font(.caption)
-                            .foregroundStyle(.white.opacity(0.7))
-                            .multilineTextAlignment(.center)
-                    }
-
-                    Divider().overlay(.white.opacity(0.2))
-
-                    // The random card is only revealed once the player has decided to rest (p.25).
-                    if pending.committed, let card = deckData?.abilities.first(where: { $0.cardId == pending.randomCardId }) {
-                        VStack(spacing: 8) {
-                            Text("This card will be lost:")
-                                .font(.caption.weight(.medium))
-                                .foregroundStyle(.white.opacity(0.6))
-
-                            BoardAbilityCardView(
-                                card: card,
-                                characterColor: charColor,
-                                highlight: .none,
-                                width: 140,
-                                height: 240,
-                                labelResolver: resolver,
-                                onPreview: previewAction(card: card)
-                            )
-                            .overlay(alignment: .bottom) {
-                                Text("WILL BE LOST")
-                                    .font(.system(size: 9, weight: .heavy))
-                                    .foregroundStyle(.white)
-                                    .padding(.horizontal, 10)
-                                    .padding(.vertical, 4)
-                                    .background(.red.opacity(0.8))
-                                    .clipShape(Capsule())
-                                    .padding(.bottom, 8)
-                            }
-                        }
-                    }
-
-                    Divider().overlay(.white.opacity(0.2))
-
-                    // Action buttons
-                    HStack(spacing: 12) {
-                        if pending.committed {
-                            Button {
-                                coordinator.resolveShortRest()
-                            } label: {
-                                Label("Accept", systemImage: "checkmark.circle.fill")
-                            }
-                            .buttonStyle(.borderedProminent)
-                            .tint(.green)
-
-                            Button {
-                                coordinator.rerollShortRest()
-                            } label: {
-                                Label("Take 1 Damage to Re-pick", systemImage: "arrow.triangle.2.circlepath")
-                            }
-                            .buttonStyle(.borderedProminent)
-                            .tint(.orange)
-                            .disabled(pending.rerollUsed)
-                        } else {
-                            Button {
-                                coordinator.commitShortRest()
-                            } label: {
-                                Label("Short Rest", systemImage: "moon.zzz.fill")
-                            }
-                            .buttonStyle(.borderedProminent)
-                            .tint(.cyan)
-
-                            Button {
-                                coordinator.skipShortRest()
-                            } label: {
-                                Label("Skip Rest", systemImage: "forward.fill")
-                            }
-                            .buttonStyle(.bordered)
-                            .tint(.gray)
-                        }
-                    }
-                }
-                .padding(24)
-                .frame(maxHeight: 500)
-                .background(.black.opacity(0.92))
-                .clipShape(RoundedRectangle(cornerRadius: 16))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 16)
-                        .stroke(.cyan.opacity(0.4), lineWidth: 1)
-                )
-                .padding(40)
-            }
-    }
 
     // MARK: - Modifier Card Popup
 
@@ -1405,7 +1038,7 @@ struct BoardView: View {
             AttackModifierCardView(modifier: modifier, size: 80)
 
             Text(modifierLabel(modifier))
-                .font(.system(size: 14, weight: .bold, design: .monospaced))
+                .font(BoardTheme.font(size: 14, weight: .bold, design: .monospaced))
                 .foregroundStyle(modifierLabelColor(modifier))
         }
         .padding(12)
@@ -1446,13 +1079,15 @@ struct BoardView: View {
         Color.black.opacity(0.6)
             .ignoresSafeArea()
             .onTapGesture { previewMonsterAbility = nil }
+            .accessibilityLabel("Close the ability card")
+            .accessibilityAddTraits(.isButton)
             .overlay {
                 VStack(spacing: 14) {
                     // Header
                     HStack(spacing: 8) {
                         monsterAbilityThumb(monster)
                         VStack(alignment: .leading, spacing: 2) {
-                            Text(monster.name.split(separator: "-").map { $0.capitalized }.joined(separator: " "))
+                            Text(coordinator.monsterTypeName(monster.name))
                                 .font(.title3.weight(.bold))
                                 .foregroundStyle(.white)
                             Text("Ability Card — Round \(gameManager.game.round)")
@@ -1464,12 +1099,15 @@ struct BoardView: View {
                             previewMonsterAbility = nil
                         } label: {
                             Image(systemName: "xmark")
-                                .font(.system(size: 12, weight: .bold))
+                                .font(BoardTheme.font(size: 12, weight: .bold))
                                 .foregroundStyle(.white.opacity(0.9))
                                 .frame(width: 28, height: 28)
                                 .background(.ultraThinMaterial)
                                 .clipShape(Circle())
+                                .frame(width: 44, height: 44)
+                                .contentShape(Rectangle())
                         }
+                        .accessibilityLabel("Close")
                         .buttonStyle(.plain)
                     }
 
@@ -1536,7 +1174,7 @@ struct BoardView: View {
             #endif
         } else {
             Image(systemName: monster.isBoss ? "crown.fill" : "pawprint.fill")
-                .font(.system(size: 18))
+                .font(BoardTheme.font(size: 18))
                 .foregroundStyle(monsterAbilityColor(monster))
                 .frame(width: 36, height: 36)
                 .background(Circle().fill(.white.opacity(0.08)))
@@ -1564,6 +1202,8 @@ struct BoardView: View {
             .onTapGesture {
                 coordinator.dismissCardPreview()
             }
+            .accessibilityLabel("Close the card")
+            .accessibilityAddTraits(.isButton)
             .overlay {
                 if let url = appResourceBundle.url(forResource: "\(cardId)", withExtension: "jpeg", subdirectory: "CardImages/gh"),
                    let data = try? Data(contentsOf: url),
@@ -1583,20 +1223,24 @@ struct BoardView: View {
                                 coordinator.dismissCardPreview()
                             } label: {
                                 Image(systemName: "xmark")
-                                    .font(.system(size: 12, weight: .bold))
+                                    .font(BoardTheme.font(size: 12, weight: .bold))
                                     .foregroundStyle(.white.opacity(0.9))
                                     .frame(width: 26, height: 26)
                                     .background(.ultraThinMaterial)
                                     .clipShape(Circle())
                                     .shadow(color: .black.opacity(0.3), radius: 4)
+                                    .frame(width: 44, height: 44)
+                                    .contentShape(Rectangle())
                             }
+                            .accessibilityLabel("Close")
                             .buttonStyle(.plain)
+                            .keyboardShortcut(.cancelAction)
                             .padding(4)
                         }
                 } else {
                     VStack(spacing: 12) {
                         Image(systemName: "photo.badge.exclamationmark")
-                            .font(.system(size: 48))
+                            .font(BoardTheme.font(size: 48))
                             .foregroundStyle(.white.opacity(0.5))
                         Text("Card image not available")
                             .font(.subheadline)
@@ -1623,22 +1267,12 @@ struct BoardView: View {
         { gameManager.editionStore.resolveCustomText($0, edition: edition) }
     }
 
-    private func figureName(_ figure: AnyFigure) -> String {
-        switch figure {
-        case .character(let c):
-            return c.title.isEmpty ? c.name : c.title
-        case .monster(let m):
-            return m.name.replacingOccurrences(of: "-", with: " ").capitalized
-        case .objective(let o):
-            return o.name
-        }
-    }
-
     private func playerTurnPhaseLabel(_ phase: PlayerTurnPhase) -> String {
         switch phase {
         case .selectTopCard: return "Select Top"
         case .executeTopAction: return "Top Action"
         case .executeBottomAction: return "Bottom Action"
+        case .executeExtraHalf: return "Extra Card"
         case .turnComplete: return "Done"
         }
     }
@@ -1647,7 +1281,7 @@ struct BoardView: View {
 // MARK: - Discard Card Picker
 
 /// Lets the player pick exactly 2 discard cards to lose for damage mitigation.
-private struct DiscardCardPicker: View {
+struct DiscardCardPicker: View {
     let character: GameCharacter
     let deckData: DeckData?
     let characterColor: Color
@@ -1661,19 +1295,17 @@ private struct DiscardCardPicker: View {
         VStack(alignment: .leading, spacing: 6) {
             HStack(spacing: 4) {
                 Image(systemName: "arrow.counterclockwise.circle")
-                    .font(.system(size: 10))
-                    .foregroundStyle(.cyan)
+                    .font(BoardTheme.font(size: 11))
+                    .foregroundStyle(BoardTheme.brass)
                 Text("Lose 2 discard cards to negate all damage (\(selectedIndices.count)/2 selected)")
                     .font(.caption.weight(.bold))
-                    .foregroundStyle(.cyan)
+                    .foregroundStyle(BoardTheme.brass)
 
                 if selectedIndices.count == 2 {
                     Button("Confirm") {
                         onConfirm(Array(selectedIndices))
                     }
-                    .buttonStyle(.borderedProminent)
-                    .tint(.cyan)
-                    .controlSize(.small)
+                    .buttonStyle(.boardPrimary)
                 }
             }
 
@@ -1695,7 +1327,7 @@ private struct DiscardCardPicker: View {
                             .overlay(alignment: .bottom) {
                                 if isSelected {
                                     Text("SELECTED")
-                                        .font(.system(size: 9, weight: .heavy))
+                                        .font(BoardTheme.font(size: 11, weight: .heavy))
                                         .foregroundStyle(.white)
                                         .padding(.horizontal, 10)
                                         .padding(.vertical, 3)
@@ -1716,10 +1348,20 @@ private struct DiscardCardPicker: View {
                                     selectedIndices.insert(index)
                                 }
                             }
+                            .accessibilityAddTraits(isSelected ? [.isButton, .isSelected] : .isButton)
+                            .accessibilityLabel(card.name ?? "Card")
                         }
                     }
                 }
             }
         }
+    }
+}
+
+private extension View {
+    /// Report this view's frame (global, y down) as it changes, and an empty frame once it's gone.
+    func reportFrame(_ report: @escaping (CGRect) -> Void) -> some View {
+        onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { report($0) }
+            .onDisappear { report(.zero) }
     }
 }

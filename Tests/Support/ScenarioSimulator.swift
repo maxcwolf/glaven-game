@@ -94,6 +94,20 @@ final class ScenarioSimulator {
         collectLog()
     }
 
+    /// Keep playing a scenario that `gm` resumed from a save (it is on the board, in card selection).
+    init(resuming gm: GameManager, scenario index: String, policy: PlayerPolicy? = nil) {
+        let coord = gm.boardCoordinator
+        coord.boardScene = nil
+        coord.turnDelayNanoseconds = 0
+        self.index = index
+        self.gm = gm
+        self.coord = coord
+        self.policy = policy ?? TacticalPolicy()
+        coord.attackObserver = { [unowned self] attacker, target in self.checkAttack(attacker, target) }
+        coord.moveObserver = { [unowned self] piece, path, style in self.checkMove(piece, path, style) }
+        collectLog()
+    }
+
     // MARK: - Playing
 
     var result: Outcome {
@@ -163,7 +177,57 @@ final class ScenarioSimulator {
         if let draw = coord.pendingModifierDraw {
             // As the draw overlay does: one draw, or two for advantage/disadvantage.
             coord.completeModifierDraw(selectedCards: CombatResolver.drawModifiers(
-                advantage: draw.advantage, disadvantage: draw.disadvantage, draw: draw.drawCard))
+                advantage: draw.advantage, disadvantage: draw.disadvantage, baseAttack: draw.comparedAttack,
+                draw: draw.drawCard))
+            return
+        }
+        if coord.pendingTip != nil {
+            coord.dismissTip()
+            return
+        }
+        if coord.pendingRecovery != nil {
+            coord.resolveRecovery([])
+            return
+        }
+        if coord.pendingInitiativeChange != nil {
+            coord.resolveInitiativeChange(0)
+            return
+        }
+        if coord.pendingSufferChoice != nil {
+            coord.resolveSufferChoice(0)
+            return
+        }
+        if let pending = coord.pendingAllyChoice {
+            coord.resolveAllyChoice(pending.characterIDs.first)
+            return
+        }
+        if coord.pendingItemRefresh != nil {
+            coord.resolveItemRefresh([])
+            return
+        }
+        if coord.pendingElementChoice != nil {
+            coord.resolveElementChoice([])
+            return
+        }
+        if coord.pendingConditionRemoval != nil {
+            coord.resolveConditionRemoval(nil)
+            return
+        }
+        if coord.pendingCardPlay != nil {
+            coord.resolveCardPlay([])
+            return
+        }
+        if coord.pendingActionChoice != nil {
+            coord.resolveActionChoice(nil)
+            return
+        }
+        if coord.pendingFigureChoice != nil {
+            coord.resolveFigureChoice(nil)
+            return
+        }
+        if coord.pendingItemUse != nil {
+            // Policies don't spend items, so seeded games play the same with or without them.
+            coord.resolvePendingItemUse(false)
             return
         }
         if let pending = coord.pendingDamage,
@@ -260,6 +324,12 @@ final class ScenarioSimulator {
             }
         case .selectingHealTarget(let healer, _, let targets):
             coord.handlePieceTap(policy.healTarget(for: healer, options: targets, sim: self))
+        case .choosingPerformer(_, _, let candidates):
+            // Policies don't plan for other figures: the first in piece order.
+            if let piece = candidates.sorted().first { coord.handlePieceTap(piece) }
+        case .placingToken(_, _, _, let hexes):
+            // Policies don't plan traps: the first free hex, in map order.
+            if let hex = hexes.sorted().first { coord.handleHexTap(hex) }
         case .placingSummon(_, let owner, let hexes):
             if let hex = policy.summonHex(for: owner, options: hexes, sim: self) {
                 coord.handleHexTap(hex)
@@ -288,7 +358,7 @@ final class ScenarioSimulator {
         return [
             "\(gm.game.round)", "\(coord.boardPhase)", "\(coord.currentTurnIndex)", "\(coord.turnLog.count)",
             "\(coord.interactionMode)", turn ?? "-",
-            "\(coord.pendingDamage != nil)\(coord.pendingModifierDraw != nil)\(coord.pendingShortRest != nil)\(coord.pendingLongRest != nil)",
+            "\(coord.pendingDamage != nil)\(coord.pendingModifierDraw != nil)\(coord.pendingShortRest != nil)\(coord.pendingLongRest != nil)\(coord.pendingItemUse != nil)",
         ].joined(separator: " ")
     }
 
@@ -331,7 +401,8 @@ final class ScenarioSimulator {
     private func collectLog() {
         while logCursor < coord.turnLog.count {
             let entry = coord.turnLog[logCursor]
-            transcript.append(entry.isRoundHeader ? "=== \(entry.message) ===" : entry.message)
+            let line = entry.trace.map { "\(entry.message) [\($0)]" } ?? entry.message
+            transcript.append(entry.isRoundHeader ? "=== \(entry.message) ===" : line)
             logCursor += 1
         }
     }
@@ -394,7 +465,9 @@ final class ScenarioSimulator {
     /// Every attack: both figures on the board, enemies of each other, the target visible and in
     /// line of sight (GH p.18–19).
     private func checkAttack(_ attacker: PieceID, _ target: PieceID) {
-        guard let from = position(attacker), let to = position(target) else {
+        // A fallen Cultist attacks from the hex it fell on.
+        let fallen = coord.deathAttackInProgress.flatMap { $0.attacker == attacker ? $0.position : nil }
+        guard let from = fallen ?? position(attacker), let to = position(target) else {
             violation("\(attacker) attacks \(target), but one of them is not on the board")
             return
         }

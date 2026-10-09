@@ -41,7 +41,7 @@ enum GlavenTheme {
         }
         return isLight
             ? Color(red: 0.894, green: 0.855, blue: 0.808)     // warm parchment cream
-            : Color(red: 0.145, green: 0.176, blue: 0.208)     // #253038
+            : BoardTheme.sheet                                 // the board's dark, so menus match it
     }
 
     static var cardBackground: Color {
@@ -62,7 +62,7 @@ enum GlavenTheme {
         }
         return isLight
             ? Color(red: 0.929, green: 0.902, blue: 0.863)     // slightly lighter warm cream
-            : Color(red: 0.16, green: 0.20, blue: 0.24)        // ~#283340
+            : BoardTheme.raised
     }
 
     static var headerFooterBackground: Color {
@@ -91,7 +91,7 @@ enum GlavenTheme {
         }
         return isLight
             ? Color(red: 0.165, green: 0.133, blue: 0.094)     // warm dark brown
-            : .white
+            : BoardTheme.text
     }
 
     static var secondaryText: Color {
@@ -107,7 +107,7 @@ enum GlavenTheme {
         }
         return isLight
             ? Color(red: 0.47, green: 0.44, blue: 0.37)        // warm gray-brown
-            : Color(red: 0.596, green: 0.690, blue: 0.710)     // #98b0b5
+            : BoardTheme.secondaryText
     }
 
     static var normalType: Color {
@@ -116,7 +116,7 @@ enum GlavenTheme {
         }
         return isLight
             ? Color(red: 0.42, green: 0.40, blue: 0.35)
-            : Color(red: 0.596, green: 0.690, blue: 0.710)     // #98b0b5
+            : BoardTheme.secondaryText
     }
 
     // MARK: - Accents (work on both backgrounds)
@@ -134,7 +134,7 @@ enum GlavenTheme {
         }
         return isLight
             ? Color(red: 0.10, green: 0.46, blue: 0.64)        // deeper blue for light bg
-            : Color(red: 0.337, green: 0.784, blue: 0.937)     // light blue
+            : BoardTheme.brass
     }
 
     static let elite = Color(red: 0.925, green: 0.651, blue: 0.063)    // #eca610

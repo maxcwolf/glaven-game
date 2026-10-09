@@ -10,6 +10,15 @@ struct BoardSnapshot: Codable {
     let bounds: MapBounds
     let eliteStandees: Set<PieceIDCodable>
     let lootTokens: [HexCoord: Int]
+    /// Traps a character placed (Proximity Mine), who placed them and the XP an enemy springing
+    /// one gives them. Optional: older saves have none.
+    var characterTraps: [CharacterTrap]? = nil
+
+    struct CharacterTrap: Codable, Equatable {
+        let hex: HexCoord
+        let characterID: String
+        let experience: Int
+    }
 
     /// Create a snapshot from the current board state.
     static func from(_ board: BoardState) -> BoardSnapshot {

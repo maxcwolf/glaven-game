@@ -1,0 +1,850 @@
+import XCTest
+import SwiftUI
+import SwiftData
+@testable import GlavenGameLib
+
+/// Items on the board (GH p.26): usable on the character's own turn when their moment comes,
+/// then spent or consumed, and counted for Professional and Purist.
+@MainActor
+final class BoardItemTests: XCTestCase {
+
+    private var gm: GameManager!
+    private var coord: BoardCoordinator { gm.boardCoordinator }
+    private var brute: GameCharacter { gm.game.characters[0] }
+
+    override func setUp() async throws {
+        let schema = Schema([SettingsModel.self, SavedGameModel.self])
+        let container = try ModelContainer(for: schema, configurations: [ModelConfiguration(isStoredInMemoryOnly: true)])
+        gm = GameManager(modelContainer: container)
+        gm.setEdition("gh")
+        gm.game.level = 1
+        coord.boardState = makeBoard(cols: 12, rows: 12)
+        coord.autoResolvePrompts = true
+        coord.turnDelayNanoseconds = 0
+        gm.characterManager.addCharacter(name: "brute", edition: "gh")
+        coord.boardState.placePiece(.character(brute.id), at: HexCoord(3, 3))
+        // Boots, Goggles, Piercing Bow, War Hammer, Poison Dagger, Healing and Power Potions
+        brute.items = ["gh-1", "gh-6", "gh-9", "gh-10", "gh-11", "gh-12", "gh-14"]
+        // The tallies live on the scenario.
+        let data = try XCTUnwrap(gm.editionStore.scenarios(for: "gh").first { $0.index == "1" && $0.solo == nil })
+        gm.game.scenario = Scenario(data: data)
+    }
+
+    private func card(_ name: String) throws -> AbilityModel {
+        try XCTUnwrap(gm.editionStore.abilities(forDeck: "brute", edition: "gh").first { $0.name == name }, name)
+    }
+
+    /// Trample on top (Attack 3), its Move 4 on the bottom.
+    private func startTurn() throws -> PlayerTurnController {
+        let trample = try card("Trample"), other = try card("Spare Dagger")
+        brute.handCards = [trample.cardId!, other.cardId!]
+        let turn = PlayerTurnController(characterID: brute.id, coordinator: coord, gameManager: gm)
+        coord.activePlayerTurn = turn
+        turn.selectCards(top: trample, bottom: other)
+        return turn
+    }
+
+    private func usable() -> [String] { coord.usableItems().map(\.itemKey).sorted() }
+
+    func testBootsAddTwoToTheMoveAndAreSpent() throws {
+        let turn = try startTurn()
+        turn.swapCards()          // Trample's bottom: Move 4
+        turn.setBottomFirst(true)
+        turn.executeCurrentAction()
+        XCTAssertEqual(usable(), ["gh-1", "gh-12"], "during a move: the boots, and the potion any time")
+
+        let boots = try XCTUnwrap(coord.usableItems().first { $0.itemKey == "gh-1" })
+        XCTAssertTrue(coord.useItem(boots))
+        guard case .selectingMove(_, let range, _, _, _) = coord.interactionMode else { return XCTFail("still moving") }
+        XCTAssertEqual(range, 6)
+        XCTAssertTrue(brute.spentItems.contains("gh-1"))
+        XCTAssertFalse(coord.useItem(boots), "a spent item can't be used again")
+        XCTAssertEqual(gm.scenarioStatsManager.stats(for: brute.name).itemUses, 1)
+    }
+
+    func testAttackItemsJoinTheAttack() async throws {
+        let piece = try XCTUnwrap(coord.spawnMonster(name: "bandit-guard", type: .normal, at: HexCoord(4, 3), origin: .placed))
+        let bandit = try XCTUnwrap(coord.entity(for: piece))
+        bandit.health = 99
+        bandit.maxHealth = 99
+        let turn = try startTurn()
+        turn.executeCurrentAction()   // Attack 3, melee
+        XCTAssertEqual(usable(), ["gh-10", "gh-11", "gh-12", "gh-14", "gh-6"],
+                       "no Piercing Bow on a melee attack, no boots outside a move")
+
+        for key in ["gh-14", "gh-11", "gh-6"] {
+            XCTAssertTrue(coord.useItem(try XCTUnwrap(coord.usableItems().first { $0.itemKey == key })), key)
+        }
+        XCTAssertEqual(turn.currentAttackValue(), 4, "Minor Power Potion: +1")
+        XCTAssertEqual(turn.pendingConditions, [.poison])
+        XCTAssertTrue(turn.pendingAdvantage)
+        XCTAssertEqual(brute.consumedItems, ["gh-14"])
+        XCTAssertEqual(brute.spentItems, ["gh-11", "gh-6"])
+
+        coord.handlePieceTap(piece)
+        let deadline = Date().addingTimeInterval(3)
+        while turn.currentActionIndex == 0 && Date() < deadline { try await Task.sleep(nanoseconds: 1_000_000) }
+        XCTAssertTrue(bandit.entityConditions.contains { $0.name == .poison })
+        XCTAssertEqual(coord.lastModifierReveal?.advantage, true, "Eagle-Eye Goggles: the attack draws with advantage")
+    }
+
+    func testAPotionHealsAnyTimeInTheTurnAndIsGone() throws {
+        brute.health = 4
+        _ = try startTurn()
+        let potion = try XCTUnwrap(coord.usableItems().first { $0.itemKey == "gh-12" })
+        XCTAssertTrue(coord.useItem(potion))
+        XCTAssertEqual(brute.health, 7)
+        XCTAssertTrue(brute.consumedItems.contains("gh-12"))
+        XCTAssertFalse(usable().contains("gh-12"))
+    }
+
+    func testNothingIsUsableOutsideTheCharactersTurn() {
+        XCTAssertTrue(coord.usableItems().isEmpty)
+    }
+
+    /// Every item the board plays exists, and every question it asks reads cleanly.
+    func testTheItemTablesMatchTheData() throws {
+        let keys = Array(BoardItemEffect.byItem.keys) + DefenseItem.all.map(\.key)
+            + Array(PassiveItems.defaultAttack.keys) + Array(PassiveItems.defaultMove.keys)
+            + Array(PassiveItems.flying) + Array(PassiveItems.immunities.keys) + Array(PassiveItems.meleePierce.keys)
+            + Array(PassiveItems.meleePush.keys)
+            + [PassiveItems.unmovable, PassiveItems.muddleToStrengthen, PassiveItems.chainHood,
+               PassiveItems.necklaceOfTeeth, PassiveItems.imposingBlade, DefenseItem.ironHelmet,
+               PassiveItems.shoesOfHappiness, PassiveItems.enduranceFootwraps, PassiveItems.steelSabatons,
+               PassiveItems.hornedHelm, PassiveItems.halberd, PassiveItems.maskOfDeath, PassiveItems.helmOfTheMountain,
+               "gh-105", PassiveItems.secondSkin] + Array(PassiveItems.hazardProof) + Array(BoardCoordinator.initiativeBoots.keys)
+        XCTAssertEqual(Set(keys).count, keys.count, "no item in two tables")
+        for key in keys {
+            let id = try XCTUnwrap(Int(key.dropFirst(3)))
+            XCTAssertNotNil(gm.editionStore.itemData(id: id, edition: "gh"), key)
+        }
+        for item in DefenseItem.all { XCTAssertEqual(PlayerTextTests.lint(item.question), [], item.question) }
+        XCTAssertEqual(DefenseItem.all.first { $0.key == "gh-30" }?.question, "Give the attacker disadvantage and gain Shield 1?")
+        XCTAssertEqual(DefenseItem.all.first { $0.key == "gh-46" }?.question, "Gain Shield 1 and Retaliate 2 against this attack?")
+    }
+
+    private func use(_ key: String) throws {
+        XCTAssertTrue(coord.useItem(try XCTUnwrap(coord.usableItems().first { $0.itemKey == key }, key)), key)
+    }
+
+    func testRocketBootsAddThreeAndJump() throws {
+        brute.items = ["gh-96"]
+        let turn = try startTurn()
+        turn.swapCards()
+        turn.setBottomFirst(true)
+        turn.executeCurrentAction()
+        try use("gh-96")
+        guard case .selectingMove(_, let range, _, _, let mode) = coord.interactionMode else { return XCTFail() }
+        XCTAssertEqual(range, 7)
+        XCTAssertEqual(mode, .jump)
+    }
+
+    func testTheStarEarringRefreshesHealsAndRecovers() throws {
+        brute.items = ["gh-69", "gh-1"]
+        _ = try startTurn()
+        brute.spentItems = ["gh-1"]
+        brute.health = 2
+        brute.discardedCards = [3]
+        try use("gh-69")
+        XCTAssertEqual(brute.spentItems, [], "the boots are ready again")
+        XCTAssertEqual(brute.consumedItems, ["gh-69"])
+        XCTAssertEqual(brute.health, 5)
+        XCTAssertTrue(brute.discardedCards.isEmpty)
+    }
+
+    func testAWandInfusesAndASkullCursesTheAdjacent() throws {
+        brute.items = ["gh-85", "gh-119"]
+        let piece = try XCTUnwrap(coord.spawnMonster(name: "bandit-guard", type: .normal, at: HexCoord(4, 3), origin: .placed))
+        _ = try startTurn()
+        try use("gh-85")
+        XCTAssertEqual(gm.game.elementBoard.first { $0.type == .fire }?.state, .new)
+        let curses = gm.game.monsterAttackModifierDeck.undrawnCount(of: .curse)
+        try use("gh-119")
+        XCTAssertEqual(gm.game.monsterAttackModifierDeck.undrawnCount(of: .curse), curses + 1)
+        XCTAssertNotNil(coord.entity(for: piece))
+    }
+
+    func testABladeNeedsItsElementAndConsumesIt() throws {
+        brute.items = ["gh-79"]   // Inferno Blade
+        coord.spawnMonster(name: "bandit-guard", type: .normal, at: HexCoord(4, 3), origin: .placed)
+        let turn = try startTurn()
+        turn.executeCurrentAction()   // Attack 3, melee
+        XCTAssertEqual(usable(), [], "no fire to consume")
+        gm.game.elementBoard[gm.game.elementBoard.firstIndex { $0.type == .fire }!].state = .strong
+        XCTAssertEqual(usable(), ["gh-79"])
+        try use("gh-79")
+        XCTAssertEqual(turn.currentAttackValue(), 5)
+        XCTAssertFalse(gm.game.isElementAvailable(.fire))
+        XCTAssertTrue(brute.spentItems.isEmpty, "the blade has no use limit but its element")
+    }
+
+    func testTheHawkHelmReachesFurther() throws {
+        brute.items = ["gh-31"]
+        coord.spawnMonster(name: "bandit-guard", type: .normal, at: HexCoord(6, 3), origin: .placed)   // 3 away
+        let far = try XCTUnwrap(coord.spawnMonster(name: "bandit-guard", type: .normal, at: HexCoord(7, 3), origin: .placed))
+        let dagger = try card("Spare Dagger"), trample = try card("Trample")
+        brute.handCards = [dagger.cardId!, trample.cardId!]
+        let turn = PlayerTurnController(characterID: brute.id, coordinator: coord, gameManager: gm)
+        coord.activePlayerTurn = turn
+        turn.selectCards(top: dagger, bottom: trample)
+        turn.executeCurrentAction()   // Attack 3, Range 3
+        guard case .selectingAttackTarget(_, _, let before) = coord.interactionMode else { return XCTFail() }
+        XCTAssertFalse(before.contains(far))
+        try use("gh-31")
+        guard case .selectingAttackTarget(_, let range, let after) = coord.interactionMode else { return XCTFail() }
+        XCTAssertEqual(range, 4)
+        XCTAssertTrue(after.contains(far))
+        XCTAssertEqual(turn.currentAttackRange(), 4)
+    }
+
+    func testTheBloodyAxeCostsHealth() throws {
+        brute.items = ["gh-117"]
+        coord.spawnMonster(name: "bandit-guard", type: .normal, at: HexCoord(4, 3), origin: .placed)
+        let turn = try startTurn()
+        turn.executeCurrentAction()
+        let health = brute.health
+        try use("gh-117")
+        XCTAssertEqual(brute.health, health - 2)
+        XCTAssertEqual(turn.currentAttackValue(), 4)
+    }
+
+    func testTheLongSpearTurnsTheAttackIntoALine() async throws {
+        brute.items = ["gh-26"]
+        let near = try XCTUnwrap(coord.spawnMonster(name: "bandit-guard", type: .normal, at: HexCoord(4, 3), origin: .placed))
+        coord.spawnMonster(name: "bandit-guard", type: .normal, at: HexCoord(5, 3), origin: .placed)
+        let turn = try startTurn()
+        turn.executeCurrentAction()   // Trample: Attack 3, a single melee target
+        try use("gh-26")
+        XCTAssertNotNil(turn.pendingAreaPattern)
+        XCTAssertEqual(usable(), [], "an area attack isn't a single target any more")
+        coord.handlePieceTap(near)
+        let deadline = Date().addingTimeInterval(3)
+        while turn.currentActionIndex == 0 && Date() < deadline { try await Task.sleep(nanoseconds: 1_000_000) }
+        XCTAssertTrue(coord.turnLog.contains { $0.message.contains("area attack hits 2 enemies") },
+                      coord.turnLog.suffix(5).map(\.message).joined(separator: " / "))
+    }
+
+    // MARK: - Always on
+
+    func testTheHalberdReachesTwoHexes() throws {
+        brute.items = ["gh-68"]
+        let far = try XCTUnwrap(coord.spawnMonster(name: "bandit-guard", type: .normal, at: HexCoord(5, 3), origin: .placed))
+        let turn = try startTurn()
+        turn.executeCurrentAction()
+        guard case .selectingAttackTarget(_, _, let targets) = coord.interactionMode else { return XCTFail() }
+        XCTAssertTrue(targets.contains(far))
+        XCTAssertEqual(turn.currentAttackRange(), 1, "still a melee attack")
+    }
+
+    func testTheMaskOfDeathAddsTwoAtOneHitPoint() throws {
+        brute.items = ["gh-145"]
+        brute.health = 1
+        coord.spawnMonster(name: "bandit-guard", type: .normal, at: HexCoord(4, 3), origin: .placed)
+        let turn = try startTurn()
+        turn.executeCurrentAction()
+        XCTAssertEqual(turn.currentAttackValue(), 5)
+    }
+
+    func testTheMaskOfTerrorPushesOnMeleeAttacks() throws {
+        brute.items = ["gh-66"]
+        coord.spawnMonster(name: "bandit-guard", type: .normal, at: HexCoord(4, 3), origin: .placed)
+        let turn = try startTurn()
+        turn.executeCurrentAction()
+        XCTAssertEqual(turn.pendingPush, 1)
+    }
+
+    func testBladesAndSandalsMakeTheBasicActionsStronger() throws {
+        brute.items = ["gh-67", "gh-57", "gh-71"]
+        let turn = try startTurn()
+        turn.useDefaultAction()
+        XCTAssertEqual(turn.currentAttackValue(), 4, "Balanced Blade: Attack 4")
+
+        let next = try startTurn()
+        next.skipRemainingActions()   // the top half
+        next.useDefaultAction()
+        guard case .selectingMove(_, let range, _, _, let mode) = coord.interactionMode else { return XCTFail() }
+        XCTAssertEqual(range, 4, "Serene Sandals: Move 4")
+        XCTAssertEqual(mode, .fly, "Boots of Levitation")
+    }
+
+    func testTheDrakescaleHelmTurnsMuddleIntoStrengthen() {
+        brute.items = ["gh-108"]
+        coord.applyCondition(.muddle, to: .character(brute.id))
+        XCTAssertEqual(brute.entityConditions.map(\.name), [.strengthen])
+    }
+
+    func testHeavyGreavesCantBePushed() async {
+        brute.items = ["gh-22"]
+        await coord.performPushPull(target: .character(brute.id), attackerPos: HexCoord(2, 3), steps: 2, isPush: true)
+        XCTAssertEqual(coord.boardState.piecePositions[.character(brute.id)], HexCoord(3, 3))
+        if case .selectingPushPullHex = coord.interactionMode { XCTFail("no push to choose") }
+    }
+
+    func testAKillOnYourTurnFeedsTheNecklaceAndTheBlade() throws {
+        brute.items = ["gh-106", "gh-134"]
+        let piece = try XCTUnwrap(coord.spawnMonster(name: "bandit-guard", type: .normal, at: HexCoord(4, 3), origin: .placed))
+        _ = try startTurn()
+        brute.health = 5
+        coord.sufferDamage(99, to: piece, killer: .character(brute.id))
+        XCTAssertEqual(brute.health, 6, "Necklace of Teeth: Heal 1")
+        XCTAssertEqual(brute.shield?.value?.intValue, 1, "Imposing Blade: Shield 1 this round")
+    }
+
+    func testTheChainHoodShieldsTheSurrounded() async throws {
+        brute.items = ["gh-76"]
+        var attacker: PieceID?
+        for hex in [HexCoord(4, 3), HexCoord(2, 3), HexCoord(3, 2)] {
+            attacker = try XCTUnwrap(coord.spawnMonster(name: "bandit-guard", type: .normal, at: hex, origin: .placed))
+        }
+        let health = brute.health
+        await coord.performAttack(attacker: try XCTUnwrap(attacker), target: .character(brute.id),
+                                  attack: AttackParameters(value: 3), drawCard: { AttackModifier.standard(.plus0) })
+        XCTAssertEqual(brute.health, health - 2)
+    }
+
+    // MARK: - Movement
+
+    private let sixHexesEast = (3...9).map { HexCoord($0, 3) }
+
+    func testTheShoesAndFootwrapsRewardALongMove() async throws {
+        brute.items = ["gh-72", "gh-97"]
+        let turn = try startTurn()
+        brute.health = 5
+        let xp = brute.experience
+        await coord.moveAlong(.character(brute.id), path: sixHexesEast, style: .normal)
+        XCTAssertEqual(turn.hexesMoved, 6)
+        coord.applyEndOfTurnItems(turn)
+        XCTAssertEqual(brute.experience, xp + 1, "Shoes of Happiness")
+        XCTAssertEqual(brute.health, 6, "Endurance Footwraps")
+    }
+
+    func testPushingDoesntCountAsMoving() async throws {
+        let turn = try startTurn()
+        await coord.moveAlong(.character(brute.id), path: [HexCoord(3, 3), HexCoord(4, 3)], style: .forced)
+        XCTAssertEqual(turn.hexesMoved, 0)
+    }
+
+    func testSteelSabatonsShieldAStandStill() throws {
+        brute.items = ["gh-50"]
+        let turn = try startTurn()
+        coord.applyEndOfTurnItems(turn)
+        XCTAssertEqual(brute.shield?.value?.intValue, 1)
+    }
+
+    func testTheHornedHelmAddsOneAfterALongMove() async throws {
+        brute.items = ["gh-107"]
+        let turn = try startTurn()
+        await coord.moveAlong(.character(brute.id), path: Array(sixHexesEast.prefix(5)), style: .normal)
+        coord.spawnMonster(name: "bandit-guard", type: .normal, at: HexCoord(8, 3), origin: .placed)
+        turn.executeCurrentAction()   // Trample: Attack 3
+        XCTAssertEqual(turn.currentAttackValue(), 4)
+    }
+
+    func testMagmaWadersWalkThroughHazardsAndHeal() async throws {
+        brute.items = ["gh-99"]
+        coord.boardState.placeHazard(at: HexCoord(4, 3))
+        _ = try startTurn()
+        brute.health = 5
+        await coord.moveAlong(.character(brute.id), path: [HexCoord(3, 3), HexCoord(4, 3), HexCoord(5, 3)], style: .normal)
+        XCTAssertEqual(brute.health, 7, "no hazard damage, and Heal 2")
+    }
+
+    func testProtectiveCharmMakesTheWearerImmune() {
+        brute.items = ["gh-52"]
+        coord.applyCondition(.poison, to: .character(brute.id))
+        coord.applyCondition(.muddle, to: .character(brute.id))
+        XCTAssertEqual(brute.entityConditions.map(\.name), [.muddle])
+    }
+
+    func testSilentStilettoPiercesOnMeleeAttacks() throws {
+        brute.items = ["gh-137"]
+        coord.spawnMonster(name: "bandit-guard", type: .normal, at: HexCoord(4, 3), origin: .placed)
+        let turn = try startTurn()
+        turn.executeCurrentAction()   // Trample: Attack 3, Pierce 2
+        XCTAssertEqual(turn.pendingPierce, 3)
+    }
+
+    // MARK: - When an enemy attacks
+
+    /// A Bandit Guard beside the Brute attacks for `value`, drawing +0s; the Brute has nothing to
+    /// lose to negate it, so the only prompt is the item. `answer` is the player's reply.
+    private func banditAttacks(for value: Int, answer: Bool) async throws -> (item: String?, guardPiece: PieceID) {
+        let piece = try XCTUnwrap(coord.spawnMonster(name: "bandit-guard", type: .normal, at: HexCoord(4, 3), origin: .placed))
+        brute.handCards = []
+        brute.discardedCards = []
+        coord.autoResolvePrompts = false
+        let attack = Task { @MainActor in
+            await self.coord.performAttack(attacker: piece, target: .character(self.brute.id),
+                                           attack: AttackParameters(value: value),
+                                           drawCard: { AttackModifier(type: .plus0) })
+        }
+        let deadline = Date().addingTimeInterval(3)
+        while coord.pendingItemUse == nil && Date() < deadline { try await Task.sleep(nanoseconds: 1_000_000) }
+        let offered = coord.pendingItemUse?.itemName
+        coord.resolvePendingItemUse(answer)
+        _ = await attack.value
+        return (offered, piece)
+    }
+
+    func testLeatherArmorGivesTheAttackerDisadvantage() async throws {
+        brute.items = ["gh-4"]
+        let (offered, _) = try await banditAttacks(for: 2, answer: true)
+        XCTAssertEqual(offered, "Leather Armor")
+        XCTAssertEqual(coord.lastModifierReveal?.disadvantage, true)
+        XCTAssertEqual(coord.lastModifierReveal?.drawn.count, 2, "two cards drawn, the worse one taken")
+        XCTAssertTrue(brute.spentItems.contains("gh-4"))
+        XCTAssertEqual(gm.scenarioStatsManager.stats(for: brute.name).itemUses, 1)
+    }
+
+    func testHeaterShieldBlocksOneDamage() async throws {
+        brute.items = ["gh-8"]
+        let health = brute.health
+        let (offered, _) = try await banditAttacks(for: 3, answer: true)
+        XCTAssertEqual(offered, "Heater Shield")
+        XCTAssertEqual(brute.health, health - 2, "Attack 3, +0, Shield 1")
+        XCTAssertTrue(brute.spentItems.contains("gh-8"))
+    }
+
+    func testHideArmorGuardsTwiceBeforeItIsSpent() async throws {
+        brute.items = ["gh-3"]
+        let health = brute.health
+        let (offered, guardPiece) = try await banditAttacks(for: 3, answer: true)
+        XCTAssertEqual(offered, "Hide Armor")
+        XCTAssertEqual(brute.health, health - 2)
+        XCTAssertEqual(brute.itemSlotsUsed["gh-3"], 1)
+        XCTAssertFalse(brute.spentItems.contains("gh-3"), "one use left")
+        let restored = brute.toSnapshot().toRuntime(editionStore: gm.editionStore)
+        XCTAssertEqual(restored.itemSlotsUsed, ["gh-3": 1], "the marked use is saved")
+
+        let second = Task { @MainActor in
+            await self.coord.performAttack(attacker: guardPiece, target: .character(self.brute.id),
+                                           attack: AttackParameters(value: 3), drawCard: { AttackModifier(type: .plus0) })
+        }
+        let deadline = Date().addingTimeInterval(3)
+        while coord.pendingItemUse == nil && Date() < deadline { try await Task.sleep(nanoseconds: 1_000_000) }
+        coord.resolvePendingItemUse(true)
+        _ = await second.value
+        XCTAssertEqual(brute.health, health - 4)
+        XCTAssertTrue(brute.spentItems.contains("gh-3"))
+        XCTAssertNil(brute.itemSlotsUsed["gh-3"])
+    }
+
+    func testTowerShieldGivesShieldTwo() async throws {
+        brute.items = ["gh-32"]
+        let health = brute.health
+        let (offered, _) = try await banditAttacks(for: 3, answer: true)
+        XCTAssertEqual(offered, "Tower Shield")
+        XCTAssertEqual(brute.health, health - 1)
+    }
+
+    func testSpikedShieldRetaliatesOnTheAdjacentAttacker() async throws {
+        brute.items = ["gh-46"]
+        let (_, guardPiece) = try await banditAttacks(for: 3, answer: true)
+        let bandit = try XCTUnwrap(coord.entity(for: guardPiece))
+        XCTAssertEqual(bandit.health, bandit.maxHealth - 2)
+    }
+
+    func testStuddedLeatherGivesDisadvantageAndShield() async throws {
+        brute.items = ["gh-30"]
+        let health = brute.health
+        let (offered, _) = try await banditAttacks(for: 3, answer: true)
+        XCTAssertEqual(offered, "Studded Leather")
+        XCTAssertEqual(coord.lastModifierReveal?.disadvantage, true)
+        XCTAssertEqual(brute.health, health - 2, "+0 either way, Shield 1")
+    }
+
+    func testShadowArmorTakesNoDamage() async throws {
+        brute.items = ["gh-51"]
+        let health = brute.health
+        let (offered, _) = try await banditAttacks(for: 3, answer: true)
+        XCTAssertEqual(offered, "Shadow Armor")
+        XCTAssertEqual(brute.health, health)
+        XCTAssertTrue(brute.consumedItems.contains("gh-51"))
+    }
+
+    func testTheSunShieldNeedsLight() async throws {
+        brute.items = ["gh-140"]
+        let health = brute.health
+        let piece = try XCTUnwrap(coord.spawnMonster(name: "bandit-guard", type: .normal, at: HexCoord(4, 3), origin: .placed))
+        coord.autoResolvePrompts = false
+        brute.handCards = []
+        await coord.performAttack(attacker: piece, target: .character(brute.id), attack: AttackParameters(value: 3),
+                                  drawCard: { AttackModifier(type: .plus0) })
+        XCTAssertEqual(brute.health, health - 3, "no light, no offer")
+
+        gm.game.elementBoard[gm.game.elementBoard.firstIndex { $0.type == .light }!].state = .strong
+        let attack = Task { @MainActor in
+            await self.coord.performAttack(attacker: piece, target: .character(self.brute.id), attack: AttackParameters(value: 3),
+                                           drawCard: { AttackModifier(type: .plus0) })
+        }
+        let deadline = Date().addingTimeInterval(3)
+        while coord.pendingItemUse == nil && Date() < deadline { try await Task.sleep(nanoseconds: 1_000_000) }
+        XCTAssertEqual(coord.pendingItemUse?.question, "Consume Light to gain Shield 3 against this attack?")
+        coord.resolvePendingItemUse(true)
+        _ = await attack.value
+        XCTAssertEqual(brute.health, health - 3, "Attack 3, Shield 3")
+        XCTAssertFalse(gm.game.isElementAvailable(.light))
+        XCTAssertTrue(brute.spentItems.isEmpty, "the shield has no use limit but its element")
+    }
+
+    func testTheHelmOfTheMountainImmobilizesTheAttacker() async throws {
+        brute.items = ["gh-110"]
+        gm.game.elementBoard[gm.game.elementBoard.firstIndex { $0.type == .earth }!].state = .strong
+        let piece = try XCTUnwrap(coord.spawnMonster(name: "bandit-guard", type: .normal, at: HexCoord(4, 3), origin: .placed))
+        await coord.performAttack(attacker: piece, target: .character(brute.id), attack: AttackParameters(value: 1))
+        XCTAssertTrue(coord.isConditionActive(.immobilize, on: piece))
+    }
+
+    func testTheShawlMakesMonstersLookElsewhere() {
+        brute.items = ["gh-105"]
+        brute.initiative = 10
+        XCTAssertEqual(MonsterAI.enemyInitiative(.character(brute.id), gameState: gm.game), 99)
+    }
+
+    func testADeclinedItemStaysReady() async throws {
+        brute.items = ["gh-8"]
+        let health = brute.health
+        _ = try await banditAttacks(for: 3, answer: false)
+        XCTAssertEqual(brute.health, health - 3)
+        XCTAssertTrue(brute.spentItems.isEmpty)
+    }
+
+    func testTheIronHelmetTurnsAnEnemysDoubleIntoPlusZero() async throws {
+        let piece = try XCTUnwrap(coord.spawnMonster(name: "bandit-guard", type: .normal, at: HexCoord(4, 3), origin: .placed))
+        let double = { AttackModifier.standard(.double_) }
+        brute.items = []
+        var health = brute.health
+        await coord.performAttack(attacker: piece, target: .character(brute.id), attack: AttackParameters(value: 3), drawCard: double)
+        XCTAssertEqual(brute.health, health - 6, "without the helmet: Attack 3, \u{00D7}2")
+
+        brute.items = ["gh-7"]
+        health = brute.health
+        await coord.performAttack(attacker: piece, target: .character(brute.id), attack: AttackParameters(value: 3), drawCard: double)
+        XCTAssertEqual(brute.health, health - 3)
+    }
+
+    func testHeadlessPlayNeverSpendsDefenceItems() async throws {
+        brute.items = ["gh-4", "gh-8"]
+        let piece = try XCTUnwrap(coord.spawnMonster(name: "bandit-guard", type: .normal, at: HexCoord(4, 3), origin: .placed))
+        await coord.performAttack(attacker: piece, target: .character(brute.id), attack: AttackParameters(value: 2))
+        XCTAssertNil(coord.pendingItemUse)
+        XCTAssertTrue(brute.spentItems.isEmpty)
+    }
+
+    // MARK: - Minor Stamina Potion
+
+    func testAStaminaPotionRecoversTheChosenCards() throws {
+        brute.items = ["gh-13"]
+        _ = try startTurn()
+        brute.discardedCards = [3, 4, 5]
+        let potion = try XCTUnwrap(coord.usableItems().first { $0.itemKey == "gh-13" })
+        XCTAssertTrue(coord.useItem(potion))
+        let pending = try XCTUnwrap(coord.pendingRecovery, "three discards: the player picks two")
+        XCTAssertEqual(pending.count, 2)
+        coord.resolveRecovery([5, 3, 4])
+        XCTAssertEqual(brute.discardedCards, [4], "only two come back")
+        XCTAssertTrue(brute.handCards.contains(5) && brute.handCards.contains(3))
+        XCTAssertTrue(brute.consumedItems.contains("gh-13"))
+    }
+
+    func testWithTwoDiscardsTheyBothComeBack() throws {
+        brute.items = ["gh-13"]
+        _ = try startTurn()
+        brute.discardedCards = [3, 4]
+        XCTAssertTrue(coord.useItem(try XCTUnwrap(coord.usableItems().first)))
+        XCTAssertNil(coord.pendingRecovery)
+        XCTAssertTrue(brute.discardedCards.isEmpty)
+    }
+
+    /// With nothing in the discard pile a stamina potion isn't offered: it would be used up
+    /// for nothing.
+    func testAStaminaPotionWaitsForSomethingToRecover() throws {
+        brute.items = ["gh-13"]
+        _ = try startTurn()
+        brute.discardedCards = []
+        XCTAssertFalse(coord.usableItems().contains { $0.itemKey == "gh-13" })
+        brute.discardedCards = [3]
+        XCTAssertTrue(coord.usableItems().contains { $0.itemKey == "gh-13" })
+    }
+
+    // MARK: - Items with a choice
+
+    func testAManaPotionInfusesTheChosenElements() throws {
+        brute.items = ["gh-48"]   // Major Mana Potion: two
+        _ = try startTurn()
+        try use("gh-48")
+        XCTAssertEqual(coord.pendingElementChoice?.count, 2)
+        coord.resolveElementChoice([.fire, .fire, .ice, .dark])
+        let infused = gm.game.elementBoard.filter { $0.state == .new }.map(\.type)
+        XCTAssertEqual(Set(infused), [.fire, .ice], "two different elements, no more")
+        XCTAssertNil(coord.pendingElementChoice)
+    }
+
+    func testAMinorCurePotionRemovesTheChosenCondition() throws {
+        brute.items = ["gh-89"]
+        _ = try startTurn()
+        coord.applyCondition(.poison, to: .character(brute.id))
+        coord.applyCondition(.wound, to: .character(brute.id))
+        try use("gh-89")
+        XCTAssertEqual(coord.pendingConditionRemoval?.options.sorted { $0.rawValue < $1.rawValue }, [.poison, .wound])
+        coord.resolveConditionRemoval(.wound)
+        XCTAssertEqual(brute.entityConditions.map(\.name), [.poison])
+    }
+
+    /// `ITEM_RENDER_OUT=/tmp/i.png swift test --filter testRenderElementChoice` renders the picker.
+    func testRenderElementChoice() throws {
+        guard let out = ProcessInfo.processInfo.environment["ITEM_RENDER_OUT"] else {
+            throw XCTSkip("set ITEM_RENDER_OUT to render the element picker")
+        }
+        GlavenFont.registerFonts()
+        let pending = BoardCoordinator.PendingElementChoice(characterID: brute.id, count: 2, itemName: "Major Mana Potion")
+        let boots = BoardCoordinator.PendingInitiativeChange(characterID: brute.id, itemKey: "gh-15", itemName: "Boots of Speed",
+                                                             amount: 10, initiative: 45)
+        let view = VStack {
+            ElementChoicePrompt(pending: pending, coordinator: coord)
+            InitiativeChangePrompt(pending: boots, coordinator: coord)
+        }
+        .frame(width: 700, height: 560).background(Color.black)
+        let renderer = ImageRenderer(content: view)
+        renderer.scale = 1
+        let image = try XCTUnwrap(renderer.cgImage)
+        try XCTUnwrap(NSBitmapImageRep(cgImage: image).representation(using: .png, properties: [:]))
+            .write(to: URL(fileURLWithPath: out))
+    }
+
+    // MARK: - Initiative
+
+    /// Boots of Speed, once the cards are revealed: the Brute's 45 becomes 35 and the boots are spent.
+    func testBootsOfSpeedMoveTheInitiative() throws {
+        brute.items = ["gh-15"]
+        brute.initiative = 45
+        coord.autoResolvePrompts = false
+        let offers = coord.initiativeItemOffers()
+        XCTAssertEqual(offers.map(\.amount), [10])
+        coord.initiativeOffers = offers
+        coord.offerNextInitiativeChange()
+        XCTAssertEqual(coord.pendingInitiativeChange?.initiative, 45)
+        coord.resolveInitiativeChange(-7)
+        XCTAssertEqual(brute.initiative, 45, "only by the boots' amount")
+        XCTAssertNil(coord.pendingInitiativeChange)
+
+        coord.initiativeOffers = coord.initiativeItemOffers()
+        coord.offerNextInitiativeChange()
+        coord.resolveInitiativeChange(-10)
+        XCTAssertEqual(brute.initiative, 35)
+        XCTAssertTrue(brute.spentItems.contains("gh-15"))
+        XCTAssertTrue(coord.initiativeItemOffers().isEmpty, "spent until a long rest")
+    }
+
+    // MARK: - Refreshing items
+
+    func testAnEmpoweringTalismanRefreshesAConsumedPotion() throws {
+        brute.items = ["gh-17", "gh-12", "gh-14", "gh-1"]
+        _ = try startTurn()
+        brute.consumedItems = ["gh-12", "gh-14"]
+        brute.spentItems = ["gh-1"]
+        try use("gh-17")
+        XCTAssertEqual(coord.pendingItemRefresh?.options.sorted(), ["gh-12", "gh-14"], "consumed small items only")
+        coord.resolveItemRefresh(["gh-14", "gh-12"])
+        XCTAssertEqual(brute.consumedItems, ["gh-12", "gh-17"], "one comes back; the talisman is used up")
+        XCTAssertEqual(brute.spentItems, ["gh-1"])
+    }
+
+    func testTheUtilityBeltRefreshesTheOnlyOneAtOnce() throws {
+        brute.items = ["gh-141", "gh-1"]
+        _ = try startTurn()
+        brute.spentItems = ["gh-1"]
+        try use("gh-141")
+        XCTAssertNil(coord.pendingItemRefresh)
+        XCTAssertTrue(brute.spentItems.isEmpty)
+    }
+
+    func testTheFocusingRayDoublesAHeal() throws {
+        brute.items = ["gh-135"]
+        _ = try startTurn()
+        coord.beginHealAction(pieceID: .character(brute.id), healValue: 3, range: 2)
+        try use("gh-135")
+        guard case .selectingHealTarget(_, let value, _) = coord.interactionMode else { return XCTFail() }
+        XCTAssertEqual(value, 6)
+    }
+
+    func testTheCuriousGearDisarmsNearbyTraps() throws {
+        brute.items = ["gh-125"]
+        coord.boardState.placeTrap(at: HexCoord(5, 3), damage: 3)
+        coord.boardState.placeTrap(at: HexCoord(8, 3), damage: 3)
+        _ = try startTurn()
+        try use("gh-125")
+        XCTAssertEqual(coord.boardState.cells[HexCoord(5, 3)]?.isTrap, false)
+        XCTAssertEqual(coord.boardState.cells[HexCoord(8, 3)]?.isTrap, true, "out of range")
+    }
+
+    // MARK: - Items between the turn's steps
+
+    /// Scroll of Healing: Heal 3, Range 5, the player choosing who; the card's steps don't move on.
+    func testAScrollOfHealingHealsWithoutAdvancingTheTurn() throws {
+        brute.items = ["gh-94"]
+        gm.characterManager.addCharacter(name: "tinkerer", edition: "gh")
+        let tinkerer = gm.game.characters[1]
+        coord.boardState.placePiece(.character(tinkerer.id), at: HexCoord(6, 3))
+        tinkerer.health = 2
+        let turn = try startTurn()
+        try use("gh-94")
+        guard case .selectingHealTarget(_, let value, let targets) = coord.interactionMode else { return XCTFail("a heal to aim") }
+        XCTAssertEqual(value, 3)
+        XCTAssertTrue(targets.contains(.character(tinkerer.id)))
+        coord.handlePieceTap(.character(tinkerer.id))
+        XCTAssertEqual(tinkerer.health, 5)
+        XCTAssertEqual(turn.currentActionIndex, 0, "the card's first step is still to come")
+        XCTAssertEqual(usable(), [], "used up")
+    }
+
+    func testTheDoomedCompassMovesAnEnemy() throws {
+        brute.items = ["gh-124"]
+        let piece = try XCTUnwrap(coord.spawnMonster(name: "bandit-guard", type: .normal, at: HexCoord(6, 3), origin: .placed))
+        _ = try startTurn()
+        try use("gh-124")
+        coord.handlePieceTap(piece)
+        guard case .selectingMove(let mover, let range, _, _, _) = coord.interactionMode else { return XCTFail("the enemy moves") }
+        XCTAssertEqual(mover, piece)
+        XCTAssertEqual(range, 2)
+    }
+
+    func testElementalBootsNeedFiveHexesMoved() async throws {
+        brute.items = ["gh-149"]
+        let turn = try startTurn()
+        XCTAssertEqual(usable(), [])
+        await coord.moveAlong(.character(brute.id), path: (3...8).map { HexCoord($0, 3) }, style: .normal)
+        XCTAssertEqual(turn.hexesMoved, 5)
+        XCTAssertEqual(usable(), ["gh-149"])
+        try use("gh-149")
+        XCTAssertEqual(coord.pendingElementChoice?.count, 1)
+    }
+
+    func testThiefsHoodLootsFarther() throws {
+        brute.items = ["gh-109"]
+        let turn = try startTurn()
+        try use("gh-109")
+        XCTAssertEqual(turn.lootBonus, 1)
+    }
+
+    func testThePendantOfThePlaguePoisonsAndCursesOneEnemy() throws {
+        brute.items = ["gh-144"]
+        let piece = try XCTUnwrap(coord.spawnMonster(name: "bandit-guard", type: .normal, at: HexCoord(5, 3), origin: .placed))
+        let bandit = try XCTUnwrap(coord.entity(for: piece))
+        _ = try startTurn()
+        let curses = gm.game.monsterAttackModifierDeck.undrawnCount(of: .curse)
+        try use("gh-144")
+        coord.handlePieceTap(piece)
+        XCTAssertTrue(bandit.entityConditions.contains { $0.name == .poison })
+        XCTAssertEqual(gm.game.monsterAttackModifierDeck.undrawnCount(of: .curse), curses + 1)
+    }
+
+    func testAScrollOfStaminaLetsAnAllyRecover() throws {
+        brute.items = ["gh-95"]
+        gm.characterManager.addCharacter(name: "tinkerer", edition: "gh")
+        let tinkerer = gm.game.characters[1]
+        coord.boardState.placePiece(.character(tinkerer.id), at: HexCoord(5, 3))
+        tinkerer.discardedCards = [40, 41]
+        _ = try startTurn()
+        try use("gh-95")
+        XCTAssertTrue(tinkerer.discardedCards.isEmpty, "two cards: both come back")
+    }
+
+    // MARK: - Hooked Chain, Blinking Cape, Helix Ring, Skullbane Axe
+
+    func testHookedChainAddsPullToARangedAttack() throws {
+        brute.items = ["gh-39"]
+        _ = try coord.spawnMonster(name: "bandit-guard", type: .normal, at: HexCoord(6, 3), origin: .placed)
+        let turn = try startTurn()
+        turn.preparePerformedAttack(value: 2, range: 3)
+        coord.beginAttackAction(pieceID: .character(brute.id), range: 3)
+        try use("gh-39")
+        XCTAssertEqual(turn.pendingPull, 2)
+        XCTAssertTrue(brute.spentItems.contains("gh-39"))
+    }
+
+    func testBlinkingCapeIsAMoveFourJumpBetweenSteps() throws {
+        brute.items = ["gh-73"]
+        let turn = try startTurn()
+        XCTAssertEqual(usable(), ["gh-73"])
+        try use("gh-73")
+        guard case .selectingMove(_, let range, _, _, let mode) = coord.interactionMode else { return XCTFail("a move") }
+        XCTAssertEqual(range, 4)
+        XCTAssertEqual(mode, .jump)
+        XCTAssertEqual(turn.currentActionIndex, 0, "the card's steps are untouched")
+        XCTAssertTrue(brute.consumedItems.contains("gh-73"))
+    }
+
+    func testHelixRingConsumesLightAndDarkToHealTwentyFive() throws {
+        brute.items = ["gh-130"]
+        brute.health = 2
+        _ = try startTurn()
+        XCTAssertFalse(usable().contains("gh-130"), "not without Light and Dark")
+        for i in gm.game.elementBoard.indices where [.light, .dark].contains(gm.game.elementBoard[i].type) {
+            gm.game.elementBoard[i].state = .strong
+        }
+        try use("gh-130")
+        XCTAssertEqual(brute.health, brute.maxHealth)
+        XCTAssertFalse(gm.game.elementBoard.contains { [.light, .dark].contains($0.type) && $0.state != .inert && $0.state != .consumed })
+    }
+
+    func testSkullbaneAxeAddsFiveAgainstTheUndeadOnly() async throws {
+        brute.items = ["gh-113"]
+        let zeros = (0..<20).map { _ in AttackModifier.standard(.plus0) }
+        brute.attackModifierDeck = AttackModifierDeck(attackModifiers: zeros, cards: zeros)
+        let bones = try XCTUnwrap(coord.spawnMonster(name: "living-bones", type: .normal, at: HexCoord(4, 3), origin: .placed))
+        let entity = try XCTUnwrap(coord.entity(for: bones))
+        entity.health = 99
+        entity.maxHealth = 99
+        let turn = try startTurn()
+        turn.executeCurrentAction()   // Trample: Attack 3, Pierce 2
+        try use("gh-113")
+        coord.handlePieceTap(bones)
+        let deadline = Date().addingTimeInterval(3)
+        while turn.currentActionIndex == 0 && Date() < deadline { try await Task.sleep(nanoseconds: 1_000_000) }
+        XCTAssertEqual(entity.health, 99 - 8, "Attack 3 + 5")
+    }
+
+    /// Phasing Idol: when an enemy's attack would damage one of the character's summons, the
+    /// owner is asked, and the summon suffers no damage; the idol is consumed.
+    func testPhasingIdolSparesASummon() async throws {
+        brute.items = ["gh-142"]
+        coord.autoResolvePrompts = false
+        let summon = GameSummon(name: "bear", health: 6, maxHealth: 6)
+        brute.summons.append(summon)
+        let summonPiece = PieceID.summon(id: summon.id)
+        coord.boardState.placePiece(summonPiece, at: HexCoord(5, 3))
+        let bandit = try XCTUnwrap(coord.spawnMonster(name: "bandit-guard", type: .normal, at: HexCoord(6, 3), origin: .placed))
+        let plusTwo = AttackModifier.standard(.plus2)
+        Task { @MainActor in
+            await self.coord.performAttack(attacker: bandit, target: summonPiece, attack: AttackParameters(value: 3),
+                                           drawCard: { plusTwo })
+        }
+        let deadline = Date().addingTimeInterval(3)
+        while coord.pendingItemUse == nil && Date() < deadline { try await Task.sleep(nanoseconds: 1_000_000) }
+        XCTAssertEqual(coord.pendingItemUse?.characterID, brute.id, "the owner is asked")
+        XCTAssertEqual(coord.pendingItemUse?.question, "Your summon suffers no damage from this attack?")
+        coord.resolvePendingItemUse(true)
+        try await Task.sleep(nanoseconds: 50_000_000)
+        XCTAssertEqual(summon.health, 6)
+        XCTAssertTrue(brute.consumedItems.contains("gh-142"))
+    }
+
+    /// Stone Charm: while placing obstacles from a card, one more (Avalanche's two become three).
+    func testStoneCharmAddsAnObstacle() throws {
+        brute.items = ["gh-138"]
+        coord.autoResolvePrompts = false
+        _ = try startTurn()
+        XCTAssertFalse(usable().contains("gh-138"), "only while obstacles are being placed")
+        XCTAssertTrue(coord.beginPlacingTokens(.obstacle, count: 2, by: .character(brute.id)))
+        try use("gh-138")
+        guard case .placingToken(_, .obstacle, let remaining, _) = coord.interactionMode else { return XCTFail() }
+        XCTAssertEqual(remaining, 3)
+        for _ in 0..<3 {
+            guard case .placingToken(_, _, _, let hexes) = coord.interactionMode else { return XCTFail("more to place") }
+            coord.handleHexTap(try XCTUnwrap(hexes.sorted().first))
+        }
+        XCTAssertEqual(HexCoord(3, 3).neighbors.filter { coord.boardState.cells[$0]?.overlay == .obstacle }.count, 3)
+        XCTAssertTrue(brute.spentItems.contains("gh-138"))
+    }
+}

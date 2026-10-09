@@ -39,6 +39,12 @@ final class GameCharacter: Figure, Entity {
     var attackModifierDeck: AttackModifierDeck = .defaultDeck()
     var summons: [GameSummon] = []
     var selectedPerks: [Int] = []
+    /// Ability cards chosen on levelling up, one per level above 1 (see `CardPool`).
+    var chosenCards: [Int] = []
+    /// What they've done over the campaign, for their personal quest.
+    var record = CharacterRecord()
+    /// The two personal quests dealt on recruiting, until one is kept.
+    var questChoices: [String] = []
 
     // Battle goal state
     var battleGoalCardIds: [String] = []
@@ -46,14 +52,30 @@ final class GameCharacter: Figure, Entity {
 
     // Items: stored as "edition-id" keys
     var items: [String] = []
+    /// Owned items not brought to the scenario (GH p.9: a character brings what fits).
+    var itemsLeftBehind: [String] = []
+    /// The items brought to the scenario: the ones the board uses.
+    var carriedItems: [String] { items.filter { !itemsLeftBehind.contains($0) } }
     /// Items that have been spent this scenario (flipped down; refreshed on long rest).
     var spentItems: Set<String> = []
     /// Items that have been consumed this scenario (removed until scenario end).
     var consumedItems: Set<String> = []
+    /// Use slots marked on items that take several uses before they're spent (Hide Armor).
+    var itemSlotsUsed: [String: Int] = [:]
+    /// Charges marked on persistent bonuses in the active area (Warding Strength), by card.
+    var bonusChargesUsed: [Int: Int] = [:]
 
     // Character sheet
     var notes: String = ""
     var battleGoalProgress: Int = 0
+
+    /// The most battle-goal checkmarks a character can hold: six perks' worth (p.46).
+    static let maxBattleGoalChecks = 18
+
+    /// Add (or with a negative count, remove) battle-goal checkmarks, kept within 0…18.
+    func addBattleGoalChecks(_ count: Int) {
+        battleGoalProgress = max(0, min(Self.maxBattleGoalChecks, battleGoalProgress + count))
+    }
 
     // Personal quest
     var personalQuest: String? = nil  // cardId
@@ -74,6 +96,7 @@ final class GameCharacter: Figure, Entity {
     /// Move a card out of the active area to the lost or discard pile, as its icon requires.
     func removeFromActiveArea(_ cardId: Int) {
         activeCards.removeAll { $0 == cardId }
+        bonusChargesUsed[cardId] = nil
         roundBonusCards.removeAll { $0 == cardId }
         if lostWhenRemoved.contains(cardId) {
             lostWhenRemoved.removeAll { $0 == cardId }

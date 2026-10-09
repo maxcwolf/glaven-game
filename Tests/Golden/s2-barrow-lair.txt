@@ -1,97 +1,102 @@
 Scenario 2: Barrow Lair
 5 starting locations available
-Placed gh-brute at (-2, -2)
-Placed gh-spellweaver at (-3, -3)
-Placed gh-cragheart at (-1, -2)
-Placed gh-scoundrel at (-2, -3)
+Brute takes position [at (-2,-2)]
+Spellweaver takes position [at (-3,-3)]
+Cragheart takes position [at (-1,-2)]
+Scoundrel takes position [at (-2,-3)]
 === Round 1 ===
 --- state after round 0 ---
 elements: none
-brute (-2,-2) hp 10/10 hand 10 discard 0 lost 0 active 0 xp 0 gold 0
-spellweaver (-3,-3) hp 6/6 hand 8 discard 0 lost 0 active 0 xp 0 gold 0
-cragheart (-1,-2) hp 10/10 hand 11 discard 0 lost 0 active 0 xp 0 gold 0
-scoundrel (-2,-3) hp 8/8 hand 9 discard 0 lost 0 active 0 xp 0 gold 0
+brute (-2,-2) hp 10/10 hand 10 discard 0 lost 0 active 0 xp 0 gold 30
+spellweaver (-3,-3) hp 6/6 hand 8 discard 0 lost 0 active 0 xp 0 gold 30
+cragheart (-1,-2) hp 10/10 hand 11 discard 0 lost 0 active 0 xp 0 gold 30
+scoundrel (-2,-3) hp 8/8 hand 9 discard 0 lost 0 active 0 xp 0 gold 30
 bandit-archer #1 normal (0,0) hp 5/5
 bandit-archer #2 normal (-1,0) hp 5/5
 bandit-archer #3 normal (-2,0) hp 5/5
 bandit-archer #4 normal (-3,0) hp 5/5
 doors open: 0/1
-gh-brute: TOP Leaping Cleave (init 54) / BTM Overwhelming Assault
-gh-spellweaver: TOP Flame Strike (init 36) / BTM Fire Orbs
-gh-cragheart: TOP Rumbling Advance (init 29) / BTM Avalanche
-gh-scoundrel: TOP Flanking Strike (init 4) / BTM Special Mixture
-bandit-archer: drew ability (initiative 16)
-Turn order: scoundrel(4), bandit-archer(16), cragheart(29), spellweaver(36), brute(54)
-gh-scoundrel: Turn begins — TOP: Flanking Strike / BTM: Special Mixture
-gh-scoundrel: Move 3
-char(gh-scoundrel): Moved to (-2, -1)
-gh-scoundrel: poison — select target
-char(gh-scoundrel): poison → bandit-archer#2
-  bandit-archer #2: poison applied
-gh-scoundrel: Attack 3, Range 1
-scoundrel → bandit-archer #2: 3 +1(poison) +0(mod) = 4
-gh-scoundrel: Turn complete
-bandit-archer — ability (initiative 16)
-bandit-archer #1 → scoundrel: 1 +0(mod) = 1
-bandit-archer #2 → scoundrel: 1 -1(mod) = 0
-bandit-archer #3 → scoundrel: 1 +0(mod) = 1
-bandit-archer #4 → scoundrel: 1 +0(mod) = 1
-gh-cragheart: Turn begins — TOP: Rumbling Advance / BTM: Avalanche
-gh-cragheart: Top from Avalanche, bottom from Rumbling Advance
-gh-cragheart: Move 2
-char(gh-cragheart): Moved to (-3, -2)
-gh-cragheart: Infused earth
-gh-cragheart: Attack 4, Range 1
-char(gh-cragheart): No valid targets in range 1
-gh-cragheart: Turn complete
-gh-spellweaver: Turn begins — TOP: Flame Strike / BTM: Fire Orbs
-gh-spellweaver: Top from Fire Orbs, bottom from Flame Strike
-gh-spellweaver: Attack 3, Range 3, Target 3
-char(gh-spellweaver): Select up to 3 targets
-char(gh-spellweaver): Target 1/3 — bandit-archer#2
-char(gh-spellweaver): Target 2/3 — bandit-archer#3
-char(gh-spellweaver): Target 3/3 — bandit-archer#4
-spellweaver → bandit-archer #2: 3 +1(poison) ×2(mod) = 8
-bandit-archer #2: Killed!
-Loot token dropped at (-1, 0)
-spellweaver → bandit-archer #3: 3 -2(mod) = 1
-spellweaver → bandit-archer #4: 3 +1(mod) = 4
-gh-spellweaver: Infused fire
-gh-spellweaver: Attack 2, Range 2
-char(gh-spellweaver): No valid targets in range 2
-gh-spellweaver: Turn complete
-gh-brute: Turn begins — TOP: Leaping Cleave / BTM: Overwhelming Assault
-gh-brute: Top from Overwhelming Assault, bottom from Leaping Cleave
-gh-brute: Jump 3
-Door opened — m1a revealed
-Revealed bandit-commander #1 at (-2, 7)
-Revealed bandit-archer #2 at (-1, 7)
-Revealed bandit-archer #5 at (-3, 7)
-char(gh-brute): Moved to (-2, 1)
-gh-brute: Infused air
-gh-brute: Attack 6, Range 1
-brute → bandit-archer #3: 6 -1(mod) = 5
-bandit-archer #3: Killed!
-Loot token dropped at (-2, 0)
-gh-brute: +2 XP
-gh-brute: Turn complete
-bandit-commander — ability (initiative 14)
-  bandit-commander #1: Special 2
-bandit-commander #1: Summoned living-bones #1
-bandit-archer — ability (initiative 16)
-  bandit-archer #2: Move 1 to (0,6)
-bandit-archer #2 → brute: 2 +0(mod) = 2
-  bandit-archer #5: Move 1 to (-3,6)
-bandit-archer #5 → brute: 2 ×2(mod) = 4
-gh-scoundrel: Skipped short rest
+Brute plays Leaping Cleave (54) and Overwhelming Assault
+Spellweaver plays Flame Strike (36) and Fire Orbs
+Cragheart plays Rumbling Advance (29) and Avalanche
+Scoundrel plays Flanking Strike (4) and Special Mixture
+Bandit Archer draws an ability card (16)
+Turn order: Scoundrel 4, Bandit Archer 16, Cragheart 29, Spellweaver 36, Brute 54
+Scoundrel’s turn: Flanking Strike and Special Mixture
+Scoundrel: Move 3
+Scoundrel moves 2 hexes [to (-2,-1)]
+Scoundrel: Poison. Choose a target
+Scoundrel applies Poison to Bandit Archer 2
+Bandit Archer 2 gains Poison
+Scoundrel: Attack 3, Range 1
+Scoundrel attacks Bandit Archer 2: 3 + 1 poison + 0 = 4 damage [3 +1(poison) +0(mod) = 4]
+Scoundrel ends the turn
+Bandit Archer’s turn: ability card (16)
+Bandit Archer 1 attacks Scoundrel: 1 + 0 = 1 damage [1 +0(mod) = 1]
+Bandit Archer 2 attacks Scoundrel: 1 − 1 = no damage [1 -1(mod) = 0]
+Bandit Archer 3 attacks Scoundrel: 1 + 0 = 1 damage [1 +0(mod) = 1]
+Bandit Archer 4 attacks Scoundrel: 1 + 0 = 1 damage [1 +0(mod) = 1]
+Cragheart’s turn: Rumbling Advance and Avalanche
+Cragheart takes the top half from Avalanche and the bottom half from Rumbling Advance
+Cragheart: Move 2
+Brute suffers 1 damage
+Spellweaver suffers 1 damage
+Cragheart moves 2 hexes [to (-3,-2)]
+Cragheart infuses Earth
+Cragheart: Attack 4, Range 1
+Cragheart has no target within range 1
+Cragheart ends the turn
+Spellweaver’s turn: Flame Strike and Fire Orbs
+Spellweaver takes the top half from Fire Orbs and the bottom half from Flame Strike
+Spellweaver: Attack 3, Range 3, Target 3
+Spellweaver: choose up to 3 targets
+Spellweaver targets Bandit Archer 2 (1 of 3)
+Spellweaver targets Bandit Archer 3 (2 of 3)
+Spellweaver targets Bandit Archer 4 (3 of 3)
+Spellweaver attacks Bandit Archer 2: 3 + 1 poison ×2 = 8 damage [3 +1(poison) ×2(mod) = 8]
+Bandit Archer 2 dies
+A money token drops [at (-1,0)]
+Spellweaver gains 1 XP
+Spellweaver attacks Bandit Archer 3: 3 − 2 = 1 damage [3 -2(mod) = 1]
+Spellweaver gains 1 XP
+Spellweaver attacks Bandit Archer 4: 3 + 1 = 4 damage [3 +1(mod) = 4]
+Spellweaver gains 1 XP
+Spellweaver infuses Fire
+Spellweaver: Attack 2, Range 2
+Spellweaver has no target within range 2
+Spellweaver ends the turn
+Brute’s turn: Leaping Cleave and Overwhelming Assault
+Brute takes the top half from Overwhelming Assault and the bottom half from Leaping Cleave
+Brute: Jump 3
+A door opens and a new room is revealed [m1a]
+Bandit Commander 1 appears [at (-2,7)]
+Bandit Archer 2 appears [at (-1,7)]
+Bandit Archer 5 appears [at (-3,7)]
+Brute moves 3 hexes [to (-2,1)]
+Brute infuses Air
+Brute: Attack 6, Range 1
+Brute attacks Bandit Archer 3: 6 − 1 = 5 damage [6 -1(mod) = 5]
+Bandit Archer 3 dies
+A money token drops [at (-2,0)]
+Brute gains 2 XP
+Brute ends the turn
+Bandit Commander’s turn: ability card (14)
+Bandit Commander 1 uses special ability 2
+Bandit Commander 1 summons Living Bones 1
+Bandit Archer’s turn: ability card (16)
+Bandit Archer 2 moves 1 hex [to (0,6)]
+Bandit Archer 2 attacks Brute: 2 + 0 = 2 damage [2 +0(mod) = 2]
+Bandit Archer 5 moves 1 hex [to (-3,6)]
+Bandit Archer 5 attacks Brute: 2 ×2 = 4 damage [2 ×2(mod) = 4]
+Scoundrel skips the short rest
 Round 1 complete
 === Round 2 ===
 --- state after round 1 ---
 elements: fire waning, air waning, earth waning
-scoundrel (-2,-1) hp 5/8 hand 7 discard 2 lost 0 active 0 xp 0 gold 0
-cragheart (-3,-2) hp 10/10 hand 9 discard 1 lost 1 active 0 xp 0 gold 0
-spellweaver (-3,-3) hp 6/6 hand 6 discard 1 lost 1 active 0 xp 0 gold 0
-brute (-2,1) hp 4/10 hand 8 discard 1 lost 1 active 0 xp 2 gold 0
+scoundrel (-2,-1) hp 5/8 hand 7 discard 2 lost 0 active 0 xp 0 gold 30
+cragheart (-3,-2) hp 10/10 hand 9 discard 1 lost 1 active 0 xp 0 gold 30
+spellweaver (-3,-3) hp 5/6 hand 6 discard 1 lost 1 active 0 xp 3 gold 30
+brute (-2,1) hp 3/10 hand 8 discard 1 lost 1 active 0 xp 2 gold 30
 bandit-archer #1 normal (0,0) hp 5/5
 bandit-archer #2 elite (0,6) hp 7/7
 bandit-archer #4 normal (-3,0) hp 1/5
@@ -100,139 +105,138 @@ bandit-commander #1 boss (-2,7) hp 40/40
 living-bones #1 elite (-2,8) hp 6/6
 money tokens: (-2,0)x1 (-1,0)x1
 doors open: 1/5
-gh-scoundrel: TOP Backstab (init 6) / BTM Single Out
-gh-cragheart: TOP Crushing Grasp (init 35) / BTM Massive Boulder
-gh-spellweaver: TOP Mana Bolt (init 7) / BTM Impaling Eruption
-gh-brute: TOP Eye for an Eye (init 18) / BTM Spare Dagger
-bandit-archer: drew ability (initiative 14)
-bandit-commander: drew ability (initiative 17)
-living-bones: drew ability (initiative 64)
-Turn order: scoundrel(6), spellweaver(7), bandit-archer(14), bandit-commander(17), brute(18), cragheart(35), living-bones(64)
-gh-scoundrel: Turn begins — TOP: Backstab / BTM: Single Out
-gh-scoundrel: Top from Single Out, bottom from Backstab
-gh-scoundrel: Move 6
-char(gh-scoundrel): Moved to (-2, 0)
-gh-scoundrel: Attack 3, Range 1
-scoundrel → bandit-archer #4: 3 +0(mod) = 3
-bandit-archer #4: Killed!
-Loot token dropped at (-3, 0)
-gh-scoundrel: Turn complete
-gh-scoundrel: Looted 1 money token (+2g)
-gh-spellweaver: Turn begins — TOP: Mana Bolt / BTM: Impaling Eruption
-gh-spellweaver: Top from Impaling Eruption, bottom from Mana Bolt
-gh-spellweaver: Attack 3, Range 4
-spellweaver → bandit-archer #1: 3 -2(mod) = 1
-gh-spellweaver: Infused earth
-gh-spellweaver: Heal 3, Range 1 — select target
-char(gh-spellweaver) → char(gh-cragheart): Heal 3 (+0)
-gh-spellweaver: Turn complete
-bandit-archer — ability (initiative 14)
-bandit-archer #2 → brute: 2 +0(mod) = 2
-bandit-archer #5 → brute: 2 ×2(mod) = 4
-  gh-brute: Lost a hand card to negate 4 damage
-bandit-archer #1 → scoundrel: MISS
-bandit-commander — ability (initiative 17)
-  bandit-commander #1: Special 2
-bandit-commander #1: Summoned living-bones #2
-gh-brute: Turn begins — TOP: Eye for an Eye / BTM: Spare Dagger
-gh-brute: Top from Spare Dagger, bottom from Eye for an Eye
-gh-brute: Attack 3, Range 3
-brute → bandit-archer #1: 3 -1(mod) = 2
-gh-brute: +1 XP
-gh-brute: Heal 2, Range 1 — select target
-char(gh-brute) → char(gh-brute): Heal 2 (+2)
-gh-brute: Infused earth
-gh-brute: Turn complete
-gh-cragheart: Turn begins — TOP: Crushing Grasp / BTM: Massive Boulder
-gh-cragheart: Move 4
-char(gh-cragheart): Moved to (-1, 0)
-gh-cragheart: Attack 3, Range 1, Immobilize
-gh-cragheart: Infused earth
-cragheart → bandit-archer #1: 3 ×2(mod) = 6
-bandit-archer #1: Killed!
-Loot token dropped at (0, 0)
-gh-cragheart: Turn complete
-gh-cragheart: Looted 1 money token (+2g)
-living-bones — ability (initiative 64)
-  living-bones #1: Move 3 to (-3,5)
-  living-bones #1: Focus out of reach
-gh-scoundrel: Skipped short rest
-gh-spellweaver: Skipped short rest
-gh-brute: Skipped short rest
-gh-cragheart: Skipped short rest
+Scoundrel plays Backstab (6) and Single Out
+Cragheart plays Crushing Grasp (35) and Massive Boulder
+Spellweaver plays Mana Bolt (7) and Impaling Eruption
+Brute plays Eye for an Eye (18) and Spare Dagger
+Bandit Archer draws an ability card (14)
+Bandit Commander draws an ability card (17)
+Living Bones draws an ability card (64)
+Turn order: Scoundrel 6, Spellweaver 7, Bandit Archer 14, Bandit Commander 17, Brute 18, Cragheart 35, Living Bones 64
+Scoundrel’s turn: Backstab and Single Out
+Scoundrel takes the top half from Single Out and the bottom half from Backstab
+Scoundrel: Move 6
+Scoundrel moves 1 hex [to (-2,0)]
+Scoundrel: Attack 3, Range 1
+Scoundrel attacks Bandit Archer 4: 3 + 0 = 3 damage [3 +0(mod) = 3]
+Bandit Archer 4 dies
+A money token drops [at (-3,0)]
+Scoundrel ends the turn
+Scoundrel loots 1 money token (2 gold)
+Spellweaver’s turn: Mana Bolt and Impaling Eruption
+Spellweaver takes the top half from Impaling Eruption and the bottom half from Mana Bolt
+Spellweaver: Attack 3, Range 4
+Spellweaver attacks Bandit Archer 1: 3 − 2 = 1 damage [3 -2(mod) = 1]
+Spellweaver gains 1 XP
+Spellweaver infuses Earth
+Spellweaver: Heal 3, Range 1. Choose who to heal
+Spellweaver heals Spellweaver for 1 [Heal 3]
+Spellweaver ends the turn
+Bandit Archer’s turn: ability card (14)
+Bandit Archer 2 attacks Brute: 2 + 0 = 2 damage [2 +0(mod) = 2]
+Bandit Archer 2 places a 3 damage trap [at (-1,5)]
+Bandit Archer 5 attacks Brute: 2 ×2 = 4 damage [2 ×2(mod) = 4]
+Brute loses a card from hand to prevent 4 damage
+Bandit Archer 5 places a 3 damage trap [at (-4,5)]
+Bandit Archer 1 attacks Scoundrel: miss [MISS]
+Bandit Archer 1 places a 3 damage trap [at (-1,0)]
+Bandit Commander’s turn: ability card (17)
+Bandit Commander 1 uses special ability 2
+Bandit Commander 1 summons Living Bones 2
+Brute’s turn: Eye for an Eye and Spare Dagger
+Brute takes the top half from Spare Dagger and the bottom half from Eye for an Eye
+Brute: Attack 3, Range 3
+Brute attacks Bandit Archer 1: 3 − 1 = 2 damage [3 -1(mod) = 2]
+Brute gains 1 XP
+Brute: Heal 2, Range 1. Choose who to heal
+Brute heals Brute for 2 [Heal 2]
+Brute infuses Earth
+Brute ends the turn
+Cragheart’s turn: Crushing Grasp and Massive Boulder
+Cragheart: Move 4
+Cragheart moves 2 hexes [to (-1,-2)]
+Cragheart: Attack 3, Range 1, Immobilize
+Cragheart has no target within range 1
+Cragheart ends the turn
+Living Bones’s turn: ability card (64)
+Living Bones 1 moves 3 hexes [to (-3,5)]
+Living Bones 1 can’t reach its focus
+Scoundrel skips the short rest
+Spellweaver skips the short rest
+Brute skips the short rest
+Cragheart skips the short rest
 Round 2 complete
 === Round 3 ===
 --- state after round 2 ---
 elements: earth waning
-scoundrel (-2,0) hp 5/8 hand 5 discard 4 lost 0 active 0 xp 0 gold 2
-spellweaver (-3,-3) hp 6/6 hand 4 discard 2 lost 2 active 0 xp 0 gold 0
-brute (-2,1) hp 4/10 hand 5 discard 3 lost 2 active 0 xp 3 gold 0
-cragheart (-1,0) hp 10/10 hand 7 discard 3 lost 1 active 0 xp 0 gold 2
+scoundrel (-2,0) hp 5/8 hand 5 discard 4 lost 0 active 0 xp 0 gold 32
+spellweaver (-3,-3) hp 6/6 hand 4 discard 2 lost 2 active 0 xp 4 gold 30
+brute (-2,1) hp 3/10 hand 5 discard 3 lost 2 active 0 xp 3 gold 30
+cragheart (-1,-2) hp 10/10 hand 7 discard 3 lost 1 active 0 xp 0 gold 30
+bandit-archer #1 normal (0,0) hp 2/5
 bandit-archer #2 elite (0,6) hp 7/7
 bandit-archer #5 elite (-3,6) hp 7/7
 bandit-commander #1 boss (-2,7) hp 40/40
 living-bones #1 elite (-3,5) hp 6/6
 living-bones #2 elite (-3,7) hp 6/6
-money tokens: (-3,0)x1 (0,0)x1
+money tokens: (-3,0)x1 (-1,0)x1
 doors open: 1/5
-gh-scoundrel: TOP Venom Shiv (init 60) / BTM Quick Hands
-gh-spellweaver: TOP Reviving Ether (init 80) / BTM Ride the Wind
-gh-brute: TOP Warding Strength (init 32) / BTM Sweeping Blow
-gh-cragheart: TOP Crater (init 61) / BTM Backup Ammunition
-bandit-commander: drew ability (initiative 14)
-living-bones: drew ability (initiative 20)
-bandit-archer: drew ability (initiative 31)
-Turn order: bandit-commander(14), living-bones(20), bandit-archer(31), brute(32), scoundrel(60), cragheart(61), spellweaver(80)
-bandit-commander — ability (initiative 14)
-  bandit-commander #1: Special 2
-bandit-commander #1: Summoned living-bones #3
-living-bones — ability (initiative 20)
-  living-bones #1: Move 2 to (-2,3)
-  living-bones #1: Focus out of reach
-  living-bones #1 → living-bones #1: Heal 2 (+0)
-  living-bones #2: Move 2 to (-3,5)
-  living-bones #2: Focus out of reach
-  living-bones #2 → living-bones #2: Heal 2 (+0)
-bandit-archer — ability (initiative 31)
-bandit-archer #2 → brute: 3 +0(mod) = 3
-bandit-archer #5 → brute: 3 -1(mod) = 2
-  gh-brute: Lost 2 discarded cards to negate 2 damage
-gh-brute: Turn begins — TOP: Warding Strength / BTM: Sweeping Blow
-gh-brute: Move 3
-brute: Sprang bear trap — 3 damage
-  gh-brute: Lost a hand card to negate 3 damage
-  brute: immobilize applied
-brute: Immobilized — movement ends
-char(gh-brute): Moved to (-3, -1)
-gh-brute: Push 1
-gh-brute: Attack 3, Range 1, Push 2
-char(gh-brute): No valid targets in range 1
-gh-brute: Turn complete
-gh-scoundrel: Turn begins — TOP: Venom Shiv / BTM: Quick Hands
-gh-scoundrel: Top from Quick Hands, bottom from Venom Shiv
-gh-scoundrel: Move 5
-char(gh-scoundrel): Moved to (-2, 2)
-gh-scoundrel: Move 2
-char(gh-scoundrel): Moved to (-1, 2)
-gh-scoundrel: Attack 2, Range 1
-scoundrel → living-bones #1: 2 +1(mod) -1(shield) = 2
-gh-scoundrel: Turn complete
-gh-cragheart: Turn begins — TOP: Crater / BTM: Backup Ammunition
-gh-cragheart: Consumed earth
-gh-cragheart: Attack 3, Range 3
-cragheart → living-bones #1: 3 ×2(mod) -1(shield) = 5
-living-bones #1: Killed!
-gh-cragheart: Move 3
-char(gh-cragheart): Moved to (-2, 3)
-gh-cragheart: Turn complete
-gh-spellweaver: Turn begins — TOP: Reviving Ether / BTM: Ride the Wind
-gh-spellweaver: Infused dark
-gh-spellweaver: Default Move 2
-char(gh-spellweaver): Moved to (-2, -1)
-gh-spellweaver: Turn complete
-gh-brute: Skipped short rest
-gh-scoundrel: Skipped short rest
-gh-cragheart: Skipped short rest
-gh-spellweaver: Skipped short rest
+Scoundrel plays Thief's Knack (23) and Quick Hands
+Spellweaver plays Frost Armor (20) and Reviving Ether
+Brute will long rest
+Cragheart plays Opposing Strike (46) and Backup Ammunition
+Bandit Commander draws an ability card (14)
+Living Bones draws an ability card (20)
+Bandit Archer draws an ability card (31)
+Turn order: Bandit Commander 14, Spellweaver 20, Living Bones 20, Scoundrel 23, Bandit Archer 31, Cragheart 46, Brute 99
+Bandit Commander’s turn: ability card (14)
+Bandit Commander 1 uses special ability 2
+Bandit Commander 1 summons Living Bones 3
+Spellweaver’s turn: Frost Armor and Reviving Ether
+Spellweaver: Jump 4
+Spellweaver moves 3 hexes [to (-3,0)]
+Spellweaver consumes Earth
+Spellweaver: Attack 3, Range 3
+Spellweaver gains 1 XP
+Spellweaver attacks Bandit Archer 1: 3 + 0 = 3 damage [3 +0(mod) = 3]
+Bandit Archer 1 dies
+A money token drops [at (0,0)]
+Spellweaver ends the turn
+Spellweaver loots 1 money token (2 gold)
+Living Bones’s turn: ability card (20)
+Living Bones 1 moves 2 hexes [to (-2,3)]
+Living Bones 1 can’t reach its focus
+Living Bones 1 heals Living Bones 1 for 0 [Heal 2]
+Living Bones 2 moves 2 hexes [to (-3,5)]
+Living Bones 2 can’t reach its focus
+Living Bones 2 heals Living Bones 2 for 0 [Heal 2]
+Scoundrel’s turn: Thief's Knack and Quick Hands
+Scoundrel takes the top half from Quick Hands and the bottom half from Thief's Knack
+Scoundrel: Move 2
+Scoundrel moves 2 hexes [to (-2,2)]
+Scoundrel: Attack 2, Range 1
+Scoundrel attacks Living Bones 1: 2 + 1 − 1 shield = 2 damage [2 +1(mod) -1(shield) = 2]
+Scoundrel: Attack 3, Range 1
+Scoundrel gains 1 XP
+Scoundrel attacks Living Bones 1: 3 + 0 − 1 shield = 2 damage [3 +0(mod) -1(shield) = 2]
+Scoundrel ends the turn
+Bandit Archer’s turn: ability card (31)
+Bandit Archer 2 attacks Scoundrel: 3 + 0 = 3 damage [3 +0(mod) = 3]
+Bandit Archer 5 attacks Scoundrel: 3 − 1 = 2 damage [3 -1(mod) = 2]
+Scoundrel loses 2 discarded cards to prevent 2 damage
+Cragheart’s turn: Opposing Strike and Backup Ammunition
+Cragheart: Move 3
+Cragheart springs a trap and suffers 3 damage [bear]
+Cragheart gains Immobilize
+Cragheart is immobilized and stops
+Cragheart moves 1 hex [to (-1,-1)]
+Cragheart: Attack 3, Range 1
+Cragheart has no target within range 1
+Cragheart ends the turn
+Brute long rests: choose a card to lose
+Brute long rests: loses Eye for an Eye, heals 2 and takes back 7 cards
+Spellweaver skips the short rest
+Scoundrel skips the short rest
+Cragheart skips the short rest
 Round 3 complete
 === Round 4 ===

@@ -1,0 +1,4 @@
+Board sound effects and jingles (*-N.m4a) are from Kenney's RPG Audio, Impact
+Sounds, Interface Sounds and Music Jingles packs by Kenney Vleugels (www.kenney.nl), released under
+Creative Commons Zero (CC0): http://creativecommons.org/publicdomain/zero/1.0/
+Converted from Ogg Vorbis to AAC. glayvin.mp3 is original to Glaven.

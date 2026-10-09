@@ -20,9 +20,42 @@ enum SoundEffect {
 
 enum SoundPlayer {
     private static var player: AVAudioPlayer?
+    private static var playedLaunchSting = false
     static weak var settingsManager: SettingsManager?
 
-    static func playGlayvin() {
+    /// What one effect does: a sound, a haptic tap, both or neither.
+    struct Feedback: Equatable {
+        var systemSound: UInt32?
+        var haptic: Bool
+    }
+
+    /// The feedback for `effect` under the player's settings. Sound and haptics have separate
+    /// toggles. The Mac has no effect sounds yet (it used to play the system alert beep, which
+    /// sounds like an error), so it stays silent there.
+    static func feedback(for effect: SoundEffect, soundEffects: Bool, haptics: Bool) -> Feedback {
+        #if os(iOS)
+        let sound: UInt32?
+        switch effect {
+        case .tap, .cardFlip, .phaseChange: sound = 1104
+        case .coin: sound = 1057
+        default: sound = nil
+        }
+        return Feedback(systemSound: soundEffects ? sound : nil, haptic: haptics)
+        #else
+        return Feedback(systemSound: nil, haptic: false)
+        #endif
+    }
+
+    /// Whether the launch sting plays: once per launch, and only with sound effects on.
+    static func shouldPlayLaunchSting(soundEffects: Bool, alreadyPlayed: Bool) -> Bool {
+        soundEffects && !alreadyPlayed
+    }
+
+    /// Play the "Glaven" sting: once at launch, or again when `replay` is set (tapping the logo).
+    static func playGlayvin(replay: Bool = false) {
+        guard !BoardSoundPlayer.isSilenced, shouldPlayLaunchSting(soundEffects: settingsManager?.soundEffects ?? true,
+                                    alreadyPlayed: playedLaunchSting && !replay) else { return }
+        playedLaunchSting = true
         guard let url = appResourceBundle.url(forResource: "glayvin", withExtension: "mp3", subdirectory: "Sounds") else {
             return
         }
@@ -35,54 +68,33 @@ enum SoundPlayer {
     }
 
     static func play(_ effect: SoundEffect) {
-        guard settingsManager?.soundEffects != false else { return }
-
+        let feedback = feedback(for: effect,
+                                soundEffects: settingsManager?.soundEffects ?? true,
+                                haptics: settingsManager?.hapticFeedback ?? true)
         #if os(iOS)
+        if let sound = feedback.systemSound {
+            AudioServicesPlaySystemSound(sound)
+        }
+        guard feedback.haptic else { return }
         switch effect {
-        case .tap:
-            let gen = UIImpactFeedbackGenerator(style: .light)
-            gen.impactOccurred()
-            AudioServicesPlaySystemSound(1104)
+        case .tap, .healthUp, .coin:
+            UIImpactFeedbackGenerator(style: .light).impactOccurred()
         case .toggle:
-            let gen = UISelectionFeedbackGenerator()
-            gen.selectionChanged()
+            UISelectionFeedbackGenerator().selectionChanged()
         case .cardFlip:
-            let gen = UIImpactFeedbackGenerator(style: .medium)
-            gen.impactOccurred()
-            AudioServicesPlaySystemSound(1104)
+            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
         case .healthDown:
-            let gen = UIImpactFeedbackGenerator(style: .soft)
-            gen.impactOccurred()
-        case .healthUp:
-            let gen = UIImpactFeedbackGenerator(style: .light)
-            gen.impactOccurred()
+            UIImpactFeedbackGenerator(style: .soft).impactOccurred()
         case .death:
-            let gen = UIImpactFeedbackGenerator(style: .heavy)
-            gen.impactOccurred()
-            let notif = UINotificationFeedbackGenerator()
-            notif.notificationOccurred(.error)
+            UIImpactFeedbackGenerator(style: .heavy).impactOccurred()
+            UINotificationFeedbackGenerator().notificationOccurred(.error)
         case .phaseChange:
-            let gen = UIImpactFeedbackGenerator(style: .rigid)
-            gen.impactOccurred()
-            AudioServicesPlaySystemSound(1104)
-        case .coin:
-            let gen = UIImpactFeedbackGenerator(style: .light)
-            gen.impactOccurred()
-            AudioServicesPlaySystemSound(1057)
+            UIImpactFeedbackGenerator(style: .rigid).impactOccurred()
         case .error:
-            let gen = UINotificationFeedbackGenerator()
-            gen.notificationOccurred(.error)
+            UINotificationFeedbackGenerator().notificationOccurred(.error)
         }
         #else
-        // macOS: audio-only fallback for effects that have audio
-        switch effect {
-        case .tap, .cardFlip, .phaseChange:
-            NSSound.beep()
-        case .coin:
-            NSSound.beep()
-        default:
-            break
-        }
+        _ = feedback
         #endif
     }
 }

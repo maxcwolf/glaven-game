@@ -22,6 +22,8 @@ struct SummonTurnResult {
     /// The resolved attack (nil when the summon has no attack or is disarmed).
     var attack: MonsterAttackSpec? = nil
     var flying: Bool = false
+    /// Every enemy it could focus on, best first, for "Why?".
+    var focusCandidates: [FocusCandidate] = []
 }
 
 /// Monster-style AI for figures fighting on the players' side (summons, escorts): they follow
@@ -33,6 +35,8 @@ enum PlayerSideAI {
         var path: [HexCoord] = []
         var targets: [PieceID] = []
         var stunned = false
+        /// Every enemy it could focus on, best first, for "Why?".
+        var candidates: [FocusCandidate] = []
     }
 
     /// Compute focus, movement and targets for a player-side figure with fixed Move/Attack values.
@@ -56,9 +60,10 @@ enum PlayerSideAI {
         let range = attack?.range ?? 1
         let isRanged = attack?.isRanged ?? false
         let mode: MoveMode = flying ? .fly : .normal
-        guard let focus = MonsterAI.findFocus(from: position, enemies: enemies, board: board, range: range,
-                                              isRanged: isRanged, enemyPositions: blockers, gameState: gameState,
-                                              mode: mode),
+        let candidates = MonsterAI.focusCandidates(from: position, enemies: enemies, board: board, range: range,
+                                                   isRanged: isRanged, enemyPositions: blockers, gameState: gameState,
+                                                   mode: mode)
+        guard let focus = candidates.first?.pieceID,
               let focusPos = board.piecePositions[focus] else { return Plan() }
 
         var path: [HexCoord] = []
@@ -76,7 +81,7 @@ enum PlayerSideAI {
             targets = MonsterAI.targets(for: attack, from: path.last ?? position, focus: focus, focusPos: focusPos,
                                         enemies: enemies, board: board, gameState: gameState)
         }
-        return Plan(focus: focus, path: path, targets: targets)
+        return Plan(focus: focus, path: path, targets: targets, candidates: candidates)
     }
 
     /// Hostile (non-allied) monsters on the board; invisible ones only when asked (they can't be
@@ -115,7 +120,8 @@ enum SummonAI {
             attackRange: attack?.range ?? 0,
             attackTargets: plan.targets,
             attack: attack,
-            flying: summon.flying
+            flying: summon.flying,
+            focusCandidates: plan.candidates
         )
     }
 

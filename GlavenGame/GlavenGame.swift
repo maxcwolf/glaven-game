@@ -23,6 +23,8 @@ private struct ScaledContentView: View {
             .environment(\.isCompact, false)
             .dynamicTypeSize(dynamicTypeForScale(gameManager.settingsManager.uiScale))
             .preferredColorScheme(isLight ? .light : .dark)
+            // Controls take the theme's accent (brass by default) rather than system blue.
+            .tint(GlavenTheme.accentText)
             .onChange(of: scenePhase) { _, newPhase in
                 if newPhase == .background || newPhase == .inactive {
                     gameManager.settingsManager.saveSettings()
@@ -78,8 +80,8 @@ public struct GlavenGameApp: App {
         }
         .commands {
             CommandGroup(after: .newItem) {
-                Button("New Game") {
-                    gameManager.newGame()
+                Button("New Campaign…") {
+                    gameManager.requestNewGame()
                 }
                 .keyboardShortcut("n", modifiers: [.command, .shift])
             }

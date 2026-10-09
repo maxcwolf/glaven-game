@@ -24,6 +24,24 @@ struct HexCoord: Hashable, Codable, Sendable {
         return HexCoord(offset.col, offset.row)
     }
 
+    /// The hexes on the straight line from this hex to `other`, both ends included (cube
+    /// interpolation, nudged so a line along a hex edge picks one side consistently).
+    func line(to other: HexCoord) -> [HexCoord] {
+        let steps = distance(to: other)
+        guard steps > 0 else { return [self] }
+        let a = cube, b = other.cube
+        return (0...steps).map { i in
+            let t = Double(i) / Double(steps)
+            let x = Double(a.x) + Double(b.x - a.x) * t + 1e-6
+            let y = Double(a.y) + Double(b.y - a.y) * t + 2e-6
+            let z = Double(a.z) + Double(b.z - a.z) * t - 3e-6
+            var rx = x.rounded(), ry = y.rounded(), rz = z.rounded()
+            let (dx, dy, dz) = (abs(rx - x), abs(ry - y), abs(rz - z))
+            if dx > dy && dx > dz { rx = -ry - rz } else if dy > dz { ry = -rx - rz } else { rz = -rx - ry }
+            return HexCoord.fromCube(x: Int(rx), y: Int(ry), z: Int(rz))
+        }
+    }
+
     // MARK: - Neighbors
 
     /// The 6 adjacent hexes in odd-row offset.

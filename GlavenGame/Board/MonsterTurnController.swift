@@ -11,9 +11,15 @@ final class MonsterTurnController {
     private weak var gameManager: GameManager?
     var isExecuting: Bool = false
 
+    /// The board this turn belongs to; a turn that outlives it (the board left or restarted
+    /// while it waited) stops without touching the game.
+    private let generation: Int
+    private var isStale: Bool { coordinator?.isCurrentBoard(generation) != true }
+
     init(coordinator: BoardCoordinator, gameManager: GameManager) {
         self.coordinator = coordinator
         self.gameManager = gameManager
+        self.generation = coordinator.boardGeneration
     }
 
     // MARK: - Group Turn
@@ -23,15 +29,16 @@ final class MonsterTurnController {
     @MainActor func executeMonsterGroup(_ monster: GameMonster, only: Set<Int>? = nil) async {
         guard let coordinator, let gameManager else { return }
         guard !monster.off, !monster.aliveEntities.isEmpty else { return }
+        coordinator.teach(.monstersAct, at: .monsterCard(monster.name))
 
         guard let ability = gameManager.monsterManager.currentAbility(for: monster) else {
-            coordinator.log("\(monster.name): No ability card drawn", category: .info)
+            coordinator.log("\(coordinator.monsterTypeName(monster.name)) has no ability card", category: .info)
             return
         }
 
         isExecuting = true
         defer { isExecuting = false }
-        coordinator.log("\(monster.name) — \(ability.name ?? "ability") (initiative \(ability.initiative))", category: .round)
+        coordinator.log("\(coordinator.monsterTypeName(monster.name))\u{2019}s turn: \(ability.name ?? "ability card") (\(ability.initiative))", category: .round)
 
         let actions = ability.actions ?? []
 
@@ -50,23 +57,30 @@ final class MonsterTurnController {
 
         var anyActed = false
         for entity in sortedEntities {
+            guard !isStale else { return }
             let pieceID = PieceID.monster(name: monster.name, standee: entity.number)
             guard !entity.dead, coordinator.isOnBoard(pieceID) else { continue }
+            coordinator.setActing(pieceID)
 
             // Start of this monster's turn: its conditions become active and tick (wound).
             gameManager.entityManager.restoreConditions(entity)
             gameManager.entityManager.applyConditionsTurn(entity)
+            // Race to the Grave: a doomed monster suffers damage as its turn starts.
+            await coordinator.applyDoomTurnStart(pieceID)
+            guard !isStale else { return }
             coordinator.sweepDeadFigures()
             guard !entity.dead, coordinator.isOnBoard(pieceID) else { continue }
 
             if MonsterAI.isActive(.stun, on: entity) {
-                coordinator.log("  \(coordinator.pieceLabel(pieceID)): Stunned — no actions", category: .condition)
+                coordinator.log("\(coordinator.name(pieceID)) is stunned and loses the turn", category: .condition)
             } else {
                 anyActed = true
-                if consumed == nil { consumed = consumeElements(in: actions) }
+                if consumed == nil { consumed = await consumeElements(in: actions, by: pieceID) }
                 var turn = MonsterTurnState()
                 await executeCard(actions, pieceID: pieceID, entity: entity, monster: monster,
                                   ability: ability, consumed: consumed ?? [], turn: &turn)
+                coordinator.endWhy()
+                guard !isStale else { return }
             }
             // End of this monster's turn: conditions that last "until the end of its next turn" expire.
             if !entity.dead {
@@ -74,26 +88,28 @@ final class MonsterTurnController {
             }
             coordinator.sweepDeadFigures()
             if coordinator.scenarioResult != nil { return }
-            if coordinator.turnDelayNanoseconds > 0 { try? await Task.sleep(nanoseconds: coordinator.turnDelayNanoseconds) }
+            await coordinator.beat()
         }
 
         // Infusions on the card become strong at the end of the type's turn.
-        if anyActed {
+        if anyActed && !isStale {
             for element in MonsterAbility.elementInfusions(in: actions, consumed: consumed ?? []) {
                 gameManager.game.infuseElement(element)
-                coordinator.log("  \(monster.name): Infused \(element.rawValue)", category: .element)
+                coordinator.log("\(coordinator.monsterTypeName(monster.name)) infuses \(GameText.elementName(element))", category: .element)
             }
         }
     }
 
     /// Consume every element the card asks for that is available; returns the paid-for actions.
-    private func consumeElements(in actions: [ActionModel]) -> Set<UUID> {
+    @MainActor private func consumeElements(in actions: [ActionModel], by pieceID: PieceID) async -> Set<UUID> {
         guard let coordinator, let game = gameManager?.game else { return [] }
         var paid = Set<UUID>()
         for action in MonsterAbility.elementConsumes(in: actions) {
+            // Dampening Ring: a character may consume it first, for nothing.
+            if await coordinator.dampenedConsume(MonsterAbility.elements(of: action), by: pieceID) { continue }
             if let used = game.consumeElements(MonsterAbility.elements(of: action)) {
                 paid.insert(action.id)
-                coordinator.log("  Consumed \(used.map(\.rawValue).joined(separator: " + "))", category: .element)
+                coordinator.log("\(GameText.list(used.map(GameText.elementName))) consumed", category: .element)
             }
         }
         return paid
@@ -129,14 +145,17 @@ final class MonsterTurnController {
             MonsterAI.computeTurn(pieceID: pieceID, monster: monster, entity: entity, ability: ability,
                                   board: coordinator.boardState, gameState: game, consumed: consumed)
         }
-        func stillHere() -> Bool { !entity.dead && coordinator.isOnBoard(pieceID) }
+        func stillHere() -> Bool { !isStale && !entity.dead && coordinator.isOnBoard(pieceID) }
 
         // Focus is chosen before performing any action (p.30).
         if !state.focusChosen {
             state.focusChosen = true
-            state.focus = currentTurn().focusTarget
+            let plan = currentTurn()
+            state.focus = plan.focusTarget
+            // What it weighed, for "Why?" on the lines it logs.
+            coordinator.beginWhy(for: pieceID, candidates: plan.focusCandidates, ranged: plan.attack?.isRanged ?? false)
             if state.focus == nil && (MonsterAbility.hasAttack(actions) || actions.contains { $0.type == .move }) {
-                coordinator.log("  \(coordinator.pieceLabel(pieceID)): No focus", category: .info)
+                coordinator.log("\(coordinator.name(pieceID)) finds no enemy to focus on", category: .info)
             }
         }
 
@@ -147,22 +166,27 @@ final class MonsterTurnController {
             case .move:
                 guard state.focus != nil else { continue }
                 if MonsterAI.isActive(.immobilize, on: entity) {
-                    coordinator.log("  \(coordinator.pieceLabel(pieceID)): Immobilized", category: .condition)
+                    coordinator.log("\(coordinator.name(pieceID)) is immobilized and can\u{2019}t move", category: .condition)
                     continue
                 }
                 let plan = currentTurn()
                 if let newFocus = plan.focusTarget { state.focus = newFocus }
-                guard plan.movementPath.count > 1 else { continue }
-                coordinator.log("  \(coordinator.pieceLabel(pieceID)): Move \(plan.movementPath.count - 1) to \(plan.movementPath.last!)",
-                                category: .move)
-                let style: MovementStyle = monster.monsterData?.flying == true ? .fly : (plan.jumping ? .jump : .normal)
-                await coordinator.moveAlong(pieceID, path: plan.movementPath, style: style)
-                state.hexesMoved += plan.movementPath.count - 1
+                if plan.movementPath.count > 1 {
+                    let steps = plan.movementPath.count - 1
+                    coordinator.log("\(coordinator.name(pieceID)) moves \(steps) hex\(steps == 1 ? "" : "es")",
+                                    category: .move, trace: "to \(plan.movementPath.last!)")
+                    let style: MovementStyle = monster.monsterData?.flying == true ? .fly : (plan.jumping ? .jump : .normal)
+                    coordinator.noteWhyMove(steps)
+                    await coordinator.moveAlong(pieceID, path: plan.movementPath, style: style)
+                    state.hexesMoved += plan.movementPath.count - 1
+                }
+                // Text printed with the move happens whether or not it moved.
+                if !isStale { await performPrintedText(texts(in: action, monster: monster), pieceID: pieceID) }
 
             case .attack:
                 if MonsterAI.isActive(.disarm, on: entity) {
                     if !state.reportedDisarm {
-                        coordinator.log("  \(coordinator.pieceLabel(pieceID)): Disarmed — no attack", category: .condition)
+                        coordinator.log("\(coordinator.name(pieceID)) is disarmed and can\u{2019}t attack", category: .condition)
                         state.reportedDisarm = true
                     }
                     continue
@@ -174,20 +198,49 @@ final class MonsterTurnController {
                       let focusPos = coordinator.boardState.piecePositions[target] else { continue }
                 let spec = MonsterAbility.attack(action, stat: stat, baseAttack: baseAttack(),
                                                  baseRange: baseRange, consumed: consumed)
+                    .reduced(by: entity.doomPenalty)
                 let enemies = MonsterAI.gatherEnemies(board: coordinator.boardState, monster: monster, gameState: game)
                 let targets = MonsterAI.targets(for: spec, from: position, focus: target, focusPos: focusPos,
                                                 enemies: enemies, board: coordinator.boardState, gameState: game)
                 if targets.isEmpty {
-                    coordinator.log("  \(coordinator.pieceLabel(pieceID)): Focus out of reach", category: .move)
+                    coordinator.log("\(coordinator.name(pieceID)) can\u{2019}t reach its focus", category: .move)
                     continue
                 }
+                let printed = texts(in: action, monster: monster)
+                // Text inside a paid element consume (the Harrower's "Heal 2, self for each target damaged").
+                let paid = (action.subActions ?? []).filter { MonsterAbility.isConsume($0) && consumed.contains($0.id) }
+                    .flatMap { texts(in: $0, monster: monster) }
+                var damaged = 0
                 for victim in targets {
                     guard stillHere(), coordinator.scenarioResult == nil else { return }
+                    let victimHex = coordinator.boardState.piecePositions[victim]
+                    let healthBefore = coordinator.entity(for: victim)?.health ?? 0
                     await coordinator.performAttack(
                         attacker: pieceID, target: victim,
-                        attack: AttackParameters(value: spec.value, isRanged: spec.isRanged, pierce: spec.pierce,
+                        attack: AttackParameters(value: spec.value + bonus(printed, against: victim, pieceID: pieceID)
+                                                     + coordinator.monsterAttackBonusThisRound,
+                                                 isRanged: spec.isRanged, pierce: spec.pierce,
                                                  conditions: spec.conditions, push: spec.push, pull: spec.pull,
-                                                 advantage: spec.advantage))
+                                                 advantage: spec.advantage, range: max(1, spec.range)))
+                    guard !isStale else { return }
+                    coordinator.noteWhyAttack(on: victim)
+                    if (coordinator.entity(for: victim)?.health ?? 0) < healthBefore || !coordinator.isOnBoard(victim) { damaged += 1 }
+                    // Savvas Lavaflow: "All allies and enemies adjacent to the target suffer 2 damage."
+                    for text in printed where text.contains("adjacent to the target suffer") {
+                        await coordinator.printedDamage(text, amount: PlayerTurnController.damageAmount(in: text), by: pieceID,
+                                                  around: victimHex)
+                    }
+                }
+                for text in paid where text.contains("for each target damaged") && damaged > 0 && stillHere() {
+                    let amount = (text.firstMatch(of: #/heal (\d+)/#).flatMap { Int($0.1) } ?? 0) * damaged
+                    let healed = coordinator.heal(pieceID, amount: amount, source: pieceID)
+                    coordinator.log("\(coordinator.name(pieceID)) heals for \(healed)", category: .heal)
+                }
+                if stillHere() { await performPrintedText(printed.filter { !$0.contains("adjacent to the target") }, pieceID: pieceID) }
+                // Deep Terror: "Summon a Deep Terror in a hex adjacent to the target."
+                for summon in (action.subActions ?? []) where summon.type == .summon {
+                    guard let near = targets.first(where: { coordinator.isOnBoard($0) }) ?? (stillHere() ? pieceID : nil) else { continue }
+                    performSummon(summon, pieceID: near, summoner: entity, monster: monster)
                 }
 
             case .heal:
@@ -219,14 +272,40 @@ final class MonsterTurnController {
 
             case .sufferDamage, .suffer:
                 let amount = action.value?.intValue ?? 0
-                coordinator.log("  \(coordinator.pieceLabel(pieceID)): Suffers \(amount) damage", category: .damage)
+                coordinator.log("\(coordinator.name(pieceID)) suffers \(amount) damage", category: .damage)
                 coordinator.sufferDamage(amount, to: pieceID)
 
             case .loot:
                 performLoot(range: action.value?.intValue ?? 1, pieceID: pieceID)
 
             case .summon:
-                performSummon(action, pieceID: pieceID)
+                performSummon(action, pieceID: pieceID, summoner: entity, monster: monster)
+
+            case .shield, .retaliate:
+                // The card's own Shield/Retaliate was given when it was revealed; a paid element
+                // inside it adds to it, or replaces it ("Shield 2 instead", the Lurker).
+                for paid in (action.subActions ?? []) where MonsterAbility.isConsume(paid) && consumed.contains(paid.id) {
+                    for reward in paid.subActions ?? [] where reward.type == action.type {
+                        let instead = reward.subActions?.contains { $0.value?.stringValue.contains("instead") == true } == true
+                        let extra = (reward.value?.intValue ?? 0) - (instead ? (action.value?.intValue ?? 0) : 0)
+                        guard extra > 0 else { continue }
+                        applyRoundBonus(ActionModel(type: action.type, value: .int(extra)), to: entity)
+                        coordinator.log("\(coordinator.name(pieceID)): \(GameText.actionTitle(reward))", category: .condition)
+                    }
+                }
+
+            case .custom where action.value?.stringValue.contains("ondeath") == true:
+                // "On death: …" (Cultists) is made when the monster dies, not on its turn.
+                continue
+
+            case .custom:
+                // Text printed as its own line ("All enemies suffer 2 damage"), and what it wraps.
+                await performPrintedText(texts(in: ActionModel(type: .concatenation, subActions: [action]), monster: monster), pieceID: pieceID)
+                let wrapped = (action.subActions ?? []).filter { $0.type != .custom }
+                if !wrapped.isEmpty {
+                    await executeCard(wrapped, pieceID: pieceID, entity: entity, monster: monster,
+                                      ability: ability, consumed: consumed, turn: &state)
+                }
 
             case .special:
                 // Boss special abilities: run the structured actions as if they were the card
@@ -234,9 +313,29 @@ final class MonsterTurnController {
                 // resolved by the players.
                 let index = (action.value?.intValue ?? 1) - 1
                 guard let special = stat?.special, index >= 0, index < special.count else { continue }
-                coordinator.log("  \(coordinator.pieceLabel(pieceID)): Special \(index + 1)", category: .info)
-                if special[index].contains(where: { $0.type == .custom }) {
-                    coordinator.log("  Resolve the boss's special ability \(index + 1) as printed on its stat card",
+                coordinator.log("\(coordinator.name(pieceID)) uses special ability \(index + 1)", category: .info)
+                let specialTexts = texts(in: ActionModel(type: .concatenation, subActions: special[index]), monster: monster)
+                var unresolved = false
+                for text in specialTexts {
+                    if text.contains("move to next door and reveal room") {
+                        await moveToNextDoor(pieceID: pieceID, entity: entity, monster: monster)
+                    } else if text.contains("all allies add") && text.contains("attack") && text.contains("this round") {
+                        // Captain of the Guard: "All allies add +1 Attack to all attacks this round."
+                        let extra = text.firstMatch(of: #/\+(\d+) attack/#).flatMap { Int($0.1) } ?? 1
+                        coordinator.monsterAttackBonusThisRound += extra
+                        coordinator.log("Monsters add +\(extra) Attack to their attacks this round", category: .attack)
+                    } else if text.contains("scouts act again") {
+                        // Merciless Overseer: every Vermling Scout takes another turn.
+                        if let scouts = gameManager.game.monsters.first(where: { $0.name.contains("scout") }), scouts !== monster {
+                            coordinator.log("The Vermling Scouts act again", category: .round)
+                            await executeMonsterGroup(scouts)
+                        }
+                    } else {
+                        unresolved = true
+                    }
+                }
+                if unresolved {
+                    coordinator.log("Resolve the boss\u{2019}s special ability \(index + 1) as printed on its stat card",
                                     category: .info)
                 }
                 let specialActions = special[index].filter { $0.type != .custom }
@@ -251,6 +350,108 @@ final class MonsterTurnController {
                 // Shield/retaliate are applied for the whole round when the card is revealed;
                 // element infusions happen after the type's turn; hints/custom text are display-only.
                 break
+            }
+        }
+    }
+
+    /// Bandit Commander: "Move to next door and reveal room": toward the nearest closed door, with
+    /// its Move, opening the door if it gets there.
+    @MainActor private func moveToNextDoor(pieceID: PieceID, entity: GameMonsterEntity, monster: GameMonster) async {
+        guard let coordinator, let game = gameManager?.game, let start = coordinator.boardState.piecePositions[pieceID] else { return }
+        if MonsterAI.isActive(.immobilize, on: entity) {
+            coordinator.log("\(coordinator.name(pieceID)) is immobilized and can\u{2019}t move", category: .condition)
+            return
+        }
+        let characterCount = max(2, game.characters.filter { !$0.absent }.count)
+        let movement = monster.stat(for: entity.type)?.movementValue(characterCount: characterCount, level: monster.level) ?? 0
+        let (enemies, allies) = coordinator.movementSets(for: pieceID)
+        let paths = coordinator.boardState.doors.filter { !$0.isOpen }.compactMap { door in
+            Pathfinder.findPath(board: coordinator.boardState, from: start, to: door.coord, avoidTraps: true, canOpenDoors: true,
+                                occupiedByEnemy: enemies, occupiedByAlly: allies)
+        }
+        let board = coordinator.boardState
+        // The nearest door by movement (difficult terrain costs 2), not by hexes.
+        guard let path = paths.min(by: { Pathfinder.movementCost(of: $0, board: board) < Pathfinder.movementCost(of: $1, board: board) }),
+              path.count > 1 else {
+            coordinator.log("\(coordinator.name(pieceID)) has no door to reach", category: .move)
+            return
+        }
+        // Up to the first closed door on the way: it opens as the Commander reaches it.
+        let doorIndex = path.firstIndex { hex in coordinator.boardState.doors.contains { $0.coord == hex && !$0.isOpen } } ?? path.count - 1
+        // How far along the path its Move takes it.
+        let reach = (0...doorIndex).last { Pathfinder.movementCost(of: Array(path.prefix($0 + 1)), board: board) <= movement } ?? 0
+        coordinator.log("\(coordinator.name(pieceID)) heads for the door", category: .move)
+        // It may pass allies, but must stop on a free hex.
+        func lastFree(upTo index: Int) -> Int {
+            var i = index
+            while i > 0 && coordinator.boardState.isOccupied(path[i]) { i -= 1 }
+            return i
+        }
+        if reach >= doorIndex && lastFree(upTo: doorIndex - 1) == doorIndex - 1 {
+            if doorIndex > 1 { await coordinator.moveAlong(pieceID, path: Array(path.prefix(doorIndex)), style: .normal) }
+            guard !isStale else { return }
+            coordinator.openDoor(at: path[doorIndex])
+            // The room it reveals may put a figure in the doorway.
+            if !coordinator.boardState.isOccupied(path[doorIndex]),
+               coordinator.boardState.piecePositions[pieceID] == path[doorIndex - 1] {
+                await coordinator.moveAlong(pieceID, path: [path[doorIndex - 1], path[doorIndex]], style: .normal)
+            }
+        } else {
+            let stop = lastFree(upTo: min(reach, doorIndex - 1))
+            if stop > 0 { await coordinator.moveAlong(pieceID, path: Array(path.prefix(stop + 1)), style: .normal) }
+        }
+    }
+
+    // MARK: - Printed text
+
+    /// The text printed in an action (its custom lines), resolved and lowercased.
+    private func texts(in action: ActionModel, monster: GameMonster) -> [String] {
+        guard let store = gameManager?.editionStore else { return [] }
+        return (action.subActions ?? []).filter { $0.type == .custom }.compactMap { $0.value?.stringValue }
+            .compactMap { store.resolveCustomText($0, edition: monster.edition) }.map { $0.lowercased() }
+    }
+
+    /// "+2 Attack if the target is adjacent to any of the Hound's allies" (Hound, Giant Viper).
+    private func bonus(_ texts: [String], against target: PieceID, pieceID: PieceID) -> Int {
+        guard let coordinator, let hex = coordinator.boardState.piecePositions[target] else { return 0 }
+        var extra = 0
+        for text in texts where text.contains("if the target is adjacent to any of") {
+            let flanked = hex.neighbors.compactMap { coordinator.boardState.piece(at: $0) }
+                .contains { $0 != pieceID && $0 != target && !coordinator.areEnemies(pieceID, $0) }
+            if flanked { extra += text.firstMatch(of: #/\+(\d+) attack/#).flatMap { Int($0.1) } ?? 0 }
+        }
+        return extra
+    }
+
+    /// What a monster's printed text does, after its attack or move: damage around it ("All
+    /// adjacent enemies suffer 2 damage"), a trap ("Create a 3 damage trap in an adjacent empty
+    /// hex closest to an enemy"), disadvantage against it this round (Giant Viper).
+    @MainActor private func performPrintedText(_ texts: [String], pieceID: PieceID) async {
+        guard let coordinator, let position = coordinator.boardState.piecePositions[pieceID] else { return }
+        for text in texts {
+            if text.contains("trap in an adjacent empty hex") {
+                let enemies = coordinator.boardState.piecePositions.filter { coordinator.areEnemies(pieceID, $0.key) }.map(\.value)
+                let hexes = position.neighbors.filter(coordinator.isEmptyHex)
+                guard let hex = hexes.min(by: { a, b in
+                    let da = enemies.map { a.distance(to: $0) }.min() ?? 99, db = enemies.map { b.distance(to: $0) }.min() ?? 99
+                    return da == db ? a < b : da < db
+                }) else { continue }
+                coordinator.placeTrap(damage: PlayerTurnController.damageAmount(in: text), at: hex, by: pieceID)
+            } else if text.contains("attacks targeting") && text.contains("disadvantage") {
+                coordinator.disadvantagedThisRound.insert(pieceID)
+                coordinator.log("Attacks on \(coordinator.name(pieceID)) have disadvantage this round", category: .condition)
+            } else if text.contains("suffer") && text.contains("damage") {
+                let amount = PlayerTurnController.damageAmount(in: text)
+                if text.contains("all enemies suffer") {
+                    for enemy in coordinator.boardState.piecePositions.keys.filter({ coordinator.areEnemies(pieceID, $0) }).sorted()
+                    where coordinator.isOnBoard(enemy) && !isStale {
+                        coordinator.log("\(coordinator.name(enemy)) suffers \(amount) damage", category: .damage)
+                        await coordinator.sufferDamageWithMitigation(amount, to: enemy, source: coordinator.name(pieceID),
+                                                                     killer: pieceID)
+                    }
+                } else {
+                    await coordinator.printedDamage(text, amount: amount, by: pieceID, around: position)
+                }
             }
         }
     }
@@ -301,8 +502,8 @@ final class MonsterTurnController {
             return lostA < lostB
         } ?? pieceID
         let healed = coordinator.heal(target, amount: amount, source: pieceID)
-        coordinator.log("  \(coordinator.pieceLabel(pieceID)) → \(coordinator.pieceLabel(target)): Heal \(amount) (+\(healed))",
-                        category: .heal)
+        coordinator.log(coordinator.healLine(pieceID, healed: target, for: healed),
+                        category: .heal, trace: "Heal \(amount)")
     }
 
     /// Conditions, push or pull applied to the figures named by a `specialTarget`
@@ -324,7 +525,7 @@ final class MonsterTurnController {
             case .push, .pull:
                 let steps = part.value?.intValue ?? 0
                 guard steps > 0, let origin = coordinator.boardState.piecePositions[pieceID] else { continue }
-                for target in targets where target != pieceID && coordinator.isOnBoard(target) {
+                for target in targets where target != pieceID && coordinator.isOnBoard(target) && !isStale {
                     await coordinator.performPushPull(target: target, attackerPos: origin, steps: steps,
                                                       isPush: part.type == .push)
                 }
@@ -373,20 +574,29 @@ final class MonsterTurnController {
                                                      offsetRow: coordinator.offsetRow)
         }
         if taken > 0 {
-            coordinator.log("  \(coordinator.pieceLabel(pieceID)): Looted \(taken) money token(s)", category: .loot)
+            coordinator.log("\(coordinator.name(pieceID)) loots \(taken) money token\(taken == 1 ? "" : "s")", category: .loot)
         }
     }
 
     /// Monster summon: place the summoned monster in an empty adjacent hex, as close to an enemy
     /// as possible. It doesn't act this round and drops no money token (p.31).
-    private func performSummon(_ action: ActionModel, pieceID: PieceID) {
+    private func performSummon(_ action: ActionModel, pieceID: PieceID, summoner: GameMonsterEntity, monster: GameMonster) {
         guard let coordinator, let game = gameManager?.game,
               let specs = action.monsterSummons else { return }
         let characterCount = max(2, game.characters.filter { !$0.absent }.count)
         for spec in specs {
             let type = spec.type(forPlayerCount: characterCount)
+            let before = Set(game.monsters.first { $0.name == spec.name }?.aliveEntities.map(\.number) ?? [])
             if !coordinator.summonMonster(name: spec.name, type: type, near: pieceID) {
-                coordinator.log("  \(coordinator.pieceLabel(pieceID)): Summon \(spec.name) failed", category: .info)
+                coordinator.log("\(coordinator.name(pieceID)) can\u{2019}t summon \(coordinator.monsterTypeName(spec.name)): no room", category: .info)
+                continue
+            }
+            // The Ooze splits: "with H equal to the summoning Ooze's current hit point value
+            // (limited by a normal Ooze's maximum)".
+            if spec.health?.stringValue == "H",
+               let summoned = game.monsters.first(where: { $0.name == spec.name })?.aliveEntities
+                .first(where: { !before.contains($0.number) }) {
+                summoned.health = min(summoner.health, summoned.maxHealth)
             }
         }
     }

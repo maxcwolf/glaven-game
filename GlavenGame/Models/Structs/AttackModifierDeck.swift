@@ -7,6 +7,9 @@ struct AttackModifierDeck: Codable {
     var discards: [Int]
     var active: Bool
     var state: AdvantageState?
+    /// Base cards taken out for one scenario (Second Skin's two −1s); back after it. Optional so
+    /// saves from before it existed still load.
+    var setAside: [AttackModifier]?
 
     init(attackModifiers: [AttackModifier] = [], cards: [AttackModifier] = [],
          current: Int = -1, discards: [Int] = [], active: Bool = true,
@@ -81,9 +84,26 @@ struct AttackModifierDeck: Codable {
     /// the deck back to its base composition (GH p.47).
     mutating func removeScenarioCards() {
         attackModifiers.removeAll { $0.type.isSpecial || $0.scenarioAdded }
+        attackModifiers.append(contentsOf: setAside ?? [])
+        setAside = nil
         cards = attackModifiers.shuffled(using: &GameRandom.shared)
         current = -1
         discards = []
+    }
+
+    /// Take up to `count` cards of a type out of the deck for the scenario (scenario-added ones
+    /// first, which simply go; base ones come back after it).
+    mutating func setAsideForScenario(_ type: AttackModifierType, count: Int) {
+        for _ in 0..<count {
+            guard let index = attackModifiers.firstIndex(where: { $0.type == type && $0.scenarioAdded })
+                    ?? attackModifiers.firstIndex(where: { $0.type == type }) else { return }
+            let card = attackModifiers.remove(at: index)
+            if !card.scenarioAdded { setAside = (setAside ?? []) + [card] }
+            if let drawIndex = cards.firstIndex(where: { $0.id == card.id }) {
+                cards.remove(at: drawIndex)
+                if drawIndex <= current { current -= 1 }
+            }
+        }
     }
 
     /// Add a Bless/Curse (or other standard) card to the deck at a random undrawn position.

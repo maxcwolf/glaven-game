@@ -85,8 +85,28 @@ final class EditionDataStore {
            let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
             labelsByEdition[editionName] = json
         }
+        // The "spoiler" labels hold the text of what starts locked: the other classes' cards and
+        // every item's effect. The game only shows them once they're unlocked.
+        let spoilerURL = editionURL.appendingPathComponent("label/spoiler/en.json")
+        if let data = try? Data(contentsOf: spoilerURL),
+           let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
+            labelsByEdition[editionName] = Self.merging(labelsByEdition[editionName] ?? [:], json)
+        }
 
         buildIndexes(for: editionName)
+    }
+
+    /// Merge two label trees; where both have a dictionary, they are merged in turn.
+    static func merging(_ base: [String: Any], _ extra: [String: Any]) -> [String: Any] {
+        var result = base
+        for (key, value) in extra {
+            if let a = result[key] as? [String: Any], let b = value as? [String: Any] {
+                result[key] = merging(a, b)
+            } else if result[key] == nil {
+                result[key] = value
+            }
+        }
+        return result
     }
 
     /// Load all JSON files from a directory into an array of decoded objects.
@@ -153,9 +173,10 @@ final class EditionDataStore {
             (decksByEdition[edition] ?? []).map { ($0.name, $0) },
             uniquingKeysWith: { _, last in last }
         )
+        // A number names the campaign scenario: solo scenarios share #1–#17 and never shadow them.
         scenarioIndex[edition] = Dictionary(
             (scenariosByEdition[edition] ?? []).map { ($0.index, $0) },
-            uniquingKeysWith: { _, last in last }
+            uniquingKeysWith: { first, other in first.group == nil || other.group != nil ? first : other }
         )
         sectionIndex[edition] = Dictionary(
             (sectionsByEdition[edition] ?? []).map { ($0.index, $0) },
@@ -246,6 +267,21 @@ final class EditionDataStore {
         itemIndex[edition]?[id]
     }
 
+    /// An item by its "edition-id" key ("gh-16").
+    func itemData(key: String) -> ItemData? {
+        let parts = key.split(separator: "-", maxSplits: 1)
+        guard parts.count == 2, let id = Int(parts[1]) else { return nil }
+        return itemData(id: id, edition: String(parts[0]))
+    }
+
+    /// Leave behind whatever the character can't bring beside the items before it (GH p.9);
+    /// with no limits (a table rule), only what the player left at home.
+    func fitLoadout(_ character: GameCharacter, unlimited: Bool) {
+        character.itemsLeftBehind = unlimited ? character.itemsLeftBehind.filter(character.items.contains)
+            : ItemLoadout.leftBehind(owned: character.items, leftBehind: character.itemsLeftBehind,
+                                     level: character.level, item: { self.itemData(key: $0) })
+    }
+
     func availableItems(for edition: String, prosperity: Int) -> [ItemData] {
         items(for: edition).filter { $0.availableAtProsperity(prosperity) }
     }
@@ -333,6 +369,14 @@ final class EditionDataStore {
     private func resolveInnerPlaceholders(_ text: String) -> String {
         var result = text
 
+        // Nested labels first (the Doomstalker's "%data.custom.gh.angry-face.doomed%" is itself
+        // "%data.characterColored.angry-face:Doomed%…"), so the steps below see their words.
+        for _ in 0..<3 where result.contains("%data.custom.") {
+            result = replacePattern(in: result, pattern: #"%data\.(custom\.[^%]+)%"#) { match in
+                resolveLabel(key: match[1], edition: "gh") ?? match[0]
+            }
+        }
+
         // Replace %game.action.X:N% → "X N" (must come before the no-value variant)
         result = replacePattern(in: result, pattern: #"%game\.action\.([^:%]+):(\d+)%"#) { match in
             let name = match[1].replacingOccurrences(of: "-", with: " ").capitalized
@@ -346,6 +390,26 @@ final class EditionDataStore {
         // Replace %game.condition.X% → "X"
         result = replacePattern(in: result, pattern: #"%game\.condition\.([^%]+)%"#) { match in
             match[1].replacingOccurrences(of: "-", with: " ").capitalized
+        }
+
+        // Replace %game.element.consume.X% → "consume X" (wild: any element)
+        result = replacePattern(in: result, pattern: #"%game\.element\.consume\.([^%]+)%"#) { match in
+            match[1] == "wild" ? "consume any element" : "consume \(match[1].capitalized)"
+        }
+
+        // Replace %game.attackmodifier.X% → "+0", "\u{2212}1", "\u{00D7}2"
+        result = replacePattern(in: result, pattern: #"%game\.attackmodifier\.([^%]+)%"#) { match in
+            AttackModifierType(rawValue: match[1]).map(GameText.modifierValue) ?? match[1]
+        }
+
+        // Replace %game.items.slots.X% → "small", "one-hand"
+        result = replacePattern(in: result, pattern: #"%game\.items\.slots\.([^%]+)%"#) { match in
+            ["onehand": "one-hand", "twohand": "two-hand"][match[1]] ?? match[1]
+        }
+
+        // Replace %data.characterColored.class:Word% → "Word" (a class's own word, such as Augment)
+        result = replacePattern(in: result, pattern: #"%data\.characterColored\.[^:%]+:([^%]+)%"#) { match in
+            match[1]
         }
 
         // Replace %game.element.X% → "X"
@@ -374,8 +438,10 @@ final class EditionDataStore {
         // Strip any remaining %...% patterns
         result = replacePattern(in: result, pattern: #"%[^%]+%"#) { _ in "" }
 
-        // Clean up HTML line breaks
+        // Clean up HTML line breaks, and the gaps left where an icon was
         result = result.replacingOccurrences(of: "<br>", with: "\n")
+        result = replacePattern(in: result, pattern: #" {2,}"#) { _ in " " }
+        result = replacePattern(in: result, pattern: #" ([.,])"#) { match in match[1] }
 
         return result.trimmingCharacters(in: .whitespaces)
     }

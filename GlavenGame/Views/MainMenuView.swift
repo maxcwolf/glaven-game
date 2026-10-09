@@ -3,49 +3,52 @@ import SwiftUI
 struct MainMenuView: View {
     @Environment(GameManager.self) private var gameManager
     @State private var showSettings = false
+    @State private var showLoad = false
+    @State private var showCredits = false
 
     var body: some View {
         ZStack {
-            GlavenTheme.background
-                .ignoresSafeArea()
+            MenuKeyArt()
 
             VStack(spacing: 24) {
                 Spacer()
 
-                LogoView(size: 180)
-
-                Text("GLAVEN")
-                    .font(GlavenFont.title(size: 72))
-                    .foregroundStyle(GlavenTheme.primaryText)
-                    .padding(.top, -8)
+                Text("Glaven")
+                    .font(GlavenFont.title(size: 96))
+                    .foregroundStyle(BoardTheme.text)
+                    .shadow(color: .black.opacity(0.8), radius: 12, y: 4)
+                    .accessibilityAddTraits(.isHeader)
 
                 Text("A Gloomhaven Board Game")
                     .font(.title3)
-                    .foregroundStyle(GlavenTheme.secondaryText)
+                    .foregroundStyle(BoardTheme.text.opacity(0.85))
+                    .shadow(color: .black, radius: 6)
+                    .padding(.top, -18)
 
                 VStack(spacing: 12) {
-                    menuButton("New Game", icon: "plus.circle.fill") {
-                        gameManager.newGame()
-                        gameManager.setEdition("gh")
-                        gameManager.appPhase = .gameSetup
+                    if let summary = gameManager.autosaveSummary {
+                        continueButton(summary)
                     }
 
-                    if gameManager.hasAutosave {
-                        menuButton("Continue", icon: "play.circle.fill") {
-                            gameManager.restoreGame()
-                            if gameManager.boardCoordinator.boardScene != nil {
-                                gameManager.appPhase = .board
-                            } else if !gameManager.game.figures.isEmpty {
-                                gameManager.appPhase = .gameSetup
-                            }
+                    menuButton(gameManager.hasAutosave ? "New Campaign" : "New Game", icon: "plus.circle.fill") {
+                        gameManager.beginNewGame()
+                    }
+
+                    if !gameManager.campaigns.isEmpty {
+                        menuButton("Campaigns", icon: "books.vertical.fill") {
+                            showLoad = true
                         }
                     }
 
                     menuButton("Settings", icon: "gearshape.fill") {
                         showSettings = true
                     }
+
+                    menuButton("Credits", icon: "scroll.fill") {
+                        showCredits = true
+                    }
                 }
-                .frame(width: 280)
+                .frame(width: 300)
                 .padding(.top, 8)
 
                 Spacer()
@@ -55,6 +58,56 @@ struct MainMenuView: View {
         .sheet(isPresented: $showSettings) {
             PreferencesSheet()
         }
+        .overlay {
+            if showLoad {
+                CampaignsSheet(onDone: { showLoad = false })
+                    .transition(.opacity)
+            }
+        }
+        .overlay {
+            if showCredits {
+                CreditsSheet { showCredits = false }
+                    .transition(.opacity)
+            }
+        }
+    }
+
+    /// Continue, with what it resumes: "Brute, Tinkerer" and "#1 Black Barrow · Round 2".
+    private func continueButton(_ summary: AutosaveSummary) -> some View {
+        Button {
+            gameManager.continueGame()
+        } label: {
+            HStack(spacing: 12) {
+                Image(systemName: "play.circle.fill")
+                    .font(.title3)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Continue")
+                        .font(GlavenFont.title(size: 22))
+                    Text(continueDetail(summary))
+                        .font(.caption)
+                        .foregroundStyle(BoardTheme.secondaryText)
+                        .lineLimit(2)
+                }
+                Spacer()
+                Image(systemName: "chevron.right")
+                    .font(.caption)
+                    .foregroundStyle(BoardTheme.secondaryText)
+            }
+            .padding(.horizontal, 20)
+            .padding(.vertical, 12)
+            .frame(minHeight: 44)
+            .background(BoardTheme.panel, in: RoundedRectangle(cornerRadius: BoardTheme.Radius.medium))
+            .overlay(RoundedRectangle(cornerRadius: BoardTheme.Radius.medium).stroke(BoardTheme.brass, lineWidth: 1.5))
+            .foregroundStyle(BoardTheme.text)
+        }
+        .buttonStyle(.plain)
+        .accessibilityHint(continueDetail(summary))
+    }
+
+    private func continueDetail(_ summary: AutosaveSummary) -> String {
+        let party = GameText.list(summary.characterNames)
+        guard let scenario = summary.scenario, let round = summary.round else { return party }
+        return "\(party)\n\(scenario) · Round \(round)"
     }
 
     @ViewBuilder
@@ -68,13 +121,14 @@ struct MainMenuView: View {
                 Spacer()
                 Image(systemName: "chevron.right")
                     .font(.caption)
-                    .foregroundStyle(GlavenTheme.secondaryText)
+                    .foregroundStyle(BoardTheme.secondaryText)
             }
             .padding(.horizontal, 20)
             .padding(.vertical, 14)
-            .background(GlavenTheme.cardBackground)
-            .foregroundStyle(GlavenTheme.primaryText)
-            .clipShape(RoundedRectangle(cornerRadius: 12))
+            .frame(minHeight: 44)
+            .background(BoardTheme.panel, in: RoundedRectangle(cornerRadius: BoardTheme.Radius.medium))
+            .overlay(RoundedRectangle(cornerRadius: BoardTheme.Radius.medium).stroke(BoardTheme.border, lineWidth: 1))
+            .foregroundStyle(BoardTheme.text)
         }
         .buttonStyle(.plain)
     }

@@ -4,6 +4,9 @@ import Foundation
 final class EntityManager {
     private let game: GameState
     var onBeforeMutate: (() -> Void)?
+    /// The board takes a character's wound damage itself, so it can be negated like any other
+    /// damage (p.22); returns true when it does.
+    var takesWoundDamage: ((any Entity) -> Bool)?
     var scenarioStatsManager: ScenarioStatsManager?
 
     init(game: GameState) {
@@ -44,6 +47,7 @@ final class EntityManager {
         if let charName = characterName(for: entity) {
             if actualChange < 0 {
                 scenarioStatsManager?.recordDamageTaken(by: charName, amount: -actualChange)
+                scenarioStatsManager?.recordHealth(of: charName, health: entity.health, maxHealth: entity.maxHealth)
             } else if actualChange > 0 {
                 scenarioStatsManager?.recordHeal(by: charName, amount: actualChange)
             }
@@ -140,7 +144,7 @@ final class EntityManager {
             let types = condition.types
 
             // Wound: deal 1 damage at start of turn (persists until removed)
-            if condition.name == .wound && types.contains(.apply) {
+            if condition.name == .wound && types.contains(.apply) && takesWoundDamage?(entity) != true {
                 changeHealth(entity, amount: -1)
             }
 

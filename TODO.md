@@ -140,7 +140,7 @@ Tracking features needed for parity with [Gloomhaven Secretariat](https://github
 
 ## Data Management
 
-- [x] Named save slots
+- [x] Campaigns: each saved to its own file (Documents/Campaigns on iPad, in the Files app); New Campaign never replaces one; the Campaigns list plays, renames, duplicates, exports and deletes them, and imports a shared one; the old SwiftData autosave and named slots carry over (`CampaignTests`)
 - [x] Game backup/restore with multiple slots
 - [x] Export / import game state (JSON file sharing)
 - [x] Edition data URL management (custom editions)
@@ -187,6 +187,126 @@ Tracking features needed for parity with [Gloomhaven Secretariat](https://github
 - [x] Light theme option
 - [x] Responsive layout (sidebar on wide screens)
 - [x] Accessibility (VoiceOver, Dynamic Type)
+
+Most of the items above belong to the companion-app views, which the game itself no longer
+reaches; `ContentView` only shows the main menu, the party screen and the board.
+
+### Look & feel audit 2026-10-08 (`docs/audits/2026-10-08-ux-audit.pdf`)
+- [x] Board layout from the mockup (`docs/mockups/`): one top bar (menu, round and phase, goal, a turn rail that shows who is ready or choosing during card selection and "2 of 3 acting" in play, small elements lit by state); party and monster panels sized to their contents with portraits; the log as recent notes with the whole log a tap away; card selection as the real card scans with Lead/Second badges, the board fitting above it (`testTheTopBarDuringCardSelection`, `testTheTopBarDuringPlay`)
+- [x] Turn panel: the two played cards as the real card scans, the half each gives lit and the half being performed ringed in brass; the next step as the one brass button, the rest quiet (Swap Cards, Top/Bottom First, the basic action, Skip Rest of Half, items); the instruction with Cancel and Skip inside the panel while a step waits; Begin Scenario, End Turn and the rest prompts brass; no green, cyan or orange buttons left on the board (`testThePlayedCardsStaySmall`); the quiet buttons wrap inside the panel rather than running out of it (`testTheTurnButtonsStayInsideThePanel`)
+- [x] Scenario brief: the scenario's monsters as portraits, the map (rooms and starting tile) and the rewards for winning (achievements, gold and XP, items, a new class, the scenarios it unlocks), beside the goal, defeat and special rules (`testBriefsSayWhatTheScenarioAsks`)
+- [x] Attack previews: while choosing a target, a chip under each says the damage it would take ("2 dmg") and the instruction gives the sum ("3 − 1 shield = 2 + draw", poison, advantage, conditions), spoken to VoiceOver too; the drawn modifiers' sum as chips in the tray ("Attack 2", "−1 card", "−1 shield", "= 0", conditions) (`testTheAttackPreviewSaysWhatTheAttackWillDo`, `testTheDrawSumAsChips`)
+- [x] Pause and Fast-Forward while monsters, summons and escorts take their turns (Space and F): paused, the turn stops before its next move, attack or figure; fast-forward plays four times quicker; both end when a character's turn or a new round comes, and leaving the board releases a paused turn (`PlaybackTests`)
+- [x] Learning mode (`docs/mockups/learn-*.png`), on for a player's first campaign and switchable in setup or the game menu: a tip the first time each rule comes up (about 40, in our own words; one at a time, each shown once ever, the monsters held while one is up), with a spotlight on what it's about and the moment's own numbers ("Here Brute drew −1: 2 − 1 − 1 shield = no damage"); long-press (right-click on the Mac) anything to learn what it is; the "?" outlines everything and explains the next tap; "Why?" on each monster's lines in Recent shows the enemies it weighed, its focus and why, drawn on the board; How to Play in the game menu, opened at the topic (`LearningModeTests`)
+- [x] How to Play as a book (`docs/mockups/howto-*.png`): wide, two panes, the contents with a tick for each topic met in play or read and "New" for those met but not read, a search, one topic at a time with Previous and Next (arrow keys too); titles in Pirata One, the text in a serif with key terms in bold and links between topics; each topic's picture is the game's own art (modifier cards, card scans, condition and element icons, monster tokens) or a hex diagram (moving, doors, loot, summons, attacking, line of sight, push and pull, how monsters choose, winning); "On the board" says where each rule shows up (`HowToPlayTests`)
+- [x] Learning mode beyond the board's monsters: "Why?" for summons' turns too (the enemies a summon weighed, its move and attacks); tips in town as each thing becomes possible (levelling up, perks, personal quests, retirement, the shop, enhancing) with How to Play in the town bar; a "Special rules" tip for scenarios that have them; a "Between Scenarios" chapter in How to Play (`LearningBeyondMonstersTests`)
+- [x] Fills every iPad screen: a launch screen, so iOS no longer letterboxes the app to an older iPad's size (black bars on the 11-inch iPad Pro M4); checked on the 13-inch and 11-inch iPad Pro and the iPad mini (`ProjectSettingsTests`)
+- [x] Town screen in the board's look (`docs/mockups/town-*.png`): a top bar with the town's standing and what can be done there; the party as cards (portrait, brass XP bar, gold, quest, actions) with the classes to recruit pinned below so a tap never lands on the wrong class; the chosen scenario with its spot on the world map, goal, monsters and rewards; difficulty and the scenario level it gives; Set Out saying what comes next; the open scenarios on the right (`TownTests`)
+- [x] Settings in the board's look: sections as panels, brass switches, animation speed and text size as named stops (Fast … Very Slow, Compact … Maximum) instead of sliders, with a text preview (`SettingsStopsTests`)
+- [x] Character sheet in the board's look (`docs/mockups/sheet-11in.png`): one page instead of tabs — level and XP bar, health/cards/gold, personal quest with progress, battle goals in groups of three, notes, perks in the rulebook's words with brass checkboxes, owned items; a large dialog over the town instead of the small form sheet (`TownTests`)
+- [x] Shop in the board's look (`docs/mockups/shop-11in.png`): item tiles that say what each item does, Spent/Lost badges, Buy / Sell for half (confirmed on the tile) / "n more gold" / Sold out, slot filter as a brass segmented capsule, the buyer switchable between party members, what they own per slot (`TownTests`)
+- [x] Item rule text dropped modifier, element-consume, slot and class-word tokens (Iron Helmet read "to be a  instead"); summon items had no text (`testEveryItemSaysWhatItDoes`)
+- [x] Campaign in the board's look (`docs/mockups/campaign-11in.png`): prosperity checkmarks with level thresholds, reputation as a centred track with its price effect, achievements as chips, open and won scenarios, the party, the campaign log
+- [x] Campaign progress counted the 17 solo scenarios and the random dungeon ("0/113" for Gloomhaven's 95) (`TownDialogTests`)
+- [x] World map in the board's look (`docs/mockups/worldmap-11in.png`): a large dialog, stickers only for scenarios the party has found (open in brass, won in green) instead of every scenario, a detail panel beside the map instead of a second sheet
+- [x] Hand in the board's look (`docs/mockups/hand-11in.png`): all of the class's cards on one screen, chosen ones ringed in brass, the count as a brass chip
+- [x] Table rules, campaigns, credits and the event card in the board's look (`docs/mockups/small-dialogs.png`), as dialogs over the town and menu
+- [x] Items loadout in the board's look (`docs/mockups/loadout-11in.png`): owned items as tiles saying what each does, brass switches to bring or leave at home, why one can't be brought
+- [x] Enhancer in the board's look (`docs/mockups/enhancer-11in.png`): the class's cards on the left, the chosen card large with each slot and its priced options (unaffordable ones dimmed), gold in the header
+- [x] Level-up card choice in the board's look (`docs/mockups/levelup-11in.png`): the new level's cards large, chosen one ringed in brass, Add Card / Later
+- [x] Statistics in the board's look (`docs/mockups/statistics-11in.png`): won, lost, kills, exhaustions; per character won, kills, elites, exhausted, XP, gold (from character records); names from labels, not `.capitalized`
+- [x] Personal quest, battle goal and sanctuary dialogs in the shared header style (`docs/mockups/pickers.png`), Keep buttons on each choice, sanctuary progress to the next prosperity
+- [x] Cancel in a recruit's quest picker takes the recruit back, log entry and all (`testCancellingTheQuestUndoesTheRecruit`)
+- [x] Hold Prosperity, Reputation, City Event and Sanctuary in town to learn about them (`docs/mockups/town-hold-*.png`): the board's explanation card under the chip, with How to Play topics for each
+- [x] Unlocking looked won scenarios up by number in load order, so a solo scenario sharing the number could unlock nothing (#4 Crypt of the Damned → #5, #6) (`testWinningAScenarioUnlocksWhatItsCampaignCardSays`)
+- [x] Event text showed raw `<br><br>` (city event 11 and 13 others): line breaks become paragraphs (`testEventTextHasNoMarkup`)
+- [x] Board action panel: a tall empty area above and beside the turn controls on the 11-inch iPad; FlowLayout claimed all the width offered (`testAFlowIsAsWideAsItsRows`)
+- [ ] Learning mode, still to write: "Why?" for escorts; FH topics (loot cards, outposts) when FH play comes
+
+Phase I — safety & words (done)
+- [x] Autosave at the start of every round, at scenario end and on Save & Quit; Continue resumes the board at the saved round (`SaveAndContinueTests`)
+- [x] Exit replaced by a game menu (Save & Quit, Abandon with confirmation); "‹ Menu" no longer wipes the campaign; New Game confirms and tears down the board
+- [x] Player-facing names everywhere (`GameText`): no ids, coordinates or enum names in the log, HUD or buttons; coordinates kept as log traces for transcripts (`PlayerTextTests`)
+- [x] HUD heading names whose turn it is; no "Round 0"; action buttons read "Attack 3, Range 2"; card selection says Lead / Second
+- [x] Board elements are display-only, with a distinct "infused this turn" look
+- [x] No `NSSound.beep()` on the Mac; haptics follow their own toggle; launch sting respects the sound setting
+- [x] Settings trimmed to what works; Animation Speed drives the board's animations and turn pauses (`SettingsWiringTests`)
+
+Phase II — readable board (done)
+- [x] Monster tokens from thumbnails with standee badge and elite rim; HP bar and condition icons on every token (`BoardTokenTests`)
+- [x] Initiative rail and an instruction banner for every selecting mode, with Skip This Action (`TurnGuidanceTests`)
+- [x] Cancel a target choice: the banner's Cancel (or Escape) takes the ability back while nothing on the board has changed: elements, charges, XP and the log are restored and the ability waits to be performed again (`testCancellingATargetChoiceTakesTheAbilityBack`)
+- [x] Multi-hex overlays drawn on every cell (~330 in the scenario maps) (`BoardOverlayTests`)
+- [x] Taps resolve to the nearest hex; tapping a hex targets the figure on it; macOS click-vs-drag; iOS threshold in screen points (`BoardTapTests`)
+- [x] Content-sized side panels, collapsible log, hide-panels button; HUD fits iPad Pro and iPad mini; party screen rows don't shift (`BoardLayoutTests`)
+- [x] `HighlightStyle` per interaction with colour-blind-safe hues and shape cues (`HighlightStyleTests`)
+
+Phase III — game feel
+- [x] Effects layer: a ring on the acting figure, attack lines and melee lunges, outlined damage/heal/Miss/Blocked/Prevented text that outlives a killing blow (`BoardEffectsTests`)
+- [x] Condition pops: a gained condition floats its name (hindrance purple, boon blue) and its icon pops; "… ends" as it wears off; curse, bless and immunity are announced too (`BoardEffectsTests`)
+- [x] Distinct move animations: walks step and ease, jumps arc over (lift and shadow), flyers stay lifted, teleports vanish and reappear with a flash, pushes and pulls shove with a jolt; reduced motion drops the lifting (`MoveAnimationTests`)
+- [x] Modifier draws in a docked tray (real card art); monster draws resolve without a modal (setting to draw them by hand); damage choice as a docked sheet with card scans, select-then-confirm and an exhaustion warning (`ModifierDrawTests`, `DamageChoiceTests`)
+- [x] Camera: frames the board in the largest gap between the HUD panels (reframes when a panel grows over it, and when a door opens), can't be dragged off the board, zooms where the fingers or pointer are, follows the acting figure; "show whole board" button; trackpad scroll pans (`BoardCameraTests`)
+- [x] Room reveal without rebuilding the scene: the new room's tiles, overlays, figures and loot fade in; tokens, effects in flight and the grid offset stay put (`RoomRevealTests`)
+- [x] Board sound effects (Kenney CC0 packs, credited in Resources/Sounds/CREDITS.txt): steps, hits, heavy hits, misses, blocks, deaths, heals, loot, doors, traps, teleports, landings, conditions, card draws, a character's turn; silent when headless (`BoardSoundTests`)
+
+Phase IV — the game around the board
+- [x] Main menu key art (the world map, drifting under a vignette; still under Reduce Motion), Load Game and Credits on the menu (the mascot moved there), jingles for a scenario's start, victory and defeat (`MainMenuTests`)
+- [ ] Menu music: needs a looping track (Kenney has no CC0 loops)
+- [x] Scenario intro card (goal, how it's lost, special rules — described from the data; reopened from a Goal chip) and a results screen (why it ended, XP gained plus the success bonus, gold, level-ups, rewards, unlocks) (`ScenarioFramingTests`)
+- [x] Town between scenarios: finishing (or abandoning) a scenario returns to town; party roster with level, XP to next level and gold; Level Up when the XP is there (no more free level picker); perks limited to those earned; shop through `ItemManager.buy/sell` (one copy each, stock, half-price sales); world map to pick the next scenario; campaign sheet (`TownTests`)
+- [x] Level-up ability card choice: a card pool of level 1 and X cards plus one chosen card per level (of that level or lower), chosen in town with the card scans; a hand chosen from the pool; older saves adopt the higher-level cards they carry (`CardPoolTests`)
+- [x] City and road events: decks of cards 01–30 (more added by events), saved; a city event after each scenario and a road event on the way to a road scenario; conditions, costs, choices and "outcome A" redirects; effects including damage, conditions, −1 cards and discards carried into the next scenario; options the party can't take greyed out (`EventCardTests`)
+- [x] Campaign log on the Campaign sheet, newest first, in plain words (level-ups now logged too); reputation and prosperity there are read-only, no longer +/− steppers (`CampaignLogTests`)
+- [x] Deleted the companion leftovers: `GameBoardView` and 69 more views only it reached; the live pieces they held moved out (`UniqueTile`/`MapImageCache`, `RewardChoicesView`, `ActionHex`, `FlowLayout`, `Color(hex:)`)
+- [x] Board theme tokens (`BoardTheme`: surfaces, brass, radii, display type) and an 11 pt text floor (31 sizes of 7–10 pt raised; HUD still fits both iPads); every board control has text or a VoiceOver label; tokens on the board are spoken ("Bandit Guard 1, 4 of 6 health, Stun"); source checks guard the floor and the labels (`BoardAccessibilityTests`)
+- [x] VoiceOver play on the board, the remaining menus themed, Majalla dropped (see Phase VI)
+
+- [x] Compact turn panel: only the half of the card being played (top or bottom), so the panel is ~40% shorter and the board bigger during a turn (`BoardLayoutTests`)
+
+Phase V — the campaign around the scenarios (done 2026-10-08)
+- [x] Town between scenarios, level-up card choice and hands, city and road events, campaign log, scenario rewards, compact turn panel (see the items above)
+
+Phase VI — the rest of Gloomhaven's town rules
+- [x] Battle goals: two dealt to each character when setting out, one kept; all 24 judged from tracked stats (traps, doors, treasure, elite kills, overkill, first kill, executions, health, rests, monsters each round) saved with the scenario; shown in the brief and on the results; checkmarks on a success (`BattleGoalPlayTests`, `BattleGoalTests`)
+- [x] Items on the board, first batch: the starting shop's on-turn items (Boots of Striding, Winged Shoes, Cloak of Invisibility, Eagle-Eye Goggles, Piercing Bow, War Hammer, Poison Dagger, Minor Healing and Power Potions) appear on the turn panel when their moment comes, apply, are spent or consumed and count for Professional/Purist (`BoardItemTests`)
+- [x] Defence items offered mid-attack: Leather Armor (disadvantage, before the draw) and Heater Shield (Shield 1 once the attack would damage); headless play declines them (`BoardItemTests`)
+- [x] Minor Stamina Potion: recovers up to two discards, picked when there are more (`BoardItemTests`)
+- [x] Hide Armor: Shield 1 against two attacks before it's spent; use slots saved and cleared with the item's refresh (`BoardItemTests`)
+- [x] Iron Helmet: an enemy's ×2 against the wearer counts as +0 (always on: the card has no spent or consumed mark)
+- [x] Items, second batch: 40 on-turn items (boots, potions, earrings, wands, powders, cure, Lucky Eye, Skull of Hatred, Remote Spider, Black Censer, Smoke Elixir, Ancient Drill, Staff of Xorn…), 13 defence items (every armour and shield, with use slots), and the always-on ones (stronger basic attack/move, flying, immunities, Silent Stiletto) (`BoardItemTests`)
+- [x] Items, third batch: element blades, staves, robes and orbs (usable only with their element, which they consume), Hawk Helm and Telescopic Lens (more range while targeting), Bloody Axe and Sacrificial Robes, Giant Remote Spider, Mask of Terror; unmarked items stay usable (`BoardItemTests`)
+- [x] Items with a choice: Minor and Major Mana Potions, Staff of Elements, Circlet of Elements (an element picker), Minor Cure Potion (a condition picker) (`BoardItemTests`)
+- [x] Always-on items, second batch: Heavy Greaves (no forced movement), Drakescale Helm (muddle becomes strengthen), Chain Hood (Shield 1 beside three monsters), Necklace of Teeth and Imposing Blade (on a kill in your turn) (`BoardItemTests`)
+- [x] Movement items: hexes moved on a character's own turn are counted (pushes and pulls aren't); Shoes of Happiness, Endurance Footwraps, Steel Sabatons, Horned Helm; Drakescale Boots and Magma Waders ignore hazardous terrain, the Waders heal on entering it (`BoardItemTests`)
+- [x] Attack conversions: Battle-Axe, Long Spear, Reaping Scythe, Volatile Bomb turn a single-target attack into their printed area; the Halberd reaches 2 hexes in melee (`BoardItemTests`)
+- [x] Boots of Speed and Quickness: once every card is revealed, the wearer may move their initiative 10 (20) earlier or later (`BoardItemTests`)
+- [x] Shadow Armor (no damage from one attack), Sun Shield (consume Light: Shield 3), Helm of the Mountain, Mask of Death, Flea-Bitten Shawl (`BoardItemTests`)
+- [x] Empowering Talisman, Pendant of Dark Pacts, Utility Belt (an item picker), Focusing Ray, Volatile Elixir, Curious Gear (`BoardItemTests`)
+- [x] Item carry limits (GH p.9): one head, body and legs item, two hands' worth, half the level (rounded up) in small items, Cloak of Pockets +2. Characters own any number; the Items sheet in town brings or leaves each one, an item that doesn't fit stays at home, and the board, −1 cards and passives use only what's brought (`ItemLoadoutTests`)
+- [x] Table rules (campaign variants, each off by default): Enhancer open from the start, bring every item, no road event before the first scenario. Set in town ("Table rules" under the difficulty), listed on the scenario brief while on (`TableRulesTests`)
+- [x] City and road events have a close button (×, or Escape): the event stays due and setting out waits for it
+- [x] Second Skin: two −1 cards set aside for the scenario, back after it (`testSecondSkinSetsAsideTwoMinusOnes`)
+- [x] Items with their own choice between the turn's steps: Scroll of Healing, Doomed Compass, Staff of Summoning, Resonant Crystal; Elemental Boots (after moving 5), Thief's Hood (`BoardItemTests`)
+- [x] Scroll of Stamina, Robes of Summoning, Pendant of the Plague, Unstable Explosives (area that also hurts allies in it) (`BoardItemTests`)
+- [x] Hooked Chain (Pull 2 on a ranged attack), Blinking Cape (Move 4, Jump between steps), Helix Ring (consume Light and Dark: Heal 25), Skullbane Axe (+5 on one attack against the undead), Psychic Knife (+1 on augmented attacks), Phasing Idol (a summon suffers no damage from an attack, the owner asked), Stone Charm (one more obstacle while placing them) (`BoardItemTests`, `testThePsychicKnifeAddsToAugmentedAttacks`)
+- [x] Summon items: Falcon Figurine, Mountain Hammer, Ring of Skulls, Power Core place their figure next to the character like a card's summon (not offered with no room) (`ExtraItemTests`)
+- [x] More card plays: Ring of Haste and Ring of Brutality play a card from the hand for its bottom or top half at the end of the turn; Staff of Command does the same side right after a Command; Second Chance Ring plays two more cards for another turn this round at a later lead initiative (summons don't act again); Master's Lute gives Attack 2 or Move 2 after a Song; Cloak of the Hunter muddles a Doom's target (`ExtraItemTests`)
+- [x] Items on another figure's turn: Scroll of Power adds +1 Attack to the acting character's attack from another character's pack; Heart of the Betrayer turns an adjacent normal enemy's attack on one of its allies within its range (the wearer picks which); Dampening Ring consumes an element before a monster can (`ExtraItemTests`)
+- [ ] Doctor's Coat (+1 Heal on an ally's Medical Pack) waits for the Sawbones' Medical Pack cards, which allies can't be given on the board yet
+- [x] Personal quests: two dealt on recruiting, one kept; a campaign record per character (wins, kills by monster, elite kills, exhaustions) counts every requirement the game can see, after wins and losses; progress in town and on the sheet; by-hand counting only for map-region, enhancement and Skullbane requirements (`PersonalQuestTests`, `PersonalQuestAutotrackTests`)
+- [x] Retirement from town when the quest is complete (unlock, prosperity, log); a new recruit takes the slot
+- [x] Sanctuary donation in town: 10 gold once per visit for two blessings in the next scenario; prosperity +1 per 100 gold given; counts for Piety in All Things (`TownTests`)
+- [x] Enhancements in town: the Enhancer (after The Power of Enhancement) sells +1, conditions, elements and jump for each card slot at chart prices, paid in the character's gold; enhanced cards play enhanced on the board and show their enhancements on card tiles; heals now apply their own conditions, and moves their printed infusions (`EnhancementTests`)
+- [x] Any-element enhancements and printed "infuse any element" (Chromatic Explosion): the player picks the element (`testAnAnyElementEnhancementAsksWhichElement`)
+- [x] Hex (area) enhancements: sold where the card's area marks room for a hex (32 areas), priced 200 ÷ hexes targeted; the marked hex becomes a target (`testAHexEnhancementWidensTheArea`). Areas with two marked hexes have a slot for each, and the Enhancer draws the area with that slot's hex lit; a second hex is priced counting the first (`testEachHexSlotFillsItsOwnMarkedHex`)
+- [x] Unlocking a class (by retirement or scenario reward) shuffles its unlock event into the city and road decks; retiring adds the class's retirement event (`PersonalQuestTests`)
+- [x] VoiceOver play on the board: every pick (move, start hex, summon, push/pull hex, attack/heal/condition/forced-move target, multi-target confirm) is a spoken action on the prompt banner — distance, direction, what's there and who's beside it — doing exactly what the tap does (`BoardAccessibilityTests`); the unused Majalla font is gone
+- [x] The remaining menus on the board theme: the default dark theme is the board's palette (warm dark, brass accent, warm text) and controls take the accent app-wide; Frosthaven/Modern/B&B themes keep theirs (`ThemeTests`)
+- Open questions for the user: docs/open-questions.md
+
+Found along the way
+- [x] Scenario rewards the game never granted: items, character unlocks, collective gold, item designs (feat/scenario-rewards), and events shuffled into the decks (`EventCardTests`); envelopes remain below
 
 ## Standalone Tools
 
@@ -302,17 +422,139 @@ Monsters (review pass)
 Turn flow (review pass)
 - [x] Moves/teleports finish before the next action; default Move/Attack can't wedge the turn; standalone push/pull pick their own targets; leaving the board stops in-flight turns; multi-figure summons
 
+Scenario rewards (2026-10-08)
+- [x] **Item rewards** (26 GH scenarios incl. solo): each copy goes to one participating character of the players' choice who doesn't already own one (picked on the conclusion sheet); several copies go to different characters; a copy no one can take goes to the city's supply
+- [x] **Item designs** (GH 11, 12, 65) add the item to the city's supply
+- [x] **Collective gold** (GH 55, 83, 89) split however the players choose on the conclusion sheet (even split by default)
+- [x] **Battle goal checkmarks** (GH 41, 91) for every participating character
+- [x] **Character unlocks** (GH 44, 54, 56, 62) unlock the class
+- [x] **Choose a location** (GH 13: one of 15, 17, 20) unlocks only the chosen scenario
+- [x] **Shop stocked reward items from the start** — items 96–150 (scenario rewards, treasures, solo items) had no prosperity level and were for sale at prosperity 1; the shop ignored unlocked items (designs, random draws) and sold more copies than exist. It now offers prosperity items up to the prosperity level plus unlocked items, with stock limited to the item's copies
+
+### Full audit 2026-10-09 — fixed (gameplay, rules, UI, performance)
+
+Combat & conditions
+- [x] Attack modifier cards' self effects reach the attacker: a positive condition (the Scoundrel's Invisible) goes to the attacker, not the target; "Heal X, self", "Shield X, self" (for the round), element infusions and "refresh an item" are applied (`CombatEffectsTests`)
+- [x] Advantage/disadvantage compare the attacks the two cards make (on Attack 1, +2 beats ×2); a null is always the worst (`testAdvantageComparesTheAttacksTheCardsMake`)
+- [x] Wound damage at the start of a turn, and damage printed outside attacks (Flame Demon, Massive Boulder, Crater, Unstable Explosives), can be negated by losing cards like any damage (p.22)
+- [x] A monster entering play no longer wipes the round bonuses (a consumed element's Shield/Retaliate) of the others of its type
+- [x] The ten Bless cards are shared by every deck, the ten player Curses by the players' decks (p.23)
+
+Turns & rounds
+- [x] Skipping or taking back a summon's placement leaves no phantom summon (counted for X, kept the card active, hid Cancel for the rest of the scenario)
+- [x] A basic Attack 2 / Move 2 keeps the turn's start/end bonuses (Lumbering Bash's heal, Auto Turret's attack); the button only shows while usable, with its real value (Versatile Dagger)
+- [x] Round bonuses end before the short rest, so those cards can be recovered (p.30)
+- [x] Stunned and resting characters still loot at the end of their turn; a skipped target choice drops the item condition that rode on it
+- [x] An enemy within the Halberd's reach counts as the attack's target (its augments, XP and infusions are paid)
+- [x] Two chosen cards can still be changed before confirming (a third card replaces the second)
+
+Monster & summon AI
+- [x] Melee areas reaching further than 1 hex focus on enemies their pattern can cover (Harrower Infester, Deep Terror, Earth/Wind Demons, Savvas)
+- [x] Flying monsters may attack from over obstacles; an ally where a route runs out no longer shortens the move; a summon stopped by a trap attacks only what it reaches; the Bandit Commander's door run respects Immobilize and difficult terrain (`AIRulesTests`, `MonsterTextTests`)
+
+Campaign, town & saves
+- [x] New Campaign starts from nothing (prosperity, reputation, unlocks, looted treasures, log, events all carried over before) (`testANewCampaignCarriesNothingOver`)
+- [x] Prosperity level 8 at 50 checkmarks; battle goal checks capped at 18; scenario reputation capped at ±20
+- [x] Shop prices follow reputation (p.48); selling asks first and shows the half price; recruits start with 15 × (L + 1) gold and their level's XP, at most the prosperity level; dismissing a veteran asks first
+- [x] Random item design and random side scenario treasures are drawn (20 of the 75 GH treasures did nothing)
+- [x] Difficulty, monster initiatives, placed traps and a decided outcome are saved; a failed save is reported; saves missing fields still load
+- [x] Undo stays in town: on the board it stranded turns (a half-finished move never completed) and it could undo a finished scenario
+- [x] Quitting while placing characters sets out again from town without applying the setup twice; a resolved city/road event isn't owed again after a relaunch
+
+Performance & robustness
+- [x] Leaving or restarting the board resumes every waiting prompt and animation and stops stale turn tasks (they hung forever, or woke up and played on the next board) (`BoardTeardownTests`)
+- [x] Token portraits keyed by name (a freed image's address was reused, so a new monster could wear a dead one's face); decoded images, map tiles, the scenario brief and sound files are cached within bounds; no snapshot is encoded on every change during play
+- [x] UI: Return in the damage choice confirms the chosen card and never exhausts by itself; Escape closes a card preview rather than cancelling the choice under it; a placed character can move before the scenario begins; names come from labels; tappable cards are buttons to VoiceOver (`testTappableViewsAreButtons`)
+
+### iPad playthrough 2026-10-09 (`docs/playthroughs/2026-10-09-ipad/`)
+
+- [x] Skipping a persistent half still puts the card in the active area (Backup Ammunition)
+- [x] Skipping a loss half still loses the card (Crater's bottom)
+- [x] Event discards before the first scenario: no hand to pick from, nothing discarded, result says otherwise
+- [x] Event-unlocked scenarios (`manualScenarios`) missing from the town list
+- [x] A completed initial scenario is still listed as open
+- [x] The last-draw panel carries over into the next scenario
+- [x] Short-rest re-pick offered more than once — it was already disabled after one use, just not visibly (restyle below)
+- [x] Element consumption is the player's choice: each element bonus on a step is a toggle, taken unless turned down
+- [x] Move 0 with a rider (Rumbling Advance): tap the character to stay
+- [x] A new campaign is saved once a recruit keeps a quest (it was already saved on leaving the app and at each round's start)
+- [x] Verify #2's "3 Curses each" start rule (`testScenario2CursesAddedOnceNotPerKill`)
+- [x] Learning tips that come up together are numbered ("2 of 4") with Next, so the next one isn't a surprise
+- [x] Resting tip comes with the first rest offer (short rest, or long rest at card choice)
+- [x] No rest prompts once the scenario is won
+- [x] "Special Effect" buttons should name what the half does
+- [x] Warn when a move's path opens a door
+- [x] Heal log on a poisoned figure ("for 0" → "removes Poison")
+- [x] Town header says "In town" as soon as a recruit joins
+- [x] Easy hint repeats itself
+- [x] Envelope quest rewards; −1 cards on item tiles
+- [x] Road Event header icon
+- [x] Short/Long Rest and gold-sharing dialogs in the board's look
+- [x] Hold "Unlocks the …" (or "Opens Envelope X") in the quest picker to learn about it
+- [ ] Game option: go back to the start of the previous turn
+- [x] The last scenario's elements stayed lit when the next one began
+- [x] Disabled board buttons looked as ready as any other (now dimmed)
+- [x] A quest's requirement showed the data's shorthand "(scenario number > 51)"
+- [ ] **Next:** performance and memory-leak testing — after the app is open a while many buttons seem unresponsive (user report, 2026-10-09)
+
 ### Remaining gaps
+
+- [x] **Scenario reward: add events** (GH 21, 35, 36, 51, 54) — the decks now start as cards 01–30 and scenario rewards shuffle cards in
+- [x] **Events from class unlocks and retirements** (Phase VI)
+- [ ] **Scenario reward: envelopes** (GH 58, 60: envelope X) — there's no envelope or sealed-content state to open
+- [x] **Scenario reward: personal quests** (GH 54, 56, 58, 60, 62): the named quest is completed for whoever holds it; Palace of Ice retires the Seeker of Xorn with its own events (`PersonalQuestTests`)
 
 - [ ] **Objectives/escorts aren't placed on the board** — the map data has no objective positions (22 scenarios use objectives)
 - [ ] **Scenario spawn markers** — map data has no marker positions, so rule spawns are placed near the other monsters
 - [ ] **Scenario-specific goals** beyond "kill all enemies" are only modelled where the scenario data has a `finish` rule
-- [ ] **"Enemies moved through" attacks** (e.g. Brute's Trample) and other custom-text abilities (e.g. Reviving Ether's "recover all lost cards", Flanking Strike's bonus) need manual resolution — on the board they have no effect
-- [ ] **Persistent bonus charges** (e.g. "next 3 attacks") aren't tracked; persistent cards stay in the active area until the scenario ends
-- [ ] **Items during board turns** (use/spend from the turn panel)
+- [x] **Conditions that fell back on the character**: a target printed beside a condition (Crippling Offensive, Airborne Toxin, Mass Extinction) or only in its text (Negative Energy, Virulent Strain, Rock Tunnel) now reaches the right figures; a negative condition with no target never lands on the character (`BoardRulesRegressionTests`)
+- [x] **Locked classes' card text and item text**: the spoiler labels weren't loaded, so those texts were missing (`LabelTests`)
+- [x] **"Enemies moved through" attacks** (Trample, two Mindthief cards) attack every enemy passed over in the half's move (`testTrampleAttacksEveryEnemyJumpedOver`)
+- [x] **Printed attack bonuses and round bonuses**: per-target text bonuses (Backstab, Flanking Strike, Single Out, Sinister Opportunity, Trickster's Reversal, Submissive Affliction, Perverse Edge, XP for each enemy targeted) and this round's bonuses (Wall of Doom, Heaving Swing, Forceful Storm, Enhancement Field, Eye for an Eye, Trickster's Reversal's negation) (`ChargedBonusTests`)
+- [x] **Mindthief augments**: an augment is no longer performed when played; while its card is active it shapes every melee attack (+2, conditions, Shield/Retaliate for the round, Heal 2 self, Frozen Mind's ice), and a new augment discards the old (`BoardRulesRegressionTests`); Silent Scream's targeted heal and Phantasmal Killer's kill still need doing
+- [x] **Halves played as steps**: groupings and text that wraps actions are opened into separate steps, so a move or a target choice inside them is performed and waited for (Crater's Move 4 and Unstable Upheaval's Shield 2 were never performed; a grouping with a move skipped the next action). Printed text the board now performs: recover all lost cards (Reviving Ether), disarm an adjacent trap (Thief's Knack), damage around the character, after a move or around the target (Crater, Rumbling Advance, Unstable Upheaval, Massive Boulder), loot every hex entered (Swift Bow), Shield for all allies (`BoardRulesRegressionTests`)
+- [x] **Traps and obstacles from cards**: Proximity Mine (with its XP when an enemy springs it), Volatile Concoction's poison trap, Avalanche's two obstacles, placed hex by hex with VoiceOver choices (`BoardRulesRegressionTests`)
+- [x] **Cards' X values** were played as 0: hexes moved and damage inflicted this turn (Balanced Measure), hexes moved by the action (Hook and Chain), missing hit points (Resolute Stand, From the Brink), cards lost (Growing Rage, Final Fight), current hit points (Glass Hammer, which then drops to 1), summoned allies (Strength in Numbers) (`testBalancedMeasureCountsTheTurn`, `testTheBerserkersXValues`); the Berserker's "you may suffer up to N damage" asks how much, and X is what was suffered (`testFlurryOfAxesAttacksWithTheDamageSuffered`)
+- [x] **Allies recovering cards**: Reinvigorating Elixir, Volatile Concoction (with Ice: two), with an ally picker and the discard picker (`BoardRulesRegressionTests`)
+- [x] **Impaling Eruption** attacks every enemy on the straight line to its target (`testImpalingEruptionHitsEveryEnemyOnTheWay`)
+- [x] **Element bonuses printed as text** (Earthen Clod's Immobilize, Crater's Push 2, Unstable Upheaval's "all enemies up to two hexes away", XP): read into the attack when the element is consumed (`testEarthenClodsEarthImmobilizes`)
+- [x] **Provoking Roar**: enemies attacking an ally beside the Brute this round attack the Brute instead (`ChargedBonusTests`)
+- [x] **Actions performed by another figure**: Possession (an ally attacks or moves) and Parasitic Influence (an enemy moves) let the player choose who and control it (`testPossessionLetsAnAllyAttack`, `testParasiticInfluenceMovesAnEnemy`); such actions are never mistaken for the character's own; Sinister Opportunity's Move 3 no longer absorbs the enemy's Move 1
+- [x] Forced enemy attacks (Submissive Affliction): by the Mindthief FAQ a flat Attack 2 at the monster's base range +0, from the monster deck with its stat-card effects; the Mindthief picks another enemy as the target (`testSubmissiveAfflictionMakesAnEnemyAttackAnother`). Sinister Opportunity's forced move now happens after the Scoundrel's move, ending beside them (`testSinisterOpportunityMovesAnEnemyBesideTheScoundrel`)
+- [x] **Dirt Tornado** muddles every figure in its area, allies included (`testDirtTornadoMuddlesEveryoneInTheArea`)
+- [x] **Destroying an adjacent obstacle** (Rock Tunnel, Explosive Punch), the player picking which (`testRockTunnelDestroysAnAdjacentObstacle`)
+- [x] **Crackling Air**: +1, or +2 by consuming Air (`testCracklingAirAddsTwoByConsumingAir`)
+- [ ] **Moving in a loop**: moves pick a destination, so a move can't end where it started; Feedback Loop's muddle (which needs that) can't happen yet
+- [x] **Heaving Swing** pushes into obstacles: destroyed, 2 damage, XP +1 (`testHeavingSwingPushesIntoAnObstacle`)
+- [x] **One-ally condition targets** ("allyAffectAdjacent", "allyAffectRange:3") ask which ally; "selfAlliesAffectRange:4" keeps its range (`testAOneAllyConditionAsksWhichAlly`)
+- [x] **Heals, shields and retaliates for allies** ("all adjacent allies", "self and all allies within range 4", "one adjacent ally") reach the allies instead of only the character (`testHealsReachTheAllies`)
+- [x] **Element consumes printed as their own step**: an independent reward (Wretched Creature's curse, Armor of the Night's heal) happens when paid; a modifier of the action before it (Natural Remedy's +1 Heal, +1 Range; Concealed Dominance's area) rides on that action (`testAConsumeStepGivesWhatItPrints`, `testAModifierConsumeBelongsToTheActionBeforeIt`). Approximate: Smoke Step and Stone Fists, whose reward modifies two actions, give it as separate actions
+- [x] **The Doomstalker's dooms**: a doom half asks for an enemy and puts the character's token on it (a marker on the monster, saved with the game, shown on its token); every doom's effect while it lasts (+Attack for whom the card says, Pierce, advantage, Curse, Predator and Prey's range gap, Crippling Noose's −1 Attack/Move/Range, Race to the Grave, Sap Life, Inescapable Fate's countdown) and on death (Felling Swoop, Vital Charge, Detonation, Darkened Skies, Nature's Hunger, Rising Momentum); one doom at a time, two on one target with Inescapable Fate; Rain of Arrows' and Frightening Curse's tops, Expose, Relentless Offensive, Impending End, Swift Trickery, Press the Attack, Wild Command, Lead to Slaughter (`DoomTests`)
+- [ ] Frightening Curse's doom: the adjacent enemies' Move 1 "with you controlling" is a push away from where it died, not a chosen hex
+- [ ] Traps that do more when sprung (Detonation: 2 damage to enemies beside it; Flight of Flame: Wound them) are placed as plain traps
+- [ ] Impending End's top ("kill the target if it has 2 hit points or fewer after the attack") and Darkened Skies' top (Attack 3 on all enemies within Range 3, XP per two) are still the players'
+- [x] **Persistent bonus charges**: the starting classes' charged cards (Warding Strength, Juggernaut, Opposing Strike, Backup Ammunition, Single Out, Smoke Bomb, Cull the Weak, Spring the Trap, Frost Armor, Crackling Air, Engulfed in Flames, Cold Front, Potent Potables) mark a charge per use, give their slot XP and leave the active area when used up (`ChargedBonusTests`)
+- [x] Locked classes' charged cards: Immortality, Purifying Aura, Angelic Ascension, Voice of the Night, Cauterize, Master Physician, Defiance of Death, Nightfall, Beacon of Light, Fortified Position (`ChargedBonusTests`)
+- [x] **Start- and end-of-turn bonuses**: Lumbering Bash and Triage (a heal at the start of the turn), Auto Turret (an attack at the end), Gas Canister (an ally recovers a card at the end), as steps of the turn (`ChargedBonusTests`)
+- [x] Nature's Lift and Foul Wind: consume Air (when there) for +2 Range on ranged attacks / +1 Attack, a charge each time (`testNaturesLiftConsumesAirForRange`)
+- [x] Intervening Apparitions, Unending Chant, Blood Hunger (`ChargedBonusTests`)
+- [x] Stone Pummel: a melee attack with an obstacle beside the Cragheart destroys it for +3, a charge each time (`testStonePummelDestroysAnObstacleForThree`)
+- [x] **Charged cards needing a choice**: Vengeful Barrage (Attack 3 back on each source of damage; its round half +1 Attack), Grim Bargain (Curse an ally within Range 2 for two more targets, declinable; its round half doubles the next attack), Wings of the Night (Move 2 before each attack), Black Knives and Claws of the Night (an attack after an attack or move while invisible), Eyes of the Night (advantage, see invisible), Dancing Shadows and Terror Blade (attackers have disadvantage this round) (`ChargedBonusTests`)
+- [x] **Items during board turns** (Phase VI: about 110 of 150 items play on the board)
+- [x] **Monster ability text**: traps (Archers, Flame Demon), damage around the monster or its target (Ancient Artillery, Night Demon, Flame Demon, Savvas Lavaflow), +2 against a flanked target (Hound, Giant Viper), disadvantage against the Giant Viper this round, the Harrower's heal per target damaged (`MonsterTextTests`)
+- [x] **Cultists' "on death" attack**: made from where the Cultist fell, right after the attack that killed it, never on its own turn (`testACultistAttacksAsItDies`)
+- [x] Element bonuses inside a monster's Shield/Retaliate: the Lurker's "consume Ice: Shield 2 instead" (`testALurkersIceShieldReplacesItsShield`)
+- [x] **The Ooze splits** with its current hit points (`testAnOozeSplitsWithItsHitPoints`)
+- [x] The Deep Terror's attack summons another beside the target (`testADeepTerrorSummonsBesideItsTarget`)
+- [x] **Boss specials printed as text**: the Bandit Commander's "move to next door and reveal room" (Barrow Lair), the Captain of the Guard's +1 Attack for all monsters this round, the Merciless Overseer's "all Scouts act again" (`testTheBanditCommanderHeadsForTheNextDoor`); the rest (Elder Drake's perch, Prime Demon's throne, the Betrayer's mind control, Winged Horror's eggs) are still the players'
 - [ ] **Icy terrain** — no forced-movement mechanic
 - [ ] **Plague / Enfeeble** (FH) — no mechanics
 - [ ] **Multi-hex obstacles** — one overlay per hex
 - [ ] **Random dungeon mode**
 - [ ] **Pathfinding visualization** — no debug overlay for monster movement decisions
+- [x] **"+1 Target" on attack modifier cards** (6 perk cards): when the character's attack ability ends, another enemy in range it hasn't attacked is offered (its own draw; Skip declines); not for area attacks (`testAPlusOneTargetCardAddsATarget`)
+- [x] **Scenario-rule damage** (Scenario 51's summoners, 60's late rounds) goes through the lose-cards choice on the board, before play continues (`testScenarioRuleDamageCanBeNegated`)
+- [x] **Battle goals are dealt again** if the app quits between dealing and setting out: dealt goals are saved and kept until the scenario ends (`testDealtBattleGoalsSurviveARelaunch`)
+- [ ] Latent (no GH card triggers them today): an action that waits (printed "suffer X damage", a target choice) nested inside a box/concatenation step lets the outer step advance before it; a consume step with two rewards that each wait stops after the first. FH: Wound's deferred damage now lands after Regenerate's heal
+- [x] **Rule question settled**: a ranged multi-target monster first attacks its focus without disadvantage, then maximizes targets, then avoids disadvantage on the others, then moves least (GH 1st edition order; Jaws of the Lion / 2nd edition put more targets first). Base Gloomhaven is followed
 - [ ] **Simulator party rarely wins** — the tactical test policy wins ~2% of full playthroughs (mostly on Easy), so victory paths in late rooms and boss fights get little realistic coverage; a stronger policy (coordinated focus fire, card planning) would exercise them

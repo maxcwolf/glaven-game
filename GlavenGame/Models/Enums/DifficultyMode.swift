@@ -29,11 +29,11 @@ enum DifficultyMode: Int, CaseIterable, Codable {
 
     var description: String {
         switch self {
-        case .story:    return "Scenario level −2 (min 0). Recommended for learning."
-        case .easy:     return "Scenario level −1 (min 0)."
-        case .normal:   return "Standard scenario level."
-        case .hard:     return "Scenario level +1. Increased monster stats."
-        case .veryHard: return "Scenario level +2. Maximum challenge."
+        case .story:    return "Story: party level \u{2212}2, never under 0"
+        case .easy:     return "Easy: party level \u{2212}1, never under 0"
+        case .normal:   return "Normal: the party\u{2019}s level"
+        case .hard:     return "Hard: party level +1"
+        case .veryHard: return "Very hard: party level +2"
         }
     }
 }

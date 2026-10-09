@@ -21,24 +21,37 @@ final class GameManager {
     let objectiveManager: ObjectiveManager
     let enhancementsManager: EnhancementsManager
     let itemManager: ItemManager
+    let eventCardManager: EventCardManager
     let actionsManager: ActionsManager
     let boardCoordinator: BoardCoordinator
 
-    private let modelContainer: ModelContainer
+    let modelContainer: ModelContainer
     private var modelContext: ModelContext
 
-    /// Whether an autosave with figures exists.
-    var hasAutosave: Bool {
-        let fetchDescriptor = FetchDescriptor<SavedGameModel>(
-            predicate: #Predicate { $0.name == "autosave" }
-        )
-        guard let saved = try? modelContext.fetch(fetchDescriptor).first,
-              let data = saved.snapshotData,
-              let snapshot = try? JSONDecoder().decode(GameSnapshot.self, from: data) else {
-            return false
-        }
-        return !snapshot.figures.isEmpty
-    }
+    /// Saved campaigns, one file each.
+    let campaignStore: CampaignStore
+
+    /// The campaign being played; the game saves to it. Nil until a new campaign first saves.
+    private(set) var currentCampaignID: UUID?
+
+    /// Every saved campaign, most recently played first, kept up to date as the game saves so the
+    /// main menu doesn't read the files on every render.
+    private(set) var campaigns: [CampaignStore.Entry] = []
+
+    /// The campaign Continue resumes: the most recently played one with a party.
+    var continueCampaign: CampaignStore.Entry? { campaigns.first { $0.summary != nil } }
+
+    /// What Continue resumes (nil when there is nothing to continue).
+    var autosaveSummary: AutosaveSummary? { continueCampaign?.summary }
+
+    /// Whether there's a campaign to continue.
+    var hasAutosave: Bool { autosaveSummary != nil }
+
+    /// The game as it stood at the start of the current round on the board. While a scenario is
+    /// in progress this is what the autosave holds, and Continue resumes there.
+    private(set) var roundCheckpoint: GameSnapshot?
+    /// The town as the party set out, saved instead of the board until the first round begins.
+    private(set) var departureCheckpoint: GameSnapshot?
 
     // Undo/Redo snapshots
     private var undoStack: [Data] = []
@@ -46,6 +59,7 @@ final class GameManager {
 
     init(modelContainer: ModelContainer) {
         // Use local variables to satisfy Swift two-phase initialization
+        self.campaignStore = CampaignStore(directory: CampaignStore.directory(for: modelContainer))
         let game = GameState()
         let editionStore = EditionDataStore()
         let modelContext = ModelContext(modelContainer)
@@ -92,6 +106,8 @@ final class GameManager {
         self.objectiveManager = objMgr
         self.enhancementsManager = enhMgr
         self.itemManager = itemMgr
+        self.eventCardManager = EventCardManager(game: game, editionStore: editionStore,
+                                                 scenarioManager: scenarioMgr, itemManager: itemMgr)
         self.actionsManager = actMgr
         self.boardCoordinator = BoardCoordinator()
 
@@ -105,8 +121,15 @@ final class GameManager {
 
         // Wire scenario rules to round advancement
         roundMgr.onRoundAdvanced = { [weak self] in
-            self?.scenarioRulesManager.evaluateRules(phase: .roundStart)
-            self?.scenarioStatsManager.advanceRound()
+            guard let self else { return }
+            self.scenarioRulesManager.evaluateRules(phase: .roundStart)
+            // Aggressor: is there a monster on the map as the round begins?
+            let board = self.boardCoordinator
+            let monstersPresent = board.boardState.piecePositions.keys.contains {
+                if case .monster = $0 { return !board.isPlayerSide($0) }
+                return false
+            }
+            self.scenarioStatsManager.advanceRound(monstersPresent: monstersPresent)
         }
         roundMgr.onRoundEnding = { [weak self] in
             self?.scenarioRulesManager.evaluateRules(phase: .roundEnd)
@@ -141,6 +164,9 @@ final class GameManager {
         itemMgr.onBeforeMutate = beforeMutate
         actMgr.onBeforeMutate = beforeMutate
 
+        migrateSwiftDataSaves()
+        refreshCampaigns()
+
         // Remove summon pieces from board when a character is exhausted
         charMgr.onCharacterExhausted = { [weak self] character in
             guard let self else { return }
@@ -152,24 +178,14 @@ final class GameManager {
         }
     }
 
+    /// Start over with an empty party, as a new campaign: the one being played stays saved as it is.
     func newGame() {
+        if boardCoordinator.scenarioData != nil { boardCoordinator.exitBoard() }
+        currentCampaignID = nil
+        roundCheckpoint = nil
+        departureCheckpoint = nil
         appPhase = .mainMenu
-        game.edition = nil
-        game.figures = []
-        game.state = .draw
-        game.round = 0
-        game.level = 1
-        game.levelAdjustment = 0
-        game.elementBoard = ElementModel.defaultBoard()
-        game.monsterAttackModifierDeck = .defaultDeck()
-        game.allyAttackModifierDeck = .defaultDeck()
-        game.lootDeck = LootDeck()
-        game.conditions = []
-        game.scenario = nil
-        game.completedScenarios = []
-        game.globalAchievements = []
-        game.partyAchievements = []
-        game.campaignStickers = []
+        game.resetToNewCampaign()
         undoStack = []
         redoStack = []
         scenarioStatsManager.reset()
@@ -177,9 +193,14 @@ final class GameManager {
 
     /// Set scenario and initialize the game board.
     func startScenarioOnBoard(_ scenarioData: ScenarioData) {
+        // Until the first round begins, a save is the town as the party left it: quitting while
+        // placing characters sets out again later, without the scenario's setup (item −1 cards,
+        // the events' effects) applied twice.
+        departureCheckpoint = game.toSnapshot()
         // Scenario level (and so monster level, trap damage, gold and bonus XP) is fixed at the
         // start of the scenario from the party's levels and difficulty (p.15).
         levelManager.calculateAndApplyLevel()
+        roundCheckpoint = nil
 
         // Set the scenario in game state
         scenarioManager.setScenario(scenarioData)
@@ -193,47 +214,62 @@ final class GameManager {
         guard let scenario = game.scenario else { return }
         guard !game.activeCharacters.isEmpty else { return }
         guard boardCoordinator.boardScene == nil else { return } // already on board
+        scenarioManager.recordStartingTallies()
 
         let mapStore = ScenarioMapStore.shared
         guard let vgbScenario = mapStore.scenarioMap(for: scenario.data.index) else { return }
 
-        // Auto-fill empty hands with starting ability cards
-        for character in game.activeCharacters {
-            guard character.handCards.isEmpty else { continue }
-            let deckName = character.characterData?.deck ?? character.name
-            let allAbilities = editionStore.abilities(forDeck: deckName, edition: character.edition)
-
-            // Available cards: level 1 + level X + any up to character level
-            let available = allAbilities.filter { ability in
-                guard let level = ability.level else { return false }
-                switch level {
-                case .string(let s): return s.uppercased() == "X"
-                case .int(let l): return l >= 1 && l <= character.level
-                }
-            }
-
-            // Fill hand: level 1 cards first, then level X, then higher levels
-            let level1 = available.filter { $0.level?.intValue == 1 }
-            let levelX = available.filter {
-                if case .string(let s) = $0.level { return s.uppercased() == "X" }
-                return false
-            }
-            let higherLevel = available.filter {
-                guard let l = $0.level?.intValue else { return false }
-                return l > 1 && l <= character.level
-            }
-
-            var hand: [Int] = level1.compactMap(\.cardId)
-            for card in levelX + higherLevel {
-                if hand.count >= character.handSize { break }
-                if let cardId = card.cardId { hand.append(cardId) }
-            }
-            character.handCards = Array(hand.prefix(character.handSize))
+        // A character who hasn't chosen a hand brings the default one from their card pool.
+        for character in game.activeCharacters where character.handCards.isEmpty {
+            character.handCards = characterManager.nextHand(for: character)
         }
 
         let playerCount = max(2, game.characters.filter { !$0.absent }.count)
         boardCoordinator.startScenario(scenario: vgbScenario, playerCount: playerCount)
+        applyEventEffectsAtScenarioStart()
         appPhase = .board
+        forgetHistory()
+    }
+
+    /// What road and city events left for this scenario (GH p.38): each character starts with
+    /// the damage, conditions, −1 cards and discarded cards the events gave them.
+    func applyEventEffectsAtScenarioStart() {
+        game.events.donatedThisVisit = []   // the party has left town
+        game.events.departingFor = nil
+        game.events.roadEventDoneFor = nil
+        let effects = game.events.nextScenario
+        guard !effects.isEmpty else { return }
+        for character in game.activeCharacters {
+            let name = GameText.characterName(character, labels: editionStore)
+            if effects.damage > 0 {
+                character.health = max(1, character.health - effects.damage)
+                boardCoordinator.log("\(name) starts with \(effects.damage) damage from an event", category: .damage)
+            }
+            for condition in effects.conditions {
+                entityManager.addCondition(condition, to: character)
+                boardCoordinator.log("\(name) starts with \(GameText.conditionName(condition)) from an event", category: .condition)
+            }
+            for _ in 0..<(effects.minusOneCards[character.id] ?? 0) {
+                character.attackModifierDeck.addCard(type: .minus1)
+            }
+            if let count = effects.blessings[character.id], count > 0 {
+                for _ in 0..<count where game.hasSpecialCardLeft(.bless, forMonsterDeck: false) {
+                    character.attackModifierDeck.addCard(type: .bless)
+                }
+                boardCoordinator.log("\(name) starts with \(count) blessings from the sanctuary", category: .setup)
+            }
+            if let count = effects.minusOneCards[character.id], count > 0 {
+                boardCoordinator.log("\(name) adds \(count) \u{2212}1 card\(count == 1 ? "" : "s") from an event", category: .setup)
+            }
+            let discards = (effects.discards[character.id] ?? []).filter(character.handCards.contains)
+            if !discards.isEmpty {
+                character.handCards.removeAll(where: discards.contains)
+                character.discardedCards += discards
+                boardCoordinator.log("\(name) starts with \(discards.count) card\(discards.count == 1 ? "" : "s") discarded from an event", category: .setup)
+            }
+        }
+        game.events.nextScenario = ScenarioStartEffects()
+        boardCoordinator.syncPieceVisuals()
     }
 
     func setEdition(_ edition: String) {
@@ -258,8 +294,17 @@ final class GameManager {
         }
     }
 
-    var canUndo: Bool { !undoStack.isEmpty }
-    var canRedo: Bool { !redoStack.isEmpty }
+    /// Undo and redo are for the town and setup screens. On the board a turn in progress holds
+    /// figures, continuations and animations that a restored snapshot would leave behind (a
+    /// half-finished move would never complete), so the board's own Cancel takes back a choice
+    /// instead, and nothing is recorded there. History never reaches across a scenario.
+    var canUndo: Bool { appPhase != .board && !undoStack.isEmpty }
+    var canRedo: Bool { appPhase != .board && !redoStack.isEmpty }
+
+    private func forgetHistory() {
+        undoStack.removeAll()
+        redoStack.removeAll()
+    }
     var undoCount: Int { undoStack.count }
     var redoCount: Int { redoStack.count }
 
@@ -267,107 +312,288 @@ final class GameManager {
 
     // MARK: - Persistence
 
+    /// Save the game to its campaign. While a scenario is in progress that's the round
+    /// checkpoint, so a save in the middle of a round never records a half-played turn. A new
+    /// campaign gets its file once it has a party.
+    /// Why the last save failed (a full disk, say), for the app to tell the player; nil once a
+    /// save works again.
+    var saveFailure: String?
+
+    /// Write a campaign file, noting a failure instead of losing it silently.
+    private func writeCampaign(_ file: CampaignFile) {
+        do {
+            try campaignStore.save(file)
+            saveFailure = nil
+        } catch {
+            saveFailure = "The campaign couldn't be saved: \(error.localizedDescription)"
+        }
+    }
+
     func saveGame() {
-        let snapshot = game.toSnapshot(boardCoordinator: boardCoordinator)
-        guard let data = try? JSONEncoder().encode(snapshot) else { return }
-
-        let fetchDescriptor = FetchDescriptor<SavedGameModel>(
-            predicate: #Predicate { $0.name == "autosave" }
-        )
-        if let existing = try? modelContext.fetch(fetchDescriptor).first {
-            existing.snapshotData = data
-            existing.updatedAt = Date()
+        let snapshot = roundCheckpoint ?? departureCheckpoint ?? game.toSnapshot()
+        let now = Date()
+        if let id = currentCampaignID, var file = campaignStore.load(id) {
+            file.snapshot = snapshot
+            file.updatedAt = now
+            writeCampaign(file)
         } else {
-            let model = SavedGameModel(name: "autosave")
-            model.snapshotData = data
-            modelContext.insert(model)
+            guard !game.characters.isEmpty else { return }
+            let id = currentCampaignID ?? UUID()
+            currentCampaignID = id
+            writeCampaign(CampaignFile(id: id, name: "", createdAt: now, updatedAt: now, snapshot: snapshot))
         }
-        try? modelContext.save()
+        refreshCampaigns()
     }
 
-    func restoreGame() {
-        let fetchDescriptor = FetchDescriptor<SavedGameModel>(
-            predicate: #Predicate { $0.name == "autosave" }
-        )
-        guard let saved = try? modelContext.fetch(fetchDescriptor).first,
-              let data = saved.snapshotData,
-              let snapshot = try? JSONDecoder().decode(GameSnapshot.self, from: data) else {
-            return
-        }
-        game.restore(from: snapshot, editionStore: editionStore, boardCoordinator: boardCoordinator)
+    /// Record the start of a round on the board and save it. Called as each round's card
+    /// selection begins, the one point where no turn is half-played.
+    func checkpointRound() {
+        var snapshot = game.toSnapshot()
+        snapshot.boardSnapshot = boardCoordinator.snapshot()
+        roundCheckpoint = snapshot
+        departureCheckpoint = nil
+        saveGame()
     }
 
-    // MARK: - Save Slots
-
-    func saveToSlot(name: String) {
-        let snapshot = game.toSnapshot(boardCoordinator: boardCoordinator)
-        guard let data = try? JSONEncoder().encode(snapshot) else { return }
-
-        let fetchDescriptor = FetchDescriptor<SavedGameModel>(
-            predicate: #Predicate { $0.name == name }
-        )
-        if let existing = try? modelContext.fetch(fetchDescriptor).first {
-            existing.snapshotData = data
-            existing.updatedAt = Date()
-        } else {
-            let model = SavedGameModel(name: name)
-            model.snapshotData = data
-            modelContext.insert(model)
-        }
-        try? modelContext.save()
+    /// Load the campaign Continue offers into the game. A save made during a scenario becomes the
+    /// round checkpoint again, for `continueGame` to resume the board from.
+    @discardableResult
+    func restoreGame() -> Bool {
+        guard let id = continueCampaign?.id ?? currentCampaignID else { return false }
+        return restoreCampaign(id)
     }
 
-    func loadFromSlot(name: String) {
-        let fetchDescriptor = FetchDescriptor<SavedGameModel>(
-            predicate: #Predicate { $0.name == name }
-        )
-        guard let saved = try? modelContext.fetch(fetchDescriptor).first,
-              let data = saved.snapshotData,
-              let snapshot = try? JSONDecoder().decode(GameSnapshot.self, from: data) else {
-            return
-        }
+    private func restoreCampaign(_ id: UUID) -> Bool {
+        guard let file = campaignStore.load(id) else { return false }
+        if boardCoordinator.scenarioData != nil { boardCoordinator.exitBoard() }
         undoStack.removeAll()
         redoStack.removeAll()
-        game.restore(from: snapshot, editionStore: editionStore, boardCoordinator: boardCoordinator)
+        currentCampaignID = id
+        let snapshot = file.snapshot
+        game.restore(from: snapshot, editionStore: editionStore)
+        roundCheckpoint = snapshot.boardSnapshot != nil && game.scenario != nil ? snapshot : nil
+        departureCheckpoint = nil
+        return true
     }
 
-    func deleteSlot(name: String) {
-        let fetchDescriptor = FetchDescriptor<SavedGameModel>(
-            predicate: #Predicate { $0.name == name }
-        )
-        if let saved = try? modelContext.fetch(fetchDescriptor).first {
-            modelContext.delete(saved)
-            try? modelContext.save()
+    /// Continue the most recently played campaign.
+    func continueGame() {
+        guard let id = continueCampaign?.id ?? currentCampaignID else { return }
+        continueCampaign(id)
+    }
+
+    /// Play a saved campaign: back onto the board at the start of the saved round if a scenario
+    /// was in progress, otherwise to the party and scenario screen. The campaign being played is
+    /// saved first.
+    func continueCampaign(_ id: UUID) {
+        if id != currentCampaignID, currentCampaignID != nil { saveGame() }
+        guard restoreCampaign(id) else { return }
+        if resumeScenarioFromCheckpoint() {
+            appPhase = .board
+            forgetHistory()
+        } else {
+            appPhase = .gameSetup
+        }
+        // Played now: it moves to the top of the list.
+        if var file = campaignStore.load(id) {
+            file.updatedAt = Date()
+            writeCampaign(file)
+        }
+        refreshCampaigns()
+    }
+
+    private func resumeScenarioFromCheckpoint() -> Bool {
+        guard let checkpoint = roundCheckpoint, let board = checkpoint.boardSnapshot,
+              let scenario = game.scenario,
+              let map = ScenarioMapStore.shared.scenarioMap(for: scenario.data.index) else {
+            roundCheckpoint = nil
+            return false
+        }
+        boardCoordinator.resumeScenario(scenario: map, board: board)
+        return true
+    }
+    /// Finish the scenario on the board (rewards on a success), leave the board and save.
+    func completeScenario(success: Bool, choices: ScenarioRewardChoices = ScenarioRewardChoices()) {
+        let questReward = success ? game.scenario.flatMap { scenario in
+            scenario.data.rewards?.custom.flatMap { editionStore.resolveCustomText($0, edition: scenario.data.edition) }
+        } : nil
+        scenarioManager.finishScenario(success: success, choices: choices)
+        if let questReward { applyQuestReward(questReward) }
+        roundCheckpoint = nil
+        departureCheckpoint = nil
+        boardCoordinator.exitBoard()
+        forgetHistory()   // a finished scenario can't be undone
+        // Back to town: spend gold, level up, pick the next scenario — after a city event.
+        game.events.cityEventDue = true
+        appPhase = .gameSetup
+        saveGame()
+    }
+
+    /// Scenario rewards about a personal quest (GH 54–62): '"Vengeance" quest complete' completes
+    /// it for whoever holds it; "Immediately retire the Seeker of Xorn" retires them, the
+    /// scenario's own events replacing the class's retirement events.
+    func applyQuestReward(_ text: String) {
+        func holder(of questName: String) -> GameCharacter? {
+            game.characters.first { character in
+                guard let id = character.personalQuest else { return false }
+                return characterManager.personalQuest(id, edition: character.edition)?.name.lowercased() == questName.lowercased()
+            }
+        }
+        func complete(_ character: GameCharacter) {
+            guard let id = character.personalQuest,
+                  let quest = characterManager.personalQuest(id, edition: character.edition) else { return }
+            character.personalQuestProgress = quest.requirements.map(\.target)
+            game.campaignLog.append(CampaignLogEntry(type: .questCompleted,
+                message: "\(GameText.characterName(character, labels: editionStore))\u{2019}s quest \(quest.name) is complete"))
+        }
+        if let match = text.firstMatch(of: #/"(.+)" quest complete/#), let character = holder(of: String(match.1)) {
+            complete(character)
+        } else if let match = text.firstMatch(of: #/[Ii]mmediately retire the ([^.]+)\./#), let character = holder(of: String(match.1)) {
+            complete(character)
+            characterManager.retireCharacter(character, addRetirementEvents: false)
         }
     }
 
-    func allSaveSlots() -> [SavedGameModel] {
-        let fetchDescriptor = FetchDescriptor<SavedGameModel>(
-            sortBy: [SortDescriptor(\.updatedAt, order: .reverse)]
-        )
-        return (try? modelContext.fetch(fetchDescriptor)) ?? []
+    /// Turn a table rule on or off. Going back to the item limits leaves home what no longer fits;
+    /// items already at home stay there until brought.
+    func setTableRule(_ rule: WritableKeyPath<TableRules, Bool>, _ on: Bool) {
+        guard game.tableRules[keyPath: rule] != on else { return }
+        pushUndoState()
+        game.tableRules[keyPath: rule] = on
+        if rule == \TableRules.bringEveryItem {
+            for character in game.characters {
+                editionStore.fitLoadout(character, unlimited: on)
+            }
+        }
+        saveGame()
+    }
+
+    /// Draw the events about to be resolved: their decks are started (shuffled) now and saved, so
+    /// quitting before resolving one can't deal a different card next time.
+    func prepareEvents(_ decks: [EventCardManager.Deck], departingFor scenario: ScenarioData? = nil) {
+        let unstarted = decks.contains { game.events.peek($0.rawValue) == nil }
+        for deck in decks { _ = eventCardManager.deck(deck) }
+        game.events.departingFor = scenario?.id
+        if unstarted { saveGame() }
+    }
+
+    /// Start a new campaign from scratch and go to the party screen. Other campaigns stay saved.
+    func beginNewGame() {
+        refreshCampaigns()
+        let first = campaigns.isEmpty
+        newGame()
+        setEdition("gh")
+        // A player's first campaign teaches the game as it's played.
+        game.learningMode = first
+        appPhase = .gameSetup
+    }
+
+    /// Turn the learning mode on or off for this campaign.
+    func setLearningMode(_ on: Bool) {
+        guard game.learningMode != on else { return }
+        game.learningMode = on
+        // Mid-scenario the save is the round's checkpoint: the switch goes in it too.
+        roundCheckpoint?.learningMode = on ? true : nil
+        departureCheckpoint?.learningMode = on ? true : nil
+        saveGame()
+    }
+
+    /// New Campaign from the app menu: the campaign being played is saved (a scenario at the
+    /// start of its round), then a new one begins.
+    func requestNewGame() {
+        if boardCoordinator.scenarioData != nil {
+            saveAndQuitScenario()
+        } else if !game.characters.isEmpty {
+            saveGame()
+        }
+        beginNewGame()
+    }
+
+    /// Go back to the main menu from the party screen, saving the party on the way.
+    func returnToMainMenu() {
+        saveGame()
+        appPhase = .mainMenu
+    }
+
+    /// Leave the board for the main menu. The scenario stays saved at the start of the current
+    /// round, and Continue resumes it there.
+    func saveAndQuitScenario() {
+        saveGame()
+        boardCoordinator.exitBoard()
+        forgetHistory()
+    }
+
+    // MARK: - Campaigns
+
+    /// A copy of a saved campaign, to come back to (before a hard scenario, say). Play carries on
+    /// in the original. The current campaign is saved first, so its copy is as it stands.
+    @discardableResult
+    func duplicateCampaign(_ id: UUID) -> UUID? {
+        if id == currentCampaignID { saveGame() }
+        guard var file = campaignStore.load(id) else { return nil }
+        let title = campaigns.first { $0.id == id }?.title ?? file.name
+        file.id = UUID()
+        file.name = "\(title) (copy)"
+        file.createdAt = Date()
+        file.updatedAt = file.updatedAt.addingTimeInterval(-1)   // listed below the original
+        writeCampaign(file)
+        refreshCampaigns()
+        return file.id
+    }
+
+    func renameCampaign(_ id: UUID, to name: String) {
+        guard var file = campaignStore.load(id) else { return }
+        file.name = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        writeCampaign(file)
+        refreshCampaigns()
+    }
+
+    /// Delete a campaign's file for good. Deleting the one being played leaves the game as it is,
+    /// unsaved, until it's saved as a new campaign.
+    func deleteCampaign(_ id: UUID) {
+        campaignStore.delete(id)
+        if id == currentCampaignID { currentCampaignID = nil }
+        refreshCampaigns()
+    }
+
+    func refreshCampaigns() {
+        campaigns = campaignStore.entries(labels: editionStore)
+    }
+
+    /// Saves from before campaigns were files (the SwiftData autosave and named slots) become
+    /// campaigns, once.
+    private func migrateSwiftDataSaves() {
+        guard let saved = try? modelContext.fetch(FetchDescriptor<SavedGameModel>()), !saved.isEmpty else { return }
+        for model in saved {
+            if let data = model.snapshotData, let snapshot = try? JSONDecoder().decode(GameSnapshot.self, from: data) {
+                writeCampaign(CampaignFile(id: UUID(), name: model.name == "autosave" ? "" : model.name,
+                                                createdAt: model.createdAt, updatedAt: model.updatedAt, snapshot: snapshot))
+            }
+            modelContext.delete(model)
+        }
+        try? modelContext.save()
     }
 
     // MARK: - Export / Import
 
+    /// The current campaign's file, saved first, for sharing.
     func exportGameData() -> Data? {
-        let encoder = JSONEncoder()
-        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-        return try? encoder.encode(game.toSnapshot(boardCoordinator: boardCoordinator))
+        saveGame()
+        return currentCampaignID.flatMap(campaignStore.exportData)
     }
 
+    /// Add an exported campaign to the list (it never replaces one); false if the file isn't one.
+    @discardableResult
     func importGameData(_ data: Data) -> Bool {
-        guard let snapshot = try? JSONDecoder().decode(GameSnapshot.self, from: data) else {
-            return false
-        }
-        pushUndoState()
-        game.restore(from: snapshot, editionStore: editionStore, boardCoordinator: boardCoordinator)
+        guard campaignStore.importCampaign(data) != nil else { return false }
+        refreshCampaigns()
         return true
     }
 
     // MARK: - Undo/Redo
 
     func pushUndoState() {
+        guard appPhase != .board else { return }
         guard let data = try? JSONEncoder().encode(game.toSnapshot(boardCoordinator: boardCoordinator)) else { return }
         undoStack.append(data)
         if undoStack.count > Self.maxUndoDepth {
@@ -377,7 +603,7 @@ final class GameManager {
     }
 
     func undo() {
-        guard let previous = undoStack.popLast() else { return }
+        guard canUndo, let previous = undoStack.popLast() else { return }
         // Push current state to redo
         if let current = try? JSONEncoder().encode(game.toSnapshot(boardCoordinator: boardCoordinator)) {
             redoStack.append(current)
@@ -388,7 +614,7 @@ final class GameManager {
     }
 
     func redo() {
-        guard let next = redoStack.popLast() else { return }
+        guard canRedo, let next = redoStack.popLast() else { return }
         // Push current state to undo
         if let current = try? JSONEncoder().encode(game.toSnapshot(boardCoordinator: boardCoordinator)) {
             undoStack.append(current)
@@ -402,7 +628,7 @@ final class GameManager {
     /// Index 0 = earliest undo state. Index undoCount = current state. Index undoCount + redoCount = latest redo state.
     func jumpToHistory(index: Int) {
         let currentIndex = undoStack.count
-        if index == currentIndex { return }
+        if index == currentIndex || appPhase == .board { return }
 
         guard let currentData = try? JSONEncoder().encode(game.toSnapshot(boardCoordinator: boardCoordinator)) else { return }
 
@@ -428,4 +654,32 @@ final class GameManager {
 
     /// Current position in the timeline (0-based)
     var historyIndex: Int { undoStack.count }
+}
+
+/// What the autosave holds, in the words the main menu shows ("Brute, Tinkerer · #1 Black
+/// Barrow · Round 2").
+struct AutosaveSummary: Equatable {
+    var characterNames: [String]
+    /// "#1 Black Barrow" while a scenario is in progress.
+    var scenario: String?
+    /// The round Continue resumes at, while a scenario is in progress.
+    var round: Int?
+    var savedAt: Date
+
+    init?(_ snapshot: GameSnapshot, savedAt: Date, labels: EditionDataStore?) {
+        let characters: [CharacterSnapshot] = snapshot.figures.compactMap {
+            if case .character(let c) = $0, !c.absent { return c }
+            return nil
+        }
+        guard !characters.isEmpty else { return nil }
+        characterNames = characters.map {
+            $0.title.isEmpty ? GameText.className($0.name, edition: $0.edition, labels: labels) : $0.title
+        }.sorted()
+        if let scenario = snapshot.scenario, snapshot.boardSnapshot != nil {
+            let name = labels?.scenarioData(index: scenario.index, edition: scenario.edition)?.name
+            self.scenario = name.map { "#\(scenario.index) \($0)" } ?? "#\(scenario.index)"
+            round = snapshot.round + 1
+        }
+        self.savedAt = savedAt
+    }
 }
