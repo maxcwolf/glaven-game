@@ -39,6 +39,8 @@ Bandit Archer 4 attacks Scoundrel: 1 + 0 = 1 damage [1 +0(mod) = 1]
 Cragheart’s turn: Rumbling Advance and Avalanche
 Cragheart takes the top half from Avalanche and the bottom half from Rumbling Advance
 Cragheart: Move 2
+Brute suffers 1 damage
+Spellweaver suffers 1 damage
 Cragheart moves 2 hexes [to (-3,-2)]
 Cragheart infuses Earth
 Cragheart: Attack 4, Range 1
@@ -93,8 +95,8 @@ Round 1 complete
 elements: fire waning, air waning, earth waning
 scoundrel (-2,-1) hp 5/8 hand 7 discard 2 lost 0 active 0 xp 0 gold 0
 cragheart (-3,-2) hp 10/10 hand 9 discard 1 lost 1 active 0 xp 0 gold 0
-spellweaver (-3,-3) hp 6/6 hand 6 discard 1 lost 1 active 0 xp 3 gold 0
-brute (-2,1) hp 4/10 hand 8 discard 1 lost 1 active 0 xp 2 gold 0
+spellweaver (-3,-3) hp 5/6 hand 6 discard 1 lost 1 active 0 xp 3 gold 0
+brute (-2,1) hp 3/10 hand 8 discard 1 lost 1 active 0 xp 2 gold 0
 bandit-archer #1 normal (0,0) hp 5/5
 bandit-archer #2 elite (0,6) hp 7/7
 bandit-archer #4 normal (-3,0) hp 1/5
@@ -128,7 +130,7 @@ Spellweaver attacks Bandit Archer 1: 3 − 2 = 1 damage [3 -2(mod) = 1]
 Spellweaver gains 1 XP
 Spellweaver infuses Earth
 Spellweaver: Heal 3, Range 1. Choose who to heal
-Spellweaver heals Cragheart for 0 [Heal 3]
+Spellweaver heals Spellweaver for 1 [Heal 3]
 Spellweaver ends the turn
 Bandit Archer’s turn: ability card (14)
 Bandit Archer 2 attacks Brute: 2 + 0 = 2 damage [2 +0(mod) = 2]
@@ -170,7 +172,7 @@ Round 2 complete
 elements: earth waning
 scoundrel (-2,0) hp 5/8 hand 5 discard 4 lost 0 active 0 xp 0 gold 2
 spellweaver (-3,-3) hp 6/6 hand 4 discard 2 lost 2 active 0 xp 4 gold 0
-brute (-2,1) hp 4/10 hand 5 discard 3 lost 2 active 0 xp 3 gold 0
+brute (-2,1) hp 3/10 hand 5 discard 3 lost 2 active 0 xp 3 gold 0
 cragheart (-1,0) hp 10/10 hand 7 discard 3 lost 1 active 0 xp 0 gold 2
 bandit-archer #2 elite (0,6) hp 7/7
 bandit-archer #5 elite (-3,6) hp 7/7
@@ -181,12 +183,12 @@ money tokens: (-3,0)x1 (0,0)x1
 doors open: 1/5
 Scoundrel plays Venom Shiv (60) and Quick Hands
 Spellweaver plays Reviving Ether (80) and Ride the Wind
-Brute plays Warding Strength (32) and Sweeping Blow
+Brute will long rest
 Cragheart plays Crater (61) and Backup Ammunition
 Bandit Commander draws an ability card (14)
 Living Bones draws an ability card (20)
 Bandit Archer draws an ability card (31)
-Turn order: Bandit Commander 14, Living Bones 20, Bandit Archer 31, Brute 32, Scoundrel 60, Cragheart 61, Spellweaver 80
+Turn order: Bandit Commander 14, Living Bones 20, Bandit Archer 31, Scoundrel 60, Cragheart 61, Spellweaver 80, Brute 99
 Bandit Commander’s turn: ability card (14)
 Bandit Commander 1 uses special ability 2
 Bandit Commander 1 summons Living Bones 3
@@ -199,19 +201,8 @@ Living Bones 2 can’t reach its focus
 Living Bones 2 heals Living Bones 2 for 0 [Heal 2]
 Bandit Archer’s turn: ability card (31)
 Bandit Archer 2 attacks Brute: 3 + 0 = 3 damage [3 +0(mod) = 3]
+Brute loses 2 discarded cards to prevent 3 damage
 Bandit Archer 5 attacks Brute: 3 − 1 = 2 damage [3 -1(mod) = 2]
-Brute loses 2 discarded cards to prevent 2 damage
-Brute’s turn: Warding Strength and Sweeping Blow
-Brute: Move 3
-Brute springs a trap and suffers 3 damage [bear]
-Brute loses a card from hand to prevent 3 damage
-Brute gains Immobilize
-Brute is immobilized and stops
-Brute moves 2 hexes [to (-3,-1)]
-Brute: Push 1
-Brute: Attack 3, Range 1, Push 2
-Brute has no target within range 1
-Brute ends the turn
 Scoundrel’s turn: Venom Shiv and Quick Hands
 Scoundrel takes the top half from Quick Hands and the bottom half from Venom Shiv
 Scoundrel: Move 5
@@ -230,11 +221,13 @@ Cragheart: Move 3
 Cragheart moves 3 hexes [to (-2,3)]
 Cragheart ends the turn
 Spellweaver’s turn: Reviving Ether and Ride the Wind
+Spellweaver recovers 2 lost cards
 Spellweaver infuses Dark
-Spellweaver uses the basic Move 2
-Spellweaver moves 2 hexes [to (-2,-1)]
+Spellweaver: Jump 8
+Spellweaver moves 7 hexes [to (-4,3)]
+Spellweaver infuses Air
 Spellweaver ends the turn
-Brute skips the short rest
+Brute long rests: loses Spare Dagger, heals 2 and takes back 5 cards
 Scoundrel skips the short rest
 Cragheart skips the short rest
 Spellweaver skips the short rest

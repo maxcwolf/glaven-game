@@ -378,7 +378,8 @@ final class BoardRulesRegressionTests: XCTestCase {
         turn.selectCards(top: try card("Scurry", of: "mindthief"), bottom: try card("Perverse Edge", of: "mindthief"))
         turn.setBottomFirst(true)
         turn.executeCurrentAction() // Attack 1, Range 2, Stun: no target
-        turn.executeCurrentAction() // ice, +1 XP
+        turn.executeCurrentAction() // ice
+        turn.executeCurrentAction() // +1 XP
         XCTAssertEqual(coord.turnLog.filter { $0.message.hasSuffix("infuses Ice") }.count, 1)
         XCTAssertEqual(mindthief.experience, 1)
     }
@@ -510,7 +511,8 @@ final class BoardRulesRegressionTests: XCTestCase {
         let turn = PlayerTurnController(characterID: squid.id, coordinator: coord, gameManager: gm)
         coord.activePlayerTurn = turn
         turn.selectCards(top: extinction, bottom: other)
-        turn.executeCurrentAction()
+        turn.executeCurrentAction()   // Curse
+        turn.executeCurrentAction()   // and Wound
         XCTAssertTrue(bandit.entityConditions.contains { $0.name == .wound })
         XCTAssertTrue(ally.entityConditions.contains { $0.name == .wound })
         XCTAssertFalse(squid.entityConditions.contains { $0.name == .wound })
@@ -535,6 +537,84 @@ final class BoardRulesRegressionTests: XCTestCase {
         XCTAssertTrue(beside.entityConditions.contains { $0.name == .poison })
         XCTAssertFalse(far.entityConditions.contains { $0.name == .poison })
         XCTAssertFalse(squid.entityConditions.contains { $0.name == .poison })
+    }
+
+    // MARK: - Printed text
+
+    private func turn(for character: GameCharacter, top: AbilityModel, bottom: AbilityModel, bottomFirst: Bool = false)
+        -> PlayerTurnController {
+        character.handCards = [top.cardId!, bottom.cardId!]
+        let turn = PlayerTurnController(characterID: character.id, coordinator: coord, gameManager: gm)
+        coord.activePlayerTurn = turn
+        turn.selectCards(top: top, bottom: bottom)
+        if bottomFirst { turn.setBottomFirst(true) }
+        return turn
+    }
+
+    /// Regression: Crater's Move 4 was wrapped in its text, so it never happened; its "all
+    /// adjacent allies and enemies suffer 1 damage" didn't either.
+    func testCraterHurtsItsNeighboursAndMoves() throws {
+        let cragheart = addCharacter("cragheart", at: HexCoord(3, 3))
+        let brute = addCharacter("brute", at: HexCoord(4, 3))
+        let bandit = addMonster("bandit-guard", at: HexCoord(2, 3))
+        let (bruteHealth, banditHealth) = (brute.health, bandit.health)
+        let turn = turn(for: cragheart, top: try card("Avalanche", of: "cragheart"), bottom: try card("Crater", of: "cragheart"),
+                        bottomFirst: true)
+        turn.executeCurrentAction()   // all adjacent allies and enemies suffer 1 damage
+        XCTAssertEqual(brute.health, bruteHealth - 1)
+        XCTAssertEqual(bandit.health, banditHealth - 1)
+        XCTAssertEqual(cragheart.health, cragheart.maxHealth, "not the Cragheart")
+        turn.executeCurrentAction()   // Move 4, Jump
+        guard case .selectingMove(_, let range, _, _, let mode) = coord.interactionMode else { return XCTFail("the move happens") }
+        XCTAssertEqual(range, 4)
+        XCTAssertEqual(mode, .jump)
+    }
+
+    /// Regression: Unstable Upheaval's Shield 2 (for every ally) was wrapped in its text.
+    func testUnstableUpheavalShieldsEveryAlly() throws {
+        let cragheart = addCharacter("cragheart", at: HexCoord(3, 3))
+        let brute = addCharacter("brute", at: HexCoord(8, 8))
+        let health = brute.health
+        let turn = turn(for: cragheart, top: try card("Avalanche", of: "cragheart"),
+                        bottom: try card("Unstable Upheaval", of: "cragheart"), bottomFirst: true)
+        turn.executeCurrentAction()   // all allies suffer 1 damage
+        turn.executeCurrentAction()   // Shield 2, affect all allies
+        XCTAssertEqual(brute.health, health - 1)
+        XCTAssertEqual(cragheart.shield?.value?.intValue, 2)
+        XCTAssertEqual(brute.shield?.value?.intValue, 2)
+    }
+
+    func testRevivingEtherRecoversTheLostCards() throws {
+        let spellweaver = addCharacter("spellweaver", at: HexCoord(3, 3))
+        spellweaver.lostCards = [61, 62]
+        let turn = turn(for: spellweaver, top: try card("Reviving Ether", of: "spellweaver"), bottom: try card("Frost Armor", of: "spellweaver"))
+        turn.executeCurrentAction()
+        XCTAssertTrue(spellweaver.lostCards.isEmpty)
+        XCTAssertTrue(spellweaver.handCards.contains(61) && spellweaver.handCards.contains(62))
+    }
+
+    func testThiefsKnackDisarmsAnAdjacentTrap() throws {
+        let scoundrel = addCharacter("scoundrel", at: HexCoord(3, 3))
+        coord.boardState.placeTrap(at: HexCoord(4, 3), damage: 3)
+        let turn = turn(for: scoundrel, top: try card("Thief's Knack", of: "scoundrel"), bottom: try card("Backstab", of: "scoundrel"))
+        turn.executeCurrentAction()
+        XCTAssertEqual(coord.boardState.cells[HexCoord(4, 3)]?.isTrap, false)
+    }
+
+    func testMassiveBoulderHurtsThoseBesideTheTarget() async throws {
+        let cragheart = addCharacter("cragheart", at: HexCoord(3, 3))
+        let target = addMonster("bandit-guard", at: HexCoord(6, 3))
+        target.health = 50
+        target.maxHealth = 50
+        let beside = addMonster("bandit-guard", at: HexCoord(7, 3))
+        let health = beside.health
+        let turn = turn(for: cragheart, top: try card("Massive Boulder", of: "cragheart"), bottom: try card("Avalanche", of: "cragheart"))
+        turn.executeCurrentAction()
+        guard case .selectingAttackTarget = coord.interactionMode,
+              let piece = coord.boardState.piecePositions.first(where: { $0.value == HexCoord(6, 3) })?.key else { return XCTFail() }
+        coord.handlePieceTap(piece)
+        _ = await waitUntil { turn.currentActionIndex > 0 }
+        XCTAssertEqual(beside.health, health - 1)
     }
 
     // MARK: - Mindthief augments

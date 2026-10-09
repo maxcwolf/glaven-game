@@ -1628,6 +1628,7 @@ final class BoardCoordinator {
         lastAttackerPos = boardState.piecePositions[attacker]
         boardScene?.clearHighlights()
 
+        let targetHex = boardState.piecePositions[target]
         // Bonuses in the attack's own text, judged for this target (Backstab, Perverse Edge…).
         let printed = turn.map { attackTextBonus($0.attackTexts, attacker: attacker, target: target) } ?? (attack: 0, experience: 0)
         await performAttack(
@@ -1640,6 +1641,10 @@ final class BoardCoordinator {
                                      pull: turn?.pendingPull ?? 0,
                                      advantage: turn?.pendingAdvantage ?? false))
 
+        // Massive Boulder: "all allies and enemies adjacent to the target suffer 1 damage".
+        for text in turn?.attackTexts ?? [] where text.contains("adjacent to the target suffer") {
+            printedDamage(text, amount: PlayerTurnController.damageAmount(in: text), by: attacker, around: targetHex)
+        }
         if printed.experience > 0, case .character(let id) = attacker,
            let character = gameManager?.game.characters.first(where: { $0.id == id }) {
             character.experience += printed.experience

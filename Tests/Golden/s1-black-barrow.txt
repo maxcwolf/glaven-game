@@ -36,6 +36,7 @@ Scoundrel ends the turn
 Cragheart’s turn: Rumbling Advance and Avalanche
 Cragheart takes the top half from Avalanche and the bottom half from Rumbling Advance
 Cragheart: Move 2
+Bandit Guard 1 suffers 1 damage
 Cragheart moves 2 hexes [to (1,1)]
 Cragheart infuses Earth
 Cragheart: Attack 4, Range 1
@@ -65,6 +66,8 @@ Brute moves 3 hexes [to (1,0)]
 Brute infuses Air
 Brute: Attack 6, Range 1
 Brute attacks Bandit Guard 1: 6 + 0 − 1 shield = 5 damage [6 +0(mod) -1(shield) = 5]
+Bandit Guard 1 dies
+A money token drops [at (0,1)]
 Brute gains 2 XP
 Brute ends the turn
 Scoundrel skips the short rest
@@ -76,12 +79,12 @@ scoundrel (1,5) hp 3/8 hand 7 discard 2 lost 0 active 0 xp 0 gold 0
 cragheart (1,1) hp 2/10 hand 9 discard 1 lost 1 active 0 xp 1 gold 0
 spellweaver (4,2) hp 6/6 hand 6 discard 1 lost 1 active 0 xp 0 gold 0
 brute (1,0) hp 10/10 hand 8 discard 1 lost 1 active 0 xp 2 gold 0
-bandit-guard #1 elite (0,1) hp 1/9
 bandit-guard #2 elite (0,5) hp 5/9 [poison]
 bandit-guard #3 normal (0,0) hp 6/6
 bandit-guard #4 normal (0,2) hp 6/6
 bandit-guard #5 normal (0,4) hp 6/6
 bandit-guard #6 normal (0,6) hp 6/6
+money tokens: (0,1)x1
 doors open: 0/1
 Scoundrel plays Backstab (6) and Thief's Knack
 Cragheart plays Earthen Clod (38) and Massive Boulder
@@ -99,9 +102,7 @@ Scoundrel ends the turn
 Spellweaver’s turn: Mana Bolt and Impaling Eruption
 Spellweaver takes the top half from Impaling Eruption and the bottom half from Mana Bolt
 Spellweaver: Attack 3, Range 4
-Spellweaver attacks Bandit Guard 1: 3 + 0 − 1 shield = 2 damage [3 +0(mod) -1(shield) = 2]
-Bandit Guard 1 dies
-A money token drops [at (0,1)]
+Spellweaver attacks Bandit Guard 4: 3 + 0 = 3 damage [3 +0(mod) = 3]
 Spellweaver gains 1 XP
 Spellweaver infuses Earth
 Spellweaver: Heal 3, Range 1. Choose who to heal
@@ -109,7 +110,7 @@ Spellweaver heals Spellweaver for 0 [Heal 3]
 Spellweaver ends the turn
 Brute’s turn: Spare Dagger and Trample
 Brute: Attack 3, Range 3
-Brute attacks Bandit Guard 3: miss [MISS]
+Brute attacks Bandit Guard 4: miss [MISS]
 Brute gains 1 XP
 Brute: Jump 4
 Brute moves 2 hexes [to (1,2)]
@@ -120,7 +121,10 @@ Brute ends the turn
 Cragheart’s turn: Earthen Clod and Massive Boulder
 Cragheart takes the top half from Massive Boulder and the bottom half from Earthen Clod
 Cragheart: Attack 3, Range 3
-Cragheart attacks Bandit Guard 3: 3 + 1 = 4 damage [3 +1(mod) = 4]
+Cragheart attacks Bandit Guard 4: 3 + 1 = 4 damage [3 +1(mod) = 4]
+Bandit Guard 4 dies
+A money token drops [at (0,2)]
+Brute suffers 1 damage
 Cragheart infuses Earth
 Cragheart: Heal 2, Range 3. Choose who to heal
 Cragheart heals Cragheart for 2 [Heal 2]
@@ -129,13 +133,12 @@ Bandit Guard’s turn: ability card (50)
 Bandit Guard 2 attacks Scoundrel: 3 − 1 = 2 damage [3 -1(mod) = 2]
 Bandit Guard 3 moves 1 hex [to (0,1)]
 Bandit Guard 3 attacks Brute: 2 + 0 = 2 damage [2 +0(mod) = 2]
-Bandit Guard 4 attacks Brute: 2 − 1 = 1 damage [2 -1(mod) = 1]
 Bandit Guard 5 moves 1 hex [to (1,4)]
-Bandit Guard 5 attacks Scoundrel: 2 ×2 = 4 damage [2 ×2(mod) = 4]
-Scoundrel loses 2 discarded cards to prevent 4 damage
+Bandit Guard 5 attacks Scoundrel: 2 − 1 = 1 damage [2 -1(mod) = 1]
+Scoundrel loses 2 discarded cards to prevent 1 damage
 Bandit Guard 6 moves 1 hex [to (1,6)]
-Bandit Guard 6 attacks Scoundrel: 2 + 0 = 2 damage [2 +0(mod) = 2]
-Scoundrel loses a card from hand to prevent 2 damage
+Bandit Guard 6 attacks Scoundrel: 2 ×2 = 4 damage [2 ×2(mod) = 4]
+Scoundrel loses a card from hand to prevent 4 damage
 Spellweaver skips the short rest
 Brute skips the short rest
 Cragheart skips the short rest
@@ -148,11 +151,10 @@ spellweaver (4,2) hp 6/6 hand 4 discard 2 lost 2 active 0 xp 1 gold 0
 brute (1,2) hp 7/10 hand 6 discard 2 lost 2 active 0 xp 5 gold 0
 cragheart (1,1) hp 4/10 hand 7 discard 3 lost 1 active 0 xp 1 gold 0
 bandit-guard #2 elite (0,5) hp 1/9 [poison]
-bandit-guard #3 normal (0,1) hp 2/6
-bandit-guard #4 normal (0,2) hp 6/6
+bandit-guard #3 normal (0,1) hp 6/6
 bandit-guard #5 normal (1,4) hp 6/6
 bandit-guard #6 normal (1,6) hp 6/6
-money tokens: (0,1)x1
+money tokens: (0,1)x1 (0,2)x1
 doors open: 0/1
 Scoundrel plays Throwing Knives (10) and Quick Hands
 Spellweaver plays Frost Armor (20) and Reviving Ether
@@ -173,33 +175,33 @@ Brute’s turn: Eye for an Eye and Warding Strength
 Brute takes the top half from Warding Strength and the bottom half from Eye for an Eye
 Brute: Attack 3, Range 1, Push 2
 Brute attacks Bandit Guard 3: 3 + 1 = 4 damage [3 +1(mod) = 4]
-Bandit Guard 3 dies
-A money token drops [at (0,1)]
+Bandit Guard 3 can’t be pushed any further [Push]
 Brute: Heal 2, Range 1. Choose who to heal
 Brute heals Cragheart for 2 [Heal 2]
 Brute infuses Earth
 Brute ends the turn
 Spellweaver’s turn: Frost Armor and Reviving Ether
 Spellweaver: Jump 4
-Spellweaver moves 1 hex [to (3,3)]
+Spellweaver moves 4 hexes [to (0,2)]
 Spellweaver consumes Earth
 Spellweaver: Attack 3, Range 3
 Spellweaver gains 1 XP
-Spellweaver attacks Bandit Guard 5: 3 − 2 = 1 damage [3 -2(mod) = 1]
+Spellweaver attacks Bandit Guard 2: 3 + 1 poison − 2 − 1 shield = 1 damage [3 +1(poison) -2(mod) -1(shield) = 1]
+Bandit Guard 2 dies
+A money token drops [at (0,5)]
 Spellweaver ends the turn
+Spellweaver loots 1 money token (2 gold)
 Cragheart’s turn: Crushing Grasp and Opposing Strike
 Cragheart: Attack 3, Range 1, Immobilize
 Cragheart has no target within range 1
 Cragheart ends the turn
 Bandit Guard’s turn: ability card (50)
-Bandit Guard 2 moves 2 hexes [to (0,3)]
-Bandit Guard 2 attacks Brute: 3 + 1 = 4 damage [3 +1(mod) = 4]
-Bandit Guard 4 attacks Brute: 2 + 1 = 3 damage [2 +1(mod) = 3]
-Brute loses 2 discarded cards to prevent 3 damage
-Bandit Guard 5 moves 1 hex [to (1,3)]
-Bandit Guard 5 attacks Brute: 2 + 0 = 2 damage [2 +0(mod) = 2]
+Bandit Guard 3 moves 1 hex [to (0,1)]
+Bandit Guard 3 attacks Brute: 2 + 1 = 3 damage [2 +1(mod) = 3]
+Bandit Guard 5 moves 1 hex [to (0,3)]
+Bandit Guard 5 attacks Brute: 2 + 1 = 3 damage [2 +1(mod) = 3]
 Bandit Guard 6 moves 3 hexes [to (2,3)]
-Bandit Guard 6 attacks Scoundrel: 2 + 1 = 3 damage [2 +1(mod) = 3]
+Bandit Guard 6 attacks Scoundrel: 2 + 0 = 2 damage [2 +0(mod) = 2]
 Scoundrel is exhausted [0 HP]
 Brute skips the short rest
 Spellweaver skips the short rest

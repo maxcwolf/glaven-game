@@ -72,6 +72,18 @@ extension BoardCoordinator {
             }
         }
         if let turn = activePlayerTurn, case .character(let id) = pieceID, turn.characterID == id,
+           style != .forced, !turn.afterMoveTexts.isEmpty {
+            for text in turn.afterMoveTexts {
+                if text.contains("every hex you enter") {
+                    lootHexes(for: pieceID, coords: Array(path.dropFirst()))
+                } else if text.contains("suffer") {
+                    printedDamage(text, amount: PlayerTurnController.damageAmount(in: text), by: pieceID,
+                                  around: boardState.piecePositions[pieceID])
+                }
+            }
+            turn.afterMoveTexts = []
+        }
+        if let turn = activePlayerTurn, case .character(let id) = pieceID, turn.characterID == id,
            style != .forced, !turn.movedThroughConditions.isEmpty {
             for condition in turn.movedThroughConditions {
                 applyCondition(condition, toEnemiesOn: turn.hexesPassed, from: pieceID)
@@ -79,6 +91,47 @@ extension BoardCoordinator {
             turn.movedThroughConditions = []
         }
         return isOnBoard(pieceID)
+    }
+
+    /// Damage printed on a card: "all adjacent allies and enemies", "all adjacent allies",
+    /// "all allies", or (with `around` the target's hex) "adjacent to the target".
+    func printedDamage(_ text: String, amount: Int, by pieceID: PieceID, around hex: HexCoord?) {
+        guard amount > 0 else { return }
+        var victims: [PieceID] = []
+        if text.contains("all allies suffer") {
+            victims = boardState.piecePositions.keys.filter { $0 != pieceID && !areEnemies(pieceID, $0) && isFigure($0) }
+        } else if let hex {
+            let besides = hex.neighbors.compactMap { boardState.piece(at: $0) }.filter { $0 != pieceID && isFigure($0) }
+            if text.contains("allies and enemies") {
+                victims = besides
+            } else if text.contains("allies") {
+                victims = besides.filter { !areEnemies(pieceID, $0) }
+            } else if text.contains("enemies") {
+                victims = besides.filter { areEnemies(pieceID, $0) }
+            }
+        }
+        for victim in victims.sorted() where isOnBoard(victim) {
+            log("\(name(victim)) suffers \(amount) damage", category: .damage)
+            sufferDamage(amount, to: victim, killer: pieceID)
+        }
+    }
+
+    /// Figures (not objectives) for printed damage.
+    private func isFigure(_ piece: PieceID) -> Bool {
+        if case .objective = piece { return false }
+        return true
+    }
+
+    /// Thief's Knack: disarm one trap next to the figure.
+    func disarmTrap(besides pieceID: PieceID) {
+        guard let position = boardState.piecePositions[pieceID],
+              let trap = position.neighbors.sorted().first(where: { boardState.cells[$0]?.isTrap == true }) else {
+            log("\(name(pieceID)) has no adjacent trap to disarm", category: .info)
+            return
+        }
+        boardState.removeTrap(at: trap)
+        boardScene?.removeOverlaySprite(at: trap, offsetCol: offsetCol, offsetRow: offsetRow)
+        log("\(name(pieceID)) disarms a trap", category: .info)
     }
 
     /// A condition for every enemy standing on one of `hexes` ("all enemies moved through").

@@ -59,6 +59,8 @@ final class PlayerTurnController {
     var persistentCardsThisTurn: [Int] = []
     /// Conditions the current move gives every enemy it passes over (Feedback Loop).
     var movedThroughConditions: [ConditionName] = []
+    /// Text printed inside the current move, done when it ends (Rumbling Advance, Swift Bow).
+    var afterMoveTexts: [String] = []
     var usedUpThisTurn: Set<Int> = []
     var magmaWadersHealed = false
     private var hornedHelmUsed = false
@@ -89,10 +91,10 @@ final class PlayerTurnController {
         self.bottomCard = bottom
         // Enhancements bought in town are part of the card (GH p.42).
         let enhancements = character?.enhancements ?? []
-        self.topActions = Self.attachingTargets(
-            CardEnhancing.apply(enhancements, to: top.actions ?? [], cardId: top.cardId, half: "top"))
-        self.bottomActions = Self.attachingTargets(
-            CardEnhancing.apply(enhancements, to: bottom.bottomActions ?? [], cardId: bottom.cardId, half: "bottom"))
+        self.topActions = Self.steps(Self.attachingTargets(
+            CardEnhancing.apply(enhancements, to: top.actions ?? [], cardId: top.cardId, half: "top")))
+        self.bottomActions = Self.steps(Self.attachingTargets(
+            CardEnhancing.apply(enhancements, to: bottom.bottomActions ?? [], cardId: bottom.cardId, half: "bottom")))
         self.phase = bottomFirst ? .executeBottomAction : .executeTopAction
         self.currentActionIndex = 0
     }
@@ -378,6 +380,9 @@ final class PlayerTurnController {
             if PassiveItems.flies(character?.items ?? []) { mode = .fly }
             grantBonusExperience(bonus)
             hexesPassed = []
+            // Rumbling Advance ("then all adjacent figures suffer 1 damage"), Swift Bow ("loot
+            // every hex you enter"): text printed inside the move, done when it ends.
+            afterMoveTexts = customTexts(of: action)
             // Feedback Loop: "Muddle, all enemies moved through" printed inside the move.
             if (action.subActions ?? []).contains(where: {
                 $0.type == .specialTarget && $0.value?.stringValue.lowercased() == "enemiesmovedthrough" }) {
@@ -575,6 +580,16 @@ final class PlayerTurnController {
 
         case .shield, .retaliate:
             applyDefensiveBonus(action)
+            // Unstable Upheaval: "Shield 2, affect all allies".
+            if customText(of: action).contains("affect all allies"), let game = gameManager?.game {
+                for ally in game.characters where ally.id != characterID && !ally.exhausted && !ally.absent {
+                    let total = (ally.shield?.value?.intValue ?? 0) + (action.value?.intValue ?? 0)
+                    ally.shield = ActionModel(type: .shield, value: .int(total))
+                }
+            }
+
+        case .custom:
+            performPrintedText(action, coordinator: coordinator)
 
         case .experience:
             grantExperience(action.value?.intValue ?? 1)
@@ -721,6 +736,41 @@ final class PlayerTurnController {
         }
     }
 
+    // MARK: - Printed text
+
+    /// A step that is only text: what the board can do from it (Reviving Ether, Thief's Knack,
+    /// Crater's damage around the character). Unknown text is left to the players.
+    private func performPrintedText(_ action: ActionModel, coordinator: BoardCoordinator) {
+        guard let character else { return }
+        let me = PieceID.character(characterID)
+        let own = action.value.flatMap { gameManager?.editionStore.resolveCustomText($0.stringValue, edition: character.edition) } ?? ""
+        let text = (own + " " + customText(of: action)).lowercased()
+        if text.contains("all of your lost cards") && text.contains("recover") {
+            let lost = character.lostCards
+            character.handCards.append(contentsOf: lost)
+            character.lostCards.removeAll()
+            coordinator.log("\(who) recovers \(lost.count) lost card\(lost.count == 1 ? "" : "s")", category: .info)
+        } else if text.contains("disarm one adjacent trap") {
+            coordinator.disarmTrap(besides: me)
+        } else if text.contains("suffer") && text.contains("damage") {
+            var amount = Self.damageAmount(in: text)
+            // "2 damage instead" when the element printed with it is consumed (Crater).
+            for sub in action.subActions ?? [] where MonsterAbility.isConsume(sub) {
+                guard let game = gameManager?.game, let used = game.consumeElements(MonsterAbility.elements(of: sub)) else { continue }
+                coordinator.log("\(who) consumes \(GameText.list(used.map(GameText.elementName)))", category: .element)
+                let instead = customText(of: sub) + " " + (sub.value.flatMap {
+                    gameManager?.editionStore.resolveCustomText($0.stringValue, edition: character.edition) } ?? "").lowercased()
+                if Self.damageAmount(in: instead) > 0 { amount = Self.damageAmount(in: instead) }
+                if let xp = instead.firstMatch(of: #/xp \+(\d+)/#).flatMap({ Int($0.1) }) { grantExperience(xp) }
+            }
+            coordinator.printedDamage(text, amount: amount, by: me, around: coordinator.boardState.piecePositions[me])
+        }
+    }
+
+    static func damageAmount(in text: String) -> Int {
+        text.firstMatch(of: #/(\d+) damage/#).flatMap { Int($0.1) } ?? 0
+    }
+
     // MARK: - Mindthief augments
 
     static func isAugment(_ action: ActionModel) -> Bool {
@@ -834,6 +884,34 @@ final class PlayerTurnController {
         case enemiesBesideEnemiesWith(ConditionName)
         /// Every other figure, enemy or ally (Mass Extinction).
         case everyoneElse
+    }
+
+    /// A half as the steps the player performs one by one: groupings (concatenations, grids,
+    /// boxes) and text that wraps printed actions (Crater's "suffer 1 damage" around its Move) are
+    /// opened up, so a move or a target choice inside them is a step of its own and the turn
+    /// waits for it. Augments stay whole: they aren't performed.
+    static func steps(_ actions: [ActionModel]) -> [ActionModel] {
+        actions.flatMap { action -> [ActionModel] in
+            switch action.type {
+            case .concatenation, .grid:
+                return steps(action.subActions ?? [])
+            case .box where !isAugment(action):
+                return steps(action.subActions ?? [])
+            case .custom where (action.subActions ?? []).contains(where: { isWrapped($0) }):
+                // The text stays a step (with the element it may consume, "2 damage instead");
+                // the actions it wraps become steps of their own.
+                var text = action
+                text.subActions = (action.subActions ?? []).filter { !isWrapped($0) }
+                return [text] + steps((action.subActions ?? []).filter(isWrapped))
+            default:
+                return [action]
+            }
+        }
+    }
+
+    /// A printed action wrapped by text (not a marker, more text, or an element it consumes).
+    private static func isWrapped(_ action: ActionModel) -> Bool {
+        action.type != .card && action.type != .custom && !MonsterAbility.isConsume(action)
     }
 
     /// Cards that print a target beside their conditions rather than on them ("Immobilize and
