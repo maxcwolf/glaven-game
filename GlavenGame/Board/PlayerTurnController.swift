@@ -63,8 +63,10 @@ final class PlayerTurnController {
     /// Cards whose persistent half was performed this turn: their charged bonus is in effect
     /// before they reach the active area. A bonus used up this turn never gets there.
     var persistentCardsThisTurn: [Int] = []
-    /// Conditions the current move gives every enemy it passes over (Feedback Loop).
+    /// Conditions the current move gives every enemy it passes over (Feedback Loop), and whether
+    /// the move must end where it started for them to apply.
     var movedThroughConditions: [ConditionName] = []
+    var movedThroughNeedsLoop = false
     /// Text printed inside the current move, done when it ends (Rumbling Advance, Swift Bow).
     var afterMoveTexts: [String] = []
     var usedUpThisTurn: Set<Int> = []
@@ -400,7 +402,9 @@ final class PlayerTurnController {
             // Rumbling Advance ("then all adjacent figures suffer 1 damage"), Swift Bow ("loot
             // every hex you enter"): text printed inside the move, done when it ends.
             afterMoveTexts = customTexts(of: action)
-            // Feedback Loop: "Muddle, all enemies moved through" printed inside the move.
+            // Feedback Loop: "If you end the movement in the same hex you started in, perform Muddle,
+            // all enemies moved through" printed inside the move.
+            movedThroughNeedsLoop = customText(of: action).contains("same hex you started in")
             if (action.subActions ?? []).contains(where: {
                 $0.type == .specialTarget && $0.value?.stringValue.lowercased() == "enemiesmovedthrough" }) {
                 movedThroughConditions = (action.subActions ?? []).compactMap {

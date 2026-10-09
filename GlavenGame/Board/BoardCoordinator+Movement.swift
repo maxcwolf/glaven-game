@@ -114,8 +114,10 @@ extension BoardCoordinator {
         }
         if let turn = activePlayerTurn, case .character(let id) = pieceID, turn.characterID == id,
            style != .forced, !turn.movedThroughConditions.isEmpty {
-            for condition in turn.movedThroughConditions {
-                applyCondition(condition, toEnemiesOn: turn.hexesPassed, from: pieceID)
+            if !turn.movedThroughNeedsLoop || path.first == path.last {
+                for condition in turn.movedThroughConditions {
+                    applyCondition(condition, toEnemiesOn: turn.hexesPassed, from: pieceID)
+                }
             }
             turn.movedThroughConditions = []
         }

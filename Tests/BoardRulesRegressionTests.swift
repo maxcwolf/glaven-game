@@ -463,8 +463,9 @@ final class BoardRulesRegressionTests: XCTestCase {
         if case .selectingConditionTarget = coord.interactionMode { XCTFail("no target to pick") }
     }
 
-    /// Feedback Loop's muddle is printed inside its move.
-    func testFeedbackLoopMuddlesWhileMoving() async throws {
+    /// Feedback Loop's muddle is printed inside its move, but only for a move that ends where it
+    /// started; an ordinary move muddles no one.
+    func testFeedbackLoopMuddlesOnlyAfterALoop() async throws {
         let character = addCharacter("mindthief", at: HexCoord(3, 3))
         let bandit = addMonster("bandit-guard", at: HexCoord(4, 3))
         let loop = try card("Feedback Loop", of: "mindthief"), other = try card("Corrupting Embrace", of: "mindthief")
@@ -476,7 +477,7 @@ final class BoardRulesRegressionTests: XCTestCase {
         turn.executeCurrentAction()
         coord.handleHexTap(HexCoord(6, 3))
         _ = await waitUntil { turn.currentActionIndex == 1 }
-        XCTAssertTrue(bandit.entityConditions.contains { $0.name == .muddle })
+        XCTAssertFalse(bandit.entityConditions.contains { $0.name == .muddle }, "the move didn't end where it started")
     }
 
     /// Regression: a target printed beside a condition (Crippling Offensive's "Immobilize and
