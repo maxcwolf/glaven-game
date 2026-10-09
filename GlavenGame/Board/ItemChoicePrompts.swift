@@ -129,3 +129,42 @@ struct InitiativeChangePrompt: View {
         .frame(maxWidth: 560)
     }
 }
+
+/// Which items to refresh (Empowering Talisman, Pendant of Dark Pacts, Utility Belt).
+struct ItemRefreshPrompt: View {
+    let pending: BoardCoordinator.PendingItemRefresh
+    let coordinator: BoardCoordinator
+    @State private var chosen: [String] = []
+
+    var body: some View {
+        ItemChoicePanel(title: pending.itemName,
+                        detail: pending.count == 1 ? "Refresh one item." : "Refresh up to \(pending.count) items.") {
+            FlowLayout(spacing: 8) {
+                ForEach(pending.options, id: \.self) { key in
+                    let on = chosen.contains(key)
+                    Button {
+                        if let index = chosen.firstIndex(of: key) { chosen.remove(at: index) }
+                        else if chosen.count < pending.count { chosen.append(key) }
+                    } label: {
+                        Text(coordinator.itemData(key)?.name ?? key)
+                            .font(.subheadline)
+                            .foregroundStyle(BoardTheme.text)
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 8)
+                            .background(on ? BoardTheme.brass.opacity(0.35) : BoardTheme.raised, in: Capsule())
+                            .overlay(Capsule().stroke(on ? BoardTheme.brass : .clear, lineWidth: 2))
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityAddTraits(on ? [.isButton, .isSelected] : .isButton)
+                }
+            }
+        } actions: {
+            Button(chosen.isEmpty ? "Refresh Nothing" : "Refresh \(chosen.count)") {
+                coordinator.resolveItemRefresh(chosen)
+            }
+            .buttonStyle(.borderedProminent)
+            .tint(BoardTheme.brass)
+        }
+        .frame(maxWidth: 560)
+    }
+}

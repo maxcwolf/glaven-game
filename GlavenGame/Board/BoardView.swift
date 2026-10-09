@@ -121,6 +121,11 @@ struct BoardView: View {
                     .id(pending.id)
                     .transition(.opacity)
             }
+            if let pending = coordinator.pendingItemRefresh {
+                ItemRefreshPrompt(pending: pending, coordinator: coordinator)
+                    .id(pending.id)
+                    .transition(.opacity)
+            }
             if let pending = coordinator.pendingConditionRemoval {
                 ConditionRemovalPrompt(pending: pending, coordinator: coordinator)
                     .id(pending.id)

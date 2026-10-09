@@ -624,4 +624,46 @@ final class BoardItemTests: XCTestCase {
         XCTAssertTrue(brute.spentItems.contains("gh-15"))
         XCTAssertTrue(coord.initiativeItemOffers().isEmpty, "spent until a long rest")
     }
+
+    // MARK: - Refreshing items
+
+    func testAnEmpoweringTalismanRefreshesAConsumedPotion() throws {
+        brute.items = ["gh-17", "gh-12", "gh-14", "gh-1"]
+        _ = try startTurn()
+        brute.consumedItems = ["gh-12", "gh-14"]
+        brute.spentItems = ["gh-1"]
+        try use("gh-17")
+        XCTAssertEqual(coord.pendingItemRefresh?.options.sorted(), ["gh-12", "gh-14"], "consumed small items only")
+        coord.resolveItemRefresh(["gh-14", "gh-12"])
+        XCTAssertEqual(brute.consumedItems, ["gh-12", "gh-17"], "one comes back; the talisman is used up")
+        XCTAssertEqual(brute.spentItems, ["gh-1"])
+    }
+
+    func testTheUtilityBeltRefreshesTheOnlyOneAtOnce() throws {
+        brute.items = ["gh-141", "gh-1"]
+        _ = try startTurn()
+        brute.spentItems = ["gh-1"]
+        try use("gh-141")
+        XCTAssertNil(coord.pendingItemRefresh)
+        XCTAssertTrue(brute.spentItems.isEmpty)
+    }
+
+    func testTheFocusingRayDoublesAHeal() throws {
+        brute.items = ["gh-135"]
+        _ = try startTurn()
+        coord.beginHealAction(pieceID: .character(brute.id), healValue: 3, range: 2)
+        try use("gh-135")
+        guard case .selectingHealTarget(_, let value, _) = coord.interactionMode else { return XCTFail() }
+        XCTAssertEqual(value, 6)
+    }
+
+    func testTheCuriousGearDisarmsNearbyTraps() throws {
+        brute.items = ["gh-125"]
+        coord.boardState.placeTrap(at: HexCoord(5, 3), damage: 3)
+        coord.boardState.placeTrap(at: HexCoord(8, 3), damage: 3)
+        _ = try startTurn()
+        try use("gh-125")
+        XCTAssertEqual(coord.boardState.cells[HexCoord(5, 3)]?.isTrap, false)
+        XCTAssertEqual(coord.boardState.cells[HexCoord(8, 3)]?.isTrap, true, "out of range")
+    }
 }

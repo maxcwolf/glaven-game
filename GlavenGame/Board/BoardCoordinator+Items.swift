@@ -9,6 +9,8 @@ import Foundation
 struct BoardItemEffect: Equatable {
     enum Moment: Equatable {
         case turn, move, attack, meleeAttack, rangedAttack
+        /// While the character's own heal waits for a target.
+        case heal
         /// A melee or ranged attack on a single target (not an area or a multi-target attack).
         case singleMeleeAttack, singleRangedAttack
     }
@@ -40,6 +42,13 @@ struct BoardItemEffect: Equatable {
         case infuseAny(Int)
         /// Turn the attack into the item's printed area (Battle-Axe, Long Spear…).
         case areaFromItem
+        /// Refresh up to this many of the character's other items (consumed small ones only,
+        /// or spent and consumed ones of any kind).
+        case refreshItems(count: Int, consumedSmallOnly: Bool)
+        /// Double the heal waiting for a target.
+        case doubleHeal
+        /// Disarm every trap within this range.
+        case disarmTraps(Int)
         /// Remove one negative condition of the player's choosing.
         case removeOneNegativeCondition
     }
@@ -126,6 +135,12 @@ struct BoardItemEffect: Equatable {
         "gh-26": .init(.singleMeleeAttack, .areaFromItem),                    // Long Spear
         "gh-47": .init(.singleMeleeAttack, .areaFromItem),                    // Reaping Scythe
         "gh-33": .init(.singleRangedAttack, .areaFromItem),                   // Volatile Bomb
+        "gh-17": .init(.turn, .refreshItems(count: 1, consumedSmallOnly: true)),  // Empowering Talisman
+        "gh-45": .init(.turn, .refreshItems(count: 2, consumedSmallOnly: true), .selfCondition(.curse)), // Pendant of Dark Pacts
+        "gh-141": .init(.turn, .refreshItems(count: 1, consumedSmallOnly: false)), // Utility Belt
+        "gh-135": .init(.heal, .doubleHeal),                                  // Focusing Ray
+        "gh-136": .init(.rangedAttack, .attackBonus(2), .advantage, .sufferDamage(2)), // Volatile Elixir
+        "gh-125": .init(.turn, .disarmTraps(2)),                              // Curious Gear
     ]
 }
 
@@ -221,6 +236,8 @@ extension BoardCoordinator {
         case (.rangedAttack, .selectingAttackTarget(let attacker, _, _)),
              (.rangedAttack, .selectingMultiAttackTargets(let attacker, _, _, _, _)):
             return attacker == me && turn.currentAttackRange() > 1
+        case (.heal, .selectingHealTarget(let healer, _, _)):
+            return healer == me
         case (.singleMeleeAttack, .selectingAttackTarget(let attacker, _, _)):
             return attacker == me && turn.currentAttackRange() <= 1 && turn.pendingAreaPattern == nil
         case (.singleRangedAttack, .selectingAttackTarget(let attacker, _, _)):
@@ -323,6 +340,27 @@ extension BoardCoordinator {
             sufferDamage(amount, to: me)
         case .loot(let range):
             collectLootInRange(pieceID: me, range: range)
+        case .refreshItems(let count, let smallOnly):
+            let options = refreshableItems(of: character, excluding: item.itemKey, consumedSmallOnly: smallOnly)
+            if options.count <= count {
+                refresh(options.map(\.itemKey), for: character)
+            } else {
+                pendingItemRefresh = PendingItemRefresh(characterID: character.id, count: count,
+                                                        options: options.map(\.itemKey), itemName: item.name)
+            }
+        case .doubleHeal:
+            if case .selectingHealTarget(let healer, let value, let targets) = interactionMode {
+                interactionMode = .selectingHealTarget(pieceID: healer, healValue: value * 2, validTargets: targets)
+                log("\(name(me)): Heal \(value * 2)", category: .heal)
+            }
+        case .disarmTraps(let range):
+            guard let origin = boardState.piecePositions[me] else { break }
+            let traps = boardState.cells.values.filter { $0.isTrap && $0.coord.distance(to: origin) <= range }.map(\.coord).sorted()
+            for hex in traps {
+                boardState.removeTrap(at: hex)
+                boardScene?.removeOverlaySprite(at: hex, offsetCol: offsetCol, offsetRow: offsetRow)
+            }
+            log("\(name(me)) disarms \(traps.count) trap\(traps.count == 1 ? "" : "s")", category: .info)
         case .areaFromItem:
             guard let pattern = item.actions?.first(where: { $0.type == .area })?.value?.stringValue,
                   case .selectingAttackTarget(_, let range, _) = interactionMode else { break }
@@ -362,6 +400,41 @@ extension BoardCoordinator {
             log("\(name(.character(pending.characterID))) infuses \(GameText.list(chosen.map(GameText.elementName)))",
                 category: .element)
         }
+    }
+
+    /// Refreshing other items of the player's choosing (Empowering Talisman, Utility Belt).
+    struct PendingItemRefresh: Identifiable, Equatable {
+        let id = UUID()
+        let characterID: String
+        let count: Int
+        let options: [String]
+        let itemName: String
+    }
+
+    func refreshableItems(of character: GameCharacter, excluding key: String, consumedSmallOnly: Bool) -> [ItemData] {
+        character.items.filter { $0 != key }.compactMap(itemData).filter { item in
+            consumedSmallOnly
+                ? character.consumedItems.contains(item.itemKey) && item.slot == .small
+                : character.consumedItems.contains(item.itemKey) || character.spentItems.contains(item.itemKey)
+        }
+    }
+
+    func resolveItemRefresh(_ keys: [String]) {
+        guard let pending = pendingItemRefresh,
+              let character = gameManager?.game.characters.first(where: { $0.id == pending.characterID }) else { return }
+        pendingItemRefresh = nil
+        refresh(Array(keys.filter(pending.options.contains).prefix(pending.count)), for: character)
+    }
+
+    private func refresh(_ keys: [String], for character: GameCharacter) {
+        guard !keys.isEmpty else { return }
+        for key in keys {
+            character.consumedItems.remove(key)
+            character.spentItems.remove(key)
+            character.itemSlotsUsed[key] = nil
+        }
+        let names = keys.compactMap { itemData($0)?.name }
+        log("\(name(.character(character.id))) refreshes \(GameText.list(names))", category: .info)
     }
 
     /// Removing one negative condition of the player's choosing (Minor Cure Potion).

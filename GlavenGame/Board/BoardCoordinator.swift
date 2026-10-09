@@ -387,6 +387,9 @@ final class BoardCoordinator {
     /// Non-nil while a character picks elements to infuse (Mana Potions).
     var pendingElementChoice: PendingElementChoice?
 
+    /// Non-nil while a character picks items to refresh (Empowering Talisman, Utility Belt).
+    var pendingItemRefresh: PendingItemRefresh?
+
     /// Non-nil while a character picks a negative condition to remove (Minor Cure Potion).
     var pendingConditionRemoval: PendingConditionRemoval?
 
