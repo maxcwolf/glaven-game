@@ -851,6 +851,21 @@ final class BoardRulesRegressionTests: XCTestCase {
         XCTAssertEqual(range, 1)
     }
 
+    /// Dirt Tornado: "Muddle all allies and enemies in the targeted area."
+    func testDirtTornadoMuddlesEveryoneInTheArea() async throws {
+        let cragheart = addCharacter("cragheart", at: HexCoord(1, 3))
+        let target = addMonster("bandit-guard", at: HexCoord(3, 3))
+        target.health = 50
+        target.maxHealth = 50
+        let turn = turn(for: cragheart, top: try card("Dirt Tornado", of: "cragheart"), bottom: try card("Avalanche", of: "cragheart"))
+        turn.executeCurrentAction()
+        guard let piece = coord.boardState.piecePositions.first(where: { $0.value == HexCoord(3, 3) })?.key else { return XCTFail() }
+        coord.handlePieceTap(piece)
+        _ = await waitUntil { turn.currentActionIndex > 0 }
+        XCTAssertTrue(target.entityConditions.contains { $0.name == .muddle })
+        XCTAssertFalse(cragheart.entityConditions.contains { $0.name == .muddle }, "not the Cragheart")
+    }
+
     // MARK: - Mindthief augments
 
     /// Play `augment`'s top (the augment, then its own Attack) against an adjacent Bandit Guard.

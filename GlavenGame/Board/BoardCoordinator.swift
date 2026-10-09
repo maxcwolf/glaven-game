@@ -1557,6 +1557,17 @@ final class BoardCoordinator {
                                           enemies: Array(enemies), board: boardState, range: range)
     }
 
+    /// The hexes an area attack aimed at `primary` covers.
+    func areaPlacementHexes(pattern: String, attacker: PieceID, primary: PieceID, range: Int) -> Set<HexCoord> {
+        guard let pos = boardState.piecePositions[attacker] else { return [] }
+        let enemies = boardState.piecePositions.keys.sorted().filter { id in
+            id != attacker && areEnemies(attacker, id) && entity(for: id) != nil && !isConditionActive(.invisible, on: id)
+        }
+        let placement = AoEResolver.bestPlacement(pattern: pattern, attackerPos: pos, focusTarget: primary,
+                                                  enemies: Array(enemies), board: boardState, range: range)
+        return Set(placement?.targetHexes ?? [])
+    }
+
     /// Begin a player's attack action.
     func beginAttackAction(pieceID: PieceID, range: Int, targetCount: Int = 1) {
         if isConditionActive(.disarm, on: pieceID) {
@@ -2128,12 +2139,24 @@ final class BoardCoordinator {
                     // Area attack: every enemy in the pattern is a separate attack.
                     let targets = areaTargets(pattern: pattern, attacker: attackerID, primary: piece, range: range)
                     let ranged = !AoEResolver.isMeleePattern(pattern)
+                    let areaHexes = areaPlacementHexes(pattern: pattern, attacker: attackerID, primary: piece, range: range)
+                    let areaTexts = activePlayerTurn?.attackTexts ?? []
                     interactionMode = .idle
                     log("\(name(attackerID))\u{2019}s area attack hits \(targets.count) enem\(targets.count == 1 ? "y" : "ies")", category: .attack)
                     Task { @MainActor in
                         for target in targets where self.isOnBoard(target) && self.isOnBoard(attackerID) {
                             await self.resolvePlayerAttack(attacker: attackerID, target: target, attackValue: attackValue,
                                                            range: ranged ? max(2, range) : 1, advanceAction: false)
+                        }
+                        // Dirt Tornado: "Muddle all allies and enemies in the targeted area."
+                        for text in areaTexts where text.contains("in the targeted area") && text.contains("allies and enemies") {
+                            for action in PlayerTurnController.actions(fromText: text) where action.type == .condition {
+                                guard let condition = action.value.flatMap({ ConditionName(rawValue: $0.stringValue) }) else { continue }
+                                for figure in self.boardState.piecePositions.filter({ areaHexes.contains($0.value) && $0.key != attackerID })
+                                    .map(\.key).sorted() {
+                                    self.applyCondition(condition, to: figure)
+                                }
+                            }
                         }
                         self.activePlayerTurn?.advanceAfterAsyncAction()
                     }
