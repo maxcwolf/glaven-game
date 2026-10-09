@@ -109,7 +109,9 @@ final class BoardItemTests: XCTestCase {
             + Array(PassiveItems.flying) + Array(PassiveItems.immunities.keys) + Array(PassiveItems.meleePierce.keys)
             + Array(PassiveItems.meleePush.keys)
             + [PassiveItems.unmovable, PassiveItems.muddleToStrengthen, PassiveItems.chainHood,
-               PassiveItems.necklaceOfTeeth, PassiveItems.imposingBlade, DefenseItem.ironHelmet]
+               PassiveItems.necklaceOfTeeth, PassiveItems.imposingBlade, DefenseItem.ironHelmet,
+               PassiveItems.shoesOfHappiness, PassiveItems.enduranceFootwraps, PassiveItems.steelSabatons,
+               PassiveItems.hornedHelm] + Array(PassiveItems.hazardProof)
         XCTAssertEqual(Set(keys).count, keys.count, "no item in two tables")
         for key in keys {
             let id = try XCTUnwrap(Int(key.dropFirst(3)))
@@ -262,6 +264,53 @@ final class BoardItemTests: XCTestCase {
         await coord.performAttack(attacker: try XCTUnwrap(attacker), target: .character(brute.id),
                                   attack: AttackParameters(value: 3), drawCard: { AttackModifier.standard(.plus0) })
         XCTAssertEqual(brute.health, health - 2)
+    }
+
+    // MARK: - Movement
+
+    private let sixHexesEast = (3...9).map { HexCoord($0, 3) }
+
+    func testTheShoesAndFootwrapsRewardALongMove() async throws {
+        brute.items = ["gh-72", "gh-97"]
+        let turn = try startTurn()
+        brute.health = 5
+        let xp = brute.experience
+        await coord.moveAlong(.character(brute.id), path: sixHexesEast, style: .normal)
+        XCTAssertEqual(turn.hexesMoved, 6)
+        coord.applyEndOfTurnItems(turn)
+        XCTAssertEqual(brute.experience, xp + 1, "Shoes of Happiness")
+        XCTAssertEqual(brute.health, 6, "Endurance Footwraps")
+    }
+
+    func testPushingDoesntCountAsMoving() async throws {
+        let turn = try startTurn()
+        await coord.moveAlong(.character(brute.id), path: [HexCoord(3, 3), HexCoord(4, 3)], style: .forced)
+        XCTAssertEqual(turn.hexesMoved, 0)
+    }
+
+    func testSteelSabatonsShieldAStandStill() throws {
+        brute.items = ["gh-50"]
+        let turn = try startTurn()
+        coord.applyEndOfTurnItems(turn)
+        XCTAssertEqual(brute.shield?.value?.intValue, 1)
+    }
+
+    func testTheHornedHelmAddsOneAfterALongMove() async throws {
+        brute.items = ["gh-107"]
+        let turn = try startTurn()
+        await coord.moveAlong(.character(brute.id), path: Array(sixHexesEast.prefix(5)), style: .normal)
+        coord.spawnMonster(name: "bandit-guard", type: .normal, at: HexCoord(8, 3), origin: .placed)
+        turn.executeCurrentAction()   // Trample: Attack 3
+        XCTAssertEqual(turn.currentAttackValue(), 4)
+    }
+
+    func testMagmaWadersWalkThroughHazardsAndHeal() async throws {
+        brute.items = ["gh-99"]
+        coord.boardState.placeHazard(at: HexCoord(4, 3))
+        _ = try startTurn()
+        brute.health = 5
+        await coord.moveAlong(.character(brute.id), path: [HexCoord(3, 3), HexCoord(4, 3), HexCoord(5, 3)], style: .normal)
+        XCTAssertEqual(brute.health, 7, "no hazard damage, and Heal 2")
     }
 
     func testProtectiveCharmMakesTheWearerImmune() {

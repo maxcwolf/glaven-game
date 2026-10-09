@@ -147,6 +147,19 @@ enum PassiveItems {
     static let necklaceOfTeeth = "gh-106"
     static let imposingBlade = "gh-134"
 
+    /// Drakescale Boots, Magma Waders: hazardous terrain does no harm.
+    static let hazardProof: Set<String> = ["gh-98", "gh-99"]
+    static let magmaWaders = "gh-99"
+    /// At the end of the wearer's turn, by hexes moved: Shoes of Happiness (6+: 1 experience),
+    /// Endurance Footwraps (4+: Heal 1), Steel Sabatons (1 or fewer: Shield 1 for the round).
+    static let shoesOfHappiness = "gh-72"
+    static let enduranceFootwraps = "gh-97"
+    static let steelSabatons = "gh-50"
+    /// Horned Helm: after moving 4 or more hexes, +1 on the next melee attack this turn.
+    static let hornedHelm = "gh-107"
+
+    static func ignoresHazards(_ items: [String]) -> Bool { items.contains(where: hazardProof.contains) }
+
     static func defaultAttack(for items: [String]) -> Int { items.compactMap { defaultAttack[$0] }.max() ?? 2 }
     static func defaultMove(for items: [String]) -> Int { items.compactMap { defaultMove[$0] }.max() ?? 2 }
     static func flies(_ items: [String]) -> Bool { items.contains(where: flying.contains) }
@@ -344,6 +357,27 @@ extension BoardCoordinator {
         character.entityConditions.removeAll { $0.name == condition && !$0.permanent }
         boardScene?.refreshStatus(of: .character(character.id))
         log("\(name(.character(character.id))) is no longer \(GameText.conditionName(condition).lowercased())", category: .condition)
+    }
+
+    /// Items that look at how far the character moved, as their turn ends.
+    func applyEndOfTurnItems(_ turn: PlayerTurnController) {
+        guard let character = gameManager?.game.characters.first(where: { $0.id == turn.characterID }) else { return }
+        let me = PieceID.character(character.id)
+        let moved = turn.hexesMoved
+        if character.items.contains(PassiveItems.shoesOfHappiness), moved >= 6 {
+            character.experience += 1
+            log("\(name(me))\u{2019}s Shoes of Happiness: 1 experience", category: .info)
+        }
+        if character.items.contains(PassiveItems.enduranceFootwraps), moved >= 4 {
+            let healed = heal(me, amount: 1, source: me)
+            log("\(name(me))\u{2019}s Endurance Footwraps heal \(healed)", category: .heal)
+        }
+        if character.items.contains(PassiveItems.steelSabatons), moved <= 1 {
+            let total = (character.shield?.value?.intValue ?? 0) + 1
+            character.shield = ActionModel(type: .shield, value: .int(total))
+            boardScene?.refreshStatus(of: me)
+            log("\(name(me))\u{2019}s Steel Sabatons: Shield 1 this round", category: .condition)
+        }
     }
 
     /// Necklace of Teeth and Imposing Blade, when the wearer kills an enemy on their own turn.

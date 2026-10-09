@@ -21,6 +21,11 @@ extension BoardCoordinator {
     @MainActor func moveAlong(_ pieceID: PieceID, path: [HexCoord], style: MovementStyle) async -> Bool {
         guard path.count > 1 else { return isOnBoard(pieceID) }
         moveObserver?(pieceID, path, style)
+        // The acting character's own movement, for the items that count it.
+        if style != .forced, case .character(let id) = pieceID, activePlayerTurn?.characterID == id {
+            activePlayerTurn?.hexesMoved += path.count - 1
+        }
+        let hazardProof = (entity(for: pieceID) as? GameCharacter).map { PassiveItems.ignoresHazards($0.items) } ?? false
         let opensDoors: Bool = { if case .character = pieceID { return true }; return false }()
 
         var segmentStart = 0
@@ -30,10 +35,11 @@ extension BoardCoordinator {
             let entered = style == .normal || style == .forced || (style == .jump && isLast)
             let cell = boardState.cells[hex]
             let hitsTrap = entered && cell?.isTrap == true
-            let hitsHazard = entered && cell?.isHazard == true
+            let hitsHazard = entered && cell?.isHazard == true && !hazardProof
+            let wadesHazard = entered && cell?.isHazard == true && hazardProof
             let opensDoor = opensDoors && boardState.doors.contains { $0.coord == hex && !$0.isOpen }
 
-            guard hitsTrap || hitsHazard || opensDoor || isLast else { continue }
+            guard hitsTrap || hitsHazard || wadesHazard || opensDoor || isLast else { continue }
 
             await animateMove(pieceID, along: Array(path[segmentStart...index]), as: MoveAnimation(style))
             segmentStart = index
@@ -51,6 +57,14 @@ extension BoardCoordinator {
             }
             if hitsHazard {
                 guard await enterHazard(at: hex, on: pieceID) else { return false }
+            }
+            // Magma Waders: no harm from hazardous terrain, and Heal 2 on a turn that enters it.
+            if wadesHazard, let turn = activePlayerTurn,
+               case .character(let id) = pieceID, turn.characterID == id, !turn.magmaWadersHealed,
+               (entity(for: pieceID) as? GameCharacter)?.items.contains(PassiveItems.magmaWaders) == true {
+                turn.magmaWadersHealed = true
+                let healed = heal(pieceID, amount: 2, source: pieceID)
+                log("\(name(pieceID))\u{2019}s Magma Waders heal \(healed)", category: .heal)
             }
             if opensDoor {
                 openDoor(at: hex)

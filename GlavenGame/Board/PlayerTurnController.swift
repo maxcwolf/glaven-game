@@ -48,6 +48,10 @@ final class PlayerTurnController {
     var pendingConditions: [ConditionName] = []
     /// Advantage on the attack being resolved (Eagle-Eye Goggles).
     var pendingAdvantage = false
+    /// Hexes the character has moved this turn (not pushed or pulled), for movement items.
+    var hexesMoved = 0
+    var magmaWadersHealed = false
+    private var hornedHelmUsed = false
     /// Attack value and range of the attack being resolved (including element bonuses).
     private var pendingAttackValue: Int = 2
     private var pendingAttackRange: Int = 1
@@ -396,6 +400,11 @@ final class PlayerTurnController {
             if range <= 1 {
                 pendingPierce += PassiveItems.meleePierce(for: character?.items ?? [])
                 pendingPush += PassiveItems.meleePush(for: character?.items ?? [])   // Mask of Terror
+                if !hornedHelmUsed, hexesMoved >= 4, character?.items.contains(PassiveItems.hornedHelm) == true {
+                    hornedHelmUsed = true
+                    pendingAttackValue += 1
+                    coordinator.log("\(who)\u{2019}s Horned Helm: +1 Attack", category: .attack)
+                }
             }
             // XP and infusions printed on the attack itself (e.g. Crushing Grasp's earth, Thief's
             // Knack's XP) and on paid augments come with performing it, which needs a target.
