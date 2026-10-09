@@ -46,6 +46,8 @@ final class PlayerTurnController {
     var pendingPush: Int = 0
     var pendingPull: Int = 0
     var pendingConditions: [ConditionName] = []
+    /// Advantage on the attack being resolved (Eagle-Eye Goggles).
+    var pendingAdvantage = false
     /// Attack value and range of the attack being resolved (including element bonuses).
     private var pendingAttackValue: Int = 2
     private var pendingAttackRange: Int = 1
@@ -240,6 +242,9 @@ final class PlayerTurnController {
     /// The attack value of the attack currently being resolved.
     func currentAttackValue() -> Int { pendingAttackValue }
 
+    /// Add to the attack being resolved (Minor Power Potion).
+    func addToAttack(_ bonus: Int) { pendingAttackValue += bonus }
+
     /// The range of the attack currently being resolved.
     func currentAttackRange() -> Int { pendingAttackRange }
 
@@ -265,6 +270,7 @@ final class PlayerTurnController {
         pendingAttackValue = value
         pendingAttackRange = range
         pendingAreaPattern = nil
+        pendingAdvantage = false
         pendingPierce = 0
         pendingPush = 0
         pendingPull = 0

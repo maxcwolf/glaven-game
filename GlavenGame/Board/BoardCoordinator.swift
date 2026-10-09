@@ -1585,7 +1585,8 @@ final class BoardCoordinator {
                                      pierce: turn?.pendingPierce ?? 0,
                                      conditions: turn?.pendingConditions ?? [],
                                      push: turn?.pendingPush ?? 0,
-                                     pull: turn?.pendingPull ?? 0))
+                                     pull: turn?.pendingPull ?? 0,
+                                     advantage: turn?.pendingAdvantage ?? false))
 
         interactionMode = .idle
         if advanceAction { turn?.advanceAfterAsyncAction() }

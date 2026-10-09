@@ -478,6 +478,24 @@ struct BoardView: View {
                                 .tint(.orange)
                                 .controlSize(.small)
                             }
+
+                            // Items whose moment has come: during this move, this attack, or the turn.
+                            let items = coordinator.usableItems()
+                            if !items.isEmpty {
+                                HStack(spacing: 8) {
+                                    ForEach(items, id: \.itemKey) { item in
+                                        Button {
+                                            coordinator.useItem(item)
+                                        } label: {
+                                            Label("Use \(item.name)", systemImage: item.consumed ? "flask.fill" : "shield.lefthalf.filled")
+                                        }
+                                        .buttonStyle(.bordered)
+                                        .tint(BoardTheme.brass)
+                                        .controlSize(.small)
+                                        .accessibilityHint(item.consumed ? "Used up for the scenario" : "Spent until a long rest")
+                                    }
+                                }
+                            }
                         }
 
                         if playerTurn.phase == .turnComplete {
