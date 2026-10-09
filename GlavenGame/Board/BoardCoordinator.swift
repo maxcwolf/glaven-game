@@ -1209,6 +1209,7 @@ final class BoardCoordinator {
                 }
             } else {
                 log("\(characterName(character.id)) long rests: choose a card to lose", category: .rest)
+                interactionMode = .idle   // the rest panel asks; nothing on the board to tap
                 pendingLongRest = PendingLongRest(characterID: character.id)
             }
             return

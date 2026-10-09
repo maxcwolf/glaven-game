@@ -114,4 +114,25 @@ final class SmokeTestFixesTests: XCTestCase {
         guard case .selectingMove(_, let range, _, _, _) = coord.interactionMode else { return XCTFail("the printed Move 3") }
         XCTAssertEqual(range, 3)
     }
+
+    /// A character's long rest asks in its own panel; the banner said "Brute is acting · Monsters
+    /// and summons take their turns on their own". Summons acting on a character's turn say so.
+    func testTheBannerDuringACharactersTurn() {
+        gm.characterManager.addCharacter(name: "brute", edition: "gh")
+        let brute = gm.game.characters[0]
+        let coord = gm.boardCoordinator
+        coord.boardPhase = .execution
+        coord.turnOrder = [TurnOrderEntry(figure: .character(brute), initiative: 99)]
+        coord.currentTurnIndex = 0
+        XCTAssertEqual(coord.instruction(for: .watchingMonsterTurn)?.title, "Brute\u{2019}s summons are acting")
+        coord.pendingLongRest = BoardCoordinator.PendingLongRest(characterID: brute.id)
+        XCTAssertNil(coord.instruction(for: .watchingMonsterTurn))
+    }
+
+    /// The long rest panel is as wide as its cards, not the screen.
+    func testTheLongRestPanelFitsItsCards() {
+        XCTAssertEqual(BoardView.longRestWidth(cards: 2), 440, "room for the heading")
+        XCTAssertEqual(BoardView.longRestWidth(cards: 4), 648)
+        XCTAssertEqual(BoardView.longRestWidth(cards: 9), 760, "more scroll")
+    }
 }

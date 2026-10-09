@@ -138,6 +138,13 @@ extension BoardCoordinator {
             return Instruction(title: "\(isPush ? "Push" : "Pull") \(steps)",
                                detail: "Tap a highlighted enemy to \(isPush ? "push" : "pull")", canSkip: ownTurn)
         case .watchingMonsterTurn:
+            // On a character's turn it's their summons acting (before them); a prompt of the
+            // character's own (a rest) has its own panel.
+            if case .character(let character) = currentTurnEntry?.figure {
+                guard pendingLongRest == nil, pendingShortRest == nil else { return nil }
+                return Instruction(title: "\(characterName(character.id))\u{2019}s summons are acting",
+                                   detail: "Summons take their turns on their own", canSkip: false)
+            }
             let actor = currentTurnEntry.map { figureName($0.figure) } ?? "The monsters"
             return Instruction(title: "\(actor) \(currentTurnEntry == nil ? "are" : "is") acting",
                                detail: "Monsters and summons take their turns on their own", canSkip: false)

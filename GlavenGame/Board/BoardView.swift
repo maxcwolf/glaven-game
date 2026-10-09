@@ -1124,46 +1124,62 @@ struct BoardView: View {
 
                     Divider().overlay(.white.opacity(0.2))
 
-                    // Discard cards to choose from
-                    ScrollView(.horizontal, showsIndicators: false) {
-                        HStack(spacing: 10) {
-                            ForEach(Array(character.discardedCards.enumerated()), id: \.offset) { index, cardId in
-                                if let card = deckData?.abilities.first(where: { $0.cardId == cardId }) {
-                                    BoardAbilityCardView(
-                                        card: card,
-                                        characterColor: charColor,
-                                        highlight: .none,
-                                        width: 140,
-                                        height: 240,
-                                        labelResolver: resolver,
-                                        onPreview: previewAction(card: card)
-                                    )
-                                    .overlay(alignment: .bottom) {
-                                        Text("LOSE THIS CARD")
-                                            .font(BoardTheme.font(size: 11, weight: .heavy))
-                                            .foregroundStyle(.white)
-                                            .padding(.horizontal, 10)
-                                            .padding(.vertical, 4)
-                                            .background(.red.opacity(0.8))
-                                            .clipShape(Capsule())
-                                            .padding(.bottom, 8)
-                                    }
-                                    .onTapGesture {
-                                        coordinator.resolveLongRest(characterID: character.id, discardIndex: index)
-                                    }
-                                    .accessibilityAddTraits(.isButton)
-                                    .accessibilityLabel("Lose \(card.name ?? "this card")")
-                                }
-                            }
+                    // Discard cards to choose from: as wide as they are, scrolling only when they
+                    // don't fit, so the panel isn't the width of the screen for two cards.
+                    ViewThatFits(in: .horizontal) {
+                        longRestCards(character: character, deckData: deckData, color: charColor, resolver: resolver)
+                        ScrollView(.horizontal, showsIndicators: false) {
+                            longRestCards(character: character, deckData: deckData, color: charColor, resolver: resolver)
                         }
-                        .padding(.horizontal)
                     }
                 }
                 .padding(24)
+                .frame(width: Self.longRestWidth(cards: character.discardedCards.count))
                 .fixedSize(horizontal: false, vertical: true)   // as tall as its contents
                 .boardPanel()
                 .padding(40)
             }
+    }
+
+    private func longRestCards(character: GameCharacter, deckData: DeckData?, color charColor: Color,
+                               resolver: @escaping (String) -> String?) -> some View {
+        HStack(spacing: 10) {
+            ForEach(Array(character.discardedCards.enumerated()), id: \.offset) { index, cardId in
+                if let card = deckData?.abilities.first(where: { $0.cardId == cardId }) {
+                    BoardAbilityCardView(
+                        card: card,
+                        characterColor: charColor,
+                        highlight: .none,
+                        width: 140,
+                        height: 240,
+                        labelResolver: resolver,
+                        onPreview: previewAction(card: card)
+                    )
+                    .overlay(alignment: .bottom) {
+                        Text("LOSE THIS CARD")
+                            .font(BoardTheme.font(size: 11, weight: .heavy))
+                            .foregroundStyle(.white)
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 4)
+                            .background(.red.opacity(0.8))
+                            .clipShape(Capsule())
+                            .padding(.bottom, 8)
+                    }
+                    .onTapGesture {
+                        coordinator.resolveLongRest(characterID: character.id, discardIndex: index)
+                    }
+                    .accessibilityAddTraits(.isButton)
+                    .accessibilityLabel("Lose \(card.name ?? "this card")")
+                }
+            }
+        }
+        .padding(.horizontal)
+    }
+
+    /// The long rest panel's width: its cards side by side (140 pt each), at least room for the
+    /// heading, at most 760 pt (more cards scroll).
+    static func longRestWidth(cards: Int) -> CGFloat {
+        min(760, max(440, CGFloat(cards) * 150 + 48))
     }
 
     /// "Spellweaver — Short Rest": the character's name as the board shows it, not their class id.
@@ -1231,9 +1247,8 @@ struct BoardView: View {
                                     .padding(.bottom, 8)
                             }
                         }
+                        Divider().overlay(.white.opacity(0.2))
                     }
-
-                    Divider().overlay(.white.opacity(0.2))
 
                     // Action buttons
                     HStack(spacing: 12) {
@@ -1274,8 +1289,7 @@ struct BoardView: View {
                     }
                 }
                 .padding(24)
-                .frame(maxWidth: 520)
-                .fixedSize(horizontal: false, vertical: true)   // as tall as its contents
+                .fixedSize()   // the size of its contents: a card and two buttons, not the screen
                 .boardPanel()
                 .padding(40)
             }
