@@ -54,6 +54,10 @@ final class ScenarioManager {
                     character.attackModifierDeck.addCard(type: .minus1)
                 }
             }
+            // Second Skin: two −1 cards out of the deck.
+            if character.items.contains(PassiveItems.secondSkin) {
+                character.attackModifierDeck.setAsideForScenario(.minus1, count: 2)
+            }
         }
     }
 

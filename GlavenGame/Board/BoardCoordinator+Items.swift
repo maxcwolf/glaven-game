@@ -161,6 +161,8 @@ enum PassiveItems {
     /// Mask of Terror: every melee attack gains Push 1.
     static let meleePush: [String: Int] = ["gh-66": 1]
 
+    /// Second Skin: two −1 cards out of the attack modifier deck.
+    static let secondSkin = "gh-101"
     /// Heavy Greaves: no forced movement.
     static let unmovable = "gh-22"
     /// Drakescale Helm: muddle becomes strengthen.

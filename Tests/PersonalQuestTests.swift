@@ -190,6 +190,18 @@ final class PersonalQuestTests: XCTestCase {
         XCTAssertFalse(gm.game.events.cards("city").contains("42"), "not the Brute's retirement event")
     }
 
+    /// Second Skin takes two −1 cards out for the scenario; they're back after it.
+    func testSecondSkinSetsAsideTwoMinusOnes() throws {
+        brute.items = ["gh-101"]
+        let base = brute.attackModifierDeck.attackModifiers.filter { $0.type == .minus1 }.count
+        try play("1", success: false) { _ in
+            XCTAssertEqual(self.brute.attackModifierDeck.attackModifiers.filter { $0.type == .minus1 }.count, base - 2)
+            XCTAssertEqual(self.brute.attackModifierDeck.cards.filter { $0.type == .minus1 }.count, base - 2)
+        }
+        XCTAssertEqual(brute.attackModifierDeck.attackModifiers.filter { $0.type == .minus1 }.count, base)
+        XCTAssertNil(brute.attackModifierDeck.setAside)
+    }
+
     func testRecordsAndDealtQuestsAreSaved() {
         brute.record.kills = ["ooze": 2]
         brute.questChoices = ["520", "521"]

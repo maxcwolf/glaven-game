@@ -112,7 +112,7 @@ final class BoardItemTests: XCTestCase {
                PassiveItems.necklaceOfTeeth, PassiveItems.imposingBlade, DefenseItem.ironHelmet,
                PassiveItems.shoesOfHappiness, PassiveItems.enduranceFootwraps, PassiveItems.steelSabatons,
                PassiveItems.hornedHelm, PassiveItems.halberd, PassiveItems.maskOfDeath, PassiveItems.helmOfTheMountain,
-               "gh-105"] + Array(PassiveItems.hazardProof) + Array(BoardCoordinator.initiativeBoots.keys)
+               "gh-105", PassiveItems.secondSkin] + Array(PassiveItems.hazardProof) + Array(BoardCoordinator.initiativeBoots.keys)
         XCTAssertEqual(Set(keys).count, keys.count, "no item in two tables")
         for key in keys {
             let id = try XCTUnwrap(Int(key.dropFirst(3)))
