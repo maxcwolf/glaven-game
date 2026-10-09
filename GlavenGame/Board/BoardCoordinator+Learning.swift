@@ -70,6 +70,11 @@ struct MonsterWhy: Identifiable, Equatable {
     var moved = 0
     var attacks: [String] = []
     var focus: PieceID? { candidates.first?.pieceID }
+    /// "A monster", or "A summon" for one fighting on the players' side.
+    var kind: String {
+        if case .summon = monster { return "A summon" }
+        return "A monster"
+    }
 }
 
 /// The How to Play sheet, opened at a topic.
@@ -129,8 +134,40 @@ extension BoardCoordinator {
            let elite = monster.aliveEntities.filter({ $0.type == .elite }).map(\.number).min() {
             teach(.elites, at: .piece(.monster(name: monster.name, standee: elite)))
         }
+        if let rules = scenarioBrief?.rules, !rules.isEmpty {
+            teach(.specialRules, "This scenario has \(rules.count == 1 ? "a special rule" : "\(rules.count) special rules").", at: .goal)
+        }
         if let short = game.characters.first(where: { !$0.exhausted && !$0.absent && $0.handCards.count <= 4 }) {
             teach(.handIsAClock, "\(characterName(short.id)) has \(short.handCards.count) cards left in hand.", at: .cardPanel)
+        }
+    }
+
+    /// Tips in town, for what the party can do there now: level up, take perks, choose or finish
+    /// a personal quest, shop, enhance.
+    func teachInTown() {
+        guard learningMode, let gameManager else { return }
+        let manager = gameManager.characterManager
+        let party = gameManager.game.characters.filter { !$0.absent }.sorted { $0.id < $1.id }
+        func name(_ character: GameCharacter) -> String {
+            GameText.characterName(character, labels: gameManager.editionStore)
+        }
+        for character in party where manager.canLevelUp(character) {
+            teach(.levelUp, "\(name(character)) has \(character.experience) experience: enough for level \(character.level + 1).")
+        }
+        for character in party where manager.perksAvailable(for: character) > 0 {
+            teach(.perks, "\(name(character)) has a perk to take.")
+        }
+        if let character = party.first(where: { $0.personalQuest == nil }) {
+            teach(.personalQuest, "\(name(character)) has no personal quest yet.")
+        }
+        for character in party where character.personalQuest != nil && manager.questComplete(character) {
+            teach(.retirement, "\(name(character))\u{2019}s personal quest is done.")
+        }
+        if let character = party.first(where: { $0.loot > 0 }) {
+            teach(.shopping, "\(name(character)) has \(character.loot) gold to spend.")
+        }
+        if party.contains(where: { gameManager.enhancementsManager.enhancerOpen(edition: $0.edition) }) {
+            teach(.enhancing)
         }
     }
 
@@ -520,13 +557,13 @@ extension BoardCoordinator {
             switch FocusCandidate.reason(first, over: second) {
             case .movement:
                 let rest = why.candidates.dropFirst().map { "\(name($0.pieceID)) \($0.pathCost)" }
-                note = "A monster goes for the enemy it can attack with the least movement. It could attack \(target) \(hexes(first.pathCost)); \(GameText.list(rest))."
+                note = "\(why.kind) goes for the enemy it can attack with the least movement. It could attack \(target) \(hexes(first.pathCost)); \(GameText.list(rest))."
             case .proximity:
                 note = "\(target) and \(other) were equally easy to reach, so it took the nearer one: \(target) was \(Self.hexes(first.proximity)) away, \(other) \(second.proximity)."
             case .initiative:
                 note = "\(target) and \(other) were equally easy to reach and equally near, so it took the one who acts first: \(target) (initiative \(Int(first.initiative))) before \(other) (\(Int(second.initiative)))."
             case .traps:
-                note = "Reaching \(other) meant crossing a trap or hazardous terrain, and monsters avoid those when they can."
+                note = "Reaching \(other) meant crossing a trap or hazardous terrain, and \(why.kind.lowercased().dropFirst(2))s avoid those when they can."
             }
             steps.append(.init(label: "1", value: "Its focus", note: note))
         }

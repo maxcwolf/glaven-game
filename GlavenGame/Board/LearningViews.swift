@@ -350,3 +350,37 @@ struct LearningOverlay: View {
         }
     }
 }
+
+// MARK: - In town
+
+/// Learning mode in town: a tip when something new can be done there (level up, a perk, a
+/// quest to choose or finish, gold to spend), and How to Play.
+struct TownLearning: ViewModifier {
+    @Environment(GameManager.self) private var gameManager
+    /// Changes whenever what the party can do in town changes.
+    let key: String
+
+    func body(content: Content) -> some View {
+        let coordinator = gameManager.boardCoordinator
+        content
+            .overlay {
+                if let tip = coordinator.pendingTip {
+                    ZStack {
+                        Color.black.opacity(0.55).ignoresSafeArea()
+                            .accessibilityHidden(true)   // the tip's Got it closes it
+                        TipCard(tip: tip, coordinator: coordinator)
+                    }
+                    .id(tip.id)
+                    .transition(.opacity)
+                }
+            }
+            .overlay {
+                if let request = coordinator.howToPlay {
+                    HowToPlayBook(coordinator: coordinator, topic: request.topic)
+                        .id(request.id)
+                        .transition(.opacity)
+                }
+            }
+            .task(id: key) { coordinator.teachInTown() }
+    }
+}

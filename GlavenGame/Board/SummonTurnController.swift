@@ -46,7 +46,12 @@ final class SummonTurnController {
 
             let result = SummonAI.computeTurn(summon: summon, ownerCharacterID: character.id,
                                               board: coordinator.boardState, gameState: gameManager.game)
+            // What it weighed, for "Why?" on the lines it logs.
+            if !result.stunned {
+                coordinator.beginWhy(for: pieceID, candidates: result.focusCandidates, ranged: result.attack?.isRanged ?? false)
+            }
             await executeSummonTurn(result: result, summon: summon, pieceID: pieceID)
+            coordinator.endWhy()
 
             guard !isStale else { return }
             if !summon.dead {
@@ -72,6 +77,7 @@ final class SummonTurnController {
 
         if result.movementPath.count > 1 {
             let steps = result.movementPath.count - 1
+            coordinator.noteWhyMove(steps)
             coordinator.log("\(coordinator.name(pieceID)) moves \(steps) hex\(steps == 1 ? "" : "es")", category: .move, trace: "to \(result.movementPath.last!)")
             guard await coordinator.moveAlong(pieceID, path: result.movementPath,
                                               style: summon.flying ? .fly : .normal), !isStale else { return }
@@ -90,6 +96,7 @@ final class SummonTurnController {
                 attacker: pieceID, target: target,
                 attack: AttackParameters(value: attack.value, isRanged: attack.isRanged, pierce: attack.pierce,
                                          conditions: attack.conditions, push: attack.push, pull: attack.pull))
+            coordinator.noteWhyAttack(on: target)
         }
     }
 }

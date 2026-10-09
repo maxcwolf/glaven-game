@@ -148,3 +148,98 @@ final class HowToPlayTests: XCTestCase {
         }
     }
 }
+
+/// Learning mode beyond the board's monsters: "Why?" for summons, tips in town, and the
+/// special rules tip.
+@MainActor
+final class LearningBeyondMonstersTests: XCTestCase {
+
+    private var gm: GameManager!
+    private var coord: BoardCoordinator { gm.boardCoordinator }
+
+    override func setUp() async throws {
+        gm = try SaveAndContinueTestsSupport.manager()
+        gm.game.level = 1
+        gm.game.learningMode = true
+        coord.boardState = makeBoard(cols: 12, rows: 12)
+        coord.autoResolvePrompts = true
+        coord.turnDelayNanoseconds = 0
+    }
+
+    /// A summon's move and attack lines carry its decision: the enemies it weighed, best first,
+    /// and "Why?" speaks of a summon.
+    func testWhyForASummon() async throws {
+        gm.characterManager.addCharacter(name: "brute", edition: "gh")
+        let brute = gm.game.characters[0]
+        coord.boardState.placePiece(.character(brute.id), at: HexCoord(0, 3))
+        var data = SummonDataModel(name: "rat", health: .int(5))
+        data.attack = .int(2)
+        data.movement = .int(3)
+        data.range = .int(0)
+        gm.characterManager.addSummon(from: data, for: brute)
+        let summon = try XCTUnwrap(brute.summons.first)
+        summon.state = .active
+        let piece = PieceID.summon(id: summon.id)
+        coord.boardState.placePiece(piece, at: HexCoord(1, 3))
+        let near = try XCTUnwrap(coord.spawnMonster(name: "bandit-guard", type: .normal, at: HexCoord(4, 3), origin: .placed))
+        let far = try XCTUnwrap(coord.spawnMonster(name: "bandit-guard", type: .normal, at: HexCoord(9, 3), origin: .placed))
+
+        await SummonTurnController(coordinator: coord, gameManager: gm).executeSummonTurns(for: brute)
+
+        let lines = coord.turnLog.filter { $0.whyID != nil }
+        XCTAssertFalse(lines.isEmpty, "its move and attack lines carry its decision")
+        let why = try XCTUnwrap(lines.first.flatMap { coord.monsterWhys[$0.whyID!] })
+        XCTAssertEqual(why.monster, piece)
+        XCTAssertEqual(why.focus, near)
+        XCTAssertEqual(why.candidates.map(\.pieceID), [near, far])
+        XCTAssertGreaterThan(why.moved, 0)
+        XCTAssertEqual(why.attacks.count, 1)
+        let explanation = coord.whyExplanation(why)
+        XCTAssertTrue(explanation.steps.first?.note?.hasPrefix("A summon goes for") == true, explanation.steps.first?.note ?? "")
+    }
+
+    /// In town, each thing the party can newly do teaches its rule, once.
+    func testTownTeachesWhatThePartyCanDo() throws {
+        gm.characterManager.addCharacter(name: "brute", edition: "gh")
+        let brute = gm.game.characters[0]
+        brute.experience = 50
+        brute.loot = 30
+        coord.teachInTown()
+        var taught: [LearnTopic.ID] = []
+        while let tip = coord.pendingTip {
+            taught.append(tip.topic)
+            coord.dismissTip()
+        }
+        XCTAssertTrue(taught.contains(.levelUp), "\(taught)")
+        XCTAssertTrue(taught.contains(.personalQuest), "no quest yet: \(taught)")
+        XCTAssertTrue(taught.contains(.shopping), "\(taught)")
+        XCTAssertFalse(taught.contains(.retirement), "no quest done")
+
+        coord.teachInTown()
+        XCTAssertNil(coord.pendingTip, "each once")
+
+        gm.game.learningMode = false
+        gm.settingsManager.seenTips = []
+        coord.teachInTown()
+        XCTAssertNil(coord.pendingTip, "only in learning mode")
+    }
+
+    /// A scenario with special rules teaches them at its first card choice.
+    func testSpecialRulesAreTaught() throws {
+        gm.characterManager.addCharacter(name: "brute", edition: "gh")
+        gm.characterManager.addCharacter(name: "spellweaver", edition: "gh")
+        let scenarios = gm.editionStore.scenarios(for: "gh").filter { $0.solo == nil }
+        let withRules = try XCTUnwrap(scenarios.first {
+            !ScenarioBrief.make(for: $0, labels: gm.editionStore).rules.isEmpty
+        })
+        gm.startScenarioOnBoard(withRules)
+        gm.boardCoordinator.finishSetup()
+        var taught: [LearnTopic.ID] = []
+        while let tip = coord.pendingTip {
+            taught.append(tip.topic)
+            if tip.topic == .specialRules { XCTAssertEqual(tip.anchor, .goal) }
+            coord.dismissTip()
+        }
+        XCTAssertTrue(taught.contains(.specialRules), "\(withRules.index): \(taught)")
+    }
+}

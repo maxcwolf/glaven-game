@@ -8,7 +8,7 @@ import Foundation
 struct LearnTopic: Identifiable, Equatable {
     enum ID: String, CaseIterable, Codable {
         // The round
-        case round, cardChoice, initiative, scenarioGoal
+        case round, cardChoice, initiative, scenarioGoal, specialRules
         // Your turn
         case yourTurn, playedCards, moving, doors, loot, experience, items, summons
         // Attacks
@@ -19,6 +19,8 @@ struct LearnTopic: Identifiable, Equatable {
         case elements
         // Your hand
         case handIsAClock, resting, exhaustion
+        // Between scenarios
+        case levelUp, perks, enhancing, shopping, personalQuest, retirement
         // Conditions
         case poison, wound, immobilize, disarm, stun, muddle, curse, invisible, strengthen, bless
     }
@@ -30,6 +32,7 @@ struct LearnTopic: Identifiable, Equatable {
         case monsters = "Monsters"
         case elements = "Elements"
         case hand = "Your Hand"
+        case town = "Between Scenarios"
         case conditions = "Conditions"
     }
 
@@ -56,6 +59,8 @@ struct LearnTopic: Identifiable, Equatable {
         case monsterCard
         /// An attack's sum as chips.
         case sum([String])
+        /// A modifier card taken out of the deck and another put in (a perk).
+        case swap(from: String, to: String)
         case diagram(LearnDiagram)
 
         static func == (a: Art, b: Art) -> Bool {
@@ -69,6 +74,7 @@ struct LearnTopic: Identifiable, Equatable {
                 return true
             case (.condition(let x), .condition(let y)): return x == y
             case (.sum(let x), .sum(let y)): return x == y
+            case (.swap(let a1, let b1), .swap(let a2, let b2)): return a1 == a2 && b1 == b2
             case (.diagram(let x), .diagram(let y)): return x == y
             default: return false
             }
@@ -147,6 +153,11 @@ struct LearnTopic: Identifiable, Equatable {
             "When the goal is met, or the scenario is lost, the rest of the round is still played out.",
         ], art: .diagram(.scenarioGoal),
            onTheBoard: "The goal chip at the top: tap it to read the brief again."),
+        LearnTopic(id: .specialRules, chapter: .round, title: "Special rules", paragraphs: [
+            "Many scenarios change the usual rules: monsters that appear every few rounds, doors that open on their own, a figure to protect, a different way to [win](topic:scenarioGoal).",
+            "The scenario brief lists them before you start. They apply on top of everything else, and win over it where the two disagree.",
+        ], art: .steps(["The brief lists them", "They change the usual rules", "The goal chip shows them again"], arrows: false),
+           onTheBoard: "The goal chip at the top reopens the brief with its special rules; the log notes each one as it happens."),
 
         // MARK: Your turn
         LearnTopic(id: .yourTurn, chapter: .turn, title: "Top of one, bottom of the other", paragraphs: [
@@ -263,6 +274,38 @@ struct LearnTopic: Identifiable, Equatable {
             "If every character is exhausted, the scenario is lost.",
         ], art: .steps(["Hit points reach 0", "Or no two cards and no rest", "Off the board"], arrows: true),
            onTheBoard: "The damage panel warns when taking damage would exhaust you."),
+
+        // MARK: Between scenarios
+        LearnTopic(id: .levelUp, chapter: .town, title: "Levelling up", paragraphs: [
+            "Experience earned in scenarios adds up. At 45 a character reaches level 2, at 95 level 3, then 150, 210, 275, 345, 420 and 500 for level 9.",
+            "Each level gives more hit points, a new ability card of that level or lower to choose from (your hand stays the same size), and a [perk](topic:perks).",
+        ], art: .order([(45, "Level 2"), (95, "Level 3"), (150, "Level 4")]),
+           onTheBoard: "In town, Level Up appears on a character once they have the experience."),
+        LearnTopic(id: .perks, chapter: .town, title: "Perks", paragraphs: [
+            "A perk improves your [modifier deck](topic:modifiers): it takes weak cards out, adds better ones, or adds cards with effects. Each class has its own list.",
+            "You earn a perk with every level, and another for every three checkmarks from battle goals.",
+        ], art: .swap(from: "minus1", to: "plus1"),
+           onTheBoard: "In town, a character's button shows the perks they can take; choose them on their sheet."),
+        LearnTopic(id: .enhancing, chapter: .town, title: "Enhancing", paragraphs: [
+            "Once the Enhancer is open, gold buys an enhancement for one of your ability cards: +1 to a number, a condition or an element added to an attack, or another hex for an area attack.",
+            "It's permanent: the card keeps it for every character of that class. It costs more on higher-level cards and on cards already enhanced.",
+        ], art: .sum(["Attack 3", "+1 enhancement", "= Attack 4, for good"]),
+           onTheBoard: "In town, Enhance on a character opens their cards with each slot and its price."),
+        LearnTopic(id: .shopping, chapter: .town, title: "The shop", paragraphs: [
+            "Gold buys [items](topic:items) in town. The shop has a few copies of each, and more items as the city's prosperity grows.",
+            "A character can sell an item back for half its price.",
+        ], art: .steps(["Buy with gold", "More as prosperity grows", "Sell back for half"], arrows: false),
+           onTheBoard: "In town, Shop on a character; their gold is beside their name."),
+        LearnTopic(id: .personalQuest, chapter: .town, title: "Personal quests", paragraphs: [
+            "Every character has a personal quest: a life goal of their own, like killing a number of one kind of monster or saving up gold.",
+            "It fills in as you play. When it's done, the character [retires](topic:retirement).",
+        ], art: .steps(["Choose a quest", "It fills in as you play", "Done: retire"], arrows: true),
+           onTheBoard: "In town, each character shows their quest and how much of it is done."),
+        LearnTopic(id: .retirement, chapter: .town, title: "Retirement", paragraphs: [
+            "A character whose [personal quest](topic:personalQuest) is done retires: they leave the party for good, the city's prosperity rises, and the quest's reward is unlocked, often a new class.",
+            "The player then starts a new character, at any level up to the city's prosperity level.",
+        ], art: .steps(["Quest done", "Retire in town", "Its reward unlocked", "A new character"], arrows: true),
+           onTheBoard: "In town, Retire appears on a character once their quest is done."),
 
         // MARK: Conditions
         LearnTopic(id: .poison, chapter: .conditions, title: "Poison", paragraphs: [

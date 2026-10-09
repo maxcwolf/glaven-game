@@ -345,21 +345,25 @@ struct LearnArtView: View {
         case .order(let order):
             FlowLayout(spacing: 10) {
                 ForEach(Array(order.enumerated()), id: \.offset) { index, entry in
-                    HStack(spacing: 8) {
-                        Text("\(entry.0)")
-                            .font(BoardTheme.font(size: 15, weight: .bold).monospacedDigit())
-                            .foregroundStyle(BoardTheme.sheet)
-                            .frame(minWidth: 30, minHeight: 30)
-                            .background(BoardTheme.brass, in: Circle())
-                        Text(entry.1).font(BoardTheme.font(size: 15, weight: .medium)).foregroundStyle(BoardTheme.text)
-                    }
-                    .padding(.trailing, 12).padding(4)
-                    .background(BoardTheme.raised, in: Capsule())
-                    if index < order.count - 1 {
-                        Image(systemName: "arrow.right").foregroundStyle(BoardTheme.secondaryText).accessibilityHidden(true)
+                    HStack(spacing: 10) {
+                        HStack(spacing: 8) {
+                            Text("\(entry.0)")
+                                .font(BoardTheme.font(size: 15, weight: .bold).monospacedDigit())
+                                .foregroundStyle(BoardTheme.sheet)
+                                .padding(.horizontal, 7)
+                                .frame(minWidth: 30, minHeight: 30)
+                                .background(BoardTheme.brass, in: Capsule())
+                            Text(entry.1).font(BoardTheme.font(size: 15, weight: .medium)).foregroundStyle(BoardTheme.text)
+                        }
+                        .padding(.trailing, 12).padding(4)
+                        .background(BoardTheme.raised, in: Capsule())
+                        if index < order.count - 1 {
+                            Image(systemName: "arrow.right").foregroundStyle(BoardTheme.secondaryText).accessibilityHidden(true)
+                        }
                     }
                 }
             }
+            .frame(maxWidth: width, alignment: .leading)
         case .cards(let cards):
             HStack(spacing: 14) {
                 ForEach(Array(cards.enumerated()), id: \.offset) { _, card in
@@ -442,6 +446,28 @@ struct LearnArtView: View {
             .frame(maxWidth: width, alignment: .leading)
         case .diagram(let diagram):
             HexDiagramView(diagram: diagram, maxWidth: min(width, 600))
+        case .swap(let from, let to):
+            HStack(spacing: 18) {
+                if let out = AttackModifierType(rawValue: from) {
+                    VStack(spacing: 6) {
+                        AttackModifierCardView(modifier: AttackModifier(type: out), size: 78)
+                            .opacity(0.4)
+                            .overlay(Image(systemName: "xmark").font(BoardTheme.font(size: 34, weight: .bold))
+                                .foregroundStyle(BoardTheme.defeat))
+                        Text("Taken out").font(BoardTheme.font(size: 13)).foregroundStyle(BoardTheme.secondaryText)
+                    }
+                }
+                Image(systemName: "arrow.right").font(BoardTheme.font(size: 20, weight: .semibold))
+                    .foregroundStyle(BoardTheme.brass)
+                    .accessibilityHidden(true)
+                if let into = AttackModifierType(rawValue: to) {
+                    VStack(spacing: 6) {
+                        AttackModifierCardView(modifier: AttackModifier(type: into), size: 78)
+                            .overlay(RoundedRectangle(cornerRadius: 6).stroke(BoardTheme.brass, lineWidth: 2.5))
+                        Text("Put in").font(BoardTheme.font(size: 13)).foregroundStyle(BoardTheme.brass)
+                    }
+                }
+            }
         }
     }
 

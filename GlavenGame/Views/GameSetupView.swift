@@ -38,6 +38,16 @@ struct GameSetupView: View {
     }
 
     /// Once the party has played, this is the town between scenarios.
+    /// What the party can do in town now, so a tip comes up as soon as something new can be.
+    private var townLearningKey: String {
+        let manager = gameManager.characterManager
+        let party = gameManager.game.characters.filter { !$0.absent }.map { character in
+            "\(character.id):\(manager.canLevelUp(character)):\(manager.perksAvailable(for: character)):"
+                + "\(character.personalQuest ?? "-"):\(character.loot > 0)"
+        }
+        return "\(gameManager.game.learningMode)|" + party.joined(separator: ",")
+    }
+
     private var inTown: Bool {
         !gameManager.game.completedScenarios.isEmpty || !gameManager.game.campaignLog.isEmpty
     }
@@ -128,6 +138,10 @@ struct GameSetupView: View {
                 Button("Campaign", systemImage: "book.closed.fill") { showCampaign = true }
                     .buttonStyle(.bordered)
                     .tint(BoardTheme.brass)
+                Button("How to Play", systemImage: "book") { gameManager.boardCoordinator.openHowToPlay() }
+                    .buttonStyle(.bordered)
+                    .tint(BoardTheme.brass)
+                    .fixedSize()
                     .fixedSize()
             }
             .padding(.horizontal, 20)
@@ -220,6 +234,7 @@ struct GameSetupView: View {
                     .transition(.opacity)
             }
         }
+        .modifier(TownLearning(key: townLearningKey))
         .overlay {
             if let deck = events.first {
                 EventSheet(deck: deck, onDone: { finishEvent(deck) }, onClose: closeEvents)
