@@ -68,7 +68,7 @@ struct TownPartyRow: View {
                     .accessibilityLabel("Remove \(GameText.characterName(character, labels: gameManager.editionStore)) from the party")
                 }
             }
-            questLine
+            TownQuestLine(character: character, onChooseQuest: onChooseQuest, onRetire: onRetire)
             FlowLayout(spacing: 6) {
                 if manager.canLevelUp(character) {
                     Button("Level Up", systemImage: "arrow.up.circle.fill", action: onLevelUp)
@@ -106,36 +106,6 @@ struct TownPartyRow: View {
         .background(BoardTheme.raised.opacity(0.7), in: RoundedRectangle(cornerRadius: BoardTheme.Radius.medium))
     }
 
-    /// The personal quest: its name and progress, or a button to choose one / to retire.
-    @ViewBuilder
-    private var questLine: some View {
-        let manager = gameManager.characterManager
-        HStack(spacing: 8) {
-            Image(systemName: "scroll").foregroundStyle(BoardTheme.brass).accessibilityHidden(true)
-            if let id = character.personalQuest, let quest = manager.personalQuest(id, edition: character.edition) {
-                let met = quest.requirements.enumerated().filter { index, req in
-                    (index < character.personalQuestProgress.count ? character.personalQuestProgress[index] : 0) >= req.target
-                }.count
-                Text("\(quest.name) · \(met) of \(quest.requirements.count) done")
-                    .font(BoardTheme.font(size: 13))
-                    .foregroundStyle(BoardTheme.secondaryText)
-                    .lineLimit(1)
-                Spacer(minLength: 4)
-                if manager.questComplete(character) {
-                    Button("Retire", systemImage: "figure.walk.departure", action: onRetire)
-                        .buttonStyle(.boardPrimaryCompact)
-                }
-            } else {
-                Text("No personal quest")
-                    .font(BoardTheme.font(size: 13))
-                    .foregroundStyle(BoardTheme.secondaryText)
-                Spacer(minLength: 4)
-                Button("Choose Quest", systemImage: "scroll.fill", action: onChooseQuest)
-                    .buttonStyle(.boardPrimaryCompact)
-            }
-        }
-    }
-
     private var levelLine: String {
         guard let next = nextThreshold else { return "Level \(character.level) · \(character.experience) XP" }
         return "Level \(character.level) · \(character.experience) / \(next) XP"
@@ -167,5 +137,42 @@ struct XPBar: View {
             }
         }
         .frame(height: 5)
+    }
+}
+
+/// The personal quest: its name and progress, or a button to choose one / to retire.
+struct TownQuestLine: View {
+    @Environment(GameManager.self) private var gameManager
+    let character: GameCharacter
+    var onChooseQuest: () -> Void
+    var onRetire: () -> Void
+
+    var body: some View {
+        let manager = gameManager.characterManager
+        HStack(spacing: 8) {
+            Image(systemName: "scroll").foregroundStyle(BoardTheme.brass).accessibilityHidden(true)
+            if let id = character.personalQuest, let quest = manager.personalQuest(id, edition: character.edition) {
+                let met = quest.requirements.enumerated().filter { index, req in
+                    (index < character.personalQuestProgress.count ? character.personalQuestProgress[index] : 0) >= req.target
+                }.count
+                Text("\(quest.name) · \(met) of \(quest.requirements.count) done")
+                    .font(BoardTheme.font(size: 13))
+                    .foregroundStyle(BoardTheme.secondaryText)
+                    .lineLimit(1)
+                Spacer(minLength: 4)
+                if manager.questComplete(character) {
+                    Button("Retire", systemImage: "figure.walk.departure", action: onRetire)
+                        .buttonStyle(.boardPrimaryCompact)
+                }
+            } else {
+                Text("No quest yet")
+                    .font(BoardTheme.font(size: 13))
+                    .foregroundStyle(BoardTheme.secondaryText)
+                    .lineLimit(1)
+                Spacer(minLength: 4)
+                Button("Choose Quest", systemImage: "scroll.fill", action: onChooseQuest)
+                    .buttonStyle(.boardPrimaryCompact)
+            }
+        }
     }
 }

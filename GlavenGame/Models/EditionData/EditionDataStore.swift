@@ -173,9 +173,10 @@ final class EditionDataStore {
             (decksByEdition[edition] ?? []).map { ($0.name, $0) },
             uniquingKeysWith: { _, last in last }
         )
+        // A number names the campaign scenario: solo scenarios share #1–#17 and never shadow them.
         scenarioIndex[edition] = Dictionary(
             (scenariosByEdition[edition] ?? []).map { ($0.index, $0) },
-            uniquingKeysWith: { _, last in last }
+            uniquingKeysWith: { first, other in first.group == nil || other.group != nil ? first : other }
         )
         sectionIndex[edition] = Dictionary(
             (sectionsByEdition[edition] ?? []).map { ($0.index, $0) },

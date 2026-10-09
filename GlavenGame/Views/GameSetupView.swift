@@ -284,7 +284,7 @@ struct GameSetupView: View {
                 Text(inTown ? "Gloomhaven" : "New Campaign")
                     .font(BoardTheme.display(24))
                     .foregroundStyle(BoardTheme.text)
-                Text(Self.townSubtitle(scenariosPlayed: gameManager.game.completedScenarios.count))
+                Text(Self.townSubtitle(scenariosPlayed: gameManager.game.completedScenarios.count, inTown: inTown))
                     .font(BoardTheme.font(size: 12, weight: .medium))
                     .foregroundStyle(BoardTheme.secondaryText)
                     .lineLimit(1)
@@ -319,8 +319,9 @@ struct GameSetupView: View {
     }
 
     /// "Recruit your party and set out", or "In town · 3 scenarios played".
-    static func townSubtitle(scenariosPlayed: Int) -> String {
-        guard scenariosPlayed > 0 else { return "Recruit your party and set out" }
+    /// A party back from a lost or abandoned scenario is in town, with nothing won yet.
+    static func townSubtitle(scenariosPlayed: Int, inTown: Bool) -> String {
+        guard scenariosPlayed > 0 else { return inTown ? "In town" : "Recruit your party and set out" }
         return "In town \u{00B7} \(scenariosPlayed) scenario\(scenariosPlayed == 1 ? "" : "s") played"
     }
 

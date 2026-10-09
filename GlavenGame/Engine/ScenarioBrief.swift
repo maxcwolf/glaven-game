@@ -27,13 +27,19 @@ struct ScenarioBrief: Equatable {
             defeat: ["Every character is exhausted."]
                 + rules.filter { $0.finish == "lost" }.map { lossText($0, labels: labels, edition: scenario.edition) },
             rules: specialRules(scenario, labels: labels),
-            monsters: scenario.monsters ?? [],
+            monsters: monsterKeys(scenario.monsters ?? []),
             map: mapLine(scenario.rooms ?? []),
             rewards: rewardLines(scenario, labels: labels),
             edition: scenario.edition)
     }
 
     // MARK: - Monsters, map and rewards
+
+    /// Each monster type once, by key: "living-corpse:+2" (a level above the scenario's) is a Living Corpse.
+    private static func monsterKeys(_ raw: [String]) -> [String] {
+        var seen: Set<String> = []
+        return raw.map { MonsterNameSpec($0).name }.filter { seen.insert($0).inserted }
+    }
 
     private static func mapLine(_ rooms: [RoomData]) -> String? {
         guard !rooms.isEmpty else { return nil }

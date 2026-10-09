@@ -41,6 +41,35 @@ final class ScenarioFramingTests: XCTestCase {
         }
     }
 
+    /// Regression: the Brute's solo scenario is also #1 (and the other solos #2–#17), and the
+    /// index kept whichever loaded last; on iPad that was the solo, so a saved Black Barrow came
+    /// back as "Return to the Black Barrow", with its monsters, its reward and no portraits.
+    func testANumberNamesTheCampaignScenario() throws {
+        let gm = try SaveAndContinueTestsSupport.manager()
+        let campaign = gm.editionStore.scenarios(for: "gh").filter { $0.group == nil && $0.parent == nil }
+        XCTAssertGreaterThan(campaign.count, 90)
+        for data in campaign {
+            let found = gm.editionStore.scenarioData(index: data.index, edition: "gh")
+            XCTAssertNil(found?.solo, "#\(data.index)")
+            XCTAssertEqual(found?.name, data.name, "#\(data.index)")
+        }
+        let barrow = try XCTUnwrap(campaign.first { $0.index == "1" })
+        gm.scenarioManager.setScenario(barrow)
+        let restored = try XCTUnwrap(gm.game.scenario?.toSnapshot().toRuntime(editionStore: gm.editionStore))
+        XCTAssertEqual(restored.data.name, barrow.name, "a saved Black Barrow comes back as itself")
+    }
+
+    /// The brief names each monster type once, by its key: a level spec ("living-corpse:+2") is
+    /// not part of the name, and the key finds the portrait.
+    func testBriefMonstersAreKeys() throws {
+        XCTAssertEqual(try brief("28").monsters.filter { $0.contains(":") }, [])
+        XCTAssertTrue(try brief("28").monsters.contains("living-corpse"))
+        let keys = ScenarioBrief.make(for: ScenarioData(index: "x", name: "x", edition: "gh",
+                                                        monsters: ["living-bones:-1", "living-bones", "bandit-guard:2"]))
+            .monsters
+        XCTAssertEqual(keys, ["living-bones", "bandit-guard"])
+    }
+
     func testBriefsSayWhatTheScenarioAsks() throws {
         XCTAssertEqual(try brief("1"), ScenarioBrief(title: "#1 Black Barrow", goal: "Kill every enemy.",
                                                      defeat: ["Every character is exhausted."], rules: [],

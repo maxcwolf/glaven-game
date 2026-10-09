@@ -28,6 +28,18 @@ final class TownTests: XCTestCase {
         }
     }
 
+    /// Regression: in the narrower party panel (11-inch iPad), "No personal quest" wrapped onto
+    /// two lines beside Choose Quest. The line fits the row's 290 points with room to spare
+    /// (iPad sets text a little wider than the Mac).
+    func testTheQuestLineFitsTheNarrowPanel() throws {
+        let gm = try party(["spellweaver"])
+        let character = gm.game.characters[0]
+        XCTAssertNil(character.personalQuest)
+        let line = TownQuestLine(character: character, onChooseQuest: {}, onRetire: {})
+        let ideal = NSHostingController(rootView: line.environment(gm).fixedSize()).view.fittingSize
+        XCTAssertLessThanOrEqual(ideal.width, 290 - 24)
+    }
+
     // MARK: - Sanctuary
 
     func testADonationBlessesTheNextScenarioOncePerVisit() throws {
@@ -230,9 +242,11 @@ extension TownTests {
                        "Road event, then battle goals")
         XCTAssertEqual(GameSetupView.setOutDetail(hasParty: true, scenario: true, cityEvent: true, roadEvent: true),
                        "City event, road event, then battle goals")
-        XCTAssertEqual(GameSetupView.townSubtitle(scenariosPlayed: 0), "Recruit your party and set out")
-        XCTAssertEqual(GameSetupView.townSubtitle(scenariosPlayed: 1), "In town \u{00B7} 1 scenario played")
-        XCTAssertEqual(GameSetupView.townSubtitle(scenariosPlayed: 3), "In town \u{00B7} 3 scenarios played")
+        XCTAssertEqual(GameSetupView.townSubtitle(scenariosPlayed: 0, inTown: false), "Recruit your party and set out")
+        XCTAssertEqual(GameSetupView.townSubtitle(scenariosPlayed: 0, inTown: true), "In town",
+                       "regression: back from an abandoned scenario, the party isn't still being recruited")
+        XCTAssertEqual(GameSetupView.townSubtitle(scenariosPlayed: 1, inTown: true), "In town \u{00B7} 1 scenario played")
+        XCTAssertEqual(GameSetupView.townSubtitle(scenariosPlayed: 3, inTown: true), "In town \u{00B7} 3 scenarios played")
     }
 
     /// The banner crops the world map around the scenario, kept inside the map at its edges.
