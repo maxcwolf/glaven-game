@@ -167,4 +167,16 @@ final class TurnFlowTests: XCTestCase {
         XCTAssertEqual(Set(brute.discardedCards), [1, 2])
         XCTAssertTrue(brute.activeCards.isEmpty)
     }
+
+    // MARK: - Choosing two cards
+
+    /// A mis-tap is never stuck: with two cards chosen, another card takes the second's place; a
+    /// chosen card makes itself lead, or (alone) is put back.
+    func testTheTwoCardsCanBeChangedBeforeConfirming() {
+        XCTAssertEqual(CardSelectionPanel.selection([], tapping: 4), [4])
+        XCTAssertEqual(CardSelectionPanel.selection([4], tapping: 7), [4, 7])
+        XCTAssertEqual(CardSelectionPanel.selection([4, 7], tapping: 2), [4, 2], "the second card is replaced")
+        XCTAssertEqual(CardSelectionPanel.selection([4, 7], tapping: 7), [7, 4], "the tapped card leads")
+        XCTAssertEqual(CardSelectionPanel.selection([4], tapping: 4), [], "put back")
+    }
 }

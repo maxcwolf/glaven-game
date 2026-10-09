@@ -49,6 +49,20 @@ final class BoardAccessibilityTests: XCTestCase {
         }
     }
 
+    /// A view made tappable with `.onTapGesture` is a button to VoiceOver too (a plain tap
+    /// gesture isn't announced as one): the card selection's cards weren't.
+    func testTappableViewsAreButtons() throws {
+        for (name, text) in try boardSources() {
+            let lines = text.components(separatedBy: "\n")
+            for (index, line) in lines.enumerated() where line.contains(".onTapGesture") {
+                let block = lines[index..<min(lines.count, index + 8)].joined(separator: "\n")
+                let isButton = block.contains(".isButton") || block.contains("accessibilityHidden")
+                   
+                XCTAssertTrue(isButton, "\(name):\(index + 1) is tappable but not a button to VoiceOver")
+            }
+        }
+    }
+
     /// Each figure on the board is described: who it is, its rank, its health and conditions.
     func testFiguresHaveSpokenDescriptions() throws {
         let gm = try SaveAndContinueTestsSupport.manager()

@@ -938,6 +938,8 @@ struct BoardView: View {
                 previewMonsterAbility = (monster, ability)
             }
         }
+        .accessibilityAddTraits(.isButton)
+        .accessibilityHint("Shows this round's ability card")
     }
 
     @ViewBuilder
@@ -1345,6 +1347,8 @@ struct BoardView: View {
         Color.black.opacity(0.6)
             .ignoresSafeArea()
             .onTapGesture { previewMonsterAbility = nil }
+            .accessibilityLabel("Close the ability card")
+            .accessibilityAddTraits(.isButton)
             .overlay {
                 VStack(spacing: 14) {
                     // Header
@@ -1467,6 +1471,7 @@ struct BoardView: View {
                 coordinator.dismissCardPreview()
             }
             .accessibilityLabel("Close the card")
+            .accessibilityAddTraits(.isButton)
             .overlay {
                 if let url = appResourceBundle.url(forResource: "\(cardId)", withExtension: "jpeg", subdirectory: "CardImages/gh"),
                    let data = try? Data(contentsOf: url),

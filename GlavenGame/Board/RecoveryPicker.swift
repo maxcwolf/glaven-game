@@ -30,6 +30,7 @@ struct RecoveryPicker: View {
                                 if let index = chosen.firstIndex(of: id) { chosen.remove(at: index) }
                                 else if chosen.count < pending.count { chosen.append(id) }
                             }
+                            .accessibilityAddTraits(chosen.contains(id) ? [.isButton, .isSelected] : .isButton)
                     }
                 }
             }

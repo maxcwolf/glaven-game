@@ -16,6 +16,7 @@ struct ScenarioBriefCard: View {
         ZStack {
             BoardTheme.scrim.ignoresSafeArea()
                 .onTapGesture(perform: onDismiss)
+                .accessibilityHidden(true)   // the card's own button closes it
             VStack(alignment: .leading, spacing: 18) {
                 Text(brief.title)
                     .font(BoardTheme.display(40))

@@ -56,7 +56,7 @@ struct CardSelectionPanel: View {
                         .font(.caption)
                         .foregroundStyle(.white.opacity(0.6))
                 } else if selectedCards.count == 2 {
-                    Text("Tap a chosen card to make it lead. You pick top and bottom halves on your turn.")
+                    Text("Tap a chosen card to make it lead, another card to play it instead of the second. You pick top and bottom halves on your turn.")
                         .font(.caption)
                         .foregroundStyle(.yellow.opacity(0.8))
                 }
@@ -86,6 +86,8 @@ struct CardSelectionPanel: View {
                         .onTapGesture {
                             toggleCardSelection(index)
                         }
+                        .accessibilityAddTraits(isTop || isBtm ? [.isButton, .isSelected] : .isButton)
+                        .accessibilityHint(isTop ? "Leads: sets your initiative" : (isBtm ? "Second card" : "Choose this card"))
                     }
                 }
                 .padding(.horizontal)
@@ -139,17 +141,23 @@ struct CardSelectionPanel: View {
     // MARK: - Selection Logic
 
     private func toggleCardSelection(_ index: Int) {
-        if let i = selectedCards.firstIndex(of: index) {
-            if selectedCards.count == 2 {
-                // Tapping a selected card swaps the roles (top ↔ bottom)
-                selectedCards = selectedCards.reversed()
-            } else {
-                // Deselect
-                selectedCards.remove(at: i)
+        selectedCards = Self.selection(selectedCards, tapping: index)
+    }
+
+    /// The cards chosen after tapping `index` (in order: lead, second). A chosen card's tap makes
+    /// it lead when two are chosen, or puts it back; another card joins, or, with two already
+    /// chosen, takes the second card's place, so a mis-tap is never stuck.
+    static func selection(_ selected: [Int], tapping index: Int) -> [Int] {
+        if let i = selected.firstIndex(of: index) {
+            if selected.count == 2 {
+                return selected.reversed()
             }
-        } else if selectedCards.count < 2 {
-            selectedCards.append(index)
+            var remaining = selected
+            remaining.remove(at: i)
+            return remaining
         }
+        if selected.count < 2 { return selected + [index] }
+        return [selected[0], index]
     }
 
     private func confirmSelection() {
