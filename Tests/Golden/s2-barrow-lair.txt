@@ -54,8 +54,11 @@ Spellweaver targets Bandit Archer 4 (3 of 3)
 Spellweaver attacks Bandit Archer 2: 3 + 1 poison ×2 = 8 damage [3 +1(poison) ×2(mod) = 8]
 Bandit Archer 2 dies
 A money token drops [at (-1,0)]
+Spellweaver gains 1 XP
 Spellweaver attacks Bandit Archer 3: 3 − 2 = 1 damage [3 -2(mod) = 1]
+Spellweaver gains 1 XP
 Spellweaver attacks Bandit Archer 4: 3 + 1 = 4 damage [3 +1(mod) = 4]
+Spellweaver gains 1 XP
 Spellweaver infuses Fire
 Spellweaver: Attack 2, Range 2
 Spellweaver has no target within range 2
@@ -90,7 +93,7 @@ Round 1 complete
 elements: fire waning, air waning, earth waning
 scoundrel (-2,-1) hp 5/8 hand 7 discard 2 lost 0 active 0 xp 0 gold 0
 cragheart (-3,-2) hp 10/10 hand 9 discard 1 lost 1 active 0 xp 0 gold 0
-spellweaver (-3,-3) hp 6/6 hand 6 discard 1 lost 1 active 0 xp 0 gold 0
+spellweaver (-3,-3) hp 6/6 hand 6 discard 1 lost 1 active 0 xp 3 gold 0
 brute (-2,1) hp 4/10 hand 8 discard 1 lost 1 active 0 xp 2 gold 0
 bandit-archer #1 normal (0,0) hp 5/5
 bandit-archer #2 elite (0,6) hp 7/7
@@ -122,6 +125,7 @@ Spellweaver’s turn: Mana Bolt and Impaling Eruption
 Spellweaver takes the top half from Impaling Eruption and the bottom half from Mana Bolt
 Spellweaver: Attack 3, Range 4
 Spellweaver attacks Bandit Archer 1: 3 − 2 = 1 damage [3 -2(mod) = 1]
+Spellweaver gains 1 XP
 Spellweaver infuses Earth
 Spellweaver: Heal 3, Range 1. Choose who to heal
 Spellweaver heals Cragheart for 0 [Heal 3]
@@ -165,7 +169,7 @@ Round 2 complete
 --- state after round 2 ---
 elements: earth waning
 scoundrel (-2,0) hp 5/8 hand 5 discard 4 lost 0 active 0 xp 0 gold 2
-spellweaver (-3,-3) hp 6/6 hand 4 discard 2 lost 2 active 0 xp 0 gold 0
+spellweaver (-3,-3) hp 6/6 hand 4 discard 2 lost 2 active 0 xp 4 gold 0
 brute (-2,1) hp 4/10 hand 5 discard 3 lost 2 active 0 xp 3 gold 0
 cragheart (-1,0) hp 10/10 hand 7 discard 3 lost 1 active 0 xp 0 gold 2
 bandit-archer #2 elite (0,6) hp 7/7

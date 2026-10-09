@@ -48,7 +48,9 @@ Spellweaver targets Living Bones 2 (2 of 3)
 Spellweaver attacks Living Bones 1: 3 + 1 − 1 shield = 3 damage [3 +1(mod) -1(shield) = 3]
 Living Bones 1 dies
 A money token drops [at (2,1)]
+Spellweaver gains 1 XP
 Spellweaver attacks Living Bones 2: 3 + 0 − 1 shield = 2 damage [3 +0(mod) -1(shield) = 2]
+Spellweaver gains 1 XP
 Spellweaver infuses Fire
 Spellweaver: Attack 2, Range 2
 Spellweaver has no target within range 2
@@ -65,7 +67,7 @@ Round 1 complete
 elements: fire waning
 tinkerer (1,2) hp 8/8 hand 10 discard 1 lost 1 active 0 xp 2 gold 0
 mindthief (1,1) hp 2/6 hand 7 discard 1 lost 2 active 0 xp 3 gold 0
-spellweaver (1,4) hp 6/6 hand 6 discard 1 lost 1 active 0 xp 0 gold 0
+spellweaver (1,4) hp 6/6 hand 6 discard 1 lost 1 active 0 xp 2 gold 0
 bandit-archer #1 normal (4,0) hp 5/5
 bandit-archer #2 normal (3,1) hp 3/5
 living-bones #2 elite (3,2) hp 4/6
@@ -81,6 +83,7 @@ Spellweaver’s turn: Mana Bolt and Impaling Eruption
 Spellweaver takes the top half from Impaling Eruption and the bottom half from Mana Bolt
 Spellweaver: Attack 3, Range 4
 Spellweaver attacks Bandit Archer 2: 3 − 2 = 1 damage [3 -2(mod) = 1]
+Spellweaver gains 1 XP
 Spellweaver infuses Earth
 Spellweaver: Heal 3, Range 1. Choose who to heal
 Spellweaver heals Spellweaver for 0 [Heal 3]
@@ -106,6 +109,7 @@ Tinkerer: Attack 3, Range 3, Immobilize
 Tinkerer’s area attack hits 1 enemy
 Tinkerer attacks Living Bones 2: 3 + 1 − 1 shield = 3 damage [3 +1(mod) -1(shield) = 3]
 Living Bones 2 gains Immobilize
+Tinkerer gains 1 XP
 Tinkerer: Loot 2
 Tinkerer loots 1 money token (2 gold)
 Tinkerer gains 1 XP
@@ -119,9 +123,9 @@ Round 2 complete
 === Round 3 ===
 --- state after round 2 ---
 elements: ice waning, earth waning
-spellweaver (1,4) hp 6/6 hand 4 discard 2 lost 2 active 0 xp 0 gold 0
+spellweaver (1,4) hp 6/6 hand 4 discard 2 lost 2 active 0 xp 3 gold 0
 mindthief (2,2) hp 2/6 hand 4 discard 1 lost 5 active 0 xp 4 gold 0
-tinkerer (1,2) hp 8/8 hand 8 discard 1 lost 3 active 0 xp 3 gold 2
+tinkerer (1,2) hp 8/8 hand 8 discard 1 lost 3 active 0 xp 4 gold 2
 bandit-archer #1 normal (4,0) hp 5/5
 living-bones #2 elite (3,2) hp 1/6
 money tokens: (3,1)x1

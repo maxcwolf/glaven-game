@@ -48,6 +48,8 @@ final class PlayerTurnController {
     var pendingConditions: [ConditionName] = []
     /// Advantage on the attack being resolved (Eagle-Eye Goggles).
     var pendingAdvantage = false
+    /// The printed text of the attack being made, for bonuses judged per target (Backstab).
+    var attackTexts: [String] = []
     /// Hexes the character has moved this turn (not pushed or pulled), for movement items.
     var hexesMoved = 0
     /// Hexes passed over (not ended on) during the latest move action, for "enemies moved through".
@@ -234,6 +236,7 @@ final class PlayerTurnController {
             resetPendingAttack(value: value, range: 1)
             pendingPierce += PassiveItems.meleePierce(for: character?.items ?? [])
             pendingPush += PassiveItems.meleePush(for: character?.items ?? [])
+            pendingAttackValue += coordinator.roundAttackBonus(for: pieceID, ranged: false)
             defaultAttackPending = true
             coordinator.log("\(who) uses the basic Attack \(value)", category: .attack)
             coordinator.beginAttackAction(pieceID: pieceID, range: 1)
@@ -298,6 +301,7 @@ final class PlayerTurnController {
         pendingAttackRange = range
         pendingAreaPattern = nil
         pendingAdvantage = false
+        attackTexts = []
         pendingPierce = 0
         pendingPush = 0
         pendingPull = 0
@@ -352,8 +356,9 @@ final class PlayerTurnController {
     @discardableResult
     private func executeAction(_ action: ActionModel, coordinator: BoardCoordinator) -> Bool {
         let pieceID = PieceID.character(characterID)
-        // A persistent half's charged bonus applies once the half is being performed.
-        if halfMarkers(for: phase).contains("persistent"),
+        // A persistent or round half's bonus applies once the half is being performed.
+        let markers = halfMarkers(for: phase)
+        if markers.contains("persistent") || markers.contains("round"),
            let cardId = (phase == .executeBottomAction ? bottomCard : topCard)?.cardId,
            !persistentCardsThisTurn.contains(cardId) {
             persistentCardsThisTurn.append(cardId)
@@ -423,6 +428,9 @@ final class PlayerTurnController {
                 }
             }
             pendingAttackRange = range
+            attackTexts = customTexts(of: action)
+            // This round's bonuses: Wall of Doom, Forceful Storm, an adjacent Enhancement Field.
+            pendingAttackValue += coordinator.roundAttackBonus(for: pieceID, ranged: range > 1)
             // Charged bonuses: Backup Ammunition (one more target on a ranged attack), Crackling Air.
             if range > 1, coordinator.useFirstCharge(of: pieceID, where: { $0 == .extraTargetOnRanged }) != nil {
                 targetCount += 1
@@ -663,11 +671,15 @@ final class PlayerTurnController {
 
     /// The player-facing text of an action's custom sub-actions, lowercased.
     private func customText(of action: ActionModel) -> String {
-        guard let store = gameManager?.editionStore, let edition = character?.edition else { return "" }
+        customTexts(of: action).joined(separator: " ")
+    }
+
+    private func customTexts(of action: ActionModel) -> [String] {
+        guard let store = gameManager?.editionStore, let edition = character?.edition else { return [] }
         return (action.subActions ?? []).filter { $0.type == .custom }
             .compactMap { $0.value?.stringValue }
             .compactMap { store.resolveCustomText($0, edition: edition) }
-            .joined(separator: " ").lowercased()
+            .map { $0.lowercased() }
     }
 
     /// Range of an attack action before augments (melee = 1).

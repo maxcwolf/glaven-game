@@ -193,6 +193,12 @@ extension BoardCoordinator {
         // Retaliate: after the attack, only if the retaliating figure survived (p.24).
         if !died && retaliate > 0 && isOnBoard(target) && isOnBoard(attacker) {
             log("\(name(target)) retaliates for \(retaliate)", category: .damage)
+            // Eye for an Eye: 1 experience for each retaliation this round.
+            if chargedBonuses(of: target).contains(where: { $0.bonus == .experiencePerRetaliate }),
+               case .character(let id) = target, let character = gameManager?.game.characters.first(where: { $0.id == id }) {
+                character.experience += 1
+                log("\(name(target)) gains 1 XP", category: .info)
+            }
             await sufferDamageWithMitigation(retaliate, to: attacker,
                                              source: "\(name(target))\u{2019}s retaliate", killer: target)
         }

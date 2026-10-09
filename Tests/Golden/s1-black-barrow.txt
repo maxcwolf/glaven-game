@@ -102,6 +102,7 @@ Spellweaver: Attack 3, Range 4
 Spellweaver attacks Bandit Guard 1: 3 + 0 − 1 shield = 2 damage [3 +0(mod) -1(shield) = 2]
 Bandit Guard 1 dies
 A money token drops [at (0,1)]
+Spellweaver gains 1 XP
 Spellweaver infuses Earth
 Spellweaver: Heal 3, Range 1. Choose who to heal
 Spellweaver heals Spellweaver for 0 [Heal 3]
@@ -143,7 +144,7 @@ Round 2 complete
 --- state after round 2 ---
 elements: earth waning
 scoundrel (1,5) hp 1/8 hand 4 discard 1 lost 4 active 0 xp 1 gold 0
-spellweaver (4,2) hp 6/6 hand 4 discard 2 lost 2 active 0 xp 0 gold 0
+spellweaver (4,2) hp 6/6 hand 4 discard 2 lost 2 active 0 xp 1 gold 0
 brute (1,2) hp 7/10 hand 6 discard 2 lost 2 active 0 xp 5 gold 0
 cragheart (1,1) hp 4/10 hand 7 discard 3 lost 1 active 0 xp 1 gold 0
 bandit-guard #2 elite (0,5) hp 1/9 [poison]

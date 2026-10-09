@@ -144,7 +144,7 @@ extension BoardCoordinator {
         guard amount > 0, let gameManager, let entity = entity(for: pieceID) else { return false }
         // Juggernaut, Frost Armor: "suffer no damage instead", a charge each time. Defiance of
         // Death: only damage that would bring the character below 1 hit point.
-        if useFirstCharge(of: pieceID, where: { $0 == .negateDamage }) != nil
+        if useFirstCharge(of: pieceID, where: { $0 == .negateDamage || $0 == .negateNextDamage }) != nil
             || (amount >= entity.health && useFirstCharge(of: pieceID, where: { $0 == .negateLethal }) != nil) {
             log("\(name(pieceID)) suffers no damage", category: .damage)
             boardScene?.pieceUnharmed(id: pieceID, missed: false)

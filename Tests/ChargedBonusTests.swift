@@ -46,9 +46,9 @@ final class ChargedBonusTests: XCTestCase {
         let warding = try XCTUnwrap(deck.first { $0.cardId == 7 })
         XCTAssertEqual(ChargedBonus.slots(of: warding), [0, 1, 0, 1, 0, 1])
         let all = ["brute", "cragheart", "scoundrel", "spellweaver", "tinkerer", "lightning", "sun", "eclipse",
-                   "saw", "three-spears"]
+                   "saw", "three-spears", "mindthief"]
             .flatMap { gm.editionStore.abilities(forDeck: $0, edition: "gh") }
-        for key in ChargedBonus.byCard.keys {
+        for (key, bonus) in ChargedBonus.byCard where !bonus.isUnlimited && bonus != .negateNextDamage {
             let id = try XCTUnwrap(Int(key.dropFirst(3)))
             let card = try XCTUnwrap(all.first { $0.cardId == id }, key)
             XCTAssertFalse(ChargedBonus.slots(of: card).isEmpty, key)
@@ -188,5 +188,78 @@ final class ChargedBonusTests: XCTestCase {
         XCTAssertEqual(turn.currentAttackValue(), printed + 3)
         XCTAssertTrue(turn.pendingConditions.contains(.wound))
         XCTAssertTrue(turn.pendingAdvantage)
+    }
+
+    // MARK: - Printed per-target bonuses
+
+    private func texts(of name: String, _ deck: String) throws -> [String] {
+        let card = try XCTUnwrap(gm.editionStore.abilities(forDeck: deck, edition: "gh").first { $0.name == name }, name)
+        let attack = try XCTUnwrap(card.actions?.first { $0.type == .attack })
+        return (attack.subActions ?? []).filter { $0.type == .custom }
+            .compactMap { $0.value?.stringValue }
+            .compactMap { gm.editionStore.resolveCustomText($0, edition: "gh")?.lowercased() }
+    }
+
+    func testBackstabRewardsAFlankedOrLoneTarget() throws {
+        let scoundrel = add("scoundrel", at: HexCoord(3, 3))
+        let target = try bandit(at: HexCoord(4, 3))
+        let backstab = try texts(of: "Backstab", "scoundrel")
+        let me = PieceID.character(scoundrel.id)
+        XCTAssertEqual(coord.attackTextBonus(backstab, attacker: me, target: target).attack, 2, "alone: +2")
+        _ = add("brute", at: HexCoord(5, 3))
+        let flanked = coord.attackTextBonus(backstab, attacker: me, target: target)
+        XCTAssertEqual(flanked.attack, 4, "beside the Brute and still without allies of its own: both lines, +2 each")
+        XCTAssertEqual(flanked.experience, 2, "XP +1 each")
+    }
+
+    func testSubmissiveAfflictionCountsNegativeConditions() throws {
+        let mindthief = add("mindthief", at: HexCoord(3, 3))
+        let target = try bandit(at: HexCoord(4, 3))
+        coord.applyCondition(.poison, to: target)
+        coord.applyCondition(.wound, to: target)
+        let texts = try texts(of: "Submissive Affliction", "mindthief")
+        XCTAssertEqual(coord.attackTextBonus(texts, attacker: .character(mindthief.id), target: target).attack, 2)
+    }
+
+    func testNetShooterGivesExperiencePerTarget() throws {
+        let tinkerer = add("tinkerer", at: HexCoord(3, 3))
+        let target = try bandit(at: HexCoord(5, 3))
+        let texts = try texts(of: "Net Shooter", "tinkerer")
+        XCTAssertEqual(coord.attackTextBonus(texts, attacker: .character(tinkerer.id), target: target).experience, 1)
+    }
+
+    // MARK: - Round bonuses
+
+    func testWallOfDoomAndEnhancementFieldAddToAttacks() throws {
+        let brute = add("brute", at: HexCoord(3, 3))
+        let tinkerer = add("tinkerer", at: HexCoord(4, 3))
+        brute.activeCards = [13]   // Wall of Doom: +1 on every attack this round
+        tinkerer.activeCards = [40]   // Enhancement Field: +1 for the Tinkerer and adjacent allies
+        XCTAssertEqual(coord.roundAttackBonus(for: .character(brute.id), ranged: false), 2)
+        XCTAssertEqual(coord.roundAttackBonus(for: .character(tinkerer.id), ranged: true), 1)
+        coord.boardState.movePiece(.character(brute.id), to: HexCoord(8, 8))
+        XCTAssertEqual(coord.roundAttackBonus(for: .character(brute.id), ranged: false), 1, "out of the field")
+        XCTAssertNil(brute.bonusChargesUsed[13], "a round bonus has no charges")
+    }
+
+    func testTrickstersReversalNegatesTheNextDamageOnly() {
+        let scoundrel = add("scoundrel", at: HexCoord(3, 3))
+        scoundrel.activeCards = [98]
+        scoundrel.roundBonusCards = [98]
+        let health = scoundrel.health
+        coord.sufferDamage(3, to: .character(scoundrel.id))
+        XCTAssertEqual(scoundrel.health, health)
+        coord.sufferDamage(3, to: .character(scoundrel.id))
+        XCTAssertEqual(scoundrel.health, health - 3)
+    }
+
+    func testEyeForAnEyeGivesExperiencePerRetaliation() async throws {
+        let brute = add("brute", at: HexCoord(3, 3))
+        brute.activeCards = [2]
+        brute.retaliate = [ActionModel(type: .retaliate, value: .int(2))]
+        let piece = try bandit(at: HexCoord(4, 3))
+        let xp = brute.experience
+        await attack(brute, from: piece, value: 1)
+        XCTAssertEqual(brute.experience, xp + 1)
     }
 }

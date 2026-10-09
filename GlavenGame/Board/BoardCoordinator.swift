@@ -1628,9 +1628,11 @@ final class BoardCoordinator {
         lastAttackerPos = boardState.piecePositions[attacker]
         boardScene?.clearHighlights()
 
+        // Bonuses in the attack's own text, judged for this target (Backstab, Perverse Edge…).
+        let printed = turn.map { attackTextBonus($0.attackTexts, attacker: attacker, target: target) } ?? (attack: 0, experience: 0)
         await performAttack(
             attacker: attacker, target: target,
-            attack: AttackParameters(value: attackValueWithBonuses(attackValue, attacker: attacker, target: target),
+            attack: AttackParameters(value: attackValueWithBonuses(attackValue + printed.attack, attacker: attacker, target: target),
                                      isRanged: range > 1,
                                      pierce: turn?.pendingPierce ?? 0,
                                      conditions: turn?.pendingConditions ?? [],
@@ -1638,6 +1640,11 @@ final class BoardCoordinator {
                                      pull: turn?.pendingPull ?? 0,
                                      advantage: turn?.pendingAdvantage ?? false))
 
+        if printed.experience > 0, case .character(let id) = attacker,
+           let character = gameManager?.game.characters.first(where: { $0.id == id }) {
+            character.experience += printed.experience
+            log("\(name(attacker)) gains \(printed.experience) XP", category: .info)
+        }
         interactionMode = .idle
         if advanceAction { turn?.advanceAfterAsyncAction() }
     }

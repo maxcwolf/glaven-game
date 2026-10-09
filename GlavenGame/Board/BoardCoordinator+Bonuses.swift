@@ -31,6 +31,25 @@ enum ChargedBonus: Equatable {
     case endOfTurnInfuse(ElementType)
     /// At the end of the character's turn, heal every adjacent ally.
     case endOfTurnHealAdjacent(Int)
+
+    // Round bonuses (no charges: they last until the card leaves at the end of the round).
+    enum Reach: Equatable { case any, melee, ranged }
+    /// +N on every attack of that reach this round (Wall of Doom, Heaving Swing, Forceful Storm).
+    case roundAttackBonus(Int, Reach)
+    /// +N on every attack this round, for the character and allies beside them (Enhancement Field).
+    case roundAttackBonusWithAdjacentAllies(Int)
+    /// 1 experience each time the character retaliates this round (Eye for an Eye).
+    case experiencePerRetaliate
+    /// The next damage this round is negated (Trickster's Reversal: a single use).
+    case negateNextDamage
+
+    /// Round bonuses don't use charges; every use leaves them in place.
+    var isUnlimited: Bool {
+        switch self {
+        case .roundAttackBonus, .roundAttackBonusWithAdjacentAllies, .experiencePerRetaliate: return true
+        default: return false
+        }
+    }
     /// +N on each of the character's heal actions.
     case healBonus(Int)
     /// +N on an attack against an enemy adjacent to none of its allies.
@@ -67,6 +86,12 @@ enum ChargedBonus: Equatable {
         "gh-277": .endOfTurnInfuse(.dark),                      // Nightfall
         "gh-187": .endOfTurnInfuse(.light),                     // Beacon of Light
         "gh-230": .endOfTurnHealAdjacent(2),                    // Fortified Position
+        "gh-13": .roundAttackBonus(1, .any),                    // Wall of Doom
+        "gh-127": .roundAttackBonus(1, .ranged),                // Heaving Swing
+        "gh-128": .roundAttackBonus(2, .melee),                 // Forceful Storm
+        "gh-40": .roundAttackBonusWithAdjacentAllies(1),        // Enhancement Field
+        "gh-2": .experiencePerRetaliate,                        // Eye for an Eye
+        "gh-98": .negateNextDamage,                             // Trickster's Reversal
     ]
 
     /// The experience each charge slot gives, in order (0 for a plain slot).
@@ -110,6 +135,7 @@ extension BoardCoordinator {
     /// Mark one charge of a bonus: experience for an XP slot, and the card leaves the active
     /// area once every charge is marked.
     func useCharge(_ cardId: Int, of character: GameCharacter) {
+        if ChargedBonus.byCard["\(character.edition)-\(cardId)"]?.isUnlimited == true { return }
         guard let card = gameManager?.characterManager.abilities(for: character).first(where: { $0.cardId == cardId }) else { return }
         let slots = ChargedBonus.slots(of: card)
         let used = character.bonusChargesUsed[cardId, default: 0]
@@ -141,13 +167,72 @@ extension BoardCoordinator {
         return found.bonus
     }
 
-    /// Whether the character would suffer no damage from `amount` (Juggernaut, Frost Armor;
-    /// Defiance of Death when it would be lethal), without using a charge.
+    /// Whether the character would suffer no damage from `amount` (Juggernaut, Frost Armor,
+    /// Trickster's Reversal; Defiance of Death when it would be lethal), without using a charge.
     func negatesDamage(_ piece: PieceID, amount: Int) -> Bool {
         let health = entity(for: piece)?.health ?? 0
         return chargedBonuses(of: piece).contains {
-            $0.bonus == .negateDamage || ($0.bonus == .negateLethal && amount >= health)
+            $0.bonus == .negateDamage || $0.bonus == .negateNextDamage || ($0.bonus == .negateLethal && amount >= health)
         }
+    }
+
+    /// This round's attack bonuses for an attack by `attacker` (its own, and Enhancement Field
+    /// from an ally beside it).
+    func roundAttackBonus(for attacker: PieceID, ranged: Bool) -> Int {
+        guard let game = gameManager?.game else { return 0 }
+        var total = 0
+        for (_, bonus) in chargedBonuses(of: attacker) {
+            switch bonus {
+            case .roundAttackBonus(let n, let reach) where reach == .any || (reach == .ranged) == ranged:
+                total += n
+            case .roundAttackBonusWithAdjacentAllies(let n):
+                total += n
+            default: break
+            }
+        }
+        guard let position = boardState.piecePositions[attacker] else { return total }
+        for character in game.characters where PieceID.character(character.id) != attacker {
+            guard let theirs = boardState.piecePositions[.character(character.id)],
+                  theirs.isAdjacent(to: position), !areEnemies(attacker, .character(character.id)) else { continue }
+            for (_, bonus) in chargedBonuses(of: character) {
+                if case .roundAttackBonusWithAdjacentAllies(let n) = bonus { total += n }
+            }
+        }
+        return total
+    }
+
+    /// Bonuses printed in the text of the attack being made, judged per target: "+2 when the
+    /// target is adjacent to any of your allies", "+1 for each negative condition on the target",
+    /// "XP +1 for each enemy targeted" (Backstab, Submissive Affliction, Net Shooter…).
+    func attackTextBonus(_ texts: [String], attacker: PieceID, target: PieceID) -> (attack: Int, experience: Int) {
+        guard let targetPos = boardState.piecePositions[target], let defender = entity(for: target) else { return (0, 0) }
+        let neighbours = targetPos.neighbors.compactMap { boardState.piece(at: $0) }
+        let attackersAllies = neighbours.filter { $0 != attacker && !areEnemies($0, attacker) }.count
+        let isolated = !neighbours.contains { $0 != target && !areEnemies($0, target) }
+        let negatives = defender.entityConditions.filter { $0.name.isNegative && !$0.expired }.count
+        func number(_ pattern: String, in text: String) -> Int {
+            guard let match = text.firstMatch(of: try! Regex(pattern)), let value = match.output[1].substring else { return 0 }
+            return Int(value) ?? 0
+        }
+        var attack = 0, experience = 0
+        for text in texts {
+            let bonus = number(#"\+(\d+) attack"#, in: text), xp = number(#"xp \+(\d+)"#, in: text)
+            if text.contains("adjacent to any of your allies") {
+                if attackersAllies > 0 { attack += bonus; experience += xp }
+            } else if text.contains("adjacent to none of its allies") {
+                if isolated { attack += bonus; experience += xp }
+            } else if text.contains("for each of your allies adjacent to the target") {
+                attack += bonus * attackersAllies
+            } else if text.contains("double the shield value of the target") {
+                attack += 2 * CombatResolver.totalShield(shield: defender.shield, shieldPersistent: defender.shieldPersistent)
+            } else if text.contains("for each negative condition on the target") {
+                attack += bonus * negatives
+                experience += xp * negatives
+            } else if text.contains("for each enemy targeted") {
+                experience += max(1, xp)
+            }
+        }
+        return (attack, experience)
     }
 
     /// End-of-turn bonuses: Nightfall and Beacon of Light infuse, Fortified Position heals.
