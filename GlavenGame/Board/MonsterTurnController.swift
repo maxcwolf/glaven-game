@@ -195,7 +195,8 @@ final class MonsterTurnController {
                     let healthBefore = coordinator.entity(for: victim)?.health ?? 0
                     await coordinator.performAttack(
                         attacker: pieceID, target: victim,
-                        attack: AttackParameters(value: spec.value + bonus(printed, against: victim, pieceID: pieceID),
+                        attack: AttackParameters(value: spec.value + bonus(printed, against: victim, pieceID: pieceID)
+                                                     + coordinator.monsterAttackBonusThisRound,
                                                  isRanged: spec.isRanged, pierce: spec.pierce,
                                                  conditions: spec.conditions, push: spec.push, pull: spec.pull,
                                                  advantage: spec.advantage))
@@ -289,7 +290,27 @@ final class MonsterTurnController {
                 let index = (action.value?.intValue ?? 1) - 1
                 guard let special = stat?.special, index >= 0, index < special.count else { continue }
                 coordinator.log("\(coordinator.name(pieceID)) uses special ability \(index + 1)", category: .info)
-                if special[index].contains(where: { $0.type == .custom }) {
+                let specialTexts = texts(in: ActionModel(type: .concatenation, subActions: special[index]), monster: monster)
+                var unresolved = false
+                for text in specialTexts {
+                    if text.contains("move to next door and reveal room") {
+                        await moveToNextDoor(pieceID: pieceID, entity: entity, monster: monster)
+                    } else if text.contains("all allies add") && text.contains("attack") && text.contains("this round") {
+                        // Captain of the Guard: "All allies add +1 Attack to all attacks this round."
+                        let extra = text.firstMatch(of: #/\+(\d+) attack/#).flatMap { Int($0.1) } ?? 1
+                        coordinator.monsterAttackBonusThisRound += extra
+                        coordinator.log("Monsters add +\(extra) Attack to their attacks this round", category: .attack)
+                    } else if text.contains("scouts act again") {
+                        // Merciless Overseer: every Vermling Scout takes another turn.
+                        if let scouts = gameManager.game.monsters.first(where: { $0.name.contains("scout") }), scouts !== monster {
+                            coordinator.log("The Vermling Scouts act again", category: .round)
+                            await executeMonsterGroup(scouts)
+                        }
+                    } else {
+                        unresolved = true
+                    }
+                }
+                if unresolved {
                     coordinator.log("Resolve the boss\u{2019}s special ability \(index + 1) as printed on its stat card",
                                     category: .info)
                 }
@@ -306,6 +327,45 @@ final class MonsterTurnController {
                 // element infusions happen after the type's turn; hints/custom text are display-only.
                 break
             }
+        }
+    }
+
+    /// Bandit Commander: "Move to next door and reveal room": toward the nearest closed door, with
+    /// its Move, opening the door if it gets there.
+    @MainActor private func moveToNextDoor(pieceID: PieceID, entity: GameMonsterEntity, monster: GameMonster) async {
+        guard let coordinator, let game = gameManager?.game, let start = coordinator.boardState.piecePositions[pieceID] else { return }
+        let characterCount = max(2, game.characters.filter { !$0.absent }.count)
+        let movement = monster.stat(for: entity.type)?.movementValue(characterCount: characterCount, level: monster.level) ?? 0
+        let (enemies, allies) = coordinator.movementSets(for: pieceID)
+        let paths = coordinator.boardState.doors.filter { !$0.isOpen }.compactMap { door in
+            Pathfinder.findPath(board: coordinator.boardState, from: start, to: door.coord, avoidTraps: true, canOpenDoors: true,
+                                occupiedByEnemy: enemies, occupiedByAlly: allies)
+        }
+        guard let path = paths.min(by: { $0.count < $1.count }), path.count > 1 else {
+            coordinator.log("\(coordinator.name(pieceID)) has no door to reach", category: .move)
+            return
+        }
+        // Up to the first closed door on the way: it opens as the Commander reaches it.
+        let doorIndex = path.firstIndex { hex in coordinator.boardState.doors.contains { $0.coord == hex && !$0.isOpen } } ?? path.count - 1
+        let reach = min(movement, doorIndex)
+        coordinator.log("\(coordinator.name(pieceID)) heads for the door", category: .move)
+        // It may pass allies, but must stop on a free hex.
+        func lastFree(upTo index: Int) -> Int {
+            var i = index
+            while i > 0 && coordinator.boardState.isOccupied(path[i]) { i -= 1 }
+            return i
+        }
+        if reach >= doorIndex && lastFree(upTo: doorIndex - 1) == doorIndex - 1 {
+            if doorIndex > 1 { await coordinator.moveAlong(pieceID, path: Array(path.prefix(doorIndex)), style: .normal) }
+            coordinator.openDoor(at: path[doorIndex])
+            // The room it reveals may put a figure in the doorway.
+            if !coordinator.boardState.isOccupied(path[doorIndex]),
+               coordinator.boardState.piecePositions[pieceID] == path[doorIndex - 1] {
+                await coordinator.moveAlong(pieceID, path: [path[doorIndex - 1], path[doorIndex]], style: .normal)
+            }
+        } else {
+            let stop = lastFree(upTo: min(reach, doorIndex - 1))
+            if stop > 0 { await coordinator.moveAlong(pieceID, path: Array(path.prefix(stop + 1)), style: .normal) }
         }
     }
 

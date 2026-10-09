@@ -155,4 +155,33 @@ final class MonsterTextTests: XCTestCase {
         let hex = try XCTUnwrap(coord.boardState.piecePositions[.monster(name: "deep-terror", standee: summoned[0].number)])
         XCTAssertTrue(hex.isAdjacent(to: HexCoord(7, 3)), "beside the Brute")
     }
+
+    /// Barrow Lair's Bandit Commander, special 1: "Move to next door and reveal room".
+    func testTheBanditCommanderHeadsForTheNextDoor() async throws {
+        let scenario = try XCTUnwrap(gm.editionStore.scenarios(for: "gh").first { $0.index == "2" && $0.solo == nil })
+        gm.characterManager.addCharacter(name: "brute", edition: "gh")
+        gm.startScenarioOnBoard(scenario)
+        coord.autoResolvePrompts = true
+        coord.turnDelayNanoseconds = 0
+        let free = try XCTUnwrap(coord.boardState.startingLocations.first { !coord.boardState.isOccupied($0) })
+        coord.placeCharacter(characterID: gm.game.characters[0].id, at: free)
+        let spot = try XCTUnwrap(free.neighbors.first { coord.isEmptyHex($0) })
+        let piece = try XCTUnwrap(coord.spawnMonster(name: "bandit-commander", type: .boss, at: spot, origin: .placed))
+        let monster = try XCTUnwrap(gm.game.monsters.first { $0.name == "bandit-commander" })
+        let start = try XCTUnwrap(coord.boardState.piecePositions[piece])
+        let nearestDoor = { (from: HexCoord) in
+            self.coord.boardState.doors.filter { !$0.isOpen }.map { $0.coord.distance(to: from) }.min() ?? 0
+        }
+        let before = nearestDoor(start)
+        let closedBefore = coord.boardState.doors.filter { !$0.isOpen }.count
+        let deck = gm.monsterManager.abilities(for: monster)
+        monster.abilities = [try XCTUnwrap(deck.firstIndex { $0.cardId == 575 })]
+        monster.ability = 0
+        monster.abilityDrawn = true
+        await MonsterTurnController(coordinator: coord, gameManager: gm).executeMonsterGroup(monster)
+        let after = try XCTUnwrap(coord.boardState.piecePositions[piece])
+        XCTAssertTrue(nearestDoor(after) < before || coord.boardState.doors.filter { !$0.isOpen }.count < closedBefore,
+                      "closer to a door, or through it")
+        XCTAssertFalse(coord.turnLog.contains { $0.message.contains("Resolve the boss") }, "nothing left to the players")
+    }
 }

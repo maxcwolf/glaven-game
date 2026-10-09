@@ -411,6 +411,9 @@ final class BoardCoordinator {
     /// The fallen monster making its "on death" attack right now, and the hex it fell on.
     var deathAttackInProgress: DeathAttack?
 
+    /// Added to every monster attack this round (Captain of the Guard's special).
+    var monsterAttackBonusThisRound = 0
+
     /// Figures every attack against has disadvantage this round (Giant Viper).
     var disadvantagedThisRound: Set<PieceID> = []
 
@@ -1015,6 +1018,7 @@ final class BoardCoordinator {
         }
 
         disadvantagedThisRound = []
+        monsterAttackBonusThisRound = 0
         // Every card is revealed: Boots of Speed and Quickness may change an initiative now.
         initiativeOffers = initiativeItemOffers()
         offerNextInitiativeChange()

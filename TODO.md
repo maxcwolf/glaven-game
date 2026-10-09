@@ -440,6 +440,7 @@ Scenario rewards (2026-10-08)
 - [x] Element bonuses inside a monster's Shield/Retaliate: the Lurker's "consume Ice: Shield 2 instead" (`testALurkersIceShieldReplacesItsShield`)
 - [x] **The Ooze splits** with its current hit points (`testAnOozeSplitsWithItsHitPoints`)
 - [x] The Deep Terror's attack summons another beside the target (`testADeepTerrorSummonsBesideItsTarget`)
+- [x] **Boss specials printed as text**: the Bandit Commander's "move to next door and reveal room" (Barrow Lair), the Captain of the Guard's +1 Attack for all monsters this round, the Merciless Overseer's "all Scouts act again" (`testTheBanditCommanderHeadsForTheNextDoor`); the rest (Elder Drake's perch, Prime Demon's throne, the Betrayer's mind control, Winged Horror's eggs) are still the players'
 - [ ] **Icy terrain** — no forced-movement mechanic
 - [ ] **Plague / Enfeeble** (FH) — no mechanics
 - [ ] **Multi-hex obstacles** — one overlay per hex
