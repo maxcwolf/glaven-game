@@ -235,6 +235,9 @@ final class BoardCoordinator {
         let attackerPiece: PieceID
         let defenderPiece: PieceID
         let baseAttack: Int
+        /// The attack value the two cards of an advantage/disadvantage draw are compared on
+        /// (with poison's +1).
+        var comparedAttack: Int? = nil
         let advantage: Bool
         let disadvantage: Bool
         /// Draws one card from the appropriate deck (mutates the deck).
@@ -311,7 +314,7 @@ final class BoardCoordinator {
     func drawPendingModifiers() {
         guard let pending = pendingModifierDraw else { return }
         let draw = CombatResolver.drawModifiersDetailed(advantage: pending.advantage, disadvantage: pending.disadvantage,
-                                                        draw: pending.drawCard)
+                                                        baseAttack: pending.comparedAttack, draw: pending.drawCard)
         lastModifierReveal = ModifierReveal(attacker: pending.attackerPiece, defender: pending.defenderPiece,
                                             drawn: draw.drawn, selected: draw.selected,
                                             advantage: pending.advantage, disadvantage: pending.disadvantage,
@@ -335,12 +338,14 @@ final class BoardCoordinator {
         attacker: PieceID,
         defender: PieceID,
         baseAttack: Int,
+        comparedAttack: Int? = nil,
         advantage: Bool,
         disadvantage: Bool,
         drawCard: @escaping () -> AttackModifier?
     ) async -> [AttackModifier] {
         if autoResolvePrompts || !playerDrawsModifiers(for: attacker) {
-            let draw = CombatResolver.drawModifiersDetailed(advantage: advantage, disadvantage: disadvantage, draw: drawCard)
+            let draw = CombatResolver.drawModifiersDetailed(advantage: advantage, disadvantage: disadvantage,
+                                                            baseAttack: comparedAttack ?? baseAttack, draw: drawCard)
             lastModifierReveal = ModifierReveal(attacker: attacker, defender: defender, drawn: draw.drawn,
                                                 selected: draw.selected, advantage: advantage,
                                                 disadvantage: disadvantage, drawnByPlayer: false)
@@ -354,6 +359,7 @@ final class BoardCoordinator {
                 attackerPiece: attacker,
                 defenderPiece: defender,
                 baseAttack: baseAttack,
+                comparedAttack: comparedAttack ?? baseAttack,
                 advantage: advantage,
                 disadvantage: disadvantage,
                 drawCard: drawCard,

@@ -177,7 +177,8 @@ final class ScenarioSimulator {
         if let draw = coord.pendingModifierDraw {
             // As the draw overlay does: one draw, or two for advantage/disadvantage.
             coord.completeModifierDraw(selectedCards: CombatResolver.drawModifiers(
-                advantage: draw.advantage, disadvantage: draw.disadvantage, draw: draw.drawCard))
+                advantage: draw.advantage, disadvantage: draw.disadvantage, baseAttack: draw.comparedAttack,
+                draw: draw.drawCard))
             return
         }
         if coord.pendingRecovery != nil {

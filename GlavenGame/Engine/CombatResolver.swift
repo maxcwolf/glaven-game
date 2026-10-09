@@ -76,7 +76,7 @@ enum CombatResolver {
 
         // 3. Determine the modifier cards that apply (interactive UI pre-draws them).
         let cards = preDrawnCards.isEmpty
-            ? drawModifiers(advantage: advantage, disadvantage: disadvantage, draw: drawModifier)
+            ? drawModifiers(advantage: advantage, disadvantage: disadvantage, baseAttack: attackValue, draw: drawModifier)
             : preDrawnCards
 
         // 4. Apply the cards: additive values first, then ×2 / null (the attacker chooses the
@@ -233,14 +233,16 @@ enum CombatResolver {
     // MARK: - Advantage / Disadvantage
 
     /// Draw the modifier cards for one attack and return the cards that apply.
-    static func drawModifiers(advantage: Bool, disadvantage: Bool,
+    /// `baseAttack` (with poison) lets advantage and disadvantage compare the attacks the two
+    /// cards make rather than the cards alone (on Attack 1, +2 beats ×2).
+    static func drawModifiers(advantage: Bool, disadvantage: Bool, baseAttack: Int? = nil,
                               draw: () -> AttackModifier?) -> [AttackModifier] {
-        drawModifiersDetailed(advantage: advantage, disadvantage: disadvantage, draw: draw).selected
+        drawModifiersDetailed(advantage: advantage, disadvantage: disadvantage, baseAttack: baseAttack, draw: draw).selected
     }
 
     /// Draw the modifier cards for one attack, keeping every card drawn (in draw order) as well as
     /// the ones that apply, so the board can show both draws of an advantage attack.
-    static func drawModifiersDetailed(advantage: Bool, disadvantage: Bool,
+    static func drawModifiersDetailed(advantage: Bool, disadvantage: Bool, baseAttack: Int? = nil,
                                       draw: () -> AttackModifier?) -> (drawn: [AttackModifier], selected: [AttackModifier]) {
         if advantage == disadvantage {
             let chain = drawChain(draw)
@@ -249,7 +251,7 @@ enum CombatResolver {
         let first = draw().map { [$0] } ?? []
         let second = drawSecond(after: first, draw)
         let selected = selectModifierCards(first: first, second: second,
-                                           advantage: advantage, disadvantage: disadvantage)
+                                           advantage: advantage, disadvantage: disadvantage, baseAttack: baseAttack)
         return (first + second, selected)
     }
 
@@ -284,7 +286,7 @@ enum CombatResolver {
     ///   (both rolling → only the first non-rolling card drawn after them applies).
     /// - Both or neither: a normal draw — the first chain applies.
     static func selectModifierCards(first: [AttackModifier], second: [AttackModifier],
-                                    advantage: Bool, disadvantage: Bool) -> [AttackModifier] {
+                                    advantage: Bool, disadvantage: Bool, baseAttack: Int? = nil) -> [AttackModifier] {
         guard advantage != disadvantage else { return first }
         let all = first + second
         guard let a = first.last else { return second.last.map { [$0] } ?? [] }
@@ -292,22 +294,32 @@ enum CombatResolver {
         let anyRolling = all.contains { $0.rolling }
 
         if advantage {
-            if !anyRolling { return [betterCard(a, b)] }
+            if !anyRolling { return [betterCard(a, b, base: baseAttack)] }
             return all.filter(\.rolling) + all.filter { !$0.rolling }
         } else {
-            if !anyRolling { return [worseCard(a, b)] }
+            if !anyRolling { return [worseCard(a, b, base: baseAttack)] }
             return all.last(where: { !$0.rolling }).map { [$0] } ?? []
         }
     }
 
     /// Pick the better of two modifier cards (ties → the card drawn first).
-    private static func betterCard(_ a: AttackModifier, _ b: AttackModifier) -> AttackModifier {
-        cardScore(a) >= cardScore(b) ? a : b
+    private static func betterCard(_ a: AttackModifier, _ b: AttackModifier, base: Int?) -> AttackModifier {
+        score(a, base: base) >= score(b, base: base) ? a : b
     }
 
     /// Pick the worse of two modifier cards (ties → the card drawn first).
-    private static func worseCard(_ a: AttackModifier, _ b: AttackModifier) -> AttackModifier {
-        cardScore(a) <= cardScore(b) ? a : b
+    private static func worseCard(_ a: AttackModifier, _ b: AttackModifier, base: Int?) -> AttackModifier {
+        score(a, base: base) <= score(b, base: base) ? a : b
+    }
+
+    /// How good a card is for this attack: the attack value it makes from `base` (a null is
+    /// always the worst), or the card alone when the attack isn't known.
+    static func score(_ card: AttackModifier, base: Int?) -> Int {
+        guard let base else { return cardScore(card) }
+        if card.valueType == .multiply {
+            return card.value == 0 ? Int.min / 2 : max(0, base * card.value)
+        }
+        return max(0, base + card.value)
     }
 
     /// Numeric score for comparing modifier cards (higher = better for attacker).

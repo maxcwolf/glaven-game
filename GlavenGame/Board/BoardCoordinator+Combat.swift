@@ -103,6 +103,7 @@ extension BoardCoordinator {
 
         var preDrawn = await performModifierDraw(
             attacker: attacker, defender: target, baseAttack: attack.value,
+            comparedAttack: attack.value + (isPoisoned ? 1 : 0),
             advantage: advantage, disadvantage: disadvantage,
             drawCard: drawCard ?? modifierDrawer(for: attacker)
         )
