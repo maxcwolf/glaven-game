@@ -177,4 +177,47 @@ final class CampaignTests: XCTestCase {
         try XCTUnwrap(NSBitmapImageRep(cgImage: image).representation(using: .png, properties: [:]))
             .write(to: URL(fileURLWithPath: out))
     }
+
+    /// New Campaign starts from nothing: no prosperity, reputation, unlocks, looted treasures,
+    /// retirements, log or event decks carried over from the campaign before (every stored
+    /// field of the game compared with a fresh one, so a field added later can't be missed).
+    func testANewCampaignCarriesNothingOver() throws {
+        let gm = manager(try container())
+        gm.characterManager.addCharacter(name: "brute", edition: "gh")
+        let game = gm.game
+        game.partyProsperity = 30
+        game.partyReputation = 10
+        game.partyName = "The Old Guard"
+        game.difficulty = .hard
+        game.unlockedItems.insert("gh-100")
+        game.unlockedCharacters.insert("gh-sun")
+        game.lootedTreasures.insert("gh-1-7")
+        game.manualScenarios.insert("gh-52")
+        game.completedScenarios.insert("gh-1")
+        game.campaignLog.append(CampaignLogEntry(type: .scenarioCompleted, message: "a scenario"))
+        game.events.sanctuaryGold = 30
+        game.playSeconds = 500
+        game.totalSeconds = 900
+
+        gm.newGame()
+
+        // Generated ids differ between any two decks and shuffled decks differ in order: decks are
+        // compared by their cards' makeup.
+        func describe(_ value: Any) -> String {
+            if let deck = value as? AttackModifierDeck {
+                return "\(deck.current) " + deck.cards.map { "\($0.type) \($0.value)" }.sorted().joined(separator: ",")
+            }
+            return String(describing: value).replacingOccurrences(
+                of: "[0-9A-F]{8}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{12}", with: "<id>",
+                options: .regularExpression)
+        }
+        let fresh = GameState()
+        let after = Dictionary(uniqueKeysWithValues: Mirror(reflecting: game).children.compactMap { child in
+            child.label.map { ($0, describe(child.value)) }
+        })
+        for child in Mirror(reflecting: fresh).children {
+            guard let label = child.label, !label.contains("observationRegistrar") else { continue }
+            XCTAssertEqual(after[label], describe(child.value), "\(label) starts over")
+        }
+    }
 }

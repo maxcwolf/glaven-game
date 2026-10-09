@@ -182,23 +182,7 @@ final class GameManager {
         currentCampaignID = nil
         roundCheckpoint = nil
         appPhase = .mainMenu
-        game.edition = nil
-        game.figures = []
-        game.state = .draw
-        game.round = 0
-        game.level = 1
-        game.levelAdjustment = 0
-        game.elementBoard = ElementModel.defaultBoard()
-        game.monsterAttackModifierDeck = .defaultDeck()
-        game.allyAttackModifierDeck = .defaultDeck()
-        game.lootDeck = LootDeck()
-        game.conditions = []
-        game.scenario = nil
-        game.completedScenarios = []
-        game.globalAchievements = []
-        game.partyAchievements = []
-        game.campaignStickers = []
-        game.tableRules = TableRules()
+        game.resetToNewCampaign()
         undoStack = []
         redoStack = []
         scenarioStatsManager.reset()

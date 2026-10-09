@@ -57,6 +57,49 @@ final class GameState {
     /// City and road event decks, and what events leave for the next scenario.
     var events = EventState()
 
+    /// Make this the state of a brand-new campaign: every field back to its starting value, so
+    /// nothing (prosperity, unlocks, looted treasures, the log…) carries over from the last one.
+    /// Every stored property must be listed here; `CampaignTests` checks against a fresh state.
+    func resetToNewCampaign() {
+        let fresh = GameState()
+        edition = fresh.edition
+        conditions = fresh.conditions
+        figures = fresh.figures
+        state = fresh.state
+        round = fresh.round
+        level = fresh.level
+        levelCalculation = fresh.levelCalculation
+        levelAdjustment = fresh.levelAdjustment
+        difficulty = fresh.difficulty
+        bonusAdjustment = fresh.bonusAdjustment
+        ge5Player = fresh.ge5Player
+        playerCount = fresh.playerCount
+        solo = fresh.solo
+        playSeconds = fresh.playSeconds
+        totalSeconds = fresh.totalSeconds
+        elementBoard = fresh.elementBoard
+        monsterAttackModifierDeck = fresh.monsterAttackModifierDeck
+        allyAttackModifierDeck = fresh.allyAttackModifierDeck
+        lootDeck = fresh.lootDeck
+        partyName = fresh.partyName
+        tableRules = fresh.tableRules
+        partyReputation = fresh.partyReputation
+        partyProsperity = fresh.partyProsperity
+        scenario = fresh.scenario
+        completedScenarios = fresh.completedScenarios
+        manualScenarios = fresh.manualScenarios
+        globalAchievements = fresh.globalAchievements
+        partyAchievements = fresh.partyAchievements
+        campaignStickers = fresh.campaignStickers
+        mapOverlays = fresh.mapOverlays
+        lootedTreasures = fresh.lootedTreasures
+        retiredCharacters = fresh.retiredCharacters
+        campaignLog = fresh.campaignLog
+        unlockedCharacters = fresh.unlockedCharacters
+        unlockedItems = fresh.unlockedItems
+        events = fresh.events
+    }
+
     // MARK: - Computed helpers
 
     var characters: [GameCharacter] {
