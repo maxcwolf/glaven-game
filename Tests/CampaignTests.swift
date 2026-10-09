@@ -220,4 +220,39 @@ final class CampaignTests: XCTestCase {
             XCTAssertEqual(after[label], describe(child.value), "\(label) starts over")
         }
     }
+
+    /// A save that can't be written is reported, not lost silently; the next save that works
+    /// clears the report.
+    func testAFailedSaveIsReported() throws {
+        let gm = manager(try container())
+        gm.characterManager.addCharacter(name: "brute", edition: "gh")
+        let folder = gm.campaignStore.directory
+        try? FileManager.default.removeItem(at: folder)
+        // A file where the folder should be: nothing can be written there.
+        try Data("x".utf8).write(to: folder)
+        defer { try? FileManager.default.removeItem(at: folder) }
+
+        gm.saveGame()
+        XCTAssertNotNil(gm.saveFailure)
+
+        try FileManager.default.removeItem(at: folder)
+        gm.saveGame()
+        XCTAssertNil(gm.saveFailure)
+    }
+
+    /// A save missing fields (an older version, or edited by hand) still loads, with those
+    /// fields at their starting values, instead of disappearing from the list.
+    func testASaveMissingFieldsStillLoads() throws {
+        let gm = manager(try container())
+        gm.characterManager.addCharacter(name: "brute", edition: "gh")
+        gm.game.partyReputation = 4
+        var json = try XCTUnwrap(JSONSerialization.jsonObject(with: JSONEncoder().encode(gm.game.toSnapshot())) as? [String: Any])
+        for key in ["lootDeck", "conditions", "elementBoard", "playSeconds", "campaignStickers", "partyName"] {
+            XCTAssertNotNil(json.removeValue(forKey: key), key)
+        }
+        let snapshot = try JSONDecoder().decode(GameSnapshot.self, from: JSONSerialization.data(withJSONObject: json))
+        XCTAssertEqual(snapshot.partyReputation, 4)
+        XCTAssertEqual(snapshot.figures.count, 1)
+        XCTAssertEqual(snapshot.elementBoard.count, ElementModel.defaultBoard().count)
+    }
 }

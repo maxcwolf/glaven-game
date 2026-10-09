@@ -15,5 +15,12 @@ struct ContentView: View {
             }
         }
         .frame(minWidth: 800, minHeight: 600)
+        .alert("Not Saved", isPresented: Binding(get: { gameManager.saveFailure != nil },
+                                                 set: { if !$0 { gameManager.saveFailure = nil } })) {
+            Button("Try Again") { gameManager.saveGame() }
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(gameManager.saveFailure ?? "")
+        }
     }
 }

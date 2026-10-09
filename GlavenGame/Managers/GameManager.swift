@@ -295,18 +295,32 @@ final class GameManager {
     /// Save the game to its campaign. While a scenario is in progress that's the round
     /// checkpoint, so a save in the middle of a round never records a half-played turn. A new
     /// campaign gets its file once it has a party.
+    /// Why the last save failed (a full disk, say), for the app to tell the player; nil once a
+    /// save works again.
+    var saveFailure: String?
+
+    /// Write a campaign file, noting a failure instead of losing it silently.
+    private func writeCampaign(_ file: CampaignFile) {
+        do {
+            try campaignStore.save(file)
+            saveFailure = nil
+        } catch {
+            saveFailure = "The campaign couldn't be saved: \(error.localizedDescription)"
+        }
+    }
+
     func saveGame() {
         let snapshot = roundCheckpoint ?? game.toSnapshot()
         let now = Date()
         if let id = currentCampaignID, var file = campaignStore.load(id) {
             file.snapshot = snapshot
             file.updatedAt = now
-            campaignStore.save(file)
+            writeCampaign(file)
         } else {
             guard !game.characters.isEmpty else { return }
             let id = currentCampaignID ?? UUID()
             currentCampaignID = id
-            campaignStore.save(CampaignFile(id: id, name: "", createdAt: now, updatedAt: now, snapshot: snapshot))
+            writeCampaign(CampaignFile(id: id, name: "", createdAt: now, updatedAt: now, snapshot: snapshot))
         }
         refreshCampaigns()
     }
@@ -360,7 +374,7 @@ final class GameManager {
         // Played now: it moves to the top of the list.
         if var file = campaignStore.load(id) {
             file.updatedAt = Date()
-            campaignStore.save(file)
+            writeCampaign(file)
         }
         refreshCampaigns()
     }
@@ -481,7 +495,7 @@ final class GameManager {
         file.name = "\(title) (copy)"
         file.createdAt = Date()
         file.updatedAt = file.updatedAt.addingTimeInterval(-1)   // listed below the original
-        campaignStore.save(file)
+        writeCampaign(file)
         refreshCampaigns()
         return file.id
     }
@@ -489,7 +503,7 @@ final class GameManager {
     func renameCampaign(_ id: UUID, to name: String) {
         guard var file = campaignStore.load(id) else { return }
         file.name = name.trimmingCharacters(in: .whitespacesAndNewlines)
-        campaignStore.save(file)
+        writeCampaign(file)
         refreshCampaigns()
     }
 
@@ -511,7 +525,7 @@ final class GameManager {
         guard let saved = try? modelContext.fetch(FetchDescriptor<SavedGameModel>()), !saved.isEmpty else { return }
         for model in saved {
             if let data = model.snapshotData, let snapshot = try? JSONDecoder().decode(GameSnapshot.self, from: data) {
-                campaignStore.save(CampaignFile(id: UUID(), name: model.name == "autosave" ? "" : model.name,
+                writeCampaign(CampaignFile(id: UUID(), name: model.name == "autosave" ? "" : model.name,
                                                 createdAt: model.createdAt, updatedAt: model.updatedAt, snapshot: snapshot))
             }
             modelContext.delete(model)

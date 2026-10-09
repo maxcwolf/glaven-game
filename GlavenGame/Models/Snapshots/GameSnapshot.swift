@@ -78,35 +78,37 @@ struct GameSnapshot: Codable {
         self.events = nil
     }
 
+    /// Every field is optional when reading, so a save missing one (from an older version, or
+    /// edited by hand) still loads with that field's starting value instead of disappearing.
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         edition = try c.decodeIfPresent(String.self, forKey: .edition)
-        conditions = try c.decode([ConditionName].self, forKey: .conditions)
-        figures = try c.decode([FigureSnapshot].self, forKey: .figures)
-        state = try c.decode(GamePhase.self, forKey: .state)
-        round = try c.decode(Int.self, forKey: .round)
-        level = try c.decode(Int.self, forKey: .level)
-        levelCalculation = try c.decode(Bool.self, forKey: .levelCalculation)
-        levelAdjustment = try c.decode(Int.self, forKey: .levelAdjustment)
-        bonusAdjustment = try c.decode(Int.self, forKey: .bonusAdjustment)
-        ge5Player = try c.decode(Bool.self, forKey: .ge5Player)
-        playerCount = try c.decode(Int.self, forKey: .playerCount)
-        solo = try c.decode(Bool.self, forKey: .solo)
-        playSeconds = try c.decode(Int.self, forKey: .playSeconds)
-        totalSeconds = try c.decode(Int.self, forKey: .totalSeconds)
-        elementBoard = try c.decode([ElementModel].self, forKey: .elementBoard)
-        monsterAttackModifierDeck = try c.decode(AttackModifierDeck.self, forKey: .monsterAttackModifierDeck)
-        allyAttackModifierDeck = try c.decode(AttackModifierDeck.self, forKey: .allyAttackModifierDeck)
-        lootDeck = try c.decode(LootDeck.self, forKey: .lootDeck)
-        partyName = try c.decode(String.self, forKey: .partyName)
-        partyReputation = try c.decode(Int.self, forKey: .partyReputation)
-        partyProsperity = try c.decode(Int.self, forKey: .partyProsperity)
+        conditions = try c.decodeIfPresent([ConditionName].self, forKey: .conditions) ?? []
+        figures = try c.decodeIfPresent([FigureSnapshot].self, forKey: .figures) ?? []
+        state = try c.decodeIfPresent(GamePhase.self, forKey: .state) ?? .draw
+        round = try c.decodeIfPresent(Int.self, forKey: .round) ?? 0
+        level = try c.decodeIfPresent(Int.self, forKey: .level) ?? 1
+        levelCalculation = try c.decodeIfPresent(Bool.self, forKey: .levelCalculation) ?? true
+        levelAdjustment = try c.decodeIfPresent(Int.self, forKey: .levelAdjustment) ?? 0
+        bonusAdjustment = try c.decodeIfPresent(Int.self, forKey: .bonusAdjustment) ?? 0
+        ge5Player = try c.decodeIfPresent(Bool.self, forKey: .ge5Player) ?? true
+        playerCount = try c.decodeIfPresent(Int.self, forKey: .playerCount) ?? -1
+        solo = try c.decodeIfPresent(Bool.self, forKey: .solo) ?? false
+        playSeconds = try c.decodeIfPresent(Int.self, forKey: .playSeconds) ?? 0
+        totalSeconds = try c.decodeIfPresent(Int.self, forKey: .totalSeconds) ?? 0
+        elementBoard = try c.decodeIfPresent([ElementModel].self, forKey: .elementBoard) ?? ElementModel.defaultBoard()
+        monsterAttackModifierDeck = try c.decodeIfPresent(AttackModifierDeck.self, forKey: .monsterAttackModifierDeck) ?? .defaultDeck()
+        allyAttackModifierDeck = try c.decodeIfPresent(AttackModifierDeck.self, forKey: .allyAttackModifierDeck) ?? .defaultDeck()
+        lootDeck = try c.decodeIfPresent(LootDeck.self, forKey: .lootDeck) ?? LootDeck()
+        partyName = try c.decodeIfPresent(String.self, forKey: .partyName) ?? ""
+        partyReputation = try c.decodeIfPresent(Int.self, forKey: .partyReputation) ?? 0
+        partyProsperity = try c.decodeIfPresent(Int.self, forKey: .partyProsperity) ?? 0
         scenario = try c.decodeIfPresent(ScenarioSnapshot.self, forKey: .scenario)
-        completedScenarios = try c.decode(Set<String>.self, forKey: .completedScenarios)
+        completedScenarios = try c.decodeIfPresent(Set<String>.self, forKey: .completedScenarios) ?? []
         manualScenarios = try c.decodeIfPresent(Set<String>.self, forKey: .manualScenarios) ?? []
-        globalAchievements = try c.decode(Set<String>.self, forKey: .globalAchievements)
-        partyAchievements = try c.decode(Set<String>.self, forKey: .partyAchievements)
-        campaignStickers = try c.decode(Set<String>.self, forKey: .campaignStickers)
+        globalAchievements = try c.decodeIfPresent(Set<String>.self, forKey: .globalAchievements) ?? []
+        partyAchievements = try c.decodeIfPresent(Set<String>.self, forKey: .partyAchievements) ?? []
+        campaignStickers = try c.decodeIfPresent(Set<String>.self, forKey: .campaignStickers) ?? []
         mapOverlays = try c.decodeIfPresent([WorldMapOverlay].self, forKey: .mapOverlays) ?? []
         lootedTreasures = try c.decodeIfPresent(Set<String>.self, forKey: .lootedTreasures) ?? []
         retiredCharacters = try c.decodeIfPresent([CharacterSnapshot].self, forKey: .retiredCharacters) ?? []

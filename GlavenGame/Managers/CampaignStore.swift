@@ -95,9 +95,11 @@ final class CampaignStore {
 
     // MARK: - Writing
 
-    func save(_ file: CampaignFile) {
-        guard let data = try? Self.encoder.encode(file) else { return }
-        try? data.write(to: url(for: file.id), options: .atomic)
+    /// Write a campaign to its file (atomically, so a failed write leaves the last save intact).
+    func save(_ file: CampaignFile) throws {
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        let data = try Self.encoder.encode(file)
+        try data.write(to: url(for: file.id), options: .atomic)
     }
 
     func delete(_ id: UUID) {
@@ -123,7 +125,8 @@ final class CampaignStore {
         }
         file.id = UUID()   // never replaces a campaign already here
         file.updatedAt = now
-        save(file)
+        // An import that can't be written isn't imported.
+        guard (try? save(file)) != nil else { return nil }
         return file
     }
 
