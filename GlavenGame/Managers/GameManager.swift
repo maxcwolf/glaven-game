@@ -28,11 +28,23 @@ final class GameManager {
     let modelContainer: ModelContainer
     private var modelContext: ModelContext
 
-    /// What the autosave holds (nil when there is nothing to continue), kept up to date by
-    /// `saveGame` so the main menu doesn't decode the save on every render.
-    private(set) var autosaveSummary: AutosaveSummary?
+    /// Saved campaigns, one file each.
+    let campaignStore: CampaignStore
 
-    /// Whether an autosave with a party exists.
+    /// The campaign being played; the game saves to it. Nil until a new campaign first saves.
+    private(set) var currentCampaignID: UUID?
+
+    /// Every saved campaign, most recently played first, kept up to date as the game saves so the
+    /// main menu doesn't read the files on every render.
+    private(set) var campaigns: [CampaignStore.Entry] = []
+
+    /// The campaign Continue resumes: the most recently played one with a party.
+    var continueCampaign: CampaignStore.Entry? { campaigns.first { $0.summary != nil } }
+
+    /// What Continue resumes (nil when there is nothing to continue).
+    var autosaveSummary: AutosaveSummary? { continueCampaign?.summary }
+
+    /// Whether there's a campaign to continue.
     var hasAutosave: Bool { autosaveSummary != nil }
 
     /// The game as it stood at the start of the current round on the board. While a scenario is
@@ -45,6 +57,7 @@ final class GameManager {
 
     init(modelContainer: ModelContainer) {
         // Use local variables to satisfy Swift two-phase initialization
+        self.campaignStore = CampaignStore(directory: CampaignStore.directory(for: modelContainer))
         let game = GameState()
         let editionStore = EditionDataStore()
         let modelContext = ModelContext(modelContainer)
@@ -149,7 +162,8 @@ final class GameManager {
         itemMgr.onBeforeMutate = beforeMutate
         actMgr.onBeforeMutate = beforeMutate
 
-        autosaveSummary = loadAutosaveSummary()
+        migrateSwiftDataSaves()
+        refreshCampaigns()
 
         // Remove summon pieces from board when a character is exhausted
         charMgr.onCharacterExhausted = { [weak self] character in
@@ -162,9 +176,10 @@ final class GameManager {
         }
     }
 
-    /// Start over with an empty party. The autosave is replaced the next time the game saves.
+    /// Start over with an empty party, as a new campaign: the one being played stays saved as it is.
     func newGame() {
         if boardCoordinator.scenarioData != nil { boardCoordinator.exitBoard() }
+        currentCampaignID = nil
         roundCheckpoint = nil
         appPhase = .mainMenu
         game.edition = nil
@@ -292,25 +307,23 @@ final class GameManager {
 
     // MARK: - Persistence
 
-    /// Save the game to the autosave. While a scenario is in progress the autosave holds the
-    /// round checkpoint, so a save in the middle of a round never records a half-played turn.
+    /// Save the game to its campaign. While a scenario is in progress that's the round
+    /// checkpoint, so a save in the middle of a round never records a half-played turn. A new
+    /// campaign gets its file once it has a party.
     func saveGame() {
         let snapshot = roundCheckpoint ?? game.toSnapshot()
-        guard let data = try? JSONEncoder().encode(snapshot) else { return }
-
-        let fetchDescriptor = FetchDescriptor<SavedGameModel>(
-            predicate: #Predicate { $0.name == "autosave" }
-        )
-        if let existing = try? modelContext.fetch(fetchDescriptor).first {
-            existing.snapshotData = data
-            existing.updatedAt = Date()
+        let now = Date()
+        if let id = currentCampaignID, var file = campaignStore.load(id) {
+            file.snapshot = snapshot
+            file.updatedAt = now
+            campaignStore.save(file)
         } else {
-            let model = SavedGameModel(name: "autosave")
-            model.snapshotData = data
-            modelContext.insert(model)
+            guard !game.characters.isEmpty else { return }
+            let id = currentCampaignID ?? UUID()
+            currentCampaignID = id
+            campaignStore.save(CampaignFile(id: id, name: "", createdAt: now, updatedAt: now, snapshot: snapshot))
         }
-        try? modelContext.save()
-        autosaveSummary = AutosaveSummary(snapshot, savedAt: Date(), labels: editionStore)
+        refreshCampaigns()
     }
 
     /// Record the start of a round on the board and save it. Called as each round's card
@@ -322,28 +335,49 @@ final class GameManager {
         saveGame()
     }
 
-    /// Load the autosave into the game. A save made during a scenario becomes the round
-    /// checkpoint again, for `continueGame` to resume the board from.
+    /// Load the campaign Continue offers into the game. A save made during a scenario becomes the
+    /// round checkpoint again, for `continueGame` to resume the board from.
     @discardableResult
     func restoreGame() -> Bool {
-        guard let snapshot = loadAutosave() else { return false }
+        guard let id = continueCampaign?.id ?? currentCampaignID else { return false }
+        return restoreCampaign(id)
+    }
+
+    private func restoreCampaign(_ id: UUID) -> Bool {
+        guard let file = campaignStore.load(id) else { return false }
         if boardCoordinator.scenarioData != nil { boardCoordinator.exitBoard() }
         undoStack.removeAll()
         redoStack.removeAll()
+        currentCampaignID = id
+        let snapshot = file.snapshot
         game.restore(from: snapshot, editionStore: editionStore)
         roundCheckpoint = snapshot.boardSnapshot != nil && game.scenario != nil ? snapshot : nil
         return true
     }
 
-    /// Continue the saved game: back onto the board at the start of the saved round if a scenario
-    /// was in progress, otherwise to the party and scenario screen.
+    /// Continue the most recently played campaign.
     func continueGame() {
-        guard restoreGame() else { return }
+        guard let id = continueCampaign?.id ?? currentCampaignID else { return }
+        continueCampaign(id)
+    }
+
+    /// Play a saved campaign: back onto the board at the start of the saved round if a scenario
+    /// was in progress, otherwise to the party and scenario screen. The campaign being played is
+    /// saved first.
+    func continueCampaign(_ id: UUID) {
+        if id != currentCampaignID, currentCampaignID != nil { saveGame() }
+        guard restoreCampaign(id) else { return }
         if resumeScenarioFromCheckpoint() {
             appPhase = .board
         } else {
             appPhase = .gameSetup
         }
+        // Played now: it moves to the top of the list.
+        if var file = campaignStore.load(id) {
+            file.updatedAt = Date()
+            campaignStore.save(file)
+        }
+        refreshCampaigns()
     }
 
     private func resumeScenarioFromCheckpoint() -> Bool {
@@ -356,7 +390,6 @@ final class GameManager {
         boardCoordinator.resumeScenario(scenario: map, board: board)
         return true
     }
-
     /// Finish the scenario on the board (rewards on a success), leave the board and save.
     func completeScenario(success: Bool, choices: ScenarioRewardChoices = ScenarioRewardChoices()) {
         let questReward = success ? game.scenario.flatMap { scenario in
@@ -397,30 +430,22 @@ final class GameManager {
         }
     }
 
-    /// Shows the main menu's "Start a new campaign?" confirmation.
-    var confirmingNewGame = false
-
-    /// Start a new campaign from scratch and go to the party screen.
+    /// Start a new campaign from scratch and go to the party screen. Other campaigns stay saved.
     func beginNewGame() {
         newGame()
-        saveGame()
         setEdition("gh")
         appPhase = .gameSetup
     }
 
-    /// New Campaign from the app menu: save and go to the main menu, which asks before
-    /// replacing a saved party.
+    /// New Campaign from the app menu: the campaign being played is saved (a scenario at the
+    /// start of its round), then a new one begins.
     func requestNewGame() {
-        guard hasAutosave || !game.characters.isEmpty else {
-            beginNewGame()
-            return
-        }
         if boardCoordinator.scenarioData != nil {
             saveAndQuitScenario()
-        } else {
-            returnToMainMenu()
+        } else if !game.characters.isEmpty {
+            saveGame()
         }
-        confirmingNewGame = true
+        beginNewGame()
     }
 
     /// Go back to the main menu from the party screen, saving the party on the way.
@@ -436,98 +461,70 @@ final class GameManager {
         boardCoordinator.exitBoard()
     }
 
-    private func loadAutosave() -> GameSnapshot? {
-        let fetchDescriptor = FetchDescriptor<SavedGameModel>(
-            predicate: #Predicate { $0.name == "autosave" }
-        )
-        guard let saved = try? modelContext.fetch(fetchDescriptor).first,
-              let data = saved.snapshotData else { return nil }
-        return try? JSONDecoder().decode(GameSnapshot.self, from: data)
+    // MARK: - Campaigns
+
+    /// A copy of a saved campaign, to come back to (before a hard scenario, say). Play carries on
+    /// in the original. The current campaign is saved first, so its copy is as it stands.
+    @discardableResult
+    func duplicateCampaign(_ id: UUID) -> UUID? {
+        if id == currentCampaignID { saveGame() }
+        guard var file = campaignStore.load(id) else { return nil }
+        let title = campaigns.first { $0.id == id }?.title ?? file.name
+        file.id = UUID()
+        file.name = "\(title) (copy)"
+        file.createdAt = Date()
+        file.updatedAt = file.updatedAt.addingTimeInterval(-1)   // listed below the original
+        campaignStore.save(file)
+        refreshCampaigns()
+        return file.id
     }
 
-    private func loadAutosaveSummary() -> AutosaveSummary? {
-        let fetchDescriptor = FetchDescriptor<SavedGameModel>(
-            predicate: #Predicate { $0.name == "autosave" }
-        )
-        guard let saved = try? modelContext.fetch(fetchDescriptor).first,
-              let data = saved.snapshotData,
-              let snapshot = try? JSONDecoder().decode(GameSnapshot.self, from: data) else { return nil }
-        return AutosaveSummary(snapshot, savedAt: saved.updatedAt, labels: editionStore)
+    func renameCampaign(_ id: UUID, to name: String) {
+        guard var file = campaignStore.load(id) else { return }
+        file.name = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        campaignStore.save(file)
+        refreshCampaigns()
     }
 
-    // MARK: - Save Slots
+    /// Delete a campaign's file for good. Deleting the one being played leaves the game as it is,
+    /// unsaved, until it's saved as a new campaign.
+    func deleteCampaign(_ id: UUID) {
+        campaignStore.delete(id)
+        if id == currentCampaignID { currentCampaignID = nil }
+        refreshCampaigns()
+    }
 
-    /// Save to a named slot. During a scenario that's the start of the current round, as for the
-    /// autosave, so loading it never lands in a half-played turn.
-    func saveToSlot(name: String) {
-        let snapshot = roundCheckpoint ?? game.toSnapshot(boardCoordinator: boardCoordinator)
-        guard let data = try? JSONEncoder().encode(snapshot) else { return }
+    func refreshCampaigns() {
+        campaigns = campaignStore.entries(labels: editionStore)
+    }
 
-        let fetchDescriptor = FetchDescriptor<SavedGameModel>(
-            predicate: #Predicate { $0.name == name }
-        )
-        if let existing = try? modelContext.fetch(fetchDescriptor).first {
-            existing.snapshotData = data
-            existing.updatedAt = Date()
-        } else {
-            let model = SavedGameModel(name: name)
-            model.snapshotData = data
-            modelContext.insert(model)
+    /// Saves from before campaigns were files (the SwiftData autosave and named slots) become
+    /// campaigns, once.
+    private func migrateSwiftDataSaves() {
+        guard let saved = try? modelContext.fetch(FetchDescriptor<SavedGameModel>()), !saved.isEmpty else { return }
+        for model in saved {
+            if let data = model.snapshotData, let snapshot = try? JSONDecoder().decode(GameSnapshot.self, from: data) {
+                campaignStore.save(CampaignFile(id: UUID(), name: model.name == "autosave" ? "" : model.name,
+                                                createdAt: model.createdAt, updatedAt: model.updatedAt, snapshot: snapshot))
+            }
+            modelContext.delete(model)
         }
         try? modelContext.save()
-    }
-
-    /// Load a saved slot and carry on from it the way Continue does: it becomes the autosave,
-    /// then the game resumes on the board (mid-scenario) or at the party screen.
-    func loadSlotAndContinue(name: String) {
-        let fetchDescriptor = FetchDescriptor<SavedGameModel>(predicate: #Predicate { $0.name == name })
-        guard let saved = try? modelContext.fetch(fetchDescriptor).first, let data = saved.snapshotData,
-              let snapshot = try? JSONDecoder().decode(GameSnapshot.self, from: data) else { return }
-        let autosave = FetchDescriptor<SavedGameModel>(predicate: #Predicate { $0.name == "autosave" })
-        if let existing = try? modelContext.fetch(autosave).first {
-            existing.snapshotData = data
-            existing.updatedAt = Date()
-        } else {
-            let model = SavedGameModel(name: "autosave")
-            model.snapshotData = data
-            modelContext.insert(model)
-        }
-        try? modelContext.save()
-        autosaveSummary = AutosaveSummary(snapshot, savedAt: Date(), labels: editionStore)
-        continueGame()
-    }
-
-    func deleteSlot(name: String) {
-        let fetchDescriptor = FetchDescriptor<SavedGameModel>(
-            predicate: #Predicate { $0.name == name }
-        )
-        if let saved = try? modelContext.fetch(fetchDescriptor).first {
-            modelContext.delete(saved)
-            try? modelContext.save()
-        }
-    }
-
-    func allSaveSlots() -> [SavedGameModel] {
-        let fetchDescriptor = FetchDescriptor<SavedGameModel>(
-            sortBy: [SortDescriptor(\.updatedAt, order: .reverse)]
-        )
-        return (try? modelContext.fetch(fetchDescriptor)) ?? []
     }
 
     // MARK: - Export / Import
 
+    /// The current campaign's file, saved first, for sharing.
     func exportGameData() -> Data? {
-        let encoder = JSONEncoder()
-        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-        return try? encoder.encode(game.toSnapshot(boardCoordinator: boardCoordinator))
+        saveGame()
+        return currentCampaignID.flatMap(campaignStore.exportData)
     }
 
+    /// Add an exported campaign to the list (it never replaces one); false if the file isn't one.
+    @discardableResult
     func importGameData(_ data: Data) -> Bool {
-        guard let snapshot = try? JSONDecoder().decode(GameSnapshot.self, from: data) else {
-            return false
-        }
-        pushUndoState()
-        game.restore(from: snapshot, editionStore: editionStore, boardCoordinator: boardCoordinator)
+        guard campaignStore.importCampaign(data) != nil else { return false }
+        refreshCampaigns()
         return true
     }
 

@@ -2,38 +2,43 @@ import XCTest
 import SwiftUI
 @testable import GlavenGameLib
 
-/// The main menu: Load picks up a named save the way Continue picks up the autosave, and the
-/// credits name everyone whose work the game ships.
+/// The main menu: a copy of a campaign plays back the way Continue does, and the credits name
+/// everyone whose work the game ships.
 @MainActor
 final class MainMenuTests: XCTestCase {
 
-    /// A save made mid-scenario loads back onto the board at the start of the saved round.
-    func testLoadingASaveMadeInAScenarioResumesItsRound() async throws {
+    /// A copy made mid-scenario plays back onto the board at the start of the saved round.
+    func testACopyMadeInAScenarioResumesItsRound() async throws {
         let sim = try ScenarioSimulator(scenario: "1", options: .init(seed: 2))
         await sim.play(rounds: 2)
         let round = sim.gm.game.round
-        sim.gm.saveToSlot(name: "Before the boss")
-        // Play on, then load the save back.
+        let original = try XCTUnwrap(sim.gm.currentCampaignID)
+        let copy = try XCTUnwrap(sim.gm.duplicateCampaign(original))
+        // Play on, then go back to the copy.
         await sim.play(rounds: 3)
         XCTAssertNotEqual(sim.gm.game.round, round)
 
-        sim.gm.loadSlotAndContinue(name: "Before the boss")
+        sim.gm.continueCampaign(copy)
+        XCTAssertEqual(sim.gm.currentCampaignID, copy)
         XCTAssertEqual(sim.gm.appPhase, .board)
         XCTAssertEqual(sim.gm.boardCoordinator.boardPhase, .cardSelection, "at the start of a round, not mid-turn")
         XCTAssertEqual(sim.gm.game.round, round)
-        let summary = try XCTUnwrap(sim.gm.autosaveSummary, "Continue now offers the loaded game")
+        let summary = try XCTUnwrap(sim.gm.autosaveSummary, "Continue now offers the copy")
         XCTAssertEqual(summary.scenario, "#1 Black Barrow")
         XCTAssertEqual(summary.round, sim.gm.boardCoordinator.displayedRound)
+        XCTAssertNotEqual(sim.gm.campaignStore.load(original)?.snapshot.round, sim.gm.campaignStore.load(copy)?.snapshot.round,
+                          "the original kept the rounds played after the copy")
     }
 
-    /// A save made between scenarios loads back to the party screen.
-    func testLoadingASaveMadeBetweenScenariosGoesToTheParty() throws {
+    /// A copy made between scenarios plays back to the party screen.
+    func testACopyMadeBetweenScenariosGoesToTheParty() throws {
         let gm = try SaveAndContinueTestsSupport.manager()
         gm.characterManager.addCharacter(name: "brute", edition: "gh")
-        gm.saveToSlot(name: "Town")
+        gm.saveGame()
+        let copy = try XCTUnwrap(gm.duplicateCampaign(try XCTUnwrap(gm.currentCampaignID)))
         gm.characterManager.addCharacter(name: "tinkerer", edition: "gh")
 
-        gm.loadSlotAndContinue(name: "Town")
+        gm.continueCampaign(copy)
         XCTAssertEqual(gm.appPhase, .gameSetup)
         XCTAssertEqual(gm.game.characters.map(\.name), ["brute"])
     }

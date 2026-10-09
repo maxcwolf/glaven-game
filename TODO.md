@@ -140,7 +140,7 @@ Tracking features needed for parity with [Gloomhaven Secretariat](https://github
 
 ## Data Management
 
-- [x] Named save slots
+- [x] Campaigns: each saved to its own file (Documents/Campaigns on iPad, in the Files app); New Campaign never replaces one; the Campaigns list plays, renames, duplicates, exports and deletes them, and imports a shared one; the old SwiftData autosave and named slots carry over (`CampaignTests`)
 - [x] Game backup/restore with multiple slots
 - [x] Export / import game state (JSON file sharing)
 - [x] Edition data URL management (custom editions)

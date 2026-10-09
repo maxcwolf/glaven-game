@@ -31,15 +31,11 @@ struct MainMenuView: View {
                     }
 
                     menuButton(gameManager.hasAutosave ? "New Campaign" : "New Game", icon: "plus.circle.fill") {
-                        if gameManager.hasAutosave {
-                            gameManager.confirmingNewGame = true
-                        } else {
-                            gameManager.beginNewGame()
-                        }
+                        gameManager.beginNewGame()
                     }
 
-                    if hasSaveSlots {
-                        menuButton("Load Game", icon: "folder.fill") {
+                    if !gameManager.campaigns.isEmpty {
+                        menuButton("Campaigns", icon: "books.vertical.fill") {
                             showLoad = true
                         }
                     }
@@ -63,25 +59,11 @@ struct MainMenuView: View {
             PreferencesSheet()
         }
         .sheet(isPresented: $showLoad) {
-            SaveSlotsSheet()
+            CampaignsSheet()
         }
         .sheet(isPresented: $showCredits) {
             CreditsSheet()
         }
-        .confirmationDialog("Start a new campaign?", isPresented: Bindable(gameManager).confirmingNewGame,
-                            titleVisibility: .visible) {
-            Button("Start New Campaign", role: .destructive) {
-                gameManager.beginNewGame()
-            }
-            Button("Keep Current Campaign", role: .cancel) {}
-        } message: {
-            Text("Your saved party and its progress will be replaced.")
-        }
-    }
-
-    /// Named saves to load (the autosave is Continue).
-    private var hasSaveSlots: Bool {
-        gameManager.allSaveSlots().contains { $0.name != "autosave" }
     }
 
     /// Continue, with what it resumes: "Brute, Tinkerer" and "#1 Black Barrow · Round 2".

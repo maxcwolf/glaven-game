@@ -26,6 +26,7 @@
 		14511DEB8C59B9436FC95253 /* TownPartyRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = D86B71BFEEBD99C00C1AF649 /* TownPartyRow.swift */; };
 		15D2951A77CC1C086296F86D /* ScenarioMarkerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7050B86E677EE171AD0A3573 /* ScenarioMarkerView.swift */; };
 		1BD1F642825D52D6A6F79626 /* AreaPatternView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BAA69530D042DCA0EDABF5B4 /* AreaPatternView.swift */; };
+		1C036A5F8DFC6D857F5E239E /* CampaignsSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = E76F597E3B673C4DAA422663 /* CampaignsSheet.swift */; };
 		1CC69FD5D69AB9E38536A39E /* EntityValueFunction.swift in Sources */ = {isa = PBXBuildFile; fileRef = EFAF7312A61CA28A484AE10E /* EntityValueFunction.swift */; };
 		1E105B509AA9841848BDC003 /* Enhancement.swift in Sources */ = {isa = PBXBuildFile; fileRef = EBE9E8D46F66914CB111FEC5 /* Enhancement.swift */; };
 		20DF67A50B1E99F5D18B9FDC /* BoardCoordinator+Items.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8AF5F88A83DE6D05C0E02C99 /* BoardCoordinator+Items.swift */; };
@@ -74,7 +75,6 @@
 		4D8A855BF0C689D5ED706822 /* TileGrids.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6AA0FE435E44248DE2AE31A8 /* TileGrids.swift */; };
 		4DB872F6360BA26177F0CD27 /* BattleGoalData.swift in Sources */ = {isa = PBXBuildFile; fileRef = B336093B187D6833D7EF5868 /* BattleGoalData.swift */; };
 		4ED286F837CB531CFA2D0785 /* MonsterNameSpec.swift in Sources */ = {isa = PBXBuildFile; fileRef = 68D02132DEAC7BE0723A08F4 /* MonsterNameSpec.swift */; };
-		4F40225C0F9D5F6D5493EAB0 /* SaveSlotsSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 422B96003824AE1E41CF473C /* SaveSlotsSheet.swift */; };
 		4F5A0445F0366A6E4117202B /* DamageChoiceSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = EA732C1B11B1FD79F496753D /* DamageChoiceSheet.swift */; };
 		50E47414E87590BA5F788F25 /* MonsterAbilityStripView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D2399EDB7F011E68F62A5F2F /* MonsterAbilityStripView.swift */; };
 		52C1E021DEDA110B8DD4391A /* GameRandom.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2D9D8344A9522FB4BC90880C /* GameRandom.swift */; };
@@ -119,6 +119,7 @@
 		8D637BC2C5EC03235144944A /* ScenarioMapStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0449386EC7763E37AF9AB2A4 /* ScenarioMapStore.swift */; };
 		8EE54DF20EAC7C6985AD80B1 /* SummonColor.swift in Sources */ = {isa = PBXBuildFile; fileRef = FBE537F6F81289C6EEB5CDAD /* SummonColor.swift */; };
 		8FC70B94B68CE136535F98DA /* QuestPicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = D9D1DCB6F2E36C85EC7CA983 /* QuestPicker.swift */; };
+		91336D3AC6A42177636507B2 /* CampaignStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2F4E62343ADAAC6AFDB7BB3 /* CampaignStore.swift */; };
 		916FFE7F8E38E482DBC83A94 /* BoardBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8631B220635598C0A14D982C /* BoardBuilder.swift */; };
 		926BC6F19A0823894BF09A60 /* DifficultyMode.swift in Sources */ = {isa = PBXBuildFile; fileRef = 108557F63132E1F414535D57 /* DifficultyMode.swift */; };
 		933131649AE3F77A9CE9E824 /* PersonalQuests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00BBEBDEA7AD7385CDCFDF66 /* PersonalQuests.swift */; };
@@ -254,7 +255,6 @@
 		3D21E983F2C6A9DB30620F8A /* AttackModifierDeck.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AttackModifierDeck.swift; sourceTree = "<group>"; };
 		3E998CE7344F97D1E3E79A74 /* AttackModifier.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AttackModifier.swift; sourceTree = "<group>"; };
 		41D94C91FCB1BF3FC44B5F95 /* BoardCoordinator+Text.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "BoardCoordinator+Text.swift"; sourceTree = "<group>"; };
-		422B96003824AE1E41CF473C /* SaveSlotsSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SaveSlotsSheet.swift; sourceTree = "<group>"; };
 		42374DD85E631755D52BD747 /* AttackModifierCardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AttackModifierCardView.swift; sourceTree = "<group>"; };
 		428BCB13DD817E6D115A502D /* ScenarioBrief.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScenarioBrief.swift; sourceTree = "<group>"; };
 		42FD5AE1094742574DC0C0B9 /* LootDeck.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LootDeck.swift; sourceTree = "<group>"; };
@@ -348,6 +348,7 @@
 		B1ACB336DBBEBE992BE2288A /* SupportedLocale.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SupportedLocale.swift; sourceTree = "<group>"; };
 		B1F121B39DF61999A92908F6 /* CardPool.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CardPool.swift; sourceTree = "<group>"; };
 		B2E660BE81DE1921DF78A167 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		B2F4E62343ADAAC6AFDB7BB3 /* CampaignStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CampaignStore.swift; sourceTree = "<group>"; };
 		B336093B187D6833D7EF5868 /* BattleGoalData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BattleGoalData.swift; sourceTree = "<group>"; };
 		B600B1213ADD3BA7A385CA3F /* GlavenGame.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GlavenGame.swift; sourceTree = "<group>"; };
 		B68078059B320305C837EE03 /* CharacterData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CharacterData.swift; sourceTree = "<group>"; };
@@ -402,6 +403,7 @@
 		E27EBD6725F30431BE4E7FA3 /* ImageLoader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageLoader.swift; sourceTree = "<group>"; };
 		E3D72B6EC5F59987FCB0636A /* EventCardManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EventCardManager.swift; sourceTree = "<group>"; };
 		E76A7095C8D371EF8B0F04D2 /* ScenarioManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScenarioManager.swift; sourceTree = "<group>"; };
+		E76F597E3B673C4DAA422663 /* CampaignsSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CampaignsSheet.swift; sourceTree = "<group>"; };
 		EA732C1B11B1FD79F496753D /* DamageChoiceSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DamageChoiceSheet.swift; sourceTree = "<group>"; };
 		EBA2DD6BC94018062A83C98A /* AttackModifierValueType.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AttackModifierValueType.swift; sourceTree = "<group>"; };
 		EBE9E8D46F66914CB111FEC5 /* Enhancement.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Enhancement.swift; sourceTree = "<group>"; };
@@ -484,7 +486,7 @@
 		227A3064E6D684967F7C3C60 /* Dialogs */ = {
 			isa = PBXGroup;
 			children = (
-				422B96003824AE1E41CF473C /* SaveSlotsSheet.swift */,
+				E76F597E3B673C4DAA422663 /* CampaignsSheet.swift */,
 			);
 			path = Dialogs;
 			sourceTree = "<group>";
@@ -828,6 +830,7 @@
 				A30E472AAD62BB67AE83169C /* ActionsManager.swift */,
 				69054202832ECCDDB26C8B2B /* AttackModifierManager.swift */,
 				0124B0388BD2AA1770320E6B /* BattleGoals.swift */,
+				B2F4E62343ADAAC6AFDB7BB3 /* CampaignStore.swift */,
 				0A945DF49A79FBC6C6FE4B3C /* CharacterManager.swift */,
 				81BE25FE48E9D7E8CC4C14A6 /* ClassUnlocks.swift */,
 				3477ACD63A2C3231A799AB39 /* EnhancementsManager.swift */,
@@ -982,6 +985,8 @@
 				DC76BF79136B777FBBE43EED /* BoardView.swift in Sources */,
 				3D70D4B36FC1C27F8205C998 /* BundleHelper.swift in Sources */,
 				000550603398D6EC31B12E45 /* CampaignLogEntry.swift in Sources */,
+				91336D3AC6A42177636507B2 /* CampaignStore.swift in Sources */,
+				1C036A5F8DFC6D857F5E239E /* CampaignsSheet.swift in Sources */,
 				D7CE1CE9C11E696DD3D22EA9 /* CardEnhancing.swift in Sources */,
 				5B13B2FCD96C798F2DF93DE9 /* CardPool.swift in Sources */,
 				264672DD5FA11BF550313E8D /* CardSelectionPanel.swift in Sources */,
@@ -1098,7 +1103,6 @@
 				BC3BC6A84314049CE3D9E374 /* RewardChoicesView.swift in Sources */,
 				4B2BA4139D0D27B42EE7818E /* RoundManager.swift in Sources */,
 				C52F441575A9B4779E09B7F6 /* SanctuarySheet.swift in Sources */,
-				4F40225C0F9D5F6D5493EAB0 /* SaveSlotsSheet.swift in Sources */,
 				C8BEF4631B318047240E63F6 /* SavedGameModel.swift in Sources */,
 				2B48DDA61518A823F10A6611 /* Scenario.swift in Sources */,
 				DE9E85706CDE6761D44747CE /* ScenarioBrief.swift in Sources */,
@@ -1148,6 +1152,8 @@
 				CODE_SIGN_STYLE = Manual;
 				CURRENT_PROJECT_VERSION = 1;
 				INFOPLIST_KEY_CFBundleDisplayName = GlavenGame;
+				INFOPLIST_KEY_LSSupportsOpeningDocumentsInPlace = YES;
+				INFOPLIST_KEY_UIFileSharingEnabled = YES;
 				INFOPLIST_KEY_UIRequiresFullScreen = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -1243,6 +1249,8 @@
 				CODE_SIGN_STYLE = Manual;
 				CURRENT_PROJECT_VERSION = 1;
 				INFOPLIST_KEY_CFBundleDisplayName = GlavenGame;
+				INFOPLIST_KEY_LSSupportsOpeningDocumentsInPlace = YES;
+				INFOPLIST_KEY_UIFileSharingEnabled = YES;
 				INFOPLIST_KEY_UIRequiresFullScreen = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				LD_RUNPATH_SEARCH_PATHS = (
