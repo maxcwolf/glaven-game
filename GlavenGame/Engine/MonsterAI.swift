@@ -396,8 +396,13 @@ enum MonsterAI {
         // there, but another hex it can reach may bring it just as close (p.30) rather than
         // backing up along the route.
         let stop = Pathfinder.truncatePath(result.path, budget: moveRange, board: board, mode: mode).last ?? position
+        // Only when a figure pushed the stop back (the next hex was affordable but taken): the
+        // search below is a full route search from every reachable hex.
+        let next = (result.path.firstIndex(of: stop) ?? 0) + 1
+        let pushedBack = next < result.path.count && board.isOccupied(result.path[next])
+            && Pathfinder.movementCost(of: Array(result.path.prefix(next + 1)), board: board, mode: mode) <= moveRange
         let ideal = max(0, result.cost - moveRange)
-        if let left = remaining(from: stop), left.cost > ideal {
+        if pushedBack, let left = remaining(from: stop), left.cost > ideal {
             var best = (negatives: left.negativeHexes, cost: left.cost, move: reachable[stop] ?? 0, hex: stop)
             for (hex, move) in reachable where hex != stop && !board.isOccupied(hex) {
                 guard let there = remaining(from: hex) else { continue }

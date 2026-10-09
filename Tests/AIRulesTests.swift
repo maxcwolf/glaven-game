@@ -130,4 +130,24 @@ final class AIRulesTests: XCTestCase {
         XCTAssertNotEqual(second.movementPath.last, end)
         XCTAssertEqual(second.movementPath.last.map { $0.distance(to: HexCoord(9, 1)) }, closest, "just as close")
     }
+
+    /// Moving toward a far focus stays quick on a big map with difficult terrain: the search for
+    /// a hex as close as the route's (when an ally takes the route's end) runs only then, not
+    /// whenever terrain leaves a point of movement unspent. (It ran from every reachable hex.)
+    func testApproachingAFarFocusStaysQuick() {
+        let t = TestGame()
+        for col in 0..<30 { for row in 0..<30 where t.board.cells[HexCoord(col, row)] == nil {
+            t.board.cells[HexCoord(col, row)] = HexCell(coord: HexCoord(col, row), tileRef: "test", passable: true)
+        } }
+        for (hex, _) in t.board.cells where hex.col % 2 == 1 { t.board.cells[hex]?.overlay = .difficultTerrain }
+        t.addCharacter(pos: HexCoord(28, 28))
+        let monster = t.addSimpleMonster(positions: (1...8).map { ($0, HexCoord(1, $0 * 3), 5) })
+        let ability = card([ActionModel(type: .move, value: .int(7)), ActionModel(type: .attack, value: .int(2))])
+        let start = Date()
+        for entity in monster.entities {
+            _ = MonsterAI.computeTurn(pieceID: .monster(name: "test-monster", standee: entity.number), monster: monster,
+                                      entity: entity, ability: ability, board: t.board, gameState: t.game)
+        }
+        XCTAssertLessThan(Date().timeIntervalSince(start), 0.4, "8 monsters' turns")
+    }
 }

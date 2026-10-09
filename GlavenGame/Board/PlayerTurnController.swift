@@ -350,8 +350,7 @@ final class PlayerTurnController {
     func attackHasNoTarget(_ action: ActionModel) -> Bool {
         guard action.type == .attack, let coordinator,
               !(action.subActions ?? []).contains(where: { $0.type == .area || $0.type == .specialTarget }) else { return false }
-        let range = (action.subActions ?? []).first { $0.type == .range }?.value?.intValue ?? 1
-        return coordinator.targetableEnemies(of: .character(characterID), range: max(1, range)).isEmpty
+        return coordinator.targetableEnemies(of: .character(characterID), range: max(1, attackRange(of: action))).isEmpty
     }
 
     /// The player answered the board's question: from here the action can't be cancelled.

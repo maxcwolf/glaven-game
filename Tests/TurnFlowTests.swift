@@ -226,6 +226,8 @@ final class TurnFlowTests: XCTestCase {
         let grasp = try XCTUnwrap(deck("cragheart").first { $0.cardId == 117 })   // Crushing Grasp
         let other = try XCTUnwrap(deck("cragheart").first { $0.cardId != 117 })
         let turn = turn(for: cragheart, top: grasp, bottom: other)
+        let attack = try XCTUnwrap(turn.topActions.first { $0.type == .attack })
+        XCTAssertFalse(turn.attackHasNoTarget(attack), "the button doesn't say no enemy is in range")
         while turn.phase == .executeTopAction && turn.topActions[turn.currentActionIndex].type != .attack {
             turn.executeCurrentAction()
         }
