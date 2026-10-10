@@ -86,4 +86,58 @@ extension BoardCoordinator {
         log("\(self.name(pieceID)) vanishes", category: .move)
         removePieceFromBoard(pieceID)
     }
+
+    // MARK: - The Winged Horror's eggs
+
+    static let eggName = "Egg"
+
+    /// The eggs on the map, lowest number first.
+    var eggs: [PieceID] {
+        boardState.piecePositions.keys.filter {
+            if case .objective = $0 { return objectiveContainer(of: $0)?.name == Self.eggName }
+            return false
+        }.sorted()
+    }
+
+    /// The Winged Horror lays eggs beside it: each has 2+(L/2) hit points (rounded up), can be
+    /// attacked, and waits to be hatched.
+    func layEggs(by pieceID: PieceID, count: Int) {
+        guard let game = gameManager?.game, let origin = boardState.piecePositions[pieceID] else { return }
+        let container: GameObjectiveContainer
+        if let existing = game.objectives.first(where: { $0.name == Self.eggName }) {
+            container = existing
+        } else {
+            container = GameObjectiveContainer(name: Self.eggName, edition: game.scenario?.data.edition ?? "", title: Self.eggName,
+                                               escort: false, level: game.level)
+            container.initiative = 99
+            game.figures.append(.objective(container))
+        }
+        let health = 2 + (game.level + 1) / 2
+        var laid = 0
+        for _ in 0..<count {
+            guard let hex = origin.neighbors.sorted().first(where: isEmptyHex) ?? nearestEmptyHex(to: origin) else { break }
+            let entity = GameObjectiveEntity(number: game.nextObjectiveNumber, health: health, maxHealth: health)
+            container.entities.append(entity)
+            let egg = PieceID.objective(id: entity.number)
+            boardState.placePiece(egg, at: hex)
+            boardScene?.addPieceSprite(id: egg, at: hex, offsetCol: offsetCol, offsetRow: offsetRow)
+            laid += 1
+        }
+        guard laid > 0 else { return }
+        boardScene?.play(.summon)
+        syncPieceVisuals()
+        log("\(name(pieceID)) lays \(laid) egg\(laid == 1 ? "" : "s")", category: .setup)
+    }
+
+    /// Every egg on the map is destroyed, and a normal Night Demon stands where each was.
+    func hatchEggs() {
+        for egg in eggs {
+            guard let hex = boardState.piecePositions[egg] else { continue }
+            (entity(for: egg) as? GameObjectiveEntity)?.dead = true
+            removePieceFromBoard(egg)
+            if let demon = spawnMonster(name: "night-demon", type: .normal, at: hex, origin: .spawned) {
+                log("An egg hatches: \(name(demon)) appears", category: .setup, trace: "at \(hex)")
+            }
+        }
+    }
 }

@@ -60,7 +60,7 @@ extension BoardCoordinator {
         // What the scenario does to every attack of this figure (a vocal chord still standing).
         attack.value = max(0, attack.value + scenarioAttackBonus(of: attacker))
         let isPoisoned = defender.entityConditions.contains { $0.name == .poison && !$0.expired }
-        var shield = shield(of: target)
+        var shield = shield(of: target) + cleansedShield(of: target, against: attacker)
         var retaliate = CombatResolver.retaliateDamage(retaliate: defender.retaliate,
                                                        retaliatePersistent: defender.retaliatePersistent,
                                                        distance: distance)

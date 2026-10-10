@@ -331,6 +331,7 @@ final class MonsterTurnController {
                 coordinator.log("\(coordinator.name(pieceID)) uses special ability \(index + 1)", category: .info)
                 let specialTexts = texts(in: ActionModel(type: .concatenation, subActions: special[index]), monster: monster)
                 var unresolved = false
+                var hatches = false, lays = false
                 for text in specialTexts {
                     if text.contains("move to next door and reveal room") {
                         // Barrow Lair's doors are jumped to, in order, however far away.
@@ -348,6 +349,10 @@ final class MonsterTurnController {
                             coordinator.log("The Vermling Scouts act again", category: .round)
                             await executeMonsterGroup(scouts)
                         }
+                    } else if text.contains("hatch eggs") {
+                        hatches = true   // the Winged Horror, once it has attacked
+                    } else if text.hasSuffix("eggs") {
+                        lays = true
                     } else {
                         unresolved = true
                     }
@@ -366,6 +371,8 @@ final class MonsterTurnController {
                 await executeCard(specialActions, pieceID: pieceID, entity: entity, monster: monster,
                                   ability: specialCard, consumed: paid, turn: &specialState)
                 state.hexesMoved = specialState.hexesMoved
+                if hatches, !isStale { coordinator.hatchEggs() }
+                if lays, stillHere() { coordinator.layEggs(by: pieceID, count: characterCount) }
 
             default:
                 // Shield/retaliate are applied for the whole round when the card is revealed;

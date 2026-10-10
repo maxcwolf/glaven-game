@@ -44,6 +44,11 @@ struct ScenarioPlacements: Codable, Equatable {
     /// Objectives (1-based) the monsters that attack them go for first: one that can get
     /// within range to attack it this turn focuses on it, whoever is nearer (a gate, the crystal).
     var focusFirst: [Int]?
+    /// Monster types that can't be damaged in any way; conditions and other effects of an
+    /// attack still apply (the Living Spirits of Chained Isle).
+    var undamageable: [String]?
+    /// Each time one of some monster types dies, one of another is taken off the map.
+    var reprieve: Reprieve?
     /// There are two starting rooms, and no more than half the characters (rounded up) may
     /// start in the same one.
     var splitStart: Bool?
@@ -243,6 +248,23 @@ extension ScenarioPlacements {
         var hurtsThePoisoned: Bool?
         /// Damage for any figure that ends its turn in a water hex ("1+L", Payment Due).
         var endOfTurn: String?
+        /// A character who ends a turn on a water hex of these tiles is cleansed, once: the tile
+        /// goes, and for the rest of the scenario they have Shield against these monsters'
+        /// attacks and can't be poisoned (Corrupted Cove).
+        var cleanses: Cleansing?
+
+        struct Cleansing: Codable, Equatable {
+            var tiles: [String]
+            var shield: Int
+            var against: [String]
+        }
+    }
+
+    /// For every death of one of `killed`, one of `removes` leaves the map (Chained Isle: a
+    /// Living Spirit for every demon).
+    struct Reprieve: Codable, Equatable {
+        var killed: [String]
+        var removes: String
     }
 
     /// Something the scenario does to every attack of some figures, or to their Shield, for as

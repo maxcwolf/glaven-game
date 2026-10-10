@@ -1365,6 +1365,7 @@ final class BoardCoordinator {
             turnOrder[currentTurnIndex].completed = true
             if currentTurnToggled, case .character(let character) = turnOrder[currentTurnIndex].figure {
                 gameManager.scenarioRulesManager.evaluateTurnRules(.turnEnd, for: character)
+                if !character.exhausted { cleanseAtTurnEnd(character) }
                 // Water that hurts whoever ends a turn in it (Payment Due).
                 if !character.exhausted, let damage = waterDamageAtTurnEnd(for: .character(character.id)) {
                     ruleDamageDue.append((character.id, damage))

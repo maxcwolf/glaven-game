@@ -73,6 +73,9 @@ final class BoardState {
     /// The map's places for monsters of revealed rooms that are set up later (`ScenarioPlacements.later`).
     var heldMonsterSlots: [MonsterSlot] = []
 
+    /// Characters (by id) a scenario's water has cleansed (`ScenarioPlacements.Water.cleanses`).
+    var cleansed: [String] = []
+
     /// How many places each cycling boss has been to (`ScenarioPlacements.Cycle`), by monster type.
     var cycleSteps: [String: Int] = [:]
 

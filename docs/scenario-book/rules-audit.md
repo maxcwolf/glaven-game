@@ -56,6 +56,8 @@ on a–f in turn as its turns start and vanishes after any melee attack; #36's P
 Also: #50, #58 and #85 have two starting rooms that take half the party each; #57's Infiltrator
 appears where the marked guard fell; #81's Colorless consumes Dark and Light for its summons.
 Monsters focus on the gate (#35, #36) or the crystal (#84) whenever they can get within range of it.
+#70's Living Spirits can't be damaged and one is banished for each demon killed; #87's water
+cleanses (Shield 2 against Oozes, no Poison); #46's Winged Horror lays and hatches its eggs.
 Later fixes are listed in `TODO.md`.
 
 ### 1 · Black Barrow

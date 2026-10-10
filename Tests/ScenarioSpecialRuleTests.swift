@@ -1523,6 +1523,142 @@ final class ScenarioSpecialRuleTests: XCTestCase {
         XCTAssertNotEqual(try focus(of: archer, in: sim), gate)
     }
 
+    // MARK: - #70 Chained Isle
+
+    /// Living Spirits can't be damaged in any way, though conditions still take hold; each
+    /// demon's death banishes one of them, the nearest to the killer.
+    func testLivingSpiritsCantBeDamagedAndGoWithTheDemons() async throws {
+        let sim = try simulator("70")
+        let coord = sim.coord
+        let stood = try XCTUnwrap(coord.boardState.piecePositions[character(sim, 0)])
+        let free = coord.boardState.cells.keys.filter(coord.isEmptyHex).sorted { ($0.distance(to: stood), $0) < ($1.distance(to: stood), $1) }
+        let near = try XCTUnwrap(coord.spawnMonster(name: "living-spirit", type: .normal, at: free[0], origin: .spawned))
+        let far = try XCTUnwrap(coord.spawnMonster(name: "living-spirit", type: .normal, at: try XCTUnwrap(free.last), origin: .spawned))
+        let third = try XCTUnwrap(coord.spawnMonster(name: "living-spirit", type: .normal, at: free[free.count - 2], origin: .spawned))
+        let spirit = try entity(sim, near)
+        let health = spirit.health
+        XCTAssertFalse(coord.sufferDamage(5, to: near))
+        await coord.performAttack(attacker: character(sim, 0), target: near, attack: AttackParameters(value: 9, conditions: [.wound]),
+                                  drawCard: { AttackModifier(type: .plus0) })
+        XCTAssertEqual(spirit.health, health, "no damage at all")
+        XCTAssertTrue(spirit.entityConditions.contains { $0.name == .wound } || spirit.immunities.contains(.wound), "the attack's effects still apply")
+        // A demon can be hurt as ever.
+        let demon = try XCTUnwrap(pieces(sim, named: "night-demon").first ?? pieces(sim, named: "wind-demon").first)
+        let before = try entity(sim, demon).health
+        coord.sufferDamage(1, to: demon)
+        XCTAssertEqual(try entity(sim, demon).health, before - 1)
+
+        coord.handleDeath(of: demon, killer: character(sim, 0))
+        XCTAssertFalse(coord.isOnBoard(near), "the nearest spirit goes with the demon")
+        XCTAssertTrue(spirit.dead)
+        XCTAssertTrue(coord.isOnBoard(far))
+        XCTAssertEqual(sim.gm.game.scenario?.killCounts["living-spirit"], nil, "banished, not killed")
+        // A spirit's own end banishes no other.
+        coord.handleDeath(of: far)
+        XCTAssertEqual(pieces(sim, named: "living-spirit"), [third])
+        coord.handleDeath(of: try XCTUnwrap(pieces(sim).first))
+    }
+
+    // MARK: - #87 Corrupted Cove
+
+    /// A character who ends a turn on a water hex of the main room is cleansed, once: the tile
+    /// goes, and they have Shield 2 against Ooze attacks and can't be poisoned.
+    func testTheCovesWaterCleanses() async throws {
+        let sim = try ScenarioSimulator(scenario: "87", options: .init(characters: ["brute", "spellweaver"], seed: 1, autoResolvePrompts: true))
+        let coord = sim.coord
+        let brute = sim.gm.game.characters[0], spellweaver = sim.gm.game.characters[1]
+        var pools: [HexCoord] = []
+        await sim.play(rounds: 1) { [self] in
+            guard pools.isEmpty, coord.boardPhase == .cardSelection else { return }
+            while let door = coord.boardState.doors.first(where: { !$0.isOpen }) { coord.openDoor(at: door.coord) }
+            coord.boardPhase = .cardSelection
+            for piece in pieces(sim) { coord.boardState.removePiece(piece) }   // a quiet round
+            pools = water(sim).filter { ["l2a", "l3b"].contains(coord.boardState.cells[$0]?.tileRef.lowercased() ?? "") && free(sim, $0) }
+            guard let pool = pools.first else { return }
+            brute.health = brute.maxHealth
+            stand(sim, 0, on: pool)
+            coord.applyCondition(.immobilize, to: character(sim, 0))
+            coord.applyCondition(.poison, to: character(sim, 0))
+        }
+        XCTAssertEqual(pools.count, 3, "three water hexes in the main room")
+        XCTAssertTrue(sim.transcript.contains { $0.contains("is cleansed by the water") }, sim.transcript.suffix(20).joined(separator: "\n"))
+        XCTAssertEqual(coord.boardState.cleansed, [brute.id])
+        XCTAssertFalse(water(sim).contains(pools[0]), "the water tile is gone")
+        XCTAssertFalse(brute.entityConditions.contains { $0.name == .poison })
+
+        let ooze = try XCTUnwrap(coord.spawnMonster(name: "ooze", type: .normal, at: try XCTUnwrap(pools[0].neighbors.first { free(sim, $0) }), origin: .placed))
+        let imp = try XCTUnwrap(coord.spawnMonster(name: "black-imp", type: .normal, at: try XCTUnwrap(pools[0].neighbors.first { free(sim, $0) }), origin: .placed))
+        XCTAssertEqual(coord.cleansedShield(of: character(sim, 0), against: ooze), 2)
+        XCTAssertEqual(coord.cleansedShield(of: character(sim, 0), against: imp), 0, "Oozes only")
+        XCTAssertEqual(coord.cleansedShield(of: character(sim, 1), against: ooze), 0, "each for themselves")
+        brute.maxHealth = 30
+        brute.health = 30
+        brute.shield = nil
+        brute.shieldPersistent = nil
+        await coord.performAttack(attacker: ooze, target: character(sim, 0), attack: AttackParameters(value: 5), drawCard: { AttackModifier(type: .plus0) })
+        XCTAssertEqual(brute.health, 27)
+        coord.applyCondition(.poison, to: character(sim, 0))
+        XCTAssertFalse(brute.entityConditions.contains { $0.name == .poison }, "no more Poison")
+        coord.applyCondition(.poison, to: character(sim, 1))
+        XCTAssertTrue(spellweaver.entityConditions.contains { $0.name == .poison })
+
+        // Once each; and the start room's water is only water.
+        stand(sim, 0, on: pools[1])
+        coord.cleanseAtTurnEnd(brute)
+        XCTAssertTrue(water(sim).contains(pools[1]))
+        let plain = try XCTUnwrap(water(sim).first { coord.boardState.cells[$0]?.tileRef.lowercased() == "d2b" && free(sim, $0) })
+        stand(sim, 1, on: plain)
+        coord.cleanseAtTurnEnd(spellweaver)
+        XCTAssertEqual(coord.boardState.cleansed, [brute.id])
+        let copy = BoardState()
+        BoardSnapshot.from(coord.boardState).restore(to: copy)
+        XCTAssertEqual(copy.cleansed, [brute.id])
+    }
+
+    // MARK: - #46 Nightmare Peak
+
+    /// The Winged Horror lays an egg for each character with one special; with the other, once
+    /// it has attacked, every egg hatches into a normal Night Demon.
+    func testTheWingedHorrorsEggs() async throws {
+        let sim = try simulator("46")
+        let coord = sim.coord
+        revealAll(sim)
+        let horror = try entity(sim, try XCTUnwrap(pieces(sim, named: "winged-horror").first))
+        horror.maxHealth = 200
+        horror.health = 200
+        for character in sim.gm.game.characters { character.maxHealth = 99; character.health = 99 }
+        try await perform(special: 2, of: "winged-horror", in: sim)
+        XCTAssertEqual(coord.eggs.count, 2, "one for each character")
+        XCTAssertEqual(sim.gm.game.level, 1)
+        for egg in coord.eggs {
+            XCTAssertEqual(coord.entity(for: egg)?.maxHealth, 3, "2 + L/2, rounded up")
+            XCTAssertTrue(coord.areEnemies(character(sim, 0), egg), "to be destroyed")
+        }
+        // At other levels: 3 at level 2, 4 at level 3.
+        for (level, health) in [(2, 3), (3, 4)] {
+            sim.gm.game.level = level
+            let before = Set(coord.eggs)
+            coord.layEggs(by: try XCTUnwrap(pieces(sim, named: "winged-horror").first), count: 1)
+            let egg = try XCTUnwrap(Set(coord.eggs).subtracting(before).first)
+            XCTAssertEqual(coord.entity(for: egg)?.maxHealth, health, "level \(level)")
+            coord.sufferDamage(99, to: egg)
+        }
+        sim.gm.game.level = 1
+        XCTAssertFalse(coord.turnLog.contains { $0.message.contains("as printed on its stat card") })
+
+        // One is destroyed; the other hatches where it lies.
+        coord.sufferDamage(99, to: coord.eggs[0])
+        XCTAssertEqual(coord.eggs.count, 1)
+        let nest = try XCTUnwrap(coord.boardState.piecePositions[coord.eggs[0]])
+        let demons = Set(pieces(sim, named: "night-demon"))
+        try await perform(special: 1, of: "winged-horror", in: sim)
+        XCTAssertTrue(coord.eggs.isEmpty)
+        let hatched = Set(pieces(sim, named: "night-demon")).subtracting(demons)
+        XCTAssertEqual(hatched.count, 1)
+        XCTAssertEqual(hatched.first.flatMap { coord.boardState.piecePositions[$0] }, nest)
+        XCTAssertFalse(coord.boardState.eliteStandees.contains(try XCTUnwrap(hatched.first)))
+    }
+
     // MARK: - What the brief says
 
     /// The brief says the rules the game enforces in the book's sense, not a guess from the data.

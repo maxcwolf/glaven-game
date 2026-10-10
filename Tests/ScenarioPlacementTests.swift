@@ -120,6 +120,13 @@ final class ScenarioPlacementTests: XCTestCase {
             for objective in placements.focusFirst ?? [] {
                 XCTAssertEqual(data.objectives?.indices.contains(objective - 1), true, "\(index): no objective \(objective)")
             }
+            for name in (placements.undamageable ?? []) + (placements.reprieve.map { $0.killed + [$0.removes] } ?? []) {
+                XCTAssertTrue(monsters.contains(name), "\(index): no monster \(name)")
+            }
+            if let cleansing = placements.water?.cleanses {
+                for tile in cleansing.tiles { XCTAssertTrue(tiles.contains(tile), "\(index): no tile \(tile)") }
+                for name in cleansing.against { XCTAssertTrue(monsters.contains(name), "\(index): no monster \(name)") }
+            }
             for name in placements.apart ?? [] { XCTAssertTrue(monsters.contains(name), "\(index): no monster \(name)") }
             for objective in placements.sheltered ?? [] {
                 XCTAssertEqual(data.objectives?.indices.contains(objective - 1), true, "\(index): no objective \(objective)")

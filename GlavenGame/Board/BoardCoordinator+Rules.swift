@@ -179,7 +179,7 @@ extension BoardCoordinator {
             return
         }
         let itemImmunity = (entity as? GameCharacter).map { PassiveItems.immune($0.carriedItems, to: condition) } ?? false
-        guard !entity.immunities.contains(condition), !itemImmunity else {
+        guard !entity.immunities.contains(condition), !itemImmunity, !scenarioWardsOff(condition, from: pieceID) else {
             boardScene?.floatText("Immune", over: pieceID, style: .info)
             log("\(name(pieceID)) is immune to \(GameText.conditionName(condition))", category: .condition)
             return
@@ -221,6 +221,12 @@ extension BoardCoordinator {
     @discardableResult
     func sufferDamage(_ amount: Int, to pieceID: PieceID, killer: PieceID? = nil) -> Bool {
         guard amount > 0, let gameManager, let entity = entity(for: pieceID) else { return false }
+        // What the scenario lets nothing damage (Chained Isle's Living Spirits).
+        if isUndamageable(pieceID) {
+            log("\(name(pieceID)) can\u{2019}t be damaged", category: .damage)
+            boardScene?.pieceUnharmed(id: pieceID, missed: false)
+            return false
+        }
         // Intervening Apparitions: the owner's summons suffer no damage.
         if case .summon = pieceID, let owner = summonOwner(of: pieceID),
            useFirstCharge(of: .character(owner.id), where: { $0 == .summonsNegateDamage }) != nil {
@@ -360,6 +366,7 @@ extension BoardCoordinator {
             noteDoomedDeath(pieceID)
             removePieceFromBoard(pieceID)
             recordMonsterKill(name: name)
+            grantReprieve(forDeathOf: name, killer: killer)
             if entity.type == .elite, !MonsterAI.isAllyFaction(monster) { boardState.eliteKills += 1 }
             if let character = creditedCharacter(for: killer) {
                 gameManager.scenarioStatsManager.recordKill(by: character.name, monster: name, elite: entity.type == .elite,

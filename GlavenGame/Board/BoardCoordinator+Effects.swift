@@ -80,6 +80,60 @@ extension BoardCoordinator {
         sufferDamage(damage, to: pieceID)
     }
 
+    /// A character ending a turn on cleansing water: the tile goes and they are cleansed, once.
+    func cleanseAtTurnEnd(_ character: GameCharacter) {
+        guard let cleansing = scenarioData?.placements?.water?.cleanses, !boardState.cleansed.contains(character.id),
+              let hex = boardState.piecePositions[.character(character.id)], isWater(hex),
+              let tile = boardState.cells[hex]?.tileRef.lowercased(), cleansing.tiles.contains(tile) else { return }
+        boardState.cleansed.append(character.id)
+        boardState.cells[hex]?.overlay = nil
+        boardState.cells[hex]?.overlaySubType = nil
+        boardScene?.removeOverlaySprite(at: hex, offsetCol: offsetCol, offsetRow: offsetRow)
+        // The water takes the Poison it now wards off.
+        character.entityConditions.removeAll { $0.name == .poison }
+        boardScene?.refreshStatus(of: .character(character.id))
+        let names = GameText.list(cleansing.against.map(monsterTypeName))
+        log("\(name(.character(character.id))) is cleansed by the water: Shield \(cleansing.shield) against the attacks of \(names), and no more Poison",
+            category: .condition)
+    }
+
+    /// The Shield a cleansed character has against an attacker's attack.
+    func cleansedShield(of target: PieceID, against attacker: PieceID) -> Int {
+        guard let cleansing = scenarioData?.placements?.water?.cleanses, case .character(let id) = target,
+              boardState.cleansed.contains(id), case .monster(let name, _) = attacker, cleansing.against.contains(name) else { return 0 }
+        return cleansing.shield
+    }
+
+    /// Whether the scenario keeps a condition off a figure (Poison off the cleansed).
+    func scenarioWardsOff(_ condition: ConditionName, from pieceID: PieceID) -> Bool {
+        guard condition == .poison, scenarioData?.placements?.water?.cleanses != nil, case .character(let id) = pieceID else { return false }
+        return boardState.cleansed.contains(id)
+    }
+
+    // MARK: - Those that can't be damaged
+
+    /// A monster of a type nothing damages in this scenario.
+    func isUndamageable(_ pieceID: PieceID) -> Bool {
+        guard case .monster(let name, _) = pieceID else { return false }
+        return scenarioData?.placements?.undamageable?.contains(name) == true
+    }
+
+    /// A monster of `name` has died: where the scenario gives a reprieve for it, one of another
+    /// type leaves the map — the one nearest the killer, or nearest any character.
+    func grantReprieve(forDeathOf name: String, killer: PieceID?) {
+        guard let reprieve = scenarioData?.placements?.reprieve, reprieve.killed.contains(name) else { return }
+        let from = (killer.flatMap { boardState.piecePositions[$0] }).map { [$0] }
+            ?? (gameManager?.game.characters ?? []).compactMap { boardState.piecePositions[.character($0.id)] }
+        let candidates = boardState.piecePositions.filter { if case .monster(reprieve.removes, _) = $0.key { return true }; return false }
+        guard let gone = candidates.min(by: { a, b in
+            let da = from.map { $0.distance(to: a.value) }.min() ?? 0, db = from.map { $0.distance(to: b.value) }.min() ?? 0
+            return (da, a.key) < (db, b.key)
+        })?.key, case .monster(let removed, let standee) = gone else { return }
+        log("\(self.name(gone)) is banished with the demon\u{2019}s death", category: .death)
+        monsterEntity(name: removed, standee: standee)?.dead = true
+        removePieceFromBoard(gone)
+    }
+
     /// What the scenario adds to each of a figure's attacks.
     func scenarioAttackBonus(of pieceID: PieceID) -> Int {
         scenarioEffects(on: pieceID).reduce(0) { $0 + ($1.attack ?? 0) }

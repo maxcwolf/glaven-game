@@ -112,7 +112,7 @@
     "g1a": {"objectives": [{"objective": 1, "cells": [[1, 2]]}]},
     "m1b": {"objectives": [{"objective": 1, "cells": [[1, 0]]}, {"objective": 1, "cells": [[5, 4]]}]}
   }},
-  "46": {"goal": {"text": "Kill the Winged Horror.", "kill": ["winged-horror"]}, "tiles": {
+  "46": {"goal": {"text": "Kill the Winged Horror.", "kill": ["winged-horror"]}, "notes": ["With one special the Winged Horror lays an egg for each character beside it (2+L/2 hit points each, rounded up); with the other, once it has attacked, every egg on the map hatches into a normal Night Demon. Destroy the eggs first."], "tiles": {
   }},
   "47": {"goal": {"text": "Kill the Sightless Eye.", "kill": ["the-sightless-eye"]}, "notes": ["Once the door is open, every character and summon still in the first cave suffers 3+L damage as each round ends.", "The Sightless Eye can't be pushed or pulled."], "rules": [{"round": "true", "requiredRooms": [2], "figures": [{"identifier": {"type": "characterWithSummon", "name": ".*", "tile": "j1a"}, "type": "damage", "value": "3+L"}]}], "tiles": {
   }},
@@ -173,7 +173,7 @@
     "d2a": {"markers": {"a": [[2, 2]]}},
     "l3a": {"markers": {"c": [[3, 5]]}}
   }},
-  "70": {"goal": {"text": "Kill all demons.", "kill": ["night-demon", "wind-demon"]}, "tiles": {
+  "70": {"goal": {"text": "Kill all demons.", "kill": ["night-demon", "wind-demon"]}, "notes": ["Living Spirits rise on the starting tile as rounds end, and can't be damaged in any way; conditions still take hold of them.", "Each time a demon dies, a Living Spirit is banished: the one nearest whoever killed it."], "undamageable": ["living-spirit"], "reprieve": {"killed": ["night-demon", "wind-demon"], "removes": "living-spirit"}, "tiles": {
     "l1b": {"markers": {"b": [[4, 2]]}},
     "l3a": {"markers": {"a": [[4, 4]]}}
   }},
@@ -227,7 +227,7 @@
     "h3a": {"markers": {"b": [[4, 6], [3, 6]]}},
     "m1b": {"objectives": [{"objective": 1, "cells": [[4, 2]]}, {"objective": 1, "cells": [[2, 4]]}, {"objective": 1, "cells": [[1, 0]]}, {"objective": 1, "cells": [[0, 3]]}], "markers": {"d": [[4, 1]], "f": [[4, 5]]}}
   }},
-  "87": {"goal": {"text": "Kill the Giant Ooze.", "kill": ["giant-ooze"]}, "notes": ["The Giant Ooze starts with four tokens and has Shield 2 for each of them; it loses one every time an Ooze dies."], "effects": [{"on": "giant-ooze", "shield": "2xX", "per": {"tokens": 4, "lostWith": "ooze"}}], "tiles": {
+  "87": {"goal": {"text": "Kill the Giant Ooze.", "kill": ["giant-ooze"]}, "notes": ["The Giant Ooze starts with four tokens and has Shield 2 for each of them; it loses one every time an Ooze dies.", "A character who ends a turn on a water hex of the main room is cleansed, once: the water goes, and for the rest of the scenario they have Shield 2 against Ooze attacks and can't be poisoned."], "effects": [{"on": "giant-ooze", "shield": "2xX", "per": {"tokens": 4, "lostWith": "ooze"}}], "water": {"cleanses": {"tiles": ["l2a", "l3b"], "shield": 2, "against": ["ooze", "giant-ooze"]}}, "tiles": {
   }},
   "88": {"goal": {"text": "Bring the Lurker King's claw to the crystal.", "kill": ["lurker-king"], "reach": {"marker": "a", "adjacent": true}}, "tiles": {
     "n1a": {"markers": {"a": [[3, 6]]}}

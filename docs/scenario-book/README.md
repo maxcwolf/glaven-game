@@ -85,12 +85,17 @@ ends up on the board:
   figure on the hex means the closest free one.
 - `specials`: a boss's two specials as this scenario prints them, in place of its stat card's
   (#36: "Move +0, Attack +0").
+- `undamageable`: monster types nothing damages (conditions still apply), and `reprieve`
+  (`{"killed": [...], "removes": "living-spirit"}`): for each death of one of the first, one of
+  the second is banished — the nearest to the killer, where the book lets the players choose (#70).
 - `focusFirst`: objectives the monsters that attack them go for first — one that can get within
   range this turn focuses on it, whoever is nearer (#35 and #36 the gate, #84 the crystal).
 - `splitStart`: there are two starting rooms and no more than half the party (rounded up) may
   start in the same one (#50, #58, #85).
 - `water`: what water hexes do — `hurtsThePoisoned` (a poisoned character or summon walking in
-  suffers trap damage, #68), `endOfTurn` (damage for any figure ending its turn there, #95).
+  suffers trap damage, #68), `endOfTurn` (damage for any figure ending its turn there, #95), `cleanses` (a character ending
+  a turn on a water hex of the named tiles is cleansed once: the tile goes, Shield against the
+  named monsters' attacks and no more Poison, #87).
 - `notes`: the special rules in words for the scenario brief — only those the game enforces.
   With notes written, the rules written here aren't described a second time from their data,
   no "More … arrive" lines are guessed, and a text the data ships is left out where a note says
