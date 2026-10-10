@@ -125,6 +125,17 @@ final class ScenarioPlacementTests: XCTestCase {
             if let damage = placements.water?.endOfTurn {
                 XCTAssertNotNil(ScenarioExpression.integerValue(damage, variables: ["C": 2, "L": 1]), "\(index): \(damage)")
             }
+            for entry in placements.inactive ?? [] {
+                XCTAssertFalse(entry.monsters.isEmpty, index)
+                for name in entry.monsters { XCTAssertTrue(monsters.contains(name), "\(index): no monster \(name)") }
+                XCTAssertTrue((entry.rounds.map { ["odd", "even"].contains($0) } ?? false) != (entry.untilSetUp == true),
+                              "\(index): inactive by the round, or until woken")
+                if entry.untilSetUp == true {
+                    for name in entry.monsters {
+                        XCTAssertTrue(rules.contains { ($0.setUp ?? []).contains(name) }, "\(index): nothing wakes \(name)")
+                    }
+                }
+            }
             for note in placements.notes ?? [] {
                 XCTAssertGreaterThan(note.split(separator: " ").count, 4, "\(index): \(note)")
                 XCTAssertTrue(note.hasSuffix("."), "\(index): \(note)")
@@ -152,12 +163,19 @@ final class ScenarioPlacementTests: XCTestCase {
                     XCTAssertTrue(monsters.contains(MonsterNameSpec(spawn.monster.name).name), "\(index): no monster \(spawn.monster.name)")
                     if let marker = spawn.marker { XCTAssertTrue(letters.contains(marker), "\(index): no hex lettered \(marker)") }
                 }
-                for name in rule.setUp ?? [] { XCTAssertTrue((placements.later ?? []).contains(name), "\(index): \(name) isn't held back") }
+                let asleep = (placements.inactive ?? []).filter { $0.untilSetUp == true }.flatMap(\.monsters)
+                for name in rule.setUp ?? [] {
+                    XCTAssertTrue((placements.later ?? []).contains(name) || asleep.contains(name), "\(index): \(name) isn't held back or asleep")
+                }
                 for room in (rule.requiredRooms ?? []) + (rule.rooms ?? []) {
                     XCTAssertTrue((data.rooms ?? []).contains { $0.roomNumber == room }, "\(index): no room \(room)")
                 }
                 for fact in rule.when ?? [] {
-                    XCTAssertTrue(fact.saved != nil || fact.lock != nil || fact.looted != nil || fact.unrevealed != nil, "\(index): an empty fact")
+                    XCTAssertTrue(fact.saved != nil || fact.lock != nil || fact.looted != nil || fact.unrevealed != nil
+                                  || fact.occupied != nil, "\(index): an empty fact")
+                    for letter in fact.occupied.map({ $0.markers + ($0.more ?? [:]).values.flatMap { $0 } }) ?? [] {
+                        XCTAssertTrue(letters.contains(letter), "\(index): no plate \(letter)")
+                    }
                     if let room = fact.unrevealed { XCTAssertTrue((data.rooms ?? []).contains { $0.roomNumber == room && $0.initial != true }, "\(index): no room \(room) to reveal") }
                     if let lock = fact.lock { XCTAssertTrue((placements.locks ?? []).indices.contains(lock), "\(index): no lock \(lock)") }
                     if fact.saved != nil { XCTAssertNotNil(placements.goal?.arrive, "\(index): no one to save") }

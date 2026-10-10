@@ -54,7 +54,21 @@ final class GameObjectiveContainer: Figure {
 
     /// Whether this escort has any actions to execute (some escorts are passive — no move/attack).
     var hasEscortActions: Bool {
-        !escortActions.isEmpty && (escortMove > 0 || escortAttack > 0)
+        !escortActions.isEmpty && (escortMove > 0 || escortAttack > 0 || standingAttack != nil)
+    }
+
+    /// The attack of an escort that holds its place and strikes every enemy beside it (Fish of
+    /// Lost Temple: "Attack 3" on all adjacent enemies, written inside his rule text).
+    var standingAttack: Int? {
+        for action in escortActions where action.type == .custom {
+            for inner in action.subActions ?? [] where inner.type == .attack {
+                let allAdjacent = (inner.subActions ?? []).contains {
+                    $0.type == .specialTarget && $0.value?.stringValue.lowercased() == "enemiesadjacent"
+                }
+                if allAdjacent, let value = inner.value?.intValue { return value }
+            }
+        }
+        return nil
     }
 
     init(name: String = "", edition: String = "", title: String = "", escort: Bool = false, level: Int = 0) {

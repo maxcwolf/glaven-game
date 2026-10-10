@@ -43,7 +43,12 @@ a third side, enemies to the party and to the other monsters; #80 gives Disadvan
 items until a character has looted a treasure tile; #68's tree is harmed only by the scenario
 (2 a round, and once revealed only with a Rending Drake on its tile), can be healed, and loses the
 scenario when it falls, and water hurts the poisoned; #95's water deals 1+L to whoever ends a
-turn in it. Later fixes are listed in `TODO.md`.
+turn in it.
+
+Then monsters that sit out: #61's two groups act and can be affected in alternate rounds only;
+#79's Stone Golems are inactive until every plate in play is held (Fish holds one), and Fish
+returns to his plate and attacks all adjacent enemies on initiative 99 — his death loses. Later
+fixes are listed in `TODO.md`.
 
 ### 1 · Black Barrow
 | Rule (from the book) | Status | Where / what's missing |

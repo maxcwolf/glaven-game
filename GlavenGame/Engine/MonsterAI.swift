@@ -524,6 +524,17 @@ enum MonsterAI {
         monster.isAlly
     }
 
+    /// Monster types that are inactive right now: they don't act, nothing affects them, and
+    /// figures move through their hexes (`ScenarioPlacements.inactive`). Between rounds it is the
+    /// round about to be played that counts.
+    static func inactiveMonsters(_ gameState: GameState) -> Set<String> {
+        guard let scenario = gameState.scenario, scenario.data.solo == nil,
+              let written = ScenarioPlacementStore.shared.placements(for: scenario.data.index, edition: scenario.data.edition),
+              written.inactive != nil else { return [] }
+        return written.inactiveMonsters(round: gameState.state == .draw ? gameState.round + 1 : gameState.round,
+                                        woken: scenario.releasedMonsters)
+    }
+
     /// The sides of a scenario: the party's, the monsters', and a third that fights both.
     enum Side { case party, monsters, apart }
 
@@ -546,6 +557,7 @@ enum MonsterAI {
     static func gatherEnemies(board: BoardState, monster: GameMonster, gameState: GameState, includeInvisible: Bool = false) -> [PieceID] {
         let allyFaction = isAllyFaction(monster)
         let side = side(of: monster)
+        let inactive = inactiveMonsters(gameState)
         return board.piecePositions.keys.sorted().filter { id in
             switch id {
             case .character(let charID):
@@ -564,7 +576,7 @@ enum MonsterAI {
                 return false
             case .monster:
                 guard let (group, entity) = monsterEntity(id, gameState: gameState),
-                      self.side(of: group) != side else { return false }
+                      self.side(of: group) != side, !inactive.contains(group.name) else { return false }
                 return includeInvisible || !isActive(.invisible, on: entity)
             case .objective:
                 // Escorts fight on the players' side, and what the party protects is the monsters'

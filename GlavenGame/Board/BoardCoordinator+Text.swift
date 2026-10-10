@@ -282,6 +282,8 @@ extension BoardCoordinator {
                 appearance.isHollow = true
             }
         }
+        // A monster sitting the round out is drawn hollow, like something that isn't quite there.
+        if isInactive(piece) { appearance.isHollow = true }
         return appearance
     }
 

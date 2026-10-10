@@ -39,7 +39,8 @@ final class EscortTurnController {
 
             let result = EscortAI.computeTurn(escort: container, entity: entity,
                                               board: coordinator.boardState, gameState: gameManager.game,
-                                              destination: destination(of: container))
+                                              destination: destination(of: container),
+                                              home: coordinator.boardState.objectiveSites[entity.number]?.coord)
             await executeEscortTurn(result: result, container: container, entity: entity, pieceID: pieceID)
 
             guard !isStale else { return }
@@ -105,14 +106,17 @@ final class EscortTurnController {
             guard await coordinator.moveAlong(pieceID, path: result.movementPath, style: .normal), !isStale else { return }
         }
 
-        guard let attack = result.attack, let target = result.attackTarget else { return }
+        guard let attack = result.attack else { return }
         let am = gameManager.attackModifierManager
         // Escorts draw from the ally deck or the monster deck as the scenario specifies.
         let draw: () -> AttackModifier? = container.useAllyDeck ? { am.drawAllyCard() } : { am.drawMonsterCard() }
-        await coordinator.performAttack(
-            attacker: pieceID, target: target,
-            attack: AttackParameters(value: attack.value, isRanged: attack.isRanged, pierce: attack.pierce,
-                                     conditions: attack.conditions, push: attack.push, pull: attack.pull),
-            drawCard: draw)
+        for target in result.attackTargets.isEmpty ? [result.attackTarget].compactMap({ $0 }) : result.attackTargets {
+            guard !isStale, coordinator.isOnBoard(pieceID), coordinator.isOnBoard(target) else { continue }
+            await coordinator.performAttack(
+                attacker: pieceID, target: target,
+                attack: AttackParameters(value: attack.value, isRanged: attack.isRanged, pierce: attack.pierce,
+                                         conditions: attack.conditions, push: attack.push, pull: attack.pull),
+                drawCard: draw)
+        }
     }
 }

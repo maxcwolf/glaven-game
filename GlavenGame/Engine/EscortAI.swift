@@ -20,6 +20,8 @@ struct EscortTurnResult {
     let attackRange: Int
     /// The resolved attack (nil when the escort has no attack or is disarmed).
     var attack: MonsterAttackSpec? = nil
+    /// Every enemy the attack is made against, where it targets more than one.
+    var attackTargets: [PieceID] = []
 }
 
 /// Computes an escort objective's turn with the player-side monster AI: escorts treat monsters
@@ -33,9 +35,31 @@ enum EscortAI {
         entity: GameObjectiveEntity,
         board: BoardState,
         gameState: GameState,
-        destination: Set<HexCoord> = []
+        destination: Set<HexCoord> = [],
+        home: HexCoord? = nil
     ) -> EscortTurnResult {
         let pieceID = PieceID.objective(id: entity.number)
+        // One who holds his place: back onto it if he has been moved off, then an attack on
+        // every enemy beside him.
+        if let strike = escort.standingAttack, let position = board.piecePositions[pieceID] {
+            let stunned = MonsterAI.isActive(.stun, on: entity)
+            var path: [HexCoord] = []
+            if !stunned, !MonsterAI.isActive(.immobilize, on: entity), let home, home != position, !board.isOccupied(home) {
+                let enemies = Set(PlayerSideAI.hostileMonsters(board: board, gameState: gameState, includeInvisible: true)
+                    .compactMap { board.piecePositions[$0] })
+                path = Pathfinder.findPath(board: board, from: position, to: home, canOpenDoors: false,
+                                           occupiedByEnemy: enemies) ?? []
+            }
+            let stands = path.last ?? position
+            let attack = MonsterAI.isActive(.disarm, on: entity) ? nil
+                : MonsterAbility.attack(ActionModel(type: .attack, value: .int(0), valueType: .plus),
+                                        stat: nil, baseAttack: strike, baseRange: 0)
+            let targets = stunned || attack == nil ? [] : PlayerSideAI.hostileMonsters(board: board, gameState: gameState, includeInvisible: false)
+                .filter { board.piecePositions[$0]?.distance(to: stands) == 1 }
+            return EscortTurnResult(escortPieceID: pieceID, entityNumber: entity.number, movementPath: path,
+                                    attackTarget: nil, attackFromHex: targets.isEmpty ? nil : stands, focusTarget: targets.first,
+                                    stunned: stunned, attackValue: strike, attackRange: 0, attack: attack, attackTargets: targets)
+        }
         if !destination.isEmpty, escort.escortMove > 0, let position = board.piecePositions[pieceID] {
             return EscortTurnResult(escortPieceID: pieceID, entityNumber: entity.number,
                                     movementPath: walk(from: position, toward: destination, entity: entity,

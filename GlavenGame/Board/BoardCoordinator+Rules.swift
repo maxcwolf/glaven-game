@@ -63,8 +63,8 @@ extension BoardCoordinator {
 
     /// Scenery without hit points (a water pump): nothing attacks it.
     private func isUntouchable(_ pieceID: PieceID) -> Bool {
-        // An ally only to be healed is no one's enemy either.
-        if objectiveContainer(of: pieceID)?.isSheltered == true { return true }
+        // An ally only to be healed is no one's enemy either, and nothing affects an inactive monster.
+        if objectiveContainer(of: pieceID)?.isSheltered == true || isInactive(pieceID) { return true }
         guard isScenery(pieceID) else { return false }
         return (entity(for: pieceID)?.maxHealth ?? 0) <= 0
     }
@@ -86,6 +86,13 @@ extension BoardCoordinator {
     /// protects (a captive, a crystal, the villagers) is no one's ally: it isn't healed or helped.
     func areAllies(_ a: PieceID, _ b: PieceID) -> Bool {
         side(of: a) == side(of: b) && !isScenery(a) && !isScenery(b) && !isProtected(a) && !isProtected(b)
+            && !isInactive(a) && !isInactive(b)
+    }
+
+    /// A monster of a type that sits this round out, or hasn't woken yet.
+    func isInactive(_ pieceID: PieceID) -> Bool {
+        guard case .monster(let name, _) = pieceID, let game = gameManager?.game else { return false }
+        return MonsterAI.inactiveMonsters(game).contains(name)
     }
 
     /// An objective the party is to keep from harm without its being an ally.

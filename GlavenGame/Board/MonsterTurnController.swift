@@ -28,7 +28,8 @@ final class MonsterTurnController {
     /// revealed mid-round must act after their type has already gone).
     @MainActor func executeMonsterGroup(_ monster: GameMonster, only: Set<Int>? = nil) async {
         guard let coordinator, let gameManager else { return }
-        guard !monster.off, !monster.aliveEntities.isEmpty else { return }
+        guard !monster.off, !monster.aliveEntities.isEmpty,
+              !MonsterAI.inactiveMonsters(gameManager.game).contains(monster.name) else { return }
         coordinator.teach(.monstersAct, at: .monsterCard(monster.name))
 
         guard let ability = gameManager.monsterManager.currentAbility(for: monster) else {

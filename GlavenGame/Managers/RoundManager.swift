@@ -51,7 +51,9 @@ final class RoundManager {
         onRoundAdvanced?()
 
         // Draw monster abilities and apply stat effects
-        for monster in game.monsters where !monster.off && monster.aliveEntities.count > 0 {
+        // (Not for a type that sits this round out.)
+        let inactive = MonsterAI.inactiveMonsters(game)
+        for monster in game.monsters where !monster.off && monster.aliveEntities.count > 0 && !inactive.contains(monster.name) {
             monsterManager.drawAbility(for: monster)
             monsterManager.applyStatEffects(for: monster)
         }

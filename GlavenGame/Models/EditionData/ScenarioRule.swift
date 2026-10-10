@@ -128,6 +128,8 @@ struct BoardFact: Codable, Hashable {
     var looted: String?
     /// This room (by number) isn't revealed yet.
     var unrevealed: Int?
+    /// Every pressure plate in play (by the number of characters) has a figure standing on it.
+    var occupied: ScenarioPlacements.Plates?
 }
 
 // MARK: - Rule Identifier

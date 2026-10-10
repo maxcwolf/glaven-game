@@ -38,6 +38,9 @@ struct ScenarioPlacements: Codable, Equatable {
     var apart: [String]?
     /// Objectives (1-based) that are allies only to be healed: nothing attacks or affects them.
     var sheltered: [Int]?
+    /// Monster types that, for a time, don't act and can't be affected by anything; figures
+    /// move through their hexes but can't stop there.
+    var inactive: [Inactive]?
     /// What water hexes do in this scenario.
     var water: Water?
     /// What appears where an objective stood when it is destroyed, by objective (1-based): a
@@ -135,7 +138,7 @@ struct ScenarioPlacements: Codable, Equatable {
         var leave: Bool?
     }
 
-    struct Plates: Codable, Equatable {
+    struct Plates: Codable, Hashable {
         /// The letters of the plates in play for two characters.
         var markers: [String]
         /// More letters in play by character count: "3": ["b"], "4": ["b", "c"].
@@ -190,6 +193,25 @@ struct ScenarioPlacements: Codable, Equatable {
 }
 
 extension ScenarioPlacements {
+    struct Inactive: Codable, Equatable {
+        var monsters: [String]
+        /// The rounds in which they are inactive: `"odd"` or `"even"` (Fading Lighthouse's two groups).
+        var rounds: String?
+        /// Inactive until a rule's `setUp` names them (Lost Temple's Stone Golems).
+        var untilSetUp: Bool?
+    }
+
+    /// The monster types of a scenario that are inactive in `round`, given those already woken.
+    func inactiveMonsters(round: Int, woken: Set<String>) -> Set<String> {
+        var names: Set<String> = []
+        for entry in inactive ?? [] {
+            if entry.untilSetUp == true { names.formUnion(Set(entry.monsters).subtracting(woken)) }
+            if entry.rounds == "odd", round % 2 == 1 { names.formUnion(entry.monsters) }
+            if entry.rounds == "even", round % 2 == 0 { names.formUnion(entry.monsters) }
+        }
+        return names
+    }
+
     struct Water: Codable, Equatable {
         /// A character or character summon with Poison that enters a water hex suffers trap
         /// damage (Toxic Moor).

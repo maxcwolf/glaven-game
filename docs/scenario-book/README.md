@@ -47,7 +47,8 @@ ends up on the board:
   - `when` — things that have happened on the board, all at once: `{"saved": 1}` (that many
     escorts have arrived), `{"lock": 0}` (that lock of `locks`, from 0, has been released),
     `{"looted": "goal"}` (every goal treasure tile; a tile ref for the goal treasure on it; a
-    treasure's number), `{"unrevealed": 2}` (that room isn't revealed yet). A rule with `"always": true` fires at once; without it, as the round ends
+    treasure's number), `{"unrevealed": 2}` (that room isn't revealed yet), `{"occupied": {"markers": ["a"], "more":
+    {"3": ["b"]}}}` (every pressure plate in play for this many characters has a figure on it). A rule with `"always": true` fires at once; without it, as the round ends
     ("at the end of the round in which…").
   - `setUp` — monster types held back by `later` are set up now, where the map prints them.
   - in a figure's `identifier`: `"tile": "j1a"` (only figures standing on that tile) and
@@ -72,6 +73,10 @@ ends up on the board:
   monster type, allies of one another (#85 Sun Demons, #91 Living Spirits, #92 the city's men).
 - `sheltered`: objectives that are allies only to be healed: no monster attacks them and no
   ability touches them (#68's tree, which only the scenario harms).
+- `inactive`: monster types that for a time don't act and can't be affected by anything, and
+  whose hexes figures move through but can't stop on: `{"monsters": [...], "rounds": "odd"}`
+  (or `"even"`: #61's two groups) or `"untilSetUp": true` (asleep until a rule's `setUp` names
+  them: #79's Stone Golems). Drawn hollow.
 - `water`: what water hexes do — `hurtsThePoisoned` (a poisoned character or summon walking in
   suffers trap damage, #68), `endOfTurn` (damage for any figure ending its turn there, #95).
 - `notes`: the special rules in words for the scenario brief — only those the game enforces.
@@ -157,7 +162,7 @@ its map, every door objective is on a door and every objective number exists.
 | 72 Oozing Grove | 3 trees | — (oozes rise beside their tree) | win: destroy all trees, kill all Oozes | — |
 | 74 Merchant Ship | — | a–e | — | water tiles aren't modelled |
 | 75 Overgrown Graveyard | 9 graves | — (what rises, rises where the grave was) | win: all graves and the Bloated Regent | graves are attacked rather than dug up with movement |
-| 79 Lost Temple | Fish | — | win: kill the Betrayer | Fish's turn, the dormant golems and his loss aren't modelled |
+| 79 Lost Temple | Fish | a, b, c (pressure plates) | win: kill the Betrayer; lost if Fish is killed | the Betrayer's two specials (forced moves, mind control) aren't modelled |
 | 84 Crystalline Cave | the crystal | — | lost if it is destroyed | protected, no ally; losing a card to spare it isn't modelled |
 | 86 Harried Village | 11 villagers | b–f | win: 7 reach the docks; lost at 5 killed | — |
 | 90 Demonic Rift | — | b, c (the Living Spirits, once every demon is dead) | win: every Living Spirit killed | the altar crossing and the losses for leaving a room aren't modelled |
@@ -281,7 +286,7 @@ goals are checked; the notes say what around a goal is still missing.
 | 76 | Harrower Hive | Reveal all rooms and kill all enemies. | **no** — destructible walls aren't modelled; plays as "kill all enemies" | — | — |
 | 77 | Vault of Secrets | Loot all treasure tiles and kill all City Guards before the alarm is raised. | yes | Any City Guard occupies a pressure plate (a). | **no** — guards don't head for the plates |
 | 78 | Sacrifice Pit | Kill all enemies and stop the sacrifice. | kill all enemies: yes; the sacrifice isn't modelled | The victim is sacrificed: a Cultist (b) starts its turn adjacent to the altars (d) while the victim is also adjacent to the altars. | **no** |
-| 79 | Lost Temple | Kill the Betrayer. | yes (the Stone Golems aren't dormant) | Fish is killed. | **no** — Fish's turn and the dormant golems come first |
+| 79 | Lost Temple | Kill the Betrayer. | yes | Fish is killed. | yes |
 | 80 | Vigil Keep | Every character must loot one treasure tile, and then all characters must reach the B tile (escape). | yes | Any character becomes exhausted while not occupying the B tile. | yes |
 | 81 | Temple of the Eclipse | Kill the Colorless. | yes | — | — |
 | 82 | Burning Mountain | Sacrifice one artifact, or escape with all artifacts. | approximately — with the treasure looted, a character on the altar hex or everyone at the entrance (no artifact is removed) | — | — |

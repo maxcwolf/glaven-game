@@ -1030,6 +1030,191 @@ final class ScenarioSpecialRuleTests: XCTestCase {
         XCTAssertEqual(summon.health, 10 - due)
     }
 
+    // MARK: - Monsters that sit a round out
+
+    /// Fading Lighthouse: in odd rounds only the Oozes and Giant Vipers act and can be
+    /// affected; in even rounds only the demons. Figures move through the others, but can't
+    /// stop on them.
+    func testTheLighthousesGroupsTakeRoundsAbout() async throws {
+        let sim = try simulator("61")
+        let coord = sim.coord
+        sim.gm.game.state = .next   // round 1 is being played
+        let flame = try XCTUnwrap(pieces(sim, named: "flame-demon").first), ooze = try XCTUnwrap(pieces(sim, named: "ooze").first)
+        XCTAssertEqual(MonsterAI.inactiveMonsters(sim.gm.game), ["flame-demon", "frost-demon"])
+        XCTAssertTrue(coord.isInactive(flame))
+        XCTAssertFalse(coord.isInactive(ooze))
+        XCTAssertFalse(coord.areEnemies(character(sim, 0), flame), "nothing affects it")
+        XCTAssertFalse(coord.areAllies(ooze, flame), "nor helps it")
+        XCTAssertTrue(coord.areEnemies(character(sim, 0), ooze))
+        XCTAssertFalse(coord.targetableEnemies(of: character(sim, 0), range: 99).contains(flame))
+        let sets = coord.movementSets(for: character(sim, 0))
+        let flameHex = try XCTUnwrap(coord.boardState.piecePositions[flame]), oozeHex = try XCTUnwrap(coord.boardState.piecePositions[ooze])
+        XCTAssertTrue(sets.allies.contains(flameHex), "to be moved through, not stopped on")
+        XCTAssertFalse(sets.enemies.contains(flameHex))
+        XCTAssertTrue(sets.enemies.contains(oozeHex))
+        XCTAssertFalse(PlayerSideAI.hostileMonsters(board: coord.boardState, gameState: sim.gm.game, includeInvisible: true).contains(flame),
+                       "no summon goes for it")
+        XCTAssertTrue(PlayerSideAI.hostileMonsters(board: coord.boardState, gameState: sim.gm.game, includeInvisible: true).contains(ooze))
+        // Nor would a monster of another side.
+        let oozes = try group(sim, "ooze")
+        oozes.isAlly = true
+        XCTAssertFalse(try enemies(sim, of: "ooze").contains(flame))
+        XCTAssertTrue(try enemies(sim, of: "ooze").contains(try XCTUnwrap(pieces(sim, named: "giant-viper").first)))
+        oozes.isAlly = false
+        XCTAssertTrue(coord.pieceAppearance(flame).isHollow)
+        XCTAssertFalse(coord.pieceAppearance(ooze).isHollow)
+        // Its turn, were it given one, is no turn.
+        let demons = try group(sim, "flame-demon")
+        sim.gm.monsterManager.drawAbility(for: demons)
+        var attacks = 0
+        coord.attackObserver = { _, _ in attacks += 1 }
+        await MonsterTurnController(coordinator: coord, gameManager: sim.gm).executeMonsterGroup(demons)
+        XCTAssertFalse(coord.turnLog.contains { $0.message.contains("Flame Demon\u{2019}s turn") })
+        XCTAssertEqual(attacks, 0)
+
+        // Round 2, and the time between rounds, when it is the round to come that counts.
+        sim.gm.game.round = 2
+        XCTAssertEqual(MonsterAI.inactiveMonsters(sim.gm.game), ["ooze", "giant-viper"])
+        XCTAssertTrue(coord.areEnemies(character(sim, 0), flame))
+        sim.gm.game.state = .draw
+        XCTAssertEqual(MonsterAI.inactiveMonsters(sim.gm.game), ["flame-demon", "frost-demon"], "round 3 is next")
+    }
+
+    /// Played through: no demon takes a turn in round 1, no Ooze or Viper in round 2.
+    func testOnlyOneGroupActsEachRoundAtTheLighthouse() async throws {
+        let sim = try ScenarioSimulator(scenario: "61", options: .init(characters: ["brute", "spellweaver"], seed: 1, autoResolvePrompts: true))
+        var drew: Set<String> = [], ordered: Set<String> = []
+        await sim.play(rounds: 2) {
+            guard sim.gm.game.round == 1, sim.gm.game.state == .next else { return }
+            drew.formUnion(sim.gm.game.monsters.filter(\.abilityDrawn).map(\.name))
+            ordered.formUnion(sim.coord.turnOrder.compactMap { if case .monster(let monster) = $0.figure { return monster.name }; return nil })
+        }
+        XCTAssertEqual(sim.violations, [])
+        XCTAssertEqual(drew, ["ooze", "giant-viper"], "no card is drawn for the group sitting out")
+        XCTAssertEqual(ordered, ["ooze", "giant-viper"], "and it has no place in the order")
+        let log = sim.transcript
+        let second = try XCTUnwrap(log.firstIndex { $0.contains("Round 2") && $0.contains("===") }, log.prefix(40).joined(separator: "\n"))
+        func turns(_ lines: ArraySlice<String>) -> Set<String> {
+            Set(lines.compactMap { line in line.range(of: "\u{2019}s turn:").map { String(line[..<$0.lowerBound]) } })
+        }
+        let first = turns(log[..<second]), next = turns(log[second...])
+        XCTAssertTrue(first.isDisjoint(with: ["Flame Demon", "Frost Demon"]), "\(first)")
+        XCTAssertFalse(first.isDisjoint(with: ["Ooze", "Giant Viper"]), "\(first)")
+        XCTAssertTrue(next.isDisjoint(with: ["Ooze", "Giant Viper"]), "\(next)")
+        XCTAssertFalse(next.isDisjoint(with: ["Flame Demon", "Frost Demon"]), "\(next)")
+    }
+
+    // MARK: - Lost Temple
+
+    /// The Stone Golems can't act or be affected until every pressure plate in play has a
+    /// figure on it — Fish holds one — and then act as any monster.
+    func testTheTemplesGolemsWakeWhenEveryPlateIsHeld() async throws {
+        for count in [2, 3] {
+            let sim = try simulator("79", characters: Array(["brute", "spellweaver", "cragheart"].prefix(count)))
+            let coord = sim.coord, rules = sim.gm.scenarioRulesManager
+            sim.gm.game.state = .next
+            let golem = try XCTUnwrap(pieces(sim, named: "stone-golem").first)
+            let fish = try XCTUnwrap(objectives(sim).first)
+            let home = try XCTUnwrap(coord.boardState.piecePositions[fish])
+            XCTAssertTrue(hexes(sim, "a").contains(home), "Fish starts on a plate")
+            XCTAssertEqual(coord.pressurePlateHexes.count, count == 2 ? 3 : 4, "the plates in play are drawn")
+            XCTAssertTrue(coord.isInactive(golem))
+            XCTAssertFalse(coord.areEnemies(character(sim, 0), golem))
+
+            let golems = try group(sim, "stone-golem")
+            sim.gm.monsterManager.drawAbility(for: golems)
+            await MonsterTurnController(coordinator: coord, gameManager: sim.gm).executeMonsterGroup(golems)
+            XCTAssertFalse(coord.turnLog.contains { $0.message.contains("Stone Golem\u{2019}s turn") })
+
+            var plates = hexes(sim, "a").filter { $0 != home }
+            XCTAssertEqual(plates.count, 2)
+            stand(sim, 0, on: plates.removeFirst())
+            rules.evaluateRules(phase: .figureChange)
+            XCTAssertTrue(coord.isInactive(golem), "one plate is empty")
+            stand(sim, 1, on: plates.removeFirst())
+            if count == 3 {
+                rules.evaluateRules(phase: .figureChange)
+                XCTAssertTrue(coord.isInactive(golem), "plate (b) is in play for three")
+                stand(sim, 2, on: try XCTUnwrap(hexes(sim, "b").first))
+            }
+            rules.evaluateRules(phase: .figureChange)
+            XCTAssertFalse(coord.isInactive(golem), "\(count) characters")
+            XCTAssertTrue(coord.areEnemies(character(sim, 0), golem))
+            XCTAssertEqual(sim.gm.game.scenario?.releasedMonsters, ["stone-golem"])
+            XCTAssertTrue(coord.turnLog.contains { $0.message.contains("Stone Golem wakes") })
+            // Stepping off again changes nothing.
+            stand(sim, 0, on: try XCTUnwrap(coord.boardState.cells.keys.sorted().first(where: coord.isEmptyHex)))
+            rules.evaluateRules(phase: .figureChange)
+            XCTAssertFalse(coord.isInactive(golem))
+            await MonsterTurnController(coordinator: coord, gameManager: sim.gm).executeMonsterGroup(golems)
+            XCTAssertTrue(coord.turnLog.contains { $0.message.contains("Stone Golem\u{2019}s turn") })
+        }
+    }
+
+    /// The plates are judged as a turn ends: the golems wake with the turn of the character who
+    /// steps onto the last one.
+    func testTheGolemsWakeAsTheTurnEnds() throws {
+        let sim = try simulator("79")
+        let coord = sim.coord
+        sim.gm.game.state = .next
+        let golem = try XCTUnwrap(pieces(sim, named: "stone-golem").first)
+        let home = try XCTUnwrap(coord.boardState.piecePositions[try XCTUnwrap(objectives(sim).first)])
+        for (index, plate) in hexes(sim, "a").filter({ $0 != home }).enumerated() { stand(sim, index, on: plate) }
+        XCTAssertTrue(coord.isInactive(golem))
+        let turn = PlayerTurnController(characterID: sim.gm.game.characters[0].id, coordinator: coord, gameManager: sim.gm)
+        turn.phase = .turnComplete
+        coord.activePlayerTurn = turn
+        // The round goes on after this turn (its end would look at the rules too).
+        coord.turnOrder = sim.gm.game.characters.enumerated().map {
+            TurnOrderEntry(figure: .character($0.element), initiative: Double(10 + $0.offset))
+        }
+        coord.currentTurnIndex = 0
+        let round = sim.gm.game.round
+        coord.finishPlayerTurn()
+        XCTAssertEqual(sim.gm.game.round, round)
+        XCTAssertEqual(sim.gm.game.state, .next, "the round isn't over")
+        XCTAssertFalse(coord.isInactive(golem))
+    }
+
+    /// Fish, moved off his plate, goes back to it on his turn and attacks every enemy beside
+    /// him for 3; his death loses the scenario.
+    func testFishHoldsHisPlate() async throws {
+        let sim = try simulator("79")
+        let coord = sim.coord
+        sim.gm.game.state = .next
+        let fish = try XCTUnwrap(objectives(sim).first)
+        let container = try XCTUnwrap(coord.objectiveContainer(of: fish))
+        let home = try XCTUnwrap(coord.boardState.piecePositions[fish])
+        XCTAssertEqual(container.standingAttack, 3)
+        let beside = home.neighbors.sorted().filter { free(sim, $0) }
+        XCTAssertGreaterThanOrEqual(beside.count, 2)
+        var vipers: [GameMonsterEntity] = []
+        for hex in beside.prefix(2) {
+            let viper = try entity(sim, try XCTUnwrap(coord.spawnMonster(name: "giant-viper", type: .normal, at: hex, origin: .placed)))
+            viper.maxHealth = 20
+            viper.health = 20
+            vipers.append(viper)
+        }
+        let away = try XCTUnwrap(coord.boardState.cells.keys.sorted().first { $0.distance(to: home) == 3 && coord.isEmptyHex($0) })
+        coord.boardState.movePiece(fish, to: away)
+        var attacked: [PieceID] = []
+        coord.attackObserver = { attacker, target in if attacker == fish { attacked.append(target) } }
+        await EscortTurnController(coordinator: coord, gameManager: sim.gm).executeEscortTurns(for: container)
+        XCTAssertEqual(coord.boardState.piecePositions[fish], home, "back on his plate")
+        XCTAssertEqual(attacked.count, 2, "every enemy beside him")
+        XCTAssertTrue(vipers.allSatisfy { $0.health < 20 || coord.turnLog.contains { $0.message.contains("Fish attacks") } })
+        // The sleeping golems beside nobody are left alone, and he doesn't wander when at home.
+        attacked = []
+        await EscortTurnController(coordinator: coord, gameManager: sim.gm).executeEscortTurns(for: container)
+        XCTAssertEqual(coord.boardState.piecePositions[fish], home)
+        XCTAssertEqual(attacked.count, 2)
+
+        XCTAssertNil(coord.pendingResult)
+        coord.sufferDamage(99, to: fish)
+        coord.checkVictoryDefeat()
+        XCTAssertEqual(coord.pendingResult, .defeat)
+    }
+
     // MARK: - What the brief says
 
     /// The brief says the rules the game enforces in the book's sense, not a guess from the data.

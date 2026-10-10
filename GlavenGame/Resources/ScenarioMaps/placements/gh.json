@@ -141,7 +141,7 @@
   }},
   "60": {"goal": {"text": "Loot all treasure tiles, then all characters must escape through the entrance.", "loot": "goal", "escape": {"start": true}, "lostIfExhausted": ["beforeLoot", "offExit"]}, "tiles": {
   }},
-  "61": {"goal": {"text": "Loot all treasure tiles.", "loot": "goal"}, "lootActionOnly": true, "tiles": {
+  "61": {"goal": {"text": "Loot all treasure tiles.", "loot": "goal"}, "notes": ["In odd rounds only the Oozes and Giant Vipers act; in even rounds only the Flame Demons and Frost Demons.", "The group sitting a round out can't be attacked or affected by anything; figures may move through its monsters' hexes but not stop there."], "lootActionOnly": true, "inactive": [{"monsters": ["flame-demon", "frost-demon"], "rounds": "odd"}, {"monsters": ["ooze", "giant-viper"], "rounds": "even"}], "tiles": {
   }},
   "62": {"goal": {"text": "Kill the Hungry Soul.", "kill": ["hungry-soul"]}, "notes": ["A Living Bones rises at each end of the first room as every round begins.", "When ten Living Bones have been killed the Hungry Soul appears: an elite Living Bones with more hit points, +2 Attack and Shield 5 on top of its own \u2014 less 1 for every other Living Bones on the map."], "rules": [{"round": "true", "always": true, "once": true, "figures": [{"identifier": {"type": "monster", "edition": "gh", "name": "living-bones"}, "type": "killed", "value": 10}], "spawns": [{"monster": {"name": "hungry-soul", "type": "boss"}, "marker": "c"}]}], "effects": [{"on": "hungry-soul", "shield": "0-X", "per": {"monster": "living-bones"}}], "tiles": {
     "b2b": {"markers": {"c": [[1, 3]]}},
@@ -194,8 +194,10 @@
   }},
   "77": {"goal": {"text": "Loot all treasure tiles and kill all City Guards before the alarm is raised.", "loot": "goal", "kill": ["city-guard"]}, "tiles": {
   }},
-  "79": {"goal": {"text": "Kill the Betrayer.", "kill": ["the-betrayer"]}, "notes": ["The last door opens when every Stone Golem is dead."], "locks": [{"between": ["d2a", "m1a"], "note": "Locked: it opens when all Stone Golems are killed."}], "tiles": {
-    "d2a": {"objectives": [{"objective": 1, "cells": [[0, 3]]}]}
+  "79": {"goal": {"text": "Kill the Betrayer.", "kill": ["the-betrayer"], "lostAt": {"1": 1}}, "notes": ["The Stone Golems can't act or be affected by anything until every pressure plate in play has a figure on it as a turn ends; then they wake and act as if just revealed.", "Fish holds one plate. On initiative 99 he returns to it if he has been moved off, then attacks every enemy beside him for 3.", "The last door opens when every Stone Golem is dead."], "locks": [{"between": ["d2a", "m1a"], "note": "Locked: it opens when all Stone Golems are killed."}], "rules": [{"round": "true", "always": true, "once": true, "when": [{"occupied": {"markers": ["a"], "more": {"3": ["b"], "4": ["b", "c"]}}}], "setUp": ["stone-golem"]}], "inactive": [{"monsters": ["stone-golem"], "untilSetUp": true}], "tiles": {
+    "d2a": {"objectives": [{"objective": 1, "cells": [[0, 3]]}], "markers": {"a": [[0, 3]]}},
+    "k1a": {"markers": {"a": [[1, 3]], "b": [[5, 3]]}},
+    "k2b": {"markers": {"a": [[5, 3]], "c": [[1, 3]]}}
   }},
   "80": {"goal": {"text": "Every character must loot one treasure tile, then all must reach the B tile.", "loot": "each", "escape": {"tile": "b1a"}, "lostIfExhausted": ["offExit"]}, "notes": ["Until a character has looted a treasure tile they attack with Disadvantage and can't use any item.", "Each character may loot only one treasure tile."], "effects": [{"on": "party", "untilLooted": true, "disadvantage": true, "noItems": true}], "tiles": {
   }},

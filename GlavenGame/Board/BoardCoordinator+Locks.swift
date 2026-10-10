@@ -41,6 +41,9 @@ extension BoardCoordinator {
             letters += (lock.plate ?? []) + (lock.held ?? []) + (lock.allOnPlates.map(platesInPlay) ?? [])
         }
         if let plates = placements.goal?.occupy { letters += platesInPlay(plates) }
+        for fact in (placements.rules ?? []).flatMap({ $0.when ?? [] }) {
+            if let plates = fact.occupied { letters += platesInPlay(plates) }
+        }
         return Set(plateHexes(letters))
     }
 

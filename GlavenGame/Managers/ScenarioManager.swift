@@ -246,9 +246,13 @@ final class ScenarioManager {
     func setUpHeldBack(_ names: [String]) {
         guard let scenario = game.scenario else { return }
         let waiting = heldBackMonsters(in: scenario).intersection(names)
-        guard !waiting.isEmpty else { return }
+        // Types that stand inactive until a rule says so are woken the same way.
+        let asleep = Set((ScenarioPlacementStore.shared.placements(for: scenario.data.index, edition: scenario.data.edition)?
+            .inactive ?? []).filter { $0.untilSetUp == true }.flatMap(\.monsters)).intersection(names)
+            .subtracting(scenario.releasedMonsters)
+        guard !waiting.isEmpty || !asleep.isEmpty else { return }
         onBeforeMutate?()
-        scenario.releasedMonsters.formUnion(waiting)
+        scenario.releasedMonsters.formUnion(waiting.union(asleep))
         let playerCount = max(2, game.characters.filter { !$0.absent }.count)
         for room in scenario.data.rooms ?? [] where scenario.revealedRooms.contains(room.roomNumber) {
             setUpMonsters(of: room, playerCount: playerCount, edition: scenario.data.edition) { waiting.contains($0) }

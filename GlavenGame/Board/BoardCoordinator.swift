@@ -1286,9 +1286,12 @@ final class BoardCoordinator {
     func buildTurnOrderAndStart() {
         guard let gameManager = gameManager else { return }
         teach(.initiative, at: .turnRail)
+        let inactive = MonsterAI.inactiveMonsters(gameManager.game)
         // Build turn order from sorted figures
         turnOrder = gameManager.game.figures.compactMap { figure in
             switch figure {
+            case .monster(let m) where inactive.contains(m.name):
+                return nil
             case .character(let c) where c.exhausted || c.absent:
                 return nil
             case .character(let c) where c.longRest:
@@ -1630,6 +1633,8 @@ final class BoardCoordinator {
         lootAtEndOfTurn(ptc.characterID)
 
         updateLocks(turnEnded: true)
+        // Rules that wait for where figures stand as a turn ends (every plate held).
+        gameManager?.scenarioRulesManager.evaluateRules(phase: .figureChange)
         checkVictoryDefeat(turnEnded: true)
         if scenarioResult == nil {
             advanceToNextFigure()
@@ -2512,15 +2517,18 @@ final class BoardCoordinator {
     /// their stat bonuses, and mid-round they act as newly revealed.
     private func readyNewMonsters(_ placed: [(name: String, standee: Int)]) {
         guard let gameManager else { return }
+        let inactive = MonsterAI.inactiveMonsters(gameManager.game)
         for monster in gameManager.game.monsters where placed.contains(where: { $0.name == monster.name }) {
-            if isMidRound, !monster.abilityDrawn {
+            if isMidRound, !monster.abilityDrawn, !inactive.contains(monster.name) {
                 gameManager.monsterManager.drawAbility(for: monster)
             }
             gameManager.monsterManager.applyStatEffects(
                 for: monster, only: Set(placed.filter { $0.name == monster.name }.map(\.standee)))
         }
         if isMidRound {
-            for piece in placed { pendingRevealedStandees[piece.name, default: []].insert(piece.standee) }
+            for piece in placed where !inactive.contains(piece.name) {
+                pendingRevealedStandees[piece.name, default: []].insert(piece.standee)
+            }
         }
     }
 
@@ -2539,8 +2547,19 @@ final class BoardCoordinator {
         let slots = boardState.heldMonsterSlots.filter { names.contains($0.name) }
         boardState.heldMonsterSlots.removeAll { names.contains($0.name) }
         let playerCount = max(2, gameManager.game.characters.filter { !$0.absent }.count)
-        let placed = placeRevealedMonsters(slots: slots, newEntities: unplacedMonsterEntities().filter { names.contains($0.0.name) },
+        var placed = placeRevealedMonsters(slots: slots, newEntities: unplacedMonsterEntities().filter { names.contains($0.0.name) },
                                            playerCount: playerCount)
+        // Monsters that stood inactive wake where they are, as if just revealed.
+        let woken = (scenarioData?.placements?.inactive ?? []).filter { $0.untilSetUp == true }.flatMap(\.monsters)
+        for name in names where woken.contains(name) {
+            let standees = boardState.piecePositions.keys.compactMap { id -> Int? in
+                if case .monster(name, let standee) = id { return standee }
+                return nil
+            }.sorted()
+            guard !standees.isEmpty else { continue }
+            log("Every \(monsterTypeName(name)) wakes", category: .setup)
+            placed += standees.map { (name: name, standee: $0) }
+        }
         readyNewMonsters(placed)
         syncPieceVisuals()
         for piece in placed {
