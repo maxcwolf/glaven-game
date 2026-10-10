@@ -12,6 +12,10 @@ goal is**. Those come from the scenario book, and this folder is where what was 
 - `GlavenGame/Resources/ScenarioMaps/placements/gh.json` — the hexes, and the goals the game
   enforces for objectives (below).
 
+The book itself (Scenario Book, second printing) isn't kept in the repository — the PDF is 319 MB.
+It can be read online at <https://kirsanova.relfbo.qapubl.club/view/145446/2/>; page numbers in
+the notes (p.55 for #41, and so on) are that book's.
+
 ## Placements: where objectives and lettered hexes are
 
 `placements/gh.json` is keyed by scenario number, then by map tile, in the tile's own coordinates
