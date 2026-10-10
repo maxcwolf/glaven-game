@@ -506,27 +506,59 @@ Performance & robustness
 
 ### Rules audit 2026-10-09 (`docs/audits/2026-10-09-rules-audit.md`)
 
-A rule-by-rule audit against the rulebook and FAQ (`docs/rulebook/gh-rules.md`), with every
-finding, its fix and its test in the audit document. Fixed so far: what comes with performing an
-action (XP, infusions, the lost icon), active bonuses by half, elements infused and consumed in one
-turn, push and pull, Retaliate's timing, Advantage with effect cards, random standees, the long
-rest as a turn, trap legends for all 75 scenarios with traps, monster cards (Shield timing, shared
-decks, element consumption, heals, disarmed and muddled movement), campaign availability and the
-Enhancer, and the scenario rules the re-audit found wrong.
+A rule-by-rule audit of the game against the Gloomhaven rulebook, the official FAQ and the
+scenario book. The rules are a numbered checklist in `docs/rulebook/gh-rules.md` (SET, RND, TRN,
+MOV, LOS, ATK, CND, ELE, ACT, MON, END, CMP); every finding, its fix and the test that pins it is
+a row of the audit document. About 130 findings, about 115 fixed.
 
-Still open from it, most important first:
-- [x] **Walls beside doors** (C2, A2–A4; `WallLineTests`): the line between two tiles' full hexes is a wall — no move, push, melee, loot or adjacency across it; range is counted round walls; a sight line touching a wall or a closed door is blocked
-- [x] **A door ends the move** (C3; `DoorRuleTests`): a character who opens a door goes on with the movement left
-- [x] **Rooms with two doors** (N1; `MapRevealTests`): a room is the same whichever door it is entered by
-- [x] **#90 Demonic Rift** (`DemonicRiftTests`): both rooms on the map, the altar crossing for characters, the spirits once a character stands in each room, the losses for an empty room and for one character left
-- [ ] Allied monsters drop money tokens (C8); solo play isn't one level higher (E7); an escape is recorded as an exhaustion (E12); a stunned character is still offered defence items (B7); multi-use items are optional each time (B6); "start/end of your next turns" bonuses do nothing on a long-rest turn (B8)
-- [ ] The game places an area itself (the placement covering the chosen enemy and the most others) rather than the player (A10; mirror images and added targets are done); a player can't end an active bonus by choice (B4); charges marked per attack action rather than per attack (B11)
-- [x] Obstacles never placed to divide the map (C9); a jumping monster doesn't land on a trap mid-route (D9); Inferno's room-wide attack and ally damage (N5); +1 Target and elements never doubled at the Enhancer (N4)
-- [ ] Scenario "start of round" rules run after the cards are chosen (#5 Disarm, #48 Muddle, #31/#39 elements)
-- [ ] Travelling on without returning to Gloomhaven, linked scenarios and retries skipping the road event, the optional city event (F19); collective results split by the players (F20); summon stat enhancements (F8)
-- [x] Map data monster places corrected against the book in 22 rooms (N2; `MapMonsterPlaceTests`)
-- [ ] #76 discarding three cards and its destructible walls; #95's tokens, lock, spawns and boulders with hit points (#35's battlements are done: `BattlementsTests`)
-- [ ] The simulator has never won a game (0 of 376 runs), so goals and late rooms are only covered by unit tests; the tests listed in the audit as not proving what they say
+**Where it stands (2026-10-10).** Everything is committed on `feat/scenario-rules` (not pushed
+since the audit began; `main` is untouched). `swift test` passes (1,534 tests); the all-scenarios
+playthrough has no rule violation over four seeds; the veteran party wins six kinds of scenario
+on every test run.
+
+**Picking it up again**
+- Read the audit document's intro, then the open rows below. Rule texts: `docs/rulebook/gh-rules.md`
+  (with the FAQ rulings worked in); FAQ: https://mahmati.kapsi.fi/bg/gloomhaven/gloomhaven_official_faq.html;
+  scenario book: see `docs/scenario-book/README.md` (how to read a map, every placements key).
+  Card texts: the scans in `GlavenGame/Resources/CardImages/gh/<cardId>.jpeg` and
+  `EditionData/gh/label/en.json` — not memory.
+- Every fix ships with a test that fails without it. Check that by taking the fix out
+  (`git stash push <file>`, run the test, `git stash pop`) — never `git checkout` a file with
+  uncommitted work. `scripts/mutate.py` does the same for 35 standing rules (see below).
+- Verify a batch with: `swift test`; `SIM_ALL=1 SIM_SEEDS=4 swift test --filter testAllScenariosPlayToALegitimateEnd`;
+  `SIM_ALL=1 swift test --filter testVeteranPartiesWinMostScenarios`; and
+  `GOLDEN_RECORD=1 swift test --filter GoldenTurnLogTests` followed by reading the diff.
+- Adjacency and range are asked of the board (`boardState.areAdjacent`, `neighbors(of:)`,
+  `range(from:to:)`, `isWithin`, `steps`), never of the bare hex grid: `BoardGeometryGuardTests`
+  fails otherwise.
+- Then mark the row fixed in the audit document (with the test's name) and tick it here.
+
+**Open, most useful first**
+- [ ] **Mutation checks** — run `scripts/mutate.py --all` (about an hour and a half) and write a test for every mutation it reports as not caught; add mutations for the fixes whose failing-before half was only read, not run: C8, E7, E12, B7, B6, B12, B11, B4, B8 and the start-of-round rules (`MoneyTokenTests`, `SetupRulesTests`, `ItemUseRuleTests`, `ChargedBonusTests`, `RestRuleTests`, `ScenarioEnforcedRuleTests`). Note: breaking B7 (`canUseItems` always true) makes `ItemUseRuleTests` hang on an unanswered prompt rather than fail
+- [ ] **Look at the new interface** (N16): the Solo switch (setup screen), the cards-in-play rows with "End This Bonus" (party panel; rows are 28 points high), the damage sheet's "Let <card> take it", the long-rest sheet's heal toggle and items, the wall lines between tiles. None has been seen on a device or a rendered screen
+- [ ] **Element choices** (B13, N7): which element an "any element" consume takes (`GameState.chooseElements` picks, strong first); declining the Air that Foul Wind, Nature's Lift and Crackling Air consume by themselves (attack step of `PlayerTurnController`); Crackling Air's Air consumed once as the card is played (FAQ). A printed consume can already be declined (`consumeOptions` / `toggleConsume`); `PendingElementChoice` is an element picker to reuse
+- [ ] **The player places an area** (A10): the player taps one enemy and the game picks the placement covering it and the most others (`BoardCoordinator.beginAttackAction`, `areaTargets`; `AoEResolver.bestPlacement`, `rangedPlacements`). Mirror images and added targets are done
+- [ ] **Negating damage, the rest** (N8, N9, N10): a card in the active area may be lost to negate damage; Warding Strength's and Cold Front's charges are marked before the lose-a-card choice; the player chooses which Shield to use first (`BoardCoordinator+Rules.resolveDamage`, `+Items.offerDefenseItem`, `useChargedArmour`)
+- [ ] **Standees that run out** (N11): the monsters nearest the revealing character are set up first (`placeRevealedMonsters` fills in map order)
+- [ ] **#9's scouts** (N12): the ledger reports a Vermling Scout attacking one character twice in the round the Overseer has them act again (veteran playthrough, seeds 2 and 3) — a miscount or a real double attack
+- [ ] **To check** (N13): Unending Chant and Curses not from attacks; when Potent Potables and Angelic Ascension mark their charge; Frost Armor's "suffer no damage instead" read as a damage step of 0
+- [ ] Low: push and pull judge "further" and "closer" by plain distance (A12); a numbered treasure already looted in the campaign is still drawn on a replay (C11)
+- [ ] Town and campaign: travelling on without returning to Gloomhaven, linked scenarios and retries skipping the road event, the optional city event (F19, N6); collective results split by the players (F20); summon stat enhancements (F8); nothing in the data unlocks #72, #73, #76, #77 (N3, a question)
+- [ ] Scenario mechanics not built (see `docs/scenario-book/README.md` for each scenario's state; its `rules-audit.md` is the 2026-10-09 snapshot and its rows are only partly brought up to date): #76's destructible walls and three discarded cards; #95's tokens, locked door, timed spawns and boulders with hit points; carried things (#54, #69, #81, #82, #88); wind, boulders, water and current (#71, #73, #74, #88); losing a card or forgoing an action for a scenario effect (#26, #44, #52, #75, #84); #78's victim; #49's cannon; #55 (no map); bosses #21, #34; #79's forced moves
+- [ ] The simulator: 25 scenarios the veteran party never wins (#7, #12, #15, #19, #26, #27, #30, #33, #40, #50, #52, #59, #60, #61, #66, #67, #69, #70, #71, #73, #79, #82, #85, #90, #92) — mostly goals `VeteranPolicy` doesn't play for (a Loot-action treasure, pressure plates, escorts, protected objectives, #90's altars); no line-of-sight check independent of the engine's; a character's attack with a custom or special-target line and a boss's attacks aren't range-checked; the first-level `TacticalPolicy` party still never wins
+- [ ] Housekeeping: `.claude/worktrees/agent-a31ea4be2e273913f` and `agent-acad29b6285721967` (and their `worktree-agent-…` branches) are leftovers of this audit whose changes are all in commits `8c58c2d` and `ded90f2`; they can be removed. `feat/sound-overhaul` and `feat/scenario-rewards` are other work, untouched
+
+**Done in it** (each with its tests named in the audit document)
+- [x] What comes with performing an action (XP, infusions, the lost icon), active bonuses by half, elements infused and consumed in one turn, push and pull, Retaliate's timing, Advantage with effect cards, random standees, the long rest as a turn
+- [x] Trap legends for all 75 scenarios with traps; monster cards (Shield timing, shared decks, element consumption, heals, disarmed and muddled movement); campaign availability and the Enhancer; the scenario rules the re-audit found wrong
+- [x] **Walls** (C2, A2–A4; `WallLineTests`): the line between two tiles' full hexes is a wall — no move, push, melee, loot or adjacency across it; range is counted round walls; a sight line touching a wall or a closed door is blocked; the lines are drawn on the board
+- [x] Doors (C3, N1; `DoorRuleTests`, `MapRevealTests`): a character who opens a door goes on with the movement left; a room is the same whichever door it is entered by
+- [x] Areas (A8, part of A10; `AreaAttackRuleTests`): mirror images, added targets, the in-range hex; Inferno's room (N5; `InfernoTests`)
+- [x] Obstacles never placed to divide the map (C9); a jumping monster doesn't land on a trap mid-route (D9); +1 Target and elements never doubled at the Enhancer (N4)
+- [x] #90 Demonic Rift (`DemonicRiftTests`) and #35 Gloomhaven Battlements A (`BattlementsTests`) by the book
+- [x] Monster places on the maps corrected against the book in 22 rooms (N2; `MapMonsterPlaceTests`)
+- [x] Items, bonuses, solo play and round starts (C8, E7, E12, B4, B6, B7, B8, B11, B12, A11, S-gen; `MoneyTokenTests`, `ItemUseRuleTests`, `SetupRulesTests`, `ChargedBonusTests`, `RestRuleTests`)
+- [x] Rule tests through real play on a shared fixture (`Tests/Support/RuleBoard.swift`), the weak tests replaced, a simulator that wins (`VeteranPolicy`, `PlayLedger`)
 
 ### Remaining gaps
 

@@ -15,7 +15,8 @@ Each finding has an id, the rule it breaks, what the game did, and its state:
 About 130 findings. As of 2026-10-10 about 110 are fixed and 6 partly (the turn engine, trap
 legends, the campaign, scenario rules, monster turns, rooms with two doors and doors mid-move, the
 walls between tiles with range and line of sight, areas, items, bonuses, solo play, round starts
-and the maps' monster places) and the rest are open. Scenario-specific rules have their own table in
+and the maps' monster places) and the rest are open — listed with where to start on each in
+`TODO.md` under "Rules audit 2026-10-09". Scenario-specific rules have their own table in
 [../scenario-book/rules-audit.md](../scenario-book/rules-audit.md); the scenario findings here are
 the ones the re-audit found wrong or newly missing.
 
@@ -57,7 +58,7 @@ the ones the re-audit found wrong or newly missing.
 |---|---|---|---|
 | B2 | ELE-2: an element already strong or waning can be infused and consumed in the same turn, in either order, and ends strong (FAQ) | Infusing a waning element made it unconsumable that turn; infusing a strong one and then consuming it left it inert | fixed — `ElementRuleTests` |
 | T7 / B9 / D6 | ELE-4: a monster doesn't consume an element for an ability it doesn't perform (FAQ) | Every consume on the card is paid when the first monster of the type starts, even if none can perform the ability (seen: Night Demons, one disarmed and one dead of its wound, still consumed Dark). Savvas Icestorm's "Air: Push 4 instead" is paid and ignored | fixed — `MonsterTurnRulesTests` (`testADisarmedMonsterConsumesNothingForItsAttack`, `testTheFirstMonsterToAttackConsumesForThoseAfterIt`, `testAnIcestormsAirPushIsFourInstead`) |
-| B13 | ELE-2 | A "any element" consume picks the element itself; Crackling Air and Foul Wind consume Air without asking | open |
+| B13 | ELE-2 | A "any element" consume picks the element itself; Crackling Air and Foul Wind consume Air without asking | open — see N7 too. A printed consume can already be declined (`PlayerTurnController.consumeOptions` / `toggleConsume`, shown in `BoardView`); missing are the choice of which element an "any element" consume takes (`GameState.chooseElements` picks, strong first) and declining the consumes active bonuses make by themselves (`consumeForAttack`, `consumeForRange`, `attackBonusOrElement` in the attack step of `PlayerTurnController`). `BoardCoordinator.PendingElementChoice` is an element picker that could be reused |
 
 ## Attacks, modifiers, line of sight
 
@@ -107,7 +108,7 @@ the ones the re-audit found wrong or newly missing.
 | D12 | MON-7 | "One adjacent enemy" abilities (Living Corpse's Muddle and Immobilize) take the first adjacent enemy, not the focus | fixed — `testALivingCorpseGrabsItsFocus` |
 | T8 | MON-1 | Night Demon's "All adjacent enemies and allies suffer 1 damage" hurts allies only (the code matches the words in the other order) | fixed — `testANightDemonHurtsEnemiesAndAlliesBesideIt`, `testPrintedDamageHurtsWhomTheWordsName` (every card text with "suffer") |
 | S1-3 | MON-11 | The Captain of the Guard's "all allies +1 Attack this round" reaches monsters on the other side and gives the Captain himself +2 | fixed — `testTheCaptainsOrderIsForHisAlliesOnly` |
-| D13 | MON-2, MON-9 | Low: focus ties by plain distance; two characters on the same initiative aren't ordered by their second card; monster Loot ignores line of sight | open (low): two characters on the same initiative aren't ordered by their second card. Focus ties now count proximity as range, round walls (`MonsterAI.rankFocusCandidates`) |
+| D13 | MON-2, MON-9 | Low: focus ties by plain distance; two characters on the same initiative aren't ordered by their second card; monster Loot ignores line of sight | fixed: focus ties count proximity as range, round walls; characters on the same initiative are ordered by their second card (`RoundRuleTests.testInitiativeOrderAndItsTies`); monster Loot needs line of sight |
 
 ## Setup, the round, resting, ending
 
@@ -191,6 +192,12 @@ Larger mechanics still not built are listed in `TODO.md` ("Scenario special rule
 | N8 | ATK-14 | A card in the active area can't be lost to negate damage (FAQ: it can, as if discarded or lost already) | open |
 | N9 | ATK-14 | Warding Strength's and Cold Front's charges are marked before the lose-a-card choice is offered (the armours with use circles and the "suffer no damage" bonuses now leave the choice first) | open (low) |
 | N10 | TRN-7 | The single-use shields are offered after the armours with use circles have applied; the FAQ lets the player choose which Shield to use first | open (low) |
+| N11 | SET-1 | When a monster type runs out of standees as a room is set up, `placeRevealedMonsters` fills the places in map order; the rulebook sets up those nearest the revealing character first (seen in #85 with four characters: eight Sun Demons for six standees) | open |
+| N12 | MON-7 | In #9 (seeds 2 and 3 of the veteran playthrough) the ledger reports a character "attacked 2 times by one attack ability" by a Vermling Scout in the round the Merciless Overseer has its scouts act again. Either the ledger miscounts the extra turn (it tries to allow for it) or a scout attacks twice in one turn: not yet looked into | open |
+| N13 | ACT-1 | Read in passing by the bonuses pass, not verified: Unending Chant doubles only Curses applied by attacks, not by other abilities; Potent Potables and Angelic Ascension may mark their charge as the step starts even if the action then finds no target; Frost Armor's "suffer no damage instead" is read as a printed self-damage step of 0 | open (to check) |
+| N14 | CND-5 | A Cultist's attack as it dies reached an invisible character (found by the veteran playthroughs) | fixed (`ConditionRuleTests.testADyingCultistsAttackDoesNotReachAnInvisibleCharacter`) |
+| N15 | LOS-2 | Impaling Eruption attacked an enemy on the way to its target without line of sight to it (found by the all-scenarios run once a wall's corner blocks sight) | fixed (the all-scenarios playthrough, #57 seed 4) |
+| N16 | — | Interface added for these rules and not yet looked at on a device or in a rendered screen: the Solo switch on the setup screen, the rows of cards in play with "End This Bonus" in the party panel (28-point rows: check the tap size), the damage sheet's "Let <card> take it" line, the long-rest sheet's heal toggle and items, the wall lines drawn between tiles | open (review) |
 
 ## Tests that don't prove what they say
 
@@ -220,17 +227,20 @@ the turn controllers, a real turn.
 Left as they are: `ConditionLifecycleTests`, `RB_ConditionTests` and `E2EConditionLifecycleTests`
 drive `EntityManager`'s restore / apply / expire by hand — the calls real turns make, in the
 order they make them; the same durations are now also played through real turns
-(`ConditionRuleTests`). `PlaybackTests` checks what it says. `LineOfSightTests` "line grazing a
-wall corner is not blocked" and "sees past a single void hex" still pin A2 (being changed with
-line of sight). The `RulebookTests` pipeline tests call `CombatResolver` with its inputs supplied:
+(`ConditionRuleTests`). `PlaybackTests` checks what it says. `LineOfSightTests`' two tests that pinned the
+opposite of A2 now assert the rule ("line grazing a wall corner is blocked", "a single wall hex
+hides the row beyond it"). The `RulebookTests` pipeline tests call `CombatResolver` with its inputs supplied:
 they prove the arithmetic, and `AttackRuleTests` proves the board supplies the right inputs.
 
-**Mutations: not run.** The rewritten and new tests have not yet been shown to fail against a
-broken rule (poison adding 0, Retaliate after death, no Disadvantage for a ranged attack on an
+**Mutations.** `scripts/mutate.py` breaks one rule at a time in the game code (35 named
+mutations: poison adding 0, Retaliate reduced by Shield, no Disadvantage for a ranged attack on an
 adjacent enemy, effects on a killed target, a summon drawing from the monster deck, no reshuffle
-at the end of the round, and so on). That is the next step for whoever takes this up: break one
-rule at a time in the game code, run the rule tests, and write the test for any break nothing
-catches.
+at the end of the round, a jump landing free on a trap, the gold rate, turn order reversed…), runs
+the rule tests and names the tests that noticed; `--all` lists the mutations no test caught. A
+mutation nothing catches is a rule without a test: write that test. Results of the last full run
+are in `TODO.md` under the rules audit. For the fixes of the turn-and-items batch (C8, E7, E12,
+B7, B6, B12, B11, B4, B8, start-of-round rules) the failing-before half was confirmed by running
+only for A11; add a mutation for each when touching them.
 
 **The simulator** (`Tests/Support/ScenarioSimulator`, `PlayLedger`, `PlayerPolicies`). It now
 also checks, of every playthrough: each attack within its attack's range (read from the card and
@@ -238,13 +248,13 @@ stat card, not from the engine's targeting); no enemy attacked twice by one atta
 figures acting in initiative order, once a round, a summon before its owner and not in the round
 it arrives; a rest only with two discards; cards conserved and none held by the exhausted; gold
 gained equal to tokens looted × the level's rate. `PlayLedgerTests` shows each check firing on a
-bad event. Line of sight is still judged with the engine's own function, and range is plain hex
-distance (A4). With `Options.veteranParty` (ninth-level Brute, Sunkeeper and Berserker with their
+bad event. Line of sight is still judged with the engine's own function; the ledger's own range check is plain hex
+distance, beside the simulator's check that range reaches round the walls at all. With `Options.veteranParty` (ninth-level Brute, Sunkeeper and Berserker with their
 level-up cards and perks, at scenario level 0 — a level the players may choose, p.15) and
 `VeteranPolicy`, playthroughs reach the end: over two seeds of all 94 scenarios this party wins 117 of 188 games (62%) and 52 of the 60 games won by killing every enemy (87%); with a Scoundrel added, 116 of 188 and 47 of 60 (`testVeteranPartiesWinMostScenarios`, `SIM_ALL=1`). The first-level `TacticalPolicy` party still wins none of its 188.
 `PlaythroughTests.testTheVeteranPartyWinsSixKindsOfScenario` wins #1, #13 (kill all), #9 (a boss
 and a treasure), #94 (enemies and a treasure), #25 (an escape) and #51 (the Gloom) on every test
-run. Still never won by a playthrough: scenarios #7, #12, #15, #19, #26, #27, #30, #33, #40, #50, #52, #59, #60, #61, #66, #67, #69, #70, #71, #73, #79, #82, #85, #90, #92 (25 of 94) — mostly goals the policy doesn't play for (a treasure only a Loot action takes, pressure plates, escorts, objectives to protect) and the longest boss fights.
+run (each with a seed the party wins with: about one game in three is lost to the cards). Still never won by a playthrough: scenarios #7, #12, #15, #19, #26, #27, #30, #33, #40, #50, #52, #59, #60, #61, #66, #67, #69, #70, #71, #73, #79, #82, #85, #90, #92 (25 of 94) — mostly goals the policy doesn't play for (a treasure only a Loot action takes, pressure plates, escorts, objectives to protect) and the longest boss fights.
 
 ## Rules with no test that would catch a break
 
@@ -277,16 +287,18 @@ card for a type arriving mid-round (`MonsterTurnRulesTests`, `MonsterDeckRulesTe
 treasure refused the second time and scenario availability (`CampaignRulesTests`), the two
 "ignore negative effects" perks (`AttackModifierRulesTests`).
 
-Rule violations these tests found, each kept as an expected failure (`XCTExpectFailure`) until
-the game is corrected:
+Rule violations these tests found — all three since corrected, the tests now plain assertions:
 
-| Rule | Case | Where | Test |
+| Rule | Case | Fix | Test |
 |---|---|---|---|
-| CND-5, MON-14 | A Cultist's attack as it dies hits an invisible character beside it (seen in veteran playthroughs of #4, #83, #89 with a Scoundrel) | `resolveDeathAttacks` in `BoardCoordinator+Combat.swift` takes every adjacent enemy | `ConditionRuleTests.testADyingCultistsAttackDoesNotReachAnInvisibleCharacter` |
-| CND-4 (B7) | A stunned character is still offered their defence item when attacked | `offerDefenseItem` in `BoardCoordinator+Items.swift` doesn't look at Stun | `ConditionRuleTests.testAStunnedCharacterIsNotOfferedTheirShieldItem` |
-| RND-9 (A11) | A deck that ran out and was shuffled in mid-round isn't shuffled at the end of the round, though its ×2 or Null was drawn in it | `AttackModifierDeck.reshuffle` / `needsShuffle` | `RoundRuleTests.testADeckThatRanOutMidRoundIsStillReshuffledAtTheEndOfTheRound` |
+| CND-5, MON-14 | A Cultist's attack as it dies hit an invisible character beside it (seen in veteran playthroughs of #4, #83, #89 with a Scoundrel) | `resolveDeathAttacks` leaves out the invisible | `ConditionRuleTests.testADyingCultistsAttackDoesNotReachAnInvisibleCharacter` |
+| CND-4 (B7) | A stunned character was still offered their defence item when attacked | `canUseItems` | `ConditionRuleTests.testAStunnedCharacterIsNotOfferedTheirShieldItem` |
+| RND-9 (A11) | A deck that ran out and was shuffled in mid-round wasn't shuffled at the end of the round | `AttackModifierDeck.shuffleOwed` | `RoundRuleTests.testADeckThatRanOutMidRoundIsStillReshuffledAtTheEndOfTheRound` |
 
-Still with no test that would catch a break: a door that ends the move (C3) and the walls
-beside doors (C2) are open findings without a pinned test; solo play's +1 (E7); line of sight
-by an independent reckoning (the simulator and `LootRuleTests` use the engine's `hasLOS`); the
-player's choice among equal area placements (A10); "+1 Target" on an area (A8).
+Still with no test that would catch a break: line of sight by an independent reckoning (the
+simulator and `LootRuleTests` use the engine's `hasLOS`; `WallLineTests` and `LineOfSightTests`
+pin it case by case); the player's choice among equal area placements (A10, not built); a
+character's attack whose step has a custom or special-target line, and a boss's attacks, are not
+range-checked by the simulator; `PlayLedger.rangeProblem` and `VeteranPolicy` measure plain hex
+distance, which is never more than the range counted round walls, so they can miss an attack that
+reached too far round a wall but can't raise a false alarm.
