@@ -158,6 +158,7 @@
 		B47234E91D6B816CC5EAB984 /* PersonalQuestEvaluator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A6A55C02339D884EA81120B /* PersonalQuestEvaluator.swift */; };
 		B4A7BF694B78622B41587BD4 /* MenuKeyArt.swift in Sources */ = {isa = PBXBuildFile; fileRef = 975066D59FC5616F167806B8 /* MenuKeyArt.swift */; };
 		B6DB78CBDC0541217E3000B2 /* LogoView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BCA279443E59250573E9D370 /* LogoView.swift */; };
+		B7FEED21869D52A1527939DC /* SoakDriver.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD46F8601A585EB5676DCC0D /* SoakDriver.swift */; };
 		B8BA0DCB5F22292931347410 /* BoardCoordinator+Combat.swift in Sources */ = {isa = PBXBuildFile; fileRef = A6B11F82C5E44D977254134D /* BoardCoordinator+Combat.swift */; };
 		B975922FF4C543F56ABDB18A /* PartySheetView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADC60986430A5DFFAA4EEAC9 /* PartySheetView.swift */; };
 		BA1FC5F02BBBDDBA6ECDE2B3 /* ItemData.swift in Sources */ = {isa = PBXBuildFile; fileRef = C567728A83844732D31F3F5F /* ItemData.swift */; };
@@ -415,6 +416,7 @@
 		DA5E6D17711BE40800C3537F /* PersonalQuestData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PersonalQuestData.swift; sourceTree = "<group>"; };
 		DAF0FC6C2F01CFD4173515AC /* CharacterClass.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CharacterClass.swift; sourceTree = "<group>"; };
 		DCC5DD17CCF9E224A30CC1B4 /* ElementType.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ElementType.swift; sourceTree = "<group>"; };
+		DD46F8601A585EB5676DCC0D /* SoakDriver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SoakDriver.swift; sourceTree = "<group>"; };
 		DD73A01447A2167AF7A93D4D /* MonsterType.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MonsterType.swift; sourceTree = "<group>"; };
 		DD9B9D4203B3CFD7D307E4EE /* PieceSpriteNode.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PieceSpriteNode.swift; sourceTree = "<group>"; };
 		DDBAC7539C505743F35168AA /* BoardCoordinator+Learning.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "BoardCoordinator+Learning.swift"; sourceTree = "<group>"; };
@@ -824,6 +826,7 @@
 				487FFAE9CF9ACC5FB5742CD6 /* RewardChoicesView.swift */,
 				B97936FE7C6DC6879E3A5861 /* ScenarioBriefCard.swift */,
 				FF546B2E6909F44E7930DB07 /* ScenarioResultsView.swift */,
+				DD46F8601A585EB5676DCC0D /* SoakDriver.swift */,
 				5E6E7163EA81B6FEA0C1F76D /* SummonTurnController.swift */,
 				83EB9921D52AC61A5ADD3F0A /* TurnRailView.swift */,
 			);
@@ -1163,6 +1166,7 @@
 				E19F2D8A9AF73489894C30F3 /* SettingsManager.swift in Sources */,
 				A9C41AC74B9185EF20659AE0 /* SettingsModel.swift in Sources */,
 				E01C9ECF3DF99F10CE9CA044 /* SnapshotConversions.swift in Sources */,
+				B7FEED21869D52A1527939DC /* SoakDriver.swift in Sources */,
 				613E1571F485E87A36D138D1 /* SoundPlayer.swift in Sources */,
 				A9717720E43E11FBB3CD0D59 /* SummonAI.swift in Sources */,
 				8EE54DF20EAC7C6985AD80B1 /* SummonColor.swift in Sources */,

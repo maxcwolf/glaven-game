@@ -495,7 +495,10 @@ Performance & robustness
 - [x] The last scenario's elements stayed lit when the next one began
 - [x] Disabled board buttons looked as ready as any other (now dimmed)
 - [x] A quest's requirement showed the data's shorthand "(scenario number > 51)"
-- [ ] **Next:** performance and memory-leak testing — after the app is open a while many buttons seem unresponsive (user report, 2026-10-09)
+- [ ] Playthrough tests (ScenarioSimulator policies) make moves no player would; give some scenarios set, realistic moves and actions that replicate a real playthrough (user, 2026-10-09)
+- [x] Performance and memory-leak testing (user report: buttons unresponsive after the app is open a while, 2026-10-09). A soak run (`SIMCTL_CHILD_GLAVEN_SOAK=1`, `SoakDriver`) played GH #1–4 for hours on the iPad simulator; `leaks` found none and memory, node and object counts stayed flat; finished boards are freed back in town and town relayout is ~4 ms. Fixed: the board view kept drawing the first scenario's scene (moves not shown, a second scene alive); a move whose animation never reports back left the turn and every board button waiting forever (now ends once overdue); a push whose target left the board mid-choice never resumed the attack; a monster's push dropped Pause and fast-forward for the rest of its turn
+- [ ] Prompts (`pendingModifierDraw`, `pendingDamage`, `pendingItemUse`, `pendingFigureChoice`) are overwritten, not resumed, if a second one is asked while one waits — the first task would hang. Not seen in play or the all-scenarios run; resume the old one with its default if it ever is
+- [ ] `refreshCampaigns` decodes every campaign file on each save (~0.5 ms a campaign); cache entries by modification date if campaign lists grow large
 
 ### Remaining gaps
 

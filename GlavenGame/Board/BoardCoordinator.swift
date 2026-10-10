@@ -2155,9 +2155,10 @@ final class BoardCoordinator {
     /// Execute one step of a push/pull. Traps and hazardous terrain trigger on every hex the
     /// target is forced into.
     func executePushPullStep(target: PieceID, to destination: HexCoord, attackerPos: HexCoord, remainingSteps: Int, isPush: Bool) {
-        guard let currentPos = boardState.piecePositions[target] else { return }
         boardScene?.clearHighlights()
         interactionMode = .idle
+        // The target left the board meanwhile: the push ends, or the attack waiting on it hangs.
+        guard let currentPos = boardState.piecePositions[target] else { return completePushPullAction() }
 
         // Heaving Swing: pushed into an obstacle, it's destroyed; the target suffers 2 damage and
         // the character gains 1 experience.
@@ -2213,10 +2214,13 @@ final class BoardCoordinator {
             log("\(name(target))\u{2019}s Heavy Greaves hold them in place", category: .move)
             return
         }
+        let monstersTurn = isAutomatedTurn, generation = boardGeneration
         await withCheckedContinuation { [weak self] continuation in
             self?.pendingPushPullContinuation = continuation
             self?.beginPushPull(target: target, attackerPos: attackerPos, remainingSteps: steps, isPush: isPush)
         }
+        // The push leaves the board idle; a monster's turn goes on, with Pause and fast-forward.
+        if monstersTurn && isCurrentBoard(generation) { interactionMode = .watchingMonsterTurn }
     }
 
     // MARK: - Loot

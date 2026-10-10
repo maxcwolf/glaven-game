@@ -36,6 +36,9 @@ private struct ScaledContentView: View {
                 GlavenTheme.activeTheme = effectiveTheme
                 SoundPlayer.settingsManager = gameManager.settingsManager
                 SoundPlayer.playGlayvin()
+                #if DEBUG
+                SoakDriver.startIfAsked(gameManager)   // GLAVEN_SOAK=1: play unattended, measuring
+                #endif
             }
     }
 }

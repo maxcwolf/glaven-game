@@ -354,13 +354,28 @@ extension BoardCoordinator {
         // Parked by move until the animation finishes; teardown resumes whatever is still parked
         // (a scene that's gone never finishes its animations). Whichever comes first resumes it.
         let move = UUID()
+        // SpriteKit never calls a completion whose node was removed or replaced, or while the
+        // view isn't running (the app in the background): the turn would wait forever and every
+        // button on the board do nothing. A watchdog finishes the move once it's overdue.
+        let deadline = scene.moveDuration(along: path, animation: animation, offsetCol: offsetCol, offsetRow: offsetRow)
+            / max(Double(scene.speed), 0.05) + Self.moveWatchdogMargin
+        let (col, row) = (offsetCol, offsetRow)
         await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
             pendingMoveAnimations[move] = continuation
             scene.movePiece(id: pieceID, along: path, animation: animation, offsetCol: offsetCol, offsetRow: offsetRow) { [weak self] in
                 self?.pendingMoveAnimations.removeValue(forKey: move)?.resume()
             }
+            Task { @MainActor [weak self, weak scene] in
+                try? await Task.sleep(nanoseconds: UInt64(deadline * 1_000_000_000))
+                guard let self, let overdue = self.pendingMoveAnimations.removeValue(forKey: move) else { return }
+                if let end = path.last { scene?.finishMove(id: pieceID, at: end, offsetCol: col, offsetRow: row) }
+                overdue.resume()
+            }
         }
     }
+
+    /// How long past its expected end a move animation may take before the watchdog ends it.
+    static var moveWatchdogMargin: Double = 2
 
     /// Spring the trap on `hex` (GH p.13): damage traps inflict 2 + L, sub-types add their
     /// conditions, and the trap is removed. Returns false if the figure died.

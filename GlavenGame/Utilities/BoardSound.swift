@@ -45,8 +45,10 @@ enum BoardSoundPlayer {
     }
 
     /// Silent under the test runner: tests show the board in real views, and their door
-    /// openings and hits used to play through the speakers of whoever ran the suite.
+    /// openings and hits used to play through the speakers of whoever ran the suite. Silent in a
+    /// soak run (`GLAVEN_SOAK=1`) too, which plays game after game for hours.
     static let isSilenced = NSClassFromString("XCTestCase") != nil
+        || ProcessInfo.processInfo.environment["GLAVEN_SOAK"] == "1"
 
     /// Sounds actually started (for tests).
     private(set) static var playedCount = 0
