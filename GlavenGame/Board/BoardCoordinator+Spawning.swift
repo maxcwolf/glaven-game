@@ -196,7 +196,7 @@ extension BoardCoordinator {
         if let hexes = boardState.markerHexes[marker], !hexes.isEmpty {
             return hexes.first(where: isEmptyHex) ?? hexes[0]
         }
-        if let fallen = fallenObjective, fallen.markers.contains(marker) { return fallen.hex }
+        if let fallen = fallenFigure, fallen.markers.contains(marker) { return fallen.hex }
         guard let game = gameManager?.game else { return nil }
         let carriers = game.objectives.flatMap(\.entities)
             .filter { !$0.dead && ($0.marker == marker || $0.markers.contains(marker)) }

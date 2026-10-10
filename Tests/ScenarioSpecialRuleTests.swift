@@ -1355,6 +1355,174 @@ final class ScenarioSpecialRuleTests: XCTestCase {
         XCTAssertTrue(throne.coord.turnLog.contains { $0.message.contains("as printed on its stat card") }, "the stat card's own")
     }
 
+    // MARK: - Two starting rooms
+
+    /// Bloody Shack, Ghost Fortress, Sun Temple: no more than half the characters (rounded up)
+    /// may start in the same one of the two starting rooms.
+    func testNoMoreThanHalfThePartyStartsInOneRoom() throws {
+        for (index, names) in [("58", ["brute", "spellweaver"]), ("50", ["brute", "spellweaver", "cragheart"]),
+                               ("85", ["brute", "spellweaver", "cragheart", "tinkerer"])] {
+            let gm = try SaveAndContinueTestsSupport.manager()
+            for name in names { gm.characterManager.addCharacter(name: name, edition: "gh") }
+            gm.startScenarioOnBoard(try XCTUnwrap(gm.editionStore.scenarios(for: "gh").first { $0.index == index && $0.solo == nil }))
+            let coord = gm.boardCoordinator
+            func room(_ hex: HexCoord) -> String { coord.boardState.cells[hex]?.tileRef.lowercased() ?? "" }
+            let rooms = Set(coord.boardState.startingLocations.map(room))
+            XCTAssertEqual(rooms.count, 2, "\(index): two starting rooms")
+            let limit = (names.count + 1) / 2
+            var taken: [String: Int] = [:]
+            // Everyone tries for the same room first.
+            let wanted = try XCTUnwrap(rooms.sorted().first)
+            for character in gm.game.characters {
+                let free = coord.freeStartingHexes(for: character.id)
+                let there = coord.boardState.startingLocations.filter { room($0) == wanted && !coord.boardState.isOccupied($0) }
+                if taken[wanted, default: 0] >= limit {
+                    XCTAssertFalse(free.contains { room($0) == wanted }, "\(index): \(wanted) is full for \(character.name)")
+                    if let refused = there.first {
+                        coord.placeCharacter(characterID: character.id, at: refused)
+                        XCTAssertNil(coord.boardState.piecePositions[.character(character.id)], "\(index): not let in")
+                    }
+                }
+                let hex = try XCTUnwrap(free.first { room($0) == wanted } ?? free.first, "\(index): a place for \(character.name)")
+                coord.placeCharacter(characterID: character.id, at: hex)
+                XCTAssertEqual(coord.boardState.piecePositions[.character(character.id)], hex)
+                taken[room(hex), default: 0] += 1
+            }
+            XCTAssertEqual(taken[wanted], limit, index)
+            XCTAssertEqual(taken.values.reduce(0, +), names.count)
+            // Someone already placed may still change hexes within their own room, full as it is.
+            let first = gm.game.characters[0]
+            let own = room(try XCTUnwrap(coord.boardState.piecePositions[.character(first.id)]))
+            if coord.boardState.startingLocations.contains(where: { room($0) == own && !coord.boardState.isOccupied($0) }) {
+                XCTAssertTrue(coord.freeStartingHexes(for: first.id).contains { room($0) == own }, "\(index): their own room stays open to them")
+            }
+        }
+        // Elsewhere the party starts together.
+        let sim = try simulator("1")
+        let rooms = Set(sim.gm.game.characters.compactMap { sim.coord.boardState.piecePositions[.character($0.id)] }
+            .map { sim.coord.boardState.cells[$0]?.tileRef ?? "" })
+        XCTAssertEqual(rooms.count, 1)
+    }
+
+    // MARK: - #57 Investigation
+
+    /// When the elite City Guard of the main barracks dies, the Infiltrator stands where he fell.
+    func testTheInfiltratorTakesTheFallenGuardsPlace() throws {
+        let sim = try simulator("57")
+        let coord = sim.coord
+        // The main barracks first, while there are standees for all its guards.
+        coord.openDoor(at: try XCTUnwrap(coord.boardState.doors.first { $0.childTileRef.lowercased() == "i1b" }).coord)
+        XCTAssertTrue(pieces(sim, named: "infiltrator").isEmpty)
+        let guardPiece = try XCTUnwrap(pieces(sim, named: "city-guard").first { (try? entity(sim, $0))?.markers.contains("2") == true })
+        XCTAssertTrue(coord.boardState.eliteStandees.contains(guardPiece))
+        let fell = try XCTUnwrap(coord.boardState.piecePositions[guardPiece])
+        // Another guard's death brings no one.
+        coord.handleDeath(of: try XCTUnwrap(pieces(sim, named: "city-guard").first { $0 != guardPiece }))
+        XCTAssertTrue(pieces(sim, named: "infiltrator").isEmpty)
+        coord.handleDeath(of: guardPiece)
+        let infiltrator = try XCTUnwrap(pieces(sim, named: "infiltrator").first)
+        XCTAssertEqual(coord.boardState.piecePositions[infiltrator], fell)
+        XCTAssertEqual(pieces(sim, named: "infiltrator").count, 1)
+    }
+
+    // MARK: - #81 Temple of the Eclipse
+
+    /// The Colorless pays Dark for a Night Demon with its first special and Light for a Sun
+    /// Demon with its second; without the element it summons nothing.
+    func testTheColorlessPaysForItsSummonsWithElements() async throws {
+        let sim = try simulator("81")
+        let coord = sim.coord
+        revealAll(sim)
+        let boss = try entity(sim, try XCTUnwrap(pieces(sim, named: "the-colorless").first))
+        boss.maxHealth = 200
+        boss.health = 100
+        for character in sim.gm.game.characters { character.maxHealth = 99; character.health = 99 }
+        func set(_ element: ElementType, _ state: ElementState) throws {
+            let index = try XCTUnwrap(sim.gm.game.elementBoard.firstIndex { $0.type == element })
+            sim.gm.game.elementBoard[index].state = state
+        }
+        func state(_ element: ElementType) -> ElementState? { sim.gm.game.elementBoard.first { $0.type == element }?.state }
+
+        try set(.dark, .inert)
+        var night = pieces(sim, named: "night-demon").count
+        try await perform(special: 1, of: "the-colorless", in: sim)
+        XCTAssertEqual(pieces(sim, named: "night-demon").count, night, "no Dark, no demon")
+        XCTAssertTrue(boss.entityConditions.contains { $0.name == .invisible }, "it turns invisible all the same")
+
+        try set(.dark, .strong)
+        night = pieces(sim, named: "night-demon").count
+        try await perform(special: 1, of: "the-colorless", in: sim)
+        XCTAssertEqual(pieces(sim, named: "night-demon").count, night + 1)
+        XCTAssertEqual(state(.dark), .consumed)
+
+        try set(.light, .strong)
+        let sun = pieces(sim, named: "sun-demon").count
+        boss.health = 100
+        try await perform(special: 2, of: "the-colorless", in: sim)
+        XCTAssertEqual(pieces(sim, named: "sun-demon").count, sun + 1)
+        XCTAssertEqual(state(.light), .consumed)
+        XCTAssertGreaterThan(boss.health, 100, "and it heals itself")
+    }
+
+    // MARK: - What monsters go for first
+
+    /// A monster's focus this turn, on a card that moves and attacks.
+    private func focus(of piece: PieceID, in sim: ScenarioSimulator) throws -> PieceID? {
+        guard case .monster(let name, _) = piece else { return nil }
+        let monster = try group(sim, name)
+        let card = try XCTUnwrap(sim.gm.monsterManager.abilities(for: monster).first {
+            ($0.actions ?? []).map(\.type) == [.move, .attack] && $0.actions?.first?.value?.intValue == 0
+        }, "\(name) has a Move +0, Attack +0")
+        return MonsterAI.computeTurn(pieceID: piece, monster: monster, entity: try entity(sim, piece), ability: card,
+                                     board: sim.coord.boardState, gameState: sim.gm.game, consumed: []).focusTarget
+    }
+
+    /// Crystalline Cave: a monster that can get within range of the crystal this turn focuses on
+    /// it, though a character is nearer; one that can't picks its focus as usual.
+    func testMonstersGoForTheCrystalWhenTheyCanReachIt() throws {
+        let sim = try simulator("84")
+        let coord = sim.coord
+        for piece in pieces(sim) { coord.boardState.removePiece(piece) }
+        let crystal = try XCTUnwrap(objectives(sim).first)
+        let place = try XCTUnwrap(coord.boardState.piecePositions[crystal])
+        // A Frost Demon two hexes from the crystal, with the Brute right beside it.
+        let from = try XCTUnwrap(coord.boardState.cells.keys.sorted().first { hex in
+            hex.distance(to: place) == 2 && coord.isEmptyHex(hex)
+                && hex.neighbors.contains { $0.distance(to: place) == 1 && coord.isEmptyHex($0) }
+                && hex.neighbors.contains { $0.distance(to: place) >= 2 && coord.isEmptyHex($0) }
+        })
+        let demon = try XCTUnwrap(coord.spawnMonster(name: "frost-demon", type: .normal, at: from, origin: .placed))
+        stand(sim, 0, on: try XCTUnwrap(from.neighbors.sorted().first { $0.distance(to: place) >= 2 && coord.isEmptyHex($0) }))
+        stand(sim, 1, on: try XCTUnwrap(coord.boardState.cells.keys.filter(coord.isEmptyHex).max { ($0.distance(to: from), $0) < ($1.distance(to: from), $1) }))
+        XCTAssertEqual(try focus(of: demon, in: sim), crystal, "it can get beside the crystal")
+        // Held where it stands, it can't: the Brute beside it is its focus.
+        coord.applyCondition(.immobilize, to: demon)
+        XCTAssertEqual(try focus(of: demon, in: sim), character(sim, 0))
+    }
+
+    /// Battlements A: the demons on the party's side make for the gate when they can reach it.
+    func testAlliedDemonsGoForTheGate() throws {
+        let sim = try simulator("35")
+        let coord = sim.coord
+        let gate = try XCTUnwrap(objectives(sim).first)
+        let place = try XCTUnwrap(coord.boardState.piecePositions[gate])
+        for piece in pieces(sim) { coord.boardState.removePiece(piece) }
+        let from = try XCTUnwrap(coord.boardState.cells.keys.sorted().first { hex in
+            hex.distance(to: place) == 2 && coord.isEmptyHex(hex)
+                && hex.neighbors.contains { $0.distance(to: place) == 1 && coord.isEmptyHex($0) }
+                && hex.neighbors.contains { $0.distance(to: place) >= 2 && coord.isEmptyHex($0) }
+        })
+        let demon = try XCTUnwrap(coord.spawnMonster(name: "frost-demon", type: .normal, at: from, origin: .placed))
+        let archer = try XCTUnwrap(coord.spawnMonster(name: "city-archer", type: .normal,
+                                                      at: try XCTUnwrap(from.neighbors.sorted().first { $0.distance(to: place) >= 2 && coord.isEmptyHex($0) }),
+                                                      origin: .placed))
+        XCTAssertEqual(try focus(of: demon, in: sim), gate)
+        coord.applyCondition(.immobilize, to: demon)
+        XCTAssertEqual(try focus(of: demon, in: sim), archer)
+        // The archers, for their part, have nothing to do with the gate.
+        XCTAssertNotEqual(try focus(of: archer, in: sim), gate)
+    }
+
     // MARK: - What the brief says
 
     /// The brief says the rules the game enforces in the book's sense, not a guess from the data.

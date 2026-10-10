@@ -117,6 +117,9 @@ final class ScenarioPlacementTests: XCTestCase {
                 XCTAssertTrue(rules.contains { ($0.setUp ?? []).contains(name) || ($0.spawns ?? []).contains { $0.monster.name == name } },
                               "\(index): nothing ever sets up \(name)")
             }
+            for objective in placements.focusFirst ?? [] {
+                XCTAssertEqual(data.objectives?.indices.contains(objective - 1), true, "\(index): no objective \(objective)")
+            }
             for name in placements.apart ?? [] { XCTAssertTrue(monsters.contains(name), "\(index): no monster \(name)") }
             for objective in placements.sheltered ?? [] {
                 XCTAssertEqual(data.objectives?.indices.contains(objective - 1), true, "\(index): no objective \(objective)")
@@ -172,7 +175,11 @@ final class ScenarioPlacementTests: XCTestCase {
                 checked += 1
                 for spawn in rule.spawns ?? [] {
                     XCTAssertTrue(monsters.contains(MonsterNameSpec(spawn.monster.name).name), "\(index): no monster \(spawn.monster.name)")
-                    if let marker = spawn.marker { XCTAssertTrue(letters.contains(marker), "\(index): no hex lettered \(marker)") }
+                    // A letter on the map, or one a monster of the scenario carries (it appears where that one fell).
+                    let carried = Set((data.rooms ?? []).flatMap { ($0.monster ?? []).compactMap(\.marker) })
+                    if let marker = spawn.marker {
+                        XCTAssertTrue(letters.contains(marker) || carried.contains(marker), "\(index): no hex lettered \(marker)")
+                    }
                 }
                 let asleep = (placements.inactive ?? []).filter { $0.untilSetUp == true }.flatMap(\.monsters)
                 for name in rule.setUp ?? [] {

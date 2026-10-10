@@ -175,9 +175,9 @@ final class BoardCoordinator {
     var pendingRevealedStandees: [String: Set<Int>] = [:]
 
     /// A scenario result triggered this round; it takes effect at the end of the round (p.47).
-    /// The objective being destroyed right now, while the rules its destruction triggers run:
-    /// the letters it carried and where it stood.
-    var fallenObjective: (markers: [String], hex: HexCoord)?
+    /// The objective being destroyed or monster dying right now, while the rules that triggers
+    /// run: the letters it carried and where it stood.
+    var fallenFigure: (markers: [String], hex: HexCoord)?
     var pendingResult: ScenarioResult?
     /// Why the scenario ended (or will, at the end of the round).
     var endReason: ScenarioEndReason?
@@ -1049,15 +1049,32 @@ final class BoardCoordinator {
         interactionMode = .placingCharacter(characterID: characterID)
 
         // Highlight available starting locations
-        let occupied = Set(boardState.piecePositions.values)
-        let available = Set(boardState.startingLocations.filter { !occupied.contains($0) })
+        let available = Set(freeStartingHexes(for: characterID))
         boardScene?.highlightHexes(available, style: .place, offsetCol: offsetCol, offsetRow: offsetRow)
+    }
+
+    /// The starting hexes a character may still take: the free ones — and, where the scenario
+    /// has two starting rooms, not those of a room that already holds half the party (rounded up).
+    func freeStartingHexes(for characterID: String) -> [HexCoord] {
+        let free = boardState.startingLocations.filter { !boardState.isOccupied($0) }
+        guard scenarioData?.placements?.splitStart == true, let game = gameManager?.game else { return free }
+        let limit = (game.characters.filter { !$0.absent }.count + 1) / 2
+        func room(_ hex: HexCoord) -> String? { boardState.cells[hex]?.tileRef.lowercased() }
+        var placed: [String: Int] = [:]
+        for character in game.characters where character.id != characterID {
+            if let tile = boardState.piecePositions[.character(character.id)].flatMap(room) { placed[tile, default: 0] += 1 }
+        }
+        return free.filter { hex in room(hex).map { placed[$0, default: 0] < limit } ?? true }
     }
 
     /// Place a character on a starting hex.
     func placeCharacter(characterID: String, at coord: HexCoord) {
-        guard boardState.startingLocations.contains(coord),
-              !boardState.isOccupied(coord) else { return }
+        guard freeStartingHexes(for: characterID).contains(coord) else {
+            if boardState.startingLocations.contains(coord), !boardState.isOccupied(coord) {
+                log("No more than half the party may start in the same room", category: .setup)
+            }
+            return
+        }
 
         let pieceID = PieceID.character(characterID)
         // A character already placed may move to another starting hex until the scenario begins.

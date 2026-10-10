@@ -159,17 +159,9 @@ enum MonsterAI {
             mode: mode,
             attack: attackSpec
         )
-        guard let focus = findFocus(
-            from: currentPos,
-            enemies: enemies,
-            board: board,
-            range: focusRange,
-            isRanged: isRanged,
-            enemyPositions: blockingPositions,
-            gameState: gameState,
-            mode: mode,
-            attack: attackSpec
-        ), let focusPos = board.piecePositions[focus] else {
+        // What the scenario has monsters go for first comes first, when it is within reach.
+        candidates = prioritized(candidates, move: totalMove, gameState: gameState)
+        guard let focus = candidates.first?.pieceID, let focusPos = board.piecePositions[focus] else {
             // No focus: the monster neither moves nor attacks (p.30).
             return result(disarmed: isDisarmed, attack: attackSpec)
         }
@@ -263,6 +255,20 @@ enum MonsterAI {
     ) -> PieceID? {
         focusCandidates(from: position, enemies: enemies, board: board, range: range, isRanged: isRanged,
                         enemyPositions: enemyPositions, gameState: gameState, mode: mode, attack: attack).first?.pieceID
+    }
+
+    /// Where a scenario has monsters go for an objective first (the gate of the Battlements, the
+    /// crystal): one of them the monster can get within range of this turn leads the candidates.
+    static func prioritized(_ candidates: [FocusCandidate], move: Int, gameState: GameState) -> [FocusCandidate] {
+        guard let scenario = gameState.scenario, scenario.data.solo == nil,
+              let first = ScenarioPlacementStore.shared.placements(for: scenario.data.index, edition: scenario.data.edition)?.focusFirst,
+              !first.isEmpty else { return candidates }
+        func isFirst(_ candidate: FocusCandidate) -> Bool {
+            guard candidate.pathCost <= move, let (container, _) = objectiveEntity(candidate.pieceID, gameState: gameState),
+                  let index = container.objectiveIndex else { return false }
+            return first.contains(index)
+        }
+        return candidates.filter(isFirst) + candidates.filter { !isFirst($0) }
     }
 
     /// Every enemy the monster could attack this turn or later, best focus first.

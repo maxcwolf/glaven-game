@@ -41,6 +41,12 @@ struct ScenarioPlacements: Codable, Equatable {
     /// Monster types that, for a time, don't act and can't be affected by anything; figures
     /// move through their hexes but can't stop there.
     var inactive: [Inactive]?
+    /// Objectives (1-based) the monsters that attack them go for first: one that can get
+    /// within range to attack it this turn focuses on it, whoever is nearer (a gate, the crystal).
+    var focusFirst: [Int]?
+    /// There are two starting rooms, and no more than half the characters (rounded up) may
+    /// start in the same one.
+    var splitStart: Bool?
     /// What water hexes do in this scenario.
     var water: Water?
     /// Bosses that go from one marked hex (or locked door) to the next, by monster type.

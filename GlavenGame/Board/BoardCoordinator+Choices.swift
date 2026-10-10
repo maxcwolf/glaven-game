@@ -14,8 +14,8 @@ extension BoardCoordinator {
     /// on the board does.
     func accessibleChoices() -> [BoardChoice] {
         switch interactionMode {
-        case .placingCharacter:
-            let free = boardState.startingLocations.filter { !boardState.isOccupied($0) }
+        case .placingCharacter(let characterID):
+            let free = freeStartingHexes(for: characterID)
             return hexChoices(free, from: nil) { "Start \($0)" }
 
         case .selectingMove(let mover, _, let hexes, let teleport, _):

@@ -83,7 +83,7 @@ final class ScenarioSimulator {
 
         // Characters go on free starting hexes (allies may stand on some), where the policy wants.
         for character in gm.game.characters where !character.absent {
-            let free = coord.boardState.startingLocations.filter { !coord.boardState.isOccupied($0) }
+            let free = coord.freeStartingHexes(for: character.id)
             guard !free.isEmpty else {
                 XCTFail("scenario \(index): no free starting hex for \(character.name)")
                 break

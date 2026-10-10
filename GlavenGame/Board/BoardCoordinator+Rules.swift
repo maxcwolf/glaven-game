@@ -341,6 +341,7 @@ extension BoardCoordinator {
                 return
             }
             entity.dead = true
+            let fellAt = boardState.piecePositions[pieceID]
             log("\(self.name(pieceID)) dies", category: .death)
             // Cultists: "On death: Attack +2" on this round's card, made from where it fell.
             if let position = boardState.piecePositions[pieceID],
@@ -368,7 +369,11 @@ extension BoardCoordinator {
                let character = gameManager.game.characters.first(where: { $0.id == id }) {
                 rewardKillOnOwnTurn(character)
             }
+            // What its death brings appears where it fell (the Infiltrator, in the place of the
+            // guard marked for it).
+            fallenFigure = fellAt.map { (markers: entity.markers, hex: $0) }
             gameManager.scenarioRulesManager.evaluateRules()
+            fallenFigure = nil
             updateLocks()
         case .summon(let id):
             if let owner = summonOwner(of: pieceID),
@@ -385,7 +390,7 @@ extension BoardCoordinator {
             }
             log("\(name(pieceID)) is \(isScenery(pieceID) && !isPlayerSide(pieceID) ? "destroyed" : "killed")", category: .death)
             // What its destruction spawns appears where it stood (a corpse from a dug-up grave).
-            fallenObjective = boardState.piecePositions[pieceID].flatMap { hex in
+            fallenFigure = boardState.piecePositions[pieceID].flatMap { hex in
                 (entity(for: pieceID) as? GameObjectiveEntity).map { (markers: [$0.marker] + $0.markers, hex: hex) }
             }
             let stood = boardState.piecePositions[pieceID]
@@ -399,7 +404,7 @@ extension BoardCoordinator {
                 log("\(name(piece)) appears", category: .setup, trace: "at \(stood)")
             }
             gameManager.scenarioRulesManager.evaluateRules()
-            fallenObjective = nil
+            fallenFigure = nil
         }
         checkVictoryDefeat()
     }

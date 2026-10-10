@@ -53,6 +53,9 @@ Then boss specials: #2's Bandit Commander jumps to each locked door in turn and 
 Gloom jumps a → b → c before its second special's attack; #48's Dark Rider isn't set up, appears
 on a–f in turn as its turns start and vanishes after any melee attack; #36's Prime Demon performs
 "Move +0, Attack +0" for both specials; #79's Betrayer summons the Giant Vipers the book says.
+Also: #50, #58 and #85 have two starting rooms that take half the party each; #57's Infiltrator
+appears where the marked guard fell; #81's Colorless consumes Dark and Light for its summons.
+Monsters focus on the gate (#35, #36) or the crystal (#84) whenever they can get within range of it.
 Later fixes are listed in `TODO.md`.
 
 ### 1 · Black Barrow

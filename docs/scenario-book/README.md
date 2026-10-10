@@ -85,6 +85,10 @@ ends up on the board:
   figure on the hex means the closest free one.
 - `specials`: a boss's two specials as this scenario prints them, in place of its stat card's
   (#36: "Move +0, Attack +0").
+- `focusFirst`: objectives the monsters that attack them go for first — one that can get within
+  range this turn focuses on it, whoever is nearer (#35 and #36 the gate, #84 the crystal).
+- `splitStart`: there are two starting rooms and no more than half the party (rounded up) may
+  start in the same one (#50, #58, #85).
 - `water`: what water hexes do — `hurtsThePoisoned` (a poisoned character or summon walking in
   suffers trap damage, #68), `endOfTurn` (damage for any figure ending its turn there, #95).
 - `notes`: the special rules in words for the scenario brief — only those the game enforces.
@@ -153,8 +157,8 @@ its map, every door objective is on a door and every objective number exists.
 | 29 Sanctuary of Gloom | 3 barred doors | — | — | — |
 | 31 Plane of Night | rock column | b, c | win: destroy the column | — |
 | 33 Savvas Armory | barred door | a (exits), c, d | win: loot all, then everyone on the exit; lost if exhausted off it | — |
-| 35 Gloomhaven Battlements A | barred door | — | — | the allied demons attack the door as any enemy, without preferring it |
-| 36 Gloomhaven Battlements B | the gate (protected) | a–e | — | the demons don't prefer the gate |
+| 35 Gloomhaven Battlements A | barred door | — | — | — |
+| 36 Gloomhaven Battlements B | the gate (protected) | a–e | — | — |
 | 38 Slave Pens | the Orchid | — | lost if he dies | he heads for the nearest enemy, not the shaman on the D tile |
 | 39 Treacherous Divide | altar | — | win: destroy the altar | — |
 | 42 Realm of the Voice | 6 vocal chords | — | win: destroy all | — |

@@ -360,8 +360,11 @@ final class MonsterTurnController {
                 let specialCard = AbilityModel(cardId: ability.cardId, name: ability.name,
                                                initiative: ability.initiative, actions: specialActions)
                 var specialState = MonsterTurnState(hexesMoved: state.hexesMoved)
+                // What the special pays for with an element (the Colorless: Dark for a Night Demon).
+                let paid = consumed.union(await consumeElements(in: specialActions, by: pieceID))
+                guard stillHere() else { return }
                 await executeCard(specialActions, pieceID: pieceID, entity: entity, monster: monster,
-                                  ability: specialCard, consumed: consumed, turn: &specialState)
+                                  ability: specialCard, consumed: paid, turn: &specialState)
                 state.hexesMoved = specialState.hexesMoved
 
             default:
