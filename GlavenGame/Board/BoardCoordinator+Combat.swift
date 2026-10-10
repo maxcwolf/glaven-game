@@ -205,6 +205,8 @@ extension BoardCoordinator {
             log("\(name(target)) suffers no damage", category: .damage)
             boardScene?.pieceUnharmed(id: target, missed: false)
         } else if result.damage > 0 {
+            // Shield took some of it (a fully absorbed attack is "Blocked", above).
+            if shield > attack.pierce { boardScene?.play(.shield) }
             died = await sufferDamageWithMitigation(result.damage, to: target,
                                                     source: pieceLabel(attacker), killer: attacker)
             guard isCurrentBoard(generation) else { return died }
@@ -245,6 +247,7 @@ extension BoardCoordinator {
         // Retaliate: after the attack, only if the retaliating figure survived (p.24).
         if !died && retaliate > 0 && isOnBoard(target) && isOnBoard(attacker) {
             log("\(name(target)) retaliates for \(retaliate)", category: .damage)
+            boardScene?.play(.retaliate)
             // Eye for an Eye: 1 experience for each retaliation this round.
             if chargedBonuses(of: target).contains(where: { $0.bonus == .experiencePerRetaliate }),
                case .character(let id) = target, let character = gameManager?.game.characters.first(where: { $0.id == id }) {

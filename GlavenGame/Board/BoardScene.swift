@@ -528,7 +528,7 @@ class BoardScene: SKScene {
         let name = GameText.conditionName(condition)
         if gained {
             floatText(name, over: id, style: condition.isPositive ? .boon : .harm)
-            play(condition.isPositive ? .boon : .harm)
+            play(.condition(condition))
         }
         else { floatText("\(name) ends", over: id, style: .info) }
     }
@@ -1085,6 +1085,8 @@ class BoardScene: SKScene {
             onHexTap?(hex)
             return true
         }
+        // The board is asking for a hex and this isn't one of them.
+        if !highlightNodes.isEmpty, boardStateRef?.cells[hex] != nil { play(.invalid) }
         return false
     }
 

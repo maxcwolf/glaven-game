@@ -1,4 +1,7 @@
-Board sound effects and jingles (*-N.m4a) are from Kenney's RPG Audio, Impact
-Sounds, Interface Sounds and Music Jingles packs by Kenney Vleugels (www.kenney.nl), released under
-Creative Commons Zero (CC0): http://creativecommons.org/publicdomain/zero/1.0/
-Converted from Ogg Vorbis to AAC. glayvin.mp3 is original to Glaven.
+Board sound effects and jingles (*-N.m4a) are built from Kenney's RPG Audio, Impact Sounds,
+Interface Sounds, Music Jingles and Casino Audio packs by Kenney Vleugels (www.kenney.nl), released
+under Creative Commons Zero (CC0): http://creativecommons.org/publicdomain/zero/1.0/
+Some are layered, pitched, filtered, time-stretched or given a room; the jingles for a scenario's
+start and for victory have notes added from their own last pluck. The choir in bless-0.m4a is
+synthesised and original to Glaven. docs/sound-design.md lists the source of every cue.
+Converted to AAC. glayvin.mp3 is original to Glaven.

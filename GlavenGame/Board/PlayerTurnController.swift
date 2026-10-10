@@ -2011,6 +2011,7 @@ final class PlayerTurnController {
         if usedUpThisTurn.contains(cardId) {
             // Its charges ran out during this turn: it goes straight where it would end up.
             if lost { character.lostCards.append(cardId) } else { character.discardedCards.append(cardId) }
+            if lost { coordinator?.boardScene?.play(.lose) }
         } else if markers.contains("persistent") || markers.contains("round") {
             character.activeCards.append(cardId)
             if markers.contains("round") && !markers.contains("persistent") {
@@ -2019,6 +2020,7 @@ final class PlayerTurnController {
             if lost { character.lostWhenRemoved.append(cardId) }
         } else if lost {
             character.lostCards.append(cardId)
+            coordinator?.boardScene?.play(.lose)
         } else {
             character.discardedCards.append(cardId)
         }

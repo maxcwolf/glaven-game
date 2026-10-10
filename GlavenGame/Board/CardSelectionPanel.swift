@@ -181,6 +181,7 @@ struct CardSelectionPanel: View {
 
     private func toggleCardSelection(_ index: Int) {
         selectedCards = Self.selection(selectedCards, tapping: index)
+        BoardSoundPlayer.play(.cardPick)
     }
 
     /// The cards chosen after tapping `index` (in order: lead, second). A chosen card's tap makes
