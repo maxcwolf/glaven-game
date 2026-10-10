@@ -25,6 +25,9 @@ struct ScenarioPlacements: Codable, Equatable {
     /// The scenario's own rules to leave out, by their place in its list (from 0): ones the data
     /// gets wrong or leaves for a person to trigger, written again in `rules`.
     var dropRules: [Int]?
+    /// Monster types that aren't set up with their rooms: they wait for a rule's `setUp` (the
+    /// Lurkers of Harried Village, until a villager is saved).
+    var later: [String]?
     /// What appears where an objective stood when it is destroyed, by objective (1-based): a
     /// Living Corpse from each grave dug up.
     var whenDestroyed: [String: MonsterStandeeData]?

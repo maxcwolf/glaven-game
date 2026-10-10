@@ -70,6 +70,7 @@ extension BoardCoordinator {
     func updateLocks(turnEnded: Bool = false, roundEnded: Bool = false) {
         let locks = scenarioLocks
         guard !locks.isEmpty else { return }
+        let released = boardState.releasedLocks
         for (index, lock) in locks.enumerated() where lock.held == nil && !boardState.releasedLocks.contains(index) {
             if keyTurned(lock, turnEnded: turnEnded, roundEnded: roundEnded) { boardState.releasedLocks.insert(index) }
         }
@@ -105,6 +106,10 @@ extension BoardCoordinator {
             openDoor(at: hex)
         }
         showLocksAndPlates()
+        // A rule may wait on a lock (the tomb's guardians, once the plate is stood on).
+        if boardState.releasedLocks != released {
+            gameManager?.scenarioRulesManager.evaluateRules(phase: .figureChange)
+        }
     }
 
     /// A held door closes: whoever stands in the doorway suffers trap damage and is moved to the

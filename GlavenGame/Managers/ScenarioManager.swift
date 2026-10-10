@@ -220,27 +220,52 @@ final class ScenarioManager {
         // exhausted mid-scenario (which is what activeCharacters would do).
         let playerCount = max(2, game.characters.filter { !$0.absent }.count)
 
-        // Spawn monsters from room — elites first so they get lowest standee numbers
-        if let standees = room.monster {
-            let activeStandees = standees.compactMap { standee -> (MonsterStandeeData, MonsterType)? in
-                guard let type = standee.monsterType(forPlayerCount: playerCount) else { return nil }
-                return (standee, type)
-            }
-            let sorted = activeStandees.sorted { a, b in
-                if a.1 == b.1 { return false }
-                return a.1 == .elite
-            }
-            for (standee, monsterType) in sorted {
-                spawnMonster(name: standee.name, type: monsterType, edition: edition,
-                             number: standee.number, marker: standee.marker, health: standee.health)
-            }
-        }
+        // Spawn monsters from room — elites first so they get lowest standee numbers. Those the
+        // scenario sets up later wait for their rule.
+        let held = heldBackMonsters(in: scenario)
+        setUpMonsters(of: room, playerCount: playerCount, edition: edition) { !held.contains($0) }
 
         // Spawn objectives for this room
         if let objectiveIndices = room.objectives {
             for objRef in objectiveIndices {
                 spawnObjectiveByReference(objRef, scenario: scenario)
             }
+        }
+    }
+
+    /// Monster types of this scenario that aren't set up with their rooms yet.
+    func heldBackMonsters(in scenario: Scenario) -> Set<String> {
+        guard scenario.data.solo == nil else { return [] }
+        let later = ScenarioPlacementStore.shared.placements(for: scenario.data.index, edition: scenario.data.edition)?.later ?? []
+        return Set(later).subtracting(scenario.releasedMonsters)
+    }
+
+    /// Set up the monster types held back so far, in every room already revealed; rooms
+    /// revealed from now on bring theirs as usual.
+    func setUpHeldBack(_ names: [String]) {
+        guard let scenario = game.scenario else { return }
+        let waiting = heldBackMonsters(in: scenario).intersection(names)
+        guard !waiting.isEmpty else { return }
+        onBeforeMutate?()
+        scenario.releasedMonsters.formUnion(waiting)
+        let playerCount = max(2, game.characters.filter { !$0.absent }.count)
+        for room in scenario.data.rooms ?? [] where scenario.revealedRooms.contains(room.roomNumber) {
+            setUpMonsters(of: room, playerCount: playerCount, edition: scenario.data.edition) { waiting.contains($0) }
+        }
+    }
+
+    private func setUpMonsters(of room: RoomData, playerCount: Int, edition: String, where include: (String) -> Bool) {
+        let activeStandees = (room.monster ?? []).compactMap { standee -> (MonsterStandeeData, MonsterType)? in
+            guard include(standee.name), let type = standee.monsterType(forPlayerCount: playerCount) else { return nil }
+            return (standee, type)
+        }
+        let sorted = activeStandees.sorted { a, b in
+            if a.1 == b.1 { return false }
+            return a.1 == .elite
+        }
+        for (standee, monsterType) in sorted {
+            spawnMonster(name: standee.name, type: monsterType, edition: edition,
+                         number: standee.number, marker: standee.marker, health: standee.health)
         }
     }
 

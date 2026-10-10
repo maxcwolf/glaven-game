@@ -814,7 +814,7 @@ final class BoardCoordinator {
         // The starting room's monsters were created from the scenario data; give them the map's
         // positions (or fall back to the map's own monster list if the scenario has none).
         let hasRoomData = !(gameManager?.game.scenario?.data.rooms ?? []).isEmpty
-        placeRevealedMonsters(slots: startingRoom.slots, newEntities: unplacedMonsterEntities(),
+        placeRevealedMonsters(slots: holdBack(startingRoom.slots), newEntities: unplacedMonsterEntities(),
                               playerCount: playerCount, useMapMonsters: !hasRoomData)
         placeRevealedObjectives()
         updateLocks()
@@ -949,8 +949,26 @@ final class BoardCoordinator {
         }
 
         // Monsters spawned by scenario rules go onto the board, not only into game state.
-        gameManager?.scenarioRulesManager.onSpawnMonster = { [weak self] name, type, marker, health in
-            self?.spawnFromScenarioRule(name: name, type: type, marker: marker, health: health) ?? false
+        gameManager?.scenarioRulesManager.onSpawnMonster = { [weak self] name, type, marker, health, placed in
+            self?.spawnFromScenarioRule(name: name, type: type, marker: marker, health: health, placed: placed) ?? false
+        }
+        gameManager?.scenarioRulesManager.boardFactHolds = { [weak self] fact in self?.boardFactHolds(fact) ?? false }
+        gameManager?.scenarioRulesManager.standsWhere = { [weak self] entity, identifier in
+            self?.stands(entity, where: identifier) ?? false
+        }
+        gameManager?.scenarioRulesManager.takesFigureDamage = { [weak self] entity, amount in
+            guard let self, let piece = self.pieceID(of: entity), self.isOnBoard(piece) else { return false }
+            self.log("\(self.name(piece)) suffers \(amount) damage from the scenario", category: .damage)
+            self.sufferDamage(amount, to: piece)
+            return true
+        }
+        gameManager?.scenarioRulesManager.healsFigure = { [weak self] entity, amount in
+            guard let self, let piece = self.pieceID(of: entity), self.isOnBoard(piece) else { return false }
+            let healed = self.heal(piece, amount: amount)
+            if healed > 0 || !self.lastHealRemoved.isEmpty {
+                self.log(self.healLine(piece, healed: piece, for: healed), category: .heal)
+            }
+            return true
         }
     }
 
@@ -993,6 +1011,10 @@ final class BoardCoordinator {
         boardGeneration += 1
         abandonPendingPrompts()
         gameManager?.scenarioRulesManager.onSpawnMonster = nil
+        gameManager?.scenarioRulesManager.boardFactHolds = nil
+        gameManager?.scenarioRulesManager.standsWhere = nil
+        gameManager?.scenarioRulesManager.takesFigureDamage = nil
+        gameManager?.scenarioRulesManager.healsFigure = nil
         gameManager?.entityManager.takesWoundDamage = nil
         gameManager?.scenarioRulesManager.takesCharacterDamage = nil
         ruleDamageDue = []
@@ -2426,21 +2448,10 @@ final class BoardCoordinator {
         // Everything not yet on the board goes into this room — including monsters of a room a
         // scenario rule opened before its door was reached.
         let hasRoomData = !(gameManager.game.scenario?.data.rooms ?? []).isEmpty
-        let placed = placeRevealedMonsters(slots: reveal.slots, newEntities: unplacedMonsterEntities(),
+        let placed = placeRevealedMonsters(slots: holdBack(reveal.slots), newEntities: unplacedMonsterEntities(),
                                            playerCount: playerCount, useMapMonsters: !hasRoomData)
         let objectives = placeRevealedObjectives()
-
-        // New monster types draw an ability card this round; all get their stat bonuses.
-        for monster in gameManager.game.monsters where placed.contains(where: { $0.name == monster.name }) {
-            if isMidRound, !monster.abilityDrawn {
-                gameManager.monsterManager.drawAbility(for: monster)
-            }
-            gameManager.monsterManager.applyStatEffects(
-                for: monster, only: Set(placed.filter { $0.name == monster.name }.map(\.standee)))
-        }
-        if isMidRound {
-            for piece in placed { pendingRevealedStandees[piece.name, default: []].insert(piece.standee) }
-        }
+        readyNewMonsters(placed)
 
         // Draw the new room into the board as it stands (the grid offset stays put, so nothing
         // already drawn moves), and frame the board so the room is seen.
@@ -2487,17 +2498,49 @@ final class BoardCoordinator {
                 let placed = placeRevealedMonsters(slots: [], newEntities: unplacedMonsterEntities(),
                                                    playerCount: playerCount)
                 placeRevealedObjectives()
-                for monster in gameManager.game.monsters where placed.contains(where: { $0.name == monster.name }) {
-                    if isMidRound, !monster.abilityDrawn {
-                        gameManager.monsterManager.drawAbility(for: monster)
-                    }
-                    gameManager.monsterManager.applyStatEffects(
-                        for: monster, only: Set(placed.filter { $0.name == monster.name }.map(\.standee)))
-                }
-                if isMidRound {
-                    for piece in placed { pendingRevealedStandees[piece.name, default: []].insert(piece.standee) }
-                }
+                readyNewMonsters(placed)
             }
+        }
+    }
+
+    /// Monsters just put on the board: a new type draws an ability card this round, all get
+    /// their stat bonuses, and mid-round they act as newly revealed.
+    private func readyNewMonsters(_ placed: [(name: String, standee: Int)]) {
+        guard let gameManager else { return }
+        for monster in gameManager.game.monsters where placed.contains(where: { $0.name == monster.name }) {
+            if isMidRound, !monster.abilityDrawn {
+                gameManager.monsterManager.drawAbility(for: monster)
+            }
+            gameManager.monsterManager.applyStatEffects(
+                for: monster, only: Set(placed.filter { $0.name == monster.name }.map(\.standee)))
+        }
+        if isMidRound {
+            for piece in placed { pendingRevealedStandees[piece.name, default: []].insert(piece.standee) }
+        }
+    }
+
+    /// The map's monster places without those of types the scenario sets up later, which are
+    /// kept for when it does.
+    private func holdBack(_ slots: [MonsterSlot]) -> [MonsterSlot] {
+        guard let scenario = gameManager?.game.scenario,
+              let held = gameManager?.scenarioManager.heldBackMonsters(in: scenario), !held.isEmpty else { return slots }
+        boardState.heldMonsterSlots += slots.filter { held.contains($0.name) }
+        return slots.filter { !held.contains($0.name) }
+    }
+
+    /// Monsters a rule sets up late (the entities were just created) go where the map prints them.
+    func placeMonstersSetUpLater(_ names: [String]) {
+        guard let gameManager else { return }
+        let slots = boardState.heldMonsterSlots.filter { names.contains($0.name) }
+        boardState.heldMonsterSlots.removeAll { names.contains($0.name) }
+        let playerCount = max(2, gameManager.game.characters.filter { !$0.absent }.count)
+        let placed = placeRevealedMonsters(slots: slots, newEntities: unplacedMonsterEntities().filter { names.contains($0.0.name) },
+                                           playerCount: playerCount)
+        readyNewMonsters(placed)
+        syncPieceVisuals()
+        for piece in placed {
+            let id = PieceID.monster(name: piece.name, standee: piece.standee)
+            log("\(name(id)) appears", category: .setup, trace: boardState.piecePositions[id].map { "at \($0)" })
         }
     }
 
@@ -2583,8 +2626,10 @@ final class BoardCoordinator {
 
     /// A monster spawned by a scenario rule: on its lettered hex where one is written
     /// (`ScenarioPlacements`), otherwise near the other monsters. Spawned monsters act this round
-    /// if spawned during it and drop no money.
-    func spawnFromScenarioRule(name: String, type: MonsterType, marker: String?, health: String?) -> Bool {
+    /// if spawned during it and drop no money; one only set up late (`placed`) is a monster like
+    /// any on the map from the start.
+    func spawnFromScenarioRule(name: String, type: MonsterType, marker: String?, health: String?,
+                               placed: Bool = false) -> Bool {
         guard let gameManager, boardScene != nil || !boardState.cells.isEmpty else { return false }
         let monsterPositions = boardState.piecePositions.sorted { $0.key < $1.key }.compactMap { id, coord -> HexCoord? in
             if case .monster = id, !isPlayerSide(id) { return coord }
@@ -2596,7 +2641,7 @@ final class BoardCoordinator {
             return da == db ? a > b : da < db
         }
         guard let anchor,
-              let piece = spawnMonster(name: name, type: type, at: anchor, origin: .spawned,
+              let piece = spawnMonster(name: name, type: type, at: anchor, origin: placed ? .placed : .spawned,
                                        health: health.map { .string($0) }) else { return false }
         if let marker, case .monster(let monsterName, let standee) = piece {
             gameManager.game.monsters.first { $0.name == monsterName }?

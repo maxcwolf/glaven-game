@@ -461,7 +461,8 @@ extension Scenario {
             startingGold: startingGold,
             stats: stats,
             partyStats: partyStats,
-            pendingFinish: pendingFinish
+            pendingFinish: pendingFinish,
+            releasedMonsters: releasedMonsters
         )
     }
 }
@@ -482,6 +483,7 @@ extension ScenarioSnapshot {
         scenario.stats = stats ?? [:]
         scenario.partyStats = partyStats ?? ScenarioPartyStats()
         scenario.pendingFinish = pendingFinish
+        scenario.releasedMonsters = releasedMonsters ?? []
         return scenario
     }
 }

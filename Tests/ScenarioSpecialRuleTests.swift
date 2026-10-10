@@ -74,15 +74,9 @@ final class ScenarioSpecialRuleTests: XCTestCase {
         XCTAssertEqual(sim.coord.monsterEntity(name: "earth-demon", standee: standee)?.maxHealth, card + 4)
     }
 
-    /// The other health rules still mean what they did: Battlements B's Prime Demon has twice
-    /// its hit points, the Arcane Golem its own times the number of characters.
+    /// The other health rules still mean what they did: the Arcane Golem has its own hit points
+    /// times the number of characters (Battlements B's doubled Prime Demon: see below).
     func testHealthFormulasAreStillFormulas() throws {
-        let battlements = try simulator("36")
-        let prime = try XCTUnwrap(battlements.gm.game.monsters.first { $0.name == "prime-demon" })
-        let primeCard = try XCTUnwrap(prime.monsterData?.stat(for: .boss, at: prime.level)).healthValue(characterCount: 2)
-        battlements.gm.scenarioRulesManager.evaluateRules()
-        XCTAssertEqual(prime.aliveEntities.first?.maxHealth, primeCard * 2)
-
         let library = try simulator("67")
         while let door = library.coord.boardState.doors.first(where: { !$0.isOpen }) { library.coord.openDoor(at: door.coord) }
         let golem = try XCTUnwrap(library.gm.game.monsters.first { $0.name == "stone-golem" })
@@ -331,5 +325,321 @@ final class ScenarioSpecialRuleTests: XCTestCase {
         let gateB = try XCTUnwrap(objectives(b).first)
         XCTAssertTrue(try targets(b, "earth-demon").contains(gateB))
         XCTAssertFalse(try targets(b, "city-archer").contains(gateB))
+    }
+
+    // MARK: - Rules that wait for something
+
+    private func tile(_ sim: ScenarioSimulator, _ piece: PieceID) -> String? {
+        sim.coord.boardState.piecePositions[piece].flatMap { sim.coord.boardState.cells[$0]?.tileRef.lowercased() }
+    }
+
+    private func hexes(_ sim: ScenarioSimulator, _ marker: String) -> [HexCoord] {
+        sim.coord.boardState.markerHexes[marker] ?? []
+    }
+
+    /// Sunken Vessel: every character starts immobilized.
+    func testTheSunkenVesselStartsEveryoneImmobilized() throws {
+        let sim = try simulator("93")
+        sim.gm.scenarioRulesManager.evaluateRules(phase: .roundStart)
+        for character in sim.gm.game.characters {
+            XCTAssertTrue(character.entityConditions.contains { $0.name == .immobilize }, character.name)
+        }
+    }
+
+    /// Harried Village: the scouts come as each round begins (elite at c, normal at d for three
+    /// characters), and the Lurkers aren't set up until the end of the round in which the first
+    /// villager is saved — then where the map prints them.
+    func testTheLurkersWaitForTheFirstVillagerSaved() throws {
+        let sim = try simulator("86", characters: ["brute", "spellweaver", "cragheart"])
+        let coord = sim.coord
+        revealAll(sim)
+        XCTAssertTrue(pieces(sim, named: "lurker").isEmpty, "no Lurkers at the start")
+        XCTAssertFalse(coord.boardState.heldMonsterSlots.isEmpty, "their places are kept")
+        XCTAssertNil(sim.gm.game.monsters.first { $0.name == "lurker" }?.aliveEntities.first)
+
+        let before = Set(pieces(sim, named: "vermling-scout"))
+        sim.gm.scenarioRulesManager.evaluateRules(phase: .roundStart)
+        let scouts = Set(pieces(sim, named: "vermling-scout")).subtracting(before)
+        XCTAssertEqual(scouts.count, 2, "one at c, one at d, as round 1 begins")
+        func scout(by marker: String) throws -> PieceID {
+            let place = try XCTUnwrap(hexes(sim, marker).first)
+            return try XCTUnwrap(scouts.first { coord.boardState.piecePositions[$0].map { $0.distance(to: place) <= 1 } == true }, marker)
+        }
+        let atC = try scout(by: "c"), atD = try scout(by: "d")
+        XCTAssertNotEqual(atC, atD)
+        XCTAssertTrue(coord.boardState.eliteStandees.contains(atC), "elite at c for three")
+        XCTAssertFalse(coord.boardState.eliteStandees.contains(atD), "normal at d for three")
+
+        sim.gm.scenarioRulesManager.evaluateRules(phase: .roundEnd)
+        XCTAssertTrue(pieces(sim, named: "lurker").isEmpty, "no villager is saved yet")
+
+        // A villager reaches the docks.
+        sim.gm.game.round = 2
+        let villager = try XCTUnwrap(objectives(sim).first)
+        let dock = try XCTUnwrap(hexes(sim, "b").first)
+        if let other = coord.boardState.piece(at: dock) { coord.boardState.removePiece(other) }
+        coord.boardState.removePiece(villager)
+        coord.boardState.placePiece(villager, at: dock)
+        coord.noteEscortArrival(villager)
+        XCTAssertNil(coord.boardState.piecePositions[villager], "saved")
+        XCTAssertTrue(pieces(sim, named: "lurker").isEmpty, "not before the round ends")
+        // A save in between keeps their places.
+        let saved = BoardSnapshot.from(coord.boardState)
+        let copy = BoardState()
+        saved.restore(to: copy)
+        XCTAssertEqual(copy.heldMonsterSlots, coord.boardState.heldMonsterSlots)
+
+        sim.gm.scenarioRulesManager.evaluateRules(phase: .roundEnd)
+        let lurkers = pieces(sim, named: "lurker")
+        XCTAssertEqual(lurkers.count, 2, "an elite and a normal for three characters")
+        XCTAssertEqual(lurkers.filter(coord.boardState.eliteStandees.contains).count, 1)
+        for lurker in lurkers { XCTAssertEqual(tile(sim, lurker), "h3a") }
+        XCTAssertTrue(coord.boardState.heldMonsterSlots.isEmpty)
+        XCTAssertEqual(sim.gm.game.scenario?.releasedMonsters, ["lurker"])
+    }
+
+    /// Shadows Within, Section 1: within two hexes of the altar characters suffer 1 damage and
+    /// monsters heal 1 as their turns start. Section 2: the Flame Demons aren't set up until every
+    /// Cultist is dead; from then everyone suffers 2 damage a turn and Fire is strong every round.
+    func testTheAltarOfShadowsWithin() async throws {
+        let sim = try simulator("83")
+        let coord = sim.coord, rules = sim.gm.scenarioRulesManager
+        revealAll(sim)
+        XCTAssertTrue(pieces(sim, named: "flame-demon").isEmpty, "the Flame Demons wait")
+        let altar = try XCTUnwrap(hexes(sim, "a").first)
+        let near = try XCTUnwrap(coord.boardState.cells.keys.sorted().first { $0.distance(to: altar) == 2 && coord.isEmptyHex($0) })
+        let far = try XCTUnwrap(coord.boardState.cells.keys.sorted().first { $0.distance(to: altar) > 4 && coord.isEmptyHex($0) })
+        stand(sim, 0, on: near)
+        stand(sim, 1, on: far)
+        let brute = sim.gm.game.characters[0], spellweaver = sim.gm.game.characters[1]
+
+        coord.ruleDamageDue = []
+        rules.evaluateTurnRules(.turnStart, for: brute)
+        rules.evaluateTurnRules(.turnStart, for: spellweaver)
+        XCTAssertEqual(coord.ruleDamageDue.map(\.characterID), [brute.id])
+        XCTAssertEqual(coord.ruleDamageDue.first?.amount, 1)
+
+        // A Cultist beside the altar heals; one far from it doesn't.
+        let cultists = pieces(sim, named: "cultist")
+        let healed = try XCTUnwrap(cultists.first), unhealed = try XCTUnwrap(cultists.last)
+        XCTAssertNotEqual(healed, unhealed)
+        for (piece, wanted) in [(healed, { (d: Int) in d == 2 }), (unhealed, { (d: Int) in d > 3 })] {
+            coord.boardState.removePiece(piece)
+            coord.boardState.placePiece(piece, at: try XCTUnwrap(coord.boardState.cells.keys.sorted().first { wanted($0.distance(to: altar)) && coord.isEmptyHex($0) }))
+        }
+        for piece in [healed, unhealed] {
+            guard case .monster(let name, let standee) = piece, let entity = coord.monsterEntity(name: name, standee: standee) else { return XCTFail() }
+            entity.health = entity.maxHealth - 3
+            rules.evaluateTurnRules(.turnStart, for: entity)
+            XCTAssertEqual(entity.health, entity.maxHealth - (piece == healed ? 2 : 3), "\(piece)")
+        }
+
+        // A summon's own turn starts the same way.
+        let summon = GameSummon(name: "bear", health: 10, maxHealth: 10)
+        summon.state = .active
+        brute.summons.append(summon)
+        coord.boardState.placePiece(.summon(id: summon.id), at: try XCTUnwrap(near.neighbors.first { $0.distance(to: altar) <= 2 && coord.isEmptyHex($0) }))
+        await SummonTurnController(coordinator: coord, gameManager: sim.gm).executeSummonTurns(for: brute)
+        XCTAssertEqual(summon.health, 9)
+
+        // Every Cultist dead: the Flame Demons are set up where the map prints them.
+        let fire = try XCTUnwrap(sim.gm.game.elementBoard.firstIndex { $0.type == .fire })
+        rules.evaluateRules(phase: .roundStart)
+        XCTAssertEqual(sim.gm.game.elementBoard[fire].state, .inert)
+        for piece in pieces(sim, named: "cultist") { coord.handleDeath(of: piece) }
+        let demons = pieces(sim, named: "flame-demon")
+        XCTAssertEqual(demons.count, 1, "one elite for two characters")
+        for demon in demons {
+            XCTAssertEqual(tile(sim, demon), "m1a")
+            XCTAssertEqual(coord.boardState.piecePositions[demon]?.distance(to: altar), 1, "beside the altar")
+        }
+        XCTAssertNil(coord.pendingResult, "they are still to be killed")
+
+        coord.ruleDamageDue = []
+        rules.evaluateTurnRules(.turnStart, for: spellweaver)
+        XCTAssertEqual(coord.ruleDamageDue.first?.amount, 2, "everyone, wherever they stand")
+        sim.gm.game.round = 2
+        rules.evaluateRules(phase: .roundStart)
+        XCTAssertEqual(sim.gm.game.elementBoard[fire].state, .strong)
+    }
+
+    /// Lair of the Unseeing Eye, Section 1: once door 1 is open, whoever is still on the first
+    /// tile as a round ends suffers 3+L damage — summons too.
+    func testTheFirstCaveOfTheLairHurtsThoseWhoStay() throws {
+        let sim = try simulator("47")
+        let coord = sim.coord, rules = sim.gm.scenarioRulesManager
+        let brute = sim.gm.game.characters[0], spellweaver = sim.gm.game.characters[1]
+        coord.ruleDamageDue = []
+        rules.evaluateRules(phase: .roundEnd)
+        XCTAssertTrue(coord.ruleDamageDue.isEmpty, "the door is shut")
+
+        revealAll(sim)
+        let inside = try XCTUnwrap(coord.boardState.cells.values.filter { $0.tileRef.lowercased() == "m1a" }.map(\.coord).sorted().first(where: coord.isEmptyHex))
+        stand(sim, 1, on: inside)
+        let summon = GameSummon(name: "bear", health: 10, maxHealth: 10)
+        brute.summons.append(summon)
+        let beside = try XCTUnwrap(coord.boardState.piecePositions[character(sim, 0)]?.neighbors.first(where: coord.isEmptyHex))
+        coord.boardState.placePiece(.summon(id: summon.id), at: beside)
+        XCTAssertEqual(tile(sim, .summon(id: summon.id)), "j1a")
+
+        sim.gm.game.round = 2
+        rules.evaluateRules(phase: .roundEnd)
+        let due = 3 + sim.gm.game.level
+        XCTAssertEqual(coord.ruleDamageDue.map(\.characterID), [brute.id], "\(spellweaver.name) has gone on")
+        XCTAssertEqual(coord.ruleDamageDue.first?.amount, due)
+        XCTAssertEqual(summon.health, 10 - due)
+    }
+
+    /// Rebel Swamp: a monster within two hexes of a totem performs Heal 2, Self as its turn
+    /// starts (so Poison stops it); one farther off, or with the totem destroyed, doesn't.
+    func testTotemsHealTheMonstersNearThem() async throws {
+        let sim = try simulator("45")
+        let coord = sim.coord, rules = sim.gm.scenarioRulesManager
+        let totem = try XCTUnwrap(objectives(sim).first)
+        let place = try XCTUnwrap(coord.boardState.piecePositions[totem])
+        func guardAt(_ distance: (Int) -> Bool) throws -> GameMonsterEntity {
+            let hex = try XCTUnwrap(coord.boardState.cells.keys.sorted().first { distance($0.distance(to: place)) && coord.isEmptyHex($0) })
+            let piece = try XCTUnwrap(coord.spawnMonster(name: "city-guard", type: .normal, at: hex, origin: .placed))
+            guard case .monster(let name, let standee) = piece else { throw XCTSkip() }
+            let entity = try XCTUnwrap(coord.monsterEntity(name: name, standee: standee))
+            entity.maxHealth = 20
+            entity.health = 10
+            return entity
+        }
+        let near = try guardAt { $0 == 2 }, far = try guardAt { $0 >= 4 }, poisoned = try guardAt { $0 <= 2 }
+        coord.applyCondition(.poison, to: try XCTUnwrap(coord.pieceID(of: poisoned)))
+        for entity in [near, far, poisoned] { rules.evaluateTurnRules(.turnStart, for: entity) }
+        XCTAssertEqual(near.health, 12)
+        XCTAssertEqual(far.health, 10)
+        XCTAssertEqual(poisoned.health, 10, "the heal only removes the Poison")
+        XCTAssertFalse(poisoned.entityConditions.contains { $0.name == .poison })
+
+        // It is done as the monster's own turn starts.
+        let guards = try XCTUnwrap(sim.gm.game.monsters.first { $0.name == "city-guard" })
+        sim.gm.monsterManager.drawAbility(for: guards)
+        await MonsterTurnController(coordinator: coord, gameManager: sim.gm).executeMonsterGroup(guards)
+        XCTAssertEqual(near.health, 14)
+        XCTAssertEqual(far.health, 10)
+
+        coord.sufferDamage(99, to: totem)
+        rules.evaluateTurnRules(.turnStart, for: near)
+        XCTAssertEqual(near.health, 14, "its totem is gone")
+    }
+
+    /// Crystalline Cave: the three walls can't be walked through; they come down as rounds 4, 6
+    /// and 9 begin.
+    func testTheCaveWallsComeDownByTheRound() throws {
+        let sim = try simulator("84")
+        let coord = sim.coord
+        func revealed(_ ref: String) -> Bool { coord.boardState.visibleRooms.contains { $0.lowercased() == ref } }
+        XCTAssertEqual(Set(coord.boardState.doors.map(\.coord)), coord.boardState.lockedDoors, "every way out is a wall")
+        let wall = try XCTUnwrap(coord.boardState.doors.first)
+        let beside = try XCTUnwrap(wall.coord.neighbors.first { coord.boardState.cells[$0] != nil && coord.boardState.isPassable($0) && !coord.boardState.isClosedDoor($0) })
+        stand(sim, 0, on: beside)
+        XCTAssertFalse(coord.adjacentDoors(from: beside).contains { $0.coord == wall.coord }, "no way through")
+        XCTAssertEqual(coord.boardState.visibleRooms.count, 1)
+        for (round, opened) in [(2, [String]()), (3, ["a3a"]), (4, ["a3a"]), (5, ["a3a", "a2b"]), (8, ["a3a", "a2b", "e1b"])] {
+            sim.gm.game.round = round
+            coord.updateLocks(roundEnded: true)
+            for ref in ["a3a", "a2b", "e1b"] {
+                XCTAssertEqual(revealed(ref), opened.contains(ref), "\(ref) as round \(round) ends")
+            }
+        }
+    }
+
+    /// Gloomhaven Battlements B: the Prime Demon isn't set up. It arrives at (e) when the gate
+    /// falls, with twice its hit points less the damage of every round the gate stood; the gate
+    /// falls by itself when eight rounds are over.
+    func testThePrimeDemonComesWhenTheGateFalls() throws {
+        func arrival(round: Int, breaking: Bool) throws -> (health: Int, card: Int, perRound: Int, sim: ScenarioSimulator) {
+            let sim = try simulator("36")
+            let coord = sim.coord
+            XCTAssertTrue(pieces(sim, named: "prime-demon").isEmpty, "not set up")
+            sim.gm.scenarioRulesManager.evaluateRules(phase: .roundEnd)
+            XCTAssertTrue(pieces(sim, named: "prime-demon").isEmpty, "the gate stands")
+            let gate = try XCTUnwrap(objectives(sim).first)
+            sim.gm.game.round = round
+            if breaking { coord.sufferDamage(999, to: gate) } else { sim.gm.scenarioRulesManager.evaluateRules(phase: .roundStart) }
+            XCTAssertNil(coord.boardState.piecePositions[gate], "the gate is down")
+            let demon = try XCTUnwrap(pieces(sim, named: "prime-demon").first, "round \(round)")
+            XCTAssertLessThanOrEqual(try XCTUnwrap(coord.boardState.piecePositions[demon]).distance(to: try XCTUnwrap(hexes(sim, "e").first)), 1)
+            let monster = try XCTUnwrap(sim.gm.game.monsters.first { $0.name == "prime-demon" })
+            let card = try XCTUnwrap(monster.monsterData?.stat(for: .boss, at: monster.level)).healthValue(characterCount: 2)
+            let entity = try XCTUnwrap(monster.aliveEntities.first)
+            XCTAssertEqual(entity.maxHealth, card * 2)
+            XCTAssertNil(entity.summonState, "set up, not spawned: it is a monster like any other")
+            return (entity.health, card, (2 * 2) + sim.gm.game.level - 2, sim)
+        }
+        let early = try arrival(round: 3, breaking: true)
+        XCTAssertEqual(early.health, early.card * 2 - 2 * early.perRound, "two rounds went by with the gate standing")
+        let late = try arrival(round: 9, breaking: false)
+        XCTAssertEqual(late.health, late.card * 2 - 8 * late.perRound, "all eight")
+        let standing = try simulator("36")
+        standing.gm.game.round = 8
+        standing.gm.scenarioRulesManager.evaluateRules(phase: .roundStart)
+        XCTAssertEqual(objectives(standing).count, 1, "round 8 is still to be played")
+    }
+
+    /// Savvas Armory: a Savvas Icestorm comes at (d) at the end of the round in which the last
+    /// treasure tile is looted.
+    func testTheIcestormComesWhenTheLastTreasureIsLooted() throws {
+        let sim = try simulator("33")
+        let coord = sim.coord, rules = sim.gm.scenarioRulesManager
+        for _ in 0..<10 {
+            for index in coord.scenarioLocks.indices { coord.boardState.releasedLocks.insert(index) }
+            for objective in objectives(sim) { coord.sufferDamage(999, to: objective) }
+            coord.updateLocks()
+            revealAll(sim)
+        }
+        XCTAssertTrue(coord.boardState.doors.allSatisfy(\.isOpen))
+        rules.evaluateRules(phase: .roundEnd)
+        let before = pieces(sim, named: "savvas-icestorm").count
+        let chests = coord.boardState.cells.values.filter { $0.overlay == .treasure && $0.treasureID == BoardCoordinator.goalTreasureID }.map(\.coord).sorted()
+        XCTAssertEqual(chests.count, 4)
+        for chest in chests.dropLast() { coord.lootHexes(for: character(sim, 0), coords: [chest], byLootAction: true) }
+        sim.gm.game.round = 2
+        rules.evaluateRules(phase: .roundEnd)
+        XCTAssertEqual(pieces(sim, named: "savvas-icestorm").count, before, "one chest is left")
+        coord.lootHexes(for: character(sim, 0), coords: [try XCTUnwrap(chests.last)], byLootAction: true)
+        XCTAssertEqual(pieces(sim, named: "savvas-icestorm").count, before, "not before the round ends")
+        sim.gm.game.round = 3
+        rules.evaluateRules(phase: .roundEnd)
+        XCTAssertEqual(pieces(sim, named: "savvas-icestorm").count, before + 1)
+        // Once only (with a standee free for another).
+        coord.handleDeath(of: try XCTUnwrap(pieces(sim, named: "savvas-icestorm").first))
+        sim.gm.game.round = 4
+        rules.evaluateRules(phase: .roundEnd)
+        XCTAssertEqual(pieces(sim, named: "savvas-icestorm").count, before, "once")
+    }
+
+    /// Timeworn Tomb, Section 1: the middle room's Stone Golems and Ancient Artilleries aren't
+    /// set up until a character ends a turn on the pressure plate — then where the book prints
+    /// them, in the ranks for the number of characters.
+    func testTheTombsGuardiansWakeWithThePlate() throws {
+        let sim = try simulator("41", characters: ["brute", "spellweaver", "cragheart"])
+        let coord = sim.coord
+        let door = try XCTUnwrap(coord.boardState.doors.first { !$0.isOpen })
+        coord.openDoor(at: door.coord)
+        func inTheRoom(_ name: String) -> [PieceID] { pieces(sim, named: name).filter { tile(sim, $0) == "l1a" } }
+        // The first room's six artilleries are destroyed (there are six standees in all).
+        for piece in pieces(sim, named: "ancient-artillery") { coord.handleDeath(of: piece) }
+        XCTAssertTrue(inTheRoom("stone-golem").isEmpty)
+        XCTAssertTrue(inTheRoom("ancient-artillery").isEmpty)
+
+        stand(sim, 0, on: try XCTUnwrap(hexes(sim, "b").first))
+        coord.updateLocks()
+        XCTAssertTrue(inTheRoom("stone-golem").isEmpty, "the turn isn't over")
+        coord.updateLocks(turnEnded: true)
+        let golems = inTheRoom("stone-golem"), artilleries = inTheRoom("ancient-artillery")
+        XCTAssertEqual(golems.count, 2)
+        XCTAssertEqual(golems.filter(coord.boardState.eliteStandees.contains).count, 1, "one elite for three characters")
+        XCTAssertEqual(artilleries.count, 3, "the fourth is for four characters")
+        XCTAssertTrue(artilleries.allSatisfy { !coord.boardState.eliteStandees.contains($0) })
+        for piece in golems + artilleries {
+            guard case .monster(let name, let standee) = piece else { return XCTFail() }
+            XCTAssertNil(coord.monsterEntity(name: name, standee: standee)?.summonState, "set up, not spawned")
+        }
+        coord.updateLocks(turnEnded: true)
+        XCTAssertEqual(inTheRoom("ancient-artillery").count, 3, "once")
     }
 }

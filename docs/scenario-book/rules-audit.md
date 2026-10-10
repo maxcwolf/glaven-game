@@ -21,7 +21,16 @@ their own pump; #35's allied demons attack the gate; #61's demons are enemies (t
 rounds are still missing); #41 is won without waiting for a character exhausted on the way; #45
 and #52 add two cards, as the book says; the Hungry Soul's and Bloated Regent's hit points round
 up (#62, #75); #92's city guards arrive with the second room and needn't die; #90's Living Spirits
-come when the demons are dead and killing them wins. Later fixes are listed in `TODO.md`.
+come when the demons are dead and killing them wins.
+
+Then, with rules that wait for something on the board: #93 starts everyone immobilized; #86's
+scouts come as rounds begin (elite at c for three) and its Lurkers after the first villager is
+saved; #83's altar hurts and heals around it, its Flame Demons wait for the Cultists' deaths, then
+2 damage a turn and Fire strong; #47's first cave deals 3+L a round once door 1 is open; #45's
+totems heal the monsters near them; #84's walls come down as rounds 4, 6 and 9 begin; #36's Prime
+Demon arrives at (e) when the gate falls (by itself after eight rounds) with the damage of the
+rounds gone by; #33's Icestorm follows the last treasure; #41's middle-room golems and
+artilleries wake with the plate. Later fixes are listed in `TODO.md`.
 
 ### 1 · Black Barrow
 | Rule (from the book) | Status | Where / what's missing |

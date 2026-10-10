@@ -71,7 +71,7 @@ final class ScenarioLockTests: XCTestCase {
             }
             for letter in placements.plates ?? [] { XCTAssertTrue(letters.contains(letter), "\(index): no plate \(letter)") }
         }
-        XCTAssertEqual(scenarios, 12)
+        XCTAssertEqual(scenarios, 13)
     }
 
     // MARK: - Locked

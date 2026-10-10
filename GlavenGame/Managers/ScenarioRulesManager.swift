@@ -36,7 +36,18 @@ final class ScenarioRulesManager {
     var onOpenRooms: (([Int]) -> Void)?
     /// Places a rule-spawned monster on the board (entity + piece). Returns false when the board
     /// isn't active, in which case only the game-state entity is created.
-    var onSpawnMonster: ((_ name: String, _ type: MonsterType, _ marker: String?, _ health: String?) -> Bool)?
+    /// `placed`: set up late rather than spawned (it drops money).
+    var onSpawnMonster: ((_ name: String, _ type: MonsterType, _ marker: String?, _ health: String?, _ placed: Bool) -> Bool)?
+    /// Sets up monster types the scenario held back. Wired from GameManager.
+    var onSetUpMonsters: (([String]) -> Void)?
+    /// Whether something has happened on the board (a rule's `when`); nothing has without a board.
+    var boardFactHolds: ((BoardFact) -> Bool)?
+    /// Whether a figure stands where an identifier's `near`/`tile` asks.
+    var standsWhere: ((any Entity, ScenarioFigureRuleIdentifier) -> Bool)?
+    /// Damage and healing a rule gives a monster, summon or objective, offered to the board
+    /// (true: the board does it, with all that follows — a death, Poison stopping a heal).
+    var takesFigureDamage: ((_ entity: any Entity, _ amount: Int) -> Bool)?
+    var healsFigure: ((_ entity: any Entity, _ amount: Int) -> Bool)?
     /// Damage a rule deals a character, offered to the board (true: the board takes it, so the
     /// character may lose cards to negate it, p.22).
     var takesCharacterDamage: ((_ character: GameCharacter, _ amount: Int) -> Bool)?
@@ -146,7 +157,7 @@ final class ScenarioRulesManager {
             // automatically.
             let hasFigureTrigger = (rule.figures ?? []).contains { isTriggerType($0.type) }
             let hasRoomRequirement = !(rule.requiredRooms ?? []).isEmpty
-            return hasFigureTrigger || hasRoomRequirement
+            return hasFigureTrigger || hasRoomRequirement || !(rule.when ?? []).isEmpty
         }
         switch phase {
         case .roundStart: return rule.isStart
@@ -163,6 +174,7 @@ final class ScenarioRulesManager {
             || (rule.figures ?? []).contains { !isTriggerType($0.type) }
             || !(rule.elements ?? []).isEmpty
             || !(rule.rooms ?? []).isEmpty
+            || !(rule.setUp ?? []).isEmpty
             || !(rule.disableRules ?? []).isEmpty
             || rule.finish != nil
         return !hasOtherEffects
@@ -199,6 +211,8 @@ final class ScenarioRulesManager {
         if let roundExpr = rule.round {
             if !evaluateRoundCondition(roundExpr, round: round) { return false }
         }
+
+        if let facts = rule.when, !facts.allSatisfy({ boardFactHolds?($0) ?? false }) { return false }
 
         // Figure-based trigger conditions (dead / present / killed). A rule's figures array may
         // contain both trigger entries and effect entries; all trigger entries must pass.
@@ -296,7 +310,7 @@ final class ScenarioRulesManager {
                 for _ in 0..<count {
                     spawnMonsterEntity(name: spawn.monster.name, type: monsterType,
                                        edition: edition, marker: spawn.marker,
-                                       health: spawn.monster.health)
+                                       health: spawn.monster.health, placed: spawn.placed ?? false)
                 }
             }
         }
@@ -322,6 +336,11 @@ final class ScenarioRulesManager {
         // Set element states
         if let elements = rule.elements {
             for elementRule in elements { applyElementRule(elementRule) }
+        }
+
+        // Monsters held back until now are set up
+        if let names = rule.setUp, !names.isEmpty {
+            onSetUpMonsters?(names)
         }
 
         // Reveal rooms as an effect
@@ -459,8 +478,8 @@ final class ScenarioRulesManager {
     // MARK: - Private: Spawning
 
     private func spawnMonsterEntity(name: String, type: MonsterType, edition: String,
-                                     marker: String? = nil, health: String? = nil) {
-        if onSpawnMonster?(name, type, marker, health) == true { return }
+                                     marker: String? = nil, health: String? = nil, placed: Bool = false) {
+        if onSpawnMonster?(name, type, marker, health, placed) == true { return }
         var monster = game.monsters.first(where: { $0.name == name && $0.edition == edition })
         if monster == nil {
             monsterManager.addMonster(name: name, edition: edition)
@@ -552,6 +571,7 @@ final class ScenarioRulesManager {
         func passesFilters(_ entity: any Entity) -> Bool {
             if !requiredTags.isEmpty && !requiredTags.allSatisfy({ entity.tags.contains($0) }) { return false }
             if let hpExpr = identifier.hp, !matchesHealthFilter(hpExpr, entity: entity) { return false }
+            if identifier.isPlaced, standsWhere?(entity, identifier) != true { return false }
             return true
         }
 
@@ -650,12 +670,16 @@ final class ScenarioRulesManager {
         case "damage":
             let amount = integerValue(value, default: 1)
             guard amount > 0 else { break }
-            if let character = entity as? GameCharacter, takesCharacterDamage?(character, amount) == true { break }
+            if let character = entity as? GameCharacter {
+                if takesCharacterDamage?(character, amount) == true { break }
+            } else if takesFigureDamage?(entity, amount) == true { break }
             entityManager.changeHealth(entity, amount: -amount)
 
         case "heal":
             let amount = integerValue(value, default: 1)
-            if amount > 0 { entityManager.changeHealth(entity, amount: amount) }
+            guard amount > 0 else { break }
+            if !(entity is GameCharacter), healsFigure?(entity, amount) == true { break }
+            entityManager.changeHealth(entity, amount: amount)
 
         case "setHp":
             if value != nil {

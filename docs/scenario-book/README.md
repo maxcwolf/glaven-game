@@ -39,6 +39,22 @@ ends up on the board:
   `dropRules`: the scenario's own rules to leave out, by their place in its list (from 0) — ones the
   data gets wrong or leaves for a person to trigger, written again in `rules`. A dropped rule keeps
   its place, since rules refer to each other by index.
+  Rules written here can use a few things the scenario data has no word for:
+  - `when` — things that have happened on the board, all at once: `{"saved": 1}` (that many
+    escorts have arrived), `{"lock": 0}` (that lock of `locks`, from 0, has been released),
+    `{"looted": "goal"}` (every goal treasure tile; a tile ref for the goal treasure on it; a
+    treasure's number). A rule with `"always": true` fires at once; without it, as the round ends
+    ("at the end of the round in which…").
+  - `setUp` — monster types held back by `later` are set up now, where the map prints them.
+  - in a figure's `identifier`: `"tile": "j1a"` (only figures standing on that tile) and
+    `"near": {"marker": "a", "range": 2}` or `{"objective": "Totem", "range": 2}`.
+  - `"alwaysApplyTurn": "turn"` rules reach monsters and summons as their own turns start, and
+    `heal` is a real heal (Poison stops it).
+  - in a spawn: `"placed": true` — set up late rather than spawned, so it drops money.
+- `later`: monster types that aren't set up with their rooms (the Lurkers of #86 until a villager
+  is saved); a rule's `setUp` brings them, on the places the map data has for them. Monsters the
+  data doesn't have at all (the golems of #41's middle room) are spawned by a rule at letters
+  written for them — letters the book doesn't print, since nothing shows a letter on the board.
 - `whenDestroyed`: what appears where an objective stood when it is destroyed, by objective
   (`{"1": {"name": "living-corpse", "player2": "normal", …}}`): a Living Corpse from each grave.
 - `goal`: the scenario's goal and losses as the book prints them (`ScenarioPlacements.Goal`).
@@ -102,7 +118,7 @@ its map, every door objective is on a door and every objective number exists.
 | 31 Plane of Night | rock column | b, c | win: destroy the column | — |
 | 33 Savvas Armory | barred door | a (exits), c, d | win: loot all, then everyone on the exit; lost if exhausted off it | — |
 | 35 Gloomhaven Battlements A | barred door | — | — | the allied demons attack the door as any enemy, without preferring it |
-| 36 Gloomhaven Battlements B | the gate (protected) | a–e | — | Prime Demon's arrival and door timer not modelled |
+| 36 Gloomhaven Battlements B | the gate (protected) | a–e | — | the demons don't prefer the gate; the Prime Demon's specials are its stat card's |
 | 38 Slave Pens | the Orchid | — | lost if he dies | he heads for the nearest enemy, not the shaman on the D tile |
 | 39 Treacherous Divide | altar | — | win: destroy the altar | — |
 | 42 Realm of the Voice | 6 vocal chords | — | win: destroy all | — |
@@ -119,8 +135,8 @@ its map, every door objective is on a door and every objective number exists.
 | 74 Merchant Ship | — | a–e | — | water tiles aren't modelled |
 | 75 Overgrown Graveyard | 9 graves | — (what rises, rises where the grave was) | win: all graves and the Bloated Regent | graves are attacked rather than dug up with movement |
 | 79 Lost Temple | Fish | — | win: kill the Betrayer | Fish's turn, the dormant golems and his loss aren't modelled |
-| 84 Crystalline Cave | the crystal | — | lost if it is destroyed | protected, no ally; losing a card to spare it and the timed corridors aren't modelled |
-| 86 Harried Village | 11 villagers | b–f | win: 7 reach the docks; lost at 5 killed | Lurkers are set up from the start |
+| 84 Crystalline Cave | the crystal | — | lost if it is destroyed | protected, no ally; losing a card to spare it isn't modelled |
+| 86 Harried Village | 11 villagers | b–f | win: 7 reach the docks; lost at 5 killed | — |
 | 90 Demonic Rift | — | b, c (the Living Spirits, once every demon is dead) | win: every Living Spirit killed | the altar crossing and the losses for leaving a room aren't modelled |
 
 ### Locked doors written
@@ -130,7 +146,7 @@ its map, every door objective is on a door and every objective number exists.
 | 2 Barrow Lair | the four side rooms | none: the Bandit Commander opens them |
 | 15 Shrine of Strength | both side rooms; the treasure room | plate (c); every character on a side-room plate |
 | 33 Savvas Armory | door 1 | every character on a plate (c) |
-| 41 Timeworn Tomb | door 2 | plate (b) unlocks it |
+| 41 Timeworn Tomb | door 2 | plate (b) unlocks it (and wakes the room's golems and artilleries) |
 | 53 Crypt Basement | all six | as rounds 2, 4, 6 and 8 begin |
 | 66 Clockwork Cove | doors 1, f, g, h; the two side rooms | held open by plates a–d; plate (d) |
 | 67 Arcane Library | door 2 | held open by a plate (a) |
@@ -139,10 +155,14 @@ its map, every door objective is on a door and every objective number exists.
 | 74 Merchant Ship | doors 1, 2 | as rounds 3 and 6 end |
 | 79 Lost Temple | door 1 | none: the rule that every Stone Golem is dead opens it |
 | 82 Burning Mountain | all six | one for each elite killed, in order |
+| 84 Crystalline Cave | the three cave walls | as rounds 4, 6 and 9 begin |
 
 Not locked yet: #95's door 1 (its key is the six numbered tokens, which aren't modelled).
 In #66 door 1 opens as a character steps onto plate (a) rather than as their turn ends, and
 trap damage from a closing door can't be negated by losing cards.
+
+Letters written only for a rule: #41 c–g (where the middle room's artilleries and golems are
+set up; not the book's letters), #83 the altar (a).
 
 Letters written only for a goal: #23 and #40 pressure plates; #25, #37, #41 and #71 exits; #66
 plates a–e; #82 the altar hex g; #88 the crystal.
@@ -195,7 +215,7 @@ goals are checked; the notes say what around a goal is still missing.
 | 33 | Savvas Armory | Loot all treasure tiles, then all characters must escape through the exit (a). | yes | Any character becomes exhausted while not standing on an exit hex (a). | yes |
 | 34 | Scorched Summit | Kill the Elder Drake. | yes | — | — |
 | 35 | Gloomhaven Battlements A | Destroy door 1 and kill the Captain of the Guard. | yes | — | — |
-| 36 | Gloomhaven Battlements B | Kill the Prime Demon. | yes (the Prime Demon is on the board from the start) | — | — |
+| 36 | Gloomhaven Battlements B | Kill the Prime Demon. | yes | — | — |
 | 37 | Doom Trench | All characters must escape through the exit (a). | yes | Any character becomes exhausted while not occupying an exit hex (a). | yes |
 | 38 | Slave Pens | Kill all enemies and protect the Orchid (a). | yes | The Orchid is killed. | yes |
 | 39 | Treacherous Divide | Destroy the altar (a). | yes | — | — |

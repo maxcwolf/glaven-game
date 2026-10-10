@@ -2,7 +2,7 @@ import Foundation
 
 /// A monster position from the map data. Which monsters appear — and whether they are normal,
 /// elite or boss — comes from the scenario data; the map supplies where they stand.
-struct MonsterSlot: Equatable {
+struct MonsterSlot: Codable, Equatable, Sendable {
     let name: String
     let coord: HexCoord
     /// Map-data type per character count (2/3/4): "normal", "elite" or "none".

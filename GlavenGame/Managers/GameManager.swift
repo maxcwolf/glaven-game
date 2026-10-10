@@ -150,6 +150,14 @@ final class GameManager {
             }
         }
 
+        rulesManager.onSetUpMonsters = { [weak self] names in
+            guard let self else { return }
+            self.scenarioManager.setUpHeldBack(names)
+            if self.appPhase == .board, self.boardCoordinator.scenarioData != nil {
+                self.boardCoordinator.placeMonstersSetUpLater(names)
+            }
+        }
+
         // Wire undo state capture into all sub-managers
         let beforeMutate: () -> Void = { [weak self] in self?.pushUndoState() }
         charMgr.onBeforeMutate = beforeMutate

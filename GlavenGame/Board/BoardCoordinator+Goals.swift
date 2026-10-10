@@ -48,7 +48,7 @@ extension BoardCoordinator {
 
     /// Whether every treasure tile with this id on the map has been looted: each tile that holds
     /// one is revealed and none is left on the board.
-    private func treasureIsLooted(_ id: String) -> Bool {
+    func treasureIsLooted(_ id: String) -> Bool {
         guard let scenarioData else { return false }
         let tiles = Set(BoardBuilder.findPlacements(in: scenarioData.mapTileData).filter { placement in
             placement.tile.overlays.contains { $0.ref.type == "treasure" && $0.ref.id == id }
@@ -232,6 +232,66 @@ extension BoardCoordinator {
             guard standing.contains(where: { at in
                 hexes.contains(at) || (reach.adjacent == true && hexes.contains { $0.distance(to: at) == 1 })
             }) else { return false }
+        }
+        return true
+    }
+
+    // MARK: - What rules ask of the board
+
+    /// Whether something a rule waits for has happened (`ScenarioRule.when`).
+    func boardFactHolds(_ fact: BoardFact) -> Bool {
+        if let saved = fact.saved {
+            let arrived = (gameManager?.game.figures ?? []).reduce(0) { count, figure in
+                guard case .objective(let container) = figure else { return count }
+                return count + container.entities.filter { $0.tags.contains(Self.arrivedTag) }.count
+            }
+            guard arrived >= saved else { return false }
+        }
+        if let lock = fact.lock, !boardState.releasedLocks.contains(lock) { return false }
+        if let looted = fact.looted {
+            if looted == Self.goalTreasureID {
+                guard treasureIsLooted(looted) else { return false }
+            } else if Int(looted) != nil {
+                guard treasureIsLooted(looted) else { return false }
+            } else {
+                // The goal treasure of one map tile.
+                let tile = looted.lowercased()
+                guard boardState.visibleRooms.contains(where: { $0.lowercased() == tile }),
+                      !boardState.cells.values.contains(where: {
+                          $0.tileRef.lowercased() == tile && $0.overlay == .treasure && $0.treasureID == Self.goalTreasureID
+                      }) else { return false }
+            }
+        }
+        return true
+    }
+
+    /// The piece of a figure in the game.
+    func pieceID(of entity: any Entity) -> PieceID? {
+        if let character = entity as? GameCharacter { return .character(character.id) }
+        if let summon = entity as? GameSummon { return .summon(id: summon.id) }
+        if let objective = entity as? GameObjectiveEntity { return .objective(id: objective.number) }
+        if let standee = entity as? GameMonsterEntity,
+           let monster = gameManager?.game.monsters.first(where: { $0.entities.contains { $0 === standee } }) {
+            return .monster(name: monster.name, standee: standee.number)
+        }
+        return nil
+    }
+
+    /// Whether a figure stands where a rule's identifier asks: on a map tile, or within range of
+    /// a lettered hex or an objective.
+    func stands(_ entity: any Entity, where identifier: ScenarioFigureRuleIdentifier) -> Bool {
+        guard let piece = pieceID(of: entity), let hex = boardState.piecePositions[piece] else { return false }
+        if let tile = identifier.tile, boardState.cells[hex]?.tileRef.lowercased() != tile.lowercased() { return false }
+        if let near = identifier.near {
+            var places = near.marker.flatMap { boardState.markerHexes[$0] } ?? []
+            if let objective = near.objective {
+                places += boardState.piecePositions.compactMap { id, place in
+                    guard case .objective = id, objectiveContainer(of: id)?.name == objective,
+                          (self.entity(for: id) as? GameObjectiveEntity)?.dead == false else { return nil }
+                    return place
+                }
+            }
+            guard places.contains(where: { $0.distance(to: hex) <= near.range }) else { return false }
         }
         return true
     }

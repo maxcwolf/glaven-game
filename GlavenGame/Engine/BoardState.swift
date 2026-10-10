@@ -70,6 +70,9 @@ final class BoardState {
     /// The scenario's locks (by their place in its list) whose key has been turned.
     var releasedLocks: Set<Int> = []
 
+    /// The map's places for monsters of revealed rooms that are set up later (`ScenarioPlacements.later`).
+    var heldMonsterSlots: [MonsterSlot] = []
+
     /// Goal treasure tiles looted so far, and elite monsters killed (both open doors somewhere).
     var goalTreasuresLooted = 0
     var eliteKills = 0

@@ -58,6 +58,12 @@ struct ScenarioRule: Codable, Hashable {
     var randomDungeon: RandomDungeonRule?
     var statEffects: [StatEffectRule]?
     var finish: String?             // "won", "lost", "round"
+    /// Things about the board the rule waits for, all at once (rules written in the placements
+    /// only): a villager saved, a lock released, treasure looted.
+    var when: [BoardFact]?
+    /// Monster types the placements hold back (`later`) that are set up now, where the map
+    /// prints them.
+    var setUp: [String]?
 
     var isAlways: Bool { always ?? false }
     var isOnce: Bool { once ?? false }
@@ -68,7 +74,7 @@ struct ScenarioRule: Codable, Hashable {
         case requiredRooms, requiredRules, disablingRules, requiredScenarios
         case note, noteTop, rooms, sections, figures, spawns, objectiveSpawns
         case elements, elementTrigger, treasures, disableRules, randomDungeon
-        case statEffects, finish
+        case statEffects, finish, when, setUp
     }
 
     init(from decoder: Decoder) throws {
@@ -93,6 +99,8 @@ struct ScenarioRule: Codable, Hashable {
         randomDungeon = try c.decodeIfPresent(RandomDungeonRule.self, forKey: .randomDungeon)
         statEffects = try c.decodeIfPresent([StatEffectRule].self, forKey: .statEffects)
         finish = try c.decodeIfPresent(String.self, forKey: .finish)
+        when = try c.decodeIfPresent([BoardFact].self, forKey: .when)
+        setUp = try c.decodeIfPresent([String].self, forKey: .setUp)
         // Bool fields that can appear as strings "true"/"false" in JSON
         start = Self.decodeBool(c, key: .start)
         always = Self.decodeBool(c, key: .always)
@@ -105,6 +113,19 @@ struct ScenarioRule: Codable, Hashable {
         if let s = try? c.decodeIfPresent(String.self, forKey: key) { return s.lowercased() == "true" }
         return nil
     }
+}
+
+// MARK: - Board Fact
+
+/// Something that has happened on the board, for a rule's `when`.
+struct BoardFact: Codable, Hashable {
+    /// At least this many escorts have reached where they were going.
+    var saved: Int?
+    /// The lock at this place in the placements' `locks` (from 0) has been released.
+    var lock: Int?
+    /// Treasure looted: `"goal"` for every goal treasure tile, a map tile (`"b2b"`) for the goal
+    /// treasure on it, or a treasure's number.
+    var looted: String?
 }
 
 // MARK: - Rule Identifier
@@ -133,6 +154,21 @@ struct ScenarioFigureRuleIdentifier: Codable, Hashable {
     var tags: [String]?
     var health: String?             // health condition expression
     var hp: String?                 // hp condition
+    /// Only figures standing within `range` hexes of a lettered hex or of an objective
+    /// (placements' rules only).
+    var near: Near?
+    /// Only figures standing on this map tile ("j1a"; placements' rules only).
+    var tile: String?
+
+    struct Near: Codable, Hashable {
+        var marker: String?
+        /// An objective by name ("Totem"): any one still standing.
+        var objective: String?
+        var range: Int
+    }
+
+    /// Whether where a figure stands matters.
+    var isPlaced: Bool { near != nil || tile != nil }
 }
 
 // MARK: - Monster Spawn Data
@@ -142,6 +178,8 @@ struct MonsterSpawnData: Codable, Hashable {
     var count: IntOrString?
     var marker: String?
     var summon: Bool?
+    /// The monster is set up late rather than spawned: it drops money like any set up at the start.
+    var placed: Bool?
     var manual: Bool?
     var manualMin: Int?
     var manualMax: Int?

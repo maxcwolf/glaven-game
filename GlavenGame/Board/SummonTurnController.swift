@@ -41,6 +41,7 @@ final class SummonTurnController {
             // Start of the summon's own turn: its conditions tick (wound, regenerate).
             gameManager.entityManager.restoreConditions(summon)
             gameManager.entityManager.applyConditionsTurn(summon)
+            gameManager.scenarioRulesManager.evaluateTurnRules(.turnStart, for: summon)
             coordinator.sweepDeadFigures()
             guard !summon.dead, coordinator.isOnBoard(pieceID) else { continue }
 

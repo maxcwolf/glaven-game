@@ -61,7 +61,7 @@ final class ScenarioPlacementTests: XCTestCase {
             let treasure = Set(tiles.flatMap { $0.overlays.filter { $0.ref.type == "treasure" }.compactMap(\.ref.id) })
             func check(_ goal: ScenarioPlacements.Goal) {
                 XCTAssertFalse((goal.text ?? "x").isEmpty)
-                for name in (goal.kill ?? []) + (goal.killCount?.of ?? []) + (goal.lostIfKilled ?? []) {
+                for name in (goal.kill ?? []) + (goal.killCount?.of ?? []) + (goal.lostIfKilled ?? []) + (goal.spare ?? []) {
                     XCTAssertTrue(monsters.contains(name), "\(index): no monster \(name)")
                 }
                 for objective in (goal.destroy ?? []) + (goal.arrive.map { [$0.objective] } ?? []) + (goal.lostAt ?? [:]).keys.compactMap(Int.init) {
@@ -85,13 +85,77 @@ final class ScenarioPlacementTests: XCTestCase {
                 (goal.either ?? []).forEach(check)
             }
             check(goal)
-            for rule in placements.rules ?? [] {
+        }
+    }
+
+    /// Every rule written for a scenario names things it has: monsters, letters, tiles, locks,
+    /// objectives and treasure; what is held back is set up by some rule, and a rule left out is
+    /// one of the scenario's own.
+    func testEveryWrittenRuleRefersToThingsInItsScenario() throws {
+        let gm = try SaveAndContinueTestsSupport.manager()
+        var checked = 0
+        for (index, placements) in ScenarioPlacementStore.shared.all().sorted(by: { $0.key < $1.key }) {
+            let data = try XCTUnwrap(gm.editionStore.scenarios(for: "gh").first { $0.index == index && $0.solo == nil }, index)
+            let map = try XCTUnwrap(ScenarioMapStore.shared.scenarioMap(for: index))
+            let tiles = Set(BoardBuilder.findPlacements(in: map.mapTileData).map { $0.tile.ref.lowercased() })
+            let monsters = Set((data.monsters ?? []).map { MonsterNameSpec($0).name })
+            let inRooms = Set((data.rooms ?? []).flatMap { ($0.monster ?? []).map(\.name) })
+            let letters = Set(placements.tiles.values.flatMap { ($0.markers ?? [:]).keys })
+            let treasure = Set(BoardBuilder.findPlacements(in: map.mapTileData)
+                .flatMap { $0.tile.overlays.filter { $0.ref.type == "treasure" }.compactMap(\.ref.id) })
+            let objectives = Set((data.objectives ?? []).compactMap(\.name))
+            let rules = placements.rules ?? []
+            let own = (data.rules ?? []).count - rules.count
+
+            for dropped in placements.dropRules ?? [] { XCTAssertTrue((0..<own).contains(dropped), "\(index): no rule \(dropped) to leave out") }
+            for (objective, risen) in placements.whenDestroyed ?? [:] {
+                XCTAssertTrue((1...(data.objectives?.count ?? 0)).contains(Int(objective) ?? 0), "\(index): no objective \(objective)")
+                XCTAssertTrue(monsters.contains(risen.name), "\(index): no monster \(risen.name)")
+            }
+            for name in placements.later ?? [] {
+                XCTAssertTrue(inRooms.contains(name), "\(index): no \(name) in a room to hold back")
+                XCTAssertTrue(rules.contains { ($0.setUp ?? []).contains(name) || ($0.spawns ?? []).contains { $0.monster.name == name } },
+                              "\(index): nothing ever sets up \(name)")
+            }
+            for rule in rules {
+                checked += 1
                 for spawn in rule.spawns ?? [] {
                     XCTAssertTrue(monsters.contains(MonsterNameSpec(spawn.monster.name).name), "\(index): no monster \(spawn.monster.name)")
                     if let marker = spawn.marker { XCTAssertTrue(letters.contains(marker), "\(index): no hex lettered \(marker)") }
                 }
+                for name in rule.setUp ?? [] { XCTAssertTrue((placements.later ?? []).contains(name), "\(index): \(name) isn't held back") }
+                for room in (rule.requiredRooms ?? []) + (rule.rooms ?? []) {
+                    XCTAssertTrue((data.rooms ?? []).contains { $0.roomNumber == room }, "\(index): no room \(room)")
+                }
+                for fact in rule.when ?? [] {
+                    XCTAssertTrue(fact.saved != nil || fact.lock != nil || fact.looted != nil, "\(index): an empty fact")
+                    if let lock = fact.lock { XCTAssertTrue((placements.locks ?? []).indices.contains(lock), "\(index): no lock \(lock)") }
+                    if fact.saved != nil { XCTAssertNotNil(placements.goal?.arrive, "\(index): no one to save") }
+                    if let looted = fact.looted {
+                        XCTAssertTrue(treasure.contains(looted) || (tiles.contains(looted) && treasure.contains(BoardCoordinator.goalTreasureID)),
+                                      "\(index): no treasure \(looted)")
+                    }
+                }
+                for figure in rule.figures ?? [] {
+                    guard let identifier = figure.identifier else { continue }
+                    if identifier.type ?? "monster" == "monster", let name = identifier.name, name != ".*" {
+                        XCTAssertTrue(monsters.contains(name), "\(index): no monster \(name)")
+                    }
+                    if identifier.type == "objective", let name = identifier.name { XCTAssertTrue(objectives.contains(name), "\(index): no objective \(name)") }
+                    if let tile = identifier.tile { XCTAssertTrue(tiles.contains(tile), "\(index): no tile \(tile)") }
+                    if let near = identifier.near {
+                        XCTAssertTrue((near.marker != nil) != (near.objective != nil), "\(index): near one thing")
+                        if let marker = near.marker { XCTAssertTrue(letters.contains(marker), "\(index): no hex lettered \(marker)") }
+                        if let objective = near.objective { XCTAssertTrue(objectives.contains(objective), "\(index): no objective \(objective)") }
+                        XCTAssertGreaterThan(near.range, 0, index)
+                    }
+                    if let value = figure.value, case .string(let text) = value, ["damage", "heal"].contains(figure.type) {
+                        XCTAssertNotNil(ScenarioExpression.integerValue(text, variables: ["C": 2, "L": 1, "R": 3]), "\(index): \(text)")
+                    }
+                }
             }
         }
+        XCTAssertGreaterThan(checked, 15)
     }
 
     // MARK: - Objectives in play
