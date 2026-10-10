@@ -112,6 +112,51 @@ final class BoardTeardownTests: XCTestCase {
         XCTAssertTrue(coord.pendingMoveAnimations.isEmpty)
     }
 
+    /// A move whose animation never reports back (its node replaced, the view not running — the
+    /// app in the background) ends on its own once overdue, instead of leaving the turn, and
+    /// every button on the board, waiting forever (memory and soak testing 2026-10-09).
+    func testAMoveWhoseAnimationNeverEndsFinishesAnyway() async throws {
+        addBrute(at: HexCoord(3, 3))
+        coord.boardScene = StalledScene(size: CGSize(width: 400, height: 300))
+        let margin = BoardCoordinator.moveWatchdogMargin
+        BoardCoordinator.moveWatchdogMargin = 0
+        defer { BoardCoordinator.moveWatchdogMargin = margin }
+        var finished = false
+        let move = Task { @MainActor in
+            await self.coord.moveAlong(.character(self.brute.id), path: [HexCoord(3, 3), HexCoord(4, 3)], style: .normal)
+            finished = true
+        }
+        let deadline = Date().addingTimeInterval(5)
+        while !finished && Date() < deadline { try await Task.sleep(nanoseconds: 20_000_000) }
+        XCTAssertTrue(finished, "the move ended without its animation")
+        XCTAssertTrue(coord.pendingMoveAnimations.isEmpty)
+        XCTAssertEqual(coord.boardState.piecePositions[.character(brute.id)], HexCoord(4, 3))
+        if finished { _ = await move.value } else { coord.exitBoard() }   // never hang the suite
+    }
+
+    /// A push whose target is gone from the board by the time its hex is picked: the push ends
+    /// and the attack goes on, instead of waiting forever for a step that can't be made.
+    func testAPushWhoseTargetIsGoneEndsThePush() async throws {
+        addBrute(at: HexCoord(3, 3))
+        coord.autoResolvePrompts = false
+        var finished = false
+        let push = Task { @MainActor in
+            await self.coord.performPushPull(target: .character(self.brute.id), attackerPos: HexCoord(2, 3), steps: 2, isPush: true)
+            finished = true
+        }
+        await settle()
+        guard case .selectingPushPullHex(_, _, let hexes, _, _) = coord.interactionMode, let hex = hexes.sorted().first else {
+            coord.exitBoard()
+            return XCTFail("the push asks where to")
+        }
+        coord.boardState.removePiece(.character(brute.id))
+        coord.executePushPullStep(target: .character(brute.id), to: hex, attackerPos: HexCoord(2, 3), remainingSteps: 2, isPush: true)
+        await settle()
+        XCTAssertTrue(finished, "the push ended")
+        if case .selectingPushPullHex = coord.interactionMode { XCTFail("no push left to choose") }
+        if finished { _ = await push.value } else { coord.exitBoard() }   // never hang the suite
+    }
+
     /// A monster type's turn pausing between its standees when the board is restarted: the rest
     /// of the type never acts on the new board, even where the same pieces stand again.
     func testAMonsterTurnLeftBehindNeverActsOnTheNextBoard() async throws {
@@ -182,3 +227,4 @@ private final class StalledScene: BoardScene {
     override func movePiece(id: PieceID, along path: [HexCoord], animation: MoveAnimation = .walk,
                             offsetCol: Int = 0, offsetRow: Int = 0, completion: @escaping () -> Void) {}
 }
+

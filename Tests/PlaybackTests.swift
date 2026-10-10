@@ -78,4 +78,20 @@ final class PlaybackTests: XCTestCase {
         XCTAssertTrue(done)
         XCTAssertFalse(coord.isPaused)
     }
+
+    /// A monster's push mid-turn leaves the turn still the monsters': Pause and fast-forward stay
+    /// on the board, and a pause still holds the rest of the turn.
+    func testAMonsterPushKeepsTheTurnAutomated() async throws {
+        let gm = try SaveAndContinueTestsSupport.manager()
+        let coord = gm.boardCoordinator
+        coord.boardState = makeBoard(cols: 12, rows: 12)
+        coord.autoResolvePrompts = true
+        gm.characterManager.addCharacter(name: "brute", edition: "gh")
+        let brute = try XCTUnwrap(gm.game.characters.first)
+        coord.boardState.placePiece(.character(brute.id), at: HexCoord(3, 3))
+        coord.interactionMode = .watchingMonsterTurn
+        await coord.performPushPull(target: .character(brute.id), attackerPos: HexCoord(2, 3), steps: 2, isPush: true)
+        XCTAssertNotEqual(coord.boardState.piecePositions[.character(brute.id)], HexCoord(3, 3), "pushed")
+        XCTAssertTrue(coord.isAutomatedTurn, "still the monsters' turn")
+    }
 }

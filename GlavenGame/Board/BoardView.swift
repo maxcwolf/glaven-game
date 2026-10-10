@@ -19,6 +19,10 @@ struct BoardView: View {
             // SpriteKit board
             if let scene = coordinator.boardScene {
                 SpriteView(scene: scene)
+                    // A new scene is a new view: SpriteView keeps showing the scene it was first
+                    // given, so a board rebuilt while this screen stays up (another scenario, a
+                    // campaign loaded mid-game) played on unseen (found by the soak test).
+                    .id(ObjectIdentifier(scene))
                     .ignoresSafeArea()
                     .anchorPreference(key: LearnAnchorKey.self, value: .bounds) { [.board: $0] }
                     .reportFrame { hudFrames.board = $0 }

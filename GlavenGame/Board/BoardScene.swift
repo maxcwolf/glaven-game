@@ -528,7 +528,7 @@ class BoardScene: SKScene {
         let name = GameText.conditionName(condition)
         if gained {
             floatText(name, over: id, style: condition.isPositive ? .boon : .harm)
-            play(condition.isPositive ? .boon : .harm)
+            play(.condition(condition))
         }
         else { floatText("\(name) ends", over: id, style: .info) }
     }
@@ -728,6 +728,23 @@ class BoardScene: SKScene {
 
     /// The last kind of move each piece made (for tests).
     private(set) var lastMoveAnimation: [PieceID: MoveAnimation] = [:]
+
+    /// How long a move's animation takes in scene time (the scene's speed stretches it).
+    func moveDuration(along path: [HexCoord], animation: MoveAnimation, offsetCol: Int = 0, offsetRow: Int = 0) -> Double {
+        let points = path.map { hexCenterInScene(col: $0.col - offsetCol, row: $0.row - offsetRow) }
+        return MovePlan.plan(animation, through: points, reduceMotion: reduceMotion).duration
+    }
+
+    /// A move whose animation never reported back (its node replaced, the view not running):
+    /// stop it and put the figure where it ended.
+    func finishMove(id: PieceID, at hex: HexCoord, offsetCol: Int = 0, offsetRow: Int = 0) {
+        guard let node = pieceNodes[id] else { return }
+        node.removeAllActions()
+        node.setScale(1)
+        node.alpha = 1
+        node.position = hexCenterInScene(col: hex.col - offsetCol, row: hex.row - offsetRow)
+        if actingPieceID == id { actingRing.position = node.position }
+    }
 
     /// Animate a piece moving along a path, the way its kind of move looks. With no view
     /// showing the scene (headless play), the piece goes straight to its hex.
@@ -1068,6 +1085,8 @@ class BoardScene: SKScene {
             onHexTap?(hex)
             return true
         }
+        // The board is asking for a hex and this isn't one of them.
+        if !highlightNodes.isEmpty, boardStateRef?.cells[hex] != nil { play(.invalid) }
         return false
     }
 

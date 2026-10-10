@@ -249,6 +249,9 @@ Phase III — game feel
 - [x] Camera: frames the board in the largest gap between the HUD panels (reframes when a panel grows over it, and when a door opens), can't be dragged off the board, zooms where the fingers or pointer are, follows the acting figure; "show whole board" button; trackpad scroll pans (`BoardCameraTests`)
 - [x] Room reveal without rebuilding the scene: the new room's tiles, overlays, figures and loot fade in; tokens, effects in flight and the grid offset stay put (`RoomRevealTests`)
 - [x] Board sound effects (Kenney CC0 packs, credited in Resources/Sounds/CREDITS.txt): steps, hits, heavy hits, misses, blocks, deaths, heals, loot, doors, traps, teleports, landings, conditions, card draws, a character's turn; silent when headless (`BoardSoundTests`)
+- [x] Sound design pass, every sound chosen by ear (docs/sound-design.md): a cue for each base-game condition in place of one pluck for all; cues for exhaustion, partial shield, retaliate, elements, spawns, rests, lost cards, the round beginning, deck shuffles and the player's own taps (card picked, cards locked in, target chosen, End Turn, a tap that isn't a choice); levels mastered into the files (`SoundAssetTests`); cues raised together heard in order, a repeated cue once (`BoardSoundMixerTests`)
+- [ ] Sound: the "tap" on the header's element tokens still plays the iOS keyboard click (`SoundPlayer.play(.tap)`) and nothing on the Mac; fold `SoundEffect` into `BoardSound`
+- [ ] Sound: a recorded choir for Bless in place of the synthesised one, if a CC0 sample turns up
 
 Phase IV — the game around the board
 - [x] Main menu key art (the world map, drifting under a vignette; still under Reduce Motion), Load Game and Credits on the menu (the mascot moved there), jingles for a scenario's start, victory and defeat (`MainMenuTests`)
@@ -495,7 +498,10 @@ Performance & robustness
 - [x] The last scenario's elements stayed lit when the next one began
 - [x] Disabled board buttons looked as ready as any other (now dimmed)
 - [x] A quest's requirement showed the data's shorthand "(scenario number > 51)"
-- [ ] **Next:** performance and memory-leak testing — after the app is open a while many buttons seem unresponsive (user report, 2026-10-09)
+- [ ] Playthrough tests (ScenarioSimulator policies) make moves no player would; give some scenarios set, realistic moves and actions that replicate a real playthrough (user, 2026-10-09)
+- [x] Performance and memory-leak testing (user report: buttons unresponsive after the app is open a while, 2026-10-09). A soak run (`SIMCTL_CHILD_GLAVEN_SOAK=1`, `SoakDriver`) played GH #1–4 for hours on the iPad simulator; `leaks` found none and memory, node and object counts stayed flat; finished boards are freed back in town and town relayout is ~4 ms. Fixed: the board view kept drawing the first scenario's scene (moves not shown, a second scene alive); a move whose animation never reports back left the turn and every board button waiting forever (now ends once overdue); a push whose target left the board mid-choice never resumed the attack; a monster's push dropped Pause and fast-forward for the rest of its turn
+- [ ] Prompts (`pendingModifierDraw`, `pendingDamage`, `pendingItemUse`, `pendingFigureChoice`) are overwritten, not resumed, if a second one is asked while one waits — the first task would hang. Not seen in play or the all-scenarios run; resume the old one with its default if it ever is
+- [ ] `refreshCampaigns` decodes every campaign file on each save (~0.5 ms a campaign); cache entries by modification date if campaign lists grow large
 
 ### Remaining gaps
 

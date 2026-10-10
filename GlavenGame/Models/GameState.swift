@@ -18,6 +18,8 @@ final class GameState {
     var playSeconds: Int = 0
     var totalSeconds: Int = 0
     var elementBoard: [ElementModel] = ElementModel.defaultBoard()
+    /// Told when an element is infused or consumed, so the board can sound it (not saved).
+    @ObservationIgnored var onElementChange: ((ElementChange) -> Void)?
     var monsterAttackModifierDeck: AttackModifierDeck = .defaultDeck()
     var allyAttackModifierDeck: AttackModifierDeck = .defaultDeck()
     var lootDeck: LootDeck = LootDeck()

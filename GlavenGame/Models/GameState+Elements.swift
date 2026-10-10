@@ -1,5 +1,8 @@
 import Foundation
 
+/// What just happened to an element on the infusion table.
+enum ElementChange { case infused, consumed }
+
 /// Elemental infusion table rules (GH p.24).
 extension GameState {
 
@@ -26,6 +29,7 @@ extension GameState {
                 elementBoard[idx].state = .consumed
             }
         }
+        onElementChange?(.consumed)
         return chosen
     }
 
@@ -38,6 +42,7 @@ extension GameState {
             break
         default:
             elementBoard[idx].state = .new
+            onElementChange?(.infused)
         }
     }
 

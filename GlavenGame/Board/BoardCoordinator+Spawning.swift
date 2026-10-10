@@ -63,6 +63,8 @@ extension BoardCoordinator {
         boardState.placePiece(pieceID, at: destination)
         if entity.type == .elite { boardState.eliteStandees.insert(pieceID) }
         boardScene?.addPieceSprite(id: pieceID, at: destination, offsetCol: offsetCol, offsetRow: offsetRow)
+        // A room's monsters arrive with its door; one spawned or summoned later announces itself.
+        if origin != .placed { boardScene?.play(.summon) }
 
         // A monster entering play during a round draws its type's ability card now and acts
         // this round as if just revealed — unless it was summoned (p.31–32, p.47).

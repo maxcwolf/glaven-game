@@ -10,7 +10,7 @@ struct CreditsSheet: View {
         ("Game data", "Scenarios, monsters, characters and rules data from Gloomhaven Secretariat by Lurkars."),
         ("Card images", "Ability and monster card scans from gloomhaven-card-browser by cmlenius."),
         ("Type", "Pirata One and Germania One, under the SIL Open Font License."),
-        ("Sound", "Effects and jingles from Kenney's RPG Audio, Impact Sounds, Interface Sounds and Music Jingles packs (CC0), kenney.nl."),
+        ("Sound", "Effects and jingles built from Kenney's RPG Audio, Impact Sounds, Interface Sounds, Music Jingles and Casino Audio packs (CC0), kenney.nl."),
     ]
 
     var onDone: () -> Void = {}

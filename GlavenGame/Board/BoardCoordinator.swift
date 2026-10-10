@@ -526,6 +526,8 @@ final class BoardCoordinator {
         gameManager.scenarioStatsManager.recordRest(by: character.name, long: true)
         let lostCard = character.discardedCards.remove(at: discardIndex)
         character.lostCards.append(lostCard)
+        boardScene?.play(.rest)
+        boardScene?.play(.lose)
 
         // Recover remaining discard to hand. (Heal 2 and refreshing spent items happen when the
         // resting turn starts — RoundManager.beforeTurn.)
@@ -636,6 +638,8 @@ final class BoardCoordinator {
             character.discardedCards.remove(at: idx)
         }
         character.lostCards.append(lostCardId)
+        boardScene?.play(.rest)
+        boardScene?.play(.lose)
 
         // Recover remaining discard to hand
         character.handCards.append(contentsOf: character.discardedCards)
@@ -695,6 +699,11 @@ final class BoardCoordinator {
         longRestedCharacterIDs = []
 
         // End-of-round cleanup (end-of-round scenario rules, elements wane, decks reshuffle)
+        let game = gameManager.game
+        if game.monsterAttackModifierDeck.needsShuffle || game.allyAttackModifierDeck.needsShuffle
+            || game.characters.contains(where: { $0.attackModifierDeck.needsShuffle }) {
+            boardScene?.play(.shuffle)
+        }
         gameManager.roundManager.nextGameState()
         log("Round \(gameManager.game.round) complete", category: .round)
         afterRuleDamage { [weak self] in
@@ -948,6 +957,9 @@ final class BoardCoordinator {
         scene.statusProvider = { [weak self] piece in self?.pieceStatus(piece) }
         scene.playSound = { BoardSoundPlayer.play($0) }
         boardScene = scene
+        gameManager?.game.onElementChange = { [weak self] change in
+            self?.boardScene?.play(change == .infused ? .infuse : .consume)
+        }
 
         (offsetCol, offsetRow) = Self.sceneOffsets(for: boardState)
 
@@ -1065,6 +1077,7 @@ final class BoardCoordinator {
         let summonPieceID = PieceID.summon(id: summonID)
         boardState.placePiece(summonPieceID, at: coord)
         boardScene?.addPieceSprite(id: summonPieceID, at: coord, offsetCol: offsetCol, offsetRow: offsetRow)
+        boardScene?.play(.summon)
         boardScene?.clearHighlights()
         teach(.summons, at: .piece(summonPieceID))
         let pending = pendingSummonPlacement
@@ -1136,6 +1149,7 @@ final class BoardCoordinator {
         character.initiative = leading.initiative
         character.longRest = false
         storeSelectedCards(for: characterID, top: leading, bottom: other)
+        boardScene?.play(.cardConfirm)
         log("\(characterName(characterID)) plays \(leading.name ?? "a card") (\(leading.initiative)) and \(other.name ?? "a card")", category: .round)
         completeCardSelection(for: characterID)
     }
@@ -1147,6 +1161,7 @@ final class BoardCoordinator {
         character.initiative = 99
         character.longRest = true
         log("\(characterName(characterID)) will long rest", category: .rest)
+        boardScene?.play(.cardConfirm)
         completeCardSelection(for: characterID)
     }
 
@@ -1207,6 +1222,7 @@ final class BoardCoordinator {
         guard let gameManager = gameManager else { return }
 
         // Advance the round (start-of-round rules, monster ability draws, initiative order)
+        boardScene?.play(.round)
         gameManager.roundManager.nextGameState()
         afterRuleDamage { [weak self] in self?.continueExecution() }
     }
@@ -1563,6 +1579,7 @@ final class BoardCoordinator {
     func finishPlayerTurn() {
         // Ignore a second End Turn for the same turn.
         guard let ptc = activePlayerTurn, ptc.phase == .turnComplete else { return }
+        boardScene?.play(.endTurn)
         teach(.playedCards)
         applyEndOfTurnItems(ptc)
         applyEndOfTurnBonuses(ptc)
@@ -2155,9 +2172,10 @@ final class BoardCoordinator {
     /// Execute one step of a push/pull. Traps and hazardous terrain trigger on every hex the
     /// target is forced into.
     func executePushPullStep(target: PieceID, to destination: HexCoord, attackerPos: HexCoord, remainingSteps: Int, isPush: Bool) {
-        guard let currentPos = boardState.piecePositions[target] else { return }
         boardScene?.clearHighlights()
         interactionMode = .idle
+        // The target left the board meanwhile: the push ends, or the attack waiting on it hangs.
+        guard let currentPos = boardState.piecePositions[target] else { return completePushPullAction() }
 
         // Heaving Swing: pushed into an obstacle, it's destroyed; the target suffers 2 damage and
         // the character gains 1 experience.
@@ -2213,10 +2231,13 @@ final class BoardCoordinator {
             log("\(name(target))\u{2019}s Heavy Greaves hold them in place", category: .move)
             return
         }
+        let monstersTurn = isAutomatedTurn, generation = boardGeneration
         await withCheckedContinuation { [weak self] continuation in
             self?.pendingPushPullContinuation = continuation
             self?.beginPushPull(target: target, attackerPos: attackerPos, remainingSteps: steps, isPush: isPush)
         }
+        // The push leaves the board idle; a monster's turn goes on, with Pause and fast-forward.
+        if monstersTurn && isCurrentBoard(generation) { interactionMode = .watchingMonsterTurn }
     }
 
     // MARK: - Loot
@@ -2509,6 +2530,19 @@ final class BoardCoordinator {
 
     // MARK: - Input Handling
 
+    /// The sound of a tap on a figure while the board asks for one: an attack target chosen, or a
+    /// figure that isn't among the choices.
+    private func soundPieceTap(asked: InteractionMode, accepted: Bool) {
+        switch asked {
+        case .selectingAttackTarget, .selectingMultiAttackTargets:
+            boardScene?.play(accepted ? .target : .invalid)
+        case .selectingConditionTarget, .selectingHealTarget, .selectingForcedMoveTarget, .choosingPerformer:
+            if !accepted { boardScene?.play(.invalid) }
+        default:
+            break
+        }
+    }
+
     func handleHexTap(_ coord: HexCoord) {
         if explainMode { return explainHex(at: coord) }
         let asked = String(describing: interactionMode)
@@ -2550,8 +2584,12 @@ final class BoardCoordinator {
 
     func handlePieceTap(_ piece: PieceID) {
         if explainMode { return explain(.piece(piece)) }
-        let asked = String(describing: interactionMode)
-        defer { if String(describing: interactionMode) != asked { activePlayerTurn?.choiceMade() } }
+        let asked = String(describing: interactionMode), askedMode = interactionMode
+        defer {
+            let accepted = String(describing: interactionMode) != asked
+            if accepted { activePlayerTurn?.choiceMade() }
+            soundPieceTap(asked: askedMode, accepted: accepted)
+        }
         switch interactionMode {
         case .selectingMove(let mover, let range, let validHexes, false, let mode):
             // Move 0: the character taps themselves.
