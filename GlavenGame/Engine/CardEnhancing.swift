@@ -134,13 +134,22 @@ enum CardEnhancing {
             action: enhancement, slotType: slot.type, actionType: slot.action.type,
             cardLevel: card.level?.intValue ?? 1,
             previousEnhancements: EnhancementsManager.enhancementCount(on: slot.cardId, half: slot.half, in: enhancements),
-            isMultiTarget: targetsSeveral(slot.host),
+            isMultiTarget: targetsSeveral(slot.host) && !neverDoubled(enhancement, in: slot),
             isLost: slot.half == "top" ? card.lost == true : card.bottomLost == true,
             isPersistent: card.persistent == true,
             isSummon: false, edition: edition)
     }
 
-    /// An ability that targets several figures costs double (GH p.43).
+    /// The doubling for several targets "does not apply to target, area-of-effect hex, or
+    /// element enhancements" (GH p.47): one more target is itself the cost of reaching more, and
+    /// an element is infused once however many are hit.
+    static func neverDoubled(_ enhancement: EnhancementAction, in slot: Slot) -> Bool {
+        enhancement.isElement || enhancement == .hex || (enhancement == .plus1 && slot.action.type == .target)
+    }
+
+    /// An ability that targets several figures costs double (GH p.47). An ability that reaches
+    /// several only by consuming an element, or that summons several figures, is single-target
+    /// (FAQ): only what is printed beside the ability itself counts.
     static func targetsSeveral(_ action: ActionModel) -> Bool {
         (action.subActions ?? []).contains { sub in
             switch sub.type {

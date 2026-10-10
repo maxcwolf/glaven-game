@@ -195,6 +195,46 @@ final class EnhancementTests: XCTestCase {
         XCTAssertEqual(sold, Set([.plus1, .hex] + stickers.map(\.0)))
     }
 
+    /// GH p.47: the doubling for several targets "does not apply to target, area-of-effect hex,
+    /// or element enhancements"; FAQ: an ability that reaches several targets only with an
+    /// element consumed is single-target.
+    func testOneMoreTargetAndElementsAreNeverDoubled() throws {
+        let chorus = try card("Crippling Chorus", of: "music-note")   // level 3, top: Stun, all enemies within Range 3
+        let stun = try slot(chorus, half: "top", action: 0)
+        XCTAssertTrue(CardEnhancing.targetsSeveral(stun.host))
+        XCTAssertEqual(CardEnhancing.cost(.fire, in: stun, card: chorus, enhancements: [], edition: "gh"), 100 + 50,
+                       "an element is 100 whatever the targets, plus the card's level")
+        XCTAssertEqual(CardEnhancing.cost(.wild, in: stun, card: chorus, enhancements: [], edition: "gh"), 150 + 50)
+        XCTAssertEqual(CardEnhancing.cost(.muddle, in: stun, card: chorus, enhancements: [], edition: "gh"), 50 * 2 + 50,
+                       "a condition is doubled")
+
+        // A +1 on a printed Target line.
+        var found = 0
+        for name in ["brute", "spellweaver", "scoundrel", "cragheart", "tinkerer", "mindthief"] {
+            for card in gm.editionStore.abilities(forDeck: name, edition: "gh") {
+                for slot in CardEnhancing.slots(of: card) where slot.action.type == .target && (slot.action.value?.intValue ?? 1) > 1 {
+                    found += 1
+                    let level = max(0, (card.level?.intValue ?? 1) - 1) * 25
+                    XCTAssertEqual(CardEnhancing.cost(.plus1, in: slot, card: card, enhancements: [], edition: "gh"), 50 + level,
+                                   "\(card.name ?? "?"): +1 Target is 50, not doubled")
+                }
+            }
+        }
+        XCTAssertGreaterThan(found, 3, "Target lines with a slot were found")
+    }
+
+    /// FAQ: "an ability that targets multiple enemies only when you use an elemental infusion"
+    /// is single-target.
+    func testTargetsGainedByConsumingAnElementDontDouble() {
+        let attack = ActionModel(type: .attack, value: .int(2), subActions: [
+            ActionModel(type: .element, value: .string("fire"), valueType: .minus,
+                        subActions: [ActionModel(type: .target, value: .int(2))])
+        ])
+        XCTAssertFalse(CardEnhancing.targetsSeveral(attack))
+        let always = ActionModel(type: .attack, value: .int(2), subActions: [ActionModel(type: .target, value: .int(2))])
+        XCTAssertTrue(CardEnhancing.targetsSeveral(always))
+    }
+
     func testPricesFollowTheEnhancerChart() throws {
         let trample = try card("Trample", of: "brute")   // level 1
         let attack = try slot(trample, half: "top", action: 0)
