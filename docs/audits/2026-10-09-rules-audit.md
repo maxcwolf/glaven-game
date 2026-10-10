@@ -237,8 +237,9 @@ mutations: poison adding 0, Retaliate reduced by Shield, no Disadvantage for a r
 adjacent enemy, effects on a killed target, a summon drawing from the monster deck, no reshuffle
 at the end of the round, a jump landing free on a trap, the gold rate, turn order reversed…), runs
 the rule tests and names the tests that noticed; `--all` lists the mutations no test caught. A
-mutation nothing catches is a rule without a test: write that test. Results of the last full run
-are in `TODO.md` under the rules audit. For the fixes of the turn-and-items batch (C8, E7, E12,
+mutation nothing catches is a rule without a test: write that test. The full run of 2026-10-10: 32 of the 35 were
+noticed by a test; not caught were `lootIgnoresSight`, `revealedWaitForTheirPlace` and
+`roomForFourAlways` (open in `TODO.md`). For the fixes of the turn-and-items batch (C8, E7, E12,
 B7, B6, B12, B11, B4, B8, start-of-round rules) the failing-before half was confirmed by running
 only for A11; add a mutation for each when touching them.
 
