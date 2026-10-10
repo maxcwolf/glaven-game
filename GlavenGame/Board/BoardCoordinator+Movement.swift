@@ -340,7 +340,9 @@ extension BoardCoordinator {
     func beginPlacingTokens(_ token: PlacedToken, count: Int, by pieceID: PieceID) -> Bool {
         guard count > 0, let position = boardState.piecePositions[pieceID] else { return false }
         let hexes = Set(boardState.neighbors(of: position).filter { hex in
-            token == .destroyObstacle ? isDestructibleObstacle(hex) : isEmptyHex(hex)
+            if token == .destroyObstacle { return isDestructibleObstacle(hex) }
+            // An obstacle never goes where it would cut the map in two (p.15).
+            return isEmptyHex(hex) && !(token == .obstacle && boardState.obstacleWouldDivideMap(at: hex))
         })
         guard !hexes.isEmpty else {
             log(token == .destroyObstacle ? "\(name(pieceID)) has no obstacle beside them"

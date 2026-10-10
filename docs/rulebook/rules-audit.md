@@ -85,9 +85,9 @@ the ones the re-audit found wrong or newly missing.
 | C3 | MOV-8: a character who opens a door keeps the rest of the move | The move ends on the door hex (the room beyond doesn't exist until revealed, and the leftover movement isn't offered) | fixed (`DoorRuleTests`) |
 | — | MOV-8: a closed door is a wall to monsters | Parasitic Influence could walk an enemy onto a closed door without opening it (found by a playthrough once the fixes above changed its course) | fixed — `testAnEnemyMovedByACardCannotEnterAClosedDoor` |
 | C8 | ATK-11: allied monsters drop no money (FAQ) | They do (#11, #12, #35, #36, #91). Bosses drop none, which no rule says | open |
-| C9 | MOV-7: obstacles may not be placed to cut the map in two | No check | open |
+| C9 | MOV-7: obstacles may not be placed to cut the map in two | No check | fixed: `BoardState.obstacleWouldDivideMap` (`ObstaclePlacementRuleTests`) |
 | C11 | MOV-10 | A numbered treasure already looted in the campaign is still drawn on a replay (it gives nothing) | open (low) |
-| D9 | MON-3: a jump's last hex is a normal move | A jumping monster that can't reach an attack hex this turn may end on a trap | open |
+| D9 | MON-3: a jump's last hex is a normal move | A jumping monster that can't reach an attack hex this turn may end on a trap | fixed (`MonsterAIMovementTests.testAJumpingMonsterDoesNotComeDownOnATrapOnItsWay`) |
 
 ## Monsters
 
@@ -106,7 +106,7 @@ the ones the re-audit found wrong or newly missing.
 | D12 | MON-7 | "One adjacent enemy" abilities (Living Corpse's Muddle and Immobilize) take the first adjacent enemy, not the focus | fixed — `testALivingCorpseGrabsItsFocus` |
 | T8 | MON-1 | Night Demon's "All adjacent enemies and allies suffer 1 damage" hurts allies only (the code matches the words in the other order) | fixed — `testANightDemonHurtsEnemiesAndAlliesBesideIt`, `testPrintedDamageHurtsWhomTheWordsName` (every card text with "suffer") |
 | S1-3 | MON-11 | The Captain of the Guard's "all allies +1 Attack this round" reaches monsters on the other side and gives the Captain himself +2 | fixed — `testTheCaptainsOrderIsForHisAlliesOnly` |
-| D13 | MON-2, MON-9 | Low: focus ties by plain distance; two characters on the same initiative aren't ordered by their second card; monster Loot ignores line of sight | open (low): two characters on the same initiative aren't ordered by their second card; focus ties by plain distance |
+| D13 | MON-2, MON-9 | Low: focus ties by plain distance; two characters on the same initiative aren't ordered by their second card; monster Loot ignores line of sight | open (low): two characters on the same initiative aren't ordered by their second card. Focus ties now count proximity as range, round walls (`MonsterAI.rankFocusCandidates`) |
 
 ## Setup, the round, resting, ending
 

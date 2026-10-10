@@ -69,4 +69,36 @@ final class MonsterAIMovementTests: XCTestCase {
         XCTAssertEqual(result.movementPath.last, HexCoord(2, 3),
                        "monster enters the difficult hex and stops within budget")
     }
+
+    // MARK: - A jump's last hex
+
+    /// MON-3: a jump ignores the hexes it passes over, but its last hex is entered as in a normal
+    /// move. A jumping monster on a route longer than its Move comes down short of a trap rather
+    /// than on it, and clears the trap when its Move reaches past.
+    func testAJumpingMonsterDoesNotComeDownOnATrapOnItsWay() {
+        func landing(jump move: Int) -> HexCoord? {
+            let t = TestGame()
+            // A corridor along row 3: the route to the character is straight over the trap.
+            for c in 0..<12 {
+                for r in 0..<12 where r != 3 {
+                    t.board.cells[HexCoord(c, r)]!.passable = false
+                }
+            }
+            t.board.placeTrap(at: HexCoord(3, 3), damage: 3)
+            t.addCharacter(pos: HexCoord(9, 3))
+            let monster = t.addSimpleMonster(positions: [(1, HexCoord(1, 3), 5)])
+            let ability = AbilityModel(cardId: 1, initiative: 50, actions: [
+                ActionModel(type: .move, value: .int(move), subActions: [ActionModel(type: .jump)]),
+                ActionModel(type: .attack, value: .int(2))
+            ])
+            let result = MonsterAI.computeTurn(
+                pieceID: .monster(name: "test-monster", standee: 1),
+                monster: monster, entity: monster.entities[0], ability: ability,
+                board: t.board, gameState: t.game)
+            return result.movementPath.last
+        }
+        XCTAssertEqual(landing(jump: 2), HexCoord(2, 3), "Jump 2 would end on the trap: it stops one hex short")
+        XCTAssertEqual(landing(jump: 3), HexCoord(4, 3), "Jump 3 clears it")
+        XCTAssertEqual(landing(jump: 1), HexCoord(2, 3), "Jump 1 is a plain step")
+    }
 }

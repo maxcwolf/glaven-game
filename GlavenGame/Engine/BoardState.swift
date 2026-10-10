@@ -292,6 +292,28 @@ final class BoardState {
         cells[coord]?.passable = false
     }
 
+    /// Whether an obstacle on `hex` would cut one part of the map off from another: the hexes
+    /// beside it could no longer all reach each other (GH p.15: obstacles can never be placed so,
+    /// even where a figure could fly or jump over). A closed door counts as a way through — the
+    /// room behind it is part of the map.
+    func obstacleWouldDivideMap(at hex: HexCoord) -> Bool {
+        func open(_ other: HexCoord) -> Bool {
+            guard other != hex, let cell = cells[other] else { return false }
+            return cell.overlay != .wall && cell.overlay != .obstacle
+        }
+        let around = neighbors(of: hex).filter(open)
+        guard let first = around.first else { return false }
+        var seen: Set<HexCoord> = [first]
+        var frontier = [first]
+        while let next = frontier.popLast() {
+            for neighbor in neighbors(of: next) + crossingExits(from: next) where open(neighbor) && !seen.contains(neighbor) {
+                seen.insert(neighbor)
+                frontier.append(neighbor)
+            }
+        }
+        return !around.allSatisfy(seen.contains)
+    }
+
     /// Remove an obstacle from a hex (makes it passable again).
     func removeObstacle(at coord: HexCoord) {
         guard cells[coord] != nil else { return }

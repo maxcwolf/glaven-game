@@ -474,6 +474,26 @@ enum MonsterAI {
         let pushedBack = next < result.path.count && board.isOccupied(result.path[next])
             && Pathfinder.movementCost(of: Array(result.path.prefix(next + 1)), board: board, mode: mode) <= moveRange
         let ideal = max(0, result.cost - moveRange)
+        // A jump's last hex is entered as in a normal move (p.17), so where this turn's jump comes
+        // down counts: not on a trap or hazardous terrain while another hex — or staying — will do.
+        let landsBadly = mode == .jump && stop != position
+            && (board.cells[stop].map { $0.isTrap || $0.isHazard } ?? false)
+        if landsBadly {
+            var best: (negatives: Int, cost: Int, move: Int, hex: HexCoord)?
+            // (`reachable` holds only landings clear of traps and hazards, the start among them.)
+            for (hex, move) in reachable where hex == position || !board.isOccupied(hex) {
+                guard let there = remaining(from: hex) else { continue }
+                let candidate = (negatives: there.negativeHexes, cost: there.cost, move: move, hex: hex)
+                if best == nil || (candidate.negatives, candidate.cost, candidate.move, candidate.hex)
+                    < (best!.negatives, best!.cost, best!.move, best!.hex) {
+                    best = candidate
+                }
+            }
+            guard let best, best.hex != position, let path = Pathfinder.findPath(
+                board: board, from: position, to: best.hex, mode: mode, canOpenDoors: false, maxCost: moveRange,
+                occupiedByEnemy: enemyPositions, occupiedByAlly: allyPositions) else { return (result.target, [position]) }
+            return (result.target, path)
+        }
         if pushedBack, let left = remaining(from: stop), left.cost > ideal {
             var best = (negatives: left.negativeHexes, cost: left.cost, move: reachable[stop] ?? 0, hex: stop)
             for (hex, move) in reachable where hex != stop && !board.isOccupied(hex) {
