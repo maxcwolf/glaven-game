@@ -58,6 +58,8 @@ appears where the marked guard fell; #81's Colorless consumes Dark and Light for
 Monsters focus on the gate (#35, #36) or the crystal (#84) whenever they can get within range of it.
 #70's Living Spirits can't be damaged and one is banished for each demon killed; #87's water
 cleanses (Shield 2 against Oozes, no Poison); #46's Winged Horror lays and hatches its eggs.
+#77's City Guards march for the alarm plates (and lose the scenario on one), opening door 1, and
+one arrives with each treasure looted.
 Later fixes are listed in `TODO.md`.
 
 ### 1 · Black Barrow

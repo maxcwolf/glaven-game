@@ -49,6 +49,9 @@ struct ScenarioPlacements: Codable, Equatable {
     var undamageable: [String]?
     /// Each time one of some monster types dies, one of another is taken off the map.
     var reprieve: Reprieve?
+    /// Monster types that don't move as their cards say: each turn they make for the nearest
+    /// of some lettered hexes instead, then do the rest of their card (Vault of Secrets' guards).
+    var march: [String: March]?
     /// There are two starting rooms, and no more than half the characters (rounded up) may
     /// start in the same one.
     var splitStart: Bool?
@@ -112,6 +115,9 @@ struct ScenarioPlacements: Codable, Equatable {
         var lostIfExhaustedOnceRevealed: String?
         /// Lost when one of these monster types is killed.
         var lostIfKilled: [String]?
+        /// Lost when a monster of these types stands on a hex with this letter (a guard on the
+        /// alarm plate).
+        var lostIfStands: Stands?
 
         /// Whether winning takes something other than killing every enemy.
         var replacesKillAll: Bool {
@@ -124,6 +130,11 @@ struct ScenarioPlacements: Codable, Equatable {
         var isPositional: Bool {
             escape != nil || occupy != nil || reach != nil || (either ?? []).contains(where: \.isPositional)
         }
+    }
+
+    struct Stands: Codable, Equatable {
+        var monsters: [String]
+        var marker: String
     }
 
     struct Arrival: Codable, Equatable {
@@ -209,6 +220,14 @@ struct ScenarioPlacements: Codable, Equatable {
 }
 
 extension ScenarioPlacements {
+    /// "Move 2 toward the closest pressure plate" in place of a monster type's own movement.
+    struct March: Codable, Equatable {
+        var toward: [String]
+        var move: Int
+        /// It opens a door by walking into it, revealing the room.
+        var opensDoors: Bool?
+    }
+
     /// A boss that goes round a set of places: the Gloom's jumps, the Dark Rider's appearances,
     /// the Bandit Commander's doors.
     struct Cycle: Codable, Equatable {

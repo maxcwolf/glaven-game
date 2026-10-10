@@ -1659,6 +1659,130 @@ final class ScenarioSpecialRuleTests: XCTestCase {
         XCTAssertFalse(coord.boardState.eliteStandees.contains(try XCTUnwrap(hatched.first)))
     }
 
+    // MARK: - #77 Vault of Secrets
+
+    /// City Guards make for the nearest pressure plate, two hexes a turn, opening door 1 on
+    /// their way; one standing on a plate loses the scenario.
+    func testTheVaultsGuardsMarchForTheAlarm() async throws {
+        let sim = try simulator("77")
+        let coord = sim.coord
+        sim.gm.game.state = .next
+        let door = try XCTUnwrap(coord.boardState.doors.first { !$0.isOpen })
+        // One guard, two hexes from the door; the rest out of the way.
+        for piece in pieces(sim, named: "city-guard").dropFirst() { coord.boardState.removePiece(piece) }
+        let piece = try XCTUnwrap(pieces(sim, named: "city-guard").first)
+        let start = try XCTUnwrap(coord.boardState.cells.keys.sorted().first { hex in
+            coord.isEmptyHex(hex) && Pathfinder.findPath(board: coord.boardState, from: hex, to: door.coord, canOpenDoors: true)?.count == 4
+        })
+        coord.boardState.movePiece(piece, to: start)
+        var moved: [HexCoord] = []
+        coord.moveObserver = { mover, path, _ in if mover == piece { moved += path.dropFirst() } }
+
+        await coord.marchStep(piece)
+        XCTAssertEqual(moved.count, 2, "Move 2")
+        XCTAssertEqual(coord.boardState.piecePositions[piece]?.distance(to: door.coord), 1, "up to the door")
+        XCTAssertFalse(coord.boardState.doors.first { $0.coord == door.coord }?.isOpen ?? true)
+        moved = []
+        await coord.marchStep(piece)
+        XCTAssertTrue(coord.boardState.doors.first { $0.coord == door.coord }?.isOpen ?? false, "it opens the door by walking in")
+        XCTAssertEqual(moved.count, 2, "into the doorway and one hex on")
+        XCTAssertEqual(moved.first, door.coord)
+        XCTAssertEqual(coord.boardState.visibleRooms.count, 2)
+        XCTAssertNil(coord.pendingResult)
+
+        // From the doorway it heads for the nearer plate, never more than two hexes a turn.
+        let plates = hexes(sim, "a")
+        XCTAssertEqual(plates.count, 2)
+        XCTAssertEqual(coord.pressurePlateHexes, Set(plates), "the plates are drawn")
+        for other in pieces(sim) where other != piece { coord.boardState.removePiece(other) }
+        func away() throws -> Int { try XCTUnwrap(coord.boardState.piecePositions[piece].flatMap { at in plates.map { $0.distance(to: at) }.min() }) }
+        var turns = 0
+        while try away() > 0 && turns < 10 {
+            let before = try away()
+            moved = []
+            await coord.marchStep(piece)
+            XCTAssertLessThanOrEqual(moved.count, 2)
+            XCTAssertLessThan(try away(), before, "nearer every turn")
+            turns += 1
+            if try away() > 0 { XCTAssertNil(coord.pendingResult) }
+        }
+        XCTAssertEqual(try away(), 0)
+        XCTAssertEqual(coord.pendingResult, .defeat, "the alarm is raised")
+        // On the plate, it stays there.
+        let stood = coord.boardState.piecePositions[piece]
+        await coord.marchStep(piece)
+        XCTAssertEqual(coord.boardState.piecePositions[piece], stood)
+        XCTAssertFalse(coord.turnLog.contains { $0.message.contains("finds no way forward") })
+    }
+
+    /// A guard's turn is the march and then the rest of its card: it attacks without the
+    /// card's own move. One held in place doesn't march.
+    func testAMarchingGuardStillAttacks() async throws {
+        let sim = try simulator("77")
+        let coord = sim.coord
+        revealAll(sim)
+        for piece in pieces(sim) { coord.boardState.removePiece(piece) }
+        for character in sim.gm.game.characters { character.maxHealth = 99; character.health = 99 }
+        let plate = try XCTUnwrap(hexes(sim, "a").first)
+        // A guard five hexes from the plates with the Brute on its way, two hexes off.
+        let from = try XCTUnwrap(coord.boardState.cells.keys.sorted().first { hex in
+            coord.isEmptyHex(hex) && coord.boardState.cells[hex]?.tileRef.lowercased() == "n1b" && hex.distance(to: plate) == 5
+        })
+        let piece = try XCTUnwrap(coord.spawnMonster(name: "city-guard", type: .normal, at: from, origin: .placed))
+        let guards = try group(sim, "city-guard")
+        let card = try XCTUnwrap(sim.gm.monsterManager.abilities(for: guards).firstIndex {
+            ($0.actions ?? []).map(\.type) == [.move, .attack]
+        })
+        guards.abilities = [card]
+        guards.ability = 0
+        guards.abilityDrawn = true
+        var moved: [HexCoord] = []
+        coord.moveObserver = { mover, path, _ in if mover == piece { moved += path.dropFirst() } }
+        var attacked = 0
+        coord.attackObserver = { attacker, _ in if attacker == piece { attacked += 1 } }
+        await MonsterTurnController(coordinator: coord, gameManager: sim.gm).executeMonsterGroup(guards)
+        XCTAssertEqual(moved.count, 2, "the march, and no move of the card's")
+        let now = try XCTUnwrap(coord.boardState.piecePositions[piece])
+        XCTAssertLessThan(now.distance(to: plate), 5)
+        XCTAssertEqual(attacked, 0, "no one in reach")
+
+        // Held in place it doesn't march, but the rest of its card is still done: the Brute
+        // beside it is attacked.
+        coord.applyCondition(.immobilize, to: piece)
+        stand(sim, 0, on: try XCTUnwrap(now.neighbors.sorted().first(where: coord.isEmptyHex)))
+        moved = []
+        await MonsterTurnController(coordinator: coord, gameManager: sim.gm).executeMonsterGroup(guards)
+        XCTAssertTrue(moved.isEmpty)
+        XCTAssertEqual(attacked, 1)
+    }
+
+    /// Looting a treasure tile brings a City Guard to the main room: at (b) for the left tile,
+    /// at (c) for the right.
+    func testLootingTheVaultBringsGuards() throws {
+        let sim = try simulator("77", characters: ["brute", "spellweaver", "cragheart"])
+        let coord = sim.coord
+        revealAll(sim)
+        for piece in pieces(sim, named: "city-guard") { coord.handleDeath(of: piece) }
+        func chest(_ tile: String) throws -> HexCoord {
+            try XCTUnwrap(coord.boardState.cells.values.first { $0.tileRef.lowercased() == tile && $0.overlay == .treasure && $0.treasureID == BoardCoordinator.goalTreasureID }?.coord)
+        }
+        coord.lootHexes(for: character(sim, 0), coords: [try chest("b2b")], byLootAction: true)
+        var guards = pieces(sim, named: "city-guard")
+        XCTAssertEqual(guards.count, 1)
+        XCTAssertEqual(coord.boardState.piecePositions[guards[0]], hexes(sim, "b").first)
+        XCTAssertTrue(coord.boardState.eliteStandees.contains(guards[0]), "elite at (b) for three characters")
+        XCTAssertNil(coord.pendingResult, "its guard is still to be killed")
+        coord.lootHexes(for: character(sim, 1), coords: [try chest("b3b")], byLootAction: true)
+        guards = pieces(sim, named: "city-guard")
+        XCTAssertEqual(guards.count, 2)
+        let second = try XCTUnwrap(guards.first { coord.boardState.piecePositions[$0] == hexes(sim, "c").first })
+        XCTAssertFalse(coord.boardState.eliteStandees.contains(second), "normal at (c) for three")
+        for piece in guards { coord.handleDeath(of: piece) }
+        coord.checkVictoryDefeat()
+        XCTAssertEqual(coord.pendingResult, .victory)
+        XCTAssertTrue(try XCTUnwrap(ScenarioBrief.make(for: try XCTUnwrap(sim.gm.game.scenario?.data), labels: sim.gm.editionStore).defeat.last).contains("pressure plate"))
+    }
+
     // MARK: - What the brief says
 
     /// The brief says the rules the game enforces in the book's sense, not a guess from the data.

@@ -117,6 +117,15 @@ final class ScenarioPlacementTests: XCTestCase {
                 XCTAssertTrue(rules.contains { ($0.setUp ?? []).contains(name) || ($0.spawns ?? []).contains { $0.monster.name == name } },
                               "\(index): nothing ever sets up \(name)")
             }
+            for (name, march) in placements.march ?? [:] {
+                XCTAssertTrue(monsters.contains(name), "\(index): no monster \(name)")
+                XCTAssertGreaterThan(march.move, 0, index)
+                for letter in march.toward { XCTAssertTrue(letters.contains(letter), "\(index): no hex lettered \(letter)") }
+            }
+            if let stands = placements.goal?.lostIfStands {
+                XCTAssertTrue(letters.contains(stands.marker), "\(index): no hex lettered \(stands.marker)")
+                for name in stands.monsters { XCTAssertTrue(monsters.contains(name), "\(index): no monster \(name)") }
+            }
             for objective in placements.focusFirst ?? [] {
                 XCTAssertEqual(data.objectives?.indices.contains(objective - 1), true, "\(index): no objective \(objective)")
             }

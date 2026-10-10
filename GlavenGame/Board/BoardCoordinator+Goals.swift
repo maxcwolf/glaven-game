@@ -150,6 +150,14 @@ extension BoardCoordinator {
         for name in goal.lostIfKilled ?? [] where (kills[name] ?? 0) > 0 {
             return "A \(monsterTypeName(name)) is killed."
         }
+        if let stands = goal.lostIfStands, let hexes = boardState.markerHexes[stands.marker] {
+            for hex in hexes {
+                if case .monster(let name, _)? = boardState.piece(at: hex), stands.monsters.contains(name) {
+                    return ScenarioBrief.standsLine(GameText.monsterName(name, edition: gameManager?.game.scenario?.data.edition ?? "gh",
+                                                                         labels: gameManager?.editionStore))
+                }
+            }
+        }
         return nil
     }
 

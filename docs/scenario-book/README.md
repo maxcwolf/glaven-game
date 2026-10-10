@@ -85,6 +85,11 @@ ends up on the board:
   figure on the hex means the closest free one.
 - `specials`: a boss's two specials as this scenario prints them, in place of its stat card's
   (#36: "Move +0, Attack +0").
+- `march`: monster types that don't move as their cards say — each turn they go `move` hexes
+  toward the nearest hex lettered with one of `toward` (the closed door on the way, before those
+  are revealed; `"opensDoors": true` lets them walk through it), then do the rest of their card
+  (#77's City Guards). The goal's `lostIfStands` (`{"monsters": [...], "marker": "a"}`) loses
+  the scenario when one of them stands on such a hex.
 - `undamageable`: monster types nothing damages (conditions still apply), and `reprieve`
   (`{"killed": [...], "removes": "living-spirit"}`): for each death of one of the first, one of
   the second is banished — the nearest to the killer, where the book lets the players choose (#70).
@@ -301,7 +306,7 @@ goals are checked; the notes say what around a goal is still missing.
 | 74 | Merchant Ship | Kill all enemies and keep the ship afloat. | kill all enemies: yes; the water isn't modelled | A water tile has to be added but cannot be placed because the B tile is full. | **no** |
 | 75 | Overgrown Graveyard | Dig up all graves and kill the Bloated Regent. | yes | — | — |
 | 76 | Harrower Hive | Reveal all rooms and kill all enemies. | **no** — destructible walls aren't modelled; plays as "kill all enemies" | — | — |
-| 77 | Vault of Secrets | Loot all treasure tiles and kill all City Guards before the alarm is raised. | yes | Any City Guard occupies a pressure plate (a). | **no** — guards don't head for the plates |
+| 77 | Vault of Secrets | Loot all treasure tiles and kill all City Guards before the alarm is raised. | yes | Any City Guard occupies a pressure plate (a). | yes |
 | 78 | Sacrifice Pit | Kill all enemies and stop the sacrifice. | kill all enemies: yes; the sacrifice isn't modelled | The victim is sacrificed: a Cultist (b) starts its turn adjacent to the altars (d) while the victim is also adjacent to the altars. | **no** |
 | 79 | Lost Temple | Kill the Betrayer. | yes | Fish is killed. | yes |
 | 80 | Vigil Keep | Every character must loot one treasure tile, and then all characters must reach the B tile (escape). | yes | Any character becomes exhausted while not occupying the B tile. | yes |

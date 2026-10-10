@@ -2412,6 +2412,8 @@ final class BoardCoordinator {
             }
             boardState.removeTreasure(at: coord)
             boardScene?.removeOverlaySprite(at: coord, offsetCol: offsetCol, offsetRow: offsetRow)
+            // Rules that wait for a treasure to be looted (the guards of Vault of Secrets).
+            if cell.treasureID != nil { gameManager.scenarioRulesManager.evaluateRules(phase: .figureChange) }
         }
 
         for _ in 0..<tokens {

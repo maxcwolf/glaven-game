@@ -81,8 +81,19 @@ final class MonsterTurnController {
                 anyActed = true
                 if consumed == nil { consumed = await consumeElements(in: actions, by: pieceID) }
                 var turn = MonsterTurnState()
-                await executeCard(actions, pieceID: pieceID, entity: entity, monster: monster,
-                                  ability: ability, consumed: consumed ?? [], turn: &turn)
+                if coordinator.march(of: monster.name) != nil {
+                    // It marches where the scenario sends it, then does the rest of its card.
+                    await coordinator.marchStep(pieceID)
+                    guard !isStale else { return }
+                    guard !entity.dead, coordinator.isOnBoard(pieceID), coordinator.scenarioResult == nil else { continue }
+                    let rest = actions.filter { $0.type != .move }
+                    let card = AbilityModel(cardId: ability.cardId, name: ability.name, initiative: ability.initiative, actions: rest)
+                    await executeCard(rest, pieceID: pieceID, entity: entity, monster: monster,
+                                      ability: card, consumed: consumed ?? [], turn: &turn)
+                } else {
+                    await executeCard(actions, pieceID: pieceID, entity: entity, monster: monster,
+                                      ability: ability, consumed: consumed ?? [], turn: &turn)
+                }
                 coordinator.endWhy()
                 guard !isStale else { return }
             }
