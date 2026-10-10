@@ -1,6 +1,6 @@
 # Gloomhaven rules audit — what the game does against the rulebook
 
-An audit of the game against the rules in [gh-rules.md](gh-rules.md) (the first-edition rulebook
+An audit of the game against the rules in [gh-rules.md](../rulebook/gh-rules.md) (the first-edition rulebook
 and the official FAQ) and the scenario book, begun 2026-10-10 at commit `e19a083`. It was made
 three ways: eight read-throughs of the code, one per rule area, each tracing the path real play
 takes; two seeded playthroughs read line by line (scenario 1 with four characters, scenario 5 with

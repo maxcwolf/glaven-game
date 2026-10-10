@@ -504,7 +504,7 @@ Performance & robustness
 - [ ] Prompts (`pendingModifierDraw`, `pendingDamage`, `pendingItemUse`, `pendingFigureChoice`) are overwritten, not resumed, if a second one is asked while one waits — the first task would hang. Not seen in play or the all-scenarios run; resume the old one with its default if it ever is
 - [ ] `refreshCampaigns` decodes every campaign file on each save (~0.5 ms a campaign); cache entries by modification date if campaign lists grow large
 
-### Rules audit 2026-10-10 (`docs/rulebook/rules-audit.md`)
+### Rules audit 2026-10-09 (`docs/audits/2026-10-09-rules-audit.md`)
 
 A rule-by-rule audit against the rulebook and FAQ (`docs/rulebook/gh-rules.md`), with every
 finding, its fix and its test in the audit document. Fixed so far: what comes with performing an

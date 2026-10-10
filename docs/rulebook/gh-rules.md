@@ -2,7 +2,7 @@
 
 Notes on the rules of Gloomhaven (first edition, second printing rulebook, 52 pages) and the
 official FAQ, in our own words, one rule per line with an id. The audit in
-[rules-audit.md](rules-audit.md) says, rule by rule, where the game enforces it and which test
+[the rules audit](../audits/2026-10-09-rules-audit.md) says, rule by rule, where the game enforces it and which test
 proves it. Scenario-specific rules are in `docs/scenario-book/`.
 
 Sources: the printed rulebook (page numbers are its pages); the official FAQ
