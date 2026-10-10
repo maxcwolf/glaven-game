@@ -80,7 +80,8 @@ extension BoardCoordinator {
                 xpGained: xpGained,
                 bonusXP: bonus,
                 goldGained: character.loot - (scenario.startingGold[character.id] ?? character.loot),
-                exhausted: character.exhausted,
+                // One who left through the exit took no further part, but wasn't exhausted.
+                exhausted: character.exhausted && !boardState.escapedCharacters.contains(character.id),
                 levelUpTo: reachable > character.level ? reachable : nil,
                 battleGoal: goalResult(for: character, victory: victory, xpGained: xpGained))
         }

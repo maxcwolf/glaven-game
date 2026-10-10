@@ -769,6 +769,29 @@ final class BoardRulesRegressionTests: XCTestCase {
         XCTAssertEqual(aside.health, aside.maxHealth)
     }
 
+    /// An invisible enemy on the way can't be targeted, so the eruption passes it by (found by
+    /// the all-scenarios playthrough, #81 seed 3).
+    func testImpalingEruptionPassesAnInvisibleEnemyBy() async throws {
+        let spellweaver = addCharacter("spellweaver", at: HexCoord(1, 3))
+        var bandits: [GameMonsterEntity] = []
+        for col in 2...4 {
+            let bandit = addMonster("bandit-guard", at: HexCoord(col, 3))
+            bandit.health = 50
+            bandit.maxHealth = 50
+            bandits.append(bandit)
+        }
+        guard let hidden = coord.boardState.piecePositions.first(where: { $0.value == HexCoord(3, 3) })?.key else { return XCTFail() }
+        coord.applyCondition(.invisible, to: hidden)
+        let turn = turn(for: spellweaver, top: try card("Impaling Eruption", of: "spellweaver"), bottom: try card("Frost Armor", of: "spellweaver"))
+        turn.executeCurrentAction()
+        guard let far = coord.boardState.piecePositions.first(where: { $0.value == HexCoord(4, 3) })?.key else { return XCTFail() }
+        coord.handlePieceTap(far)
+        _ = await waitUntil { turn.currentActionIndex > 0 }
+        let attacked = coord.turnLog.filter { $0.message.contains("attacks Bandit Guard") }
+        XCTAssertEqual(attacked.count, 2, attacked.map(\.message).joined(separator: " / "))
+        XCTAssertEqual(bandits[1].health, 50, "the invisible one is untouched")
+    }
+
     func testPrintedBonusTextBecomesActions() {
         let clod = PlayerTurnController.actions(fromText: "Immobilize, XP +1")
         XCTAssertEqual(clod.map(\.type), [.condition, .card])

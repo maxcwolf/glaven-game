@@ -63,10 +63,19 @@ final class EditionDataStore {
         )
         loadDecks(from: editionURL.appendingPathComponent("monster/deck"), edition: editionName, isCharacter: false)
 
-        scenariosByEdition[editionName] = loadDirectoryFiles(
+        let loaded: [ScenarioData] = loadDirectoryFiles(
             "scenarios", from: editionURL, edition: editionName,
             editionKeyPath: \ScenarioData.edition
         )
+        // Rules the scenario book prints and the data leaves out are written with the placements.
+        scenariosByEdition[editionName] = loaded.map { scenario in
+            guard scenario.solo == nil,
+                  let extra = ScenarioPlacementStore.shared.placements(for: scenario.index, edition: editionName)?.rules,
+                  !extra.isEmpty else { return scenario }
+            var scenario = scenario
+            scenario.rules = (scenario.rules ?? []) + extra
+            return scenario
+        }
         sectionsByEdition[editionName] = loadDirectoryFiles(
             "sections", from: editionURL, edition: editionName,
             editionKeyPath: \ScenarioData.edition

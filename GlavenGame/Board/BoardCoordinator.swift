@@ -310,6 +310,8 @@ final class BoardCoordinator {
     /// Called before every attack resolves and every movement starts, with the board as it is at
     /// that moment. The simulation tests use these to check each one against the rules.
     var attackObserver: ((_ attacker: PieceID, _ target: PieceID) -> Void)?
+    /// Whether the attack being made was drawn onto another figure than the one aimed at.
+    var attackWasRedirected = false
     var moveObserver: ((_ piece: PieceID, _ path: [HexCoord], _ style: MovementStyle) -> Void)?
 
     /// Non-nil when a monster push/pull is in progress and the async caller is suspended.
@@ -1591,7 +1593,7 @@ final class BoardCoordinator {
         activePlayerTurn = nil
         lootAtEndOfTurn(ptc.characterID)
 
-        checkVictoryDefeat()
+        checkVictoryDefeat(turnEnded: true)
         if scenarioResult == nil {
             advanceToNextFigure()
         }
@@ -1625,8 +1627,18 @@ final class BoardCoordinator {
 
     // MARK: - Victory / Defeat
 
-    func checkVictoryDefeat() {
+    /// `turnEnded`: a turn or the round has just ended, which is when a goal about where the
+    /// characters stand (on pressure plates, on the exit) is judged.
+    func checkVictoryDefeat(turnEnded: Bool = false) {
         guard let gameManager = gameManager, scenarioResult == nil else { return }
+
+        // Everyone has left through the exit: with no one on the board, that is the win.
+        if everyoneEscaped {
+            let brief = gameManager.game.scenario.map { ScenarioBrief.make(for: $0.data, labels: gameManager.editionStore) }
+            endReason = .goalMet(brief?.goal ?? "Everyone escaped.")
+            endScenario(.victory, message: "VICTORY! Scenario complete.")
+            return
+        }
 
         // Defeat: every character is exhausted — nobody is left to act, so it's immediate.
         let allChars = gameManager.game.characters.filter { !$0.absent }
@@ -1654,10 +1666,9 @@ final class BoardCoordinator {
             return
         }
 
-        // What the scenario book asks of the objectives (`ScenarioPlacements.Goal`): the party
-        // loses what it was to protect, or destroys, kills or brings home what it was to.
-        let objectiveGoal = scenarioData?.placements?.goal
-        if let objectiveGoal, let lost = objectiveLost(objectiveGoal) {
+        // The goal and losses the scenario book prints (`ScenarioPlacements.Goal`).
+        let written = scenarioGoal
+        if let written, let lost = goalLost(written) {
             pendingResult = .defeat
             endReason = .ruleLost(lost)
             log("Scenario failed — the scenario ends at the end of this round.", category: .death)
@@ -1672,9 +1683,8 @@ final class BoardCoordinator {
         let enemiesHaveAppeared = hostile.contains { !$0.entities.isEmpty }
         let allEnemiesDead = hostile.allSatisfy { monster in monster.off || monster.aliveEntities.isEmpty }
         let allRoomsRevealed = boardState.doors.allSatisfy { $0.isOpen }
-        if let objectiveGoal, objectiveGoal.replacesKillAll, !hasOwnWinCondition {
-            let enemiesDone = objectiveGoal.enemies != true || (enemiesHaveAppeared && allEnemiesDead && allRoomsRevealed)
-            if objectiveGoalMet(objectiveGoal) && enemiesDone && gameManager.game.round > 0 {
+        if let written, written.replacesKillAll, !hasOwnWinCondition {
+            if goalMet(written, turnEnded: turnEnded) && gameManager.game.round > 0 {
                 let brief = gameManager.game.scenario.map { ScenarioBrief.make(for: $0.data, labels: gameManager.editionStore) }
                 pendingResult = .victory
                 endReason = .goalMet(brief?.goal ?? "The scenario's goal is met.")
@@ -1692,7 +1702,8 @@ final class BoardCoordinator {
 
     /// Resolve a result triggered during the round once the round is over.
     private func resolvePendingResult() {
-        checkVictoryDefeat()
+        letCharactersLeave()
+        checkVictoryDefeat(turnEnded: true)
         guard scenarioResult == nil, let result = pendingResult else { return }
         endScenario(result, message: result == .victory ? "VICTORY! Scenario complete." : "DEFEAT! Scenario failed.")
     }
@@ -2321,6 +2332,11 @@ final class BoardCoordinator {
             if cell.overlaySubType == "coin" || cell.treasureID == nil {
                 tokens += max(1, cell.treasureAmount ?? 1)
             } else if let id = cell.treasureID {
+                // Where every character must loot one goal treasure tile, each loots only one.
+                if id == Self.goalTreasureID {
+                    guard mayLootGoalTreasure(charID) else { continue }
+                    noteGoalTreasureLooted(by: charID)
+                }
                 let reward = gameManager.scenarioManager.lootTreasure(id, by: character)
                 log("\(characterName(charID)) loots treasure \(id)\(reward.map { ": \($0)" } ?? "")", category: .loot)
             }
@@ -2686,8 +2702,10 @@ final class BoardCoordinator {
                           let from = boardState.piecePositions[attackerID], let to = boardState.piecePositions[piece] {
                     // Impaling Eruption: every enemy on the way to the target is attacked too.
                     let path = Set(from.line(to: to).dropFirst().dropLast())
-                    let onTheWay = boardState.piecePositions.filter { path.contains($0.value) && areEnemies(attackerID, $0.key) }
-                        .map(\.key).sorted()
+                    // Invisible enemies can't be targeted, on the way or not.
+                    let onTheWay = boardState.piecePositions.filter {
+                        path.contains($0.value) && areEnemies(attackerID, $0.key) && !isConditionActive(.invisible, on: $0.key)
+                    }.map(\.key).sorted()
                     interactionMode = .idle
                     let turn = activePlayerTurn, generation = boardGeneration
                     Task { @MainActor in

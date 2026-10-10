@@ -1,6 +1,22 @@
 {
-  "3": {"tiles": {
+  "2": {"goal": {"text": "Kill the Bandit Commander and all revealed enemies.", "kill": ["bandit-commander"], "enemies": "revealed"}, "tiles": {
+  }},
+  "3": {"goal": {"text": "Kill a number of enemies equal to five times the number of characters.", "killCount": {"count": "5xC"}}, "tiles": {
     "l1b": {"markers": {"a": [[0, 3]]}}
+  }},
+  "6": {"goal": {"text": "Reveal the M tile and kill all revealed enemies.", "reveal": ["m1a"], "enemies": "revealed"}, "tiles": {
+  }},
+  "7": {"goal": {"text": "Loot all treasure tiles.", "loot": "goal"}, "tiles": {
+  }},
+  "8": {"goal": {"text": "Kill both Inox Bodyguards.", "kill": ["inox-bodyguard"]}, "tiles": {
+  }},
+  "9": {"goal": {"text": "Kill the Merciless Overseer and loot the treasure tile.", "kill": ["merciless-overseer"], "loot": "goal"}, "tiles": {
+  }},
+  "11": {"goal": {"text": "Kill the Captain of the Guard.", "kill": ["captain-of-the-guard"]}, "tiles": {
+  }},
+  "12": {"goal": {"text": "Kill the necromancer Jekserah.", "kill": ["jekserah"]}, "tiles": {
+  }},
+  "15": {"goal": {"text": "Loot the treasure tile.", "loot": "goal"}, "tiles": {
   }},
   "19": {"goal": {"text": "Protect Hail until she reaches the altar.", "arrive": {"objective": 1, "marker": "b", "count": 1, "adjacent": true}, "lostAt": {"1": 1}}, "tiles": {
     "c2b": {"markers": {"e": [[0, 2]]}},
@@ -8,11 +24,24 @@
     "d2a": {"objectives": [{"objective": 1, "cells": [[0, 2]]}], "markers": {"c": [[2, 4]]}},
     "i1b": {"markers": {"b": [[2, 3]]}}
   }},
+  "20": {"goal": {"text": "Kill the necromancer Jekserah.", "kill": ["jekserah"]}, "tiles": {
+  }},
+  "21": {"goal": {"text": "Kill the Prime Demon.", "kill": ["prime-demon"]}, "tiles": {
+  }},
   "22": {"goal": {"text": "Destroy all altars.", "destroy": [1]}, "tiles": {
     "c1a": {"objectives": [{"objective": 1, "cells": [[0, 3]]}]},
     "c2b": {"objectives": [{"objective": 1, "cells": [[2, 3]]}]},
     "d1a": {"objectives": [{"objective": 1, "cells": [[0, 3]]}]},
     "d2a": {"objectives": [{"objective": 1, "cells": [[3, 1]]}]}
+  }},
+  "23": {"goal": {"text": "Occupy all pressure plates simultaneously.", "occupy": {"markers": ["a"], "more": {"3": ["b"], "4": ["b", "c"]}}}, "tiles": {
+    "d1a": {"markers": {"a": [[1, 4]], "c": [[1, 0]]}},
+    "m1a": {"markers": {"a": [[4, 4]], "b": [[1, 2]]}}
+  }},
+  "24": {"goal": {"text": "Open all doors.", "reveal": ["*"]}, "tiles": {
+  }},
+  "25": {"goal": {"text": "All characters must escape through the exit.", "escape": {"marker": "a"}, "lostIfExhausted": ["offExit"]}, "tiles": {
+    "g2a": {"markers": {"a": [[7, 2], [6, 2], [6, 1], [7, 0], [6, 0]]}}
   }},
   "26": {"tiles": {
     "l1a": {"objectives": [{"objective": 1, "cells": [[0, 5]]}, {"objective": 1, "cells": [[3, 5]]}, {"objective": 2, "cells": [[0, 1]]}, {"objective": 3, "cells": [[3, 1]]}]}
@@ -23,21 +52,30 @@
   "29": {"tiles": {
     "e1a": {"objectives": [{"objective": 1, "cells": [[1, -1]], "door": true}, {"objective": 1, "cells": [[1, 5]], "door": true}, {"objective": 1, "cells": [[5, 2]], "door": true}]}
   }},
+  "30": {"goal": {"text": "Loot the treasure tile.", "loot": "goal"}, "tiles": {
+  }},
   "31": {"goal": {"text": "Destroy the rock column.", "destroy": [1]}, "tiles": {
     "l2a": {"objectives": [{"objective": 1, "cells": [[2, 3]]}], "markers": {"b": [[4, 0]], "c": [[4, 6]]}}
   }},
-  "33": {"tiles": {
+  "32": {"goal": {"text": "Reveal the G tile, kill all revealed enemies and loot the treasure tile.", "reveal": ["g2b"], "enemies": "revealed", "loot": "goal"}, "tiles": {
+  }},
+  "33": {"goal": {"text": "Loot all treasure tiles, then all characters must escape through the exit.", "loot": "goal", "escape": {"marker": "a"}, "lostIfExhausted": ["offExit"]}, "tiles": {
     "a3b": {"markers": {"a": [[0, 2], [0, 1], [1, 2], [1, 1], [2, 2], [2, 1]]}},
     "a4b": {"objectives": [{"objective": 1, "cells": [[3, 0]], "door": true}]},
     "c2b": {"markers": {"d": [[1, 0]]}},
     "i1b": {"markers": {"c": [[0, 0], [5, 0], [0, 2], [5, 2]]}}
   }},
-  "35": {"tiles": {
+  "34": {"goal": {"text": "Kill the Elder Drake.", "kill": ["elder-drake"]}, "tiles": {
+  }},
+  "35": {"goal": {"text": "Destroy the door and kill the Captain of the Guard.", "destroy": [1], "kill": ["captain-of-the-guard"]}, "tiles": {
     "l3a": {"objectives": [{"objective": 1, "cells": [[4, 7]], "door": true}]}
   }},
-  "36": {"protect": [1], "tiles": {
+  "36": {"goal": {"text": "Kill the Prime Demon.", "kill": ["prime-demon"]}, "protect": [1], "tiles": {
     "l1b": {"markers": {"c": [[2, 6]], "d": [[0, 4]]}},
     "l3a": {"objectives": [{"objective": 1, "cells": [[4, 7]], "door": true}], "markers": {"a": [[0, 2]], "b": [[2, 0]], "e": [[4, 5]]}}
+  }},
+  "37": {"goal": {"text": "All characters must escape through the exit.", "escape": {"marker": "a"}, "lostIfExhausted": ["offExit"]}, "tiles": {
+    "k2a": {"markers": {"a": [[6, 3], [7, 4], [6, 4], [6, 5], [5, 4], [5, 5]]}}
   }},
   "38": {"goal": {"text": "Kill all enemies and protect the Orchid.", "lostAt": {"1": 1}}, "tiles": {
     "c2a": {"objectives": [{"objective": 1, "cells": [[1, 3]]}]}
@@ -45,8 +83,18 @@
   "39": {"goal": {"text": "Destroy the altar.", "destroy": [1]}, "tiles": {
     "d2b": {"objectives": [{"objective": 1, "cells": [[3, 4]]}]}
   }},
+  "40": {"goal": {"text": "Occupy both pressure plates simultaneously.", "occupy": {"markers": ["a"]}}, "tiles": {
+    "a4b": {"markers": {"a": [[3, 2]]}},
+    "l1a": {"markers": {"a": [[2, 2]]}}
+  }},
+  "41": {"goal": {"text": "All characters must escape through the exit.", "escape": {"marker": "a", "leave": true}, "lostIfExhausted": ["any"], "lostIfExhaustedOnceRevealed": "e1a"}, "tiles": {
+    "e1a": {"markers": {"a": [[2, 4]]}},
+    "l1a": {"markers": {"b": [[2, 3]]}}
+  }},
   "42": {"goal": {"text": "Destroy all vocal chords.", "destroy": [1, 2, 3, 4, 5, 6]}, "tiles": {
     "l2a": {"objectives": [{"objective": 1, "cells": [[0, 6]]}, {"objective": 2, "cells": [[0, 5]]}, {"objective": 3, "cells": [[0, 4]]}, {"objective": 4, "cells": [[0, 2]]}, {"objective": 5, "cells": [[0, 1]]}, {"objective": 6, "cells": [[0, 0]]}]}
+  }},
+  "43": {"goal": {"text": "Kill a number of drakes equal to four times the number of characters.", "killCount": {"count": "4xC", "of": ["rending-drake", "spitting-drake"]}}, "tiles": {
   }},
   "44": {"goal": {"text": "Kill all enemies and protect all captive Orchids."}, "protect": [2], "tiles": {
     "b1b": {"objectives": [{"objective": 1, "cells": [[0, 2]]}]},
@@ -61,35 +109,71 @@
     "g1a": {"objectives": [{"objective": 1, "cells": [[1, 2]]}]},
     "m1b": {"objectives": [{"objective": 1, "cells": [[1, 0]]}, {"objective": 1, "cells": [[5, 4]]}]}
   }},
+  "46": {"goal": {"text": "Kill the Winged Horror.", "kill": ["winged-horror"]}, "tiles": {
+  }},
+  "47": {"goal": {"text": "Kill the Sightless Eye.", "kill": ["the-sightless-eye"]}, "tiles": {
+  }},
+  "48": {"goal": {"text": "Kill the Dark Rider.", "kill": ["dark-rider"]}, "tiles": {
+  }},
+  "49": {"goal": {"text": "Kill the Siege Cannon.", "kill": ["siege-cannon"]}, "tiles": {
+  }},
+  "50": {"goal": {"text": "Loot all treasure tiles.", "loot": "goal"}, "tiles": {
+  }},
+  "51": {"goal": {"text": "Kill the Gloom.", "kill": ["the-gloom"]}, "tiles": {
+  }},
+  "52": {"goal": {"text": "All characters must loot one treasure tile.", "loot": "each", "lostIfExhausted": ["beforeLoot"]}, "tiles": {
+  }},
   "56": {"tiles": {
     "m1b": {"objectives": [{"objective": 1, "cells": [[0, 1]]}, {"objective": 1, "cells": [[1, 0]]}, {"objective": 1, "cells": [[2, 0]]}]}
   }},
-  "57": {"tiles": {
+  "57": {"goal": {"text": "Kill the Infiltrator.", "kill": ["infiltrator"]}, "tiles": {
     "f1b": {"markers": {"a": [[1, 1]]}}
   }},
-  "58": {"tiles": {
+  "58": {"goal": {"text": "Kill the Harvester.", "kill": ["the-harvester"]}, "tiles": {
     "b1a": {"objectives": [{"objective": 1, "cells": [[0, 0]]}, {"objective": 1, "cells": [[3, 0]]}, {"objective": 1, "cells": [[0, 3]]}, {"objective": 1, "cells": [[2, 3]]}]}
   }},
-  "62": {"tiles": {
+  "59": {"goal": {"text": "Kill all enemies and loot the treasure tile.", "enemies": "all", "loot": "goal"}, "tiles": {
+  }},
+  "60": {"goal": {"text": "Loot all treasure tiles, then all characters must escape through the entrance.", "loot": "goal", "escape": {"start": true}, "lostIfExhausted": ["beforeLoot", "offExit"]}, "tiles": {
+  }},
+  "61": {"goal": {"text": "Loot all treasure tiles.", "loot": "goal"}, "tiles": {
+  }},
+  "62": {"goal": {"text": "Kill the Hungry Soul.", "kill": ["hungry-soul"]}, "rules": [{"round": "true", "always": true, "once": true, "figures": [{"identifier": {"type": "monster", "edition": "gh", "name": "living-bones"}, "type": "killed", "value": 10}], "spawns": [{"monster": {"name": "hungry-soul", "type": "boss"}, "marker": "c"}]}], "tiles": {
     "b2b": {"markers": {"c": [[1, 3]]}},
     "m1a": {"markers": {"a": [[0, 2]], "b": [[5, 2]]}}
+  }},
+  "65": {"goal": {"text": "Kill all enemies and loot all treasure tiles.", "enemies": "all", "loot": "goal"}, "tiles": {
+  }},
+  "66": {"goal": {"text": "Occupy the pressure plate in the last room.", "reach": {"marker": "e"}}, "tiles": {
+    "c1a": {"markers": {"b": [[1, 2]]}},
+    "c2b": {"markers": {"e": [[1, 1]]}},
+    "d1a": {"markers": {"c": [[2, 2]]}},
+    "d2a": {"markers": {"d": [[2, 2]]}},
+    "j1b": {"markers": {"a": [[6, 4]]}}
+  }},
+  "67": {"goal": {"text": "Kill the Arcane Golem.", "kill": ["stone-golem"]}, "tiles": {
   }},
   "68": {"goal": {"text": "Kill all enemies and protect the tree."}, "tiles": {
     "b1b": {"objectives": [{"objective": 1, "cells": [[2, -6], [1, -6], [1, -5]]}]}
   }},
-  "69": {"tiles": {
+  "69": {"goal": {"text": "Bring the doll to the well.", "reach": {"marker": "a", "adjacent": true}}, "tiles": {
     "b1b": {"markers": {"b": [[1, 3]], "d": [[2, 0], [1, 0]]}},
     "d2a": {"markers": {"a": [[2, 2]]}},
     "l3a": {"markers": {"c": [[3, 5]]}}
   }},
-  "70": {"tiles": {
+  "70": {"goal": {"text": "Kill all demons.", "kill": ["night-demon", "wind-demon"]}, "tiles": {
     "l1b": {"markers": {"b": [[4, 2]]}},
     "l3a": {"markers": {"a": [[4, 4]]}}
+  }},
+  "71": {"goal": {"text": "Loot all treasure tiles, then all characters must escape through the exit.", "loot": "goal", "escape": {"marker": "a"}, "lostIfExhausted": ["offExit"]}, "tiles": {
+    "g2a": {"markers": {"a": [[5, 2], [4, 2], [3, 2], [2, 2]]}}
   }},
   "72": {"goal": {"text": "Destroy all trees and kill all Oozes.", "destroy": [1, 2, 3], "kill": ["ooze"]}, "tiles": {
     "l1b": {"objectives": [{"objective": 2, "cells": [[1, 0], [0, 0], [0, 1]]}]},
     "l3a": {"objectives": [{"objective": 3, "cells": [[4, 0], [3, 0], [3, 1]]}]},
     "m1b": {"objectives": [{"objective": 1, "cells": [[2, 0], [2, 1], [3, 0]]}]}
+  }},
+  "73": {"goal": {"text": "Kill all enemies and loot all treasure tiles.", "enemies": "all", "loot": "goal"}, "tiles": {
   }},
   "74": {"tiles": {
     "b1a": {"markers": {"a": [[1, 3]], "b": [[2, 3], [0, 3]], "d": [[3, 0], [0, 0]]}},
@@ -101,8 +185,17 @@
     "l1b": {"objectives": [{"objective": 2, "cells": [[0, 0]]}, {"objective": 1, "cells": [[3, 4]]}, {"objective": 2, "cells": [[1, 6]]}]},
     "l3a": {"objectives": [{"objective": 1, "cells": [[0, 2]]}, {"objective": 1, "cells": [[3, 5]]}, {"objective": 2, "cells": [[2, 0], [2, 1]]}]}
   }},
-  "79": {"tiles": {
+  "77": {"goal": {"text": "Loot all treasure tiles and kill all City Guards before the alarm is raised.", "loot": "goal", "kill": ["city-guard"]}, "tiles": {
+  }},
+  "79": {"goal": {"text": "Kill the Betrayer.", "kill": ["the-betrayer"]}, "tiles": {
     "d2a": {"objectives": [{"objective": 1, "cells": [[0, 3]]}]}
+  }},
+  "80": {"goal": {"text": "Every character must loot one treasure tile, then all must reach the B tile.", "loot": "each", "escape": {"tile": "b1a"}, "lostIfExhausted": ["offExit"]}, "tiles": {
+  }},
+  "81": {"goal": {"text": "Kill the Colorless.", "kill": ["the-colorless"]}, "tiles": {
+  }},
+  "82": {"goal": {"text": "Loot the treasure, then sacrifice an artifact on the altar hex or escape with them all.", "lootIDs": ["62"], "either": [{"reach": {"marker": "g"}}, {"escape": {"start": true}}]}, "tiles": {
+    "empty": {"markers": {"g": [[0, 0]]}}
   }},
   "84": {"goal": {"text": "Kill all enemies and protect the crystal.", "lostAt": {"1": 1}}, "tiles": {
     "l2a": {"objectives": [{"objective": 1, "cells": [[0, 3]]}]}
@@ -115,8 +208,19 @@
     "h3a": {"markers": {"b": [[4, 6], [3, 6]]}},
     "m1b": {"objectives": [{"objective": 1, "cells": [[4, 2]]}, {"objective": 1, "cells": [[2, 4]]}, {"objective": 1, "cells": [[1, 0]]}, {"objective": 1, "cells": [[0, 3]]}], "markers": {"d": [[4, 1]], "f": [[4, 5]]}}
   }},
+  "87": {"goal": {"text": "Kill the Giant Ooze.", "kill": ["giant-ooze"]}, "tiles": {
+  }},
+  "88": {"goal": {"text": "Bring the Lurker King's claw to the crystal.", "kill": ["lurker-king"], "reach": {"marker": "a", "adjacent": true}}, "tiles": {
+    "n1a": {"markers": {"a": [[3, 6]]}}
+  }},
   "90": {"tiles": {
     "d1b": {"markers": {"c": [[0, 2], [1, 0]]}},
     "m1b": {"markers": {"b": [[2, 4], [3, 4]]}}
+  }},
+  "92": {"goal": {"text": "Kill all non-city enemies.", "kill": ["bandit-archer", "bandit-guard", "earth-demon", "flame-demon", "inox-guard", "savvas-lavaflow"], "lostIfKilled": ["city-guard", "city-archer"]}, "tiles": {
+  }},
+  "94": {"goal": {"text": "Kill all enemies and loot the treasure tile.", "enemies": "all", "loot": "goal"}, "tiles": {
+  }},
+  "95": {"goal": {"text": "Kill the Prime Lieutenant.", "kill": ["prime-lieutenant"]}, "tiles": {
   }}
 }

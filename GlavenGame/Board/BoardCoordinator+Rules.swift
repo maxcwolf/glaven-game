@@ -375,6 +375,23 @@ extension BoardCoordinator {
     /// board, and it takes no further part in the scenario (GH p.27).
     func exhaust(_ character: GameCharacter, reason: String) {
         guard !character.exhausted || boardState.piecePositions[.character(character.id)] != nil else { return }
+        // Where a scenario is lost by a character's exhaustion (away from the exit, before the
+        // treasure is looted), it is judged where they stood.
+        let loss = exhaustionLoss(of: character, at: boardState.piecePositions[.character(character.id)])
+        log("\(characterName(character.id)) is exhausted", category: .death, trace: reason)
+        gameManager?.scenarioStatsManager.recordExhausted(character.name)
+        leaveScenario(character)
+        if let loss, scenarioResult == nil, pendingResult == nil {
+            pendingResult = .defeat
+            endReason = .ruleLost(loss)
+            log("Scenario failed — the scenario ends at the end of this round.", category: .death)
+        }
+        checkVictoryDefeat()
+    }
+
+    /// A character takes no further part in the scenario — exhausted, or gone through the exit:
+    /// its cards are lost, and its figure and summons leave the board (GH p.27).
+    func leaveScenario(_ character: GameCharacter) {
         character.exhausted = true
         boardScene?.play(.exhaust)
         character.lostCards.append(contentsOf: character.handCards + character.discardedCards + character.activeCards)
@@ -383,8 +400,6 @@ extension BoardCoordinator {
         character.activeCards = []
         character.roundBonusCards = []
         character.lostWhenRemoved = []
-        log("\(characterName(character.id)) is exhausted", category: .death, trace: reason)
-        gameManager?.scenarioStatsManager.recordExhausted(character.name)
         removePieceFromBoard(.character(character.id))
         if let turn = activePlayerTurn, turn.characterID == character.id {
             turn.endForExhaustion()
@@ -394,7 +409,6 @@ extension BoardCoordinator {
             summon.dead = true
             removePieceFromBoard(.summon(id: summon.id))
         }
-        checkVictoryDefeat()
     }
 
     func removePieceFromBoard(_ pieceID: PieceID) {

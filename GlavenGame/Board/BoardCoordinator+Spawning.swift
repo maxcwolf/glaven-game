@@ -180,66 +180,6 @@ extension BoardCoordinator {
         if site.barsDoor, boardState.isClosedDoor(site.coord) { openDoor(at: site.coord) }
     }
 
-    // MARK: Goals the scenario book sets its objectives
-
-    /// The tag on an escort that reached where it was going: off the board, alive and counted.
-    static let arrivedTag = "arrived"
-
-    /// The objectives of the scenario's objective `index` (1-based) in play.
-    private func objectiveEntities(_ index: Int) -> [GameObjectiveEntity] {
-        gameManager?.game.objectives.filter { $0.objectiveIndex == index }.flatMap(\.entities) ?? []
-    }
-
-    /// An escort ended its turn where the scenario sends it (Hail beside the altar, a villager
-    /// on the docks): it leaves the board, safe, and counts toward the goal.
-    func noteEscortArrival(_ pieceID: PieceID) {
-        guard let arrival = scenarioData?.placements?.goal?.arrive, let container = objectiveContainer(of: pieceID),
-              container.objectiveIndex == arrival.objective, let entity = entity(for: pieceID) as? GameObjectiveEntity,
-              let hex = boardState.piecePositions[pieceID], let lettered = boardState.markerHexes[arrival.marker],
-              lettered.contains(hex) || (arrival.adjacent == true && lettered.contains { $0.distance(to: hex) == 1 })
-        else { return }
-        let who = name(pieceID)
-        entity.off = true
-        entity.tags.append(Self.arrivedTag)
-        removePieceFromBoard(pieceID)
-        boardState.objectiveSites[entity.number] = nil
-        let arrived = objectiveEntities(arrival.objective).filter { $0.tags.contains(Self.arrivedTag) }.count
-        log(arrival.count > 1 ? "\(who) is safe (\(arrived) of \(arrival.count))" : "\(who) is there", category: .round)
-        checkVictoryDefeat()
-    }
-
-    /// Whether the objectives' part of the scenario's goal is met: everything to destroy is
-    /// destroyed (with every room revealed, so none is still to come), every monster to kill has
-    /// appeared and died, and enough escorts have arrived.
-    func objectiveGoalMet(_ goal: ScenarioPlacements.Goal) -> Bool {
-        guard let game = gameManager?.game else { return false }
-        for index in goal.destroy ?? [] {
-            let all = objectiveEntities(index)
-            guard !all.isEmpty, all.allSatisfy(\.dead), boardState.doors.allSatisfy(\.isOpen) else { return false }
-        }
-        for name in goal.kill ?? [] {
-            guard let monster = game.monsters.first(where: { $0.name == name }),
-                  !monster.entities.isEmpty, monster.aliveEntities.isEmpty else { return false }
-        }
-        if let arrival = goal.arrive {
-            guard objectiveEntities(arrival.objective).filter({ $0.tags.contains(Self.arrivedTag) }).count >= arrival.count
-            else { return false }
-        }
-        return true
-    }
-
-    /// The objective whose losses lose the scenario, once they reach the number the book sets.
-    func objectiveLost(_ goal: ScenarioPlacements.Goal) -> String? {
-        for (key, limit) in (goal.lostAt ?? [:]).sorted(by: { $0.key < $1.key }) {
-            guard let index = Int(key) else { continue }
-            let entities = objectiveEntities(index)
-            guard entities.filter(\.dead).count >= limit,
-                  let name = gameManager?.game.objectives.first(where: { $0.objectiveIndex == index })?.name else { continue }
-            return ScenarioBrief.lossLine(name: name, limit: limit)
-        }
-        return nil
-    }
-
     /// Whether an objective still bars the door on this hex.
     func isDoorBarred(at coord: HexCoord) -> Bool {
         boardState.objectiveSites.contains { number, site in

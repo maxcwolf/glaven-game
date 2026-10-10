@@ -47,6 +47,53 @@ final class ScenarioPlacementTests: XCTestCase {
         }
     }
 
+    /// Every written goal names things its scenario has: its monsters, objectives, letters,
+    /// tiles and treasure.
+    func testEveryWrittenGoalRefersToThingsInItsScenario() throws {
+        let gm = try SaveAndContinueTestsSupport.manager()
+        for (index, placements) in ScenarioPlacementStore.shared.all().sorted(by: { $0.key < $1.key }) {
+            guard let goal = placements.goal else { continue }
+            let data = try XCTUnwrap(gm.editionStore.scenarios(for: "gh").first { $0.index == index && $0.solo == nil }, index)
+            let map = try XCTUnwrap(ScenarioMapStore.shared.scenarioMap(for: index))
+            let tiles = BoardBuilder.findPlacements(in: map.mapTileData).map(\.tile)
+            let monsters = Set((data.monsters ?? []).map { MonsterNameSpec($0).name })
+            let letters = Set(placements.tiles.values.flatMap { ($0.markers ?? [:]).keys })
+            let treasure = Set(tiles.flatMap { $0.overlays.filter { $0.ref.type == "treasure" }.compactMap(\.ref.id) })
+            func check(_ goal: ScenarioPlacements.Goal) {
+                XCTAssertFalse((goal.text ?? "x").isEmpty)
+                for name in (goal.kill ?? []) + (goal.killCount?.of ?? []) + (goal.lostIfKilled ?? []) {
+                    XCTAssertTrue(monsters.contains(name), "\(index): no monster \(name)")
+                }
+                for objective in (goal.destroy ?? []) + (goal.arrive.map { [$0.objective] } ?? []) + (goal.lostAt ?? [:]).keys.compactMap(Int.init) {
+                    XCTAssertTrue((1...(data.objectives?.count ?? 0)).contains(objective), "\(index): no objective \(objective)")
+                }
+                let used = [goal.arrive?.marker, goal.escape?.marker, goal.reach?.marker].compactMap { $0 }
+                    + (goal.occupy.map { $0.markers + ($0.more ?? [:]).values.flatMap { $0 } } ?? [])
+                for letter in used { XCTAssertTrue(letters.contains(letter), "\(index): no hex lettered \(letter)") }
+                for tile in (goal.reveal ?? []) + [goal.escape?.tile, goal.lostIfExhaustedOnceRevealed].compactMap({ $0 }) where tile != "*" {
+                    XCTAssertTrue(tiles.contains { $0.ref.lowercased() == tile }, "\(index): no tile \(tile)")
+                }
+                if goal.loot != nil { XCTAssertTrue(treasure.contains(BoardCoordinator.goalTreasureID), "\(index): no goal treasure") }
+                for id in goal.lootIDs ?? [] { XCTAssertTrue(treasure.contains(id), "\(index): no treasure \(id)") }
+                if let kills = goal.killCount {
+                    XCTAssertNotNil(ScenarioExpression.integerValue(kills.count, variables: ["C": 2, "L": 1]), "\(index): \(kills.count)")
+                }
+                XCTAssertTrue(["all", "revealed", nil].contains(goal.enemies), "\(index)")
+                XCTAssertTrue(["goal", "each", nil].contains(goal.loot), "\(index)")
+                for way in goal.lostIfExhausted ?? [] { XCTAssertTrue(["any", "offExit", "beforeLoot"].contains(way), "\(index): \(way)") }
+                if goal.lostIfExhausted?.contains("offExit") == true { XCTAssertNotNil(goal.escape, "\(index): an exit to be off") }
+                (goal.either ?? []).forEach(check)
+            }
+            check(goal)
+            for rule in placements.rules ?? [] {
+                for spawn in rule.spawns ?? [] {
+                    XCTAssertTrue(monsters.contains(MonsterNameSpec(spawn.monster.name).name), "\(index): no monster \(spawn.monster.name)")
+                    if let marker = spawn.marker { XCTAssertTrue(letters.contains(marker), "\(index): no hex lettered \(marker)") }
+                }
+            }
+        }
+    }
+
     // MARK: - Objectives in play
 
     private func simulator(_ index: String, characters: [String] = ["brute", "spellweaver"]) throws -> ScenarioSimulator {

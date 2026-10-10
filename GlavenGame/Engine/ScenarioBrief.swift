@@ -29,10 +29,19 @@ struct ScenarioBrief: Equatable {
                   let name = objectives[index - 1].name else { return nil }
             return lossLine(name: name, limit: limit)
         }
+        let exhaustion: [String] = (written?.lostIfExhausted ?? []).compactMap { way in
+            switch way {
+            case "any": return "Any character is exhausted."
+            case "offExit": return "A character is exhausted away from the exit."
+            case "beforeLoot": return "A character is exhausted before the treasure is looted."
+            default: return nil
+            }
+        }
+        let killed = (written?.lostIfKilled ?? []).map { "A \(GameText.monsterName($0, edition: scenario.edition, labels: labels)) is killed." }
         return ScenarioBrief(
             title: "#\(scenario.index) \(name)",
             goal: written?.text ?? goal(rules.filter { $0.finish == "won" }, edition: scenario.edition, labels: labels),
-            defeat: ["Every character is exhausted."] + losses
+            defeat: ["Every character is exhausted."] + losses + exhaustion + killed
                 + rules.filter { $0.finish == "lost" }.map { lossText($0, labels: labels, edition: scenario.edition) },
             rules: specialRules(scenario, labels: labels),
             monsters: monsterKeys(scenario.monsters ?? []),

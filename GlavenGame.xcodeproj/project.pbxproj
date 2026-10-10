@@ -193,6 +193,7 @@
 		CF488AC45A2FBA66D8D34D5A /* GameObjectiveContainer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5C3F8355E887FAF9952D826E /* GameObjectiveContainer.swift */; };
 		CFB8201374A8A759A8C032A9 /* ConditionName.swift in Sources */ = {isa = PBXBuildFile; fileRef = C124CDA0F843E56DFEB9254F /* ConditionName.swift */; };
 		D18A8958FB513FD0A1A027F7 /* MonsterStatModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = B84551835BADF4DA5F602FA6 /* MonsterStatModel.swift */; };
+		D4D98296B27433380EEC45FE /* BoardCoordinator+Goals.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD54276A54BB6F54BABE7D2E /* BoardCoordinator+Goals.swift */; };
 		D4E7121201A9D615F5FC0D37 /* DeckData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1BFD0B71E6987E420B5CBA91 /* DeckData.swift */; };
 		D5E66A358D8848C0094682B1 /* ScenarioManager+Rewards.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3C61D7D6C6A754273EE78F30 /* ScenarioManager+Rewards.swift */; };
 		D7CE1CE9C11E696DD3D22EA9 /* CardEnhancing.swift in Sources */ = {isa = PBXBuildFile; fileRef = D87DC294ED9193A4E2061B72 /* CardEnhancing.swift */; };
@@ -364,6 +365,7 @@
 		AABF17B34BECDFBAFC515C72 /* SanctuarySheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SanctuarySheet.swift; sourceTree = "<group>"; };
 		AC4BEBEF0D48AC6F54D3F19F /* Condition.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Condition.swift; sourceTree = "<group>"; };
 		AD2078C38F909FF5A2F71A7B /* GameSetupView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameSetupView.swift; sourceTree = "<group>"; };
+		AD54276A54BB6F54BABE7D2E /* BoardCoordinator+Goals.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "BoardCoordinator+Goals.swift"; sourceTree = "<group>"; };
 		ADC60986430A5DFFAA4EEAC9 /* PartySheetView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PartySheetView.swift; sourceTree = "<group>"; };
 		AE4FE04C5C22C618D1AB2170 /* GameMonster.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameMonster.swift; sourceTree = "<group>"; };
 		B1ACB336DBBEBE992BE2288A /* SupportedLocale.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SupportedLocale.swift; sourceTree = "<group>"; };
@@ -498,13 +500,6 @@
 				D179B38E24E3F8EE01027D33 /* SpriteKit.framework */,
 			);
 			name = Frameworks;
-			sourceTree = "<group>";
-		};
-		1D84E4FEBC94B8E7FA1D2A5D /* Previews */ = {
-			isa = PBXGroup;
-			children = (
-			);
-			path = Previews;
 			sourceTree = "<group>";
 		};
 		227A3064E6D684967F7C3C60 /* Dialogs */ = {
@@ -768,7 +763,6 @@
 				95ED271686CF9F591B2DE100 /* Engine */,
 				F6072024E09B50F62660F09A /* Managers */,
 				87CB9AB1F821566DCFE8075D /* Models */,
-				1D84E4FEBC94B8E7FA1D2A5D /* Previews */,
 				45867543A9804613CA71D357 /* Utilities */,
 				64A0D40F873AFB63942E5D4D /* Views */,
 			);
@@ -794,6 +788,7 @@
 				CE75E2B3B3818DD9370456F7 /* BoardCoordinator+Choices.swift */,
 				A6B11F82C5E44D977254134D /* BoardCoordinator+Combat.swift */,
 				F017EAC5B25B50251E9BB923 /* BoardCoordinator+Dooms.swift */,
+				AD54276A54BB6F54BABE7D2E /* BoardCoordinator+Goals.swift */,
 				8AF5F88A83DE6D05C0E02C99 /* BoardCoordinator+Items.swift */,
 				DDBAC7539C505743F35168AA /* BoardCoordinator+Learning.swift */,
 				B6C9F8BE9CC7A895A0360304 /* BoardCoordinator+Movement.swift */,
@@ -1009,6 +1004,7 @@
 				7071E837491694E5CFCA1CFF /* BoardCoordinator+Choices.swift in Sources */,
 				B8BA0DCB5F22292931347410 /* BoardCoordinator+Combat.swift in Sources */,
 				E38E2213257ECD55DA7680BB /* BoardCoordinator+Dooms.swift in Sources */,
+				D4D98296B27433380EEC45FE /* BoardCoordinator+Goals.swift in Sources */,
 				20DF67A50B1E99F5D18B9FDC /* BoardCoordinator+Items.swift in Sources */,
 				B07CD09C3B00B44267349F5C /* BoardCoordinator+Learning.swift in Sources */,
 				BF775F0114B6F567A1A74F92 /* BoardCoordinator+Movement.swift in Sources */,

@@ -50,6 +50,8 @@ extension BoardCoordinator {
         guard isCurrentBoard(generation), let attackerPos = origin ?? boardState.piecePositions[attacker],
               let targetPos = boardState.piecePositions[target],
               let defender = entity(for: target) else { return false }
+        // Drawn onto another figure (Provoking Roar), the attack lands whatever the range.
+        attackWasRedirected = target != aimedAt
         attackObserver?(attacker, target)
 
         let distance = attackerPos.distance(to: targetPos)

@@ -160,7 +160,7 @@ final class ScenarioSimulator {
             if scenario?.pendingFinish == "won" { return nil }
             // The book's goal for the objectives (destroy the altars, bring the escort home).
             if let goal = coord.scenarioData?.placements?.goal, goal.replacesKillAll {
-                return coord.objectiveGoalMet(goal) ? nil : "scenario \(index) won without its goal met"
+                return coord.goalMet(goal) ? nil : "scenario \(index) won without its goal met"
             }
             if scenario?.data.rules?.contains(where: { $0.finish == "won" }) == true {
                 return "scenario \(index) won by killing everything, but it has its own goal"
@@ -172,7 +172,8 @@ final class ScenarioSimulator {
         case .defeat:
             if scenario?.pendingFinish == "lost" { return nil }
             // What the party was to protect is lost.
-            if let goal = coord.scenarioData?.placements?.goal, coord.objectiveLost(goal) != nil { return nil }
+            if let goal = coord.scenarioData?.placements?.goal, coord.goalLost(goal) != nil { return nil }
+            if case .ruleLost = coord.endReason { return nil }
             let standing = gm.game.characters.filter { !$0.absent && !$0.exhausted }
             return standing.isEmpty ? nil : "scenario \(index) lost with \(standing.map(\.name)) still standing"
         }
@@ -482,7 +483,8 @@ final class ScenarioSimulator {
         if coord.entity(for: target)?.entityConditions.contains(where: { $0.name == .invisible && !$0.expired }) == true {
             violation("\(attacker) attacks invisible \(target)")
         }
-        if !LineOfSight.hasLOS(from: from, to: to, board: coord.boardState) {
+        // An attack drawn onto a provoking character lands whatever the range.
+        if !coord.attackWasRedirected, !LineOfSight.hasLOS(from: from, to: to, board: coord.boardState) {
             violation("\(attacker) at \(from) attacks \(target) at \(to) without line of sight")
         }
     }
@@ -496,7 +498,12 @@ final class ScenarioSimulator {
             violation("\(piece) moves from \(path.first.map { "\($0)" } ?? "?") but stands at \(position(piece).map { "\($0)" } ?? "nowhere")")
             return
         }
-        let opensDoors: Bool = { if case .character = piece { return true }; return false }()
+        // Characters open doors by walking into them, and so does an escort.
+        let opensDoors: Bool = {
+            if case .character = piece { return true }
+            if case .objective = piece { return !coord.isScenery(piece) }
+            return false
+        }()
         for (a, b) in zip(path, path.dropFirst()) where a.distance(to: b) != 1 {
             violation("\(piece) moves from \(a) to non-adjacent \(b)")
         }

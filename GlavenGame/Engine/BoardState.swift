@@ -57,6 +57,12 @@ final class BoardState {
     /// it bars a door.
     var objectiveSites: [Int: ObjectiveSlot] = [:]
 
+    /// Characters (by id) who have looted a goal treasure tile, once each.
+    var goalLooters: [String] = []
+
+    /// Characters (by id) who left the scenario through an exit.
+    var escapedCharacters: [String] = []
+
     // MARK: - Derived
 
     /// Reverse lookup: which piece is at a given coordinate.

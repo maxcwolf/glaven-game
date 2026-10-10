@@ -9,26 +9,72 @@ struct ScenarioPlacements: Codable, Equatable {
     /// Objectives (1-based) the party must keep from harm without their being allies: monsters
     /// attack them, characters can't, and nothing heals them (captives, a gate under siege).
     var protect: [Int]?
-    /// What the scenario book asks of the objectives, where the scenario data has no rule for it.
+    /// The scenario's goal and loss conditions as the scenario book prints them, where the
+    /// scenario data has no rule for them.
     var goal: Goal?
+    /// Rules the scenario book prints and the scenario data leaves out, in the data's own rule
+    /// format; they are added after the scenario's own.
+    var rules: [ScenarioRule]?
 
+    /// What wins and loses a scenario. Everything set under "to win" must hold at once; any one
+    /// of the losses loses. With nothing to win set, the goal is the default: every enemy dead
+    /// with every room revealed.
     struct Goal: Codable, Equatable {
         /// The goal in the book's words, for the scenario brief: "Destroy all altars."
         var text: String?
-        /// Objectives (1-based) to destroy, every one of each, to win.
+
+        // MARK: To win
+
+        /// Objectives (1-based) to destroy, every one of each.
         var destroy: [Int]?
-        /// Monster types to kill, every one that appears, to win ("ooze").
+        /// Monster types to kill, every one ("jekserah"): each has appeared, every room that
+        /// holds one is revealed, and none is alive.
         var kill: [String]?
-        /// An escort to bring somewhere to win.
+        /// A number of enemies to kill.
+        var killCount: KillCount?
+        /// "all": every enemy dead with every room revealed. "revealed": every enemy on the
+        /// board dead, whatever is still behind doors.
+        var enemies: String?
+        /// Map tiles to reveal ("m1a"), or "*" for every room.
+        var reveal: [String]?
+        /// "goal": every goal treasure tile looted. "each": every character has looted one.
+        var loot: String?
+        /// Numbered treasure tiles to loot ("62").
+        var lootIDs: [String]?
+        /// Any one of these as well (sacrifice the artifact, or escape with it).
+        var either: [Goal]?
+        /// An escort to bring somewhere.
         var arrive: Arrival?
-        /// Whether every enemy must be dead to win as well. Without `destroy`, `kill` or
-        /// `arrive` that is the goal anyway.
-        var enemies: Bool?
-        /// The scenario is lost when this many of an objective are killed: "1": 1.
+        /// Where every character must be to escape.
+        var escape: Exit?
+        /// Pressure plates characters must all stand on at once.
+        var occupy: Plates?
+        /// A hex some character must end a turn on or beside.
+        var reach: Reach?
+
+        // MARK: Lost
+
+        /// Lost when this many of an objective are killed: "1": 1.
         var lostAt: [String: Int]?
+        /// Lost when a character is exhausted: "any", "offExit" (not standing on an exit hex),
+        /// "beforeLoot" (before the loot the goal asks for is done).
+        var lostIfExhausted: [String]?
+        /// Exhaustion only loses once this tile is revealed.
+        var lostIfExhaustedOnceRevealed: String?
+        /// Lost when one of these monster types is killed.
+        var lostIfKilled: [String]?
 
         /// Whether winning takes something other than killing every enemy.
-        var replacesKillAll: Bool { destroy != nil || kill != nil || arrive != nil }
+        var replacesKillAll: Bool {
+            destroy != nil || kill != nil || killCount != nil || reveal != nil || loot != nil || lootIDs != nil
+                || arrive != nil || escape != nil || occupy != nil || reach != nil || enemies == "revealed"
+                || either != nil
+        }
+
+        /// Whether part of the goal is where characters stand, judged as a turn ends.
+        var isPositional: Bool {
+            escape != nil || occupy != nil || reach != nil || (either ?? []).contains(where: \.isPositional)
+        }
     }
 
     struct Arrival: Codable, Equatable {
@@ -42,9 +88,39 @@ struct ScenarioPlacements: Codable, Equatable {
         var adjacent: Bool?
     }
 
+    struct KillCount: Codable, Equatable {
+        /// How many, as the book writes it: "5xC".
+        var count: String
+        /// Which monster types count; nil for any enemy.
+        var of: [String]?
+    }
+
+    /// Exit hexes: the hexes of a letter, a whole tile, or the starting hexes.
+    struct Exit: Codable, Equatable {
+        var marker: String?
+        var tile: String?
+        var start: Bool?
+        /// A character on an exit hex as a round ends leaves the scenario; it is won when all
+        /// have left. Without it, all must stand on exit hexes at once.
+        var leave: Bool?
+    }
+
+    struct Plates: Codable, Equatable {
+        /// The letters of the plates in play for two characters.
+        var markers: [String]
+        /// More letters in play by character count: "3": ["b"], "4": ["b", "c"].
+        var more: [String: [String]]?
+    }
+
+    struct Reach: Codable, Equatable {
+        var marker: String
+        /// Whether ending a turn next to the lettered hex is enough (a well can't be stood on).
+        var adjacent: Bool?
+    }
+
     struct Tile: Codable, Equatable {
         var objectives: [Objective]?
-        /// Spawn hexes by marker letter: "a" → [[x, y], …].
+        /// Lettered hexes by marker: "a" → [[x, y], …].
         var markers: [String: [[Int]]]?
     }
 
