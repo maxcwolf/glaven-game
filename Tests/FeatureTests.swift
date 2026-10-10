@@ -105,8 +105,7 @@ final class AoEResolverTests: XCTestCase {
             board: board
         )
 
-        XCTAssertTrue(targets.isEmpty || !targets.contains(farEnemy),
-                       "Should not hit enemy far from AoE pattern")
+        XCTAssertEqual(targets, [], "Should not hit enemy far from AoE pattern")
     }
 
     func testResolveTargets_triesRotationsToMaximizeHits() {
@@ -129,57 +128,17 @@ final class AoEResolverTests: XCTestCase {
             board: board
         )
 
-        // At minimum, should hit the focus target
-        XCTAssertTrue(targets.contains(enemy1), "Must hit focus target")
+        // The two target hexes lie beside each other: turned the right way they take in both.
+        XCTAssertTrue(neighbors[0].isAdjacent(to: neighbors[1]))
+        XCTAssertEqual(Set(targets), [enemy1, enemy2], "the rotation that hits both is chosen")
+        XCTAssertEqual(targets.count, 2, "each enemy once")
     }
 }
 
-// MARK: - Curse/Bless Deck Limit Tests
-
-final class AttackModifierLimitTests: XCTestCase {
-
-    func testAddBless_enforcesMax10() {
-        let game = GameState()
-        game.monsterAttackModifierDeck = AttackModifierDeck.defaultDeck()
-        let manager = AttackModifierManager(game: game)
-
-        // Add 15 bless cards — only 10 should actually be added
-        for _ in 0..<15 {
-            manager.addBless(to: .monster)
-        }
-
-        let blessCount = game.monsterAttackModifierDeck.cards.filter { $0.type == .bless }.count
-        XCTAssertEqual(blessCount, 10, "Should cap at 10 bless cards")
-    }
-
-    func testAddCurse_enforcesMax10() {
-        let game = GameState()
-        game.monsterAttackModifierDeck = AttackModifierDeck.defaultDeck()
-        let manager = AttackModifierManager(game: game)
-
-        for _ in 0..<15 {
-            manager.addCurse(to: .monster)
-        }
-
-        let curseCount = game.monsterAttackModifierDeck.cards.filter { $0.type == .curse }.count
-        XCTAssertEqual(curseCount, 10, "Should cap at 10 curse cards")
-    }
-
-    func testAddBless_characterDeckLimit() {
-        let game = GameState()
-        let char = GameCharacter(name: "brute", edition: "gh", level: 1, characterData: nil)
-        char.attackModifierDeck = AttackModifierDeck.defaultDeck()
-        game.figures.append(.character(char))
-        let manager = AttackModifierManager(game: game)
-
-        for _ in 0..<12 {
-            manager.addBless(to: .character(char))
-        }
-
-        let blessCount = char.attackModifierDeck.cards.filter { $0.type == .bless }.count
-        XCTAssertEqual(blessCount, 10, "Character deck should cap at 10 bless cards")
-    }
-}
+// The ten Blesses and the two sets of ten Curses are tested through applyCondition, the way a
+// card or a monster gives them: CombatEffectsTests.testBlessAndCurseCardsAreSharedBetweenDecks and
+// ConditionRuleTests.testTheTenCursesOfEachSide. (AttackModifierManager.addBless / addCurse, which
+// the tests that were here called, are not used by the game.)
 
 // MARK: - Escort AI Tests
 
@@ -200,7 +159,7 @@ final class EscortAITests: XCTestCase {
         XCTAssertFalse(result.stunned)
     }
 
-    func testEscortWithMoveAction_movesTowardEnemy() {
+    func testEscortWithMoveAction_movesTowardEnemy() throws {
         let (game, board) = makeGameState(monsterPositions: [(1, HexCoord(7, 3))])
         let container = GameObjectiveContainer(name: "Hail", escort: true)
         container.escortActions = [
@@ -213,8 +172,13 @@ final class EscortAITests: XCTestCase {
 
         let result = EscortAI.computeTurn(escort: container, entity: entity, board: board, gameState: game)
 
-        // Should move toward the monster
-        XCTAssertFalse(result.movementPath.isEmpty, "Escort with move action should move toward enemy")
+        // Four hexes from the monster with Move 3: three steps bring it beside its focus, to attack.
+        let enemy = PieceID.monster(name: "test-monster", standee: 1)
+        XCTAssertEqual(result.focusTarget, enemy)
+        XCTAssertEqual(result.movementPath.first, HexCoord(3, 3))
+        XCTAssertEqual(result.movementPath.count - 1, 3, "Escort with move action should move toward enemy")
+        XCTAssertEqual(try XCTUnwrap(result.movementPath.last).distance(to: HexCoord(7, 3)), 1)
+        XCTAssertEqual(result.attackTarget, enemy)
     }
 
     func testEscortStunned_skipsTurn() {
@@ -317,39 +281,36 @@ final class LootTests: XCTestCase {
 
 // MARK: - Teleport Validity Tests
 
+@MainActor
 final class TeleportTests: XCTestCase {
 
-    func testTeleportCanReachThroughObstacles() {
-        // Create a narrow corridor where the only path is blocked
-        let board = makeBoard(cols: 8, rows: 8)
-        // Block all passable hexes in columns 3 and 4 except the target
+    /// A teleport reaches any empty hex within range whatever lies between — here across a wall
+    /// of obstacles no walk gets through — but never an obstacle, an occupied hex or one out of
+    /// range. Through the coordinator's own teleport.
+    func testATeleportReachesEmptyHexesAcrossObstaclesAndNothingElse() throws {
+        let board = try RuleBoard(cols: 8, rows: 8)
+        let coord = board.coord
+        // Columns 3 and 4 are solid obstacle from top to bottom.
         for row in 0..<8 {
-            board.cells[HexCoord(3, row)]!.passable = false
-            board.cells[HexCoord(4, row)]!.passable = false
+            coord.boardState.placeObstacle(at: HexCoord(3, row))
+            coord.boardState.placeObstacle(at: HexCoord(4, row))
         }
-        // Re-open just the target hex
-        let target = HexCoord(5, 3)
-        // Make columns 5+ passable (they already are from makeBoard)
+        let origin = HexCoord(2, 3), beyond = HexCoord(5, 3)
+        let brute = board.character(at: origin)
+        let piece = PieceID.character(brute.id)
+        let blocker = try board.monster(at: HexCoord(5, 4))
+        XCTAssertEqual(origin.distance(to: beyond), 3)
+        XCTAssertNil(Pathfinder.findPath(board: coord.boardState, from: origin, to: beyond, occupiedByEnemy: []),
+                     "no way round on foot")
 
-        let origin = HexCoord(2, 3)
-        board.placePiece(.character("test"), at: origin)
-
-        // Teleport should be able to reach target (distance 3, within range 5)
-        let distance = origin.distance(to: target)
-        XCTAssertTrue(distance <= 5, "Target within teleport range")
-        XCTAssertTrue(board.cells[target]?.passable == true, "Target hex is passable")
-
-        // Normal pathfinding should fail (wall blocks all paths)
-        let path = Pathfinder.findPath(board: board, from: origin, to: target, occupiedByEnemy: [])
-        XCTAssertNil(path, "Normal pathfinding should be blocked by complete wall")
-    }
-
-    func testTeleportCannotReachImpassableHex() {
-        let board = makeBoard()
-        board.cells[HexCoord(4, 4)]!.passable = false
-
-        let canReach = board.cells[HexCoord(4, 4)]?.passable ?? false
-        XCTAssertFalse(canReach, "Cannot teleport to impassable hex")
+        coord.beginTeleportAction(pieceID: piece, range: 3)
+        guard case .selectingMove(_, _, let hexes, let teleport, _) = coord.interactionMode else { return XCTFail("the teleport offers hexes") }
+        XCTAssertTrue(teleport)
+        XCTAssertTrue(hexes.contains(beyond), "the far side of the wall")
+        XCTAssertFalse(hexes.contains(HexCoord(3, 3)), "not onto an obstacle")
+        XCTAssertFalse(hexes.contains(try XCTUnwrap(board.hex(blocker.piece))), "not onto a figure")
+        XCTAssertTrue(hexes.allSatisfy { $0.distance(to: origin) <= 3 }, "nothing out of range")
+        XCTAssertFalse(hexes.contains(HexCoord(6, 3)), "four hexes away")
     }
 }
 
@@ -402,28 +363,8 @@ final class BonusXPTests: XCTestCase {
     }
 }
 
-// MARK: - Monster AI with AoE Tests
-
-final class MonsterAIAoETests: XCTestCase {
-
-    func testParseAbilityCard_extractsAoEPattern() {
-        // Create ability with attack that has area sub-action
-        let ability = AbilityModel(
-            cardId: 1,
-            name: "test",
-            initiative: 50,
-            actions: [
-                ActionModel(type: .attack, value: .int(3), subActions: [
-                    ActionModel(type: .area, value: .string("(0,1,active)|(1,0,target)|(1,1,target)"))
-                ])
-            ]
-        )
-
-        // We can't call parseAbilityCard directly (it's private), but we can test
-        // through computeTurn by setting up a scenario where AoE matters
-        XCTAssertNotNil(ability.actions?.first?.subActions?.first(where: { $0.type == .area }))
-    }
-}
+// A monster's area attack is played on the board in MonsterTurnRulesTests
+// (testAWindDemonAttacksWithTheCardThatPrintsItsAttackInAGrid) and resolved in AoEResolverTests.
 
 // MARK: - Entity Condition Tests
 
@@ -479,16 +420,26 @@ final class HexCoordTests: XCTestCase {
         let origin = HexCoord(5, 5)
         let target = HexCoord(5, 6) // south of origin
         let pushCandidates = target.pushCandidates(awayFrom: origin)
+        XCTAssertEqual(pushCandidates.count, 3, "three of a hex's six neighbours are further from an adjacent origin")
         for candidate in pushCandidates {
-            XCTAssertGreaterThan(candidate.distance(to: origin), target.distance(to: origin),
-                                 "Push candidates should be farther from origin")
+            XCTAssertEqual(candidate.distance(to: origin), 2, "Push candidates should be farther from origin")
+            XCTAssertTrue(candidate.isAdjacent(to: target))
         }
+        // A pull's hexes are the nearer ones: from two away, those beside the origin.
+        let far = pushCandidates[0]
+        let pullCandidates = far.pullCandidates(toward: origin)
+        XCTAssertFalse(pullCandidates.isEmpty)
+        for candidate in pullCandidates {
+            XCTAssertEqual(candidate.distance(to: origin), 1)
+            XCTAssertTrue(candidate.isAdjacent(to: far))
+        }
+        XCTAssertTrue(pullCandidates.contains(target) || far.distance(to: target) == 1)
     }
 }
 
-// MARK: - Invisible + AoE Integration Test
+// MARK: - Invisible enemies
 
-final class InvisibleAoETests: XCTestCase {
+final class InvisibleEnemiesTests: XCTestCase {
 
     func testGatherEnemies_excludesInvisibleByDefault() {
         let (game, board) = makeGameState(monsterPositions: [(1, HexCoord(5, 5))])
@@ -500,11 +451,12 @@ final class InvisibleAoETests: XCTestCase {
         char.entityConditions.append(EntityCondition(name: .invisible))
 
         let enemies = MonsterAI.gatherEnemies(board: board, monster: monster, gameState: game)
-        let hasChar = enemies.contains(where: { if case .character = $0 { return true }; return false })
-        XCTAssertFalse(hasChar, "Invisible characters should be excluded from normal targeting")
+        XCTAssertEqual(enemies, [], "Invisible characters can be neither focused on nor targeted")
     }
 
-    func testGatherEnemies_includesInvisibleForAoE() {
+    /// The invisible are asked for only as what stands in a monster's way (MON-14: an invisible
+    /// character blocks its movement like an obstacle) — never as targets, of an area either.
+    func testGatherEnemies_canIncludeTheInvisibleAsFiguresInTheWay() {
         let (game, board) = makeGameState(monsterPositions: [(1, HexCoord(5, 5))])
         let monster = GameMonster(name: "ally-monster", edition: "gh", level: 1, monsterData: nil)
         game.figures.append(.monster(monster))
@@ -513,7 +465,16 @@ final class InvisibleAoETests: XCTestCase {
         char.entityConditions.append(EntityCondition(name: .invisible))
 
         let enemies = MonsterAI.gatherEnemies(board: board, monster: monster, gameState: game, includeInvisible: true)
-        let hasChar = enemies.contains(where: { if case .character = $0 { return true }; return false })
-        XCTAssertTrue(hasChar, "AoE should include invisible characters")
+        XCTAssertEqual(enemies, [.character(char.id)], "the invisible character is still a figure on the board")
+        // A monster with a path only through the invisible character can't take it, and attacks no one.
+        let entity = GameMonsterEntity(number: 1, type: .normal, health: 5, maxHealth: 5, level: 1)
+        monster.entities.append(entity)
+        board.placePiece(.monster(name: "ally-monster", standee: 1), at: HexCoord(3, 2))
+        let ability = AbilityModel(cardId: 1, initiative: 50, actions: [ActionModel(type: .move, value: .int(3)),
+                                                                        ActionModel(type: .attack, value: .int(2))])
+        let turn = MonsterAI.computeTurn(pieceID: .monster(name: "ally-monster", standee: 1), monster: monster, entity: entity,
+                                         ability: ability, board: board, gameState: game)
+        XCTAssertNil(turn.focusTarget, "no one it can see to focus on")
+        XCTAssertTrue(turn.attackTargets.isEmpty, "and no one is attacked, beside it or not")
     }
 }

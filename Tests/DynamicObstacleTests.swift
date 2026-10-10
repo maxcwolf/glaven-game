@@ -151,17 +151,23 @@ final class DynamicObstacleTests: XCTestCase {
 
     // MARK: - E2E: Dynamic Trap Placement + Trigger
 
-    func testDynamicTrap_triggersOnEntry() {
-        let board = makeBoard()
+    /// A trap a card places is sprung by the first figure to walk onto it, for the damage the
+    /// card gave it (not the scenario level's), and is gone afterwards.
+    @MainActor func testDynamicTrap_triggersOnEntry() async throws {
+        let board = try RuleBoard(level: 1)
         let trapCoord = HexCoord(3, 3)
+        board.coord.boardState.placeTrap(at: trapCoord, damage: 4, subType: "spike")
+        XCTAssertTrue(board.coord.boardState.cells[trapCoord]!.isTrap, "Dynamic trap exists")
 
-        // Place trap dynamically
-        board.placeTrap(at: trapCoord, damage: 4, subType: "spike")
+        let walker = try board.monster(at: HexCoord(2, 3))
+        await board.coord.moveAlong(walker.piece, path: [HexCoord(2, 3), trapCoord, HexCoord(4, 3)], style: .normal)
+        XCTAssertEqual(walker.entity.health, 30 - 4, "the trap's own 4 damage, where the level's would be 3")
+        XCTAssertFalse(board.coord.boardState.cells[trapCoord]!.isTrap, "Trap removed after trigger")
+        XCTAssertEqual(board.hex(walker.piece), HexCoord(4, 3), "and the walk goes on")
 
-        XCTAssertTrue(board.cells[trapCoord]!.isTrap, "Dynamic trap exists")
-
-        // Trigger it
-        board.removeTrap(at: trapCoord)
-        XCTAssertFalse(board.cells[trapCoord]!.isTrap, "Trap removed after trigger")
+        // The next to pass that way finds nothing.
+        let second = try board.monster(at: HexCoord(2, 4))
+        await board.coord.moveAlong(second.piece, path: [HexCoord(2, 4), trapCoord], style: .normal)
+        XCTAssertEqual(second.entity.health, 30)
     }
 }

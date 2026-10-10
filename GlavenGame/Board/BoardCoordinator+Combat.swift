@@ -350,7 +350,10 @@ extension BoardCoordinator {
             let spec = MonsterAbility.attack(death.action, stat: stat, baseAttack: base, baseRange: 0)
             // Every enemy next to where it fell that the area can reach (the pattern turned to hit most).
             let pattern = death.action.subActions?.first { $0.type == .area }?.value?.stringValue
-            let enemies = boardState.piecePositions.keys.filter { areEnemies(death.attacker, $0) }.sorted()
+            // (An invisible figure is no target for this attack either.)
+            let enemies = boardState.piecePositions.keys.filter {
+                areEnemies(death.attacker, $0) && !isConditionActive(.invisible, on: $0)
+            }.sorted()
             var victims: [PieceID] = []
             if let pattern {
                 for focus in enemies where boardState.piecePositions[focus].map({ boardState.areAdjacent($0, death.position) }) == true {

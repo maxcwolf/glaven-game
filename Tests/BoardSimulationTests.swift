@@ -37,34 +37,32 @@ final class BoardSimulationTests: XCTestCase {
         }
         XCTAssertEqual(sim.violations, [])
         XCTAssertGreaterThanOrEqual(sim.gm.game.round, 2, "several rounds were played")
-        for (name, seen) in initiatives where seen.count >= 3 {
+        let longPlayed = initiatives.filter { $0.value.count >= 3 }
+        XCTAssertFalse(longPlayed.isEmpty, "some type acted in three rounds or more: \(initiatives)")
+        for (name, seen) in longPlayed {
             XCTAssertGreaterThan(Set(seen).count, 1, "\(name) reveals different ability cards over rounds: \(seen)")
         }
     }
 
-    /// With tough characters and fragile monsters, the scripted party clears every room: doors
-    /// open, rooms reveal and the default goal (kill everything) wins at the end of the round.
-    func testScenario1_toughPartyRevealsRoomsAndWins() async throws {
-        let sim = try scripted("1", seed: 12)
-        for character in sim.gm.game.characters {
-            character.maxHealth = 500
-            character.health = 500
-        }
+    /// A party strong enough to win by the rules (ninth-level characters at scenario level 0, no
+    /// hit points or cards handed out) clears every room of Black Barrow: doors open, rooms are
+    /// revealed with their monsters, and the default goal (every enemy dead) wins when the round
+    /// in which the last one falls has been played out.
+    func testScenario1_veteranPartyRevealsRoomsAndWins() async throws {
+        let sim = try ScenarioSimulator(scenario: "1", options: .veteranParty(seed: 12), policy: VeteranPolicy())
+        var monstersSeen: Set<String> = []
         await sim.play(rounds: 40) {
-            for monster in sim.gm.game.monsters {
-                for entity in monster.aliveEntities where entity.health > 1 { entity.health = 1 }
-            }
-            // Keep the scripted party from running out of cards.
-            if sim.coord.boardPhase == .cardSelection {
-                for character in sim.gm.game.characters where !character.exhausted && character.handCards.count < 4 {
-                    character.handCards.append(contentsOf: character.lostCards)
-                    character.lostCards.removeAll()
-                }
-            }
+            for monster in sim.gm.game.monsters where !monster.aliveEntities.isEmpty { monstersSeen.insert(monster.name) }
         }
-        XCTAssertTrue(sim.coord.boardState.doors.contains { $0.isOpen }, "the party opened a door")
+        XCTAssertEqual(sim.coord.boardState.doors.filter(\.isOpen).count, 2, "the party opened both doors")
+        XCTAssertEqual(sim.gm.game.scenario?.revealedRooms.sorted(), [1, 2, 3])
+        XCTAssertEqual(monstersSeen, ["bandit-guard", "bandit-archer", "living-bones"], "each room's monsters came into play")
         XCTAssertEqual(sim.coord.scenarioResult, .victory, "killing every monster in every room wins (round \(sim.gm.game.round))")
+        XCTAssertEqual(hostileMonsters(sim), 0)
+        XCTAssertTrue(sim.coord.turnLog.contains { $0.message == "Round \(sim.gm.game.round) complete" }, "at the end of a round")
+        XCTAssertTrue(sim.gm.game.characters.contains { !$0.exhausted }, "with someone still standing")
         XCTAssertNil(sim.outcomeProblem())
+        XCTAssertEqual(sim.violations, [])
     }
 
     func testScenarioWithOwnWinConditionIsNotWonByEmptyBoard() async throws {

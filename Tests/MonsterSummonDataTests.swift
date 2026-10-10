@@ -1,8 +1,12 @@
 import XCTest
 @testable import GlavenGameLib
 
-/// A monster's Summon ability: how many it brings, and of which rank, by character count.
-final class MonsterSummonTests: XCTestCase {
+/// A monster's Summon ability as the monster data writes it: how many it brings, and of which
+/// rank, by character count. (The summoning itself — beside the summoner and as near an enemy as
+/// can be, no turn in the round it arrives, no money, none without a free standee — is played on
+/// the board in MonsterTurnRulesTests: testASummonedMonsterStandsNearestTheEnemyAndWaitsARound,
+/// testNoMonsterIsSummonedWithoutAFreeStandee.)
+final class MonsterSummonDataTests: XCTestCase {
 
     private func summons(_ json: String, players: Int) throws -> [MonsterType] {
         let action = try JSONDecoder().decode(ActionModel.self, from: Data(json.utf8))

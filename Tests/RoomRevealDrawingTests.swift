@@ -4,9 +4,11 @@ import SpriteKit
 
 /// Opening a door draws the new room into the board as it stands: nothing already there is
 /// redrawn or moved, effects in flight carry on, and the result is the same board a full
-/// rebuild would draw.
+/// rebuild would draw. (This is the drawing only. What the rules say of a reveal — the door
+/// opened by a character's move, the room set up for the party, cards drawn and turns taken by
+/// its monsters — is in RevealRuleTests.)
 @MainActor
-final class RoomRevealTests: XCTestCase {
+final class RoomRevealDrawingTests: XCTestCase {
 
     private var gm: GameManager!
     private var coord: BoardCoordinator { gm.boardCoordinator }

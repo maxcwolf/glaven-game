@@ -114,7 +114,7 @@ final class ForcedMovementTests: XCTestCase {
         let target = addMonster(at: targetHex)
         behind.forEach { coord.boardState.cells[$0]?.overlay = .trap }
         await coord.performPushPull(target: target.piece, attackerPos: attackerHex, steps: 1, isPush: true)
-        XCTAssertLessThan(target.entity.health, 30, "trap damage")
+        XCTAssertEqual(target.entity.health, 30 - 3, "trap damage: 2 + L at level 1, once")
         XCTAssertEqual(behind.filter { coord.boardState.cells[$0]?.isTrap == true }.count, behind.count - 1, "and the trap is gone")
     }
 
@@ -124,7 +124,7 @@ final class ForcedMovementTests: XCTestCase {
         let walker = addMonster(at: targetHex)
         behind.forEach { coord.boardState.cells[$0]?.overlay = .hazard }
         await coord.performPushPull(target: walker.piece, attackerPos: attackerHex, steps: 1, isPush: true)
-        XCTAssertLessThan(walker.entity.health, 30, "a walker pushed into hazardous terrain is hurt")
+        XCTAssertEqual(walker.entity.health, 30 - 1, "a walker pushed into hazardous terrain is hurt: half a trap, rounded down")
         coord.sufferDamage(99, to: walker.piece)
 
         let demon = addMonster("flame-demon", at: targetHex)

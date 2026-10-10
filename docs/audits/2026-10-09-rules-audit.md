@@ -194,41 +194,99 @@ Larger mechanics still not built are listed in `TODO.md` ("Scenario special rule
 
 ## Tests that don't prove what they say
 
-Found while auditing; each needs rewriting to go through the code real play uses, or deleting.
-The monster and campaign ones below were strengthened or corrected with their fixes (`RulebookTests`
-focus and movement tests, `E2EGameTests` 248–882, `EnhancementTests`, `TownTests`,
-`PersonalQuestAutotrackTests`, `TrapConditionTests`); the rest are still as described.
+The tests found weak by the audit, and what became of each (2026-10-10, test-suite pass; only
+`Tests/` changed). "Board" means through `BoardCoordinator` — `performAttack`, `applyCondition`,
+the turn controllers, a real turn.
 
-- **Assert fields nothing reads:** `RulebookTests` lines 78–97 and 182–194, `E2EGameTests` 370 and
-  388 check `AttackResult.retaliateDamage` / `appliedConditions`, which `performAttack` never uses.
-- **Tautologies and vacuous passes:** `RulebookTests` 559, `CoverageGapTests` 38 and 46 (pass the
-  flag they assert); `E2EGameTests` 819 (`>= 0`); `FeatureTests` 478 (loop over a possibly empty
-  list — the only test of the push direction rule); `RulebookTests` 416, 390, 364 and
-  `DynamicObstacleTests` 106 (assertions inside `if let`); `CoverageGapTests` 128–215 (inside
-  `if let scenario`).
-- **Test an API the game never calls:** all of `ActionsManagerTests`; `RulebookTests` 837 and 847
-  and `FeatureTests` 141–168 (`addBless` / `addCurse`).
-- **Set a value and assert it:** `RulebookTests` 890–915 and `CoverageGapTests` 223–268 (loot),
-  `PersistentAbilityTests` 14–29, `TrapConditionTests` 10–77.
-- **Named for one thing, test another:** `RulebookTests` 249 and 276 (focus: plain distance gives
-  the same answer); `E2EGameTests` 140, 248, 671, 797, 848, 882; `JumpFlyMovementTests` 12 and 33
-  (`>=`); `MonsterSummonTests` (data parsing only); `RoomRevealTests` (rendering only).
-- **Pin behaviour the rules forbid:** `CombatEffectsTests` 154 and `MonsterTextTests` 114 (D1);
-  `LineOfSightTests` 147 and 167 (A2); `EnhancementTests` 56–95 (F6–F8);
-  `PersonalQuestAutotrackTests` 88–104 (F2).
-- **The simulator** checks attacks' line of sight with the engine's own function and never checks
-  range; for turn flow it checks only card conservation. It has not won a game in 376 runs, so
-  goals and late rooms are exercised only by unit tests.
+| What was wrong | Where | Now |
+|---|---|---|
+| Asserted `AttackResult.appliedConditions`, which `performAttack` never reads | `RulebookTests` `testPipeline_missStillAppliesConditions`, `…killedTargetGetsNoConditions`, `…hitAppliesConditions` | deleted — `AttackRuleTests.testAnAttacksConditionsAndPushLandOnANullDraw`, `testAnAttackStoppedByShieldStillAppliesItsEffects`, `testAnAttackThatKillsItsTargetAppliesNoneOfItsEffects` (board) |
+| Asserted `AttackResult.retaliateDamage`, never read | `RulebookTests` `testRetaliate_*` (3), `E2EGameTests` `testCombatResolver_retaliateApplied`, `…OutOfRange` | deleted — `ForcedMovementTests` (amount, reach, death, push, pull) and `AttackRuleTests.testRetaliateDrawsNoCardAndIgnoresShieldAndPoison` |
+| Passed the flag they asserted | `RulebookTests` `testPoison_plusOneToAttack`, `testStrengthen_givesAdvantage`, `testMuddle_givesDisadvantage`, `testRangedAdjacent_givesDisadvantage`; `CoverageGapTests` `AdvantageDisadvantageThroughAITests` (4) | deleted — `ConditionRuleTests.testStrengthenGivesAdvantageMuddleDisadvantageAndBothCancel`, `AttackRuleTests.testARangedAttackOnAnAdjacentEnemyDrawsTwoCardsAndKeepsTheWorse`, `testAnArcherBesideItsTargetShootsWithDisadvantage`, `testPoisonOnTheTargetAddsOneToAnEnemysAttack` (cards counted in a real attack) |
+| Called `AttackModifierManager.addBless` / `addCurse`, which the game never calls | `RulebookTests` `testMaxBlessLimit`, `testMaxCurseLimit`, `testBlessCurseRemovedOnShuffle`; `FeatureTests` `AttackModifierLimitTests` (3); `E2EGameTests` `testBlessCurseInteraction` (also `>= 0`) | deleted — `CombatEffectsTests.testBlessAndCurseCardsAreSharedBetweenDecks`, `ConditionRuleTests.testTheTenCursesOfEachSide`, `testACurseGoesIntoTheDeckItsFigureDrawsFrom`, `RoundRuleTests.testBlessAndCurseAreRemovedWhenDrawnAndCauseNoReshuffle`, `testAnUndrawnBlessStaysInTheDeckThroughAReshuffle` |
+| Called `ActionsManager.applyInteractiveAction`, which nothing in the game calls | all of `ActionsManagerTests` | file replaced by `HealAndConsumeRuleTests` (a heal card played on a poisoned, wounded ally; a two-element consume through `GameState.consumeElements`); what a heal removes is `ConditionRuleTests.testWhatAHealRemoves` |
+| Set a value and asserted it | `RulebookTests` `RB_LootTests` (3), `CoverageGapTests` `EndOfTurnAutoLootTests` (3), `E2EGameTests` `testKillMonster_dropsLoot` | deleted — `LootRuleTests` (end of turn, summons and monsters, a push, Loot X, the level's gold) |
+| | `PersistentAbilityTests` `testActiveCardsProperty_existsOnCharacter`, `testActiveCards_canAddAndRemove`, `testAbilityModel_persistentFlag`, `testActiveCards_notCountedAsHandOrDiscard` | deleted — `TurnFlowTests.testAPerformedPersistentHalfStaysActive`, `RoundRuleTests.testACharacterWithOnlyActiveCardsIsExhaustedAtCardSelection` |
+| | `FeatureTests` `TeleportTests` (2), `testParseAbilityCard_extractsAoEPattern`; `DynamicObstacleTests.testDynamicTrap_triggersOnEntry` | rewritten through `beginTeleportAction` and `moveAlong`; the AoE one deleted (`MonsterTurnRulesTests`, `AoEResolverTests`) |
+| Could pass with nothing checked (`if let`, an empty loop, `>= 0`, `isEmpty ||`) | `CoverageGapTests` `ScenarioFinishEdgeCaseTests` (4, inside `if let scenario`; bonus XP `>=`); `MonsterTrapAvoidanceFallbackTests` (3); `RulebookTests` `testMonsterTrapAvoidance`, `testMonsterTrapsOnlyPath`; `E2EGameTests` `testMonsterAI_movesTowardCharacter`, `testPathfindingAroundObstacles`, `testDrawAllCardsAndShuffle`, `testEscortAI_fullTurn`; `FeatureTests` `testPushCandidates`, `testResolveTargets_*` (2), `testEscortWithMoveAction_movesTowardEnemy`; `PersistentAbilityTests` snapshot tests; `BoardSimulationTests.testScenario1_playsRoundsConsistently` | rewritten: unwrapped, exact outcomes (bonus XP exactly 8 and none for an absent character; the path's hexes; the escort's steps and target; three push hexes, each two away) |
+| Named for one thing, tested another | `E2EGameTests` `testInitiativeOrdering_characterBeforeMonster` (no ability card, assertion in `if let`) | deleted — `RoundRuleTests.testInitiativeOrderAndItsTies` (the coordinator's turn order) |
+| | `E2EGameTests` `testThreeRoundSimulation` (a hand-rolled loop around `CombatResolver`), `testLineOfSight_blockedByObstacle` (asserted nothing; obstacles don't block), `testDifficultTerrain_costsExtra`, `testFlyingIgnoresTerrainCost` (`count > 0`) | deleted — `BoardSimulationTests` / `PlaythroughTests`, `LineOfSightTests.testLOS_notBlockedByObstacleDirectlyBetween`, `RB_TerrainTests` |
+| | `JumpFlyMovementTests` `testJump_ignoresTrapsOnIntermediateHexes`, `testJump_ignoresDifficultTerrainOnIntermediate` (`>=`), `testBeginMoveAction_exists` (compiles) | rewritten in a corridor with exact costs (a jump's last hex in difficult terrain costs 2) and through `beginMoveAction` / `beginJumpMoveAction` / `beginFlyMoveAction` |
+| | `FeatureTests` `testGatherEnemies_includesInvisibleForAoE` (the flag is for what blocks a monster's way; an area never targets the invisible) | renamed and extended: `InvisibleEnemiesTests.testGatherEnemies_canIncludeTheInvisibleAsFiguresInTheWay` |
+| | `MonsterSummonTests` (data parsing only), `RoomRevealTests` (rendering only) | renamed `MonsterSummonDataTests`, `RoomRevealDrawingTests`; the rules are in `MonsterTurnRulesTests` and the new `RevealRuleTests` |
+| | `BoardSimulationTests.testScenario1_toughPartyRevealsRoomsAndWins` (500 hit points, monsters set to 1, cards handed back) | replaced by `testScenario1_veteranPartyRevealsRoomsAndWins`: a party that wins by the rules |
+| Weak numbers | `ForcedMovementTests` trap and hazard damage (`< 30`); `RulebookTests.testDefaultDeckSize` (count only) | exact: 3 and 1 at level 1; the twenty cards by type |
+
+Left as they are: `ConditionLifecycleTests`, `RB_ConditionTests` and `E2EConditionLifecycleTests`
+drive `EntityManager`'s restore / apply / expire by hand — the calls real turns make, in the
+order they make them; the same durations are now also played through real turns
+(`ConditionRuleTests`). `PlaybackTests` checks what it says. `LineOfSightTests` "line grazing a
+wall corner is not blocked" and "sees past a single void hex" still pin A2 (being changed with
+line of sight). The `RulebookTests` pipeline tests call `CombatResolver` with its inputs supplied:
+they prove the arithmetic, and `AttackRuleTests` proves the board supplies the right inputs.
+
+**Mutations: not run.** The rewritten and new tests have not yet been shown to fail against a
+broken rule (poison adding 0, Retaliate after death, no Disadvantage for a ranged attack on an
+adjacent enemy, effects on a killed target, a summon drawing from the monster deck, no reshuffle
+at the end of the round, and so on). That is the next step for whoever takes this up: break one
+rule at a time in the game code, run the rule tests, and write the test for any break nothing
+catches.
+
+**The simulator** (`Tests/Support/ScenarioSimulator`, `PlayLedger`, `PlayerPolicies`). It now
+also checks, of every playthrough: each attack within its attack's range (read from the card and
+stat card, not from the engine's targeting); no enemy attacked twice by one attack ability;
+figures acting in initiative order, once a round, a summon before its owner and not in the round
+it arrives; a rest only with two discards; cards conserved and none held by the exhausted; gold
+gained equal to tokens looted × the level's rate. `PlayLedgerTests` shows each check firing on a
+bad event. Line of sight is still judged with the engine's own function, and range is plain hex
+distance (A4). With `Options.veteranParty` (ninth-level Brute, Sunkeeper and Berserker with their
+level-up cards and perks, at scenario level 0 — a level the players may choose, p.15) and
+`VeteranPolicy`, playthroughs reach the end: over two seeds of all 94 scenarios this party wins 117 of 188 games (62%) and 52 of the 60 games won by killing every enemy (87%); with a Scoundrel added, 116 of 188 and 47 of 60 (`testVeteranPartiesWinMostScenarios`, `SIM_ALL=1`). The first-level `TacticalPolicy` party still wins none of its 188.
+`PlaythroughTests.testTheVeteranPartyWinsSixKindsOfScenario` wins #1, #13 (kill all), #9 (a boss
+and a treasure), #94 (enemies and a treasure), #25 (an escape) and #51 (the Gloom) on every test
+run. Still never won by a playthrough: scenarios #7, #12, #15, #19, #26, #27, #30, #33, #40, #50, #52, #59, #60, #61, #66, #67, #69, #70, #71, #73, #79, #82, #85, #90, #92 (25 of 94) — mostly goals the policy doesn't play for (a treasure only a Loot action takes, pressure plates, escorts, objectives to protect) and the longest boss fights.
 
 ## Rules with no test that would catch a break
 
-Elites before normals (RND-7); only types on the board draw (RND-5); a card drawn for a type that
-arrives mid-round (MON-12); monsters of a revealed room acting at the right time (MOV-9); a
-character opening a door through a real move (MOV-8); Loot X with line of sight (ACT-7); summons
-and monsters never looting (TRN-5); numbered treasure refused the second time (MOV-10); exhaustion
-at card selection (RND-2); a summon acting before its owner and not in the round it arrives
-(RND-8); a goal met in the round the
-last character is exhausted (END-1); the two "ignore negative effects" perks (SET-6, SET-8);
-ranged attack on an adjacent enemy; effects not applied to a target the attack killed; a condition
-gained on a figure's own turn lasting through its next; a stunned character's cards;
-scenario availability (requirements, blocks, counted achievements).
+Tests added for what the audit listed (rule ids from gh-rules.md), all through real play:
+
+| Rule | Test |
+|---|---|
+| ATK-1 ranged attack on an adjacent enemy | `AttackRuleTests` `testARangedAttackOnAnAdjacentEnemyDrawsTwoCardsAndKeepsTheWorse`, `testARangedCardPlayedOnAnAdjacentEnemyHasDisadvantage`, `testAnArcherBesideItsTargetShootsWithDisadvantage` |
+| ATK-2, ATK-8, ATK-12, CND-2 on the board | `testPoisonOnTheTargetAddsOneToAnEnemysAttack`, `testShieldReducesAnAttackAndSeveralShieldsAdd`, `testPierceIgnoresThatMuchShield`, `testAnAttacksDamageIsNeverBelowZero`, `testPoisonComesBeforeTheCardAndShieldAfterIt` |
+| ATK-3, CND-8 no draw, no Shield, no Poison | `testRetaliateDrawsNoCardAndIgnoresShieldAndPoison`, `testTrapsAndHazardsDrawNoCardAndIgnoreShieldAndPoison`, `testAWoundDrawsNoCardAndIgnoresShieldAndPoison` |
+| ATK-6 effects on a Null, none on the dead | `testAnAttacksConditionsAndPushLandOnANullDraw`, `testAnAttackStoppedByShieldStillAppliesItsEffects`, `testAnAttackThatKillsItsTargetAppliesNoneOfItsEffects` |
+| ATK-10 each target its own draw | `testEachTargetOfAnAreaIsItsOwnAttackWithItsOwnDraw` |
+| SET-9, ACT-5, MON-7 whose deck | `testEveryFigureDrawsFromItsOwnSidesDeck` |
+| RND-9, RND-10 reshuffles | `RoundRuleTests` `testADeckThatDrewATimesTwoOrANullIsReshuffledAtTheEndOfTheRound`, `testBlessAndCurseAreRemovedWhenDrawnAndCauseNoReshuffle`, `testAnUndrawnBlessStaysInTheDeckThroughAReshuffle` |
+| RND-6 order and ties | `testInitiativeOrderAndItsTies` |
+| RND-8 summons | `testASummonActsJustBeforeItsOwnerAndNotInTheRoundItArrives`, `testASummonActsBeforeMonstersThatFollowItsOwner` |
+| ATK-15, RND-2 exhaustion | `testAnExhaustedCharactersCardsAreAllLostAndTheirSummonsLeave`, `testACharacterWithOnlyActiveCardsIsExhaustedAtCardSelection` |
+| CND-1, CND-4 durations (character, monster, summon) | `ConditionRuleTests` `testAConditionGainedOutsideACharactersTurnEndsWithTheirNextTurn`, `…OnACharactersOwnTurnLastsThroughTheirNextTurn`, `testReapplyingAConditionRenewsItsDuration`, `…OutsideAMonstersTurn…`, `…OnAMonstersOwnTurn…`, `…OnASummonsOwnTurn…` |
+| CND-4 Stun, Immobilize, Disarm | `testAStunnedCharactersTwoCardsAreDiscardedAndNothingIsPerformed`, `testAnImmobilizedCharacterCannotMoveAndADisarmedOneCannotAttack` |
+| CND-5 Invisible, Strengthen | `testAnInvisibleCharacterIsNotAttacked`, `testAnInvisibleMonsterCannotBeTargeted`, `testStrengthenGivesAdvantageMuddleDisadvantageAndBothCancel` |
+| CND-2, CND-3 heals; CND-6 Curse | `testWhatAHealRemoves`, `testACurseGoesIntoTheDeckItsFigureDrawsFrom`, `testTheTenCursesOfEachSide` |
+| TRN-5, ACT-7, LOS-2 looting | `LootRuleTests` (5) |
+| MOV-3, MOV-5, MOV-6, SET-4 traps and hazards | `MovementRuleTests` (5): a jump's last hex, a push, every level |
+| MOV-8, MOV-9, SET-1 reveals | `RevealRuleTests` (5): Black Barrow's second room, opened by a real move |
+| END-1 … END-3 | `ScenarioEndRuleTests` (4) |
+| SET-3, SET-4 the level | `ScenarioLevelRuleTests` (2) |
+
+Already covered when this pass began: elites before normals, only types on the board drawing, a
+card for a type arriving mid-round (`MonsterTurnRulesTests`, `MonsterDeckRulesTests`), a numbered
+treasure refused the second time and scenario availability (`CampaignRulesTests`), the two
+"ignore negative effects" perks (`AttackModifierRulesTests`).
+
+Rule violations these tests found, each kept as an expected failure (`XCTExpectFailure`) until
+the game is corrected:
+
+| Rule | Case | Where | Test |
+|---|---|---|---|
+| CND-5, MON-14 | A Cultist's attack as it dies hits an invisible character beside it (seen in veteran playthroughs of #4, #83, #89 with a Scoundrel) | `resolveDeathAttacks` in `BoardCoordinator+Combat.swift` takes every adjacent enemy | `ConditionRuleTests.testADyingCultistsAttackDoesNotReachAnInvisibleCharacter` |
+| CND-4 (B7) | A stunned character is still offered their defence item when attacked | `offerDefenseItem` in `BoardCoordinator+Items.swift` doesn't look at Stun | `ConditionRuleTests.testAStunnedCharacterIsNotOfferedTheirShieldItem` |
+| RND-9 (A11) | A deck that ran out and was shuffled in mid-round isn't shuffled at the end of the round, though its ×2 or Null was drawn in it | `AttackModifierDeck.reshuffle` / `needsShuffle` | `RoundRuleTests.testADeckThatRanOutMidRoundIsStillReshuffledAtTheEndOfTheRound` |
+
+Still with no test that would catch a break: a door that ends the move (C3) and the walls
+beside doors (C2) are open findings without a pinned test; solo play's +1 (E7); line of sight
+by an independent reckoning (the simulator and `LootRuleTests` use the engine's `hasLOS`); the
+player's choice among equal area placements (A10); "+1 Target" on an area (A8).
