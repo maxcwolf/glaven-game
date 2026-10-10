@@ -2234,6 +2234,7 @@ final class BoardCoordinator {
         if case .character = pieceID { teach(.attacking) }
         abilityTargets = []
         extraTargetsEarned = 0
+        addingTarget = false
         if isConditionActive(.disarm, on: pieceID) {
             log("\(name(pieceID)) is disarmed and can\u{2019}t attack", category: .condition)
             interactionMode = .idle
@@ -2260,7 +2261,11 @@ final class BoardCoordinator {
             return false
         }
 
-        if targetCount > 1 {
+        // An area attack with targets added (Grim Bargain, an item): the area is placed as ever,
+        // and each added target is one more enemy in range, chosen afterwards (FAQ, "Add Target").
+        let isArea = activePlayerTurn?.pendingAreaPattern != nil
+        if isArea { extraTargetsEarned = max(0, targetCount - 1) }
+        if targetCount > 1, !isArea {
             interactionMode = .selectingMultiAttackTargets(
                 pieceID: pieceID, range: range, validTargets: validTargets,
                 targetCount: targetCount, selected: []
@@ -2373,14 +2378,20 @@ final class BoardCoordinator {
     @ObservationIgnored var abilityTargets: Set<PieceID> = []
     /// Targets "+1 Target" modifier cards added to the current attack ability, not yet offered.
     @ObservationIgnored var extraTargetsEarned = 0
+    /// The target being chosen is one added to the attack: a single attack, outside any area.
+    @ObservationIgnored var addingTarget = false
 
     /// End a character's attack ability: first offer the target a "+1 Target" card added (another
     /// enemy in range, attacked with its own draw; Skip declines), then move on.
     func finishPlayerAttack(attacker: PieceID, range: Int, turn: PlayerTurnController?) {
-        if extraTargetsEarned > 0, turn?.pendingAreaPattern == nil, isOnBoard(attacker) {
+        addingTarget = false
+        if extraTargetsEarned > 0, isOnBoard(attacker) {
             extraTargetsEarned -= 1
-            let options = targetableEnemies(of: attacker, range: range).subtracting(abilityTargets)
+            // Within the range of the attack — range 1 for a melee area, however far it reached.
+            let melee = turn?.pendingAreaPattern.map(AoEResolver.isMeleePattern) ?? false
+            let options = targetableEnemies(of: attacker, range: melee ? 1 : range).subtracting(abilityTargets)
             if !options.isEmpty {
+                addingTarget = true
                 log("\(name(attacker)): choose another target", category: .attack)
                 interactionMode = .selectingAttackTarget(pieceID: attacker, range: range, validTargets: options)
                 let hexes = Set(options.compactMap { boardState.piecePositions[$0] })
@@ -3065,7 +3076,7 @@ final class BoardCoordinator {
             } else if validTargets.contains(piece) {
                 let attackValue = activePlayerTurn?.currentAttackValue() ?? 2
                 let range = activePlayerTurn?.currentAttackRange() ?? 1
-                if let pattern = activePlayerTurn?.pendingAreaPattern {
+                if let pattern = activePlayerTurn?.pendingAreaPattern, !addingTarget {
                     // Area attack: every enemy in the pattern is a separate attack.
                     let targets = areaTargets(pattern: pattern, attacker: attackerID, primary: piece, range: range)
                     let ranged = !AoEResolver.isMeleePattern(pattern)
@@ -3103,9 +3114,11 @@ final class BoardCoordinator {
                                 }
                             }
                         }
-                        turn?.advanceAfterAsyncAction()
+                        // Then any target added to the attack.
+                        self.finishPlayerAttack(attacker: attackerID, range: range, turn: turn)
                     }
-                } else if activePlayerTurn?.attackTexts.contains(where: { $0.contains("all enemies on the path to the primary target") }) == true,
+                } else if !addingTarget,
+                          activePlayerTurn?.attackTexts.contains(where: { $0.contains("all enemies on the path to the primary target") }) == true,
                           let from = boardState.piecePositions[attackerID], let to = boardState.piecePositions[piece] {
                     // Impaling Eruption: every enemy on the way to the target is attacked too.
                     let path = Set(from.line(to: to).dropFirst().dropLast())
@@ -3126,8 +3139,12 @@ final class BoardCoordinator {
                     }
                 } else {
                     interactionMode = .idle
+                    // A target added to a melee area is struck at range 1.
+                    let melee = addingTarget && (activePlayerTurn?.pendingAreaPattern.map(AoEResolver.isMeleePattern) ?? false)
+                    addingTarget = false
                     Task { @MainActor in
-                        await self.resolvePlayerAttack(attacker: attackerID, target: piece, attackValue: attackValue, range: range)
+                        await self.resolvePlayerAttack(attacker: attackerID, target: piece, attackValue: attackValue,
+                                                       range: melee ? 1 : range)
                     }
                 }
             }

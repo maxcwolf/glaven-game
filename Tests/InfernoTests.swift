@@ -11,7 +11,7 @@ final class InfernoTests: XCTestCase {
         for _ in 0..<2000 where !condition() { try? await Task.sleep(nanoseconds: 2_000_000) }
     }
 
-    private struct Table {
+    @MainActor private struct Table {
         let sim: ScenarioSimulator
         let weaver: GameCharacter
         let brute: GameCharacter

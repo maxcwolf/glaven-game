@@ -520,7 +520,8 @@ Still open from it, most important first:
 - [x] **Rooms with two doors** (N1; `MapRevealTests`): a room is the same whichever door it is entered by
 - [x] **#90 Demonic Rift** (`DemonicRiftTests`): both rooms on the map, the altar crossing for characters, the spirits once a character stands in each room, the losses for an empty room and for one character left
 - [ ] Allied monsters drop money tokens (C8); solo play isn't one level higher (E7); an escape is recorded as an exhaustion (E12); a stunned character is still offered defence items (B7); multi-use items are optional each time (B6); "start/end of your next turns" bonuses do nothing on a long-rest turn (B8)
-- [ ] An area attack with an added target loses its area (A8); the game places areas itself and never mirrors them (A10); a player can't end an active bonus by choice (B4); charges marked per attack action rather than per attack (B11)
+- [ ] The game places an area itself (the placement covering the chosen enemy and the most others) rather than the player (A10; mirror images and added targets are done); a player can't end an active bonus by choice (B4); charges marked per attack action rather than per attack (B11)
+- [x] Obstacles never placed to divide the map (C9); a jumping monster doesn't land on a trap mid-route (D9); Inferno's room-wide attack and ally damage (N5); +1 Target and elements never doubled at the Enhancer (N4)
 - [ ] Scenario "start of round" rules run after the cards are chosen (#5 Disarm, #48 Muddle, #31/#39 elements)
 - [ ] Travelling on without returning to Gloomhaven, linked scenarios and retries skipping the road event, the optional city event (F19); collective results split by the players (F20); summon stat enhancements (F8)
 - [ ] Map data monster places that differ from the book in nine rooms (N2); #35's archers on the battlements; #76 discarding three cards; #95 boulders with hit points
