@@ -421,6 +421,8 @@ final class BoardCoordinator {
         let damage: Int
         let sourceDescription: String
         var continuation: CheckedContinuation<DamageMitigationChoice, Never>?
+        /// The bonus in play that takes this damage if no card is lost (Frost Armor).
+        var absorbedBy: String? = nil
     }
 
     /// Non-nil when a character is being attacked and needs to choose mitigation.
@@ -572,7 +574,16 @@ final class BoardCoordinator {
         }
         for key in character.spentItems { character.itemSlotsUsed[key] = nil }
         character.spentItems.removeAll()
-        endCharacterTurn(character.id)
+        // Bonuses that act as a turn ends (Auto Turret's attack) act as this one does.
+        guard let turn = activePlayerTurn, turn.characterID == character.id else {
+            endCharacterTurn(character.id)
+            return
+        }
+        let generation = boardGeneration
+        turn.performRestBonusSteps(atStart: false) { [weak self] in
+            guard let self, self.isCurrentBoard(generation), self.scenarioResult == nil else { return }
+            self.endCharacterTurn(character.id)
+        }
     }
 
     /// The end of a character's turn, however it was spent (two cards, a long rest, stunned):
@@ -1260,13 +1271,23 @@ final class BoardCoordinator {
         cardSelectingCharacterID = nil
         selectedCardPairs = [:]
 
-        // No turn is half-played here: save the round so Continue can resume from it.
-        gameManager.checkpointRound()
-
         logRoundHeader(gameManager.game.round + 1)
 
-        // Process exhaustion and auto-rests, then find the first character needing manual selection
-        advanceToNextCardSelection()
+        // What the scenario does "at the start of the round" comes before the cards are chosen,
+        // so the players choose knowing it (who is Disarmed, which element is strong, who has
+        // appeared). Monster ability cards are drawn only once every card is chosen.
+        gameManager.scenarioRulesManager.evaluateRulesForTheRoundToCome()
+        afterRuleDamage { [weak self] in
+            guard let self, let gameManager = self.gameManager else { return }
+            self.sweepDeadFigures()
+            if self.scenarioResult != nil { return }
+
+            // No turn is half-played here: save the round so Continue can resume from it.
+            gameManager.checkpointRound()
+
+            // Process exhaustion and auto-rests, then find the first character needing manual selection
+            self.advanceToNextCardSelection()
+        }
     }
 
     /// Store the selected card pair for a character during card selection.
@@ -1588,7 +1609,7 @@ final class BoardCoordinator {
         if woundDue.remove(character.id) != nil {
             let piece = PieceID.character(character.id)
             log("\(characterName(character.id)) suffers 1 damage from their wound", category: .damage)
-            if !autoResolvePrompts, !negatesDamage(piece, amount: 1),
+            if !autoResolvePrompts,
                !losableHandCards(of: character).isEmpty || character.discardedCards.count >= 2 {
                 interactionMode = .idle
                 let generation = boardGeneration
@@ -1648,20 +1669,16 @@ final class BoardCoordinator {
                 let turn = PlayerTurnController(characterID: character.id, coordinator: self, gameManager: gameManager)
                 turn.selectLongRest()
                 activePlayerTurn = turn
-            }
-            if character.discardedCards.count <= 1 {
-                if character.discardedCards.isEmpty {
-                    // The discard pile went to negating damage since the rest was declared.
-                    log("\(characterName(character.id)) long rests (no cards to lose)", category: .rest)
-                    finishLongRest(character, heal: true)
-                } else {
-                    resolveLongRest(characterID: character.id, discardIndex: 0)
+                // Bonuses that act as a turn starts act on this one too, before the rest itself.
+                interactionMode = .idle
+                let generation = boardGeneration
+                turn.performRestBonusSteps(atStart: true) { [weak self] in
+                    guard let self, self.isCurrentBoard(generation), self.scenarioResult == nil else { return }
+                    self.beginLongRest(character)
                 }
-            } else {
-                log("\(characterName(character.id)) long rests: choose a card to lose", category: .rest)
-                interactionMode = .idle   // the rest panel asks; nothing on the board to tap
-                pendingLongRest = PendingLongRest(characterID: character.id)
+                return
             }
+            beginLongRest(character)
             return
         }
 
@@ -1681,6 +1698,28 @@ final class BoardCoordinator {
         }
 
         beginPlayerTurnAfterSummons(character: character)
+    }
+
+    /// The rest itself, once what comes as the turn starts is done: the card to lose is asked
+    /// for (or there is no choice to make).
+    private func beginLongRest(_ character: GameCharacter) {
+        guard !character.exhausted, isOnBoard(.character(character.id)) else {
+            endCharacterTurn(character.id)
+            return
+        }
+        if character.discardedCards.count <= 1 {
+            if character.discardedCards.isEmpty {
+                // The discard pile went to negating damage since the rest was declared.
+                log("\(characterName(character.id)) long rests (no cards to lose)", category: .rest)
+                finishLongRest(character, heal: true)
+            } else {
+                resolveLongRest(characterID: character.id, discardIndex: 0)
+            }
+        } else {
+            log("\(characterName(character.id)) long rests: choose a card to lose", category: .rest)
+            interactionMode = .idle   // the rest panel asks; nothing on the board to tap
+            pendingLongRest = PendingLongRest(characterID: character.id)
+        }
     }
 
     /// Insert monsters that entered play during the last turn into this round's turn order.
@@ -2364,7 +2403,7 @@ final class BoardCoordinator {
             attack: AttackParameters(value: attackValueWithBonuses(attackValue + printed.attack, attacker: attacker, target: target),
                                      isRanged: range > 1,
                                      pierce: turn?.pendingPierce ?? 0,
-                                     conditions: turn?.pendingConditions ?? [],
+                                     conditions: (turn?.pendingConditions ?? []) + conditionsFromBonuses(attacker: attacker),
                                      push: turn?.pendingPush ?? 0,
                                      pull: turn?.pendingPull ?? 0,
                                      advantage: turn?.pendingAdvantage ?? false))

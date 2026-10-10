@@ -321,6 +321,40 @@ extension BoardCoordinator {
         }
     }
 
+    /// Conditions the attacker's bonuses add to the one attack about to be made, marking a charge
+    /// of each: Voice of the Night's Stun "on your next five attacks while invisible" — a charge
+    /// for every enemy attacked, not one for a whole Target 3 or area attack.
+    func conditionsFromBonuses(attacker: PieceID) -> [ConditionName] {
+        guard isConditionActive(.invisible, on: attacker),
+              case .conditionWhileInvisible(let condition)? = useFirstCharge(of: attacker, where: {
+                  if case .conditionWhileInvisible = $0 { return true }; return false }) else { return [] }
+        log("\(name(attacker))\u{2019}s bonus: \(GameText.conditionName(condition))", category: .attack)
+        return [condition]
+    }
+
+    /// Master Physician: "Before your next six Heal actions, remove all negative conditions on
+    /// the healed figure(s)" — a charge for each Heal action, however many figures it heals.
+    /// A heal made outside a card's Heal step (an item's, a rest's) is an action of its own.
+    func healCleanses(by source: PieceID) -> Bool {
+        let spend = { self.useFirstCharge(of: source, where: { $0 == .healCleanses }) != nil }
+        guard let turn = activePlayerTurn, PieceID.character(turn.characterID) == source, turn.performingHeal else { return spend() }
+        if let decided = turn.healActionCleanses { return decided }
+        let cleanses = spend()
+        turn.healActionCleanses = cleanses
+        return cleanses
+    }
+
+    /// The card whose charge would take `amount` damage for the character, by name.
+    func negatingBonusName(_ piece: PieceID, amount: Int) -> String? {
+        guard case .character(let id) = piece, let gameManager,
+              let character = gameManager.game.characters.first(where: { $0.id == id }) else { return nil }
+        let found = chargedBonuses(of: character).first {
+            $0.bonus == .negateDamage || $0.bonus == .negateNextDamage || ($0.bonus == .negateLethal && amount >= character.health)
+        }
+        guard let found else { return nil }
+        return gameManager.characterManager.abilities(for: character).first { $0.cardId == found.cardId }?.name ?? "A bonus in play"
+    }
+
     /// Provoking Roar: an enemy attacking an ally beside a provoking character attacks that
     /// character instead, whatever the range. Returns who is really attacked.
     func provokedTarget(of attacker: PieceID, aimingAt target: PieceID) -> PieceID {
@@ -449,6 +483,11 @@ extension BoardCoordinator {
             case .doubleAgainstFlanked where flanked:
                 result *= 2
                 useFirstCharge(of: attacker) { $0 == bonus }
+            case .attackBonusOrElement(let n, _, _):
+                // Crackling Air: "on your next four attacks", so a charge for each target.
+                let turn = activePlayerTurn.flatMap { PieceID.character($0.characterID) == attacker ? $0 : nil }
+                result += turn?.bonusPerAttack ?? n
+                useFirstCharge(of: attacker) { $0 == bonus }
             case .destroyObstacleForAttack(let n):
                 // "When possible": a melee attack with an obstacle beside the character.
                 guard let attackerPos = boardState.piecePositions[attacker], boardState.areAdjacent(attackerPos, targetPos),
@@ -467,3 +506,95 @@ extension BoardCoordinator {
         return result
     }
 }
+
+// MARK: - Ending a bonus
+
+extension BoardCoordinator {
+
+    /// A card in a character's active area, as the party panel lists it.
+    struct ActiveCard: Identifiable, Equatable {
+        let id: Int
+        let name: String
+        /// Charges not yet marked, for a bonus with use circles.
+        var usesLeft: Int? = nil
+        /// A bonus that ends with the round anyway.
+        var forTheRound = false
+        /// Where the card goes when it leaves play: the lost pile, or the discard pile.
+        var lost = false
+        /// The summons that leave the board with it.
+        var summons: [String] = []
+
+        /// The panel's line: "Frost Armor · 1 left", "Wall of Doom · this round".
+        var line: String {
+            if let usesLeft { return "\(name) \u{00B7} \(usesLeft) left" }
+            return forTheRound ? "\(name) \u{00B7} this round" : name
+        }
+
+        /// What ending it does, for the question asked before it is ended.
+        var consequence: String {
+            let pile = "The card goes to the \(lost ? "lost" : "discard") pile and its bonus ends."
+            guard !summons.isEmpty else { return pile }
+            return pile + " \(GameText.list(summons)) \(summons.count == 1 ? "leaves" : "leave") the board."
+        }
+    }
+
+    /// The cards in a character's active area, in the order they were played.
+    func activeCards(of character: GameCharacter) -> [ActiveCard] {
+        guard let gameManager, !character.exhausted else { return [] }
+        let deck = gameManager.characterManager.abilities(for: character)
+        return character.activeCards.compactMap { cardId in
+            guard let card = deck.first(where: { $0.cardId == cardId }) else { return nil }
+            var entry = ActiveCard(id: cardId, name: card.name ?? "Card \(cardId)")
+            entry.forTheRound = character.roundBonusCards.contains(cardId)
+            entry.lost = character.lostWhenRemoved.contains(cardId)
+            entry.summons = summons(broughtBy: card, of: character).map { name(.summon(id: $0.id)) }
+            let slots = ChargedBonus.slots(of: card)
+            if !entry.forTheRound, !slots.isEmpty, bonusInPlay(cardId, of: character)?.isUnlimited != true {
+                entry.usesLeft = max(0, slots.count - character.bonusChargesUsed[cardId, default: 0])
+            }
+            return entry
+        }
+    }
+
+    /// The living summons a card in play brought (by the half it is in play for).
+    private func summons(broughtBy card: AbilityModel, of character: GameCharacter) -> [GameSummon] {
+        guard let cardId = card.cardId else { return [] }
+        let names = Self.summonNames(in: (isTopHalfInPlay(cardId, of: character) ? card.actions : card.bottomActions) ?? [])
+        return character.summons.filter { !$0.dead && names.contains($0.name) }
+    }
+
+    /// A player may at any time move a card from their active area to its pile, ending its
+    /// bonus (GH p.25): the lost pile if the action it was played for has the lost icon, the
+    /// discard pile if not. A summon's card leaving play takes its summon off the board (p.26),
+    /// and a Doom's takes its token off the enemy.
+    @discardableResult
+    func endActiveBonus(_ cardId: Int, of character: GameCharacter) -> Bool {
+        guard let gameManager, !character.exhausted, character.activeCards.contains(cardId) else { return false }
+        gameManager.characterManager.onBeforeMutate?()
+        let me = PieceID.character(character.id)
+        let card = gameManager.characterManager.abilities(for: character).first { $0.cardId == cardId }
+        let cardName = card?.name ?? "a card"
+        let lost = character.lostWhenRemoved.contains(cardId)
+        log("\(name(me)) ends \(cardName): the card goes to the \(lost ? "lost" : "discard") pile", category: .info)
+        if let doomed = activeDooms.first(where: { $0.doom.characterID == character.id && $0.doom.cardId == cardId }) {
+            endDoom(doomed.doom, on: doomed.piece, reason: "its card left play")
+            return true
+        }
+        for summon in card.map({ summons(broughtBy: $0, of: character) }) ?? [] {
+            let piece = PieceID.summon(id: summon.id)
+            log("\(name(piece)) leaves the board", category: .info)
+            summon.dead = true
+            removePieceFromBoard(piece)
+        }
+        character.removeFromActiveArea(cardId)
+        // Put away in the turn it was played, it no longer counts as in play for that turn.
+        if let turn = activePlayerTurn, turn.characterID == character.id {
+            turn.persistentCardsThisTurn.removeAll { $0 == cardId }
+            turn.roundCardsThisTurn.removeAll { $0 == cardId }
+        }
+        if lost { boardScene?.play(.lose) }
+        boardScene?.refreshStatus(of: me)
+        return true
+    }
+}
+

@@ -276,7 +276,8 @@ extension BoardCoordinator {
     /// enemies they choose.
     func reactionAttack(by owner: GameCharacter, value: Int, range: Int, targets: Int) async {
         let me = PieceID.character(owner.id)
-        guard isOnBoard(me), !isConditionActive(.disarm, on: me) else { return }
+        // Disarmed or stunned, no attack can be made, on one's own turn or off it (FAQ).
+        guard isOnBoard(me), !isConditionActive(.disarm, on: me), !isConditionActive(.stun, on: me) else { return }
         var chosen: [PieceID] = []
         for _ in 0..<targets {
             let options = targetableEnemies(of: me, range: range).filter { !chosen.contains($0) }.sorted()

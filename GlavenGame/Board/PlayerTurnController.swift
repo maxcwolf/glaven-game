@@ -229,7 +229,20 @@ final class PlayerTurnController {
         func untagged(_ steps: [ActionModel]) -> [ActionModel] { steps.filter { Self.bonusCard(of: $0) == nil } }
         topActions = untagged(topActions)
         bottomActions = untagged(bottomActions)
-        guard let character, let coordinator else { return }
+        let (starts, ends) = turnBonusSteps()
+        if bottomFirst {
+            bottomActions = starts + bottomActions
+            topActions += ends
+        } else {
+            topActions = starts + topActions
+            bottomActions += ends
+        }
+    }
+
+    /// The steps the character's charged bonuses add at the start and at the end of a turn, each
+    /// tagged with its card.
+    private func turnBonusSteps() -> (starts: [ActionModel], ends: [ActionModel]) {
+        guard let character, let coordinator else { return ([], []) }
         var starts: [ActionModel] = [], ends: [ActionModel] = []
         for (cardId, bonus) in coordinator.chargedBonuses(of: character) {
             let tag = ActionModel(type: .card, value: .string("bonus:\(cardId)"))
@@ -244,13 +257,47 @@ final class PlayerTurnController {
                 continue
             }
         }
-        if bottomFirst {
-            bottomActions = starts + bottomActions
-            topActions += ends
+        return (starts, ends)
+    }
+
+    // MARK: - Bonus steps on a long-rest turn
+
+    /// What follows the rest turn's bonus steps being performed, while they are.
+    private var afterRestSteps: (() -> Void)?
+
+    /// A long rest is a turn (FAQ), so the bonuses that act "at the start/end of your next
+    /// turns" act on it as well, a charge each: Lumbering Bash's and Triage's heal before the
+    /// rest's card is chosen, Auto Turret's attack and Gas Canister's recovery before the turn
+    /// ends. With no two halves to hold them, the steps are performed here one after another —
+    /// a heal or an attack waits for its target as on any turn and may be skipped from the
+    /// instruction — and `done` runs after the last (at once when there is none).
+    func performRestBonusSteps(atStart: Bool, then done: @escaping () -> Void) {
+        let steps = atStart ? turnBonusSteps().starts : turnBonusSteps().ends
+        guard isLongRest, phase == .turnComplete, !steps.isEmpty, !(character?.exhausted ?? true) else { return done() }
+        extraActions = steps
+        phase = .executeExtraHalf
+        currentActionIndex = 0
+        afterRestSteps = done
+        performNextRestStep()
+    }
+
+    /// The next of the rest turn's bonus steps; a finished step comes back here (`stepFinished`).
+    private func performNextRestStep() {
+        guard afterRestSteps != nil, phase == .executeExtraHalf, !isWaiting else { return }
+        if currentActionIndex < extraActions.count, !(character?.exhausted ?? true) {
+            executeCurrentAction()
         } else {
-            topActions = starts + topActions
-            bottomActions += ends
+            finishRestSteps()
         }
+    }
+
+    private func finishRestSteps() {
+        guard let done = afterRestSteps else { return }
+        afterRestSteps = nil
+        extraActions = []
+        phase = .turnComplete
+        currentActionIndex = 0
+        done()
     }
 
     /// Steps from charged bonuses that go with the half's own moves and attacks: Wings of the
@@ -416,7 +463,12 @@ final class PlayerTurnController {
             finishHalfAfterBasicAction()
             return
         }
-        guard awaitingAsync else { return }
+        guard awaitingAsync else {
+            // Exhausted by a rest turn's own bonus step (a retaliate on Auto Turret's attack):
+            // nothing more is performed, and the turn goes on to its end.
+            if character?.exhausted ?? true { finishRestSteps() }
+            return
+        }
         awaitingAsync = false
         currentActionIndex += 1
         if !executingStep { stepFinished() }
@@ -465,6 +517,7 @@ final class PlayerTurnController {
     /// A step has finished: what was waiting on the half being performed is gained, and the
     /// steps that need no choice are performed in turn.
     private func stepFinished() {
+        performingHeal = false   // a heal made between steps (an item's) is its own Heal action
         settleOwedEffects()
         guard let coordinator, !(character?.exhausted ?? true) else { return }
         while !awaitingAsync, !defaultAttackPending, currentActionIndex < currentSteps.count,
@@ -479,6 +532,7 @@ final class PlayerTurnController {
             currentActionIndex += 1
         }
         settleOwedEffects()
+        performNextRestStep()
     }
 
     /// XP and infusions that were waiting for the half to be performed.
@@ -698,6 +752,8 @@ final class PlayerTurnController {
         coordinator.syncPieceVisuals()
         awaitingAsync = false
         self.checkpoint = nil
+        // A rest turn has no button to perform the step again: it is asked anew.
+        performNextRestStep()
     }
 
     /// The steps of the half being played.
@@ -869,7 +925,7 @@ final class PlayerTurnController {
             phase = .turnComplete
             finishTurn()
         case (.executeExtraHalf, _):
-            finishExtraHalf()
+            if afterRestSteps != nil { finishRestSteps() } else { finishExtraHalf() }
         default:
             break
         }
@@ -900,7 +956,16 @@ final class PlayerTurnController {
         pendingPull = 0
         pendingConditions = []
         attackBonusAgainst = [:]
+        bonusPerAttack = nil
     }
+
+    /// What a bonus counted in attacks adds to each attack of the action being made (Crackling
+    /// Air: +1, or +2 with Air consumed), while it has charges left.
+    var bonusPerAttack: Int?
+    /// The Heal action being performed, for a bonus counted in Heal actions (Master Physician):
+    /// whether its charge has been marked, and so whether this action's heals cleanse.
+    var healActionCleanses: Bool?
+    private(set) var performingHeal = false
 
     /// More attack against monsters of these types only, for the attack being made (Skullbane Axe).
     var attackBonusAgainst: [String: Int] = [:]
@@ -1065,12 +1130,20 @@ final class PlayerTurnController {
     @discardableResult
     private func executeAction(_ action: ActionModel, coordinator: BoardCoordinator) -> Bool {
         let pieceID = PieceID.character(characterID)
-        // A turn step from a charged bonus marks its charge (Lumbering Bash's heal).
+        // A turn step from a charged bonus marks its charge (Lumbering Bash's heal) — unless the
+        // player has ended that bonus since the step was placed.
         if let cardId = Self.bonusCard(of: action), let character {
+            guard coordinator.chargedBonuses(of: character).contains(where: { $0.cardId == cardId }) else {
+                abilityDidNothing()
+                return false
+            }
             coordinator.useCharge(cardId, of: character)
         }
         // A persistent or round half's bonus applies once the half is being performed.
         if Self.isAbilityStep(action) { noteCardInPlay() }
+        // Each Heal step is a Heal action of its own.
+        performingHeal = action.type == .heal
+        healActionCleanses = nil
 
         switch action.type {
         case .move, .jump, .fly:
@@ -1173,13 +1246,17 @@ final class PlayerTurnController {
                 pendingConditions.append(contentsOf: conditions)
                 pendingAdvantage = pendingAdvantage || advantage
             }
-            if case .attackBonusOrElement(let bonus, let element, let upgraded)? = coordinator.useFirstCharge(of: pieceID, where: {
-                if case .attackBonusOrElement = $0 { return true }; return false }) {
+            // Crackling Air: "on your next four attacks" — what it adds is settled for the action
+            // (Air consumed: +2), and a charge is marked with each attack then made, one for
+            // every target (`attackValueWithBonuses`).
+            if let character, case .attackBonusOrElement(let bonus, let element, let upgraded)? = coordinator
+                .chargedBonuses(of: character).lazy.map(\.bonus).first(where: {
+                    if case .attackBonusOrElement = $0 { return true }; return false }) {
                 if let game = gameManager?.game, game.consumeElements([element]) != nil {
                     coordinator.log("\(who) consumes \(GameText.elementName(element))", category: .element)
-                    pendingAttackValue += upgraded
+                    bonusPerAttack = upgraded
                 } else {
-                    pendingAttackValue += bonus
+                    bonusPerAttack = bonus
                 }
             }
             // Nature's Lift (+2 Range on a ranged attack), Foul Wind (+1 Attack): consume Air.
@@ -1202,11 +1279,8 @@ final class PlayerTurnController {
                 }
                 pendingAttackRange = range
             }
-            if coordinator.isConditionActive(.invisible, on: pieceID),
-               case .conditionWhileInvisible(let condition)? = coordinator.useFirstCharge(of: pieceID, where: {
-                   if case .conditionWhileInvisible = $0 { return true }; return false }) {
-                pendingConditions.append(condition)
-            }
+            // Voice of the Night ("on your next five attacks while invisible, add Stun") marks
+            // its charges attack by attack too (`conditionsFromBonuses`).
             // Silent Stiletto: Pierce 1 on every melee attack.
             if range <= 1 {
                 pendingPierce += PassiveItems.meleePierce(for: character?.carriedItems ?? [])
@@ -1434,7 +1508,10 @@ final class PlayerTurnController {
         case .suffer, .sufferDamage:
             let sufferValue = action.value?.intValue ?? 1
             coordinator.log("\(who) suffers \(sufferValue) damage", category: .damage)
-            coordinator.sufferDamage(sufferValue, to: pieceID)
+            // Damage like any other: it may be negated by losing cards (GH p.22).
+            return coordinator.sufferOwnDamage(sufferValue, characterID: characterID, source: currentCard?.name ?? "their own card") { [weak self] in
+                self?.advanceAfterAsyncAction()
+            }
 
         case .element:
             // A consume printed as its own step, with what it gives inside (Wretched Creature:

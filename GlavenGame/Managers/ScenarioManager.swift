@@ -402,7 +402,7 @@ final class ScenarioManager {
 
                 monsterManager.addMonster(name: name, edition: edition)
                 if let monster = game.monsters.last(where: { $0.name == name && $0.edition == edition }) {
-                    monster.level = spec.level(forScenarioLevel: game.level)
+                    monster.level = spec.level(forScenarioLevel: game.monsterLevel)
                     monster.isAlly = isAlly
                     monster.isAllied = isAllied
                     monster.standsApart = data.solo == nil && ScenarioPlacementStore.shared
@@ -465,7 +465,7 @@ final class ScenarioManager {
         if monster == nil {
             monsterManager.addMonster(name: name, edition: edition)
             monster = game.monsters.last(where: { $0.name == name && $0.edition == edition })
-            monster?.level = spec.level(forScenarioLevel: game.level)
+            monster?.level = spec.level(forScenarioLevel: game.monsterLevel)
         }
         guard let monster = monster else { return }
 
@@ -722,14 +722,18 @@ final class ScenarioManager {
     /// their kills, their own exhaustion and the other characters'.
     private func recordCampaign(success: Bool, data: ScenarioData) {
         let party = game.characters.filter { !$0.absent }
-        let exhaustions = party.filter(\.exhausted).count
+        // Leaving through the exit isn't exhaustion.
+        func exhausted(_ character: GameCharacter) -> Bool {
+            scenarioStatsManager?.wasExhausted(character) ?? character.exhausted
+        }
+        let exhaustions = party.filter(exhausted).count
         for character in party {
             let stats = scenarioStatsManager?.stats(for: character.name) ?? ScenarioCharacterStats()
             if success { character.record.scenariosCompleted.insert(data.id) }
             for (monster, count) in stats.killsByMonster { character.record.kills[monster, default: 0] += count }
             character.record.eliteKills += stats.eliteKills
-            if character.exhausted { character.record.timesExhausted += 1 }
-            character.record.partyExhaustions += exhaustions - (character.exhausted ? 1 : 0)
+            if exhausted(character) { character.record.timesExhausted += 1 }
+            character.record.partyExhaustions += exhaustions - (exhausted(character) ? 1 : 0)
         }
     }
 

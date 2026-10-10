@@ -374,4 +374,95 @@ final class ActionPerformedTests: XCTestCase {
         XCTAssertTrue(tinkerer.activeCards.isEmpty, "the card left with its summon")
         XCTAssertEqual(tinkerer.lostCards, [contraption.cardId!])
     }
+
+    // MARK: - Ending a bonus (GH p.25)
+
+    /// A player may end an active bonus at any time: Frost Armor, played for its lost action,
+    /// goes to the lost pile, and the next damage lands.
+    func testAPlayerMayEndABonusAndItsCardGoesToItsPile() async throws {
+        let spellweaver = add("spellweaver", at: HexCoord(3, 3))
+        let armor = try card("Frost Armor", of: "spellweaver")
+        let turn = turn(for: spellweaver, top: try card("Fire Orbs", of: "spellweaver"), bottom: armor)
+        turn.setBottomFirst(true)
+        for _ in 0..<12 where turn.phase == .executeBottomAction {
+            turn.executeCurrentAction()
+            _ = await waitUntil { !turn.isWaiting }
+        }
+        XCTAssertNotEqual(turn.phase, .executeBottomAction, "the bottom half is done")
+        finish(turn)
+        XCTAssertEqual(spellweaver.activeCards, [armor.cardId!], "in play")
+        let listed = try XCTUnwrap(coord.activeCards(of: spellweaver).first)
+        XCTAssertEqual(listed.line, "Frost Armor \u{00B7} 2 left")
+        XCTAssertEqual(listed.consequence, "The card goes to the lost pile and its bonus ends.")
+
+        XCTAssertTrue(coord.endActiveBonus(armor.cardId!, of: spellweaver))
+        XCTAssertTrue(spellweaver.activeCards.isEmpty)
+        XCTAssertEqual(spellweaver.lostCards, [armor.cardId!], "its action has the lost icon")
+        XCTAssertTrue(coord.activeCards(of: spellweaver).isEmpty)
+        let health = spellweaver.health
+        coord.sufferDamage(2, to: .character(spellweaver.id))
+        XCTAssertEqual(spellweaver.health, health - 2, "the bonus is over")
+        XCTAssertFalse(coord.endActiveBonus(armor.cardId!, of: spellweaver), "nothing left to end")
+    }
+
+    /// A bonus without the lost icon goes back to the discard pile: Wall of Doom's bottom, "+1
+    /// Attack to all your attacks this round".
+    func testEndingABonusWithoutTheLostIconDiscardsIt() async throws {
+        let brute = add("brute", at: HexCoord(3, 3))
+        let wall = try card("Wall of Doom", of: "brute")
+        let turn = turn(for: brute, top: try card("Trample", of: "brute"), bottom: wall)
+        turn.setBottomFirst(true)
+        for _ in 0..<12 where turn.phase == .executeBottomAction {
+            turn.executeCurrentAction()
+            _ = await waitUntil { !turn.isWaiting }
+        }
+        XCTAssertNotEqual(turn.phase, .executeBottomAction, "the bottom half is done")
+        finish(turn)
+        XCTAssertEqual(brute.activeCards, [wall.cardId!])
+        XCTAssertEqual(coord.activeCards(of: brute).first?.line, "Wall of Doom \u{00B7} this round")
+        XCTAssertEqual(coord.roundAttackBonus(for: .character(brute.id), ranged: false), 1)
+
+        XCTAssertTrue(coord.endActiveBonus(wall.cardId!, of: brute))
+        XCTAssertEqual(coord.roundAttackBonus(for: .character(brute.id), ranged: false), 0)
+        XCTAssertTrue(brute.discardedCards.contains(wall.cardId!), "no lost icon: discarded")
+        XCTAssertTrue(brute.lostCards.isEmpty && brute.roundBonusCards.isEmpty)
+    }
+
+    /// A summon's card leaving play takes the summon off the board (GH p.26).
+    func testEndingASummonsCardRemovesTheSummon() async throws {
+        let tinkerer = add("tinkerer", at: HexCoord(3, 3))
+        let contraption = try card("Harmless Contraption", of: "tinkerer")
+        let turn = turn(for: tinkerer, top: contraption, bottom: try card("Stun Shot", of: "tinkerer"))
+        turn.executeCurrentAction()
+        guard case .placingSummon = coord.interactionMode else { return XCTFail("the Decoy waits for its hex") }
+        coord.handleHexTap(HexCoord(4, 3))
+        _ = await waitUntil { !turn.isWaiting }
+        finish(turn)
+        let decoy = try XCTUnwrap(tinkerer.summons.first { !$0.dead })
+        let listed = try XCTUnwrap(coord.activeCards(of: tinkerer).first)
+        XCTAssertEqual(listed.summons.count, 1)
+        XCTAssertTrue(listed.consequence.hasSuffix("leaves the board."), listed.consequence)
+        XCTAssertEqual(PlayerTextTests.lint(listed.consequence), [])
+
+        XCTAssertTrue(coord.endActiveBonus(contraption.cardId!, of: tinkerer))
+        XCTAssertTrue(decoy.dead)
+        XCTAssertFalse(coord.isOnBoard(.summon(id: decoy.id)), "the summon left with its card")
+        XCTAssertTrue(tinkerer.activeCards.isEmpty)
+        XCTAssertEqual(tinkerer.lostCards, [contraption.cardId!])
+    }
+
+    /// A turn step placed for a bonus (Lumbering Bash's heal as the turn starts) gives nothing
+    /// once the player has ended that bonus.
+    func testABonusEndedMidTurnNoLongerActs() throws {
+        let cragheart = add("cragheart", at: HexCoord(3, 3))
+        cragheart.activeCards = [143]   // Lumbering Bash: Heal 2, Range 2 at the start of the turn
+        cragheart.health = 4
+        let turn = turn(for: cragheart, top: try card("Massive Boulder", of: "cragheart"), bottom: try card("Rumbling Advance", of: "cragheart"))
+        XCTAssertEqual(PlayerTurnController.bonusCard(of: turn.currentSteps[0]), 143, "the heal comes first")
+        XCTAssertTrue(coord.endActiveBonus(143, of: cragheart))
+        turn.executeCurrentAction()
+        XCTAssertEqual(cragheart.health, 4, "no heal")
+        XCTAssertNil(cragheart.bonusChargesUsed[143])
+        guard case .idle = coord.interactionMode else { return XCTFail("nothing to choose") }
+    }
 }

@@ -7,6 +7,8 @@ struct BoardView: View {
     @Bindable var coordinator: BoardCoordinator
     @State private var previewMonsterAbility: (GameMonster, AbilityModel)?
     @State private var confirmingAbandon = false
+    /// The card in play a player has asked to end, until they confirm or keep it.
+    @State private var endingBonus: (characterID: String, card: BoardCoordinator.ActiveCard)?
     /// The side columns (party, monsters, battle log) can be hidden to see the whole board.
     @State private var showSidePanels = true
     @State private var logExpanded = false
@@ -606,6 +608,55 @@ struct BoardView: View {
             }
             .frame(width: Self.sidePanelWidth)
             .padding(.leading, 16)
+            .confirmationDialog(endingBonus.map { "End \($0.card.name)?" } ?? "",
+                                isPresented: Binding(get: { endingBonus != nil }, set: { if !$0 { endingBonus = nil } }),
+                                titleVisibility: .visible) {
+                Button("End This Bonus", role: .destructive) {
+                    if let ending = endingBonus,
+                       let character = gameManager.game.characters.first(where: { $0.id == ending.characterID }) {
+                        coordinator.endActiveBonus(ending.card.id, of: character)
+                    }
+                    endingBonus = nil
+                }
+                Button("Keep It", role: .cancel) { endingBonus = nil }
+            } message: {
+                Text(endingBonus?.card.consequence ?? "")
+            }
+        }
+    }
+
+    /// A card in the character's active area: its name and uses left (tap to see the card), and
+    /// a quiet button to end its bonus, which a player may do at any time (GH p.25).
+    private func activeCardRow(_ card: BoardCoordinator.ActiveCard, of character: GameCharacter) -> some View {
+        HStack(spacing: 4) {
+            Button { coordinator.showCardPreview(cardId: card.id) } label: {
+                HStack(spacing: 5) {
+                    Image(systemName: "rectangle.portrait.fill")
+                        .font(BoardTheme.font(size: 11))
+                        .foregroundStyle(BoardTheme.brass)
+                    Text(card.line)
+                        .font(BoardTheme.font(size: 11, weight: .medium))
+                        .foregroundStyle(BoardTheme.text)
+                        .lineLimit(1)
+                    Spacer(minLength: 0)
+                }
+                .frame(minHeight: 28)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("In play: \(card.line)")
+            .accessibilityHint("Shows the card")
+            Button { endingBonus = (character.id, card) } label: {
+                Image(systemName: "xmark.circle")
+                    .font(BoardTheme.font(size: 13))
+                    .foregroundStyle(BoardTheme.secondaryText)
+                    .frame(width: 32, height: 28)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .help("End this bonus")
+            .accessibilityLabel("End \(card.name)\u{2019}s bonus")
+            .accessibilityHint(card.consequence)
         }
     }
 
@@ -614,7 +665,7 @@ struct BoardView: View {
 
     /// A party member: portrait, hit points, and their hand and lost cards.
     @ViewBuilder
-    private func characterCard(_ character: GameCharacter) -> some View {
+    private func characterSummary(_ character: GameCharacter) -> some View {
         let isExhausted = character.exhausted || character.health <= 0
         let low = character.health * 3 < character.maxHealth
 
@@ -666,9 +717,24 @@ struct BoardView: View {
                 }
             }
         }
+        .accessibilityElement(children: .combine)
+    }
+
+    /// A party member's card, and under it the cards they have in play.
+    @ViewBuilder
+    private func characterCard(_ character: GameCharacter) -> some View {
+        let inPlay = coordinator.activeCards(of: character)
+        VStack(alignment: .leading, spacing: 4) {
+            characterSummary(character)
+            if !inPlay.isEmpty {
+                Rectangle().fill(BoardTheme.border.opacity(0.3)).frame(height: 1)
+                ForEach(inPlay) { card in
+                    activeCardRow(card, of: character)
+                }
+            }
+        }
         .padding(10)
         .sidePanelStyle()
-        .accessibilityElement(children: .combine)
     }
 
     /// A round portrait from a thumbnail.

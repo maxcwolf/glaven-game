@@ -10,6 +10,9 @@ struct AttackModifierDeck: Codable {
     /// Base cards taken out for one scenario (Second Skin's two −1s); back after it. Optional so
     /// saves from before it existed still load.
     var setAside: [AttackModifier]?
+    /// A ×2 or Null was drawn this round before the deck ran out and was shuffled to go on
+    /// drawing: the shuffle at the end of the round is still owed. Optional for older saves.
+    var shuffleOwed: Bool?
 
     init(attackModifiers: [AttackModifier] = [], cards: [AttackModifier] = [],
          current: Int = -1, discards: [Int] = [], active: Bool = true,
@@ -30,6 +33,7 @@ struct AttackModifierDeck: Codable {
     /// True when a standard ×2 or null card was drawn since the last shuffle, so the deck
     /// must be reshuffled at the end of the round. Bless/Curse never trigger this.
     var needsShuffle: Bool {
+        if shuffleOwed == true { return true }
         guard current >= 0, current < cards.count else { return false }
         return cards[0...current].contains(where: { $0.shuffle && !$0.type.isSpecial })
     }
@@ -53,7 +57,11 @@ struct AttackModifierDeck: Codable {
     /// (GH: "also do this if a modifier card must be drawn and there are none left").
     mutating func draw() -> AttackModifier? {
         if current + 1 >= cards.count {
+            // Running out doesn't settle a ×2 or Null drawn earlier in the round: the deck is
+            // shuffled again as the round ends (GH p.11).
+            let owed = needsShuffle
             reshuffle()
+            if owed { shuffleOwed = true }
         }
         guard current + 1 < cards.count else { return nil }
         current += 1
@@ -71,6 +79,7 @@ struct AttackModifierDeck: Codable {
         cards = newCards
         current = -1
         discards = []
+        shuffleOwed = nil
     }
 
     /// Shuffle a card into the undrawn part of the deck.

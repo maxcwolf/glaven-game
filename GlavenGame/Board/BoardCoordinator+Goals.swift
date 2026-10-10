@@ -105,7 +105,8 @@ extension BoardCoordinator {
             guard let hex = boardState.piecePositions[.character(character.id)], exits.contains(hex) else { continue }
             boardState.escapedCharacters.append(character.id)
             log("\(characterName(character.id)) escapes", category: .round)
-            leaveScenario(character)
+            gameManager?.scenarioStatsManager.recordEscaped(character.name)
+            leaveScenario(character, exhausted: false)
         }
     }
 

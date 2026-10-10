@@ -151,9 +151,10 @@ enum BattleGoalEvaluator {
             let stats = statsManager.stats(for: character.name)
             let xp = scenarioXPGained[character.id] ?? 0
 
-            // Check if any OTHER character is exhausted (not this one)
+            // Check if any OTHER character is exhausted (not this one); one who left through
+            // the exit wasn't.
             let alliesExhausted = game.characters.contains {
-                $0.id != character.id && !$0.absent && $0.exhausted
+                $0.id != character.id && !$0.absent && statsManager.wasExhausted($0)
             }
 
             let achieved = evaluate(

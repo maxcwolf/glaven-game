@@ -75,6 +75,46 @@ final class ScenarioReauditTests: XCTestCase {
         XCTAssertEqual(sim.coord.scenarioResult, .defeat, "exhausted in the last room: lost, whoever got out")
     }
 
+    /// Leaving through the exit isn't exhaustion: the one who left keeps their cards (for
+    /// Streamliner), isn't held against a companion's Protector, and neither character's record
+    /// counts an exhaustion for a personal quest.
+    func testLeavingThroughTheExitIsNotExhaustion() throws {
+        let sim = try simulator("41")
+        let brute = sim.gm.game.characters[0], spellweaver = sim.gm.game.characters[1]
+        revealAll(sim)
+        let exits = hexes(sim, "a")
+        stand(sim, 1, on: try XCTUnwrap(exits.first))
+        spellweaver.activeCards = [try XCTUnwrap(spellweaver.handCards.popLast())]
+        let held = spellweaver.handCards.count + 1
+        sim.coord.letCharactersLeave()
+        XCTAssertFalse(sim.coord.isOnBoard(character(sim, 1)), "gone from the board")
+        XCTAssertFalse(sim.gm.game.activeCharacters.contains { $0.id == spellweaver.id }, "and no turn comes to them again")
+        XCTAssertEqual(spellweaver.handCards.count + spellweaver.discardedCards.count, held,
+                       "their cards are as they were, the one in play put away")
+        XCTAssertTrue(spellweaver.lostCards.isEmpty && spellweaver.activeCards.isEmpty)
+        XCTAssertFalse(sim.gm.scenarioStatsManager.wasExhausted(spellweaver))
+
+        stand(sim, 0, on: try XCTUnwrap(exits.last))
+        sim.coord.letCharactersLeave()
+        sim.coord.checkVictoryDefeat()
+        XCTAssertEqual(sim.coord.scenarioResult ?? sim.coord.pendingResult, .victory)
+
+        // Streamliner (five or more cards in hand and discard) for the one who left first;
+        // Protector (no ally exhausted) for the other.
+        spellweaver.battleGoalCardIds = ["458"]; spellweaver.selectedBattleGoal = 0
+        brute.battleGoalCardIds = ["466"]; brute.selectedBattleGoal = 0
+        let results = BattleGoalEvaluator.evaluateAll(game: sim.gm.game, statsManager: sim.gm.scenarioStatsManager,
+                                                      scenarioXPGained: [:], battleGoalData: sim.gm.editionStore.battleGoals(for: "gh"))
+        XCTAssertEqual(results[spellweaver.id]?.achieved, true, "Streamliner")
+        XCTAssertEqual(results[brute.id]?.achieved, true, "Protector")
+
+        sim.gm.scenarioManager.finishScenario(success: true)
+        for character in [brute, spellweaver] {
+            XCTAssertEqual(character.record.timesExhausted, 0, character.name)
+            XCTAssertEqual(character.record.partyExhaustions, 0, character.name)
+        }
+    }
+
     // MARK: - Escapes: exhausted on the exit
 
     /// Icecrag Ascent (and #33, #37, #60, #71): the escape is complete when every character is on

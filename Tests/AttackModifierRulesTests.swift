@@ -361,3 +361,51 @@ final class AttackModifierRulesTests: XCTestCase {
         XCTAssertEqual(kept([plus0Stun, card(.null_, "miss")], advantage: false), "miss")
     }
 }
+
+/// The end-of-round shuffle (GH p.11, 20): a deck that drew a ×2 or Null in the round is
+/// shuffled when the round ends.
+@MainActor
+final class ModifierDeckRoundEndTests: XCTestCase {
+
+    /// A deck that runs out in the middle of a round is shuffled to go on drawing. That doesn't
+    /// settle the Null drawn before it ran out: the deck is still shuffled as the round ends.
+    func testADeckThatRanOutMidRoundIsStillShuffledAtTheEndOfTheRound() throws {
+        var tried = 0
+        for seed in 1...12 as ClosedRange<UInt64> {
+            GameRandom.shared = GameRandom(seed: seed)
+            let gm = try SaveAndContinueTestsSupport.manager()
+            let cards = [AttackModifier.standard(.null_)] + (0..<9).map { _ in AttackModifier.standard(.plus0) }
+            gm.game.monsterAttackModifierDeck = AttackModifierDeck(attackModifiers: cards, cards: cards)
+            gm.game.state = .next
+            gm.game.round = 1
+            for _ in 0..<10 { _ = gm.attackModifierManager.drawMonsterCard() }   // the Null and the nine others
+            XCTAssertEqual(gm.game.monsterAttackModifierDeck.remainingCount, 0)
+            // One more attack this round: the discards are shuffled and the draw is made from them.
+            // (Where that draw is the Null itself, the game tells us nothing: another seed.)
+            guard gm.attackModifierManager.drawMonsterCard()?.type != .null_ else { continue }
+            tried += 1
+            let deck = gm.game.monsterAttackModifierDeck
+            XCTAssertTrue(deck.needsShuffle, "seed \(seed): the Null drawn earlier this round still calls for a shuffle")
+
+            gm.roundManager.nextGameState()   // the round ends
+            XCTAssertEqual(gm.game.state, .draw)
+            XCTAssertEqual(gm.game.monsterAttackModifierDeck.current, -1, "seed \(seed): shuffled, nothing drawn")
+            XCTAssertEqual(gm.game.monsterAttackModifierDeck.cards.count, 10)
+            XCTAssertFalse(gm.game.monsterAttackModifierDeck.needsShuffle, "and the debt is settled")
+        }
+        XCTAssertGreaterThan(tried, 6)
+    }
+
+    /// Running out with no ×2 or Null drawn that round owes nothing.
+    func testADeckThatRanOutWithoutAShuffleCardIsLeftAsItIs() throws {
+        GameRandom.shared = GameRandom(seed: 3)
+        let gm = try SaveAndContinueTestsSupport.manager()
+        let cards = (0..<4).map { _ in AttackModifier.standard(.plus0) }
+        gm.game.monsterAttackModifierDeck = AttackModifierDeck(attackModifiers: cards, cards: cards)
+        gm.game.state = .next
+        for _ in 0..<5 { _ = gm.attackModifierManager.drawMonsterCard() }
+        XCTAssertFalse(gm.game.monsterAttackModifierDeck.needsShuffle)
+        gm.roundManager.nextGameState()
+        XCTAssertEqual(gm.game.monsterAttackModifierDeck.current, 0, "one card drawn since it ran out, and no shuffle at the round's end")
+    }
+}

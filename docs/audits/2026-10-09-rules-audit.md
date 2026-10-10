@@ -12,9 +12,10 @@ Each finding has an id, the rule it breaks, what the game did, and its state:
 - **open** — confirmed by reading the code, not yet corrected;
 - **question** — the rule itself needs a decision.
 
-About 125 findings. As of 2026-10-10 about 92 are fixed and 8 partly (the turn engine, trap
+About 130 findings. As of 2026-10-10 about 110 are fixed and 6 partly (the turn engine, trap
 legends, the campaign, scenario rules, monster turns, rooms with two doors and doors mid-move, the
-walls between tiles with range and line of sight) and the rest are open. Scenario-specific rules have their own table in
+walls between tiles with range and line of sight, areas, items, bonuses, solo play, round starts
+and the maps' monster places) and the rest are open. Scenario-specific rules have their own table in
 [../scenario-book/rules-audit.md](../scenario-book/rules-audit.md); the scenario findings here are
 the ones the re-audit found wrong or newly missing.
 
@@ -45,8 +46,8 @@ the ones the re-audit found wrong or newly missing.
 | B1 | ACT-1: the two halves of a card are separate actions | A card in play for one half gave the other half's bonus: Crackling Air's bottom gave "+1 Attack on your next four attacks", Immortality's bottom gave "suffer no damage", Wall of Doom's top gave "+1 Attack this round"; also Master Physician, Fortified Position, Unending Chant | fixed — `testACardInPlayGivesOnlyTheBonusOfItsHalf`, `testEveryBonusCardGivesItsBonusForOneHalfOnly` |
 | E11 | ACT-1 | Crackling Air's bottom went to the active area even when its Fire wasn't consumed | fixed — `testARoundBonusInsideAnUnpaidElementBonusDoesNotKeepTheCardInPlay` |
 | T9 / B3 | ACT-4: a summon's card leaves play when the summon dies | The card stayed in the active area for the rest of the scenario (so Reviving Ether couldn't recover it and "cards lost" counts were off) | fixed — `testADeadSummonsCardLeavesTheActiveArea` |
-| B4 | ACT-2: a player may end an active bonus at any time | No way to do it | open |
-| B11 | ACT-1: "on your next four attacks" marks a charge per attack | Crackling Air and Voice of the Night mark one charge per attack action (a Target 3 attack uses one); Master Physician marks one per figure healed though it says "Heal actions" | open |
+| B4 | ACT-2: a player may end an active bonus at any time | No way to do it | fixed — the party panel lists each character's cards in play with a confirmed "End This Bonus"; `ActionPerformedTests` (`testAPlayerMayEndABonusAndItsCardGoesToItsPile`, `testEndingABonusWithoutTheLostIconDiscardsIt`, `testEndingASummonsCardRemovesTheSummon`, `testABonusEndedMidTurnNoLongerActs`) |
+| B11 | ACT-1: "on your next four attacks" marks a charge per attack | Crackling Air and Voice of the Night mark one charge per attack action (a Target 3 attack uses one); Master Physician marks one per figure healed though it says "Heal actions" | fixed — `ChargedBonusTests` (`testCracklingAirMarksAChargeForEachAttack`, `testCracklingAirsLastChargeCoversOneAttackOfTwo`, `testVoiceOfTheNightMarksAChargeForEachAttack`, `testMasterPhysicianMarksAChargeForEachHealAction`). Every other charged bonus was read against its card and counts what it says |
 | B13 | ACT-4 | A summon with no empty hex beside the character: the half was still performed and the card went active without a summon | fixed with T1 (the step now counts as not performed) |
 | T6 | — | Rest log lines said "takes back N cards" with N the hand size, and "1 cards" | fixed |
 
@@ -73,7 +74,7 @@ the ones the re-audit found wrong or newly missing.
 | C2 | MOV-1, LOS-3: the edge of a map tile is a wall, also where two tiles' full hexes meet beside a door (FAQ) | Such hexes are adjacent: figures walk, attack in melee, push and see across the wall line. 60 doors in 42 scenarios (in #1, the hexes either side of door 1); seven more scenarios have tiles abutting with no connector at all (#6, #24, #40, #43, #67, #74, #82) | fixed: `BoardState.wallEdges`, drawn by `BoardBuilder.wallEdges` between full hexes of two tiles; no move, jump, flight, push, melee, loot or adjacency across one (`WallLineTests`, `MapRevealTests.testWallLinesNeverCutOffPartOfAMap`) |
 | A8 | ATK-9, ATK-10: an added target is in addition to an area | With Backup Ammunition or Grim Bargain an area attack loses its area; a "+1 Target" modifier card drawn in an area attack gives nothing | fixed: the area is placed as ever and each added target (printed, from an item or from a drawn "+1 Target") is then one more enemy within the attack's range — range 1 for a melee area (`AreaAttackRuleTests.testATargetAddedToAnAreaAttackIsOneMoreEnemyInRange`) |
 | A10 | ATK-10: the player places and may mirror an area | The game picks the placement covering most enemies; patterns are never mirrored (one chiral card, Scroll of Blizzards) | partly: patterns are tried in their mirror image too, for characters and monsters, and the in-range hex of a ranged area may be empty but not a wall (`AreaAttackRuleTests`). Still open: the player taps one enemy and the game picks the placement that covers it and the most others, rather than letting the player place the area |
-| A11 | RND-9 | A deck that runs out and reshuffles mid-round forgets the ×2 or Null drawn earlier, so it isn't reshuffled at the end of the round | open |
+| A11 | RND-9 | A deck that runs out and reshuffles mid-round forgets the ×2 or Null drawn earlier, so it isn't reshuffled at the end of the round | fixed — `ModifierDeckRoundEndTests.testADeckThatRanOutMidRoundIsStillShuffledAtTheEndOfTheRound` |
 | A12 | ATK-7 | "Further" and "closer" are plain distance, not counted around walls | open (low) |
 | T11 | — | The turn log doesn't say when an attack had Advantage or Disadvantage, so a transcript can't be checked for it | fixed — the log line reads "attacks … with advantage / with disadvantage" |
 
@@ -84,7 +85,7 @@ the ones the re-audit found wrong or newly missing.
 | C1 | MOV-5: a trap does what the scenario's legend says | Effects come from the tile art in the map data (spike / bear / poison), always with 2+L damage. #2's two Stun traps deal damage and Immobilize; #31's Curse traps only damage; #44's Immobilize-and-Poison traps deal damage; about two thirds of the 75 scenarios with traps differ. A Stun trap should also end the move | fixed — `placements/gh-traps.json` holds all 75 legends; `TrapConditionTests` (traps sprung on the real boards of #1, #2, #15, #31, #44), `TrapLegendTests` |
 | C3 | MOV-8: a character who opens a door keeps the rest of the move | The move ends on the door hex (the room beyond doesn't exist until revealed, and the leftover movement isn't offered) | fixed (`DoorRuleTests`) |
 | — | MOV-8: a closed door is a wall to monsters | Parasitic Influence could walk an enemy onto a closed door without opening it (found by a playthrough once the fixes above changed its course) | fixed — `testAnEnemyMovedByACardCannotEnterAClosedDoor` |
-| C8 | ATK-11: allied monsters drop no money (FAQ) | They do (#11, #12, #35, #36, #91). Bosses drop none, which no rule says | open |
+| C8 | ATK-11: allied monsters drop no money (FAQ) | They do (#11, #12, #35, #36, #91). Bosses drop none, which no rule says | fixed — `MoneyTokenTests` (`testAnAlliedMonsterDropsNoMoneyToken`, `testABossDropsAMoneyToken`: neither the rulebook nor the FAQ sets bosses apart, so one set up with its room drops a token) |
 | C9 | MOV-7: obstacles may not be placed to cut the map in two | No check | fixed: `BoardState.obstacleWouldDivideMap` (`ObstaclePlacementRuleTests`) |
 | C11 | MOV-10 | A numbered treasure already looted in the campaign is still drawn on a replay (it gives nothing) | open (low) |
 | D9 | MON-3: a jump's last hex is a normal move | A jumping monster that can't reach an attack hex this turn may end on a trap | fixed (`MonsterAIMovementTests.testAJumpingMonsterDoesNotComeDownOnATrapOnItsWay`) |
@@ -113,18 +114,18 @@ the ones the re-audit found wrong or newly missing.
 | Id | Rule | What the game did | State |
 |---|---|---|---|
 | E5 / B5 | RND-4: the long rest is a turn; its Wound damage comes first and can be negated; the Heal 2 is optional (FAQ) | A resting character's Wound damage couldn't be negated and could exhaust them before the heal; the heal was forced | fixed — `RestRuleTests` (`testARestingCharactersWoundCanBeNegatedBeforeTheRestHeals`, `testTheRestsHealMayBeDeclined`, `testPoisonTakesTheRestsHeal`) |
-| B6 | ACT-8: an item with uses left isn't spent, and a rest doesn't give its uses back (FAQ) | A long rest reset partly used items (Hide Armor) | partly fixed — uses kept through a rest (`testALongRestLosesOneDiscardTakesBackTheRestHealsTwoAndRefreshesSpentItems`); a multi-use item is still offered each time rather than used whenever it applies |
-| B8 | TRN-7: items may be used on a long-rest turn (FAQ) | Not possible; "start/end of your next turns" bonuses (Lumbering Bash, Auto Turret) also do nothing on a rest turn | partly fixed — items are offered on the rest panel (`testItemsCanBeUsedOnALongRestTurnUnlessStunned`); "start/end of your next turns" bonus steps still do nothing on a rest turn |
+| B6 | ACT-8: an item with uses left isn't spent, and a rest doesn't give its uses back (FAQ) | A long rest reset partly used items (Hide Armor) | fixed — uses kept through a rest (`testALongRestLosesOneDiscardTakesBackTheRestHealsTwoAndRefreshesSpentItems`); the six armours with use circles (Hide Armor, Chainmail, Splintmail, Platemail, Swordedge Armor, Steam Armor) are used whenever an attack would damage, unasked and in headless play too — `ItemUseRuleTests` (`testAnArmourWithUseCirclesIsUsedWithoutAsking`, `testWhichArmoursWorkByThemselves`, `testAnAttackThatDoesNoDamageMarksNoCircle`, `testLosingACardInsteadLeavesTheArmourUnused`) |
+| B8 | TRN-7: items may be used on a long-rest turn (FAQ) | Not possible; "start/end of your next turns" bonuses (Lumbering Bash, Auto Turret) also do nothing on a rest turn | fixed — items are offered on the rest panel (`testItemsCanBeUsedOnALongRestTurnUnlessStunned`); start-of-turn bonuses act before the rest's card is chosen and end-of-turn ones before the turn ends, a charge each (`testAStartOfTurnBonusActsOnARestTurn`, `testAStartOfTurnBonusOnARestTurnMayBeSkipped`, `testAnEndOfTurnBonusActsOnARestTurn`) |
 | E13 | — | A turn spent stunned or resting didn't count for pressure plates, turn-end rules or goals judged as a turn ends | fixed — `testARestTurnEndsWithLooting`; the stunned and resting turn ends share the normal one |
 | E3 | RND-3: a short rest may be taken in the scenario's last round (FAQ) | Not offered once the scenario was decided (matters for battle goals); `testNoShortRestOnceTheScenarioIsDecided` asserts the old behaviour | fixed — `testAShortRestIsOfferedInTheScenariosLastRound` |
 | E9 | RND-3: the 1 damage for losing a different card can be negated (FAQ) | It couldn't | fixed — `testTheRedrawsDamageCanBeNegated` |
 | E10 | RND-6: a long rest goes after a character on initiative 99 (FAQ) | Before | fixed — `testALongRestGoesAfterACharacterOnNinetyNine` |
-| E7 | SET-3: solo play is one level higher | Not applied; the setup also offers a "story" difficulty (−2) the rulebook doesn't have | open |
-| E12 / S1-5 | — | A character who escapes through the exit is recorded as exhausted (personal quests, Protector, Streamliner) | open |
-| B7 | CND-4: a stunned character uses no items | Defence items, Boots of Speed, Dampening Ring and Heart of the Betrayer are still offered | open |
+| E7 | SET-3: solo play raises the monster level and trap damage by 1, not gold or bonus experience (p.15) | Not applied; the setup also offers a "story" difficulty (−2) the rulebook doesn't have | fixed — a "Solo" switch beside the difficulty; `SetupRulesTests` (`testSoloPlayRaisesMonstersAndTrapsButNotGoldOrExperience`, `testSoloPlayNeverGoesAboveLevelSeven`, `testNoDifficultyTakesTheLevelBelowZero`, `testTheSetupScreenSaysWhatSoloPlayDoes`). "Story" stays as the game's own setting; no difficulty takes the level below 0 |
+| E12 / S1-5 | — | A character who escapes through the exit is recorded as exhausted (personal quests, Protector, Streamliner) | fixed — `ScenarioReauditTests.testLeavingThroughTheExitIsNotExhaustion` |
+| B7 | CND-4: a stunned character uses no items | Defence items, Boots of Speed, Dampening Ring and Heart of the Betrayer are still offered | fixed — `ItemUseRuleTests` (`testAStunnedCharacterIsOfferedNoShieldButKeepsTheirArmour`, `testAStunnedCharacterIsOfferedNoItemOutsideTheirTurn`, `testAStunnedCharacterMakesNoAttackBack`). Passive items and armours with use circles still work (FAQ: Stun doesn't affect persistent effects or passive items) |
 | B10 | TRN-7: items at any time in the turn | Not once both halves are done, before End Turn | fixed — "turn" items stay usable until the turn is ended |
-| B12 | ATK-14: any damage may be negated by losing cards | Not for item costs, the Berserker's "suffer up to N", a printed "suffer damage" step, or a door shutting on a figure | partly fixed — the short-rest redraw and a closing door now offer the choice; item costs and the Berserker's "suffer up to N" still don't |
-| S-gen | — | "Start of round" scenario rules run after cards are chosen (#5's Disarm, #48's Muddle, #31/#39's elements) | open |
+| B12 | ATK-14: any damage may be negated by losing cards | Not for item costs, the Berserker's "suffer up to N", a printed "suffer damage" step, or a door shutting on a figure; never where a bonus would negate the damage anyway | fixed — `ItemUseRuleTests` (`testAnItemsDamageCanBeNegated`, `testTheBerserkersChosenDamageCanBeNegatedAndThenCountsForNothing`, `testAPrintedSufferDamageCanBeNegated`, `testCardsMayBeLostBeforeANegatingChargeIsSpent`: the choice is offered, and left alone the charge takes it) |
+| S-gen | RND-11 | "Start of round" scenario rules run after cards are chosen (#5's Disarm, #48's Muddle, #31/#39's elements) | fixed — applied as card selection begins, monster cards still drawn after it; `ScenarioEnforcedRuleTests` (`testCharactersAreDisarmedWhileTheFirstCardsAreChosen`, `testTheRoundsElementsAreSetBeforeCardsAreChosen`) |
 
 ## Campaign and town
 
@@ -186,6 +187,10 @@ Larger mechanics still not built are listed in `TODO.md` ("Scenario special rule
 | N4 | CMP-6 | The doubling for several targets was also charged for an element and for a +1 on a Target line, which the rulebook excepts (with area hexes); the FAQ's single-target cases (targets gained only by consuming an element, an ability that summons several) were already priced single | fixed (`EnhancementTests.testOneMoreTargetAndElementsAreNeverDoubled`, `testTargetsGainedByConsumingAnElementDontDouble`) |
 | N5 | — | Inferno (Spellweaver 9): "Target all enemies in the same room as you" attacked one adjacent enemy, and "All allies in the same room as you suffer 2 damage" did nothing | fixed: a room is what walls and doorways bound (`BoardState.room`); every enemy in it in line of sight is attacked, in melee, and the allies in it suffer the damage (`InfernoTests`) |
 | N6 | CMP-8 | Travelling on without returning to Gloomhaven, a linked scenario or a retry skipping the road event, and the city event being optional all need town-screen changes (F19) | open |
+| N7 | ELE-2 | Crackling Air's Air is consumed (without asking) at each Attack action that finds it; the FAQ has it consumed once, as the card is played, with a token on the card to remember the +2 for all four attacks | open |
+| N8 | ATK-14 | A card in the active area can't be lost to negate damage (FAQ: it can, as if discarded or lost already) | open |
+| N9 | ATK-14 | Warding Strength's and Cold Front's charges are marked before the lose-a-card choice is offered (the armours with use circles and the "suffer no damage" bonuses now leave the choice first) | open (low) |
+| N10 | TRN-7 | The single-use shields are offered after the armours with use circles have applied; the FAQ lets the player choose which Shield to use first | open (low) |
 
 ## Tests that don't prove what they say
 
@@ -222,8 +227,8 @@ arrives mid-round (MON-12); monsters of a revealed room acting at the right time
 character opening a door through a real move (MOV-8); Loot X with line of sight (ACT-7); summons
 and monsters never looting (TRN-5); numbered treasure refused the second time (MOV-10); exhaustion
 at card selection (RND-2); a summon acting before its owner and not in the round it arrives
-(RND-8); modifier decks reshuffling at the end of the round (RND-9); a goal met in the round the
+(RND-8); a goal met in the round the
 last character is exhausted (END-1); the two "ignore negative effects" perks (SET-6, SET-8);
 ranged attack on an adjacent enemy; effects not applied to a target the attack killed; a condition
-gained on a figure's own turn lasting through its next; a stunned character's cards and items;
+gained on a figure's own turn lasting through its next; a stunned character's cards;
 scenario availability (requirements, blocks, counted achievements).

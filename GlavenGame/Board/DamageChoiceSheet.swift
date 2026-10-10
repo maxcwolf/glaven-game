@@ -22,6 +22,11 @@ struct DamageChoiceSheet: View {
         return exhausts ? .nothing : .takeDamage
     }
 
+    /// The main button: take the damage, or let the bonus in play that negates it do so.
+    static func takeTitle(_ pending: BoardCoordinator.PendingDamage) -> String {
+        pending.absorbedBy.map { "Let \($0) Take It" } ?? "Take \(pending.damage) Damage"
+    }
+
     var body: some View {
         let outcome = coordinator.damageOutcome(pending)
         let losable = coordinator.losableHandCards(of: character)
@@ -66,7 +71,12 @@ struct DamageChoiceSheet: View {
                 Text("from \(pending.sourceDescription)")
                     .font(.subheadline)
                     .foregroundStyle(.white.opacity(0.7))
-                if let outcome {
+                if let bonus = pending.absorbedBy {
+                    Text("\(bonus) takes it, using one of its charges \u{2014} or lose a card and keep the charge.")
+                        .font(.subheadline)
+                        .foregroundStyle(.white.opacity(0.85))
+                        .fixedSize(horizontal: false, vertical: true)
+                } else if let outcome {
                     Text("HP \(outcome.healthBefore) \u{2192} \(outcome.healthAfter)")
                         .font(.subheadline.monospacedDigit())
                         .foregroundStyle(.white.opacity(0.85))
@@ -81,7 +91,9 @@ struct DamageChoiceSheet: View {
             Button {
                 coordinator.resolvePendingDamage(choice: .takeDamage)
             } label: {
-                Text("Take \(pending.damage) Damage")
+                Text(Self.takeTitle(pending))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
                     .frame(maxWidth: .infinity, minHeight: 44)
             }
             .buttonStyle(.borderedProminent)

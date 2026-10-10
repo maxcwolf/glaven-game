@@ -158,7 +158,7 @@ extension BoardCoordinator {
         guard let gameManager, let goal = gameManager.scenarioManager.chosenBattleGoal(of: character) else { return nil }
         guard victory else { return ScenarioOutcome.GoalResult(name: goal.name, met: false, checks: 0) }
         let stats = gameManager.scenarioStatsManager
-        let others = gameManager.game.characters.contains { $0.id != character.id && !$0.absent && $0.exhausted }
+        let others = gameManager.game.characters.contains { $0.id != character.id && !$0.absent && stats.wasExhausted($0) }
         let met = BattleGoalEvaluator.evaluate(cardId: goal.id, character: character, stats: stats.stats(for: character.name),
                                                scenarioXP: xpGained, alliesExhausted: others,
                                                party: stats.partyStats) == true

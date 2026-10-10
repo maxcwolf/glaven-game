@@ -337,10 +337,16 @@ final class ScenarioSpecialRuleTests: XCTestCase {
         XCTAssertFalse(coord.boardState.heldMonsterSlots.isEmpty, "their places are kept")
         XCTAssertNil(sim.gm.game.monsters.first { $0.name == "lurker" }?.aliveEntities.first)
 
-        let before = Set(pieces(sim, named: "vermling-scout"))
-        sim.gm.scenarioRulesManager.evaluateRules(phase: .roundStart)
-        let scouts = Set(pieces(sim, named: "vermling-scout")).subtracting(before)
+        // Round 1's scouts came as the scenario was set out, before its first cards were chosen
+        // (the spawned ones, as against those the map sets up).
+        let scouts = Set(pieces(sim, named: "vermling-scout").filter { piece in
+            guard case .monster(let name, let standee) = piece else { return false }
+            return coord.monsterEntity(name: name, standee: standee)?.summonState != nil
+        })
         XCTAssertEqual(scouts.count, 2, "one at c, one at d, as round 1 begins")
+        sim.gm.scenarioRulesManager.evaluateRules(phase: .roundStart)
+        XCTAssertEqual(pieces(sim, named: "vermling-scout").count, 2 + pieces(sim, named: "vermling-scout").filter { !scouts.contains($0) }.count,
+                       "and not again as the round is advanced")
         func scout(by marker: String) throws -> PieceID {
             let place = try XCTUnwrap(hexes(sim, marker).first)
             return try XCTUnwrap(scouts.first { coord.boardState.piecePositions[$0].map { $0.distance(to: place) <= 1 } == true }, marker)
@@ -931,6 +937,10 @@ final class ScenarioSpecialRuleTests: XCTestCase {
         let brute = sim.gm.game.characters[0]
         brute.maxHealth = 30
         brute.health = 30
+        // Everyone starts this scenario poisoned (its round 1 rule, in place from the setup):
+        // cured for the first crossing.
+        XCTAssertTrue(coord.isConditionActive(.poison, on: character(sim, 0)), "the Toxic Moor starts everyone poisoned")
+        brute.entityConditions.removeAll()
         let trap = sim.gm.levelManager.trap()
         func wade(_ style: MovementStyle) async throws {
             let wet = try XCTUnwrap(water(sim).first { hex in

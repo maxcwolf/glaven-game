@@ -14,7 +14,7 @@ sharpens the book, the line says "FAQ".
 
 - SET-1 Monsters are placed for the number of characters (2, 3 or 4): none, normal or elite per place. Only the first room is set up; other rooms when revealed. A room revealed later is still set up for the number of characters the scenario began with (FAQ).
 - SET-2 Standee numbers are random within the type; a type has a limited number of standees; when none is left the monster isn't placed (elites first when choosing which to place).
-- SET-3 Recommended scenario level = average character level ÷ 2, rounded up. Easy −1, Hard +1, Very Hard +2; never below 0 or above 7. Solo play: +1 to the result.
+- SET-3 Recommended scenario level = average character level ÷ 2, rounded up. Easy −1, Hard +1, Very Hard +2; never below 0 or above 7. Solo play (one player running every character): the monster level and trap damage are one higher, gold per token and bonus experience are not (p.15); monsters have no level above 7. (The game's own "Story" difficulty, −2, isn't in the rulebook.)
 - SET-4 By level L (0–7): monster level L; gold per money token 2,2,3,3,4,4,5,6; trap damage 2+L; bonus experience 4+2L.
 - SET-5 Each player is dealt two battle goals and keeps one, secretly.
 - SET-6 A hand is the class's hand size, chosen from the character's card pool; equipped items add their −1 cards to the modifier deck at the start.
@@ -27,13 +27,14 @@ sharpens the book, the line says "FAQ".
 - RND-1 Each round every character plays two cards from hand (one chosen as the lead, for initiative) or declares a long rest. Two cards in hand are needed to play; two in the discard pile to rest.
 - RND-2 A character who at the start of a round can neither play two cards nor rest is exhausted.
 - RND-3 Short rest (end of round, needs two discards): shuffle the discard pile, lose one at random, the rest return to hand. Once per rest the player may suffer 1 damage to lose a different random card instead (the first goes back to hand); that damage can be negated like any other (FAQ). A short rest may be taken in a scenario's last round (FAQ).
-- RND-4 Long rest (declared at card selection, needs two discards): initiative 99; on that turn lose one discard of the player's choice, the rest return, Heal 2 self (optional, FAQ), refresh all spent items. It is a turn: items can be used; start-of-turn Wound applies first (FAQ).
+- RND-4 Long rest (declared at card selection, needs two discards): initiative 99; on that turn lose one discard of the player's choice, the rest return, Heal 2 self (optional, FAQ), refresh all spent items. It is a turn: items can be used; start-of-turn Wound applies first (FAQ); bonuses that act at the start or end of the character's turns act on it.
 - RND-5 One ability card is revealed for each monster ability deck with a figure on the board; all monsters using the deck, normal and elite, act on its initiative. Types that share a deck (Bandit, City and Inox Guards use the Guard deck) act on the same card, one type at a time (FAQ).
 - RND-6 Initiative order is ascending. Ties: a character before a monster; between characters the second card decides (lower first), then the players; between monster types the players decide. A long-resting character goes after others at 99 (FAQ).
 - RND-7 Within a monster type: elites first in ascending standee number, then normals in ascending standee number.
 - RND-8 A summon takes its turn immediately before its owner's, each a separate turn; several summons act in the order they were summoned. A summon does not act in the round it was summoned.
 - RND-9 End of round, in this order: decks that drew a ×2 or Null are reshuffled with their discards; monster ability decks that drew a shuffle card (or have no cards left) are reshuffled; round bonuses end and their cards go to discard or lost; characters may short rest; every element steps down (strong → waning → inert).
-- RND-10 Curse and Bless cards are removed when drawn and never cause a reshuffle.
+- RND-10 Curse and Bless cards are removed when drawn and never cause a reshuffle. A deck that runs out mid-round is shuffled to go on drawing; a ×2 or Null drawn before that still calls for the shuffle at the end of the round.
+- RND-11 What a scenario does "at the start of the round" (or of the scenario) is done before the cards for the round are chosen; monster ability cards are drawn after (FAQ, "Scenario Setup", for the scenario's own effects; for every-round effects the book's plain order of a round).
 
 ## TRN — A character's turn (pp. 18–19, 28)
 
@@ -43,7 +44,7 @@ sharpens the book, the line says "FAQ".
 - TRN-4 A played card goes to discard; to lost if a lost-icon action on it was performed; to the active area if it has a persistent or round bonus that was performed.
 - TRN-5 At the end of the turn a character must loot money tokens and treasure in their own hex (also when stunned or resting). Summons and monsters never do.
 - TRN-6 Experience: an action's XP is gained when any part of the action is performed; XP beside an attack/effect is gained with it; a persistent bonus's slot XP as the charge is used. No XP for kills. A card can't be played for XP alone if nothing on it can be done (FAQ).
-- TRN-7 Items may be used at any time on the owner's turn, a long-rest turn included (not in the middle of another ability, FAQ) or when their text says; an item that changes an attack is used before the modifier is drawn. An item with several uses is used whenever its trigger applies, like a persistent bonus (FAQ).
+- TRN-7 Items may be used at any time on the owner's turn, a long-rest turn included (not in the middle of another ability, FAQ) or when their text says; an item that changes an attack is used before the modifier is drawn. An item with several use circles is used whenever its trigger applies, like a persistent bonus — the player isn't asked (FAQ: "the use of items with charges is mandatory if its conditions are met"); other items are the player's to use.
 
 ## MOV — Movement and the map (pp. 14–15, 19)
 
@@ -77,10 +78,10 @@ sharpens the book, the line says "FAQ".
 - ATK-8 Pierce X ignores X of the target's Shield for this attack.
 - ATK-9 Add Target: one more enemy within the attack's range, not already a target — in addition to an area's targets, and at range 1 for a melee area (FAQ). Target X: up to X different enemies in range. No enemy is attacked twice by one attack ability.
 - ATK-10 Area attacks: the pattern may be turned and mirrored; a melee pattern has a grey hex for the attacker; a ranged pattern needs one of its hexes within range; every target hex needs line of sight from the attacker; each enemy in it is a separate attack with its own draw; allies are never hit unless the card says.
-- ATK-11 A monster at 0 hit points dies at once and drops a money token on its hex, unless it was summoned or spawned; allied monsters drop none (FAQ). Damage past 0 still counts as inflicted (FAQ).
+- ATK-11 A monster at 0 hit points dies at once and drops a money token on its hex, unless it was summoned or spawned; allied monsters drop none (FAQ). A boss is a monster like any other here: no rule or FAQ entry exempts it. Damage past 0 still counts as inflicted (FAQ).
 - ATK-12 Shield X reduces each attack's damage by X; several Shields add; only attacks.
 - ATK-13 Retaliate X (Range Y): after each attack on the figure by an attacker within range (adjacent if none printed), that attacker suffers X — not an attack, no draw, no Shield. Not if the retaliating figure was killed or exhausted by the attack; checked where figures stand after the attack's push/pull (FAQ). Several add.
-- ATK-14 When a character suffers damage from any source, the player takes it or negates it all by losing one card from hand or two from the discard pile; other effects still land.
+- ATK-14 When a character suffers damage from any source — an item's price and a printed "suffer damage" included — the player takes it or negates it all by losing one card from hand or two from the discard pile; other effects still land. Cards may be lost before a defence item or a bonus's charge comes to the damage, which is then not used (FAQ). Damage negated wasn't suffered ("X is the amount you suffered").
 - ATK-15 A character at 0 hit points, or unable to play or rest, is exhausted: all cards lost, figure and summons removed, no further part; the scenario is lost when all are exhausted.
 
 ## CND — Conditions (pp. 22–23)
@@ -88,7 +89,7 @@ sharpens the book, the line says "FAQ".
 - CND-1 One of each condition per figure; reapplying resets its duration.
 - CND-2 Poison: every enemy attack on the figure gets +1 Attack. A heal removes it and heals nothing.
 - CND-3 Wound: 1 damage at the start of each of the figure's turns. A heal removes it and still heals. With both: the heal removes both and heals nothing.
-- CND-4 Immobilize: no move abilities. Disarm: no attack abilities. Stun: no abilities and no items (a stunned character still plays two cards or long rests, and they are discarded). Muddle: Disadvantage on all its attacks. Each ends at the end of the figure's next turn — a condition gained during its own turn lasts through the following turn (FAQ).
+- CND-4 Immobilize: no move abilities. Disarm: no attack abilities. Stun: no abilities, on the figure's turn or off it, and no items — passive items and persistent effects, an armour with use circles among them, go on working (FAQ); a stunned character still plays two cards or long rests, and they are discarded. Muddle: Disadvantage on all its attacks. Each ends at the end of the figure's next turn — a condition gained during its own turn lasts through the following turn (FAQ).
 - CND-5 Invisible: can't be focused or targeted by enemies; monsters treat the figure as an obstacle. Strengthen: Advantage on all its attacks. Both end at the end of the next turn. Positive conditions can't be dropped early.
 - CND-6 Curse: a Curse (Null, removed when drawn) goes into the figure's deck — the monster deck for any monster, the owner's for a summon. Ten for the monsters, ten shared by the characters; none added when none is left. Bless: a ×2 removed when drawn; ten in all.
 - CND-7 Immunity: a figure immune to a condition never gains it. Objectives with hit points are immune to all negative conditions and to forced movement.
@@ -103,8 +104,8 @@ sharpens the book, the line says "FAQ".
 
 ## ACT — Active bonuses, shield, heal, summons (pp. 24–27)
 
-- ACT-1 Persistent bonus: lasts until its conditions are met; with charge slots, a charge is used every time the trigger happens (not optional), left to right, and the card is lost after the last. Round bonus: until the end of the round.
-- ACT-2 A player may at any time move an active card to its pile to end the bonus.
+- ACT-1 Persistent bonus: lasts until its conditions are met; with charge slots, a charge is used every time the trigger happens (not optional), left to right, and the card is lost after the last. The trigger is what the card counts: "attacks" are counted target by target, "Attack actions" and "Heal actions" once however many figures they reach, "sources of damage" only when there is damage (FAQ: an attack is one target and one modifier card; an attack action is all the attacks of an action). Round bonus: until the end of the round.
+- ACT-2 A player may at any time move an active card to its pile to end the bonus: the lost pile if the action it was played for has the lost icon, the discard pile if not. Its summon leaves the board with it.
 - ACT-3 Heal X: self, or an ally (or self) within the printed range and line of sight; never above maximum.
 - ACT-4 Summon: placed on an empty hex adjacent to the summoner; none free → the summon can't be made. Its card stays active; the summon is removed at 0 hit points, when the card leaves play, or when the owner is exhausted; when the summon dies its card leaves the active area (to the lost pile, as its action is marked).
 - ACT-5 A summon acts by the monster rules with "Move +0, Attack +0" using its own stats, draws from its owner's deck, and its kills earn nothing extra. A summon with "–" for move or attack doesn't do that.

@@ -28,7 +28,7 @@ extension BoardCoordinator {
         if !game.monsters.contains(where: { $0.name == spec.name }) {
             gameManager.monsterManager.addMonster(name: spec.name, edition: edition)
             if let created = game.monsters.first(where: { $0.name == spec.name }) {
-                created.level = spec.level(forScenarioLevel: game.level)
+                created.level = spec.level(forScenarioLevel: game.monsterLevel)
             }
         }
         guard let monster = game.monsters.first(where: { $0.name == spec.name }) else {

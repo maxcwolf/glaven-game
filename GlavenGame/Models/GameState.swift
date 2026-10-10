@@ -14,7 +14,11 @@ final class GameState {
     var bonusAdjustment: Int = 0
     var ge5Player: Bool = true
     var playerCount: Int = -1
+    /// One player runs the whole party (GH p.15): monsters and traps are a level higher.
     var solo: Bool = false
+    /// The level monsters are set up at and trap damage is worked out from: the scenario level,
+    /// one higher in solo play (never above 7). Gold and bonus experience stay at `level`.
+    var monsterLevel: Int { min(7, level + (solo ? 1 : 0)) }
     var playSeconds: Int = 0
     var totalSeconds: Int = 0
     var elementBoard: [ElementModel] = ElementModel.defaultBoard()

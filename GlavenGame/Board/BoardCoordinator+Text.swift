@@ -329,7 +329,8 @@ extension BoardCoordinator {
 
     func damageOutcome(_ pending: PendingDamage) -> DamageOutcome? {
         guard let character = gameManager?.game.characters.first(where: { $0.id == pending.characterID }) else { return nil }
-        let after = max(0, character.health - pending.damage)
+        // A bonus in play takes it: no hit points are lost.
+        let after = pending.absorbedBy != nil ? character.health : max(0, character.health - pending.damage)
         return DamageOutcome(healthBefore: character.health, healthAfter: after, exhausts: after == 0)
     }
 }

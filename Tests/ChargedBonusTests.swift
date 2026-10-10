@@ -278,22 +278,110 @@ final class ChargedBonusTests: XCTestCase {
         XCTAssertEqual(brute.health, bruteHealth - 2, "the Brute takes it, though it's out of melee range")
     }
 
-    func testCracklingAirAddsTwoByConsumingAir() throws {
+    /// Every attack draws +0, so damage shows what was added.
+    private func plainDeck(for character: GameCharacter) {
+        let zeros = (0..<20).map { _ in AttackModifier.standard(.plus0) }
+        character.attackModifierDeck = AttackModifierDeck(attackModifiers: zeros, cards: zeros)
+    }
+
+    private func waitUntil(timeout: TimeInterval = 3, _ condition: () -> Bool) async -> Bool {
+        let deadline = Date().addingTimeInterval(timeout)
+        while !condition() {
+            if Date() > deadline { return false }
+            try? await Task.sleep(nanoseconds: 1_000_000)
+        }
+        return true
+    }
+
+    /// Crackling Air: "On your next four attacks, add +1 Attack. Air: add +2 instead." Its
+    /// charges count attacks, not Attack actions: Fire Orbs (Attack 3, Range 3, Target 3) on
+    /// three enemies is three attacks, each +2 with Air consumed, and marks three charges.
+    func testCracklingAirMarksAChargeForEachAttack() async throws {
         let spellweaver = add("spellweaver", at: HexCoord(3, 3))
         spellweaver.activeCards = [69]
-        _ = try bandit(at: HexCoord(5, 3))
-        let deck = gm.editionStore.abilities(forDeck: "spellweaver", edition: "gh")
-        let orbs = try XCTUnwrap(deck.first { $0.name == "Impaling Eruption" }), other = try XCTUnwrap(deck.first { $0.name == "Frost Armor" })
-        spellweaver.handCards = [orbs.cardId!, other.cardId!]
+        plainDeck(for: spellweaver)
+        let bandits = try [HexCoord(5, 3), HexCoord(5, 4), HexCoord(5, 2)].map { try bandit(at: $0) }
         gm.game.elementBoard[gm.game.elementBoard.firstIndex { $0.type == .air }!].state = .strong
-        let turn = PlayerTurnController(characterID: spellweaver.id, coordinator: coord, gameManager: gm)
-        coord.activePlayerTurn = turn
-        turn.selectCards(top: orbs, bottom: other)
-        let printed = orbs.actions?.first?.value?.intValue ?? 0
+        let turn = try startTurn(spellweaver, top: 61, bottom: 66)   // Fire Orbs; Frost Armor
         turn.executeCurrentAction()
-        XCTAssertEqual(turn.currentAttackValue(), printed + 2)
-        XCTAssertFalse(gm.game.isElementAvailable(.air))
-        XCTAssertEqual(spellweaver.bonusChargesUsed[69], 1)
+        XCTAssertFalse(gm.game.isElementAvailable(.air), "Air is consumed for +2")
+        XCTAssertNil(spellweaver.bonusChargesUsed[69], "no attack made yet: no charge marked")
+        guard case .selectingMultiAttackTargets = coord.interactionMode else { return XCTFail("three targets to choose") }
+        for piece in bandits { coord.handlePieceTap(piece) }
+        let done = await waitUntil { !turn.isWaiting }
+        XCTAssertTrue(done)
+        for piece in bandits { XCTAssertEqual(coord.entity(for: piece)?.health, 50 - 5, "Attack 3 +2") }
+        XCTAssertEqual(spellweaver.bonusChargesUsed[69], 3, "three attacks, three charges")
+    }
+
+    /// The fourth attack takes the last charge: with one left, only the first target of two
+    /// gets the +1, and the card is then lost.
+    func testCracklingAirsLastChargeCoversOneAttackOfTwo() async throws {
+        let spellweaver = add("spellweaver", at: HexCoord(3, 3))
+        spellweaver.activeCards = [69]
+        spellweaver.lostWhenRemoved = [69]
+        spellweaver.bonusChargesUsed[69] = 3
+        plainDeck(for: spellweaver)
+        let bandits = try [HexCoord(5, 3), HexCoord(5, 4)].map { try bandit(at: $0) }
+        let turn = try startTurn(spellweaver, top: 61, bottom: 66)
+        turn.executeCurrentAction()
+        for piece in bandits { coord.handlePieceTap(piece) }
+        let done = await waitUntil { !turn.isWaiting }
+        XCTAssertTrue(done)
+        XCTAssertEqual(bandits.map { coord.entity(for: $0)?.health }, [50 - 4, 50 - 3], "the bonus ran out after one")
+        XCTAssertEqual(spellweaver.lostCards, [69], "its fourth charge marked, the card is lost")
+    }
+
+    /// Voice of the Night: "On your next five attacks while invisible, add Stun to the attack."
+    /// Angel of Death's attack on all adjacent enemies is an attack on each: two enemies, two
+    /// charges.
+    func testVoiceOfTheNightMarksAChargeForEachAttack() async throws {
+        let shroud = add("eclipse", at: HexCoord(3, 3))
+        shroud.activeCards = [288]
+        plainDeck(for: shroud)
+        let bandits = try [HexCoord(4, 3), HexCoord(2, 3)].map { try bandit(at: $0) }
+        coord.applyCondition(.invisible, to: .character(shroud.id))
+        let turn = try startTurn(shroud, top: 287, bottom: 263)   // Angel of Death
+        turn.executeCurrentAction()
+        let done = await waitUntil { !turn.isWaiting && shroud.bonusChargesUsed[288] != nil }
+        XCTAssertTrue(done)
+        for piece in bandits { XCTAssertTrue(coord.isConditionActive(.stun, on: piece), "each attack stuns") }
+        XCTAssertEqual(shroud.bonusChargesUsed[288], 2, "two attacks, two charges")
+    }
+
+    /// Master Physician counts Heal actions ("Before your next six Heal actions, remove all
+    /// negative conditions on the healed figure(s)"): Blood Transfusion's "Heal 2, all adjacent
+    /// allies" cleanses both allies for one charge.
+    func testMasterPhysicianMarksAChargeForEachHealAction() async throws {
+        let sawbones = add("saw", at: HexCoord(3, 3))
+        sawbones.activeCards = [441]
+        let allies = [add("brute", at: HexCoord(4, 3)), add("tinkerer", at: HexCoord(2, 3))]
+        for ally in allies {
+            ally.health = 3
+            coord.applyCondition(.poison, to: .character(ally.id))
+        }
+        _ = try bandit(at: HexCoord(3, 4))
+        plainDeck(for: sawbones)
+        let turn = try startTurn(sawbones, top: 436, bottom: 435)   // bottom: Attack 3, then Heal 2 on all adjacent allies
+        turn.setBottomFirst(true)
+        turn.executeCurrentAction()
+        if case .selectingAttackTarget(_, _, let targets) = coord.interactionMode, let target = targets.first {
+            coord.handlePieceTap(target)
+            _ = await waitUntil { !turn.isWaiting }
+        }
+        if turn.currentActionIndex < turn.currentSteps.count, turn.currentSteps[turn.currentActionIndex].type == .heal {
+            turn.executeCurrentAction()
+        }
+        for ally in allies {
+            XCTAssertFalse(ally.entityConditions.contains { $0.name == .poison }, "\(ally.name) is cleansed first")
+            XCTAssertEqual(ally.health, 5, "and so the Heal 2 lands")
+        }
+        XCTAssertEqual(sawbones.bonusChargesUsed[441], 1, "one Heal action, one charge")
+
+        // A heal of another kind (an item's) is a Heal action of its own.
+        allies[0].health = 3
+        coord.heal(.character(allies[0].id), amount: 1, source: .character(sawbones.id))
+        XCTAssertEqual(sawbones.bonusChargesUsed[441], 2)
     }
 
     // MARK: - Start and end of turn

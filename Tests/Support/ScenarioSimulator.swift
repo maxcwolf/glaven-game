@@ -239,7 +239,9 @@ final class ScenarioSimulator {
         }
         if let pending = coord.pendingDamage,
            let character = character(pending.characterID) {
-            coord.resolvePendingDamage(choice: policy.negateDamage(pending.damage, character: character, sim: self))
+            // A bonus in play takes it (Frost Armor): no card is lost for that.
+            coord.resolvePendingDamage(choice: pending.absorbedBy != nil
+                ? .takeDamage : policy.negateDamage(pending.damage, character: character, sim: self))
             return
         }
         if let rest = coord.pendingShortRest, let character = character(rest.characterID) {

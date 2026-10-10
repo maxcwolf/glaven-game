@@ -775,7 +775,11 @@ final class BoardRulesRegressionTests: XCTestCase {
         addMonster("bandit-guard", at: HexCoord(5, 3))
         coord.autoResolvePrompts = false
         let other = try XCTUnwrap(gm.editionStore.abilities(forDeck: "lightning", edition: "gh").first { $0.name != "Flurry of Axes" })
-        let turn = turn(for: berserker, top: try card("Flurry of Axes", of: "lightning"), bottom: other)
+        let flurry = try card("Flurry of Axes", of: "lightning")
+        let turn = turn(for: berserker, top: flurry, bottom: other)
+        // As on the board: the two cards played are no longer in the hand to be lost, so with no
+        // other card the damage can only be taken (`ItemUseRuleTests` has it negated).
+        coord.selectedCardPairs[berserker.id] = (top: flurry, bottom: other)
         let health = berserker.health
         turn.executeCurrentAction()
         XCTAssertEqual(coord.pendingSufferChoice?.most, 4)

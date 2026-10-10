@@ -17,7 +17,7 @@ final class MonsterManager {
     func addMonster(name: String, edition: String) {
         onBeforeMutate?()
         guard let data = editionStore.monsterData(name: name, edition: edition) else { return }
-        let monster = GameMonster(name: name, edition: edition, level: game.level, monsterData: data)
+        let monster = GameMonster(name: name, edition: edition, level: game.monsterLevel, monsterData: data)
 
         // Its ability deck: the one a type already in the game draws from (Bandit Guards and
         // City Guards share the Guard deck), or a newly shuffled one.

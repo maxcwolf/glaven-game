@@ -167,6 +167,17 @@ extension BoardCoordinator {
                 gainedRetaliates.append((amount, range))
             }
         }
+        // Armour with use circles (Hide Armor, Chainmail…) works by itself on every attack that
+        // would damage its wearer (FAQ): it isn't offered. Its circle is marked once the damage is
+        // settled — the player may still lose cards instead, and the armour is then not used.
+        var armourUsed: [DefenseItem] = []
+        for item in DefenseItem.onDamage where result.damage > 0 && !negated && areEnemies(attacker, target)
+            && isChargedArmour(item, wornBy: target) {
+            armourUsed.append(item)
+            shield += item.shield
+            result = resolve()
+        }
+        // The other shields and armours are the player's to use or keep.
         for item in DefenseItem.onDamage where result.damage > 0 && !negated && areEnemies(attacker, target) {
             if await offerDefenseItem(item, to: target, from: attacker) {
                 shield += item.shield
@@ -219,9 +230,15 @@ extension BoardCoordinator {
         } else if result.damage > 0 {
             // Shield took some of it (a fully absorbed attack is "Blocked", above).
             if shield > attack.pierce { boardScene?.play(.shield) }
-            died = await sufferDamageWithMitigation(result.damage, to: target,
-                                                    source: pieceLabel(attacker), killer: attacker)
+            let outcome = await resolveDamage(result.damage, to: target, source: pieceLabel(attacker), killer: attacker)
+            died = outcome.died
             guard isCurrentBoard(generation) else { return died }
+            // Cards were lost to prevent the damage before the armour came to it (FAQ).
+            if outcome.prevented { armourUsed = [] }
+        }
+        for item in armourUsed {
+            useChargedArmour(item, wornBy: target)
+            if item.retaliate > 0 { gainedRetaliates.append((item.retaliate, 1)) }
         }
 
         // Added effects apply even when no damage was dealt, but not to a dead target (p.19).
@@ -505,7 +522,7 @@ extension BoardCoordinator {
         let key = "gh-92"
         guard let holder = gameManager.game.characters.sorted(by: { $0.id < $1.id }).first(where: {
                   !$0.exhausted && !$0.absent && $0.carriedItems.contains(key)
-                      && !$0.consumedItems.contains(key) && !$0.spentItems.contains(key)
+                      && !$0.consumedItems.contains(key) && !$0.spentItems.contains(key) && canUseItems($0)
               }),
               let item = itemData(key) else { return false }
         let generation = boardGeneration

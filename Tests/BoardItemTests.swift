@@ -393,7 +393,7 @@ final class BoardItemTests: XCTestCase {
 
     /// A Bandit Guard beside the Brute attacks for `value`, drawing +0s; the Brute has nothing to
     /// lose to negate it, so the only prompt is the item. `answer` is the player's reply.
-    private func banditAttacks(for value: Int, answer: Bool) async throws -> (item: String?, guardPiece: PieceID) {
+    private func banditAttacks(for value: Int, answer: Bool, offer: Bool = true) async throws -> (item: String?, guardPiece: PieceID) {
         let piece = try XCTUnwrap(coord.spawnMonster(name: "bandit-guard", type: .normal, at: HexCoord(4, 3), origin: .placed))
         brute.handCards = []
         brute.discardedCards = []
@@ -402,6 +402,10 @@ final class BoardItemTests: XCTestCase {
             await self.coord.performAttack(attacker: piece, target: .character(self.brute.id),
                                            attack: AttackParameters(value: value),
                                            drawCard: { AttackModifier(type: .plus0) })
+        }
+        guard offer else {
+            _ = await attack.value
+            return (coord.pendingItemUse?.itemName, piece)
         }
         let deadline = Date().addingTimeInterval(3)
         while coord.pendingItemUse == nil && Date() < deadline { try await Task.sleep(nanoseconds: 1_000_000) }
@@ -430,25 +434,21 @@ final class BoardItemTests: XCTestCase {
         XCTAssertTrue(brute.spentItems.contains("gh-8"))
     }
 
+    /// An armour with use circles isn't offered: it is used on each attack that would damage
+    /// (FAQ, "Item Use"; more in `ItemUseRuleTests`), and its marked uses are saved.
     func testHideArmorGuardsTwiceBeforeItIsSpent() async throws {
         brute.items = ["gh-3"]
         let health = brute.health
-        let (offered, guardPiece) = try await banditAttacks(for: 3, answer: true)
-        XCTAssertEqual(offered, "Hide Armor")
+        let (offered, guardPiece) = try await banditAttacks(for: 3, answer: true, offer: false)
+        XCTAssertNil(offered, "used without asking")
         XCTAssertEqual(brute.health, health - 2)
         XCTAssertEqual(brute.itemSlotsUsed["gh-3"], 1)
         XCTAssertFalse(brute.spentItems.contains("gh-3"), "one use left")
         let restored = brute.toSnapshot().toRuntime(editionStore: gm.editionStore)
         XCTAssertEqual(restored.itemSlotsUsed, ["gh-3": 1], "the marked use is saved")
 
-        let second = Task { @MainActor in
-            await self.coord.performAttack(attacker: guardPiece, target: .character(self.brute.id),
-                                           attack: AttackParameters(value: 3), drawCard: { AttackModifier(type: .plus0) })
-        }
-        let deadline = Date().addingTimeInterval(3)
-        while coord.pendingItemUse == nil && Date() < deadline { try await Task.sleep(nanoseconds: 1_000_000) }
-        coord.resolvePendingItemUse(true)
-        _ = await second.value
+        await coord.performAttack(attacker: guardPiece, target: .character(brute.id),
+                                  attack: AttackParameters(value: 3), drawCard: { AttackModifier(type: .plus0) })
         XCTAssertEqual(brute.health, health - 4)
         XCTAssertTrue(brute.spentItems.contains("gh-3"))
         XCTAssertNil(brute.itemSlotsUsed["gh-3"])

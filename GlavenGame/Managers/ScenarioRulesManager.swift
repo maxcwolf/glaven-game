@@ -7,8 +7,10 @@ import Foundation
 /// are re-checked on every evaluation (any phase), which is how mid-round triggers such as
 /// "when the door is destroyed" or "when room 3 is revealed" fire promptly.
 enum RulePhase: String, CaseIterable {
-    /// Start of a round: `game.round` already holds the new round number.
-    /// Evaluates `start` rules (and `always` rules).
+    /// Start of a round: evaluates `start` rules (and `always` rules). On the board this is
+    /// done before the players choose their cards (`evaluateRulesForTheRoundToCome`), with
+    /// `game.round` still holding the round that has ended; away from it, as the round is
+    /// advanced, with `game.round` already the new number.
     case roundStart
     /// End of a round: `game.round` still holds the round that is ending.
     /// Evaluates rules without `start` (and `always` rules).
@@ -70,6 +72,24 @@ final class ScenarioRulesManager {
 
     // MARK: - Rule Evaluation
 
+    /// The round being judged, while it isn't `game.round`: the round to come, as its
+    /// start-of-round rules are applied before the cards for it are chosen.
+    @ObservationIgnored private var roundToCome: Int?
+    private var currentRound: Int { roundToCome ?? game.round }
+
+    /// What the scenario does "at the start of the round" is done before the players choose their
+    /// cards, so they choose knowing it: who starts Disarmed (#5) or Muddled (#48), which element
+    /// is strong (#31, #39), who has appeared (#3). Called as card selection begins, when
+    /// `game.round` is still the round just ended; each rule is marked as fired for the round to
+    /// come, so advancing the round doesn't apply it again. Monster ability cards are still
+    /// drawn only once every character's cards are chosen.
+    func evaluateRulesForTheRoundToCome() {
+        guard game.state == .draw, roundToCome == nil else { return }
+        roundToCome = game.round + 1
+        defer { roundToCome = nil }
+        evaluateRules(phase: .roundStart)
+    }
+
     /// Backwards-compatible entry point for mid-round re-checks (e.g. after a kill).
     /// Equivalent to `evaluateRules(phase: .figureChange)`.
     func evaluateRules() {
@@ -112,7 +132,7 @@ final class ScenarioRulesManager {
         guard let scenario = game.scenario, let rules = scenario.data.rules else { return }
         for (index, rule) in rules.enumerated() where rule.alwaysApplyTurn == timing.rawValue {
             if rule.isOnce && scenario.appliedRules.contains(scenario.ruleKey(index: index)) { continue }
-            guard conditionsHold(rule, index: index, scenario: scenario, round: game.round) else { continue }
+            guard conditionsHold(rule, index: index, scenario: scenario, round: currentRound) else { continue }
             let effects = (rule.figures ?? []).filter { !Self.isTriggerType($0.type) }
             var applied = false
             for figureRule in effects {
@@ -133,7 +153,7 @@ final class ScenarioRulesManager {
     /// Runs one evaluation pass. Returns true if a (non-persistent) rule was applied.
     private func runPass(phase: RulePhase) -> Bool {
         guard let scenario = game.scenario, let rules = scenario.data.rules else { return false }
-        let round = game.round
+        let round = currentRound
         var appliedSomething = false
 
         for (index, rule) in rules.enumerated() {
@@ -407,7 +427,7 @@ final class ScenarioRulesManager {
     @ObservationIgnored private var appliedTimes: Int?
 
     private func valueVariables(figureCount: Int? = nil) -> [String: Int] {
-        var variables = ["C": scenarioPlayerCount, "L": game.level, "R": game.round]
+        var variables = ["C": scenarioPlayerCount, "L": game.level, "R": currentRound]
         if let figureCount = figureCount ?? appliedFigureCount { variables["F"] = figureCount }
         if let appliedTimes { variables["N"] = appliedTimes }
         return variables

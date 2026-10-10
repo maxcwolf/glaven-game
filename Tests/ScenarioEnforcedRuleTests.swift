@@ -338,6 +338,56 @@ final class ScenarioEnforcedRuleTests: XCTestCase {
         }
     }
 
+    /// "At the start of the round" is before the cards are chosen, so the players choose knowing
+    /// it. Ruinous Crypt: everyone is Disarmed while round 1's cards are being picked — and no
+    /// monster card is drawn until they are.
+    func testCharactersAreDisarmedWhileTheFirstCardsAreChosen() throws {
+        let sim = try ScenarioSimulator(scenario: "5", options: .init(characters: ["brute", "spellweaver"], seed: 1,
+                                                                       autoResolvePrompts: true))
+        let game = sim.gm.game
+        XCTAssertEqual(sim.coord.boardPhase, .cardSelection)
+        XCTAssertNotNil(sim.coord.cardSelectingCharacterID, "the first cards are being chosen")
+        XCTAssertEqual(game.round, 0, "round 1 hasn't been advanced to yet")
+        for character in game.characters {
+            XCTAssertTrue(sim.coord.isConditionActive(.disarm, on: .character(character.id)), "\(character.name) is Disarmed already")
+        }
+        XCTAssertTrue(game.monsters.allSatisfy { !$0.abilityDrawn }, "no monster card is drawn before the cards are chosen")
+
+        // The cards chosen, the round begins: monsters draw, and the rule isn't applied again.
+        for character in game.characters {
+            let hand = sim.hand(of: character)
+            sim.coord.chooseCards(for: character.id, leading: hand[0], other: hand[1])
+        }
+        XCTAssertEqual(game.round, 1)
+        XCTAssertTrue(game.monsters.contains { $0.abilityDrawn }, "now the monsters' cards are drawn")
+        for character in game.characters {
+            XCTAssertEqual(character.entityConditions.filter { $0.name == .disarm }.count, 1, character.name)
+        }
+        let applied = try XCTUnwrap(game.scenario?.appliedRules)
+        XCTAssertEqual(applied.filter { $0.hasSuffix("@r1") }.count, applied.filter { $0.contains("@r") }.count,
+                       "every round rule fired so far fired for round 1, once")
+    }
+
+    /// Plane of Night: Dark is strong (and Light inert) as each round's cards are chosen — in
+    /// round 1, and again in round 2 after the elements have waned at the end of round 1.
+    func testTheRoundsElementsAreSetBeforeCardsAreChosen() async throws {
+        let sim = try ScenarioSimulator(scenario: "31", options: .init(characters: ["brute", "spellweaver"], seed: 1))
+        func state(_ element: ElementType) -> ElementState? { sim.gm.game.elementBoard.first { $0.type == element }?.state }
+        XCTAssertEqual(sim.coord.boardPhase, .cardSelection)
+        XCTAssertEqual(state(.dark), .strong, "round 1: Dark is strong while the cards are chosen")
+        XCTAssertEqual(state(.light), .inert)
+        XCTAssertTrue(sim.gm.game.monsters.allSatisfy { !$0.abilityDrawn })
+
+        await sim.play(rounds: 1)
+        guard sim.coord.scenarioResult == nil else { return }
+        XCTAssertEqual(sim.coord.boardPhase, .cardSelection, "round 2's cards are being chosen")
+        XCTAssertEqual(sim.gm.game.round, 1)
+        XCTAssertEqual(state(.dark), .strong, "strong again, not waning from the round before")
+        XCTAssertEqual(state(.light), .inert)
+        XCTAssertTrue(sim.gm.game.monsters.allSatisfy { !$0.abilityDrawn }, "and still no monster card for round 2")
+        XCTAssertEqual(sim.violations, [])
+    }
+
     /// The elements a scenario sets as every round starts: Dark strong and Light inert on the
     /// Plane of Night; Ice strong and Fire inert at the Treacherous Divide; Light and Dark strong
     /// and the other four inert in the Temple of the Eclipse.
@@ -349,7 +399,12 @@ final class ScenarioEnforcedRuleTests: XCTestCase {
         ]
         for (scenario, expected) in cases {
             let sim = try simulator(scenario)
-            for round in 1...3 {
+            // Round 1's are set as the scenario is set out, before its first cards are chosen.
+            for element in sim.gm.game.elementBoard {
+                guard let state = expected[element.type] else { continue }
+                XCTAssertEqual(element.state, state, "#\(scenario) round 1: \(element.type)")
+            }
+            for round in 2...4 {
                 // Whatever the round before left behind.
                 for index in sim.gm.game.elementBoard.indices {
                     sim.gm.game.elementBoard[index].state = expected[sim.gm.game.elementBoard[index].type] == .strong ? .inert : .waning
