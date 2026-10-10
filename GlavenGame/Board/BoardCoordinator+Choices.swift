@@ -91,7 +91,7 @@ extension BoardCoordinator {
         var parts = [name(piece)]
         if let entity = entity(for: piece) { parts.append("\(entity.health) of \(entity.maxHealth) health") }
         if let origin, let hex = boardState.piecePositions[piece] {
-            let steps = boardState.range(from: origin, to: hex) ?? origin.distance(to: hex)
+            let steps = boardState.steps(from: origin, to: hex)
             parts.append(steps == 0 ? "yourself" : steps == 1 ? "next to you" : "\(steps) hexes away")
         }
         return parts.joined(separator: ", ")
@@ -118,7 +118,7 @@ extension BoardCoordinator {
     func spokenHex(_ hex: HexCoord, from origin: HexCoord?) -> String {
         var parts: [String] = []
         if let origin {
-            let steps = boardState.range(from: origin, to: hex) ?? origin.distance(to: hex)
+            let steps = boardState.steps(from: origin, to: hex)
             parts.append(steps == 0 ? "where you stand" : "\(steps) hex\(steps == 1 ? "" : "es") \(Self.direction(from: origin, to: hex))")
         } else {
             parts.append("at column \(hex.col), row \(hex.row)")
@@ -151,6 +151,6 @@ extension BoardCoordinator {
 
     private func distance(_ origin: HexCoord?, _ hex: HexCoord?) -> Int {
         guard let origin, let hex else { return 0 }
-        return boardState.range(from: origin, to: hex) ?? origin.distance(to: hex)
+        return boardState.steps(from: origin, to: hex)
     }
 }

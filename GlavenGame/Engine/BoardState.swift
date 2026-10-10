@@ -214,6 +214,12 @@ final class BoardState {
         return nil
     }
 
+    /// How far apart two hexes are for telling and for ordering (nearest first): the range count,
+    /// or the plain distance where no count reaches.
+    func steps(from start: HexCoord, to end: HexCoord) -> Int {
+        range(from: start, to: end) ?? start.distance(to: end)
+    }
+
     /// Whether `end` is within `range` hexes of `start`, counted not through walls.
     func isWithin(_ range: Int, from start: HexCoord, to end: HexCoord) -> Bool {
         self.range(from: start, to: end, limit: range) != nil

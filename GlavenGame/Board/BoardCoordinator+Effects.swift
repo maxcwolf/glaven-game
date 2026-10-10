@@ -126,7 +126,7 @@ extension BoardCoordinator {
             ?? (gameManager?.game.characters ?? []).compactMap { boardState.piecePositions[.character($0.id)] }
         let candidates = boardState.piecePositions.filter { if case .monster(reprieve.removes, _) = $0.key { return true }; return false }
         guard let gone = candidates.min(by: { a, b in
-            let da = from.map { $0.distance(to: a.value) }.min() ?? 0, db = from.map { $0.distance(to: b.value) }.min() ?? 0
+            let da = from.map { boardState.steps(from: $0, to: a.value) }.min() ?? 0, db = from.map { boardState.steps(from: $0, to: b.value) }.min() ?? 0
             return (da, a.key) < (db, b.key)
         })?.key, case .monster(let removed, let standee) = gone else { return }
         log("\(self.name(gone)) is banished with the demon\u{2019}s death", category: .death)

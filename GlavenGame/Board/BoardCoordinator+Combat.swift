@@ -55,7 +55,7 @@ extension BoardCoordinator {
         attackObserver?(attacker, target)
 
         // Counted as range is: round walls, never through them.
-        let distance = boardState.range(from: attackerPos, to: targetPos) ?? attackerPos.distance(to: targetPos)
+        let distance = boardState.steps(from: attackerPos, to: targetPos)
         // The Doomstalker's dooms on the target: +Attack, Pierce, advantage, Curse.
         applyDoomBonuses(to: &attack, attacker: attacker, target: target, distance: distance)
         // What the scenario does to every attack of this figure (a vocal chord still standing).
@@ -424,8 +424,8 @@ extension BoardCoordinator {
     func attackPreviewLines(attacker: PieceID, targets: Set<PieceID>) -> [String] {
         let origin = boardState.piecePositions[attacker]
         return targets.sorted { a, b in
-            let da = origin.flatMap { o in boardState.piecePositions[a].map { o.distance(to: $0) } } ?? 0
-            let db = origin.flatMap { o in boardState.piecePositions[b].map { o.distance(to: $0) } } ?? 0
+            let da = origin.flatMap { o in boardState.piecePositions[a].map { boardState.steps(from: o, to: $0) } } ?? 0
+            let db = origin.flatMap { o in boardState.piecePositions[b].map { boardState.steps(from: o, to: $0) } } ?? 0
             return (da, a) < (db, b)
         }.compactMap { target in
             attackPreview(attacker: attacker, target: target).map { "\(name(target)): \($0)" }

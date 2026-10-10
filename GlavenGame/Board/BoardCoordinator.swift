@@ -2752,7 +2752,7 @@ final class BoardCoordinator {
     /// Get adjacent unopened doors for a position.
     func adjacentDoors(from coord: HexCoord) -> [DoorInfo] {
         boardState.doors.filter {
-            !$0.isOpen && !boardState.isLockedDoor($0.coord) && (coord.isAdjacent(to: $0.coord) || coord == $0.coord)
+            !$0.isOpen && !boardState.isLockedDoor($0.coord) && (boardState.areAdjacent(coord, $0.coord) || coord == $0.coord)
         }
     }
 
@@ -3037,8 +3037,8 @@ final class BoardCoordinator {
             return nil
         }
         let anchor = marker.flatMap(spawnHex(forMarker:)) ?? monsterPositions.first ?? boardState.cells.keys.max { a, b in
-            let da = boardState.startingLocations.map { a.distance(to: $0) }.min() ?? 0
-            let db = boardState.startingLocations.map { b.distance(to: $0) }.min() ?? 0
+            let da = boardState.startingLocations.map { boardState.steps(from: a, to: $0) }.min() ?? 0
+            let db = boardState.startingLocations.map { boardState.steps(from: b, to: $0) }.min() ?? 0
             return da == db ? a > b : da < db
         }
         guard let anchor,
