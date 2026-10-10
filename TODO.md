@@ -249,6 +249,9 @@ Phase III — game feel
 - [x] Camera: frames the board in the largest gap between the HUD panels (reframes when a panel grows over it, and when a door opens), can't be dragged off the board, zooms where the fingers or pointer are, follows the acting figure; "show whole board" button; trackpad scroll pans (`BoardCameraTests`)
 - [x] Room reveal without rebuilding the scene: the new room's tiles, overlays, figures and loot fade in; tokens, effects in flight and the grid offset stay put (`RoomRevealTests`)
 - [x] Board sound effects (Kenney CC0 packs, credited in Resources/Sounds/CREDITS.txt): steps, hits, heavy hits, misses, blocks, deaths, heals, loot, doors, traps, teleports, landings, conditions, card draws, a character's turn; silent when headless (`BoardSoundTests`)
+- [x] Sound design pass, every sound chosen by ear (docs/sound-design.md): a cue for each base-game condition in place of one pluck for all; cues for exhaustion, partial shield, retaliate, elements, spawns, rests, lost cards, the round beginning, deck shuffles and the player's own taps (card picked, cards locked in, target chosen, End Turn, a tap that isn't a choice); levels mastered into the files (`SoundAssetTests`); cues raised together heard in order, a repeated cue once (`BoardSoundMixerTests`)
+- [ ] Sound: the "tap" on the header's element tokens still plays the iOS keyboard click (`SoundPlayer.play(.tap)`) and nothing on the Mac; fold `SoundEffect` into `BoardSound`
+- [ ] Sound: a recorded choir for Bless in place of the synthesised one, if a CC0 sample turns up
 
 Phase IV — the game around the board
 - [x] Main menu key art (the world map, drifting under a vignette; still under Reduce Motion), Load Game and Credits on the menu (the mascot moved there), jingles for a scenario's start, victory and defeat (`MainMenuTests`)

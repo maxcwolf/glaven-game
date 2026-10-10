@@ -250,6 +250,7 @@ extension BoardCoordinator {
             guard losableHandCards(of: character).contains(cardId),
                   let index = character.handCards.firstIndex(of: cardId) else { return false }
             character.lostCards.append(character.handCards.remove(at: index))
+            boardScene?.play(.lose)
             log("\(characterName(character.id)) loses a card from hand to prevent \(damage) damage", category: .damage)
             return true
         case .loseDiscardCards(let indices):
@@ -257,6 +258,7 @@ extension BoardCoordinator {
             for idx in indices.sorted(by: >) where idx < character.discardedCards.count {
                 character.lostCards.append(character.discardedCards.remove(at: idx))
             }
+            boardScene?.play(.lose)
             log("\(characterName(character.id)) loses 2 discarded cards to prevent \(damage) damage", category: .damage)
             return true
         }
@@ -267,7 +269,8 @@ extension BoardCoordinator {
     /// `overkill` and `fromFullHealth` describe the blow that killed it, for battle goals.
     func handleDeath(of pieceID: PieceID, killer: PieceID? = nil, overkill: Int = 0, fromFullHealth: Bool = false) {
         guard let gameManager else { return }
-        boardScene?.play(.death)
+        // A character going down is exhaustion, with its own cue.
+        if case .character = pieceID {} else { boardScene?.play(.death) }
         switch pieceID {
         case .character(let id):
             if let character = gameManager.game.characters.first(where: { $0.id == id }) {
@@ -333,6 +336,7 @@ extension BoardCoordinator {
     func exhaust(_ character: GameCharacter, reason: String) {
         guard !character.exhausted || boardState.piecePositions[.character(character.id)] != nil else { return }
         character.exhausted = true
+        boardScene?.play(.exhaust)
         character.lostCards.append(contentsOf: character.handCards + character.discardedCards + character.activeCards)
         character.handCards = []
         character.discardedCards = []
