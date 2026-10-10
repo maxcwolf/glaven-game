@@ -6,11 +6,29 @@ import Foundation
 extension GameState {
 
     /// Unlock a class, logging how; its unlock events join the decks. Returns false when the
-    /// class was already unlocked.
+    /// class was already unlocked: the party then gets a random item design and a random side
+    /// scenario instead, however the box would have been opened (p.48, FAQ).
     @discardableResult
     func unlockClass(_ name: String, edition: String, how: String, labels: EditionDataStore) -> Bool {
         let key = "\(edition)-\(name)"
-        guard !unlockedCharacters.contains(key) else { return false }
+        guard !unlockedCharacters.contains(key) else {
+            var gained: [String] = []
+            if let item = ItemManager.drawRandomItem(game: self, editionStore: labels) {
+                unlockedItems.insert("\(item.edition)-\(item.id)")
+                gained.append("item design \(item.name)")
+            }
+            if let scenario = ScenarioManager.drawRandomScenario(game: self, editionStore: labels) {
+                manualScenarios.insert(scenario.id)
+                gained.append("scenario #\(scenario.index) \(scenario.name)")
+            }
+            if !gained.isEmpty {
+                campaignLog.append(CampaignLogEntry(
+                    type: .itemAcquired,
+                    message: "\(GameText.className(name, edition: edition, labels: labels)) was already unlocked: \(gained.joined(separator: " and ")) instead",
+                    details: how))
+            }
+            return false
+        }
         unlockedCharacters.insert(key)
         campaignLog.append(CampaignLogEntry(
             type: .characterUnlocked,

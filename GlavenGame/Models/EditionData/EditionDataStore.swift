@@ -63,10 +63,22 @@ final class EditionDataStore {
         )
         loadDecks(from: editionURL.appendingPathComponent("monster/deck"), edition: editionName, isCharacter: false)
 
-        scenariosByEdition[editionName] = loadDirectoryFiles(
+        let loaded: [ScenarioData] = loadDirectoryFiles(
             "scenarios", from: editionURL, edition: editionName,
             editionKeyPath: \ScenarioData.edition
         )
+        // Rules the scenario book prints and the data leaves out are written with the placements.
+        scenariosByEdition[editionName] = loaded.map { scenario in
+            guard scenario.solo == nil,
+                  let written = ScenarioPlacementStore.shared.placements(for: scenario.index, edition: editionName),
+                  written.rules != nil || written.dropRules != nil else { return scenario }
+            var scenario = scenario
+            // A dropped rule keeps its place (rules refer to each other by index) but does nothing.
+            var rules = scenario.rules ?? []
+            for index in written.dropRules ?? [] where rules.indices.contains(index) { rules[index] = .nothing }
+            scenario.rules = rules + (written.rules ?? [])
+            return scenario
+        }
         sectionsByEdition[editionName] = loadDirectoryFiles(
             "sections", from: editionURL, edition: editionName,
             editionKeyPath: \ScenarioData.edition

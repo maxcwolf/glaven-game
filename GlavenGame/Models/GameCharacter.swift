@@ -55,7 +55,10 @@ final class GameCharacter: Figure, Entity {
     /// Owned items not brought to the scenario (GH p.9: a character brings what fits).
     var itemsLeftBehind: [String] = []
     /// The items brought to the scenario: the ones the board uses.
-    var carriedItems: [String] { items.filter { !itemsLeftBehind.contains($0) } }
+    var carriedItems: [String] { itemsBarred ? [] : items.filter { !itemsLeftBehind.contains($0) } }
+    /// A scenario rule keeps the character from using any item for now (Vigil Keep, until they
+    /// have looted a treasure tile).
+    var itemsBarred = false
     /// Items that have been spent this scenario (flipped down; refreshed on long rest).
     var spentItems: Set<String> = []
     /// Items that have been consumed this scenario (removed until scenario end).
@@ -72,9 +75,11 @@ final class GameCharacter: Figure, Entity {
     /// The most battle-goal checkmarks a character can hold: six perks' worth (p.46).
     static let maxBattleGoalChecks = 18
 
-    /// Add (or with a negative count, remove) battle-goal checkmarks, kept within 0…18.
+    /// Add (or with a negative count, remove) battle-goal checkmarks, kept within 0…18. A loss
+    /// never takes back a perk already earned: it stops at the last full three (FAQ).
     func addBattleGoalChecks(_ count: Int) {
-        battleGoalProgress = max(0, min(Self.maxBattleGoalChecks, battleGoalProgress + count))
+        let floor = count < 0 ? battleGoalProgress / 3 * 3 : 0
+        battleGoalProgress = max(floor, min(Self.maxBattleGoalChecks, battleGoalProgress + count))
     }
 
     // Personal quest
@@ -92,12 +97,16 @@ final class GameCharacter: Figure, Entity {
     /// Active-area cards whose used half had the lost icon: they go to the lost pile, not the
     /// discard pile, when they leave the active area.
     var lostWhenRemoved: [Int] = []
+    /// Active-area cards that are there for their bottom half (the others for their top half):
+    /// a card in play gives only the bonus of the half it was played for.
+    var bottomHalvesInPlay: [Int] = []
 
     /// Move a card out of the active area to the lost or discard pile, as its icon requires.
     func removeFromActiveArea(_ cardId: Int) {
         activeCards.removeAll { $0 == cardId }
         bonusChargesUsed[cardId] = nil
         roundBonusCards.removeAll { $0 == cardId }
+        bottomHalvesInPlay.removeAll { $0 == cardId }
         if lostWhenRemoved.contains(cardId) {
             lostWhenRemoved.removeAll { $0 == cardId }
             lostCards.append(cardId)

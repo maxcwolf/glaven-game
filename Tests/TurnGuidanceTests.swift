@@ -144,8 +144,9 @@ final class TurnGuidanceTests: XCTestCase {
 
     // MARK: - Skip this action
 
-    /// Skipping an attack while choosing its target moves on to the next ability of the same
-    /// half (Massive Boulder: Attack 3, then infuse Earth) without attacking.
+    /// Skipping an attack while choosing its target moves on without attacking. Massive Boulder's
+    /// Earth, printed on its own after the attack, isn't gained: no ability of the action was
+    /// performed (FAQ).
     func testSkipThisActionSkipsOnlyTheCurrentAbility() throws {
         let gm = try SaveAndContinueTestsSupport.manager()
         gm.game.level = 1
@@ -178,12 +179,9 @@ final class TurnGuidanceTests: XCTestCase {
         XCTAssertTrue({ if case .idle = coord.interactionMode { return true }; return false }())
         XCTAssertEqual(guardEntity.health, healthBefore, "the skipped attack does nothing")
         XCTAssertEqual(turn.phase, .executeTopAction, "still on the top half")
-        XCTAssertEqual(turn.currentActionIndex, 1, "the infusion is next")
-        XCTAssertNotEqual(gm.game.elementBoard.first { $0.type == .earth }?.state, .new,
-                          "the infusion hasn't happened yet")
-
-        turn.executeCurrentAction()
-        XCTAssertEqual(gm.game.elementBoard.first { $0.type == .earth }?.state, .new, "and still can")
+        XCTAssertEqual(turn.currentActionIndex, 2, "nothing is left of the half to tap")
+        XCTAssertEqual(gm.game.elementBoard.first { $0.type == .earth }?.state, .inert,
+                       "no Earth for an action that wasn't performed")
     }
 
     // MARK: - Cancel a choice

@@ -149,9 +149,10 @@ final class CombatEffectsTests: XCTestCase {
 
     // MARK: - Round bonuses
 
-    /// A Shield and Retaliate a monster gained this round (a consumed element) last the round:
-    /// another of its type entering play doesn't wipe them, and the newcomer gets its card's.
-    func testAMonsterKeepsItsRoundBonusesWhenAnotherOfItsTypeArrives() throws {
+    /// The Shield and Retaliate a monster gained on its turn (its card's, a consumed element's)
+    /// last the round: another of its type entering play doesn't wipe them. The newcomer has
+    /// none of them — the card's Shield starts with a monster's own turn (FAQ), which it hasn't had.
+    func testAMonsterKeepsItsRoundBonusesWhenAnotherOfItsTypeArrives() async throws {
         let first = addMonster("bandit-guard", at: HexCoord(5, 5))
         let monster = try XCTUnwrap(gm.game.monsters.first { $0.name == "bandit-guard" })
         let deck = gm.monsterManager.abilities(for: monster)
@@ -159,14 +160,19 @@ final class CombatEffectsTests: XCTestCase {
         monster.ability = 0
         monster.abilityDrawn = true
         gm.monsterManager.applyStatEffects(for: monster)
+        XCTAssertNil(first.shield, "drawing the card gives nothing")
+        await MonsterTurnController(coordinator: coord, gameManager: gm).executeMonsterGroup(monster)
+        XCTAssertEqual(first.shield?.value?.intValue, 1, "its turn does")
+        XCTAssertEqual(first.retaliate.map { $0.value?.intValue }, [2])
+        // And more from elsewhere this round.
         first.retaliate.append(ActionModel(type: .retaliate, value: .int(3)))
-        first.shield = ActionModel(type: .shield, value: .int((first.shield?.value?.intValue ?? 0) + 2))
-        let (retaliates, shield) = (first.retaliate.count, first.shield?.value?.intValue)
+        first.shield = ActionModel(type: .shield, value: .int(3))
 
         let second = addMonster("bandit-guard", at: HexCoord(8, 8))
-        XCTAssertEqual(first.retaliate.count, retaliates, "the round's Retaliate stays")
-        XCTAssertEqual(first.shield?.value?.intValue, shield, "the round's Shield stays")
-        XCTAssertEqual(second.shield?.value?.intValue, 1, "the newcomer has its card's Shield 1")
+        XCTAssertEqual(first.retaliate.count, 2, "the round's Retaliate stays")
+        XCTAssertEqual(first.shield?.value?.intValue, 3, "the round's Shield stays")
+        XCTAssertNil(second.shield, "the newcomer hasn't acted: no Shield from the card")
+        XCTAssertTrue(second.retaliate.isEmpty)
     }
 
     // MARK: - Bless and Curse cards (p.23)

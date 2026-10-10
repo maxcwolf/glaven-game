@@ -28,7 +28,7 @@ extension BoardCoordinator {
         if !game.monsters.contains(where: { $0.name == spec.name }) {
             gameManager.monsterManager.addMonster(name: spec.name, edition: edition)
             if let created = game.monsters.first(where: { $0.name == spec.name }) {
-                created.level = spec.level(forScenarioLevel: game.level)
+                created.level = spec.level(forScenarioLevel: game.monsterLevel)
             }
         }
         guard let monster = game.monsters.first(where: { $0.name == spec.name }) else {
@@ -36,7 +36,7 @@ extension BoardCoordinator {
             return nil
         }
 
-        guard let number = gameManager.monsterManager.availableStandeeNumbers(for: monster).first else {
+        guard let number = gameManager.monsterManager.nextStandeeNumber(for: monster) else {
             log("No \(monsterTypeName(spec.name)) standee is left, so none is placed", category: .setup)
             return nil
         }
@@ -61,7 +61,8 @@ extension BoardCoordinator {
 
         let pieceID = PieceID.monster(name: monster.name, standee: number)
         boardState.placePiece(pieceID, at: destination)
-        if entity.type == .elite { boardState.eliteStandees.insert(pieceID) }
+        // A standee number is reused once its monster is dead: the mark follows the newcomer.
+        if entity.type == .elite { boardState.eliteStandees.insert(pieceID) } else { boardState.eliteStandees.remove(pieceID) }
         boardScene?.addPieceSprite(id: pieceID, at: destination, offsetCol: offsetCol, offsetRow: offsetRow)
         // A room's monsters arrive with its door; one spawned or summoned later announces itself.
         if origin != .placed { boardScene?.play(.summon) }
@@ -87,10 +88,10 @@ extension BoardCoordinator {
         let enemyPositions = boardState.piecePositions.compactMap { id, coord in
             areEnemies(summoner, id) ? coord : nil
         }
-        let candidates = origin.neighbors.filter { isEmptyHex($0) }
+        let candidates = boardState.neighbors(of: origin).filter { isEmptyHex($0) }
         guard let spot = candidates.min(by: { a, b in
-            let da = enemyPositions.map { a.distance(to: $0) }.min() ?? Int.max
-            let db = enemyPositions.map { b.distance(to: $0) }.min() ?? Int.max
+            let da = enemyPositions.map { boardState.range(from: a, to: $0) ?? 99 }.min() ?? Int.max
+            let db = enemyPositions.map { boardState.range(from: b, to: $0) ?? 99 }.min() ?? Int.max
             return da == db ? (a.col, a.row) < (b.col, b.row) : da < db
         }) else { return false }
         guard let pieceID = spawnMonster(name: name, type: type, at: spot, origin: .summoned) else { return false }
@@ -123,12 +124,92 @@ extension BoardCoordinator {
             let current = queue[head]
             head += 1
             if isEmptyHex(current) && !reserved.contains(current) { return current }
-            for neighbor in current.neighbors where !visited.contains(neighbor) && boardState.cells[neighbor] != nil {
+            for neighbor in boardState.neighbors(of: current) where !visited.contains(neighbor) && boardState.cells[neighbor] != nil {
                 visited.insert(neighbor)
                 queue.append(neighbor)
             }
         }
         return nil
+    }
+}
+
+// MARK: - Objectives and spawn markers
+
+extension BoardCoordinator {
+
+    /// Objectives in play that have no piece on the board yet, lowest number first.
+    func unplacedObjectiveEntities() -> [(GameObjectiveContainer, GameObjectiveEntity)] {
+        guard let game = gameManager?.game else { return [] }
+        return game.objectives.flatMap { container in container.entities.map { (container, $0) } }
+            .filter { !$0.1.dead && !$0.1.off && boardState.piecePositions[.objective(id: $0.1.number)] == nil }
+            .sorted { $0.1.number < $1.1.number }
+    }
+
+    /// Stand each objective that isn't on the board yet on a place written for it in the revealed
+    /// tiles (`ScenarioPlacements`). One with no place written stays off the board. Returns the
+    /// pieces placed.
+    @discardableResult
+    func placeRevealedObjectives() -> [PieceID] {
+        var placed: [PieceID] = []
+        for (container, entity) in unplacedObjectiveEntities() {
+            guard let index = container.objectiveIndex,
+                  let slotIndex = boardState.openObjectiveSlots.firstIndex(where: { $0.objective == index }) else { continue }
+            var slot = boardState.openObjectiveSlots[slotIndex]
+            let piece = PieceID.objective(id: entity.number)
+            // An escort whose hex is taken stands beside it; a thing on the map waits for its own.
+            if boardState.isOccupied(slot.coord) {
+                guard container.escort, let beside = nearestEmptyHex(to: slot.coord) else { continue }
+                slot = ObjectiveSlot(objective: index, coord: beside, cells: [beside])
+            }
+            boardState.openObjectiveSlots.remove(at: slotIndex)
+            boardState.placePiece(piece, at: slot.coord)
+            boardState.objectiveSites[entity.number] = slot
+            boardScene?.addPieceSprite(id: piece, at: slot.coord, offsetCol: offsetCol, offsetRow: offsetRow)
+            placed.append(piece)
+        }
+        return placed
+    }
+
+    /// An objective left the board: an obstacle it was drawn as goes with it, and a door it
+    /// barred opens.
+    func clearObjectiveSite(_ number: Int) {
+        guard let site = boardState.objectiveSites.removeValue(forKey: number) else { return }
+        for hex in site.cells where boardState.cells[hex]?.overlay == .obstacle {
+            boardState.removeObstacle(at: hex)
+            boardScene?.removeOverlaySprite(at: hex, offsetCol: offsetCol, offsetRow: offsetRow)
+        }
+        if site.barsDoor, boardState.isClosedDoor(site.coord) { openDoor(at: site.coord) }
+    }
+
+    /// Whether an objective still bars the door on this hex.
+    func isDoorBarred(at coord: HexCoord) -> Bool {
+        boardState.objectiveSites.contains { number, site in
+            site.barsDoor && site.coord == coord && boardState.piecePositions[.objective(id: number)] != nil
+        }
+    }
+
+    /// Where a scenario rule's spawn at `marker` goes: the first free hex lettered with it, else
+    /// (they are all taken) the first of them, the monster then standing as near as it can; or
+    /// beside the objective that carries the letter (an imp at water pump "a"), or where one
+    /// just destroyed stood (a corpse from grave "a"). Nil when the letter is nowhere on the
+    /// revealed map.
+    func spawnHex(forMarker marker: String) -> HexCoord? {
+        if let hexes = boardState.markerHexes[marker], !hexes.isEmpty {
+            return hexes.first(where: isEmptyHex) ?? hexes[0]
+        }
+        if let fallen = fallenFigure, fallen.markers.contains(marker) { return fallen.hex }
+        guard let game = gameManager?.game else { return nil }
+        let carriers = game.objectives.flatMap(\.entities)
+            .filter { !$0.dead && ($0.marker == marker || $0.markers.contains(marker)) }
+            .sorted { $0.number < $1.number }
+            .compactMap { boardState.piecePositions[.objective(id: $0.number)] }
+        // One for each that carries it: the next goes beside the one with the fewest already there.
+        func crowd(_ hex: HexCoord) -> Int {
+            boardState.neighbors(of: hex).filter { neighbor in
+                boardState.pieces(at: neighbor).contains { if case .monster = $0 { return true }; return false }
+            }.count
+        }
+        return carriers.enumerated().min { (crowd($0.element), $0.offset) < (crowd($1.element), $1.offset) }?.element
     }
 }
 
@@ -146,7 +227,7 @@ extension BoardCoordinator {
         let summonName = summonData.name
         guard let charPos = boardState.piecePositions[summoner] else { return false }
 
-        let emptyNeighbors = charPos.neighbors.filter { isEmptyHex($0) }
+        let emptyNeighbors = boardState.neighbors(of: charPos).filter { isEmptyHex($0) }
         guard !emptyNeighbors.isEmpty else {
             log("\(who) can\u{2019}t summon \(GameText.titleCased(summonName)): no empty hex next to them", category: .info)
             return false

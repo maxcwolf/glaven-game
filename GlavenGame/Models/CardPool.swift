@@ -28,12 +28,14 @@ enum CardPool {
         max(0, level - 1 - chosen.count)
     }
 
-    /// The cards the character can choose now: above level 1, at or below their level, not yet
-    /// chosen.
+    /// The cards the character can choose now: above level 1, not yet chosen, and no higher
+    /// than the level the choice is for. Choices are made a level at a time (p.44): a level 3
+    /// recruit takes a level 2 card first, then one of level 3 or lower.
     static func choosable(_ abilities: [AbilityModel], level characterLevel: Int, chosen: [Int]) -> [AbilityModel] {
-        abilities.filter { card in
+        let choiceLevel = min(characterLevel, chosen.count + 2)
+        return abilities.filter { card in
             guard let id = card.cardId, let cardLevel = level(of: card) else { return false }
-            return cardLevel >= 2 && cardLevel <= characterLevel && !chosen.contains(id)
+            return cardLevel >= 2 && cardLevel <= choiceLevel && !chosen.contains(id)
         }
     }
 

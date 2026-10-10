@@ -7,8 +7,10 @@ import Foundation
 /// are re-checked on every evaluation (any phase), which is how mid-round triggers such as
 /// "when the door is destroyed" or "when room 3 is revealed" fire promptly.
 enum RulePhase: String, CaseIterable {
-    /// Start of a round: `game.round` already holds the new round number.
-    /// Evaluates `start` rules (and `always` rules).
+    /// Start of a round: evaluates `start` rules (and `always` rules). On the board this is
+    /// done before the players choose their cards (`evaluateRulesForTheRoundToCome`), with
+    /// `game.round` still holding the round that has ended; away from it, as the round is
+    /// advanced, with `game.round` already the new number.
     case roundStart
     /// End of a round: `game.round` still holds the round that is ending.
     /// Evaluates rules without `start` (and `always` rules).
@@ -36,10 +38,23 @@ final class ScenarioRulesManager {
     var onOpenRooms: (([Int]) -> Void)?
     /// Places a rule-spawned monster on the board (entity + piece). Returns false when the board
     /// isn't active, in which case only the game-state entity is created.
-    var onSpawnMonster: ((_ name: String, _ type: MonsterType, _ marker: String?, _ health: String?) -> Bool)?
+    /// `placed`: set up late rather than spawned (it drops money).
+    var onSpawnMonster: ((_ name: String, _ type: MonsterType, _ marker: String?, _ health: String?, _ placed: Bool) -> Bool)?
+    /// Sets up monster types the scenario held back. Wired from GameManager.
+    var onSetUpMonsters: (([String]) -> Void)?
+    /// Whether something has happened on the board (a rule's `when`); nothing has without a board.
+    var boardFactHolds: ((BoardFact) -> Bool)?
+    /// Whether a figure stands where an identifier's `near`/`tile` asks.
+    var standsWhere: ((any Entity, ScenarioFigureRuleIdentifier) -> Bool)?
+    /// Damage and healing a rule gives a monster, summon or objective, offered to the board
+    /// (true: the board does it, with all that follows — a death, Poison stopping a heal).
+    var takesFigureDamage: ((_ entity: any Entity, _ amount: Int) -> Bool)?
+    var healsFigure: ((_ entity: any Entity, _ amount: Int) -> Bool)?
     /// Damage a rule deals a character, offered to the board (true: the board takes it, so the
     /// character may lose cards to negate it, p.22).
     var takesCharacterDamage: ((_ character: GameCharacter, _ amount: Int) -> Bool)?
+    /// Puts damage traps on the hexes of these letters (a rule's `traps`). Wired from the board.
+    var onPlaceTraps: (([String]) -> Void)?
 
     /// Re-entrancy guard: effects (e.g. `onOpenRooms`) may cause callers to request another
     /// evaluation while one is running; that request is folded into a follow-up pass.
@@ -56,6 +71,24 @@ final class ScenarioRulesManager {
     }
 
     // MARK: - Rule Evaluation
+
+    /// The round being judged, while it isn't `game.round`: the round to come, as its
+    /// start-of-round rules are applied before the cards for it are chosen.
+    @ObservationIgnored private var roundToCome: Int?
+    private var currentRound: Int { roundToCome ?? game.round }
+
+    /// What the scenario does "at the start of the round" is done before the players choose their
+    /// cards, so they choose knowing it: who starts Disarmed (#5) or Muddled (#48), which element
+    /// is strong (#31, #39), who has appeared (#3). Called as card selection begins, when
+    /// `game.round` is still the round just ended; each rule is marked as fired for the round to
+    /// come, so advancing the round doesn't apply it again. Monster ability cards are still
+    /// drawn only once every character's cards are chosen.
+    func evaluateRulesForTheRoundToCome() {
+        guard game.state == .draw, roundToCome == nil else { return }
+        roundToCome = game.round + 1
+        defer { roundToCome = nil }
+        evaluateRules(phase: .roundStart)
+    }
 
     /// Backwards-compatible entry point for mid-round re-checks (e.g. after a kill).
     /// Equivalent to `evaluateRules(phase: .figureChange)`.
@@ -99,7 +132,7 @@ final class ScenarioRulesManager {
         guard let scenario = game.scenario, let rules = scenario.data.rules else { return }
         for (index, rule) in rules.enumerated() where rule.alwaysApplyTurn == timing.rawValue {
             if rule.isOnce && scenario.appliedRules.contains(scenario.ruleKey(index: index)) { continue }
-            guard conditionsHold(rule, index: index, scenario: scenario, round: game.round) else { continue }
+            guard conditionsHold(rule, index: index, scenario: scenario, round: currentRound) else { continue }
             let effects = (rule.figures ?? []).filter { !Self.isTriggerType($0.type) }
             var applied = false
             for figureRule in effects {
@@ -120,7 +153,7 @@ final class ScenarioRulesManager {
     /// Runs one evaluation pass. Returns true if a (non-persistent) rule was applied.
     private func runPass(phase: RulePhase) -> Bool {
         guard let scenario = game.scenario, let rules = scenario.data.rules else { return false }
-        let round = game.round
+        let round = currentRound
         var appliedSomething = false
 
         for (index, rule) in rules.enumerated() {
@@ -146,7 +179,7 @@ final class ScenarioRulesManager {
             // automatically.
             let hasFigureTrigger = (rule.figures ?? []).contains { isTriggerType($0.type) }
             let hasRoomRequirement = !(rule.requiredRooms ?? []).isEmpty
-            return hasFigureTrigger || hasRoomRequirement
+            return hasFigureTrigger || hasRoomRequirement || !(rule.when ?? []).isEmpty
         }
         switch phase {
         case .roundStart: return rule.isStart
@@ -163,6 +196,8 @@ final class ScenarioRulesManager {
             || (rule.figures ?? []).contains { !isTriggerType($0.type) }
             || !(rule.elements ?? []).isEmpty
             || !(rule.rooms ?? []).isEmpty
+            || !(rule.setUp ?? []).isEmpty
+            || !(rule.traps ?? []).isEmpty
             || !(rule.disableRules ?? []).isEmpty
             || rule.finish != nil
         return !hasOtherEffects
@@ -199,6 +234,8 @@ final class ScenarioRulesManager {
         if let roundExpr = rule.round {
             if !evaluateRoundCondition(roundExpr, round: round) { return false }
         }
+
+        if let facts = rule.when, !facts.allSatisfy({ boardFactHolds?($0) ?? false }) { return false }
 
         // Figure-based trigger conditions (dead / present / killed). A rule's figures array may
         // contain both trigger entries and effect entries; all trigger entries must pass.
@@ -286,6 +323,10 @@ final class ScenarioRulesManager {
 
         let edition = scenario.data.edition
         let playerCount = scenarioPlayerCount
+        // N in a count: how many times the rule has applied, this time included ("every second
+        // spawn is elite").
+        appliedTimes = rule.isOnce ? 1 : scenario.appliedRules.filter { $0.hasPrefix(ruleKey + "@r") }.count
+        defer { appliedTimes = nil }
 
         // Spawn monsters
         if let spawns = rule.spawns, !spawns.isEmpty {
@@ -296,7 +337,7 @@ final class ScenarioRulesManager {
                 for _ in 0..<count {
                     spawnMonsterEntity(name: spawn.monster.name, type: monsterType,
                                        edition: edition, marker: spawn.marker,
-                                       health: spawn.monster.health)
+                                       health: spawn.monster.health, placed: spawn.placed ?? false)
                 }
             }
         }
@@ -306,14 +347,17 @@ final class ScenarioRulesManager {
             let figureCount = triggerFigureCount(rule)
             for spawn in objectiveSpawns {
                 let count = resolveCount(spawn.count, figureCount: figureCount)
-                for i in 0..<count {
-                    spawnObjective(spawn.objective, edition: edition, number: i + 1, marker: spawn.marker)
+                for _ in 0..<count {
+                    spawnObjective(spawn.objective, edition: edition, marker: spawn.marker)
                 }
             }
         }
 
-        // Apply figure effects (non-trigger entries only)
+        // Apply figure effects (non-trigger entries only); F in a value is the trigger's count
+        // ("heals C−1 for each bone pile").
         if let figures = rule.figures {
+            appliedFigureCount = triggerFigureCount(rule)
+            defer { appliedFigureCount = nil }
             for figureRule in figures where !Self.isTriggerType(figureRule.type) {
                 applyFigureRule(figureRule, edition: edition)
             }
@@ -322,6 +366,16 @@ final class ScenarioRulesManager {
         // Set element states
         if let elements = rule.elements {
             for elementRule in elements { applyElementRule(elementRule) }
+        }
+
+        // Monsters held back until now are set up
+        if let names = rule.setUp, !names.isEmpty {
+            onSetUpMonsters?(names)
+        }
+
+        // Traps that appear
+        if let letters = rule.traps, !letters.isEmpty {
+            onPlaceTraps?(letters)
         }
 
         // Reveal rooms as an effect
@@ -367,9 +421,15 @@ final class ScenarioRulesManager {
 
     /// Variables for value expressions (damage, hit points, counts). C is at least 2, as in
     /// GHS entity-value formulas.
+    /// F while a rule is being applied: how many figures its triggers count.
+    @ObservationIgnored private var appliedFigureCount: Int?
+    /// N while a rule is being applied: how many times it has applied so far.
+    @ObservationIgnored private var appliedTimes: Int?
+
     private func valueVariables(figureCount: Int? = nil) -> [String: Int] {
-        var variables = ["C": scenarioPlayerCount, "L": game.level, "R": game.round]
-        if let figureCount { variables["F"] = figureCount }
+        var variables = ["C": scenarioPlayerCount, "L": game.level, "R": currentRound]
+        if let figureCount = figureCount ?? appliedFigureCount { variables["F"] = figureCount }
+        if let appliedTimes { variables["N"] = appliedTimes }
         return variables
     }
 
@@ -417,9 +477,17 @@ final class ScenarioRulesManager {
             guard let identifier = effect.identifier,
                   let statEffect = effect.statEffect else { continue }
 
-            // Check reference condition (e.g. "Altar present")
+            // Check reference condition (e.g. "Altar present"). An effect counted in X — "for each
+            // altar that isn't destroyed" — still applies with none left, as nothing at all.
+            let usesX = [statEffect.health, statEffect.attack, statEffect.movement, statEffect.range]
+                .contains { $0?.contains("X") == true }
+            var x = 0
             if let reference = effect.reference {
-                guard checkStatEffectReference(reference, edition: edition) else { continue }
+                if usesX, reference.type == "present", let counted = reference.identifier {
+                    x = findTargets(identifier: counted).count
+                } else {
+                    guard checkStatEffectReference(reference, edition: edition) else { continue }
+                }
             }
 
             let targetEdition = identifier.edition ?? edition
@@ -433,7 +501,7 @@ final class ScenarioRulesManager {
                 var effectToApply = statEffect
                 if let name = statEffect.name, monster.displayName == name { effectToApply.name = nil }
                 if let deck = statEffect.deck, monster.deckOverride == deck { effectToApply.deck = nil }
-                monsterManager.applyScenarioStatEffect(effectToApply, to: monster, charCount: playerCount)
+                monsterManager.applyScenarioStatEffect(effectToApply, to: monster, charCount: playerCount, x: x)
             }
         }
     }
@@ -451,8 +519,8 @@ final class ScenarioRulesManager {
     // MARK: - Private: Spawning
 
     private func spawnMonsterEntity(name: String, type: MonsterType, edition: String,
-                                     marker: String? = nil, health: String? = nil) {
-        if onSpawnMonster?(name, type, marker, health) == true { return }
+                                     marker: String? = nil, health: String? = nil, placed: Bool = false) {
+        if onSpawnMonster?(name, type, marker, health, placed) == true { return }
         var monster = game.monsters.first(where: { $0.name == name && $0.edition == edition })
         if monster == nil {
             monsterManager.addMonster(name: name, edition: edition)
@@ -476,7 +544,7 @@ final class ScenarioRulesManager {
         }
     }
 
-    private func spawnObjective(_ objData: ObjectiveData, edition: String, number: Int, marker: String?) {
+    private func spawnObjective(_ objData: ObjectiveData, edition: String, marker: String?) {
         let container = GameObjectiveContainer(
             name: objData.name ?? "Objective",
             edition: edition,
@@ -492,7 +560,7 @@ final class ScenarioRulesManager {
             case .int(let n): hp = n
             case .string(let s): hp = ScenarioExpression.integerValue(s, variables: valueVariables()) ?? 1
             }
-            let entity = GameObjectiveEntity(number: number, health: hp, maxHealth: hp)
+            let entity = GameObjectiveEntity(number: game.nextObjectiveNumber, health: hp, maxHealth: hp)
             if let marker = marker ?? objData.marker { entity.marker = marker }
             container.entities.append(entity)
         }
@@ -507,13 +575,17 @@ final class ScenarioRulesManager {
         guard let identifier = figureRule.identifier else { return }
 
         let targets = findTargets(identifier: identifier)
+        // "For each bone pile": so many effects, each on its own.
+        let times = figureRule.times.map { min(max(integerValue($0, default: 1), 0), 20) } ?? 1
         for target in targets {
             // "Ignore negative scenario effects" perk.
             if figureRule.scenarioEffect == true, let character = target as? GameCharacter,
                character.hasCustomPerk("ignoreNegativeScenario") {
                 continue
             }
-            applyFigureEffect(ruleType, value: figureRule.value, to: target)
+            for _ in 0..<times {
+                applyFigureEffect(ruleType, value: figureRule.value, to: target)
+            }
         }
     }
 
@@ -544,6 +616,7 @@ final class ScenarioRulesManager {
         func passesFilters(_ entity: any Entity) -> Bool {
             if !requiredTags.isEmpty && !requiredTags.allSatisfy({ entity.tags.contains($0) }) { return false }
             if let hpExpr = identifier.hp, !matchesHealthFilter(hpExpr, entity: entity) { return false }
+            if identifier.isPlaced, standsWhere?(entity, identifier) != true { return false }
             return true
         }
 
@@ -642,12 +715,16 @@ final class ScenarioRulesManager {
         case "damage":
             let amount = integerValue(value, default: 1)
             guard amount > 0 else { break }
-            if let character = entity as? GameCharacter, takesCharacterDamage?(character, amount) == true { break }
+            if let character = entity as? GameCharacter {
+                if takesCharacterDamage?(character, amount) == true { break }
+            } else if takesFigureDamage?(entity, amount) == true { break }
             entityManager.changeHealth(entity, amount: -amount)
 
         case "heal":
             let amount = integerValue(value, default: 1)
-            if amount > 0 { entityManager.changeHealth(entity, amount: amount) }
+            guard amount > 0 else { break }
+            if !(entity is GameCharacter), healsFigure?(entity, amount) == true { break }
+            entityManager.changeHealth(entity, amount: amount)
 
         case "setHp":
             if value != nil {

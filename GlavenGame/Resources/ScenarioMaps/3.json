@@ -237,7 +237,7 @@
                                 ],
                                 "monsters": [
                                     {
-                                        "monster": "inox-archer",
+                                        "monster": "inox-shaman",
                                         "initialX": 0,
                                         "initialY": 1,
                                         "twoPlayer": "none",
@@ -245,7 +245,7 @@
                                         "fourPlayer": "normal"
                                     },
                                     {
-                                        "monster": "inox-archer",
+                                        "monster": "inox-shaman",
                                         "initialX": 2,
                                         "initialY": 2,
                                         "twoPlayer": "normal",

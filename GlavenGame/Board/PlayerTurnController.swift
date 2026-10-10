@@ -61,6 +61,20 @@ final class PlayerTurnController {
     /// Halves ("top", "bottom", "extra") with at least one printed ability performed. A half
     /// skipped whole puts its card in the discard pile, lost or persistent icon or not (GH p.16).
     private(set) var performedHalves: Set<String> = []
+    /// XP and infusions printed on their own in a half, met before any of its abilities was
+    /// performed: they come only once one is (FAQ: "at least one ability on the action must be
+    /// performed"), so they wait here until then.
+    private var owedEffects: [String: [ActionModel]] = [:]
+    /// The step being executed turned out to do nothing (an attack with no target, a Loot with
+    /// nothing in range, a consume that couldn't be paid): it isn't performing the half.
+    private var stepDidNothing = false
+    /// A step is being executed right now (it may finish before `executeAction` returns).
+    private var executingStep = false
+    /// Markers ("round", "persistent") inside element bonuses that were paid for, by half: the
+    /// card goes to the active area for them only then (Crackling Air's Fire: Retaliate).
+    private var paidMarkers: [String: Set<String>] = [:]
+    /// The half ("top": true) each card played for an active bonus this turn was played for.
+    private(set) var halfInPlayThisTurn: [Int: Bool] = [:]
     /// A default Attack 2 / Move 2 is waiting for its target or destination.
     private var defaultAttackPending = false
     /// An action is waiting for player input or still resolving (attack, summon placement…).
@@ -120,12 +134,17 @@ final class PlayerTurnController {
     private struct ActionCheckpoint {
         let character: CharacterSnapshot
         let elements: [ElementModel]
+        let elementsInfused: Set<ElementType>
         let positions: [PieceID: HexCoord]
         let cells: [HexCoord: HexCell]
         let logCount: Int
         let hasActed: Bool
         let topUsedAsDefault: Bool, bottomUsedAsDefault: Bool
         let performedHalves: Set<String>
+        let owedEffects: [String: [ActionModel]]
+        let paidMarkers: [String: Set<String>]
+        let halfInPlayThisTurn: [Int: Bool]
+        let roundCardsThisTurn: [Int]
         let topActions: [ActionModel], bottomActions: [ActionModel], extraActions: [ActionModel]
         let hexesMoved: Int, damageInflicted: Int, lootBonus: Int, damageSuffered: Int, lastMoveLength: Int
         let hexesPassed: [HexCoord]
@@ -210,7 +229,20 @@ final class PlayerTurnController {
         func untagged(_ steps: [ActionModel]) -> [ActionModel] { steps.filter { Self.bonusCard(of: $0) == nil } }
         topActions = untagged(topActions)
         bottomActions = untagged(bottomActions)
-        guard let character, let coordinator else { return }
+        let (starts, ends) = turnBonusSteps()
+        if bottomFirst {
+            bottomActions = starts + bottomActions
+            topActions += ends
+        } else {
+            topActions = starts + topActions
+            bottomActions += ends
+        }
+    }
+
+    /// The steps the character's charged bonuses add at the start and at the end of a turn, each
+    /// tagged with its card.
+    private func turnBonusSteps() -> (starts: [ActionModel], ends: [ActionModel]) {
+        guard let character, let coordinator else { return ([], []) }
         var starts: [ActionModel] = [], ends: [ActionModel] = []
         for (cardId, bonus) in coordinator.chargedBonuses(of: character) {
             let tag = ActionModel(type: .card, value: .string("bonus:\(cardId)"))
@@ -225,13 +257,47 @@ final class PlayerTurnController {
                 continue
             }
         }
-        if bottomFirst {
-            bottomActions = starts + bottomActions
-            topActions += ends
+        return (starts, ends)
+    }
+
+    // MARK: - Bonus steps on a long-rest turn
+
+    /// What follows the rest turn's bonus steps being performed, while they are.
+    private var afterRestSteps: (() -> Void)?
+
+    /// A long rest is a turn (FAQ), so the bonuses that act "at the start/end of your next
+    /// turns" act on it as well, a charge each: Lumbering Bash's and Triage's heal before the
+    /// rest's card is chosen, Auto Turret's attack and Gas Canister's recovery before the turn
+    /// ends. With no two halves to hold them, the steps are performed here one after another —
+    /// a heal or an attack waits for its target as on any turn and may be skipped from the
+    /// instruction — and `done` runs after the last (at once when there is none).
+    func performRestBonusSteps(atStart: Bool, then done: @escaping () -> Void) {
+        let steps = atStart ? turnBonusSteps().starts : turnBonusSteps().ends
+        guard isLongRest, phase == .turnComplete, !steps.isEmpty, !(character?.exhausted ?? true) else { return done() }
+        extraActions = steps
+        phase = .executeExtraHalf
+        currentActionIndex = 0
+        afterRestSteps = done
+        performNextRestStep()
+    }
+
+    /// The next of the rest turn's bonus steps; a finished step comes back here (`stepFinished`).
+    private func performNextRestStep() {
+        guard afterRestSteps != nil, phase == .executeExtraHalf, !isWaiting else { return }
+        if currentActionIndex < extraActions.count, !(character?.exhausted ?? true) {
+            executeCurrentAction()
         } else {
-            topActions = starts + topActions
-            bottomActions += ends
+            finishRestSteps()
         }
+    }
+
+    private func finishRestSteps() {
+        guard let done = afterRestSteps else { return }
+        afterRestSteps = nil
+        extraActions = []
+        phase = .turnComplete
+        currentActionIndex = 0
+        done()
     }
 
     /// Steps from charged bonuses that go with the half's own moves and attacks: Wings of the
@@ -348,6 +414,7 @@ final class PlayerTurnController {
             phase = .turnComplete
             return
         }
+        if endIfStunned() { return }
 
         let actions: [ActionModel]
         switch phase {
@@ -367,15 +434,23 @@ final class PlayerTurnController {
         hasActed = true
         placeActionBonusSteps(at: currentActionIndex)
         let action = currentSteps[currentActionIndex]
-        if Self.bonusCard(of: action) == nil, let half = halfKey { performedHalves.insert(half) }
+        // Performing one of the half's abilities is performing the half (its XP, its standalone
+        // infusion and its lost icon follow); a step that turns out to do nothing isn't.
+        let performedBefore = performedHalves
+        if Self.bonusCard(of: action) == nil, Self.isAbilityStep(action), let half = halfKey { performedHalves.insert(half) }
         // Async actions (target/hex selection) advance in advanceAfterAsyncAction() — which may
         // already have happened synchronously (e.g. an attack with no valid target).
         awaitingAsync = true
+        stepDidNothing = false
+        executingStep = true
         let isAsync = executeAction(action, coordinator: coordinator)
+        executingStep = false
+        if stepDidNothing { performedHalves = performedBefore }
         if !isAsync {
             awaitingAsync = false
             currentActionIndex += 1
         }
+        if !awaitingAsync { stepFinished() }
     }
 
     /// Advance the action index after an async action (attack/summon/condition/heal) resolves.
@@ -388,29 +463,151 @@ final class PlayerTurnController {
             finishHalfAfterBasicAction()
             return
         }
-        guard awaitingAsync else { return }
+        guard awaitingAsync else {
+            // Exhausted by a rest turn's own bonus step (a retaliate on Auto Turret's attack):
+            // nothing more is performed, and the turn goes on to its end.
+            if character?.exhausted ?? true { finishRestSteps() }
+            return
+        }
         awaitingAsync = false
         currentActionIndex += 1
+        if !executingStep { stepFinished() }
+    }
+
+    /// The step being executed could not be performed at all (no target, nothing to loot, no room
+    /// for a summon): it doesn't count as performing the half, and what comes with performing
+    /// it (XP, infusions) isn't gained.
+    func abilityDidNothing() { stepDidNothing = true }
+
+    /// Whether a step is one of the half's abilities, rather than what comes with performing
+    /// them: experience, an infusion printed on its own, the card's markers.
+    static func isAbilityStep(_ action: ActionModel) -> Bool {
+        switch action.type {
+        case .card, .experience: return false
+        case .element: return MonsterAbility.isConsume(action)
+        default: return true
+        }
+    }
+
+    /// Whether the half being played has had one of its abilities performed.
+    private var halfPerformed: Bool { halfKey.map(performedHalves.contains) ?? true }
+
+    /// A step that harms the character or their allies ("suffer 2 damage", "all adjacent allies
+    /// suffer 1 damage"): once the action is being performed it can't be left out (GH p.16).
+    private func harmsOwnSide(_ step: ActionModel) -> Bool {
+        switch step.type {
+        case .suffer, .sufferDamage:
+            return true
+        case .custom:
+            let text = customTextOfStep(step)
+            guard text.contains("suffer") else { return false }
+            return text.contains("allies") || !text.contains("enem")
+        default:
+            return false
+        }
+    }
+
+    /// Steps that follow from performing the half without a choice: its XP and infusions (never
+    /// optional, FAQ), and harm to the character's own side.
+    private func isOwedOncePerformed(_ step: ActionModel) -> Bool {
+        guard Self.bonusCard(of: step) == nil else { return false }
+        return !Self.isAbilityStep(step) || (halfPerformed && harmsOwnSide(step))
+    }
+
+    /// A step has finished: what was waiting on the half being performed is gained, and the
+    /// steps that need no choice are performed in turn.
+    private func stepFinished() {
+        performingHeal = false   // a heal made between steps (an item's) is its own Heal action
+        settleOwedEffects()
+        guard let coordinator, !(character?.exhausted ?? true) else { return }
+        while !awaitingAsync, !defaultAttackPending, currentActionIndex < currentSteps.count,
+              isOwedOncePerformed(currentSteps[currentActionIndex]) {
+            executingStep = true
+            let waits = executeAction(currentSteps[currentActionIndex], coordinator: coordinator)
+            executingStep = false
+            if waits {
+                awaitingAsync = true
+                return
+            }
+            currentActionIndex += 1
+        }
+        settleOwedEffects()
+        performNextRestStep()
+    }
+
+    /// XP and infusions that were waiting for the half to be performed.
+    private func settleOwedEffects() {
+        guard let half = halfKey, performedHalves.contains(half), let owed = owedEffects.removeValue(forKey: half),
+              let coordinator else { return }
+        for effect in owed {
+            if effect.type == .element {
+                applyElementAction(effect, coordinator: coordinator)
+            } else if effect.type == .experience {
+                grantExperience(effect.value?.intValue ?? 1)
+            } else if let xp = Self.experience(in: effect) {
+                grantExperience(xp)
+            }
+        }
+    }
+
+    /// Keep a standalone XP or infusion for when (if) the half is performed.
+    private func owe(_ effect: ActionModel) {
+        guard let half = halfKey else { return }
+        owedEffects[half, default: []].append(effect)
     }
 
     /// Skip remaining actions in the current phase. A pending target/hex selection is
     /// cancelled; an attack that is already resolving must finish first.
     func skipRemainingActions() {
         guard let coordinator else { return }
+        // A move going on past a door ends in the doorway first (what it does as it ends happens).
+        if coordinator.continuedMove != nil {
+            coordinator.stopContinuedMove()
+            return
+        }
         if defaultAttackPending || awaitingAsync {
             switch coordinator.interactionMode {
             case .idle, .watchingMonsterTurn, .selectingPushPullHex:
                 return
             default:
-                coordinator.interactionMode = .idle
-                coordinator.abandonSummonPlacement()
-                coordinator.dropChoiceExtras()
-                coordinator.boardScene?.clearHighlights()
-                defaultAttackPending = false
-                awaitingAsync = false
+                abandonPendingChoice(coordinator: coordinator)
+            }
+        }
+        // What performing the half has made due still happens: its XP and infusions aren't
+        // optional, and harm to the character's own side can't be left out (GH p.16, FAQ).
+        settleOwedEffects()
+        if halfPerformed, !(character?.exhausted ?? true) {
+            while currentActionIndex < currentSteps.count {
+                let step = currentSteps[currentActionIndex]
+                if isOwedOncePerformed(step) {
+                    executingStep = true
+                    let waits = executeAction(step, coordinator: coordinator)
+                    executingStep = false
+                    if waits {
+                        awaitingAsync = true
+                        return
+                    }
+                }
+                currentActionIndex += 1
             }
         }
         advancePhase()
+    }
+
+    /// Drop the choice the board is waiting for. While nothing has come of the step yet it is
+    /// taken back whole (an element paid, XP, its part in performing the half), as Cancel does.
+    private func abandonPendingChoice(coordinator: BoardCoordinator) {
+        if canCancelChoice {
+            cancelChoice()
+        } else {
+            coordinator.interactionMode = .idle
+            coordinator.pendingForcedAttack = nil
+            coordinator.abandonSummonPlacement()
+            coordinator.dropChoiceExtras()
+            coordinator.boardScene?.clearHighlights()
+            defaultAttackPending = false
+            awaitingAsync = false
+        }
     }
 
     /// Skip just the current ability of this half (any ability may be skipped, GH p.16) and go
@@ -418,6 +615,16 @@ final class PlayerTurnController {
     /// is already resolving must finish first.
     func skipCurrentAction() {
         guard let coordinator else { return }
+        // A push or pull not yet begun is turned down whole; the attack it follows stands.
+        if coordinator.pushPullDeclinable {
+            coordinator.declinePushPull()
+            return
+        }
+        // A move going on past a door it opened: skipping the rest stops in the doorway.
+        if coordinator.continuedMove != nil {
+            coordinator.stopContinuedMove()
+            return
+        }
         if defaultAttackPending {
             skipRemainingActions()
             return
@@ -427,19 +634,21 @@ final class PlayerTurnController {
             case .idle, .watchingMonsterTurn, .selectingPushPullHex:
                 return
             default:
-                coordinator.interactionMode = .idle
-                coordinator.pendingForcedAttack = nil
-                coordinator.abandonSummonPlacement()
-                coordinator.dropChoiceExtras()
-                coordinator.boardScene?.clearHighlights()
-                awaitingAsync = false
+                abandonPendingChoice(coordinator: coordinator)
             }
         }
         let count = currentSteps.count
         guard phase == .executeTopAction || phase == .executeBottomAction || phase == .executeExtraHalf else { return }
         hasActed = true
+        // XP, an infusion or harm to one's own side that performing the half has made due can't
+        // be skipped: it happens instead.
+        if currentActionIndex < count, halfPerformed, isOwedOncePerformed(currentSteps[currentActionIndex]) {
+            executeCurrentAction()
+            return
+        }
         if currentActionIndex + 1 < count {
             currentActionIndex += 1
+            stepFinished()
         } else {
             advancePhase()
         }
@@ -450,11 +659,13 @@ final class PlayerTurnController {
     private func makeCheckpoint() -> ActionCheckpoint? {
         guard let character, let coordinator, let game = gameManager?.game else { return nil }
         return ActionCheckpoint(
-            character: character.toSnapshot(), elements: game.elementBoard,
+            character: character.toSnapshot(), elements: game.elementBoard, elementsInfused: game.elementsInfusedThisTurn,
             positions: coordinator.boardState.piecePositions, cells: coordinator.boardState.cells,
             logCount: coordinator.turnLog.count, hasActed: hasActed,
             topUsedAsDefault: topUsedAsDefault, bottomUsedAsDefault: bottomUsedAsDefault,
-            performedHalves: performedHalves, topActions: topActions, bottomActions: bottomActions, extraActions: extraActions,
+            performedHalves: performedHalves, owedEffects: owedEffects, paidMarkers: paidMarkers,
+            halfInPlayThisTurn: halfInPlayThisTurn, roundCardsThisTurn: roundCardsThisTurn,
+            topActions: topActions, bottomActions: bottomActions, extraActions: extraActions,
             hexesMoved: hexesMoved, damageInflicted: damageInflicted, lootBonus: lootBonus,
             damageSuffered: damageSuffered, lastMoveLength: lastMoveLength, hexesPassed: hexesPassed,
             persistentCardsThisTurn: persistentCardsThisTurn, movedThroughConditions: movedThroughConditions,
@@ -503,6 +714,7 @@ final class PlayerTurnController {
         coordinator.abandonSummonPlacement()
         checkpoint.character.apply(to: character, editionStore: gameManager.editionStore)
         gameManager.game.elementBoard = checkpoint.elements
+        gameManager.game.elementsInfusedThisTurn = checkpoint.elementsInfused
         if coordinator.turnLog.count > checkpoint.logCount {
             coordinator.turnLog.removeLast(coordinator.turnLog.count - checkpoint.logCount)
         }
@@ -510,6 +722,10 @@ final class PlayerTurnController {
         topUsedAsDefault = checkpoint.topUsedAsDefault
         bottomUsedAsDefault = checkpoint.bottomUsedAsDefault
         performedHalves = checkpoint.performedHalves
+        owedEffects = checkpoint.owedEffects
+        paidMarkers = checkpoint.paidMarkers
+        halfInPlayThisTurn = checkpoint.halfInPlayThisTurn
+        roundCardsThisTurn = checkpoint.roundCardsThisTurn
         defaultAttackPending = false
         topActions = checkpoint.topActions
         bottomActions = checkpoint.bottomActions
@@ -536,6 +752,8 @@ final class PlayerTurnController {
         coordinator.syncPieceVisuals()
         awaitingAsync = false
         self.checkpoint = nil
+        // A rest turn has no button to perform the step again: it is asked anew.
+        performNextRestStep()
     }
 
     /// The steps of the half being played.
@@ -599,6 +817,7 @@ final class PlayerTurnController {
             endForExhaustion()
             return
         }
+        if endIfStunned() { return }
         guard canUseDefaultAction else { return }
         finishedHalf = nil
         checkpoint = makeCheckpoint()
@@ -643,6 +862,21 @@ final class PlayerTurnController {
         phase = .turnComplete
     }
 
+    /// The character was stunned in the middle of its own turn (a Stun trap sprung on the way):
+    /// it performs no more abilities this turn (GH p.22). What is left of both halves is passed
+    /// over and the cards are put away as played; the Stun lasts to the end of its next turn.
+    /// True when the turn was ended.
+    private func endIfStunned() -> Bool {
+        var performing: Bool { phase == .executeTopAction || phase == .executeBottomAction || phase == .executeExtraHalf }
+        guard let coordinator, performing, coordinator.isConditionActive(.stun, on: .character(characterID)) else { return false }
+        coordinator.log("\(who) is stunned and can do nothing more this turn", category: .condition)
+        defaultAttackPending = false
+        awaitingAsync = false
+        // An extra half first, then what is left of the turn's two.
+        for _ in 0..<3 where performing { advancePhase() }
+        return true
+    }
+
     // MARK: - Queries
 
     /// The attack value of the attack currently being resolved.
@@ -666,6 +900,8 @@ final class PlayerTurnController {
     // MARK: - Private
 
     private func advancePhase() {
+        settleOwedEffects()
+        if let half = halfKey { owedEffects[half] = nil }
         // The tag is printed on the card (the steps leave it out).
         switch phase {
         case .executeTopAction: finishedHalf = FinishedHalf(top: true, kinds: Self.halfKinds(topCard?.actions ?? []))
@@ -689,7 +925,7 @@ final class PlayerTurnController {
             phase = .turnComplete
             finishTurn()
         case (.executeExtraHalf, _):
-            finishExtraHalf()
+            if afterRestSteps != nil { finishRestSteps() } else { finishExtraHalf() }
         default:
             break
         }
@@ -700,10 +936,11 @@ final class PlayerTurnController {
         guard let extra = extraPlay else { return }
         if let character, !character.exhausted {
             putAway(extra.card, half: extraActions, lostFlag: extra.top ? extra.card.lost == true : extra.card.bottomLost == true,
-                    usedAsDefault: false, performed: performedHalves.contains("extra"), character: character)
+                    usedAsDefault: false, key: "extra", top: extra.top, character: character)
         }
         extraPlay = nil
         extraActions = []
+        paidMarkers["extra"] = nil
         phase = extra.resumePhase
         currentActionIndex = extra.resumeIndex
     }
@@ -719,7 +956,16 @@ final class PlayerTurnController {
         pendingPull = 0
         pendingConditions = []
         attackBonusAgainst = [:]
+        bonusPerAttack = nil
     }
+
+    /// What a bonus counted in attacks adds to each attack of the action being made (Crackling
+    /// Air: +1, or +2 with Air consumed), while it has charges left.
+    var bonusPerAttack: Int?
+    /// The Heal action being performed, for a bonus counted in Heal actions (Master Physician):
+    /// whether its charge has been marked, and so whether this action's heals cleanse.
+    var healActionCleanses: Bool?
+    private(set) var performingHeal = false
 
     /// More attack against monsters of these types only, for the attack being made (Skullbane Axe).
     var attackBonusAgainst: [String: Int] = [:]
@@ -809,6 +1055,7 @@ final class PlayerTurnController {
             let elements = MonsterAbility.elements(of: sub)
             guard let used = game.consumeElements(elements) else { continue }
             coordinator?.log("\(who) consumes \(GameText.list(used.map(GameText.elementName)))", category: .element)
+            notePaidConsume(sub)
             for effect in sub.subActions ?? [] {
                 if effect.type == .concatenation {
                     bonus.append(contentsOf: effect.subActions ?? [])
@@ -842,6 +1089,36 @@ final class PlayerTurnController {
         return Int(value.dropFirst("experience:".count))
     }
 
+    /// The half's card counts as in play for its active bonus from now on (before it reaches
+    /// the active area at the end of the turn): its markers, leaving out those inside element
+    /// bonuses that haven't been paid for.
+    private func noteCardInPlay() {
+        guard let half = halfKey, let cardId = currentCard?.cardId else { return }
+        let markers = Self.markers(in: currentSteps, outsideConsumes: true).union(paidMarkers[half] ?? [])
+        guard markers.contains("persistent") || markers.contains("round") else { return }
+        if !persistentCardsThisTurn.contains(cardId) { persistentCardsThisTurn.append(cardId) }
+        if !markers.contains("persistent"), !roundCardsThisTurn.contains(cardId) { roundCardsThisTurn.append(cardId) }
+        halfInPlayThisTurn[cardId] = playingTopHalf
+    }
+
+    /// Whether the half being played is a card's top half.
+    private var playingTopHalf: Bool {
+        switch phase {
+        case .executeBottomAction: return false
+        case .executeExtraHalf: return extraPlay?.top ?? true
+        default: return true
+        }
+    }
+
+    /// An element bonus was paid for: markers printed inside it now count for its card.
+    private func notePaidConsume(_ consume: ActionModel) {
+        guard let half = halfKey else { return }
+        let inside = Self.markers(in: consume.subActions ?? [])
+        guard !inside.isEmpty else { return }
+        paidMarkers[half, default: []].formUnion(inside)
+        noteCardInPlay()
+    }
+
     private func grantExperience(_ xp: Int) {
         guard let character, xp > 0 else { return }
         character.experience += xp
@@ -853,18 +1130,20 @@ final class PlayerTurnController {
     @discardableResult
     private func executeAction(_ action: ActionModel, coordinator: BoardCoordinator) -> Bool {
         let pieceID = PieceID.character(characterID)
-        // A turn step from a charged bonus marks its charge (Lumbering Bash's heal).
+        // A turn step from a charged bonus marks its charge (Lumbering Bash's heal) — unless the
+        // player has ended that bonus since the step was placed.
         if let cardId = Self.bonusCard(of: action), let character {
+            guard coordinator.chargedBonuses(of: character).contains(where: { $0.cardId == cardId }) else {
+                abilityDidNothing()
+                return false
+            }
             coordinator.useCharge(cardId, of: character)
         }
         // A persistent or round half's bonus applies once the half is being performed.
-        let markers = halfMarkers(for: phase)
-        if markers.contains("persistent") || markers.contains("round"),
-           let cardId = currentCard?.cardId,
-           !persistentCardsThisTurn.contains(cardId) {
-            persistentCardsThisTurn.append(cardId)
-            if !markers.contains("persistent") { roundCardsThisTurn.append(cardId) }
-        }
+        if Self.isAbilityStep(action) { noteCardInPlay() }
+        // Each Heal step is a Heal action of its own.
+        performingHeal = action.type == .heal
+        healActionCleanses = nil
 
         switch action.type {
         case .move, .jump, .fly:
@@ -912,8 +1191,12 @@ final class PlayerTurnController {
             var targetCount = 1
             var allTargets: String?
             resetPendingAttack(value: variableValue(action) ?? action.value?.intValue ?? 2, range: 1)
-            // Element augments are paid only when the attack has a target.
-            let hasTarget = !coordinator.targetableEnemies(of: pieceID, range: attackRange(of: action)).isEmpty
+            // Element augments are paid only when the attack has a target (and can be made).
+            // Inferno: "Target all enemies in the same room as you".
+            let roomWide = customTexts(of: action).contains { $0.contains("all enemies in the same room") }
+            let hasTarget = !coordinator.isConditionActive(.disarm, on: pieceID)
+                && (roomWide ? !coordinator.enemiesInRoom(of: pieceID).isEmpty
+                             : !coordinator.targetableEnemies(of: pieceID, range: attackRange(of: action)).isEmpty)
             let bonus = hasTarget ? consumeAugments(of: action) : []
             for sub in (action.subActions ?? []) + bonus {
                 switch sub.type {
@@ -963,13 +1246,17 @@ final class PlayerTurnController {
                 pendingConditions.append(contentsOf: conditions)
                 pendingAdvantage = pendingAdvantage || advantage
             }
-            if case .attackBonusOrElement(let bonus, let element, let upgraded)? = coordinator.useFirstCharge(of: pieceID, where: {
-                if case .attackBonusOrElement = $0 { return true }; return false }) {
+            // Crackling Air: "on your next four attacks" — what it adds is settled for the action
+            // (Air consumed: +2), and a charge is marked with each attack then made, one for
+            // every target (`attackValueWithBonuses`).
+            if let character, case .attackBonusOrElement(let bonus, let element, let upgraded)? = coordinator
+                .chargedBonuses(of: character).lazy.map(\.bonus).first(where: {
+                    if case .attackBonusOrElement = $0 { return true }; return false }) {
                 if let game = gameManager?.game, game.consumeElements([element]) != nil {
                     coordinator.log("\(who) consumes \(GameText.elementName(element))", category: .element)
-                    pendingAttackValue += upgraded
+                    bonusPerAttack = upgraded
                 } else {
-                    pendingAttackValue += bonus
+                    bonusPerAttack = bonus
                 }
             }
             // Nature's Lift (+2 Range on a ranged attack), Foul Wind (+1 Attack): consume Air.
@@ -992,11 +1279,8 @@ final class PlayerTurnController {
                 }
                 pendingAttackRange = range
             }
-            if coordinator.isConditionActive(.invisible, on: pieceID),
-               case .conditionWhileInvisible(let condition)? = coordinator.useFirstCharge(of: pieceID, where: {
-                   if case .conditionWhileInvisible = $0 { return true }; return false }) {
-                pendingConditions.append(condition)
-            }
+            // Voice of the Night ("on your next five attacks while invisible, add Stun") marks
+            // its charges attack by attack too (`conditionsFromBonuses`).
             // Silent Stiletto: Pierce 1 on every melee attack.
             if range <= 1 {
                 pendingPierce += PassiveItems.meleePierce(for: character?.carriedItems ?? [])
@@ -1019,20 +1303,20 @@ final class PlayerTurnController {
             // XP and infusions printed on the attack itself (e.g. Crushing Grasp's earth, Thief's
             // Knack's XP) and on paid augments come with performing it, which needs a target.
             func applyPerformedEffects() {
-                guard hasTarget else { return }
                 grantBonusExperience(bonus)
-                for sub in action.subActions ?? [] {
-                    if sub.type == .element && !MonsterAbility.isConsume(sub) {
-                        applyElementAction(sub, coordinator: coordinator)
-                    } else if let xp = Self.experience(in: sub) {
-                        grantExperience(xp)
-                    }
-                }
+                applyPrintedEffects(of: action, coordinator: coordinator)
             }
 
+            if roomWide {
+                coordinator.log("\(who): Attack \(pendingAttackValue) on every enemy in the room", category: .attack)
+                if hasTarget { applyPerformedEffects() }
+                let allyDamage = attackTexts.first { $0.contains("all allies in the same room") }.map(Self.damageAmount) ?? 0
+                coordinator.attackAllEnemiesInRoom(from: pieceID, allyDamage: allyDamage)
+                return true
+            }
             if allTargets?.lowercased() == "enemiesmovedthrough" {
                 coordinator.log("\(who): Attack \(pendingAttackValue) on every enemy moved through", category: .attack)
-                applyPerformedEffects()
+                if coordinator.hasEnemiesMovedThrough(by: pieceID, hexes: hexesPassed) { applyPerformedEffects() }
                 coordinator.attackEnemiesMovedThrough(from: pieceID, hexes: hexesPassed)
                 return true
             }
@@ -1043,7 +1327,7 @@ final class PlayerTurnController {
                     ? 1 : Int(spec.split(separator: ":").last ?? "") ?? range
                 let exact = spec.hasPrefix("enemiesrangeexact")
                 coordinator.log("\(who): Attack \(pendingAttackValue) on every enemy within \(reach)", category: .attack)
-                applyPerformedEffects()
+                if coordinator.hasEnemiesToAttack(from: pieceID, within: reach, exactly: exact) { applyPerformedEffects() }
                 coordinator.attackAllEnemies(from: pieceID, within: reach, exactly: exact)
                 return true
             }
@@ -1055,11 +1339,13 @@ final class PlayerTurnController {
             for cond in pendingConditions { extras.append(cond.rawValue.capitalized) }
             let extrasStr = extras.isEmpty ? "" : ", " + extras.joined(separator: ", ")
             coordinator.log("\(who): Attack \(pendingAttackValue), Range \(range)\(extrasStr)", category: .attack)
-            applyPerformedEffects()
             // Halberd: a single-target melee attack reaches enemies 2 hexes away (still melee).
             let halberd = range <= 1 && targetCount == 1 && pendingAreaPattern == nil
                 && character?.carriedItems.contains(PassiveItems.halberd) == true
-            coordinator.beginAttackAction(pieceID: pieceID, range: halberd ? 2 : range, targetCount: targetCount)
+            // XP and infusions printed on the attack come with making it, which needs a target.
+            if coordinator.beginAttackAction(pieceID: pieceID, range: halberd ? 2 : range, targetCount: targetCount) {
+                applyPerformedEffects()
+            }
             return true
 
         case .heal:
@@ -1089,6 +1375,7 @@ final class PlayerTurnController {
                 if reach.chooseOne {
                     guard !reach.pieces.isEmpty else {
                         coordinator.log("\(who) has no ally beside them to heal", category: .heal)
+                        abilityDidNothing()
                         return false
                     }
                     coordinator.log("\(who): Heal \(healValue). Choose the ally", category: .heal)
@@ -1141,11 +1428,11 @@ final class PlayerTurnController {
             case .enemiesBesideSummons:
                 let summonHexes = (character?.summons ?? []).filter { !$0.dead }
                     .compactMap { coordinator.boardState.piecePositions[.summon(id: $0.id)] }
-                coordinator.applyCondition(cond, toEnemiesOn: summonHexes.flatMap(\.neighbors), from: pieceID)
+                coordinator.applyCondition(cond, toEnemiesOn: summonHexes.flatMap(coordinator.boardState.neighbors(of:)), from: pieceID)
             case .enemiesBesideEnemiesWith(let marker):
                 let marked = coordinator.boardState.piecePositions
                     .filter { coordinator.areEnemies(pieceID, $0.key) && coordinator.isConditionActive(marker, on: $0.key) }
-                coordinator.applyCondition(cond, toEnemiesOn: marked.values.flatMap(\.neighbors), from: pieceID)
+                coordinator.applyCondition(cond, toEnemiesOn: marked.values.flatMap(coordinator.boardState.neighbors(of:)), from: pieceID)
             case .everyoneElse:
                 coordinator.applyConditionToAllEnemies(from: pieceID, condition: cond, range: 99)
                 coordinator.applyConditionToAllAllies(from: pieceID, condition: cond, range: 99)
@@ -1185,6 +1472,8 @@ final class PlayerTurnController {
             return performPrintedText(action, coordinator: coordinator)
 
         case .experience:
+            // Standalone XP comes with performing at least one of the half's abilities (FAQ).
+            guard halfPerformed else { owe(action); break }
             grantExperience(action.value?.intValue ?? 1)
 
         case .loot:
@@ -1192,10 +1481,14 @@ final class PlayerTurnController {
             let lootRange = (action.value?.intValue ?? 1) + lootBonus
             lootBonus = 0
             coordinator.log("\(who): Loot \(lootRange)", category: .loot)
-            coordinator.collectLootInRange(pieceID: pieceID, range: lootRange)
+            // A Loot with nothing in range can't be performed (FAQ).
+            if !coordinator.collectLootInRange(pieceID: pieceID, range: lootRange) { abilityDidNothing() }
 
         case .summon:
-            return executeSummon(action, coordinator: coordinator)
+            // No empty hex beside the character: nothing is summoned (GH p.26).
+            let placing = executeSummon(action, coordinator: coordinator)
+            if !placing { abilityDidNothing() }
+            return placing
 
         case .push, .pull:
             let steps = action.value?.intValue ?? 1
@@ -1215,20 +1508,33 @@ final class PlayerTurnController {
         case .suffer, .sufferDamage:
             let sufferValue = action.value?.intValue ?? 1
             coordinator.log("\(who) suffers \(sufferValue) damage", category: .damage)
-            coordinator.sufferDamage(sufferValue, to: pieceID)
+            // Damage like any other: it may be negated by losing cards (GH p.22).
+            return coordinator.sufferOwnDamage(sufferValue, characterID: characterID, source: currentCard?.name ?? "their own card") { [weak self] in
+                self?.advanceAfterAsyncAction()
+            }
 
         case .element:
             // A consume printed as its own step, with what it gives inside (Wretched Creature:
             // "consume Dark: Curse one adjacent enemy"): the reward happens if it's paid.
             let rewards = (action.subActions ?? []).filter { $0.type != .custom }
             if MonsterAbility.isConsume(action), !rewards.isEmpty, let game = gameManager?.game {
-                guard let used = game.consumeElements(MonsterAbility.elements(of: action)) else { break }
+                guard let used = game.consumeElements(MonsterAbility.elements(of: action)) else {
+                    abilityDidNothing()
+                    break
+                }
                 coordinator.log("\(who) consumes \(GameText.list(used.map(GameText.elementName)))", category: .element)
+                notePaidConsume(action)
                 var waits = false
                 for reward in Self.attachingTargets(rewards) where reward.type != .specialTarget {
                     if executeAction(reward, coordinator: coordinator) { waits = true; break }
                 }
                 return waits
+            }
+            // An infusion printed on its own comes with performing at least one of the half's
+            // abilities (FAQ); a bare consume pays nothing for nothing.
+            if !MonsterAbility.isConsume(action), !halfPerformed {
+                owe(action)
+                break
             }
             applyElementAction(action, coordinator: coordinator)
 
@@ -1262,6 +1568,8 @@ final class PlayerTurnController {
             // handled when the card is put away.
             if let val = action.value?.stringValue, val.hasPrefix("experience:"),
                let xp = Int(val.dropFirst("experience:".count)) {
+                // Not for an action none of whose abilities was performed (FAQ).
+                guard halfPerformed else { owe(action); break }
                 grantExperience(xp)
             }
 
@@ -1274,7 +1582,7 @@ final class PlayerTurnController {
         // Infusions and XP printed inside an action happen when the action is performed (block
         // actions already ran their sub-actions, and attacks apply theirs once they have a
         // target); conditions on self-targeted actions apply to the character.
-        if ![.element, .attack, .box, .concatenation, .grid].contains(action.type) {
+        if ![.element, .attack, .box, .concatenation, .grid].contains(action.type), !stepDidNothing {
             applyPrintedEffects(of: action, coordinator: coordinator)
         }
         if hasSpecialTargetSelf(action) && action.type != .condition {
@@ -1290,12 +1598,25 @@ final class PlayerTurnController {
     /// Infusions and XP printed inside an action (Blind Destruction's earth, an element
     /// enhancement), which come with performing it.
     private func applyPrintedEffects(of action: ActionModel, coordinator: BoardCoordinator) {
-        for sub in action.subActions ?? [] {
-            if sub.type == .element && !MonsterAbility.isConsume(sub) {
+        for sub in Self.attachedEffects(of: action) {
+            if sub.type == .element {
                 applyElementAction(sub, coordinator: coordinator)
             } else if let xp = Self.experience(in: sub) {
                 grantExperience(xp)
             }
+        }
+    }
+
+    /// The XP and infusions printed with an ability — beside it, grouped together beside it
+    /// (Flamethrower's "XP 2, Fire"), or under the text or range that qualifies it (Explosive
+    /// Punch, Kinetic Assault) — but not what an element bonus gives when paid for, nor what
+    /// belongs to another ability printed inside it.
+    static func attachedEffects(of action: ActionModel) -> [ActionModel] {
+        let qualifiers: Set<ActionType> = [.concatenation, .grid, .custom, .range, .jump, .target, .specialTarget]
+        return (action.subActions ?? []).flatMap { sub -> [ActionModel] in
+            if MonsterAbility.isConsume(sub) { return [] }
+            if sub.type == .element || experience(in: sub) != nil { return [sub] }
+            return qualifiers.contains(sub.type) ? attachedEffects(of: sub) : []
         }
     }
 
@@ -1324,6 +1645,14 @@ final class PlayerTurnController {
 
     private func customText(of action: ActionModel) -> String {
         customTexts(of: action).joined(separator: " ")
+    }
+
+    /// A text step's own words and those printed inside it, lowercased.
+    private func customTextOfStep(_ step: ActionModel) -> String {
+        let own = step.value.flatMap { value in
+            gameManager?.editionStore.resolveCustomText(value.stringValue, edition: character?.edition ?? "gh") ?? value.stringValue
+        } ?? ""
+        return (own + " " + customText(of: step)).lowercased()
     }
 
     private func customTexts(of action: ActionModel) -> [String] {
@@ -1455,7 +1784,7 @@ final class PlayerTurnController {
             let nextLine = half.dropFirst(currentActionIndex + 1).first.flatMap { $0.value }
                 .flatMap { gameManager?.editionStore.resolveCustomText($0.stringValue, edition: character.edition) }?.lowercased() ?? following
             let xp = nextLine.contains("trap is sprung") ? (nextLine.firstMatch(of: #/xp \+(\d+)/#).flatMap { Int($0.1) } ?? 0) : 0
-            let trap = PlacedToken.trap(damage: Self.damageAmount(in: text), subType: text.contains("poison") ? "poison" : nil,
+            let trap = PlacedToken.trap(damage: Self.damageAmount(in: text), subType: PlacedToken.trapCondition(in: text),
                                         experience: xp)
             return coordinator.beginPlacingTokens(trap, count: 1, by: me)
         } else if text.contains("destroy one adjacent obstacle") {
@@ -1478,6 +1807,7 @@ final class PlayerTurnController {
                 }
                 guard character.health < halfRoundedUp else {
                     coordinator.log("\(who) isn't below half their hit points", category: .info)
+                    abilityDidNothing()
                     return false
                 }
                 return executeAction(own, coordinator: coordinator)
@@ -1748,7 +2078,24 @@ final class PlayerTurnController {
     /// opened up, so a move or a target choice inside them is a step of its own and the turn
     /// waits for it. Augments stay whole: they aren't performed.
     static func steps(_ actions: [ActionModel], labels: EditionDataStore? = nil, edition: String = "gh") -> [ActionModel] {
-        attachingModifierConsumes(flatSteps(actions, labels: labels, edition: edition))
+        attachingModifierConsumes(flatSteps(actions, labels: labels, edition: edition).map(hoistingGroupedEffects))
+    }
+
+    /// What is printed in a group beside an ability and only qualifies it — XP, infusions and
+    /// element bonuses (Flamethrower's "XP 2, Fire", Shaping the Ether's four bonuses in two
+    /// rows) — belongs to the ability like what is printed singly.
+    static func hoistingGroupedEffects(_ action: ActionModel) -> ActionModel {
+        guard let subs = action.subActions, !isAugment(action) else { return action }
+        func qualifies(_ sub: ActionModel) -> Bool {
+            sub.type == .element || sub.type == .card || sub.type == .concatenationSpacer
+        }
+        var action = action
+        action.subActions = subs.flatMap { sub -> [ActionModel] in
+            guard sub.type == .concatenation || sub.type == .grid, !MonsterAbility.isConsume(sub),
+                  let inner = sub.subActions, !inner.isEmpty, inner.allSatisfy(qualifies) else { return [sub] }
+            return inner.filter { $0.type != .concatenationSpacer }
+        }
+        return action
     }
 
     /// A consume printed as its own step whose reward only modifies the action before it
@@ -1972,13 +2319,15 @@ final class PlayerTurnController {
         return Self.markers(in: actions)
     }
 
-    static func markers(in actions: [ActionModel]) -> Set<String> {
+    /// With `outsideConsumes`, markers printed inside an element bonus are left out: they count
+    /// only when the bonus is paid for.
+    static func markers(in actions: [ActionModel], outsideConsumes: Bool = false) -> Set<String> {
         var result = Set<String>()
-        for action in actions {
+        for action in actions where !(outsideConsumes && MonsterAbility.isConsume(action)) {
             if action.type == .card, let value = action.value?.stringValue, !value.contains(":") {
                 result.insert(value)
             }
-            result.formUnion(markers(in: action.subActions ?? []))
+            result.formUnion(markers(in: action.subActions ?? [], outsideConsumes: outsideConsumes))
         }
         return result
     }
@@ -1989,24 +2338,26 @@ final class PlayerTurnController {
     private func finishTurn() {
         guard let character, !character.exhausted else { return }
         putAway(topCard, half: topActions, lostFlag: topCard?.lost == true, usedAsDefault: topUsedAsDefault,
-                performed: performedHalves.contains("top"), character: character)
+                key: "top", top: true, character: character)
         putAway(bottomCard, half: bottomActions, lostFlag: bottomCard?.bottomLost == true,
-                usedAsDefault: bottomUsedAsDefault, performed: performedHalves.contains("bottom"), character: character)
+                usedAsDefault: bottomUsedAsDefault, key: "bottom", top: false, character: character)
         coordinator?.log("\(who) ends the turn", category: .round)
     }
 
     private func putAway(_ card: AbilityModel?, half: [ActionModel], lostFlag: Bool, usedAsDefault: Bool,
-                         performed: Bool, character: GameCharacter) {
+                         key: String, top: Bool, character: GameCharacter) {
         guard let cardId = card?.cardId, let index = character.handCards.firstIndex(of: cardId) else { return }
         character.handCards.remove(at: index)
 
-        // A basic action, or a half none of whose abilities was performed: discarded.
-        let skippedWhole = !performed && half.contains { Self.bonusCard(of: $0) == nil }
+        // A basic action, or a half none of whose abilities was performed: discarded (FAQ: a
+        // card is lost only if an ability printed on that action was performed).
+        let skippedWhole = !performedHalves.contains(key) && half.contains { Self.bonusCard(of: $0) == nil }
         if usedAsDefault || skippedWhole {
             character.discardedCards.append(cardId)
             return
         }
-        let markers = Self.markers(in: half)
+        // Markers inside an element bonus count only if it was paid for.
+        let markers = Self.markers(in: half, outsideConsumes: true).union(paidMarkers[key] ?? [])
         let lost = lostFlag || markers.contains("lost")
         if usedUpThisTurn.contains(cardId) {
             // Its charges ran out during this turn: it goes straight where it would end up.
@@ -2017,6 +2368,7 @@ final class PlayerTurnController {
             if markers.contains("round") && !markers.contains("persistent") {
                 character.roundBonusCards.append(cardId)
             }
+            if !top { character.bottomHalvesInPlay.append(cardId) }
             if lost { character.lostWhenRemoved.append(cardId) }
         } else if lost {
             character.lostCards.append(cardId)

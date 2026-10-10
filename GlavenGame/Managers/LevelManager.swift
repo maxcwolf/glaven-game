@@ -9,7 +9,8 @@ final class LevelManager {
     }
 
     /// Recommended scenario level: average character level ÷ 2, rounded UP (GH rulebook p.15),
-    /// then adjusted by difficulty.
+    /// then adjusted by difficulty, never below 0 (the game's own "Story" setting, −2, included)
+    /// or above 7. Solo play doesn't change it: it raises `GameState.monsterLevel`.
     func scenarioLevel() -> Int {
         let chars = game.activeCharacters
         guard !chars.isEmpty else { return game.level }
@@ -38,8 +39,8 @@ final class LevelManager {
         game.level = max(0, min(7, level))
     }
 
-    /// Damage dealt by a damage trap: 2 + L.
-    func trap() -> Int { 2 + game.level }
+    /// Damage dealt by a damage trap: 2 + L — in solo play one more, with the monsters' level.
+    func trap() -> Int { 2 + game.monsterLevel }
 
     /// Bonus experience on scenario success: 4 + 2L.
     func experience() -> Int { 4 + game.level * 2 }
@@ -54,7 +55,7 @@ final class LevelManager {
     /// GH: half of trap damage, rounded down. FH: 1 + ceil(L/3).
     func terrain() -> Int {
         if game.edition == "fh" {
-            return 1 + Int(ceil(Double(game.level) / 3.0))
+            return 1 + Int(ceil(Double(game.monsterLevel) / 3.0))
         }
         return trap() / 2
     }

@@ -74,9 +74,20 @@ enum GameText {
             return "Summon"
         case .objective(let id):
             let container = game?.objectives.first { $0.entities.contains { $0.number == id } }
-            if let name = container?.name, !name.isEmpty { return name }
-            return "Objective"
+            guard let name = container?.name, !name.isEmpty else { return "Objective" }
+            // Several of a kind are told apart by number: "Altar 2".
+            if let ordinal = objectiveOrdinal(id, game: game) { return "\(name) \(ordinal)" }
+            return name
         }
+    }
+
+    /// Which of its kind an objective is (1-based, by name, in the order they came into play);
+    /// nil when it is the only one.
+    static func objectiveOrdinal(_ id: Int, game: GameState?) -> Int? {
+        guard let game, let name = game.objectives.first(where: { $0.entities.contains { $0.number == id } })?.name else { return nil }
+        let numbers = game.objectives.filter { $0.name == name }.flatMap(\.entities).map(\.number).sorted()
+        guard numbers.count > 1, let index = numbers.firstIndex(of: id) else { return nil }
+        return index + 1
     }
 
     // MARK: - Game terms

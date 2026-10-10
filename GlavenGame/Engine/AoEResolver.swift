@@ -159,10 +159,13 @@ enum AoEResolver {
         }
 
         if isMelee {
-            // Anchored on the attacker's hex; try all 6 rotations.
+            // Anchored on the attacker's hex; try all 6 rotations, and those of the mirror image
+            // (FAQ: "you can also use the mirror image of the area").
             let origin = Cube(attackerPos)
-            for turns in 0..<6 {
-                consider(targetOffsets.map { ($0.rotated(turns) + origin).hex })
+            for offsets in [targetOffsets, targetOffsets.map(\.mirrored)] {
+                for turns in 0..<6 {
+                    consider(offsets.map { ($0.rotated(turns) + origin).hex })
+                }
             }
         } else {
             for placement in rangedPlacements(
@@ -201,15 +204,17 @@ enum AoEResolver {
         var seen = Set<Set<HexCoord>>()
         var placements: [[HexCoord]] = []
 
-        for turns in 0..<6 {
-            let rotated = offsets.map { $0.rotated(turns) }
+        // Every rotation of the pattern and of its mirror image (FAQ).
+        for (turns, mirror) in (0..<12).map({ ($0 % 6, $0 >= 6) }) {
+            let rotated = offsets.map { (mirror ? $0.mirrored : $0).rotated(turns) }
             for pivot in rotated {
                 let placed = rotated.map { ($0 - pivot + anchor).hex }
                 guard seen.insert(Set(placed)).inserted else { continue }
+                // One red hex within range, which may be empty but not a wall (FAQ).
                 let reachable = placed.contains { h in
                     h != attackerPos
-                        && board.cells[h] != nil
-                        && attackerPos.distance(to: h) <= effectiveRange
+                        && board.cells[h].map { $0.overlay != .wall } == true
+                        && board.isWithin(effectiveRange, from: attackerPos, to: h)
                 }
                 if reachable { placements.append(placed) }
             }
@@ -242,6 +247,9 @@ enum AoEResolver {
             }
             return c
         }
+
+        /// The mirror image (reflected in the axis through the origin).
+        var mirrored: Cube { Cube(x, z, y) }
 
         static func + (a: Cube, b: Cube) -> Cube { Cube(a.x + b.x, a.y + b.y, a.z + b.z) }
         static func - (a: Cube, b: Cube) -> Cube { Cube(a.x - b.x, a.y - b.y, a.z - b.z) }

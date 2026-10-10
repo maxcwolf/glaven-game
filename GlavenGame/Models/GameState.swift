@@ -14,10 +14,17 @@ final class GameState {
     var bonusAdjustment: Int = 0
     var ge5Player: Bool = true
     var playerCount: Int = -1
+    /// One player runs the whole party (GH p.15): monsters and traps are a level higher.
     var solo: Bool = false
+    /// The level monsters are set up at and trap damage is worked out from: the scenario level,
+    /// one higher in solo play (never above 7). Gold and bonus experience stay at `level`.
+    var monsterLevel: Int { min(7, level + (solo ? 1 : 0)) }
     var playSeconds: Int = 0
     var totalSeconds: Int = 0
     var elementBoard: [ElementModel] = ElementModel.defaultBoard()
+    /// Elements infused during the turn in progress: strong when it ends (not saved; a save is
+    /// made between turns).
+    var elementsInfusedThisTurn: Set<ElementType> = []
     /// Told when an element is infused or consumed, so the board can sound it (not saved).
     @ObservationIgnored var onElementChange: ((ElementChange) -> Void)?
     var monsterAttackModifierDeck: AttackModifierDeck = .defaultDeck()
@@ -83,6 +90,7 @@ final class GameState {
         playSeconds = fresh.playSeconds
         totalSeconds = fresh.totalSeconds
         elementBoard = fresh.elementBoard
+        elementsInfusedThisTurn = []
         monsterAttackModifierDeck = fresh.monsterAttackModifierDeck
         allyAttackModifierDeck = fresh.allyAttackModifierDeck
         lootDeck = fresh.lootDeck
@@ -122,6 +130,12 @@ final class GameState {
 
     var objectives: [GameObjectiveContainer] {
         figures.compactMap { $0.asObjective }
+    }
+
+    /// A number no objective has had this scenario: each is one piece on the board, whichever
+    /// kind of objective it is.
+    var nextObjectiveNumber: Int {
+        (objectives.flatMap(\.entities).map(\.number).max() ?? 0) + 1
     }
 
     /// Whether a Bless or Curse card is left to shuffle into a deck (p.23): the box has 10 Bless

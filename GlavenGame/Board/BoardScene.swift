@@ -45,6 +45,7 @@ class BoardScene: SKScene {
     private(set) var drawnRooms: Set<String> = []
     /// The hexes whose overlays have been drawn.
     private var overlaysDrawn: Set<HexCoord> = []
+    private var wallLinesDrawn: Set<HexEdge> = []
     /// The HUD's panels over the board (view points, y down); the board is framed around them.
     private(set) var hudObstacles: [CGRect] = []
     private var hudReported = false
@@ -173,6 +174,9 @@ class BoardScene: SKScene {
         highlightNodes.removeAll()
         drawnRooms = []
         overlaysDrawn = []
+        wallLinesDrawn = []
+        lockedHexes = []
+        plateHexes = []
         self.storedAppearances = characterAppearances
         drawNewlyVisible(from: board, scenario: scenario)
 
@@ -223,6 +227,15 @@ class BoardScene: SKScene {
         }
         overlaysDrawn.formUnion(visibleCoords)
 
+        // The wall lines between tiles that touch beside a door: drawn, so it is plain why the
+        // figure across one can't be struck or walked to.
+        for edge in board.wallEdges.subtracting(wallLinesDrawn).sorted(by: { ($0.a, $0.b) < ($1.a, $1.b) }) {
+            let line = wallLineNode(between: edge.a, and: edge.b)
+            overlayLayer.addChild(line)
+            added.append(line)
+        }
+        wallLinesDrawn.formUnion(board.wallEdges)
+
         for (pieceID, coord) in board.piecePositions.sorted(by: { $0.key < $1.key }) where pieceNodes[pieceID] == nil {
             addPieceSprite(id: pieceID, at: coord, offsetCol: offsetCol, offsetRow: offsetRow)
             if let node = pieceNodes[pieceID] { added.append(node) }
@@ -233,6 +246,32 @@ class BoardScene: SKScene {
             if let node = lootLayer.childNode(withName: "loot_\(coord.col)_\(coord.row)") { added.append(node) }
         }
         return added
+    }
+
+    /// A wall along the side two hexes share: a dark bar with a pale stone edge.
+    private func wallLineNode(between a: HexCoord, and b: HexCoord) -> SKNode {
+        let (ca, cb) = (sceneCenter(of: a), sceneCenter(of: b))
+        let middle = CGPoint(x: (ca.x + cb.x) / 2, y: (ca.y + cb.y) / 2)
+        let (dx, dy) = (cb.x - ca.x, cb.y - ca.y)
+        let length = max(1, hypot(dx, dy))
+        // The side is square to the line between the centres, and 1/√3 of it long.
+        let half = length / (2 * 3.0.squareRoot())
+        let (ux, uy) = (-dy / length * half, dx / length * half)
+        let path = CGMutablePath()
+        path.move(to: CGPoint(x: middle.x - ux, y: middle.y - uy))
+        path.addLine(to: CGPoint(x: middle.x + ux, y: middle.y + uy))
+        let node = SKNode()
+        node.name = "wall_\(a.col)_\(a.row)_\(b.col)_\(b.row)"
+        node.zPosition = 0.4
+        for (width, color) in [(CGFloat(9), SKColor(red: 0.07, green: 0.06, blue: 0.05, alpha: 0.95)),
+                               (CGFloat(3), SKColor(red: 0.55, green: 0.50, blue: 0.44, alpha: 0.9))] {
+            let stroke = SKShapeNode(path: path)
+            stroke.strokeColor = color
+            stroke.lineWidth = width
+            stroke.lineCap = .round
+            node.addChild(stroke)
+        }
+        return node
     }
 
     /// Every revealed hex, edge to edge, in scene units.
@@ -440,6 +479,48 @@ class BoardScene: SKScene {
     func removeOverlaySprite(at coord: HexCoord, offsetCol: Int, offsetRow: Int) {
         let name = "overlay_\(coord.col)_\(coord.row)"
         overlayLayer.childNode(withName: name)?.removeFromParent()
+    }
+
+    // MARK: - Locks and pressure plates
+
+    /// The hexes showing a padlock and a pressure plate (for tests).
+    private(set) var lockedHexes: Set<HexCoord> = []
+    private(set) var plateHexes: Set<HexCoord> = []
+
+    /// Show a padlock on each locked door and a plate on each pressure plate; anything shown
+    /// before and no longer listed goes.
+    func showLocks(on doors: Set<HexCoord>, plates: Set<HexCoord>, offsetCol: Int, offsetRow: Int) {
+        for hex in lockedHexes.subtracting(doors) { overlayLayer.childNode(withName: "lock_\(hex.col)_\(hex.row)")?.removeFromParent() }
+        for hex in doors.subtracting(lockedHexes) {
+            let badge = SKShapeNode(circleOfRadius: HexMath.cellStepX * 0.17)
+            badge.fillColor = SKColor(red: 0.10, green: 0.08, blue: 0.07, alpha: 0.9)
+            badge.strokeColor = SKColor(red: 0.89, green: 0.70, blue: 0.24, alpha: 1)
+            badge.lineWidth = 2
+            badge.position = hexCenterInScene(col: hex.col - offsetCol, row: hex.row - offsetRow)
+            badge.zPosition = 6
+            badge.name = "lock_\(hex.col)_\(hex.row)"
+            let glyph = SKLabelNode(text: "\u{1F512}")
+            glyph.fontSize = HexMath.cellStepX * 0.2
+            glyph.verticalAlignmentMode = .center
+            glyph.horizontalAlignmentMode = .center
+            badge.addChild(glyph)
+            overlayLayer.addChild(badge)
+        }
+        lockedHexes = doors
+
+        for hex in plateHexes.subtracting(plates) { overlayLayer.childNode(withName: "plate_\(hex.col)_\(hex.row)")?.removeFromParent() }
+        for hex in plates.subtracting(plateHexes) {
+            let name = "corridor-pressure-plate-1"
+            guard let image = MapImageCache.shared.image(named: "overlays/\(name)") else { continue }
+            let texture = Self.overlayTexture(name, image: image)
+            let sprite = SKSpriteNode(texture: texture)
+            sprite.setScale(HexMath.cellSize / max(texture.size().width, texture.size().height))
+            sprite.position = hexCenterInScene(col: hex.col - offsetCol, row: hex.row - offsetRow)
+            sprite.zPosition = 0.5
+            sprite.name = "plate_\(hex.col)_\(hex.row)"
+            overlayLayer.addChild(sprite)
+        }
+        plateHexes = plates
     }
 
     // MARK: - Loot Sprites

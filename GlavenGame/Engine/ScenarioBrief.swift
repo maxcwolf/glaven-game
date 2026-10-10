@@ -21,17 +21,49 @@ struct ScenarioBrief: Equatable {
         let rules = scenario.rules ?? []
         let name = labels?.resolveLabel(key: "scenario.title.\(scenario.edition).\(scenario.index)", edition: scenario.edition)
             ?? scenario.name
+        // What the scenario book asks of the objectives, where the scenario data has no rule for it.
+        let written = scenario.solo == nil
+            ? ScenarioPlacementStore.shared.placements(for: scenario.index, edition: scenario.edition)?.goal : nil
+        let losses = (written?.lostAt ?? [:]).sorted { $0.key < $1.key }.compactMap { key, limit -> String? in
+            guard let index = Int(key), let objectives = scenario.objectives, objectives.indices.contains(index - 1),
+                  let name = objectives[index - 1].name else { return nil }
+            return lossLine(name: name, limit: limit)
+        }
+        let exhaustion: [String] = (written?.lostIfExhausted ?? []).compactMap { way in
+            switch way {
+            case "any": return "Any character is exhausted."
+            case "offExit": return "A character is exhausted away from the exit."
+            case "beforeLoot": return "A character is exhausted before the treasure is looted."
+            default: return nil
+            }
+        }
+        let stands = (written?.lostIfStands?.monsters ?? []).map {
+            standsLine(GameText.monsterName($0, edition: scenario.edition, labels: labels))
+        }
+        var empty: [String] = (written?.lostIfEmpty ?? []).map(\.text)
+        if let least = written?.lostBelow { empty.append(lostBelowLine(least)) }
+        let killed = (written?.lostIfKilled ?? []).map { "A \(GameText.monsterName($0, edition: scenario.edition, labels: labels)) is killed." }
+        let writtenLosses: [String] = losses + exhaustion + empty + killed + stands
         return ScenarioBrief(
             title: "#\(scenario.index) \(name)",
-            goal: goal(rules.filter { $0.finish == "won" }, edition: scenario.edition, labels: labels),
-            defeat: ["Every character is exhausted."]
-                + rules.filter { $0.finish == "lost" }.map { lossText($0, labels: labels, edition: scenario.edition) },
+            goal: written?.text ?? goal(rules.filter { $0.finish == "won" }, edition: scenario.edition, labels: labels),
+            defeat: ["Every character is exhausted."] + writtenLosses
+                + rules.filter { $0.finish == "lost" }.map {
+                    lossText($0, labels: labels, edition: scenario.edition, objectives: scenario.objectives ?? [])
+                },
             rules: specialRules(scenario, labels: labels),
             monsters: monsterKeys(scenario.monsters ?? []),
             map: mapLine(scenario.rooms ?? []),
             rewards: rewardLines(scenario, labels: labels),
             edition: scenario.edition)
     }
+
+    /// "A City Guard reaches a pressure plate."
+    static func lostBelowLine(_ least: Int) -> String {
+        least == 2 ? "Only one character is left unexhausted." : "Fewer than \(least) characters are left unexhausted."
+    }
+
+    static func standsLine(_ monster: String) -> String { "A \(monster) reaches a pressure plate." }
 
     // MARK: - Monsters, map and rewards
 
@@ -78,6 +110,11 @@ struct ScenarioBrief: Equatable {
 
     // MARK: - Goal
 
+    /// "Hail is killed." / "5 Villagers are killed."
+    static func lossLine(name: String, limit: Int) -> String {
+        limit == 1 ? "\(name) is killed." : "\(limit) \(plural(name, limit)) are killed."
+    }
+
     private static func goal(_ winRules: [ScenarioRule], edition: String, labels: EditionDataStore?) -> String {
         guard let rule = winRules.first else { return "Kill every enemy." }
         if let round = rule.round, let n = roundNumber(round) {
@@ -95,11 +132,17 @@ struct ScenarioBrief: Equatable {
         return "Complete the scenario's goal."
     }
 
-    private static func lossText(_ rule: ScenarioRule, labels: EditionDataStore?, edition: String) -> String {
+    private static func lossText(_ rule: ScenarioRule, labels: EditionDataStore?, edition: String,
+                                 objectives: [ObjectiveData] = []) -> String {
         if let note = text(rule.note, labels: labels, edition: edition) { return note }
         if let figure = rule.figures?.first, let who = figure.identifier, who.type == "objective",
            let name = who.name, figure.type == "dead" {
-            return "\(name) is destroyed."
+            // "Dead" waits for every one of them: with three captives, all three must die.
+            let objective = objectives.first { $0.name == name }
+            let count = objectives.filter { $0.name == name }.reduce(0) { $0 + ($1.resolvedCount) }
+            let verb = objective?.isEscort == true ? "killed" : "destroyed"
+            if count > 1 { return "All \(count) \(plural(name, count)) are \(verb)." }
+            return "\(name) is \(verb)."
         }
         if let round = rule.round, let n = roundNumber(round) {
             return "Round \(n) ends before the goal is met."
@@ -117,6 +160,15 @@ struct ScenarioBrief: Equatable {
             lines.append(line)
         }
 
+        // What the scenario book says, written out where the game enforces it.
+        let written = scenario.solo == nil ? ScenarioPlacementStore.shared.placements(for: scenario.index, edition: edition) : nil
+        let notes = written?.notes ?? []
+        notes.forEach(add)
+        func isNoted(_ line: String) -> Bool {
+            let plain = line.lowercased().trimmingCharacters(in: CharacterSet(charactersIn: ". "))
+            return notes.contains { $0.lowercased().contains(plain) }
+        }
+
         // The scenario's own rule text, where the data ships it.
         if let printed = labels?.labelsByEdition[edition]
             .flatMap({ ($0["scenario"] as? [String: Any])?["rules"] as? [String: Any] })
@@ -129,9 +181,13 @@ struct ScenarioBrief: Equatable {
                 let reference = "%data.scenario.rules.\(edition).\(scenario.index).\(key)%"
                 guard !objectiveText.contains(reference),
                       let rule = text(reference, labels: labels, edition: edition),
-                      rule.split(separator: " ").count >= 5 else { continue }
+                      rule.split(separator: " ").count >= 5, !isNoted(rule) else { continue }
                 add(rule)
             }
+        }
+
+        if written?.lootActionOnly == true {
+            add("The goal treasure can only be looted with a Loot action, not by ending a turn on it.")
         }
 
         var spawns: [String: Set<String>] = [:]   // monster name -> when it appears
@@ -139,7 +195,8 @@ struct ScenarioBrief: Equatable {
             for figure in rule.figures ?? [] {
                 add(describe(figure, edition: edition, labels: labels))
             }
-            for spawn in rule.spawns ?? [] {
+            // Written notes say who arrives, and when, better than this can.
+            for spawn in notes.isEmpty ? rule.spawns ?? [] : [] {
                 // Some names carry a data suffix ("infiltrator:+1").
                 let base = String(spawn.monster.name.split(separator: ":").first ?? "")
                 let name = GameText.monsterName(base, edition: edition, labels: labels)
@@ -156,8 +213,15 @@ struct ScenarioBrief: Equatable {
             let ordered = times.sorted { (Int($0.filter(\.isNumber)) ?? 0, $0) < (Int($1.filter(\.isNumber)) ?? 0, $1) }
             add("More \(plural(name, 2)) arrive \(GameText.list(ordered)).")
         }
-        for objective in scenario.objectives ?? [] where objective.escort == true {
-            if let name = objective.name { add("\(name) fights on your side; keep them alive.") }
+        for (index, objective) in (scenario.objectives ?? []).enumerated() where objective.escort == true {
+            guard let name = objective.name else { continue }
+            if written?.sheltered?.contains(index + 1) == true {
+                continue   // its notes say what it is
+            } else if written?.protect?.contains(index + 1) == true {
+                add("The monsters attack \(name.hasPrefix("The ") ? "t" + name.dropFirst() : "the " + plural(name, 2)): no ally of yours, and not to be healed.")
+            } else {
+                add("\(name) fights on your side; keep them alive.")
+            }
         }
         return lines
     }

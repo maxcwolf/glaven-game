@@ -50,16 +50,24 @@ extension BoardCoordinator {
         guard isCurrentBoard(generation), let attackerPos = origin ?? boardState.piecePositions[attacker],
               let targetPos = boardState.piecePositions[target],
               let defender = entity(for: target) else { return false }
+        // Drawn onto another figure (Provoking Roar), the attack lands whatever the range.
+        attackWasRedirected = target != aimedAt
         attackObserver?(attacker, target)
 
-        let distance = attackerPos.distance(to: targetPos)
+        // Counted as range is: round walls, never through them.
+        let distance = boardState.steps(from: attackerPos, to: targetPos)
         // The Doomstalker's dooms on the target: +Attack, Pierce, advantage, Curse.
         applyDoomBonuses(to: &attack, attacker: attacker, target: target, distance: distance)
+        // What the scenario does to every attack of this figure (a vocal chord still standing).
+        attack.value = max(0, attack.value + scenarioAttackBonus(of: attacker))
         let isPoisoned = defender.entityConditions.contains { $0.name == .poison && !$0.expired }
-        var shield = CombatResolver.totalShield(shield: defender.shield, shieldPersistent: defender.shieldPersistent)
-        var retaliate = CombatResolver.retaliateDamage(retaliate: defender.retaliate,
-                                                       retaliatePersistent: defender.retaliatePersistent,
-                                                       distance: distance)
+        var shield = shield(of: target) + cleansedShield(of: target, against: attacker)
+        // Retaliate gained for this attack alone (a charge, an item), each with its reach. Whether
+        // any retaliate lands is judged after the attack's push or pull (FAQ).
+        var gainedRetaliates: [(amount: Int, range: Int)] = []
+        let retaliateInView = CombatResolver.retaliateDamage(retaliate: defender.retaliate,
+                                                             retaliatePersistent: defender.retaliatePersistent,
+                                                             distance: distance)
 
         // Helm of the Mountain: attacking its wearer while Earth is strong immobilizes the attacker.
         if case .character(let id) = target, areEnemies(attacker, target),
@@ -72,14 +80,15 @@ extension BoardCoordinator {
         // Chain Hood: Shield 1 while the wearer is beside three or more monsters.
         if case .character(let id) = target,
            gameManager?.game.characters.first(where: { $0.id == id })?.carriedItems.contains(PassiveItems.chainHood) == true,
-           targetPos.neighbors.compactMap({ boardState.piece(at: $0) })
+           boardState.neighbors(of: targetPos).compactMap({ boardState.piece(at: $0) })
                .filter({ if case .monster = $0 { return true }; return false }).count >= 3 {
             shield += 1
         }
 
-        var advantage = attack.advantage
+        var advantage = attack.advantage || scenarioGivesAdvantage(to: attacker)
         // Giant Viper: "All attacks targeting it this round gain disadvantage."
-        var disadvantage = (attack.isRanged && attackerPos.isAdjacent(to: targetPos)) || disadvantagedThisRound.contains(target)
+        var disadvantage = (attack.isRanged && boardState.areAdjacent(attackerPos, targetPos)) || disadvantagedThisRound.contains(target)
+            || scenarioGivesDisadvantage(to: attacker)
         // Some monsters' stat cards give every attack against them disadvantage (e.g. Night Demon).
         if case .monster(let name, _) = target, let monsterEntity = defender as? GameMonsterEntity,
            let stat = gameManager?.game.monsters.first(where: { $0.name == name })?.stat(for: monsterEntity.type),
@@ -112,7 +121,8 @@ extension BoardCoordinator {
 
         var preDrawn = await performModifierDraw(
             attacker: attacker, defender: target, baseAttack: attack.value,
-            comparedAttack: attack.value + (isPoisoned ? 1 : 0),
+            // Cards are compared on the attack's own value; Poison's +1 isn't counted (FAQ).
+            comparedAttack: attack.value,
             advantage: advantage, disadvantage: disadvantage,
             drawCard: drawCard ?? modifierDrawer(for: attacker)
         )
@@ -144,7 +154,7 @@ extension BoardCoordinator {
         if areEnemies(attacker, target) {
             if !attack.isRanged && distance <= 1, case .retaliateAgainstMelee(let amount)? = useFirstCharge(of: target, where: {
                 if case .retaliateAgainstMelee = $0 { return true }; return false }) {
-                retaliate += amount
+                gainedRetaliates.append((amount, 1))
             }
             if result.damage > 0, case .shieldAgainstAttacks(let amount)? = useFirstCharge(of: target, where: {
                 if case .shieldAgainstAttacks = $0 { return true }; return false }) {
@@ -154,13 +164,24 @@ extension BoardCoordinator {
             if result.damage > 0, case .negateAttackAndRetaliate(let amount, let range)? = useFirstCharge(of: target, where: {
                 if case .negateAttackAndRetaliate = $0 { return true }; return false }) {
                 negated = true
-                if distance <= range { retaliate += amount }
+                gainedRetaliates.append((amount, range))
             }
         }
+        // Armour with use circles (Hide Armor, Chainmail…) works by itself on every attack that
+        // would damage its wearer (FAQ): it isn't offered. Its circle is marked once the damage is
+        // settled — the player may still lose cards instead, and the armour is then not used.
+        var armourUsed: [DefenseItem] = []
+        for item in DefenseItem.onDamage where result.damage > 0 && !negated && areEnemies(attacker, target)
+            && isChargedArmour(item, wornBy: target) {
+            armourUsed.append(item)
+            shield += item.shield
+            result = resolve()
+        }
+        // The other shields and armours are the player's to use or keep.
         for item in DefenseItem.onDamage where result.damage > 0 && !negated && areEnemies(attacker, target) {
             if await offerDefenseItem(item, to: target, from: attacker) {
                 shield += item.shield
-                if distance <= 1 { retaliate += item.retaliate }
+                if item.retaliate > 0 { gainedRetaliates.append((item.retaliate, 1)) }
                 negated = item.negates
                 result = resolve()
             }
@@ -172,7 +193,9 @@ extension BoardCoordinator {
         let sum = CombatResolver.readableBreakdown(
             base: attack.value, isPoisoned: isPoisoned, preDrawnCards: preDrawn,
             shield: shield, pierce: attack.pierce, isMiss: result.isMiss, finalDamage: result.damage)
-        log("\(name(attacker)) attacks \(name(target)): \(sum)", category: .attack, trace: breakdown)
+        // Said in the log, so a transcript can be checked: two cards were drawn and one kept.
+        let how = advantage == disadvantage ? "" : (advantage ? " with advantage" : " with disadvantage")
+        log("\(name(attacker)) attacks \(name(target))\(how): \(sum)", category: .attack, trace: breakdown)
         if lastModifierReveal?.attacker == attacker, lastModifierReveal?.defender == target, lastModifierReveal?.sum == nil {
             lastModifierReveal?.sum = sum
             lastModifierReveal?.chips = CombatResolver.sumChips(
@@ -187,7 +210,7 @@ extension BoardCoordinator {
                 }
             }
         }
-        if shield > 0 || retaliate > 0 { teach(.shieldAndRetaliate, at: .piece(target)) }
+        if shield > 0 || retaliateInView > 0 || !gainedRetaliates.isEmpty { teach(.shieldAndRetaliate, at: .piece(target)) }
 
         if result.damage == 0 {
             boardScene?.pieceUnharmed(id: target, missed: result.isMiss)
@@ -207,9 +230,15 @@ extension BoardCoordinator {
         } else if result.damage > 0 {
             // Shield took some of it (a fully absorbed attack is "Blocked", above).
             if shield > attack.pierce { boardScene?.play(.shield) }
-            died = await sufferDamageWithMitigation(result.damage, to: target,
-                                                    source: pieceLabel(attacker), killer: attacker)
+            let outcome = await resolveDamage(result.damage, to: target, source: pieceLabel(attacker), killer: attacker)
+            died = outcome.died
             guard isCurrentBoard(generation) else { return died }
+            // Cards were lost to prevent the damage before the armour came to it (FAQ).
+            if outcome.prevented { armourUsed = [] }
+        }
+        for item in armourUsed {
+            useChargedArmour(item, wornBy: target)
+            if item.retaliate > 0 { gainedRetaliates.append((item.retaliate, 1)) }
         }
 
         // Added effects apply even when no damage was dealt, but not to a dead target (p.19).
@@ -244,7 +273,17 @@ extension BoardCoordinator {
             log("\(name(attacker)) heals for \(healed)", category: .heal)
         }
 
-        // Retaliate: after the attack, only if the retaliating figure survived (p.24).
+        // Retaliate: after the attack and all its effects, only if the retaliating figure survived
+        // (p.24) and the attacker is within its reach where the two now stand — pushed out of
+        // reach it doesn't land, pulled into reach it does (FAQ).
+        var retaliate = 0
+        if !died, let targetNow = boardState.piecePositions[target],
+           let attackerNow = origin ?? boardState.piecePositions[attacker] {
+            let reach = boardState.range(from: attackerNow, to: targetNow) ?? 99
+            retaliate = CombatResolver.retaliateDamage(retaliate: defender.retaliate,
+                                                       retaliatePersistent: defender.retaliatePersistent, distance: reach)
+                + gainedRetaliates.filter { reach <= $0.range }.reduce(0) { $0 + $1.amount }
+        }
         if !died && retaliate > 0 && isOnBoard(target) && isOnBoard(attacker) {
             log("\(name(target)) retaliates for \(retaliate)", category: .damage)
             boardScene?.play(.retaliate)
@@ -311,16 +350,19 @@ extension BoardCoordinator {
             let spec = MonsterAbility.attack(death.action, stat: stat, baseAttack: base, baseRange: 0)
             // Every enemy next to where it fell that the area can reach (the pattern turned to hit most).
             let pattern = death.action.subActions?.first { $0.type == .area }?.value?.stringValue
-            let enemies = boardState.piecePositions.keys.filter { areEnemies(death.attacker, $0) }.sorted()
+            // (An invisible figure is no target for this attack either.)
+            let enemies = boardState.piecePositions.keys.filter {
+                areEnemies(death.attacker, $0) && !isConditionActive(.invisible, on: $0)
+            }.sorted()
             var victims: [PieceID] = []
             if let pattern {
-                for focus in enemies where boardState.piecePositions[focus].map({ $0.isAdjacent(to: death.position) }) == true {
+                for focus in enemies where boardState.piecePositions[focus].map({ boardState.areAdjacent($0, death.position) }) == true {
                     let hit = AoEResolver.resolveTargets(pattern: pattern, attackerPos: death.position, focusTarget: focus,
                                                          enemies: enemies, board: boardState)
                     if hit.count > victims.count { victims = hit }
                 }
             } else {
-                victims = enemies.filter { boardState.piecePositions[$0].map { $0.isAdjacent(to: death.position) } == true }
+                victims = enemies.filter { boardState.piecePositions[$0].map { boardState.areAdjacent($0, death.position) } == true }
             }
             guard !victims.isEmpty else { continue }
             log("\(name(death.attacker)) attacks as it dies", category: .attack)
@@ -348,11 +390,12 @@ extension BoardCoordinator {
               let from = boardState.piecePositions[attacker], let to = boardState.piecePositions[target] else { return nil }
         var value = turn.currentAttackValue() + attackTextBonus(turn.attackTexts, attacker: attacker, target: target).attack
         if case .monster(let monsterName, _) = target { value += turn.attackBonusAgainst[monsterName] ?? 0 }
+        value = max(0, value + scenarioAttackBonus(of: attacker))
         let poisoned = isConditionActive(.poison, on: target)
-        let shield = max(0, CombatResolver.totalShield(shield: defender.shield, shieldPersistent: defender.shieldPersistent)
-                         - turn.pendingPierce)
+        let shield = max(0, self.shield(of: target) - turn.pendingPierce)
         let ranged = turn.currentAttackRange() > 1
-        var disadvantage = (ranged && from.isAdjacent(to: to)) || disadvantagedThisRound.contains(target)
+        var disadvantage = (ranged && boardState.areAdjacent(from, to)) || disadvantagedThisRound.contains(target)
+            || scenarioGivesDisadvantage(to: attacker)
         if case .monster(let name, _) = target, let monsterEntity = defender as? GameMonsterEntity,
            gameManager?.game.monsters.first(where: { $0.name == name })?.stat(for: monsterEntity.type)?.attackersGainDisadvantage == true {
             disadvantage = true
@@ -388,12 +431,12 @@ extension BoardCoordinator {
     /// The damage before the draw (attack, poison, shield and pierce), for the small chip on the board.
     func expectedDamage(attacker: PieceID, target: PieceID) -> Int? {
         guard let turn = activePlayerTurn, case .character(let id) = attacker, turn.characterID == id,
-              let defender = entity(for: target) else { return nil }
+              entity(for: target) != nil else { return nil }
         var value = turn.currentAttackValue() + attackTextBonus(turn.attackTexts, attacker: attacker, target: target).attack
         if case .monster(let monsterName, _) = target { value += turn.attackBonusAgainst[monsterName] ?? 0 }
+        value = max(0, value + scenarioAttackBonus(of: attacker))
         if isConditionActive(.poison, on: target) { value += 1 }
-        let shield = max(0, CombatResolver.totalShield(shield: defender.shield, shieldPersistent: defender.shieldPersistent)
-                         - turn.pendingPierce)
+        let shield = max(0, self.shield(of: target) - turn.pendingPierce)
         return max(0, value - shield)
     }
 
@@ -401,8 +444,8 @@ extension BoardCoordinator {
     func attackPreviewLines(attacker: PieceID, targets: Set<PieceID>) -> [String] {
         let origin = boardState.piecePositions[attacker]
         return targets.sorted { a, b in
-            let da = origin.flatMap { o in boardState.piecePositions[a].map { o.distance(to: $0) } } ?? 0
-            let db = origin.flatMap { o in boardState.piecePositions[b].map { o.distance(to: $0) } } ?? 0
+            let da = origin.flatMap { o in boardState.piecePositions[a].map { boardState.steps(from: o, to: $0) } } ?? 0
+            let db = origin.flatMap { o in boardState.piecePositions[b].map { boardState.steps(from: o, to: $0) } } ?? 0
             return (da, a) < (db, b)
         }.compactMap { target in
             attackPreview(attacker: attacker, target: target).map { "\(name(target)): \($0)" }
@@ -428,7 +471,7 @@ extension BoardCoordinator {
         guard case .character = target, case .monster = attacker, areEnemies(attacker, target),
               (entity(for: attacker) as? GameMonsterEntity)?.type == .normal,
               let from = boardState.piecePositions[attacker], let at = boardState.piecePositions[target],
-              from.isAdjacent(to: at) else { return nil }
+              boardState.areAdjacent(from, at) else { return nil }
         let allies = alliesInRange(of: attacker, range: max(1, range), includeSelf: false)
             .filter { entity(for: $0) != nil && areEnemies($0, target) }.sorted()
         guard !allies.isEmpty else { return nil }
@@ -482,7 +525,7 @@ extension BoardCoordinator {
         let key = "gh-92"
         guard let holder = gameManager.game.characters.sorted(by: { $0.id < $1.id }).first(where: {
                   !$0.exhausted && !$0.absent && $0.carriedItems.contains(key)
-                      && !$0.consumedItems.contains(key) && !$0.spentItems.contains(key)
+                      && !$0.consumedItems.contains(key) && !$0.spentItems.contains(key) && canUseItems($0)
               }),
               let item = itemData(key) else { return false }
         let generation = boardGeneration

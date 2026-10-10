@@ -463,6 +463,22 @@
                             "twoPlayer": "none",
                             "threePlayer": "normal",
                             "fourPlayer": "normal"
+                        },
+                        {
+                            "monster": "spitting-drake",
+                            "initialX": 2,
+                            "initialY": 5,
+                            "twoPlayer": "normal",
+                            "threePlayer": "normal",
+                            "fourPlayer": "elite"
+                        },
+                        {
+                            "monster": "spitting-drake",
+                            "initialX": 0,
+                            "initialY": 2,
+                            "twoPlayer": "normal",
+                            "threePlayer": "normal",
+                            "fourPlayer": "normal"
                         }
                     ],
                     "turns": 0

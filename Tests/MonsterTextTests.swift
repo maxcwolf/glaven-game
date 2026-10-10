@@ -122,9 +122,19 @@ final class MonsterTextTests: XCTestCase {
         monster.abilityDrawn = true
         gm.monsterManager.applyStatEffects(for: monster)
         let entity = try XCTUnwrap(coord.entity(for: piece))
-        let before = entity.shield?.value?.intValue ?? 0
+        // The card's Shield isn't the Lurker's until it takes its turn (FAQ); its stat card's is.
+        XCTAssertNil(entity.shield, "nothing from the card before its turn")
+        let own = entity.shieldPersistent?.value?.intValue ?? 0
         await MonsterTurnController(coordinator: coord, gameManager: gm).executeMonsterGroup(monster)
-        XCTAssertEqual((entity.shield?.value?.intValue ?? 0) - before, 1, "Shield 1 became Shield 2")
+        XCTAssertEqual(entity.shield?.value?.intValue, 2, "Shield 1 became Shield 2")
+        XCTAssertEqual(coord.shield(of: piece), own + 2, "on top of its stat card's")
+    }
+
+    /// The same card with no Ice to consume: Shield 1, from its turn on.
+    func testALurkersShieldWithoutIceIsOne() async throws {
+        _ = character("brute", at: HexCoord(6, 3))
+        let piece = try await play("lurker", card: 612, at: HexCoord(3, 3))
+        XCTAssertEqual(try XCTUnwrap(coord.entity(for: piece)).shield?.value?.intValue, 1)
     }
 
     /// Ooze (696): suffer 2 damage, then split: the new Ooze has the summoner's hit points.
@@ -156,9 +166,11 @@ final class MonsterTextTests: XCTestCase {
         XCTAssertTrue(hex.isAdjacent(to: HexCoord(7, 3)), "beside the Brute")
     }
 
-    /// Barrow Lair's Bandit Commander, special 1: "Move to next door and reveal room".
+    /// The Bandit Commander's special 1, "Move to next door and reveal room", where no order of
+    /// doors is written for him (in Barrow Lair he jumps to them in turn:
+    /// `testTheCommanderJumpsToEachDoorInTurn`): he walks for the nearest closed door.
     func testTheBanditCommanderHeadsForTheNextDoor() async throws {
-        let scenario = try XCTUnwrap(gm.editionStore.scenarios(for: "gh").first { $0.index == "2" && $0.solo == nil })
+        let scenario = try XCTUnwrap(gm.editionStore.scenarios(for: "gh").first { $0.index == "1" && $0.solo == nil })
         gm.characterManager.addCharacter(name: "brute", edition: "gh")
         gm.startScenarioOnBoard(scenario)
         coord.autoResolvePrompts = true
@@ -187,7 +199,7 @@ final class MonsterTextTests: XCTestCase {
 
     /// An immobilized Bandit Commander doesn't head for the door: its special is a move.
     func testAnImmobilizedBanditCommanderStaysPut() async throws {
-        let scenario = try XCTUnwrap(gm.editionStore.scenarios(for: "gh").first { $0.index == "2" && $0.solo == nil })
+        let scenario = try XCTUnwrap(gm.editionStore.scenarios(for: "gh").first { $0.index == "1" && $0.solo == nil })
         gm.characterManager.addCharacter(name: "brute", edition: "gh")
         gm.startScenarioOnBoard(scenario)
         coord.autoResolvePrompts = true
@@ -211,7 +223,7 @@ final class MonsterTextTests: XCTestCase {
 
     /// Difficult terrain costs the Bandit Commander 2 movement per hex on its way to the door.
     func testTheBanditCommanderPaysForDifficultTerrain() async throws {
-        let scenario = try XCTUnwrap(gm.editionStore.scenarios(for: "gh").first { $0.index == "2" && $0.solo == nil })
+        let scenario = try XCTUnwrap(gm.editionStore.scenarios(for: "gh").first { $0.index == "1" && $0.solo == nil })
         gm.characterManager.addCharacter(name: "brute", edition: "gh")
         gm.startScenarioOnBoard(scenario)
         coord.autoResolvePrompts = true

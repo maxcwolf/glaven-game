@@ -301,7 +301,7 @@
                                                     "initialY": 2,
                                                     "twoPlayer": "none",
                                                     "threePlayer": "normal",
-                                                    "fourPlayer": "normal"
+                                                    "fourPlayer": "elite"
                                                 },
                                                 {
                                                     "monster": "vermling-shaman",

@@ -41,11 +41,13 @@ final class SummonTurnController {
             // Start of the summon's own turn: its conditions tick (wound, regenerate).
             gameManager.entityManager.restoreConditions(summon)
             gameManager.entityManager.applyConditionsTurn(summon)
+            gameManager.scenarioRulesManager.evaluateTurnRules(.turnStart, for: summon)
             coordinator.sweepDeadFigures()
             guard !summon.dead, coordinator.isOnBoard(pieceID) else { continue }
 
             let result = SummonAI.computeTurn(summon: summon, ownerCharacterID: character.id,
-                                              board: coordinator.boardState, gameState: gameManager.game)
+                                              board: coordinator.boardState, gameState: gameManager.game,
+                                              moveBonus: coordinator.scenarioMoveBonus(of: pieceID))
             // What it weighed, for "Why?" on the lines it logs.
             if !result.stunned {
                 coordinator.beginWhy(for: pieceID, candidates: result.focusCandidates, ranged: result.attack?.isRanged ?? false)
@@ -56,6 +58,9 @@ final class SummonTurnController {
             guard !isStale else { return }
             if !summon.dead {
                 gameManager.entityManager.expireConditions(summon)
+                // Rules that act as a turn ends reach a summon as they do its owner (The Void).
+                gameManager.scenarioRulesManager.evaluateTurnRules(.turnEnd, for: summon)
+                coordinator.sufferWaterAtTurnEnd(pieceID)
             }
             coordinator.sweepDeadFigures()
             if coordinator.scenarioResult != nil { return }

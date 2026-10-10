@@ -89,7 +89,7 @@ extension BoardCoordinator {
         return entries
     }
 
-    private func isPlayerSideMonster(_ monster: GameMonster) -> Bool { monster.isAlly || monster.isAllied }
+    private func isPlayerSideMonster(_ monster: GameMonster) -> Bool { MonsterAI.isAllyFaction(monster) }
 
     /// "2 of 3 acting" for the monster type whose turn it is: standees act elites first, then by number.
     private func actingDetail(_ monster: GameMonster) -> String? {
@@ -199,8 +199,9 @@ extension BoardCoordinator {
                                detail: "Tap a highlighted hex next to your character", canSkip: false)
         case .selectingPushPullHex(let target, _, _, let remaining, let isPush):
             return Instruction(title: "\(isPush ? "Push" : "Pull") \(name(target))",
-                               detail: "Tap the hex to \(isPush ? "push" : "pull") them into (\(remaining) left)",
-                               canSkip: false)
+                               detail: "Tap the hex to \(isPush ? "push" : "pull") them into (\(remaining) left)"
+                                   + (pushPullDeclinable ? ", or skip it: all or none" : ""),
+                               canSkip: pushPullDeclinable)
         case .selectingConditionTarget(_, let condition, _):
             return Instruction(title: GameText.conditionName(condition),
                                detail: "Tap a highlighted figure to apply it", canSkip: ownTurn)
@@ -269,9 +270,21 @@ extension BoardCoordinator {
             }
             let words = name(piece).split(separator: " ")
             appearance.initials = words.prefix(2).compactMap(\.first).map(String.init).joined().uppercased()
-        case .objective:
-            break
+        case .objective(let id):
+            // No portrait: the first letters of its name ("WP" for a Water Pump), numbered when
+            // there are several of the kind.
+            guard let container = objectiveContainer(of: piece) else { break }
+            let words = container.name.split(separator: " ")
+            appearance.initials = words.prefix(2).compactMap(\.first).map(String.init).joined().uppercased()
+            appearance.badge = GameText.objectiveOrdinal(id, game: game).map(String.init)
+            // Standing on the obstacle or door the map draws for it, it lets that show.
+            if let site = boardState.objectiveSites[id], !container.escort,
+               site.barsDoor || boardState.cells[site.coord]?.overlay == .obstacle {
+                appearance.isHollow = true
+            }
         }
+        // A monster sitting the round out is drawn hollow, like something that isn't quite there.
+        if isInactive(piece) { appearance.isHollow = true }
         return appearance
     }
 
@@ -316,7 +329,8 @@ extension BoardCoordinator {
 
     func damageOutcome(_ pending: PendingDamage) -> DamageOutcome? {
         guard let character = gameManager?.game.characters.first(where: { $0.id == pending.characterID }) else { return nil }
-        let after = max(0, character.health - pending.damage)
+        // A bonus in play takes it: no hit points are lost.
+        let after = pending.absorbedBy != nil ? character.health : max(0, character.health - pending.damage)
         return DamageOutcome(healthBefore: character.health, healthAfter: after, exhausts: after == 0)
     }
 }

@@ -50,8 +50,11 @@ final class RoundManager {
         // Evaluate start-of-round scenario rules (spawns, stat changes) before drawing cards.
         onRoundAdvanced?()
 
-        // Draw monster abilities and apply stat effects
-        for monster in game.monsters where !monster.off && monster.aliveEntities.count > 0 {
+        // Draw monster abilities — one card for each deck, whichever types share it — and apply
+        // the stat cards' effects; a card's own Shield and Retaliate wait for each monster's turn.
+        // (Not for a type that sits this round out.)
+        let inactive = MonsterAI.inactiveMonsters(game)
+        for monster in game.monsters where !monster.off && monster.aliveEntities.count > 0 && !inactive.contains(monster.name) {
             monsterManager.drawAbility(for: monster)
             monsterManager.applyStatEffects(for: monster)
         }
@@ -112,6 +115,8 @@ final class RoundManager {
                     // Reset shield/retaliate
                     entity.shield = nil
                     entity.retaliate = []
+                    // "+1 Attack to all attacks this round" (the Captain of the Guard's allies).
+                    entity.tags.removeAll { $0.hasPrefix(MonsterAbility.roundAttackTag) }
                 }
             case .objective(let o):
                 o.active = false
@@ -153,21 +158,16 @@ final class RoundManager {
                 m.active = true
                 if !figuresTakeOwnTurns {
                     for entity in m.aliveEntities { beforeTurnEntity(entity) }
+                    // The card's Shield and Retaliate start with the turn (not for the stunned).
+                    monsterManager.applyAbilityBonuses(for: m)
                 }
             }
         case .objective(let o):
             o.active.toggle()
         }
 
-        // Advance consumed elements to inert after any turn
-        for i in game.elementBoard.indices {
-            if game.elementBoard[i].state == .consumed || game.elementBoard[i].state == .partlyConsumed {
-                game.elementBoard[i].state = .inert
-            }
-            if game.elementBoard[i].state == .new {
-                game.elementBoard[i].state = .strong
-            }
-        }
+        // What the turn consumed is gone; what it infused is strong from now on.
+        game.settleElementsAtEndOfTurn()
     }
 
     private func beforeTurn(character: GameCharacter) {
@@ -182,7 +182,9 @@ final class RoundManager {
 
         // Long rest: "Heal 2, Self" as part of the resting turn, after start-of-turn wound damage.
         // Healing follows the normal rules (poison blocks it; it removes poison and wound).
-        if character.longRest && character.health > 0 {
+        // On the board the rest itself does this, once its card is chosen (the wound's damage
+        // comes first and can be negated; the heal is the player's to take).
+        if character.longRest && character.health > 0 && !figuresTakeOwnTurns {
             entityManager.heal(character, amount: 2)
             character.spentItems.removeAll()
             character.itemSlotsUsed.removeAll()
@@ -219,6 +221,7 @@ final class RoundManager {
         game.round = 0
         game.state = .draw
         game.elementBoard = ElementModel.defaultBoard()
+        game.elementsInfusedThisTurn = []
         game.monsterAttackModifierDeck = .defaultDeck()
         game.allyAttackModifierDeck = .defaultDeck()
         game.lootDeck = LootDeck()

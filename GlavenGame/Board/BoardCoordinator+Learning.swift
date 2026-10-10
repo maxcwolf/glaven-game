@@ -499,8 +499,15 @@ extension BoardCoordinator {
             switch cell.overlay {
             case .trap:
                 title = "Trap"
-                let damage = cell.trapDamage ?? gameManager?.levelManager.trap() ?? 0
-                paragraphs.append("It springs on the first figure to enter it: \(damage) damage. Then it's gone. Monsters walk around traps when they can.")
+                // What this trap does, as the scenario's legend (or the card that made it) says.
+                let effect = cell.resolvedTrapEffect
+                let does = trapDescription(at: hex) ?? "damage"
+                paragraphs.append("It springs on the first figure to enter it: \(does). Then it's gone. Monsters walk around traps when they can.")
+                if effect.conditions.contains(.stun) {
+                    paragraphs.append("A figure it stuns stops there and can do nothing more that turn; the Stun lasts to the end of its next turn.")
+                } else if effect.conditions.contains(.immobilize) {
+                    paragraphs.append("A figure it immobilizes stops there; it can still do the rest of its turn.")
+                }
             case .hazard:
                 title = "Hazardous terrain"
                 paragraphs.append("A figure entering it suffers damage, each time it enters. Monsters avoid it when they can; flying and jumping pass over it.")
@@ -511,17 +518,30 @@ extension BoardCoordinator {
                 title = "Obstacle"
                 paragraphs.append("Nothing can move through it or stop on it (flying passes over), but it doesn't block line of sight.")
             case .door:
-                title = boardState.isClosedDoor(hex) ? "Closed door" : "Open door"
-                paragraphs.append(LearnTopic.topic(.doors).paragraphs[0])
+                if boardState.isLockedDoor(hex) {
+                    title = "Locked door"
+                    paragraphs.append(lock(at: hex)?.note ?? "A rule of this scenario keeps it shut; walking into it doesn't open it.")
+                } else {
+                    title = boardState.isClosedDoor(hex) ? "Closed door" : "Open door"
+                    paragraphs.append(LearnTopic.topic(.doors).paragraphs[0])
+                }
             case .treasure:
                 title = "Treasure"
-                paragraphs.append("A character who ends their turn here opens it. Some hold items, some gold, some a trap.")
+                if goalTreasureNeedsLootAction, cell.treasureID == Self.goalTreasureID {
+                    paragraphs.append("In this scenario it can only be looted with a Loot action: ending a turn here doesn't open it.")
+                } else {
+                    paragraphs.append("A character who ends their turn here opens it. Some hold items, some gold, some a trap.")
+                }
             case .wall:
                 title = "Wall"
                 paragraphs.append("Walls block movement and line of sight.")
             default:
                 break
             }
+        }
+        if pressurePlateHexes.contains(hex) {
+            if title == "A hex" { title = "Pressure plate" }
+            paragraphs.append("A pressure plate. Something in this scenario happens when a character stands on it as their turn ends.")
         }
         if (boardState.lootTokens[hex] ?? 0) > 0 {
             if title == "A hex" { title = "Money token" }

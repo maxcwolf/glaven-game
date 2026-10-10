@@ -19,15 +19,34 @@ final class TownTests: XCTestCase {
     /// (road event 24: #82 Burning Mountain) is open, and a won #1 Black Barrow isn't, though
     /// it's where the campaign starts.
     func testTheOpenScenariosFollowTheCampaign() throws {
-        let gm = try party(["cragheart"])
+        let gm = try party(["cragheart", "brute"])
         func open() -> [String] { gm.scenarioManager.availableScenarios(for: "gh").map(\.index) }
         XCTAssertEqual(open(), ["1"])
-        gm.game.completedScenarios.insert("gh-1")
-        gm.game.partyAchievements.insert("first-steps")
-        gm.game.manualScenarios.insert("gh-82")
-        XCTAssertFalse(open().contains("1"), "a won scenario isn't open again")
-        XCTAssertTrue(open().contains("2"))
-        XCTAssertTrue(open().contains("82"), "an event's scenario is open")
+
+        // Lost: still open, and nothing new. Won: First Steps, and the Barrow Lair.
+        let blackBarrow = try XCTUnwrap(gm.editionStore.scenarioData(index: "1", edition: "gh"))
+        gm.startScenarioOnBoard(blackBarrow)
+        gm.completeScenario(success: false)
+        XCTAssertEqual(open(), ["1"])
+        gm.startScenarioOnBoard(blackBarrow)
+        gm.completeScenario(success: true)
+        XCTAssertEqual(open(), ["2"], "a won scenario isn't open again")
+
+        // Road event 24, taking the hermit's map: #82 Burning Mountain.
+        gm.game.events.roadDeck = ["24"] + gm.eventCardManager.deck(.road)
+        let card = try XCTUnwrap(gm.eventCardManager.topCard(.road))
+        let option = try XCTUnwrap(card.options?.first { option in
+            (option.outcomes ?? []).contains { ($0.effects ?? []).contains { $0.type == "unlockScenario" } }
+        }?.label)
+        XCTAssertNotNil(gm.eventCardManager.resolve(.road, option: option))
+        XCTAssertEqual(open(), ["2", "82"], "an event's scenario is open")
+
+        // Without First Steps the Barrow Lair is on the map but closed.
+        gm.game.partyAchievements.remove("first-steps")
+        XCTAssertEqual(open(), ["82"])
+        let lair = try XCTUnwrap(gm.editionStore.scenarioData(index: "2", edition: "gh"))
+        XCTAssertTrue(gm.scenarioManager.isUnlocked(lair))
+        XCTAssertTrue(gm.scenarioManager.isLocked(lair))
     }
 
     /// A new party stays a "New Campaign" while it recruits and shops; it's in town once a
@@ -131,6 +150,40 @@ final class TownTests: XCTestCase {
         XCTAssertFalse(manager.canLevelUp(brute), "one level per threshold")
     }
 
+    /// The whole table (p.44): 45, 95, 150, 210, 275, 345, 420 and 500 experience for levels 2
+    /// to 9, each with the class's hit points for it; one point short is not enough, and level
+    /// 9 is the last.
+    func testEveryLevelHasItsExperienceAndHitPoints() throws {
+        let thresholds = [45, 95, 150, 210, 275, 345, 420, 500]
+        let hitPoints = ["brute": [10, 12, 14, 16, 18, 20, 22, 24, 26],
+                         "spellweaver": [6, 7, 8, 9, 10, 11, 12, 13, 14],
+                         "scoundrel": [8, 9, 11, 12, 14, 15, 17, 18, 20]]
+        let gm = try party(["brute", "spellweaver", "scoundrel"])
+        let manager = gm.characterManager
+        for character in gm.game.characters {
+            let table = try XCTUnwrap(hitPoints[character.name])
+            XCTAssertEqual(character.maxHealth, table[0], character.name)
+            for (index, threshold) in thresholds.enumerated() {
+                character.experience = threshold - 1
+                XCTAssertFalse(manager.levelUp(character), "\(character.name): \(threshold - 1) XP isn't level \(index + 2)")
+                character.experience = threshold
+                XCTAssertTrue(manager.levelUp(character), "\(character.name): level \(index + 2) at \(threshold)")
+                XCTAssertEqual(character.level, index + 2)
+                XCTAssertEqual(character.maxHealth, table[index + 1], "\(character.name) at level \(index + 2)")
+                XCTAssertEqual(character.health, character.maxHealth)
+            }
+            character.experience = 5000
+            XCTAssertFalse(manager.levelUp(character), "nothing past level 9")
+        }
+        // Several levels' worth of experience still means one level at a time.
+        let late = try party(["tinkerer"])
+        let tinkerer = late.game.characters[0]
+        tinkerer.experience = 150
+        XCTAssertTrue(late.characterManager.levelUp(tinkerer))
+        XCTAssertEqual(tinkerer.level, 2)
+        XCTAssertEqual(late.characterManager.pendingCardChoices(for: tinkerer), 1)
+    }
+
     // MARK: - Perks
 
     /// One perk per level after the first and one per three battle-goal checkmarks (p.44, 46).
@@ -139,19 +192,45 @@ final class TownTests: XCTestCase {
         let brute = gm.game.characters[0]
         let manager = gm.characterManager
         XCTAssertEqual(manager.perksAvailable(for: brute), 0)
-        manager.togglePerk(at: 0, for: brute)
+        XCTAssertFalse(manager.takePerk(at: 0, for: brute))
         XCTAssertEqual(brute.selectedPerks.reduce(0, +), 0, "a level 1 character with no checkmarks has no perk to take")
 
         brute.experience = 45
         manager.levelUp(brute)
-        brute.battleGoalProgress = 3
+        brute.addBattleGoalChecks(2)
+        XCTAssertEqual(manager.perksAvailable(for: brute), 1, "two checkmarks aren't a perk yet")
+        brute.addBattleGoalChecks(1)
         XCTAssertEqual(manager.perksAvailable(for: brute), 2)
-        manager.togglePerk(at: 0, for: brute)
-        manager.togglePerk(at: 1, for: brute)
+        XCTAssertTrue(manager.takePerk(at: 0, for: brute))
+        XCTAssertTrue(manager.takePerk(at: 1, for: brute))
         XCTAssertEqual(manager.perksAvailable(for: brute), 0)
         let taken = brute.selectedPerks
-        manager.togglePerk(at: 2, for: brute)
-        XCTAssertEqual(brute.selectedPerks.reduce(0, +), 2, "no third perk: \(taken) → \(brute.selectedPerks)")
+        XCTAssertFalse(manager.takePerk(at: 2, for: brute))
+        XCTAssertEqual(brute.selectedPerks, taken, "no third perk")
+    }
+
+    /// A perk once marked stays marked (p.44): tapping it again takes its second box if it has
+    /// one and a perk is owed, and otherwise changes nothing.
+    func testAPerkOnceTakenStays() throws {
+        let gm = try party(["brute"])
+        let brute = gm.game.characters[0]
+        let manager = gm.characterManager
+        brute.experience = 150
+        for _ in 0..<3 { manager.levelUp(brute) }
+        XCTAssertEqual(manager.perksAvailable(for: brute), 3)
+
+        // Perk 0 has one box (remove two −1 cards); perk 2 has two (add two +1 cards, twice).
+        XCTAssertTrue(manager.takePerk(at: 0, for: brute))
+        XCTAssertFalse(manager.takePerk(at: 0, for: brute), "its one box is marked")
+        XCTAssertEqual(brute.selectedPerks[0], 1, "and stays marked")
+        XCTAssertTrue(manager.takePerk(at: 2, for: brute))
+        XCTAssertTrue(manager.takePerk(at: 2, for: brute))
+        XCTAssertEqual(brute.selectedPerks[2], 2)
+        XCTAssertFalse(manager.takePerk(at: 2, for: brute))
+        XCTAssertEqual(brute.selectedPerks[2], 2)
+        XCTAssertEqual(manager.perksAvailable(for: brute), 0)
+        XCTAssertEqual(brute.attackModifierDeck.attackModifiers.filter { $0.type == .minus1 }.count, 3)
+        XCTAssertEqual(brute.attackModifierDeck.attackModifiers.filter { $0.type == .plus1 }.count, 9)
     }
 
     // MARK: - Shop
@@ -175,8 +254,31 @@ final class TownTests: XCTestCase {
 
         XCTAssertTrue(shop.sell(item, for: b))
         XCTAssertEqual(b.loot, item.cost / 2, "half price, rounded down")
+        XCTAssertFalse(shop.sell(item, for: b), "nothing left to sell")
         c.loot = item.cost - 1
         XCTAssertEqual(shop.purchaseProblem(item, for: c), .tooExpensive)
+        XCTAssertFalse(shop.buy(item, for: c))
+        XCTAssertEqual(c.loot, item.cost - 1)
+        c.loot = item.cost
+        XCTAssertTrue(shop.buy(item, for: c), "the copy sold back is on the shelf again")
+    }
+
+    /// Half of an odd price is rounded down (p.47): the Empowering Talisman costs 45 and sells
+    /// for 22.
+    func testAnOddPricedItemSellsForHalfRoundedDown() throws {
+        let gm = try party(["brute"])
+        let brute = gm.game.characters[0]
+        gm.game.partyProsperity = 4   // prosperity level 2: items 15–21
+        let talisman = try XCTUnwrap(gm.itemManager.availableItems().first { $0.id == 17 })
+        XCTAssertEqual(talisman.cost, 45)
+        brute.loot = 45
+        XCTAssertTrue(gm.itemManager.buy(talisman, for: brute))
+        XCTAssertEqual(brute.loot, 0)
+        XCTAssertTrue(gm.itemManager.sell(talisman, for: brute))
+        XCTAssertEqual(brute.loot, 22)
+        for item in gm.editionStore.items(for: "gh") {
+            XCTAssertEqual(gm.itemManager.salePrice(item), Int((Double(item.cost) / 2).rounded(.down)), item.name)
+        }
     }
 
     /// Reputation changes every shop price (p.48): −1 at +3 … −5 at +19, and the reverse below
@@ -220,15 +322,31 @@ extension TownTests {
         XCTAssertEqual(brute.loot, 30)
         XCTAssertEqual(brute.experience, 0)
 
+        // A new city is prosperity level 1: a recruit asked for at level 3 still starts at 1.
+        XCTAssertEqual(gm.characterManager.highestStartingLevel, 1, "a new city: level 1 only")
         gm.characterManager.addCharacter(name: "tinkerer", edition: "gh", level: 3)
         let tinkerer = try XCTUnwrap(gm.game.characters.first { $0.name == "tinkerer" })
-        XCTAssertEqual(tinkerer.loot, 60)
-        XCTAssertEqual(tinkerer.experience, 95)
-        XCTAssertEqual(tinkerer.level, 3)
+        XCTAssertEqual(tinkerer.level, 1)
+        XCTAssertEqual(tinkerer.loot, 30)
+        XCTAssertEqual(tinkerer.experience, 0)
 
-        XCTAssertEqual(gm.characterManager.highestStartingLevel, 1, "a new city: level 1 only")
         gm.game.partyProsperity = 9
         XCTAssertEqual(gm.characterManager.highestStartingLevel, 3)
+        gm.characterManager.addCharacter(name: "spellweaver", edition: "gh", level: 3)
+        let spellweaver = try XCTUnwrap(gm.game.characters.first { $0.name == "spellweaver" })
+        XCTAssertEqual(spellweaver.level, 3)
+        XCTAssertEqual(spellweaver.loot, 60)
+        XCTAssertEqual(spellweaver.experience, 95)
+        XCTAssertEqual(spellweaver.maxHealth, 8)
+        XCTAssertEqual(gm.characterManager.perksAvailable(for: spellweaver), 2, "a perk for each level gained")
+        XCTAssertEqual(gm.characterManager.pendingCardChoices(for: spellweaver), 2)
+
+        gm.characterManager.addCharacter(name: "scoundrel", edition: "gh", level: 7)
+        let scoundrel = try XCTUnwrap(gm.game.characters.first { $0.name == "scoundrel" })
+        XCTAssertEqual(scoundrel.level, 3, "no higher than the prosperity level")
+        XCTAssertEqual(scoundrel.loot, 60)
+        gm.characterManager.addCharacter(name: "mindthief", edition: "gh", level: 2)
+        XCTAssertEqual(gm.game.characters.first { $0.name == "mindthief" }?.loot, 45, "15 × (2 + 1)")
     }
 
     /// In town, tapping a party member in the recruit list asks before they leave for good.

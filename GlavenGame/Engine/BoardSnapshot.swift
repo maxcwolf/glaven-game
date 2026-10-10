@@ -13,6 +13,27 @@ struct BoardSnapshot: Codable {
     /// Traps a character placed (Proximity Mine), who placed them and the XP an enemy springing
     /// one gives them. Optional: older saves have none.
     var characterTraps: [CharacterTrap]? = nil
+    /// Spawn marker hexes and objective places. Optional: older saves have none.
+    var markerHexes: [String: [HexCoord]]? = nil
+    var openObjectiveSlots: [ObjectiveSlot]? = nil
+    var objectiveSites: [Int: ObjectiveSlot]? = nil
+    var goalLooters: [String]? = nil
+    var escapedCharacters: [String]? = nil
+    var lockedDoors: Set<HexCoord>? = nil
+    var shutDoors: Set<HexCoord>? = nil
+    var releasedLocks: Set<Int>? = nil
+    var goalTreasuresLooted: Int? = nil
+    var eliteKills: Int? = nil
+    var heldMonsterSlots: [MonsterSlot]? = nil
+    var cycleSteps: [String: Int]? = nil
+    var cleansed: [String]? = nil
+    var exhaustedOnExit: [String]? = nil
+    var conclusion: String? = nil
+    var goalReached: Bool? = nil
+    /// Wall lines between tiles and the ends of a crossing. Optional: older saves have none
+    /// (the coordinator draws them again from the map).
+    var wallEdges: [HexEdge]? = nil
+    var crossings: [HexCoord]? = nil
 
     struct CharacterTrap: Codable, Equatable {
         let hex: HexCoord
@@ -33,7 +54,19 @@ struct BoardSnapshot: Codable {
             doors: board.doors,
             bounds: board.bounds,
             eliteStandees: Set(board.eliteStandees.map { PieceIDCodable($0) }),
-            lootTokens: board.lootTokens
+            lootTokens: board.lootTokens,
+            markerHexes: board.markerHexes,
+            openObjectiveSlots: board.openObjectiveSlots,
+            objectiveSites: board.objectiveSites,
+            goalLooters: board.goalLooters,
+            escapedCharacters: board.escapedCharacters,
+            lockedDoors: board.lockedDoors, shutDoors: board.shutDoors, releasedLocks: board.releasedLocks,
+            goalTreasuresLooted: board.goalTreasuresLooted, eliteKills: board.eliteKills,
+            heldMonsterSlots: board.heldMonsterSlots, cycleSteps: board.cycleSteps,
+            cleansed: board.cleansed,
+            exhaustedOnExit: board.exhaustedOnExit,
+            conclusion: board.conclusion, goalReached: board.goalReached,
+            wallEdges: board.wallEdges.sorted { ($0.a, $0.b) < ($1.a, $1.b) }, crossings: board.crossings
         )
     }
 
@@ -49,6 +82,24 @@ struct BoardSnapshot: Codable {
         board.bounds = bounds
         board.eliteStandees = Set(eliteStandees.map { $0.pieceID })
         board.lootTokens = lootTokens
+        board.markerHexes = markerHexes ?? [:]
+        board.openObjectiveSlots = openObjectiveSlots ?? []
+        board.objectiveSites = objectiveSites ?? [:]
+        board.goalLooters = goalLooters ?? []
+        board.escapedCharacters = escapedCharacters ?? []
+        board.lockedDoors = lockedDoors ?? []
+        board.shutDoors = shutDoors ?? []
+        board.releasedLocks = releasedLocks ?? []
+        board.goalTreasuresLooted = goalTreasuresLooted ?? 0
+        board.eliteKills = eliteKills ?? 0
+        board.heldMonsterSlots = heldMonsterSlots ?? []
+        board.cycleSteps = cycleSteps ?? [:]
+        board.cleansed = cleansed ?? []
+        board.exhaustedOnExit = exhaustedOnExit ?? []
+        board.conclusion = conclusion
+        board.goalReached = goalReached ?? false
+        if let wallEdges { board.wallEdges = Set(wallEdges) }
+        if let crossings { board.crossings = crossings }
     }
 }
 

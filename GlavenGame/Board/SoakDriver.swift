@@ -58,7 +58,7 @@ final class SoakDriver {
         gm.startScenarioOnBoard(data)
         coord.briefPresentation = nil
         for character in gm.game.characters where !character.absent {
-            if let hex = coord.boardState.startingLocations.sorted().first(where: { !coord.boardState.isOccupied($0) }) {
+            if let hex = coord.freeStartingHexes(for: character.id).sorted().first {
                 coord.placeCharacter(characterID: character.id, at: hex)
             }
         }

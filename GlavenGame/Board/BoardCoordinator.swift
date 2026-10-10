@@ -175,6 +175,9 @@ final class BoardCoordinator {
     var pendingRevealedStandees: [String: Set<Int>] = [:]
 
     /// A scenario result triggered this round; it takes effect at the end of the round (p.47).
+    /// The objective being destroyed or monster dying right now, while the rules that triggers
+    /// run: the letters it carried and where it stood.
+    var fallenFigure: (markers: [String], hex: HexCoord)?
     var pendingResult: ScenarioResult?
     /// Why the scenario ended (or will, at the end of the round).
     var endReason: ScenarioEndReason?
@@ -307,10 +310,23 @@ final class BoardCoordinator {
     /// Called before every attack resolves and every movement starts, with the board as it is at
     /// that moment. The simulation tests use these to check each one against the rules.
     var attackObserver: ((_ attacker: PieceID, _ target: PieceID) -> Void)?
+    /// Whether the attack being made was drawn onto another figure than the one aimed at.
+    var attackWasRedirected = false
     var moveObserver: ((_ piece: PieceID, _ path: [HexCoord], _ style: MovementStyle) -> Void)?
 
     /// Non-nil when a monster push/pull is in progress and the async caller is suspended.
     private var pendingPushPullContinuation: CheckedContinuation<Void, Never>?
+    /// The acting character's move that is going on past a door it opened, while the player
+    /// chooses where the movement left takes them.
+    private(set) var continuedMove: (piece: PieceID, mode: MoveMode)?
+    /// Set by `moveAlong` when a character opened a door with movement left and can go on.
+    var moveGoesOnPastDoor = false
+    /// Hexes the figure being pushed or pulled has passed through without stopping (they hold
+    /// figures it may pass), since the last hex it stood on.
+    private var pushPullVia: [HexCoord] = []
+    /// Whether the push or pull being chosen can still be turned down: it is the acting
+    /// character's own, and none of it has happened yet (FAQ: optional, but all or nothing).
+    private(set) var pushPullDeclinable = false
     /// Moves waiting for their animation to finish, by move. A scene torn down mid-move never
     /// finishes them, so teardown resumes them instead.
     var pendingMoveAnimations: [UUID: CheckedContinuation<Void, Never>] = [:]
@@ -405,6 +421,8 @@ final class BoardCoordinator {
         let damage: Int
         let sourceDescription: String
         var continuation: CheckedContinuation<DamageMitigationChoice, Never>?
+        /// The bonus in play that takes this damage if no card is lost (Frost Armor).
+        var absorbedBy: String? = nil
     }
 
     /// Non-nil when a character is being attacked and needs to choose mitigation.
@@ -516,7 +534,9 @@ final class BoardCoordinator {
     var pendingLongRest: PendingLongRest?
 
     /// Called from the UI when the player picks which discard card to lose during long rest.
-    func resolveLongRest(characterID: String, discardIndex: Int) {
+    /// `heal`: the rest's "Heal 2, self" is the player's to take or leave, as is refreshing
+    /// spent items (FAQ); losing a card and taking the others back is not.
+    func resolveLongRest(characterID: String, discardIndex: Int, heal takesHeal: Bool = true) {
         guard let gameManager = gameManager,
               let character = gameManager.game.characters.first(where: { $0.id == characterID }) else { return }
 
@@ -529,19 +549,61 @@ final class BoardCoordinator {
         boardScene?.play(.rest)
         boardScene?.play(.lose)
 
-        // Recover remaining discard to hand. (Heal 2 and refreshing spent items happen when the
-        // resting turn starts — RoundManager.beforeTurn.)
+        // The rest of the discard pile comes back to the hand.
+        let returned = character.discardedCards.count
         character.handCards.append(contentsOf: character.discardedCards)
         character.discardedCards.removeAll()
 
         let deckName = character.characterData?.deck ?? character.name
         let deckData = gameManager.editionStore.deckData(name: deckName, edition: character.edition)
         let cardName = deckData?.abilities.first(where: { $0.cardId == lostCard })?.name ?? "Card \(lostCard)"
-        log("\(characterName(characterID)) long rests: loses \(cardName), heals 2 and takes back \(character.handCards.count) cards", category: .rest)
+        log("\(characterName(characterID)) long rests: loses \(cardName) and takes back \(Self.cards(returned))", category: .rest)
+        finishLongRest(character, heal: takesHeal)
+    }
 
+    private static func cards(_ count: Int) -> String { count == 1 ? "1 card" : "\(count) cards" }
+
+    /// The rest's Heal 2 (a real heal: Poison stops it, a Wound goes with it) and its refresh of
+    /// spent items — an item with uses left isn't spent, and keeps the uses it has marked (FAQ) —
+    /// then the turn ends like any other.
+    private func finishLongRest(_ character: GameCharacter, heal takesHeal: Bool) {
+        let me = PieceID.character(character.id)
+        if takesHeal, isOnBoard(me) {
+            let healed = heal(me, amount: 2, source: me)
+            log(healLine(me, healed: me, for: healed), category: .heal, trace: "Heal 2, self")
+        }
+        for key in character.spentItems { character.itemSlotsUsed[key] = nil }
+        character.spentItems.removeAll()
+        // Bonuses that act as a turn ends (Auto Turret's attack) act as this one does.
+        guard let turn = activePlayerTurn, turn.characterID == character.id else {
+            endCharacterTurn(character.id)
+            return
+        }
+        let generation = boardGeneration
+        turn.performRestBonusSteps(atStart: false) { [weak self] in
+            guard let self, self.isCurrentBoard(generation), self.scenarioResult == nil else { return }
+            self.endCharacterTurn(character.id)
+        }
+    }
+
+    /// The end of a character's turn, however it was spent (two cards, a long rest, stunned):
+    /// what the turn's items and active bonuses do as it ends, loot in the character's hex, and
+    /// everything that is judged by where figures stand as a turn ends (pressure plates, goals).
+    private func endCharacterTurn(_ characterID: String) {
+        if let turn = activePlayerTurn, turn.characterID == characterID {
+            applyEndOfTurnItems(turn)
+            applyEndOfTurnBonuses(turn)
+            activePlayerTurn = nil
+        }
         lootAtEndOfTurn(characterID)
-        // Continue to next figure
-        advanceToNextFigure()
+
+        updateLocks(turnEnded: true)
+        // Rules that wait for where figures stand as a turn ends (every plate held).
+        gameManager?.scenarioRulesManager.evaluateRules(phase: .figureChange)
+        checkVictoryDefeat(turnEnded: true)
+        if scenarioResult == nil {
+            advanceToNextFigure()
+        }
     }
 
     // MARK: - Short Rest
@@ -642,13 +704,14 @@ final class BoardCoordinator {
         boardScene?.play(.lose)
 
         // Recover remaining discard to hand
+        let returned = character.discardedCards.count
         character.handCards.append(contentsOf: character.discardedCards)
         character.discardedCards.removeAll()
 
         let deckName = character.characterData?.deck ?? character.name
         let deckData = gameManager.editionStore.deckData(name: deckName, edition: character.edition)
         let cardName = deckData?.abilities.first(where: { $0.cardId == lostCardId })?.name ?? "Card \(lostCardId)"
-        log("\(characterName(character.id)) short rests: loses \(cardName) and takes back \(character.handCards.count) cards", category: .rest)
+        log("\(characterName(character.id)) short rests: loses \(cardName) and takes back \(Self.cards(returned))", category: .rest)
 
         let charID = pending.characterID
         pendingShortRest = nil
@@ -664,23 +727,33 @@ final class BoardCoordinator {
 
         // Suffer 1 damage to keep the card and randomly lose a different one (once per rest).
         log("\(characterName(character.id)) suffers 1 damage to lose a different card", category: .rest)
-        if sufferDamage(1, to: .character(character.id)) {
-            // Exhausted by the damage: the rest is over.
-            pendingShortRest = nil
-            advanceToNextShortRest(startingAfter: pending.characterID)
-            return
-        }
-
         pending.rerollUsed = true
-
-        // Pick a new random card, different from the current one if possible
-        let candidates = character.discardedCards.filter { $0 != pending.randomCardId }
-        if let newCard = candidates.randomElement(using: &GameRandom.shared) {
-            pending.randomCardId = newCard
-        }
-        // If no other candidates exist, keep the same card (only 1 unique card ID scenario — unlikely with >=2 cards)
-
+        // The first card is kept: it can't be the one lost, nor be lost to negate this damage.
+        let kept = pending.randomCardId
         pendingShortRest = pending
+        let generation = boardGeneration
+        Task { @MainActor in
+            // Damage like any other: it may be negated (FAQ), by a card or by a charge.
+            let exhausted = await self.sufferDamageWithMitigation(1, to: .character(character.id), source: "the short rest")
+            guard self.isCurrentBoard(generation), var pending = self.pendingShortRest,
+                  pending.characterID == character.id else { return }
+            if exhausted {
+                // Exhausted by the damage: the rest is over.
+                self.pendingShortRest = nil
+                self.advanceToNextShortRest(startingAfter: pending.characterID)
+                return
+            }
+            // A different card, at random, from what is still in the discard pile.
+            let candidates = character.discardedCards.filter { $0 != kept }
+            if let newCard = candidates.randomElement(using: &GameRandom.shared) {
+                pending.randomCardId = newCard
+                self.pendingShortRest = pending
+            } else if character.discardedCards.count < 2 {
+                // The discard pile was spent on the damage: nothing is left to rest with.
+                self.pendingShortRest = nil
+                self.advanceToNextShortRest(startingAfter: pending.characterID)
+            }
+        }
     }
 
     /// Player declines the short rest — cards stay as-is.
@@ -709,6 +782,7 @@ final class BoardCoordinator {
         afterRuleDamage { [weak self] in
             guard let self else { return }
             self.sweepDeadFigures()
+            self.updateLocks(roundEnded: true)
             self.resolvePendingResult()
             if self.scenarioResult != nil { return }
             self.beginCardSelection()
@@ -797,7 +871,7 @@ final class BoardCoordinator {
                    board.cells[next]?.overlay == nil {
                     extra.append(next)
                 }
-                for neighbor in next.neighbors where board.cells[neighbor] != nil && !visited.contains(neighbor) {
+                for neighbor in board.neighbors(of: next) where board.cells[neighbor] != nil && !visited.contains(neighbor) {
                     visited.insert(neighbor)
                     frontier.append(neighbor)
                 }
@@ -805,11 +879,36 @@ final class BoardCoordinator {
             board.startingLocations = extra
         }
 
+        // A tile on the map from the start that the data counts as another room (the far side of
+        // Demonic Rift's crossing) is set up with it.
+        if let gameManager {
+            let onMap = Set(startingRoom.tileRefs.map { $0.lowercased() })
+            for room in gameManager.game.scenario?.data.rooms ?? []
+            where !room.isInitial && onMap.contains((room.ref ?? "").lowercased())
+                && gameManager.game.scenario?.revealedRooms.contains(room.roomNumber) == false {
+                gameManager.scenarioManager.openRoom(room)
+            }
+        }
+
         // The starting room's monsters were created from the scenario data; give them the map's
         // positions (or fall back to the map's own monster list if the scenario has none).
+        // Tiles laid out behind a door that stays shut (the yard of the Battlements): of their
+        // monster places, only those the first room's monsters are lettered for are used now.
+        var startingSlots = startingRoom.slots
+        for door in board.doors where !door.isOpen && isLaidOut(behind: door, in: scenario) {
+            guard let yard = BoardBuilder.revealRoomSlots(door: door, scenario: scenario, board: board, opening: false) else { continue }
+            let lettered = letteredPlacesOfRevealedRooms()
+            startingSlots += yard.slots.filter { lettered.contains($0.coord) }
+            // The rest wait for the room to be set up.
+            board.heldMonsterSlots += yard.slots.filter { !lettered.contains($0.coord) }
+        }
+
         let hasRoomData = !(gameManager?.game.scenario?.data.rooms ?? []).isEmpty
-        placeRevealedMonsters(slots: startingRoom.slots, newEntities: unplacedMonsterEntities(),
+        placeRevealedMonsters(slots: holdBack(startingSlots), newEntities: unplacedMonsterEntities(),
                               playerCount: playerCount, useMapMonsters: !hasRoomData)
+        placeRevealedObjectives()
+        updateLocks()
+        updateItemBars()
 
         attachToGame()
 
@@ -818,6 +917,7 @@ final class BoardCoordinator {
         gameManager?.game.round = 0
 
         buildScene(for: scenario)
+        showLocksAndPlates()
         boardPhase = .setup
         turnLog = []
         resetLearning()
@@ -840,10 +940,13 @@ final class BoardCoordinator {
         resetForScenario(scenario)
         let board = BoardState()
         snapshot.restore(to: board)
+        // A save from before the game drew wall lines: draw them from the map.
+        if snapshot.wallEdges == nil { board.wallEdges = BoardBuilder.wallEdges(in: scenario, among: Set(board.cells.keys)) }
         boardState = board
         restoreCharacterTraps(from: snapshot)
         attachToGame()
         buildScene(for: scenario)
+        showLocksAndPlates()
         turnLog = []
         resetLearning()
         log("Scenario \(scenario.id): \(scenario.title)", category: .setup)
@@ -939,8 +1042,27 @@ final class BoardCoordinator {
         }
 
         // Monsters spawned by scenario rules go onto the board, not only into game state.
-        gameManager?.scenarioRulesManager.onSpawnMonster = { [weak self] name, type, marker, health in
-            self?.spawnFromScenarioRule(name: name, type: type, marker: marker, health: health) ?? false
+        gameManager?.scenarioRulesManager.onSpawnMonster = { [weak self] name, type, marker, health, placed in
+            self?.spawnFromScenarioRule(name: name, type: type, marker: marker, health: health, placed: placed) ?? false
+        }
+        gameManager?.scenarioRulesManager.boardFactHolds = { [weak self] fact in self?.boardFactHolds(fact) ?? false }
+        attachScenarioEffects()
+        gameManager?.scenarioRulesManager.standsWhere = { [weak self] entity, identifier in
+            self?.stands(entity, where: identifier) ?? false
+        }
+        gameManager?.scenarioRulesManager.takesFigureDamage = { [weak self] entity, amount in
+            guard let self, let piece = self.pieceID(of: entity), self.isOnBoard(piece) else { return false }
+            self.log("\(self.name(piece)) suffers \(amount) damage from the scenario", category: .damage)
+            self.sufferDamage(amount, to: piece)
+            return true
+        }
+        gameManager?.scenarioRulesManager.healsFigure = { [weak self] entity, amount in
+            guard let self, let piece = self.pieceID(of: entity), self.isOnBoard(piece) else { return false }
+            let healed = self.heal(piece, amount: amount)
+            if healed > 0 || !self.lastHealRemoved.isEmpty {
+                self.log(self.healLine(piece, healed: piece, for: healed), category: .heal)
+            }
+            return true
         }
     }
 
@@ -983,6 +1105,10 @@ final class BoardCoordinator {
         boardGeneration += 1
         abandonPendingPrompts()
         gameManager?.scenarioRulesManager.onSpawnMonster = nil
+        gameManager?.scenarioRulesManager.boardFactHolds = nil
+        gameManager?.scenarioRulesManager.standsWhere = nil
+        gameManager?.scenarioRulesManager.takesFigureDamage = nil
+        gameManager?.scenarioRulesManager.healsFigure = nil
         gameManager?.entityManager.takesWoundDamage = nil
         gameManager?.scenarioRulesManager.takesCharacterDamage = nil
         ruleDamageDue = []
@@ -1016,15 +1142,32 @@ final class BoardCoordinator {
         interactionMode = .placingCharacter(characterID: characterID)
 
         // Highlight available starting locations
-        let occupied = Set(boardState.piecePositions.values)
-        let available = Set(boardState.startingLocations.filter { !occupied.contains($0) })
+        let available = Set(freeStartingHexes(for: characterID))
         boardScene?.highlightHexes(available, style: .place, offsetCol: offsetCol, offsetRow: offsetRow)
+    }
+
+    /// The starting hexes a character may still take: the free ones — and, where the scenario
+    /// has two starting rooms, not those of a room that already holds half the party (rounded up).
+    func freeStartingHexes(for characterID: String) -> [HexCoord] {
+        let free = boardState.startingLocations.filter { !boardState.isOccupied($0) }
+        guard scenarioData?.placements?.splitStart == true, let game = gameManager?.game else { return free }
+        let limit = (game.characters.filter { !$0.absent }.count + 1) / 2
+        func room(_ hex: HexCoord) -> String? { boardState.cells[hex]?.tileRef.lowercased() }
+        var placed: [String: Int] = [:]
+        for character in game.characters where character.id != characterID {
+            if let tile = boardState.piecePositions[.character(character.id)].flatMap(room) { placed[tile, default: 0] += 1 }
+        }
+        return free.filter { hex in room(hex).map { placed[$0, default: 0] < limit } ?? true }
     }
 
     /// Place a character on a starting hex.
     func placeCharacter(characterID: String, at coord: HexCoord) {
-        guard boardState.startingLocations.contains(coord),
-              !boardState.isOccupied(coord) else { return }
+        guard freeStartingHexes(for: characterID).contains(coord) else {
+            if boardState.startingLocations.contains(coord), !boardState.isOccupied(coord) {
+                log("No more than half the party may start in the same room", category: .setup)
+            }
+            return
+        }
 
         let pieceID = PieceID.character(characterID)
         // A character already placed may move to another starting hex until the scenario begins.
@@ -1089,7 +1232,7 @@ final class BoardCoordinator {
         if let pending, pending.remaining > 0, let data = pending.summonData,
            let gameManager, let character = gameManager.game.characters.first(where: { $0.id == characterID }),
            let charPos = boardState.piecePositions[.character(characterID)] {
-            let hexes = Set(charPos.neighbors.filter { isEmptyHex($0) })
+            let hexes = Set(boardState.neighbors(of: charPos).filter { isEmptyHex($0) })
             if !hexes.isEmpty {
                 gameManager.characterManager.addSummon(from: data, for: character)
                 if let next = character.summons.last {
@@ -1128,13 +1271,23 @@ final class BoardCoordinator {
         cardSelectingCharacterID = nil
         selectedCardPairs = [:]
 
-        // No turn is half-played here: save the round so Continue can resume from it.
-        gameManager.checkpointRound()
-
         logRoundHeader(gameManager.game.round + 1)
 
-        // Process exhaustion and auto-rests, then find the first character needing manual selection
-        advanceToNextCardSelection()
+        // What the scenario does "at the start of the round" comes before the cards are chosen,
+        // so the players choose knowing it (who is Disarmed, which element is strong, who has
+        // appeared). Monster ability cards are drawn only once every card is chosen.
+        gameManager.scenarioRulesManager.evaluateRulesForTheRoundToCome()
+        afterRuleDamage { [weak self] in
+            guard let self, let gameManager = self.gameManager else { return }
+            self.sweepDeadFigures()
+            if self.scenarioResult != nil { return }
+
+            // No turn is half-played here: save the round so Continue can resume from it.
+            gameManager.checkpointRound()
+
+            // Process exhaustion and auto-rests, then find the first character needing manual selection
+            self.advanceToNextCardSelection()
+        }
     }
 
     /// Store the selected card pair for a character during card selection.
@@ -1253,14 +1406,18 @@ final class BoardCoordinator {
     func buildTurnOrderAndStart() {
         guard let gameManager = gameManager else { return }
         teach(.initiative, at: .turnRail)
+        let inactive = MonsterAI.inactiveMonsters(gameManager.game)
         // Build turn order from sorted figures
         turnOrder = gameManager.game.figures.compactMap { figure in
             switch figure {
+            case .monster(let m) where inactive.contains(m.name):
+                return nil
             case .character(let c) where c.exhausted || c.absent:
                 return nil
             case .character(let c) where c.longRest:
-                // Initiative 99; a character goes before a monster type on a tie (p.16).
-                return TurnOrderEntry(figure: figure, initiative: 99 - 0.9)
+                // Initiative 99: before a monster type on a tie (p.16), but after a character
+                // whose card (with Boots of Speed) makes 99 (FAQ: "the long rest goes later").
+                return TurnOrderEntry(figure: figure, initiative: 99 - 0.4)
             case .character(let c):
                 // Ties between characters are broken by their second card's initiative (p.16).
                 let secondCard = Double(selectedCardPairs[c.id]?.bottom.initiative ?? 99) / 1000
@@ -1269,7 +1426,8 @@ final class BoardCoordinator {
                 // Use monsterManager to get the real initiative from the drawn ability card
                 let init_ = gameManager.monsterManager.currentAbilityInitiative(for: m)
                 return TurnOrderEntry(figure: figure, initiative: Double(init_ ?? 99))
-            case .objective(let o) where !o.off:
+            case .objective(let o) where !o.off && o.escort && o.entities.contains(where: { !$0.dead }):
+                // An escort takes a turn; an objective on the map (an altar, a door) takes none.
                 return TurnOrderEntry(figure: figure, initiative: Double(o.initiative) - 0.5)
             default:
                 return nil
@@ -1311,10 +1469,20 @@ final class BoardCoordinator {
             turnOrder[currentTurnIndex].completed = true
             if currentTurnToggled, case .character(let character) = turnOrder[currentTurnIndex].figure {
                 gameManager.scenarioRulesManager.evaluateTurnRules(.turnEnd, for: character)
+                if !character.exhausted { cleanseAtTurnEnd(character) }
+                // Water that hurts whoever ends a turn in it (Payment Due).
+                if !character.exhausted, let damage = waterDamageAtTurnEnd(for: .character(character.id)) {
+                    ruleDamageDue.append((character.id, damage))
+                }
             }
             if currentTurnToggled {
                 gameManager.roundManager.toggleFigure(turnOrder[currentTurnIndex].figure)
                 currentTurnToggled = false
+            }
+            // Damage a rule deals as a turn ends (The Void) is suffered now, not when the round is over.
+            if !ruleDamageDue.isEmpty {
+                afterRuleDamage { [weak self] in self?.advanceToNextFigure() }
+                return
             }
             sweepDeadFigures()
             if scenarioResult != nil { return }
@@ -1406,6 +1574,7 @@ final class BoardCoordinator {
                     }
                 }
             } else {
+                takePassiveTurn(of: container)
                 advanceToNextFigure()
             }
         }
@@ -1440,7 +1609,7 @@ final class BoardCoordinator {
         if woundDue.remove(character.id) != nil {
             let piece = PieceID.character(character.id)
             log("\(characterName(character.id)) suffers 1 damage from their wound", category: .damage)
-            if !autoResolvePrompts, !negatesDamage(piece, amount: 1),
+            if !autoResolvePrompts,
                !losableHandCards(of: character).isEmpty || character.discardedCards.count >= 2 {
                 interactionMode = .idle
                 let generation = boardGeneration
@@ -1461,17 +1630,30 @@ final class BoardCoordinator {
     @ObservationIgnored private var woundDue: Set<String> = []
 
     private func deferWoundDamage(of entity: any Entity) -> Bool {
-        // A long rester's heal follows the wound's damage in the same step (and removes the
-        // wound), so that damage stays where it is.
-        guard let character = entity as? GameCharacter, !character.longRest,
-              isOnBoard(.character(character.id)) else { return false }
+        // A resting character too: the wound's damage comes first and can be negated like any
+        // other; the rest's heal, which removes the wound, follows it (FAQ).
+        guard let character = entity as? GameCharacter else {
+            // What the scenario says can't be damaged in any way isn't hurt by a wound either
+            // (#70's Living Spirits).
+            return boardState.piecePositions.keys.contains { self.entity(for: $0) === entity && isUndamageable($0) }
+        }
+        guard isOnBoard(.character(character.id)) else { return false }
         woundDue.insert(character.id)
         return true
     }
 
-    private func continueCharacterTurn(_ character: GameCharacter, entry: TurnOrderEntry) {
+    private func continueCharacterTurn(_ character: GameCharacter, entry: TurnOrderEntry, rulesApplied: Bool = false) {
         guard let gameManager = gameManager else { return }
-        gameManager.scenarioRulesManager.evaluateTurnRules(.turnStart, for: character)
+        if !rulesApplied {
+            gameManager.scenarioRulesManager.evaluateTurnRules(.turnStart, for: character)
+            // Damage a rule deals as a turn starts (a vocal chord, an altar) is suffered now,
+            // before the turn is played — not when it is over.
+            if !ruleDamageDue.isEmpty {
+                interactionMode = .idle
+                afterRuleDamage { [weak self] in self?.continueCharacterTurn(character, entry: entry, rulesApplied: true) }
+                return
+            }
+        }
         sweepDeadFigures()
         if scenarioResult != nil { return }
         guard !character.exhausted, isOnBoard(.character(character.id)) else {
@@ -1479,25 +1661,29 @@ final class BoardCoordinator {
             return
         }
 
+        let stunned = character.entityConditions.contains { $0.name == .stun && !$0.expired }
         if character.longRest {
-            if character.discardedCards.count <= 1 {
-                if character.discardedCards.isEmpty {
-                    log("\(characterName(character.id)) long rests (no cards to lose)", category: .rest)
-                    lootAtEndOfTurn(character.id)
-                    advanceToNextFigure()
-                } else {
-                    resolveLongRest(characterID: character.id, discardIndex: 0)
+            // A long rest is a turn (FAQ): items can be used on it — unless stunned, when only
+            // the rest itself happens — and it ends as any turn does.
+            if !stunned {
+                let turn = PlayerTurnController(characterID: character.id, coordinator: self, gameManager: gameManager)
+                turn.selectLongRest()
+                activePlayerTurn = turn
+                // Bonuses that act as a turn starts act on this one too, before the rest itself.
+                interactionMode = .idle
+                let generation = boardGeneration
+                turn.performRestBonusSteps(atStart: true) { [weak self] in
+                    guard let self, self.isCurrentBoard(generation), self.scenarioResult == nil else { return }
+                    self.beginLongRest(character)
                 }
-            } else {
-                log("\(characterName(character.id)) long rests: choose a card to lose", category: .rest)
-                interactionMode = .idle   // the rest panel asks; nothing on the board to tap
-                pendingLongRest = PendingLongRest(characterID: character.id)
+                return
             }
+            beginLongRest(character)
             return
         }
 
         // Stun: no abilities and no items; the two played cards are simply discarded (p.22).
-        if character.entityConditions.contains(where: { $0.name == .stun && !$0.expired }) {
+        if stunned {
             if let pair = selectedCardPairs[character.id] {
                 for cardId in [pair.top.cardId, pair.bottom.cardId].compactMap({ $0 }) {
                     character.handCards.removeAll { $0 == cardId }
@@ -1505,13 +1691,35 @@ final class BoardCoordinator {
                 }
             }
             log("\(characterName(character.id)) is stunned: no actions, both cards are discarded", category: .condition)
-            // Looting at the end of the turn isn't an ability: a stunned character still loots.
-            lootAtEndOfTurn(character.id)
-            advanceToNextFigure()
+            // Looting at the end of the turn isn't an ability: a stunned character still loots,
+            // and still stands where they stand (on a pressure plate, on the exit).
+            endCharacterTurn(character.id)
             return
         }
 
         beginPlayerTurnAfterSummons(character: character)
+    }
+
+    /// The rest itself, once what comes as the turn starts is done: the card to lose is asked
+    /// for (or there is no choice to make).
+    private func beginLongRest(_ character: GameCharacter) {
+        guard !character.exhausted, isOnBoard(.character(character.id)) else {
+            endCharacterTurn(character.id)
+            return
+        }
+        if character.discardedCards.count <= 1 {
+            if character.discardedCards.isEmpty {
+                // The discard pile went to negating damage since the rest was declared.
+                log("\(characterName(character.id)) long rests (no cards to lose)", category: .rest)
+                finishLongRest(character, heal: true)
+            } else {
+                resolveLongRest(characterID: character.id, discardIndex: 0)
+            }
+        } else {
+            log("\(characterName(character.id)) long rests: choose a card to lose", category: .rest)
+            interactionMode = .idle   // the rest panel asks; nothing on the board to tap
+            pendingLongRest = PendingLongRest(characterID: character.id)
+        }
     }
 
     /// Insert monsters that entered play during the last turn into this round's turn order.
@@ -1579,17 +1787,11 @@ final class BoardCoordinator {
     func finishPlayerTurn() {
         // Ignore a second End Turn for the same turn.
         guard let ptc = activePlayerTurn, ptc.phase == .turnComplete else { return }
+        // A long rest ends when its card has been chosen, not from the End Turn button.
+        guard !ptc.isLongRest else { return }
         boardScene?.play(.endTurn)
         teach(.playedCards)
-        applyEndOfTurnItems(ptc)
-        applyEndOfTurnBonuses(ptc)
-        activePlayerTurn = nil
-        lootAtEndOfTurn(ptc.characterID)
-
-        checkVictoryDefeat()
-        if scenarioResult == nil {
-            advanceToNextFigure()
-        }
+        endCharacterTurn(ptc.characterID)
     }
 
     /// End-of-turn looting: money tokens and treasure in the character's hex (p.28), on every
@@ -1609,19 +1811,25 @@ final class BoardCoordinator {
         for character in gameManager?.game.characters ?? [] {
             for cardId in character.roundBonusCards { character.removeFromActiveArea(cardId) }
         }
-        // Offer short rests before transitioning to the next round — unless the scenario ends
-        // with this round, when a rest changes nothing.
-        if pendingResult != nil {
-            proceedAfterShortRests()
-        } else {
-            offerShortRests()
-        }
+        // Short rests are offered in a scenario's last round too (FAQ): the rest can decide a
+        // battle goal (a short rest taken, cards in hand at the end).
+        offerShortRests()
     }
 
     // MARK: - Victory / Defeat
 
-    func checkVictoryDefeat() {
+    /// `turnEnded`: a turn or the round has just ended, which is when a goal about where the
+    /// characters stand (on pressure plates, on the exit) is judged.
+    func checkVictoryDefeat(turnEnded: Bool = false) {
         guard let gameManager = gameManager, scenarioResult == nil else { return }
+
+        // Everyone has left through the exit: with no one on the board, that is the win.
+        if everyoneEscaped {
+            let brief = gameManager.game.scenario.map { ScenarioBrief.make(for: $0.data, labels: gameManager.editionStore) }
+            endReason = .goalMet(brief?.goal ?? "Everyone escaped.")
+            endScenario(.victory, message: "VICTORY! Scenario complete.")
+            return
+        }
 
         // Defeat: every character is exhausted — nobody is left to act, so it's immediate.
         let allChars = gameManager.game.characters.filter { !$0.absent }
@@ -1649,6 +1857,15 @@ final class BoardCoordinator {
             return
         }
 
+        // The goal and losses the scenario book prints (`ScenarioPlacements.Goal`).
+        let written = scenarioGoal
+        if let written, let lost = goalLost(written) {
+            pendingResult = .defeat
+            endReason = .ruleLost(lost)
+            log("Scenario failed — the scenario ends at the end of this round.", category: .death)
+            return
+        }
+
         // Default goal: every enemy killed, with every room revealed — unless the scenario defines
         // its own win condition (e.g. survive until round 10), and only once enemies have been
         // in play (some scenarios start empty and spawn monsters every round).
@@ -1657,6 +1874,15 @@ final class BoardCoordinator {
         let enemiesHaveAppeared = hostile.contains { !$0.entities.isEmpty }
         let allEnemiesDead = hostile.allSatisfy { monster in monster.off || monster.aliveEntities.isEmpty }
         let allRoomsRevealed = boardState.doors.allSatisfy { $0.isOpen }
+        if let written, written.replacesKillAll, !hasOwnWinCondition {
+            if goalMet(written, turnEnded: turnEnded) && gameManager.game.round > 0 {
+                let brief = gameManager.game.scenario.map { ScenarioBrief.make(for: $0.data, labels: gameManager.editionStore) }
+                pendingResult = .victory
+                endReason = .goalMet(brief?.goal ?? "The scenario's goal is met.")
+                log("Scenario goal achieved — the scenario ends at the end of this round.", category: .round)
+            }
+            return
+        }
         if !hasOwnWinCondition && enemiesHaveAppeared && allEnemiesDead && allRoomsRevealed
             && gameManager.game.round > 0 {
             pendingResult = .victory
@@ -1667,7 +1893,8 @@ final class BoardCoordinator {
 
     /// Resolve a result triggered during the round once the round is over.
     private func resolvePendingResult() {
-        checkVictoryDefeat()
+        letCharactersLeave()
+        checkVictoryDefeat(turnEnded: true)
         guard scenarioResult == nil, let result = pendingResult else { return }
         endScenario(result, message: result == .victory ? "VICTORY! Scenario complete." : "DEFEAT! Scenario failed.")
     }
@@ -1712,14 +1939,17 @@ final class BoardCoordinator {
         if isConditionActive(.immobilize, on: pieceID) {
             log("\(name(pieceID)) is immobilized and can\u{2019}t move", category: .condition)
             interactionMode = .idle
+            activePlayerTurn?.abilityDidNothing()
             activePlayerTurn?.advanceAfterAsyncAction()
             return
         }
 
+        // What the scenario does to every Move ability (Plane of Water: −1).
+        let moveRange = max(0, moveRange + scenarioMoveBonus(of: pieceID))
         let (enemies, allies) = movementSets(for: pieceID)
         let reachable = Pathfinder.reachableHexes(
             board: boardState, from: pos, range: moveRange, mode: mode,
-            avoidTraps: false, canOpenDoors: true,
+            avoidTraps: false, canOpenDoors: opensDoors(pieceID),
             occupiedByEnemy: enemies, occupiedByAlly: allies
         )
 
@@ -1737,11 +1967,19 @@ final class BoardCoordinator {
         boardScene?.highlightHexes(validHexes, style: style, offsetCol: offsetCol, offsetRow: offsetRow)
     }
 
-    /// Whether the acting character's move prints something that happens as it ends, so moving
-    /// no hexes is worth choosing (GH: any ability may be performed for 0).
+    /// Only characters open doors by walking into them (GH p.14): a closed door is a wall to a
+    /// monster or a summon, also when a character's card moves it (Parasitic Influence).
+    func opensDoors(_ pieceID: PieceID) -> Bool {
+        if case .character = pieceID { return true }
+        return false
+    }
+
+    /// Whether a move may be made for no hexes at all: the acting character's own (FAQ: "Move 0
+    /// is allowed" — the move is performed, with what its action prints: an infusion, XP, text
+    /// that happens as it ends).
     func canStayPut(_ pieceID: PieceID) -> Bool {
         guard case .character(let id) = pieceID, let turn = activePlayerTurn, turn.characterID == id else { return false }
-        return !turn.afterMoveTexts.isEmpty
+        return true
     }
 
     /// Begin a jump move action — ignores figures and terrain except on the last hex.
@@ -1768,7 +2006,7 @@ final class BoardCoordinator {
         var validHexes = Set<HexCoord>()
         for (coord, cell) in boardState.cells {
             guard cell.passable, !boardState.isOccupied(coord) else { continue }
-            guard pos.distance(to: coord) <= range else { continue }
+            guard boardState.isWithin(range, from: pos, to: coord) else { continue }
             validHexes.insert(coord)
         }
 
@@ -1784,7 +2022,7 @@ final class BoardCoordinator {
 
         guard let path = target == pos ? [pos] : Pathfinder.findPath(
             board: boardState, from: pos, to: target, mode: mode,
-            canOpenDoors: true, maxCost: range,
+            canOpenDoors: opensDoors(pieceID), maxCost: range,
             occupiedByEnemy: enemies, occupiedByAlly: allies
         ) else { return }
 
@@ -1793,8 +2031,13 @@ final class BoardCoordinator {
         let style: MovementStyle = mode == .jump ? .jump : (mode == .fly ? .fly : .normal)
         let turn = activePlayerTurn
         let generation = boardGeneration
+        // Movement left once this path is walked: a character who opens a door on the way sees
+        // the room beyond and goes on with it (GH p.14).
+        let left = range - movementSpent(on: path, mode: mode)
+        let continuing = continuedMove?.piece == pieceID
+        continuedMove = nil
         Task { @MainActor in
-            await self.moveAlong(pieceID, path: path, style: style)
+            await self.moveAlong(pieceID, path: path, style: style, movementLeft: left, continuing: continuing)
             guard self.isCurrentBoard(generation) else { return }
             // The move may end early (a trap that immobilizes, or one that exhausts the figure).
             if let end = self.boardState.piecePositions[pieceID] {
@@ -1802,8 +2045,60 @@ final class BoardCoordinator {
                 self.log("\(self.name(pieceID)) moves \(steps) hex\(steps == 1 ? "" : "es")", category: .move, trace: "to \(end)")
             }
             self.checkVictoryDefeat()
+            if self.scenarioResult == nil, self.moveGoesOnPastDoor, self.offerRestOfMove(pieceID: pieceID, left: left, mode: mode) {
+                return
+            }
             turn?.advanceAfterAsyncAction()
         }
+    }
+
+    /// Movement points a path takes: 2 for a hex of difficult terrain (for a jump, only its last
+    /// hex; never for a flight), 1 for any other.
+    private func movementSpent(on path: [HexCoord], mode: MoveMode) -> Int {
+        var spent = 0
+        for (index, hex) in path.enumerated().dropFirst() {
+            let difficult = boardState.cells[hex]?.isDifficultTerrain == true
+            switch mode {
+            case .fly: spent += 1
+            case .jump: spent += index == path.count - 1 && difficult ? 2 : 1
+            case .normal: spent += difficult ? 2 : 1
+            }
+        }
+        return spent
+    }
+
+    /// The acting character's move going on from a door it has just opened: the hexes the
+    /// movement left reaches now that the room beyond is on the board. False when there is
+    /// nowhere further to go (the move is over).
+    private func offerRestOfMove(pieceID: PieceID, left: Int, mode: MoveMode) -> Bool {
+        moveGoesOnPastDoor = false
+        guard left > 0, let pos = boardState.piecePositions[pieceID], isOnBoard(pieceID) else { return false }
+        let (enemies, allies) = movementSets(for: pieceID)
+        let reachable = Pathfinder.reachableHexes(
+            board: boardState, from: pos, range: left, mode: mode,
+            avoidTraps: false, canOpenDoors: opensDoors(pieceID),
+            occupiedByEnemy: enemies, occupiedByAlly: allies
+        )
+        var validHexes = Set(reachable.keys).subtracting([pos])
+        guard !validHexes.isEmpty else {
+            // Nowhere to go on to: what the move prints as it ends happens here.
+            continuedMove = (pieceID, mode)
+            executeMove(pieceID: pieceID, to: pos, range: left, mode: mode)
+            return true
+        }
+        validHexes.insert(pos)   // or stop in the doorway
+        continuedMove = (pieceID, mode)
+        interactionMode = .selectingMove(pieceID: pieceID, range: left, validHexes: validHexes, mode: mode)
+        let style: HighlightStyle = mode == .jump ? .jump : (mode == .fly ? .fly : .move)
+        boardScene?.highlightHexes(validHexes, style: style, offsetCol: offsetCol, offsetRow: offsetRow)
+        return true
+    }
+
+    /// End a move that is going on past a door where the character stands (Skip, on the banner).
+    func stopContinuedMove() {
+        guard let move = continuedMove, case .selectingMove(let mover, let range, _, false, let mode) = interactionMode,
+              mover == move.piece, let pos = boardState.piecePositions[mover] else { return }
+        executeMove(pieceID: mover, to: pos, range: range, mode: mode)
     }
 
     /// Where the board's grid starts in the scene (see `HexMath.gridOrigin`).
@@ -1837,7 +2132,7 @@ final class BoardCoordinator {
         let seesInvisible = chargedBonuses(of: pieceID).contains { $0.bonus == .advantageAndSeeInvisible }
         for (id, coord) in boardState.piecePositions where id != pieceID && areEnemies(pieceID, id) {
             guard entity(for: id) != nil, seesInvisible || !isConditionActive(.invisible, on: id) else { continue }
-            guard pos.distance(to: coord) <= max(1, range),
+            guard boardState.isWithin(max(1, range), from: pos, to: coord),
                   LineOfSight.hasLOS(from: pos, to: coord, board: boardState) else { continue }
             targets.insert(id)
         }
@@ -1848,8 +2143,8 @@ final class BoardCoordinator {
     func alliesInRange(of pieceID: PieceID, range: Int, includeSelf: Bool) -> Set<PieceID> {
         guard let pos = boardState.piecePositions[pieceID] else { return [] }
         var allies: Set<PieceID> = includeSelf ? [pieceID] : []
-        for (id, coord) in boardState.piecePositions where id != pieceID && !areEnemies(pieceID, id) {
-            guard entity(for: id) != nil, pos.distance(to: coord) <= max(1, range),
+        for (id, coord) in boardState.piecePositions where id != pieceID && areAllies(pieceID, id) {
+            guard entity(for: id) != nil, boardState.isWithin(max(1, range), from: pos, to: coord),
                   LineOfSight.hasLOS(from: pos, to: coord, board: boardState) else { continue }
             allies.insert(id)
         }
@@ -1860,36 +2155,92 @@ final class BoardCoordinator {
     func attackAllEnemies(from pieceID: PieceID, within range: Int, exactly: Bool = false) {
         if isConditionActive(.disarm, on: pieceID) {
             log("\(name(pieceID)) is disarmed and can\u{2019}t attack", category: .condition)
+            activePlayerTurn?.abilityDidNothing()
             activePlayerTurn?.advanceAfterAsyncAction()
             return
         }
-        guard let pos = boardState.piecePositions[pieceID] else {
-            activePlayerTurn?.advanceAfterAsyncAction()
-            return
-        }
-        let targets = targetableEnemies(of: pieceID, range: range)
-            .filter { !exactly || boardState.piecePositions[$0].map { pos.distance(to: $0) == range } == true }
-            .sorted { $0.description < $1.description }
+        let targets = enemiesToAttack(from: pieceID, within: range, exactly: exactly)
+        if targets.isEmpty { activePlayerTurn?.abilityDidNothing() }
         attackEach(targets, from: pieceID, range: range)
     }
 
+    /// The enemies in the same room as a figure that it can attack: in line of sight (every
+    /// attack needs it) and not invisible, whatever the distance.
+    func enemiesInRoom(of pieceID: PieceID) -> [PieceID] {
+        guard let pos = boardState.piecePositions[pieceID] else { return [] }
+        let room = boardState.room(of: pos)
+        return boardState.piecePositions.filter { id, hex in
+            id != pieceID && room.contains(hex) && areEnemies(pieceID, id) && entity(for: id) != nil
+                && !isConditionActive(.invisible, on: id) && LineOfSight.hasLOS(from: pos, to: hex, board: boardState)
+        }.keys.sorted { $0.description < $1.description }
+    }
+
+    /// Inferno: attack every enemy in the same room (a melee attack: no range is printed), then
+    /// "all allies in the same room as you suffer N damage".
+    func attackAllEnemiesInRoom(from pieceID: PieceID, allyDamage: Int) {
+        let disarmed = isConditionActive(.disarm, on: pieceID)
+        if disarmed { log("\(name(pieceID)) is disarmed and can\u{2019}t attack", category: .condition) }
+        let targets = disarmed ? [] : enemiesInRoom(of: pieceID)
+        if targets.isEmpty { activePlayerTurn?.abilityDidNothing() }
+        attackEach(targets, from: pieceID, range: 1) { [weak self] in
+            guard let self, allyDamage > 0, let pos = self.boardState.piecePositions[pieceID] else { return }
+            let room = self.boardState.room(of: pos)
+            let allies = self.boardState.piecePositions.filter { id, hex in
+                id != pieceID && room.contains(hex) && self.areAllies(pieceID, id) && self.isFigure(id)
+            }.keys.sorted()
+            let generation = self.boardGeneration
+            for ally in allies where self.isOnBoard(ally) && self.isCurrentBoard(generation) {
+                self.log("\(self.name(ally)) suffers \(allyDamage) damage", category: .damage)
+                await self.sufferDamageWithMitigation(allyDamage, to: ally, source: self.name(pieceID), killer: pieceID)
+            }
+        }
+    }
+
+    /// The enemies an "attack all enemies within N" reaches, in the order they are attacked.
+    private func enemiesToAttack(from pieceID: PieceID, within range: Int, exactly: Bool) -> [PieceID] {
+        guard let pos = boardState.piecePositions[pieceID] else { return [] }
+        return targetableEnemies(of: pieceID, range: range)
+            .filter { !exactly || boardState.piecePositions[$0].map { boardState.range(from: pos, to: $0) == range } == true }
+            .sorted { $0.description < $1.description }
+    }
+
+    /// Whether an "attack all enemies within N" has anyone to attack (and the attacker can attack).
+    func hasEnemiesToAttack(from pieceID: PieceID, within range: Int, exactly: Bool = false) -> Bool {
+        !isConditionActive(.disarm, on: pieceID) && !enemiesToAttack(from: pieceID, within: range, exactly: exactly).isEmpty
+    }
+
+    /// The enemies standing on hexes passed over, which "attack all enemies moved through" hits.
+    private func enemiesMovedThrough(by pieceID: PieceID, hexes: [HexCoord]) -> [PieceID] {
+        let passed = Set(hexes)
+        return boardState.piecePositions
+            .filter { passed.contains($0.value) && areEnemies(pieceID, $0.key) && !isConditionActive(.invisible, on: $0.key) }
+            .map(\.key).sorted { $0.description < $1.description }
+    }
+
+    func hasEnemiesMovedThrough(by pieceID: PieceID, hexes: [HexCoord]) -> Bool {
+        !isConditionActive(.disarm, on: pieceID) && !enemiesMovedThrough(by: pieceID, hexes: hexes).isEmpty
+    }
+
     /// "Attack all enemies moved through" (Trample): every enemy standing on a hex the
-    /// character passed over in this half's move.
+    /// character passed over in this half's move. An invisible one can't be targeted (p.21).
     func attackEnemiesMovedThrough(from pieceID: PieceID, hexes: [HexCoord]) {
         if isConditionActive(.disarm, on: pieceID) {
             log("\(name(pieceID)) is disarmed and can\u{2019}t attack", category: .condition)
+            activePlayerTurn?.abilityDidNothing()
             activePlayerTurn?.advanceAfterAsyncAction()
             return
         }
-        let passed = Set(hexes)
-        let targets = boardState.piecePositions.filter { passed.contains($0.value) && areEnemies(pieceID, $0.key) }
-            .map(\.key).sorted { $0.description < $1.description }
-        if targets.isEmpty { log("\(name(pieceID)) moved through no enemy", category: .attack) }
+        let targets = enemiesMovedThrough(by: pieceID, hexes: hexes)
+        if targets.isEmpty {
+            log("\(name(pieceID)) moved through no enemy", category: .attack)
+            activePlayerTurn?.abilityDidNothing()
+        }
         attackEach(targets, from: pieceID, range: 1)
     }
 
     /// One attack of the current action against each target in turn, then the action ends.
-    private func attackEach(_ targets: [PieceID], from pieceID: PieceID, range: Int) {
+    private func attackEach(_ targets: [PieceID], from pieceID: PieceID, range: Int,
+                            then afterwards: (@MainActor () async -> Void)? = nil) {
         let value = activePlayerTurn?.currentAttackValue() ?? 2
         let turn = activePlayerTurn, generation = boardGeneration
         Task { @MainActor in
@@ -1898,6 +2249,8 @@ final class BoardCoordinator {
                 await self.resolvePlayerAttack(attacker: pieceID, target: target, attackValue: value,
                                                range: range, advanceAction: false)
             }
+            guard self.isCurrentBoard(generation) else { return }
+            await afterwards?()
             guard self.isCurrentBoard(generation) else { return }
             turn?.advanceAfterAsyncAction()
         }
@@ -1924,16 +2277,20 @@ final class BoardCoordinator {
         return Set(placement?.targetHexes ?? [])
     }
 
-    /// Begin a player's attack action.
-    func beginAttackAction(pieceID: PieceID, range: Int, targetCount: Int = 1) {
+    /// Begin a player's attack action. False when it can't be made (disarmed, or no target):
+    /// the action is then over, having done nothing.
+    @discardableResult
+    func beginAttackAction(pieceID: PieceID, range: Int, targetCount: Int = 1) -> Bool {
         if case .character = pieceID { teach(.attacking) }
         abilityTargets = []
         extraTargetsEarned = 0
+        addingTarget = false
         if isConditionActive(.disarm, on: pieceID) {
             log("\(name(pieceID)) is disarmed and can\u{2019}t attack", category: .condition)
             interactionMode = .idle
+            activePlayerTurn?.abilityDidNothing()
             activePlayerTurn?.advanceAfterAsyncAction()
-            return
+            return false
         }
 
         var validTargets = targetableEnemies(of: pieceID, range: range)
@@ -1949,11 +2306,16 @@ final class BoardCoordinator {
         if validTargets.isEmpty {
             log("\(name(pieceID)) has no target within range \(range)", category: .attack)
             interactionMode = .idle
+            activePlayerTurn?.abilityDidNothing()
             activePlayerTurn?.advanceAfterAsyncAction()
-            return
+            return false
         }
 
-        if targetCount > 1 {
+        // An area attack with targets added (Grim Bargain, an item): the area is placed as ever,
+        // and each added target is one more enemy in range, chosen afterwards (FAQ, "Add Target").
+        let isArea = activePlayerTurn?.pendingAreaPattern != nil
+        if isArea { extraTargetsEarned = max(0, targetCount - 1) }
+        if targetCount > 1, !isArea {
             interactionMode = .selectingMultiAttackTargets(
                 pieceID: pieceID, range: range, validTargets: validTargets,
                 targetCount: targetCount, selected: []
@@ -1965,6 +2327,7 @@ final class BoardCoordinator {
         let targetHexes = Set(validTargets.compactMap { boardState.piecePositions[$0] })
         boardScene?.highlightHexes(targetHexes, style: .attack, offsetCol: offsetCol, offsetRow: offsetRow)
         showAttackPreviews(attacker: pieceID, targets: validTargets)
+        return true
     }
 
     /// Begin an interactive condition-apply action (player taps a single enemy target).
@@ -1978,6 +2341,7 @@ final class BoardCoordinator {
             log("\(name(pieceID)) has no \(onAllies ? "ally" : "target") within range \(range) for \(GameText.conditionName(condition))",
                 category: .condition)
             interactionMode = .idle
+            activePlayerTurn?.abilityDidNothing()
             if !onAllies { activePlayerTurn?.advanceAfterAsyncAction() }
             return false
         }
@@ -2004,6 +2368,7 @@ final class BoardCoordinator {
         for target in targets { applyCondition(condition, to: target) }
         if targets.isEmpty {
             log("\(name(pieceID)) has no enemy within range \(range) for \(GameText.conditionName(condition))", category: .condition)
+            activePlayerTurn?.abilityDidNothing()
         }
     }
 
@@ -2038,7 +2403,7 @@ final class BoardCoordinator {
             attack: AttackParameters(value: attackValueWithBonuses(attackValue + printed.attack, attacker: attacker, target: target),
                                      isRanged: range > 1,
                                      pierce: turn?.pendingPierce ?? 0,
-                                     conditions: turn?.pendingConditions ?? [],
+                                     conditions: (turn?.pendingConditions ?? []) + conditionsFromBonuses(attacker: attacker),
                                      push: turn?.pendingPush ?? 0,
                                      pull: turn?.pendingPull ?? 0,
                                      advantage: turn?.pendingAdvantage ?? false))
@@ -2063,14 +2428,20 @@ final class BoardCoordinator {
     @ObservationIgnored var abilityTargets: Set<PieceID> = []
     /// Targets "+1 Target" modifier cards added to the current attack ability, not yet offered.
     @ObservationIgnored var extraTargetsEarned = 0
+    /// The target being chosen is one added to the attack: a single attack, outside any area.
+    @ObservationIgnored var addingTarget = false
 
     /// End a character's attack ability: first offer the target a "+1 Target" card added (another
     /// enemy in range, attacked with its own draw; Skip declines), then move on.
     func finishPlayerAttack(attacker: PieceID, range: Int, turn: PlayerTurnController?) {
-        if extraTargetsEarned > 0, turn?.pendingAreaPattern == nil, isOnBoard(attacker) {
+        addingTarget = false
+        if extraTargetsEarned > 0, isOnBoard(attacker) {
             extraTargetsEarned -= 1
-            let options = targetableEnemies(of: attacker, range: range).subtracting(abilityTargets)
+            // Within the range of the attack — range 1 for a melee area, however far it reached.
+            let melee = turn?.pendingAreaPattern.map(AoEResolver.isMeleePattern) ?? false
+            let options = targetableEnemies(of: attacker, range: melee ? 1 : range).subtracting(abilityTargets)
             if !options.isEmpty {
+                addingTarget = true
                 log("\(name(attacker)): choose another target", category: .attack)
                 interactionMode = .selectingAttackTarget(pieceID: attacker, range: range, validTargets: options)
                 let hexes = Set(options.compactMap { boardState.piecePositions[$0] })
@@ -2105,6 +2476,7 @@ final class BoardCoordinator {
         let targets = targetableEnemies(of: pieceID, range: range)
         guard !targets.isEmpty else {
             log("\(name(pieceID)) has no enemy within range \(range) to \(isPush ? "push" : "pull")", category: .move)
+            activePlayerTurn?.abilityDidNothing()
             activePlayerTurn?.advanceAfterAsyncAction()
             return
         }
@@ -2121,46 +2493,42 @@ final class BoardCoordinator {
               boardState.piecePositions[target] != nil else {
             let label = isPush ? "Push" : "Pull"
             log("No target to \(label)", category: .move)
+            activePlayerTurn?.abilityDidNothing()
             activePlayerTurn?.advanceAfterAsyncAction()
             return
         }
-        beginPushPull(target: target, attackerPos: attackerPos, remainingSteps: steps, isPush: isPush)
+        beginPushPull(target: target, attackerPos: attackerPos, remainingSteps: steps, isPush: isPush, first: true)
     }
 
-    /// Start the interactive push/pull flow for a target.
-    func beginPushPull(target: PieceID, attackerPos: HexCoord, remainingSteps: Int, isPush: Bool) {
-        guard remainingSteps > 0,
-              let targetPos = boardState.piecePositions[target] else {
+    /// Start the interactive push/pull flow for a target. `first`: nothing of it has happened yet.
+    func beginPushPull(target: PieceID, attackerPos: HexCoord, remainingSteps: Int, isPush: Bool, first: Bool = false) {
+        pushPullDeclinable = false
+        guard remainingSteps > 0, let standing = boardState.piecePositions[target] else {
+            pushPullVia = []
             interactionMode = .idle
             completePushPullAction()
             return
         }
-
-        let candidates = isPush
-            ? targetPos.pushCandidates(awayFrom: attackerPos)
-            : targetPos.pullCandidates(toward: attackerPos)
-
-        // Each step must be into an empty-of-figures, passable hex; figures can't be forced
-        // through a closed door. Difficult terrain doesn't matter (p.20, p.42).
-        // Heaving Swing: "You may push the target into hexes containing obstacles."
-        let intoObstacles = isPush && pushesIntoObstacles
-        let valid = candidates.filter { coord in
-            (boardState.isPassable(coord) || (intoObstacles && boardState.cells[coord]?.overlay == .obstacle))
-                && !boardState.isOccupied(coord) && !boardState.isClosedDoor(coord)
-        }
+        if first { pushPullVia = [] }
+        let from = pushPullVia.last ?? standing
+        let valid = forcedMoveSteps(for: target, from: from, attackerPos: attackerPos, stepsLeft: remainingSteps, isPush: isPush)
 
         if valid.isEmpty {
             let label = isPush ? "Push" : "Pull"
             log("\(name(target)) can\u{2019}t be \(isPush ? "pushed" : "pulled") any further", category: .move, trace: label)
+            pushPullVia = []
             interactionMode = .idle
             completePushPullAction()
             return
         }
 
-        if valid.count == 1 || autoResolvePrompts {
+        // The acting character's own push or pull may be turned down before it starts.
+        let declinable = first && !autoResolvePrompts && !isAutomatedTurn && activePlayerTurn != nil
+        if (valid.count == 1 && !declinable) || autoResolvePrompts {
             executePushPullStep(target: target, to: valid[0], attackerPos: attackerPos, remainingSteps: remainingSteps, isPush: isPush)
         } else {
             let validSet = Set(valid)
+            pushPullDeclinable = declinable
             interactionMode = .selectingPushPullHex(
                 target: target, attackerPos: attackerPos, validHexes: validSet,
                 remainingSteps: remainingSteps, isPush: isPush
@@ -2169,17 +2537,87 @@ final class BoardCoordinator {
         }
     }
 
+    /// The hexes a figure being pushed (pulled) may be forced into next, from `from` (GH p.20,
+    /// FAQ "Push/Pull"): each further from (nearer to) the attacker than the last; never a wall,
+    /// an obstacle or a closed door; through a figure only if it is the mover's ally, and only on
+    /// the way to a hex it can stop on within the steps left. A flying figure is forced over
+    /// obstacles and any figure. Difficult terrain doesn't matter.
+    func forcedMoveSteps(for target: PieceID, from: HexCoord, attackerPos: HexCoord, stepsLeft: Int, isPush: Bool) -> [HexCoord] {
+        let flying = flies(target)
+        // Heaving Swing: "You may push the target into hexes containing obstacles."
+        let intoObstacles = isPush && pushesIntoObstacles
+        func next(_ hex: HexCoord) -> [HexCoord] {
+            // Never across a wall line between two tiles.
+            (isPush ? hex.pushCandidates(awayFrom: attackerPos) : hex.pullCandidates(toward: attackerPos))
+                .filter { !boardState.isWalled(hex, $0) }
+        }
+        func open(_ hex: HexCoord) -> Bool {
+            guard let cell = boardState.cells[hex], cell.overlay != .wall, !boardState.isClosedDoor(hex) else { return false }
+            // (An obstacle the scenario says can't be destroyed stops Heaving Swing too.)
+            return cell.passable || (cell.overlay == .obstacle && (flying || (intoObstacles && isDestructibleObstacle(hex))))
+        }
+        func canStop(_ hex: HexCoord) -> Bool {
+            open(hex) && (boardState.piece(at: hex) == nil || boardState.piece(at: hex) == target)
+        }
+        func canPass(_ hex: HexCoord) -> Bool {
+            guard open(hex) else { return false }
+            guard let other = boardState.piece(at: hex), other != target else { return true }
+            return flying || areAllies(target, other)
+        }
+        func comesToRest(_ hex: HexCoord, _ left: Int) -> Bool {
+            if canStop(hex) { return true }
+            return left > 0 && next(hex).contains { canPass($0) && comesToRest($0, left - 1) }
+        }
+        return next(from).filter { canPass($0) && comesToRest($0, stepsLeft - 1) }.sorted()
+    }
+
+    /// Whether a figure flies: a flying monster or summon, or a character with a flying item.
+    func flies(_ pieceID: PieceID) -> Bool {
+        switch pieceID {
+        case .monster(let name, _):
+            return gameManager?.game.monsters.first { $0.name == name }?.monsterData?.flying == true
+        case .summon:
+            return (entity(for: pieceID) as? GameSummon)?.flying == true
+        case .character:
+            return (entity(for: pieceID) as? GameCharacter).map { PassiveItems.flies($0.carriedItems) } ?? false
+        case .objective:
+            return false
+        }
+    }
+
+    /// Turn down the push or pull the board is asking about (the whole of it).
+    func declinePushPull() {
+        guard pushPullDeclinable, case .selectingPushPullHex(let target, _, _, _, let isPush) = interactionMode else { return }
+        pushPullDeclinable = false
+        pushPullVia = []
+        boardScene?.clearHighlights()
+        interactionMode = .idle
+        log("\(name(target)) isn\u{2019}t \(isPush ? "pushed" : "pulled")", category: .move)
+        completePushPullAction()
+    }
+
     /// Execute one step of a push/pull. Traps and hazardous terrain trigger on every hex the
-    /// target is forced into.
+    /// target is forced into (unless it flies).
     func executePushPullStep(target: PieceID, to destination: HexCoord, attackerPos: HexCoord, remainingSteps: Int, isPush: Bool) {
         boardScene?.clearHighlights()
         interactionMode = .idle
+        pushPullDeclinable = false
         // The target left the board meanwhile: the push ends, or the attack waiting on it hangs.
-        guard let currentPos = boardState.piecePositions[target] else { return completePushPullAction() }
+        guard let currentPos = boardState.piecePositions[target] else {
+            pushPullVia = []
+            return completePushPullAction()
+        }
+
+        // A hex with a figure the target may pass: it goes on through, to stop further along.
+        if let other = boardState.piece(at: destination), other != target {
+            pushPullVia.append(destination)
+            beginPushPull(target: target, attackerPos: attackerPos, remainingSteps: remainingSteps - 1, isPush: isPush)
+            return
+        }
 
         // Heaving Swing: pushed into an obstacle, it's destroyed; the target suffers 2 damage and
         // the character gains 1 experience.
-        if isPush, pushesIntoObstacles, boardState.cells[destination]?.overlay == .obstacle {
+        if isPush, pushesIntoObstacles, !flies(target), boardState.cells[destination]?.overlay == .obstacle {
             boardState.removeObstacle(at: destination)
             boardScene?.removeOverlaySprite(at: destination, offsetCol: offsetCol, offsetRow: offsetRow)
             log("\(name(target)) is driven into an obstacle and suffers 2 damage", category: .damage)
@@ -2188,13 +2626,16 @@ final class BoardCoordinator {
                 log("\(name(.character(id))) gains 1 XP", category: .info)
             }
             if sufferDamage(2, to: target, killer: activePlayerTurn.map { .character($0.characterID) }) {
+                pushPullVia = []
                 completePushPullAction()
                 return
             }
         }
+        let path = [currentPos] + pushPullVia + [destination]
+        pushPullVia = []
         let generation = boardGeneration
         Task { @MainActor in
-            let alive = await self.moveAlong(target, path: [currentPos, destination], style: .forced)
+            let alive = await self.moveAlong(target, path: path, style: .forced)
             guard self.isCurrentBoard(generation) else { return }
             let stepsLeft = remainingSteps - 1
             if alive && stepsLeft > 0 {
@@ -2225,7 +2666,13 @@ final class BoardCoordinator {
     /// Asynchronously execute a push/pull. Suspends until the push/pull is fully resolved
     /// (either auto-executed or after the player selects the direction).
     @MainActor func performPushPull(target: PieceID, attackerPos: HexCoord, steps: Int, isPush: Bool) async {
-        guard steps > 0, boardState.piecePositions[target] != nil else { return }
+        // An objective on the map (an altar, a door) is never moved.
+        guard steps > 0, boardState.piecePositions[target] != nil, !isScenery(target) else { return }
+        // Some can't be forced to move (the Sightless Eye, the Elder Drake).
+        if entity(for: target)?.immunities.contains(isPush ? .push : .pull) == true {
+            log("\(name(target)) can\u{2019}t be \(isPush ? "pushed" : "pulled")", category: .move)
+            return
+        }
         if case .character(let id) = target,
            gameManager?.game.characters.first(where: { $0.id == id })?.carriedItems.contains(PassiveItems.unmovable) == true {
             log("\(name(target))\u{2019}s Heavy Greaves hold them in place", category: .move)
@@ -2234,7 +2681,7 @@ final class BoardCoordinator {
         let monstersTurn = isAutomatedTurn, generation = boardGeneration
         await withCheckedContinuation { [weak self] continuation in
             self?.pendingPushPullContinuation = continuation
-            self?.beginPushPull(target: target, attackerPos: attackerPos, remainingSteps: steps, isPush: isPush)
+            self?.beginPushPull(target: target, attackerPos: attackerPos, remainingSteps: steps, isPush: isPush, first: true)
         }
         // The push leaves the board idle; a monster's turn goes on, with Pause and fast-forward.
         if monstersTurn && isCurrentBoard(generation) { interactionMode = .watchingMonsterTurn }
@@ -2254,17 +2701,20 @@ final class BoardCoordinator {
 
     /// Loot X: pick up every money token and treasure tile within range X and line of sight,
     /// regardless of monsters or obstacles in between (GH p.28).
-    func collectLootInRange(pieceID: PieceID, range: Int) {
-        guard let pos = boardState.piecePositions[pieceID] else { return }
+    /// False when there is nothing to loot in range: a Loot can't then be performed (FAQ).
+    @discardableResult
+    func collectLootInRange(pieceID: PieceID, range: Int) -> Bool {
+        guard let pos = boardState.piecePositions[pieceID] else { return false }
         let coords = boardState.cells.keys.filter { coord in
-            guard pos.distance(to: coord) <= range, hasLoot(at: coord) else { return false }
+            guard hasLoot(at: coord), boardState.isWithin(range, from: pos, to: coord) else { return false }
             return coord == pos || LineOfSight.hasLOS(from: pos, to: coord, board: boardState)
         }
         if coords.isEmpty {
             log("\(name(pieceID)) finds nothing to loot within range \(range)", category: .loot)
-            return
+            return false
         }
-        lootHexes(for: pieceID, coords: coords.sorted())
+        lootHexes(for: pieceID, coords: coords.sorted(), byLootAction: true)
+        return true
     }
 
     /// Whether a hex holds a money token or an unlooted treasure tile.
@@ -2275,7 +2725,9 @@ final class BoardCoordinator {
     /// Loot every money token and treasure tile in `coords` for a character. Money tokens are
     /// worth the scenario level's gold conversion; numbered treasures give their reward from the
     /// treasure index. Summons and monsters never loot this way.
-    func lootHexes(for pieceID: PieceID, coords: [HexCoord]) {
+    /// `byLootAction`: a Loot ability is doing the looting — in some scenarios the only way
+    /// to pick up the goal treasure.
+    func lootHexes(for pieceID: PieceID, coords: [HexCoord], byLootAction: Bool = false) {
         guard case .character(let charID) = pieceID,
               let gameManager = gameManager,
               let character = gameManager.game.characters.first(where: { $0.id == charID }) else { return }
@@ -2295,11 +2747,20 @@ final class BoardCoordinator {
             if cell.overlaySubType == "coin" || cell.treasureID == nil {
                 tokens += max(1, cell.treasureAmount ?? 1)
             } else if let id = cell.treasureID {
+                // Where every character must loot one goal treasure tile, each loots only one.
+                if id == Self.goalTreasureID {
+                    guard byLootAction || !goalTreasureNeedsLootAction else { continue }
+                    guard mayLootGoalTreasure(charID) else { continue }
+                    noteGoalTreasureLooted(by: charID)
+                    boardState.goalTreasuresLooted += 1
+                }
                 let reward = gameManager.scenarioManager.lootTreasure(id, by: character)
                 log("\(characterName(charID)) loots treasure \(id)\(reward.map { ": \($0)" } ?? "")", category: .loot)
             }
             boardState.removeTreasure(at: coord)
             boardScene?.removeOverlaySprite(at: coord, offsetCol: offsetCol, offsetRow: offsetRow)
+            // Rules that wait for a treasure to be looted (the guards of Vault of Secrets).
+            if cell.treasureID != nil { gameManager.scenarioRulesManager.evaluateRules(phase: .figureChange) }
         }
 
         for _ in 0..<tokens {
@@ -2322,29 +2783,78 @@ final class BoardCoordinator {
         }
         // Treasure can deal damage (e.g. a trapped chest).
         sweepDeadFigures()
+        updateLocks()
     }
 
     // MARK: - Room Reveal
 
     /// Get adjacent unopened doors for a position.
     func adjacentDoors(from coord: HexCoord) -> [DoorInfo] {
-        boardState.doors.filter { !$0.isOpen && (coord.isAdjacent(to: $0.coord) || coord == $0.coord) }
+        boardState.doors.filter {
+            !$0.isOpen && !boardState.isLockedDoor($0.coord) && (boardState.areAdjacent(coord, $0.coord) || coord == $0.coord)
+        }
     }
 
     /// Open a door and reveal the room behind it.
     func openDoor(at coord: HexCoord) {
         guard let door = boardState.doors.first(where: { $0.coord == coord && !$0.isOpen }),
               let scenario = scenarioData,
-              let gameManager = gameManager else { return }
+              let gameManager = gameManager, !isDoorBarred(at: coord) else { return }
         // Explorer: a door opened on a character's turn is theirs.
         if let character = creditedCharacter(for: actingPiece) {
             gameManager.scenarioStatsManager.recordDoor(by: character.name)
         }
 
+        revealRoom(behind: door, opening: true)
+    }
+
+    /// Whether the tiles behind a door are on the map though its room isn't revealed.
+    private func isLaidOut(behind door: DoorInfo, in scenario: VGBScenario) -> Bool {
+        guard let laidOut = scenario.placements?.laidOut else { return false }
+        return !BoardBuilder.roomRefs(behind: door, in: scenario).isDisjoint(with: laidOut.map { $0.lowercased() })
+    }
+
+    /// The lettered hexes the monsters of the rooms revealed so far are set up on ("the City
+    /// Archers grouped at (a) and (b)"): places that aren't a later room's to fill.
+    private func letteredPlacesOfRevealedRooms() -> Set<HexCoord> {
+        guard let scenario = gameManager?.game.scenario else { return [] }
+        let letters = (scenario.data.rooms ?? []).filter { scenario.revealedRooms.contains($0.roomNumber) }
+            .flatMap { ($0.monster ?? []).compactMap(\.marker) }
+        return Set(letters.flatMap { boardState.markerHexes[$0] ?? [] })
+    }
+
+    /// A character or one of their allies has got onto tiles laid out behind a door still shut
+    /// (over the wall of the Battlements): the room is set up as if revealed, the door staying
+    /// as it is.
+    func setUpLaidOutRoomsEntered() {
+        guard let scenario = scenarioData, scenario.placements?.laidOut != nil, boardPhase != .setup,
+              let game = gameManager?.game.scenario else { return }
+        for door in boardState.doors where !door.isOpen && isLaidOut(behind: door, in: scenario) {
+            let refs = BoardBuilder.roomRefs(behind: door, in: scenario)
+            let waiting = (game.data.rooms ?? []).contains {
+                refs.contains(($0.ref ?? "").lowercased()) && !game.revealedRooms.contains($0.roomNumber)
+            }
+            let entered = boardState.piecePositions.contains { piece, hex in
+                isPlayerSide(piece) && isFigure(piece) && refs.contains(boardState.cells[hex]?.tileRef.lowercased() ?? "")
+            }
+            if waiting && entered { revealRoom(behind: door, opening: false) }
+        }
+    }
+
+    /// Set up the room behind a door: its tiles (if not yet laid out), monsters and objectives.
+    private func revealRoom(behind door: DoorInfo, opening: Bool) {
+        guard let scenario = scenarioData, let gameManager else { return }
         boardPhase = .roomReveal
-        guard let reveal = BoardBuilder.revealRoomSlots(door: door, scenario: scenario, board: boardState) else {
+        guard var reveal = BoardBuilder.revealRoomSlots(door: door, scenario: scenario, board: boardState, opening: opening) else {
             boardPhase = .execution
             return
+        }
+        // A room laid out earlier: its monster places have been waiting since then.
+        if isLaidOut(behind: door, in: scenario) {
+            let refs = BoardBuilder.roomRefs(behind: door, in: scenario)
+            let waiting = boardState.heldMonsterSlots.filter { refs.contains(boardState.cells[$0.coord]?.tileRef.lowercased() ?? "") }
+            reveal.slots += waiting
+            boardState.heldMonsterSlots.removeAll { slot in waiting.contains { $0.coord == slot.coord } }
         }
 
         // Monsters come from the scenario's room data, counted for every character in the
@@ -2361,20 +2871,10 @@ final class BoardCoordinator {
         // Everything not yet on the board goes into this room — including monsters of a room a
         // scenario rule opened before its door was reached.
         let hasRoomData = !(gameManager.game.scenario?.data.rooms ?? []).isEmpty
-        let placed = placeRevealedMonsters(slots: reveal.slots, newEntities: unplacedMonsterEntities(),
+        let placed = placeRevealedMonsters(slots: holdBack(reveal.slots), newEntities: unplacedMonsterEntities(),
                                            playerCount: playerCount, useMapMonsters: !hasRoomData)
-
-        // New monster types draw an ability card this round; all get their stat bonuses.
-        for monster in gameManager.game.monsters where placed.contains(where: { $0.name == monster.name }) {
-            if isMidRound, !monster.abilityDrawn {
-                gameManager.monsterManager.drawAbility(for: monster)
-            }
-            gameManager.monsterManager.applyStatEffects(
-                for: monster, only: Set(placed.filter { $0.name == monster.name }.map(\.standee)))
-        }
-        if isMidRound {
-            for piece in placed { pendingRevealedStandees[piece.name, default: []].insert(piece.standee) }
-        }
+        let objectives = placeRevealedObjectives()
+        readyNewMonsters(placed)
 
         // Draw the new room into the board as it stands (the grid offset stays put, so nothing
         // already drawn moves), and frame the board so the room is seen.
@@ -2383,16 +2883,22 @@ final class BoardCoordinator {
         boardScene?.fitCamera(animated: true)
 
         boardPhase = .execution
-        log("A door opens and a new room is revealed", category: .door, trace: door.childTileRef)
+        log(opening ? "A door opens and a new room is revealed" : "The defenders beyond the wall are roused", category: .door,
+            trace: door.childTileRef)
         for piece in placed {
             let id = PieceID.monster(name: piece.name, standee: piece.standee)
             if let pos = boardState.piecePositions[id] {
                 log("\(name(id)) appears", category: .setup, trace: "at \(pos)")
             }
         }
+        for piece in objectives {
+            log("\(name(piece)) is here", category: .setup, trace: boardState.piecePositions[piece].map { "at \($0)" })
+        }
         // Rules gated on revealed rooms can fire now.
         gameManager.scenarioRulesManager.evaluateRules(phase: .figureChange)
         sweepDeadFigures()
+        // The room's own doors may be locked, and its pressure plates are now in sight.
+        updateLocks()
     }
 
     /// Reveal rooms opened by a scenario rule: through the door leading to the room's tile, or —
@@ -2403,24 +2909,76 @@ final class BoardCoordinator {
             guard let room = scenario.data.rooms?.first(where: { $0.roomNumber == number }),
                   !scenario.revealedRooms.contains(number) else { continue }
             let ref = (room.ref ?? "").lowercased()
-            if let door = boardState.doors.first(where: { !$0.isOpen && $0.childTileRef.lowercased() == ref }) {
+            // The door into the room: its tile may sit behind a corridor from the door's own.
+            let scenarioMap = scenarioData
+            if let door = boardState.doors.first(where: { door in
+                !door.isOpen && (door.childTileRef.lowercased() == ref
+                                 || (scenarioMap.map { BoardBuilder.roomRefs(behind: door, in: $0).contains(ref) } ?? false))
+            }) {
                 openDoor(at: door.coord)
             } else {
                 gameManager.scenarioManager.openRoom(room)
                 let playerCount = max(2, gameManager.game.characters.filter { !$0.absent }.count)
                 let placed = placeRevealedMonsters(slots: [], newEntities: unplacedMonsterEntities(),
                                                    playerCount: playerCount)
-                for monster in gameManager.game.monsters where placed.contains(where: { $0.name == monster.name }) {
-                    if isMidRound, !monster.abilityDrawn {
-                        gameManager.monsterManager.drawAbility(for: monster)
-                    }
-                    gameManager.monsterManager.applyStatEffects(
-                        for: monster, only: Set(placed.filter { $0.name == monster.name }.map(\.standee)))
-                }
-                if isMidRound {
-                    for piece in placed { pendingRevealedStandees[piece.name, default: []].insert(piece.standee) }
-                }
+                placeRevealedObjectives()
+                readyNewMonsters(placed)
             }
+        }
+    }
+
+    /// Monsters just put on the board: a new type draws an ability card this round, all get
+    /// their stat bonuses, and mid-round they act as newly revealed.
+    private func readyNewMonsters(_ placed: [(name: String, standee: Int)]) {
+        guard let gameManager else { return }
+        let inactive = MonsterAI.inactiveMonsters(gameManager.game)
+        for monster in gameManager.game.monsters where placed.contains(where: { $0.name == monster.name }) {
+            if isMidRound, !monster.abilityDrawn, !inactive.contains(monster.name) {
+                gameManager.monsterManager.drawAbility(for: monster)
+            }
+            gameManager.monsterManager.applyStatEffects(
+                for: monster, only: Set(placed.filter { $0.name == monster.name }.map(\.standee)))
+        }
+        if isMidRound {
+            for piece in placed where !inactive.contains(piece.name) {
+                pendingRevealedStandees[piece.name, default: []].insert(piece.standee)
+            }
+        }
+    }
+
+    /// The map's monster places without those of types the scenario sets up later, which are
+    /// kept for when it does.
+    private func holdBack(_ slots: [MonsterSlot]) -> [MonsterSlot] {
+        guard let scenario = gameManager?.game.scenario,
+              let held = gameManager?.scenarioManager.heldBackMonsters(in: scenario), !held.isEmpty else { return slots }
+        boardState.heldMonsterSlots += slots.filter { held.contains($0.name) }
+        return slots.filter { !held.contains($0.name) }
+    }
+
+    /// Monsters a rule sets up late (the entities were just created) go where the map prints them.
+    func placeMonstersSetUpLater(_ names: [String]) {
+        guard let gameManager else { return }
+        let slots = boardState.heldMonsterSlots.filter { names.contains($0.name) }
+        boardState.heldMonsterSlots.removeAll { names.contains($0.name) }
+        let playerCount = max(2, gameManager.game.characters.filter { !$0.absent }.count)
+        var placed = placeRevealedMonsters(slots: slots, newEntities: unplacedMonsterEntities().filter { names.contains($0.0.name) },
+                                           playerCount: playerCount)
+        // Monsters that stood inactive wake where they are, as if just revealed.
+        let woken = (scenarioData?.placements?.inactive ?? []).filter { $0.untilSetUp == true }.flatMap(\.monsters)
+        for name in names where woken.contains(name) {
+            let standees = boardState.piecePositions.keys.compactMap { id -> Int? in
+                if case .monster(name, let standee) = id { return standee }
+                return nil
+            }.sorted()
+            guard !standees.isEmpty else { continue }
+            log("Every \(monsterTypeName(name)) wakes", category: .setup)
+            placed += standees.map { (name: name, standee: $0) }
+        }
+        readyNewMonsters(placed)
+        syncPieceVisuals()
+        for piece in placed {
+            let id = PieceID.monster(name: piece.name, standee: piece.standee)
+            log("\(name(id)) appears", category: .setup, trace: boardState.piecePositions[id].map { "at \($0)" })
         }
     }
 
@@ -2434,7 +2992,8 @@ final class BoardCoordinator {
     func unplacedMonsterEntities() -> [(GameMonster, GameMonsterEntity)] {
         guard let game = gameManager?.game else { return [] }
         var result: [(GameMonster, GameMonsterEntity)] = []
-        for monster in game.monsters {
+        // (One that comes and goes is off the map on purpose.)
+        for monster in game.monsters where !comesAndGoes(monster.name) {
             for entity in monster.entities where !entity.dead {
                 if boardState.piecePositions[.monster(name: monster.name, standee: entity.number)] == nil {
                     result.append((monster, entity))
@@ -2497,28 +3056,32 @@ final class BoardCoordinator {
             }
             let pieceID = PieceID.monster(name: monster.name, standee: entity.number)
             boardState.placePiece(pieceID, at: destination)
-            if entity.type == .elite { boardState.eliteStandees.insert(pieceID) }
+            // A standee number is reused once its monster is dead: the mark follows the newcomer.
+            if entity.type == .elite { boardState.eliteStandees.insert(pieceID) } else { boardState.eliteStandees.remove(pieceID) }
             boardScene?.addPieceSprite(id: pieceID, at: destination, offsetCol: offsetCol, offsetRow: offsetRow)
             placed.append((monster.name, entity.number))
         }
         return placed
     }
 
-    /// A monster spawned by a scenario rule: placed near the other monsters (the map data has no
-    /// spawn markers). Spawned monsters act this round if spawned during it and drop no money.
-    func spawnFromScenarioRule(name: String, type: MonsterType, marker: String?, health: String?) -> Bool {
+    /// A monster spawned by a scenario rule: on its lettered hex where one is written
+    /// (`ScenarioPlacements`), otherwise near the other monsters. Spawned monsters act this round
+    /// if spawned during it and drop no money; one only set up late (`placed`) is a monster like
+    /// any on the map from the start.
+    func spawnFromScenarioRule(name: String, type: MonsterType, marker: String?, health: String?,
+                               placed: Bool = false) -> Bool {
         guard let gameManager, boardScene != nil || !boardState.cells.isEmpty else { return false }
         let monsterPositions = boardState.piecePositions.sorted { $0.key < $1.key }.compactMap { id, coord -> HexCoord? in
             if case .monster = id, !isPlayerSide(id) { return coord }
             return nil
         }
-        let anchor = monsterPositions.first ?? boardState.cells.keys.max { a, b in
-            let da = boardState.startingLocations.map { a.distance(to: $0) }.min() ?? 0
-            let db = boardState.startingLocations.map { b.distance(to: $0) }.min() ?? 0
+        let anchor = marker.flatMap(spawnHex(forMarker:)) ?? monsterPositions.first ?? boardState.cells.keys.max { a, b in
+            let da = boardState.startingLocations.map { boardState.steps(from: a, to: $0) }.min() ?? 0
+            let db = boardState.startingLocations.map { boardState.steps(from: b, to: $0) }.min() ?? 0
             return da == db ? a > b : da < db
         }
         guard let anchor,
-              let piece = spawnMonster(name: name, type: type, at: anchor, origin: .spawned,
+              let piece = spawnMonster(name: name, type: type, at: anchor, origin: placed ? .placed : .spawned,
                                        health: health.map { .string($0) }) else { return false }
         if let marker, case .monster(let monsterName, let standee) = piece {
             gameManager.game.monsters.first { $0.name == monsterName }?
@@ -2610,7 +3173,7 @@ final class BoardCoordinator {
             } else if validTargets.contains(piece) {
                 let attackValue = activePlayerTurn?.currentAttackValue() ?? 2
                 let range = activePlayerTurn?.currentAttackRange() ?? 1
-                if let pattern = activePlayerTurn?.pendingAreaPattern {
+                if let pattern = activePlayerTurn?.pendingAreaPattern, !addingTarget {
                     // Area attack: every enemy in the pattern is a separate attack.
                     let targets = areaTargets(pattern: pattern, attacker: attackerID, primary: piece, range: range)
                     let ranged = !AoEResolver.isMeleePattern(pattern)
@@ -2630,7 +3193,7 @@ final class BoardCoordinator {
                         for text in areaTexts where text.contains("allies in the attack area suffer") {
                             let amount = PlayerTurnController.damageAmount(in: text)
                             let allies = self.boardState.piecePositions.filter {
-                                areaHexes.contains($0.value) && $0.key != attackerID && !self.areEnemies(attackerID, $0.key)
+                                areaHexes.contains($0.value) && $0.key != attackerID && self.areAllies(attackerID, $0.key)
                             }.map(\.key).sorted()
                             for ally in allies where self.isOnBoard(ally) && self.isCurrentBoard(generation) {
                                 self.log("\(self.name(ally)) suffers \(amount) damage", category: .damage)
@@ -2648,14 +3211,21 @@ final class BoardCoordinator {
                                 }
                             }
                         }
-                        turn?.advanceAfterAsyncAction()
+                        // Then any target added to the attack.
+                        self.finishPlayerAttack(attacker: attackerID, range: range, turn: turn)
                     }
-                } else if activePlayerTurn?.attackTexts.contains(where: { $0.contains("all enemies on the path to the primary target") }) == true,
+                } else if !addingTarget,
+                          activePlayerTurn?.attackTexts.contains(where: { $0.contains("all enemies on the path to the primary target") }) == true,
                           let from = boardState.piecePositions[attackerID], let to = boardState.piecePositions[piece] {
                     // Impaling Eruption: every enemy on the way to the target is attacked too.
                     let path = Set(from.line(to: to).dropFirst().dropLast())
-                    let onTheWay = boardState.piecePositions.filter { path.contains($0.value) && areEnemies(attackerID, $0.key) }
-                        .map(\.key).sorted()
+                    // Invisible enemies can't be targeted, on the way or not; nor one out of sight
+                    // (every attack needs line of sight, and a wall's corner can hide a hex the
+                    // straight way to a visible one passes).
+                    let onTheWay = boardState.piecePositions.filter {
+                        path.contains($0.value) && areEnemies(attackerID, $0.key) && !isConditionActive(.invisible, on: $0.key)
+                            && LineOfSight.hasLOS(from: from, to: $0.value, board: boardState)
+                    }.map(\.key).sorted()
                     interactionMode = .idle
                     let turn = activePlayerTurn, generation = boardGeneration
                     Task { @MainActor in
@@ -2669,8 +3239,12 @@ final class BoardCoordinator {
                     }
                 } else {
                     interactionMode = .idle
+                    // A target added to a melee area is struck at range 1.
+                    let melee = addingTarget && (activePlayerTurn?.pendingAreaPattern.map(AoEResolver.isMeleePattern) ?? false)
+                    addingTarget = false
                     Task { @MainActor in
-                        await self.resolvePlayerAttack(attacker: attackerID, target: piece, attackValue: attackValue, range: range)
+                        await self.resolvePlayerAttack(attacker: attackerID, target: piece, attackValue: attackValue,
+                                                       range: melee ? 1 : range)
                     }
                 }
             }

@@ -137,32 +137,16 @@ final class E2ERoundFlowTests: XCTestCase {
         }
     }
 
-    func testInitiativeOrdering_characterBeforeMonster() {
-        let t = TestGame()
-        let char = t.addCharacter(initiative: 10)
-        let monster = t.addSimpleMonster()
-
-        // Manually set up a mock ability for initiative
-        monster.abilities = [0]
-        monster.ability = -1
-
-        char.initiative = 10
-        t.advanceRound()
-
-        // After sorting, character (initiative 10) should come before monster
-        let figureOrder = t.game.figures.map { $0.figure.name }
-        if let charIdx = figureOrder.firstIndex(of: char.name),
-           let monIdx = figureOrder.firstIndex(of: monster.name) {
-            XCTAssertLessThan(charIdx, monIdx, "Character with lower initiative should come first")
-        }
-    }
+    // Initiative order and its ties (a character before a monster type, the second card between
+    // characters) are tested through the coordinator's turn order:
+    // RoundRuleTests.testInitiativeOrderAndItsTies, RestRuleTests.testALongRestGoesAfterACharacterOnNinetyNine.
 }
 
 // MARK: - E2E: Monster AI Combat
 
 final class E2EMonsterCombatTests: XCTestCase {
 
-    func testMonsterAI_movesTowardCharacter() {
+    func testMonsterAI_movesTowardCharacter() throws {
         let t = TestGame()
         t.addCharacter(pos: HexCoord(2, 2))
         let monster = t.addSimpleMonster(positions: [(1, HexCoord(6, 2), 5)])
@@ -184,15 +168,14 @@ final class E2EMonsterCombatTests: XCTestCase {
             gameState: t.game
         )
 
-        XCTAssertFalse(result.movementPath.isEmpty, "Monster should move toward character")
-        XCTAssertNotNil(result.focusTarget, "Monster should have a focus target")
-
-        // Verify monster moves closer
-        if result.movementPath.count > 1 {
-            let startDist = HexCoord(6, 2).distance(to: HexCoord(2, 2))
-            let endDist = result.movementPath.last!.distance(to: HexCoord(2, 2))
-            XCTAssertLessThan(endDist, startDist, "Monster should be closer after moving")
-        }
+        XCTAssertEqual(result.focusTarget, .character("gh-brute"), "Monster should have a focus target")
+        // Four hexes away with Move 2: it can't attack this turn, so it uses all its movement
+        // along the shortest way and ends two hexes nearer.
+        XCTAssertEqual(result.movementPath.first, HexCoord(6, 2))
+        XCTAssertEqual(result.movementPath.count - 1, 2, "both points of movement")
+        let end = try XCTUnwrap(result.movementPath.last)
+        XCTAssertEqual(end.distance(to: HexCoord(2, 2)), 2, "Monster should be two hexes closer after moving")
+        XCTAssertTrue(result.attackTargets.isEmpty, "still out of reach")
     }
 
     func testMonsterAI_attacksWhenAdjacent() {
@@ -216,12 +199,8 @@ final class E2EMonsterCombatTests: XCTestCase {
             gameState: t.game
         )
 
-        XCTAssertFalse(result.attackTargets.isEmpty, "Adjacent monster should attack")
-        if case .character(let charID) = result.attackTargets.first {
-            XCTAssertEqual(charID, "gh-brute", "Should attack the brute character")
-        } else {
-            XCTFail("Should attack a character")
-        }
+        XCTAssertEqual(result.attackTargets, [.character("gh-brute")], "Adjacent monster should attack the Brute, once")
+        XCTAssertTrue(result.movementPath.count <= 1, "beside its focus already: it stays")
     }
 
     func testMonsterAI_stunnedSkipsTurn() {
@@ -245,10 +224,10 @@ final class E2EMonsterCombatTests: XCTestCase {
         XCTAssertTrue(result.attackTargets.isEmpty)
     }
 
-    func testMonsterAI_disarmedMovesButDoesntAttack() {
+    func testMonsterAI_disarmedMovesButDoesntAttack() throws {
         let t = TestGame()
-        t.addCharacter(pos: HexCoord(5, 5))
-        let monster = t.addSimpleMonster(positions: [(1, HexCoord(5, 6), 5)])
+        let character = t.addCharacter(pos: HexCoord(2, 5))
+        let monster = t.addSimpleMonster(positions: [(1, HexCoord(6, 5), 5)])
         let entity = monster.entities[0]
         entity.entityConditions.append(EntityCondition(name: .disarm, state: .normal))
 
@@ -265,7 +244,26 @@ final class E2EMonsterCombatTests: XCTestCase {
         )
 
         XCTAssertTrue(result.disarmed, "Monster should be disarmed")
+        XCTAssertEqual(result.focusTarget, .character(character.id), "it still has a focus")
+        XCTAssertEqual(result.movementPath.count - 1, 2, "and moves toward it")
+        XCTAssertEqual(try XCTUnwrap(result.movementPath.last).distance(to: HexCoord(2, 5)), 2)
         XCTAssertTrue(result.attackTargets.isEmpty, "Disarmed monster should not attack")
+
+        // A ranged attack it can't make doesn't hold it at range: disarmed, it moves as for a
+        // melee attack, as near its focus as it can (FAQ) — where armed it would stay and shoot.
+        let ranged = AbilityModel(cardId: 2, initiative: 50, actions: [
+            ActionModel(type: .move, value: .int(2)),
+            ActionModel(type: .attack, value: .int(3), subActions: [ActionModel(type: .range, value: .int(4))])
+        ])
+        let closing = MonsterAI.computeTurn(pieceID: .monster(name: "test-monster", standee: 1), monster: monster,
+                                            entity: entity, ability: ranged, board: t.board, gameState: t.game)
+        XCTAssertEqual(try XCTUnwrap(closing.movementPath.last).distance(to: HexCoord(2, 5)), 2, "two hexes nearer")
+        XCTAssertTrue(closing.attackTargets.isEmpty)
+        entity.entityConditions = []
+        let armed = MonsterAI.computeTurn(pieceID: .monster(name: "test-monster", standee: 1), monster: monster,
+                                          entity: entity, ability: ranged, board: t.board, gameState: t.game)
+        XCTAssertTrue(armed.movementPath.isEmpty, "in range already")
+        XCTAssertEqual(armed.attackTargets, [.character(character.id)])
     }
 }
 
@@ -367,41 +365,8 @@ final class E2ECombatTests: XCTestCase {
         XCTAssertEqual(result.damage, 4, "3 attack + 1 poison = 4 damage")
     }
 
-    func testCombatResolver_retaliateApplied() {
-        let result = CombatResolver.resolveAttack(
-            attacker: .monster(name: "m", standee: 1),
-            defender: .character("c"),
-            baseAttack: 3,
-            advantage: false, disadvantage: false,
-            isPoisoned: false,
-            shield: 0,
-            retaliateValue: 2, retaliateRange: 1,
-            attackerDefenderDistance: 1,
-            preDrawnCards: [AttackModifier(type: .plus0, value: 0)],
-            drawModifier: { nil },
-            defenderHealth: 10
-        )
-
-        XCTAssertEqual(result.retaliateDamage, 2, "Retaliate 2 at range 1 when adjacent")
-    }
-
-    func testCombatResolver_retaliateOutOfRange() {
-        let result = CombatResolver.resolveAttack(
-            attacker: .monster(name: "m", standee: 1),
-            defender: .character("c"),
-            baseAttack: 3,
-            advantage: false, disadvantage: false,
-            isPoisoned: false,
-            shield: 0,
-            retaliateValue: 2, retaliateRange: 1,
-            attackerDefenderDistance: 3, // Out of retaliate range
-            preDrawnCards: [AttackModifier(type: .plus0, value: 0)],
-            drawModifier: { nil },
-            defenderHealth: 10
-        )
-
-        XCTAssertEqual(result.retaliateDamage, 0, "Retaliate should not trigger at range 3")
-    }
+    // Retaliate: ForcedMovementTests and AttackRuleTests (performAttack resolves it, not the
+    // AttackResult these tests used to read).
 
     func testDamageKillsCharacter() {
         let t = TestGame()
@@ -568,104 +533,9 @@ final class E2EScenarioFinishTests: XCTestCase {
 
 final class E2EGameSimulationTests: XCTestCase {
 
-    /// Simulates a 3-round game with monster AI turns, combat, and condition management.
-    func testThreeRoundSimulation() {
-        let t = TestGame()
-        let char = t.addCharacter(pos: HexCoord(2, 2), initiative: 15)
-        char.health = 20
-        char.maxHealth = 20
-        let monster = t.addSimpleMonster(positions: [
-            (1, HexCoord(4, 2), 8),
-            (2, HexCoord(4, 4), 6)
-        ])
-
-        // Simulate 3 rounds of monster AI
-        for round in 1...3 {
-            char.initiative = 15
-
-            // Advance round
-            t.advanceRound()
-            XCTAssertEqual(t.game.round, round)
-
-            // Compute monster turns
-            for entity in monster.aliveEntities {
-                let ability = AbilityModel(cardId: 1, initiative: 50,
-                                            actions: [
-                                                ActionModel(type: .move, value: .int(2)),
-                                                ActionModel(type: .attack, value: .int(2))
-                                            ])
-
-                let result = MonsterAI.computeTurn(
-                    pieceID: .monster(name: "test-monster", standee: entity.number),
-                    monster: monster,
-                    entity: entity,
-                    ability: ability,
-                    board: t.board,
-                    gameState: t.game
-                )
-
-                // Execute movement
-                if let finalPos = result.movementPath.last {
-                    t.board.movePiece(.monster(name: "test-monster", standee: entity.number), to: finalPos)
-                }
-
-                // Execute attacks
-                for target in result.attackTargets {
-                    let attackResult = CombatResolver.resolveAttack(
-                        attacker: .monster(name: "test-monster", standee: entity.number),
-                        defender: target,
-                        baseAttack: 2,
-                        advantage: false, disadvantage: false,
-                        isPoisoned: false, shield: 0,
-                        retaliateValue: 0, retaliateRange: 0,
-                        attackerDefenderDistance: 1,
-                        preDrawnCards: [AttackModifier(type: .plus0, value: 0)],
-                        drawModifier: { nil },
-                        defenderHealth: char.health
-                    )
-
-                    if attackResult.damage > 0 {
-                        t.entityManager.changeHealth(char, amount: -attackResult.damage)
-                    }
-                }
-
-                // Expire conditions
-                t.entityManager.applyConditionsTurn(entity)
-                t.entityManager.expireConditions(entity)
-            }
-
-            // End round
-            t.roundManager.nextGameState() // next → draw
-        }
-
-        XCTAssertEqual(t.game.round, 3)
-        // Character should have taken some damage over 3 rounds
-        XCTAssertLessThan(char.health, 20, "Character should take damage over multiple rounds")
-        XCTAssertGreaterThan(char.health, 0, "Character should still be alive")
-    }
-
-    /// Simulates killing a monster and verifying loot drop.
-    func testKillMonster_dropsLoot() {
-        let t = TestGame()
-        t.addCharacter(pos: HexCoord(2, 2))
-        let monster = t.addSimpleMonster(positions: [(1, HexCoord(3, 2), 1)])
-
-        let monsterPos = HexCoord(3, 2)
-        let entity = monster.entities[0]
-
-        // Kill the monster
-        t.entityManager.changeHealth(entity, amount: -5)
-        XCTAssertTrue(entity.dead)
-
-        // Drop loot
-        t.board.placeLoot(at: monsterPos)
-        XCTAssertEqual(t.board.lootTokens[monsterPos], 1)
-
-        // Character picks up loot by moving there
-        let taken = t.board.takeLoot(at: monsterPos)
-        XCTAssertEqual(taken, 1, "Should collect 1 loot token")
-        XCTAssertNil(t.board.lootTokens[monsterPos], "Loot removed after collection")
-    }
+    // Rounds of real play — monster turns, attacks, conditions, deaths and their money tokens —
+    // are played by the turn loop itself in BoardSimulationTests and PlaythroughTests; a monster's
+    // death dropping a token is BoardRulesRegressionTests.testKilledMonsterDropsMoneyButSummonedMonsterDoesNot.
 
     /// Simulates summon creation and AI turn.
     func testSummonAI_attacksMonster() {
@@ -689,12 +559,17 @@ final class E2EGameSimulationTests: XCTestCase {
             gameState: t.game
         )
 
-        XCTAssertNotNil(result.focusTarget, "Summon should find a focus target")
-        XCTAssertFalse(result.movementPath.isEmpty, "Summon should move toward monster")
+        let enemy = PieceID.monster(name: "test-monster", standee: 1)
+        XCTAssertEqual(result.focusTarget, enemy, "Summon should find a focus target")
+        XCTAssertEqual(result.movementPath, [HexCoord(3, 2), HexCoord(4, 2)], "one step: beside the monster")
+        XCTAssertEqual(result.attackFromHex, HexCoord(4, 2))
+        XCTAssertEqual(result.attackTargets, [enemy], "and it attacks")
+        XCTAssertEqual(result.attackValue, 2, "with its own Attack 2")
+        XCTAssertFalse(result.stunned)
     }
 
     /// Simulates an escort objective taking a turn.
-    func testEscortAI_fullTurn() {
+    func testEscortAI_fullTurn() throws {
         let t = TestGame()
         t.addCharacter(pos: HexCoord(2, 2))
         t.addSimpleMonster(positions: [(1, HexCoord(7, 3), 5)])
@@ -713,9 +588,15 @@ final class E2EGameSimulationTests: XCTestCase {
             board: t.board, gameState: t.game
         )
 
+        let enemy = PieceID.monster(name: "test-monster", standee: 1)
         XCTAssertFalse(result.stunned)
-        XCTAssertFalse(result.movementPath.isEmpty, "Escort should move toward monster")
-        XCTAssertNotNil(result.focusTarget, "Escort should have a focus")
+        XCTAssertEqual(result.focusTarget, enemy, "Escort should have a focus")
+        // Three hexes from the monster with Move 3 and a melee attack: two steps bring it beside
+        // its focus, and it attacks from there.
+        XCTAssertEqual(result.movementPath.first, HexCoord(4, 3))
+        XCTAssertEqual(result.movementPath.count - 1, 2, "no further than it needs to attack")
+        XCTAssertEqual(try XCTUnwrap(result.movementPath.last).distance(to: HexCoord(7, 3)), 1)
+        XCTAssertEqual(result.attackTarget, enemy)
     }
 }
 
@@ -723,7 +604,7 @@ final class E2EGameSimulationTests: XCTestCase {
 
 final class E2EPathfindingTests: XCTestCase {
 
-    func testPathfindingAroundObstacles() {
+    func testPathfindingAroundObstacles() throws {
         let board = makeBoard(cols: 10, rows: 10)
         // Create a wall
         for row in 0..<8 {
@@ -733,41 +614,14 @@ final class E2EPathfindingTests: XCTestCase {
         board.cells[HexCoord(4, 8)]!.passable = true
 
         let path = Pathfinder.findPath(board: board, from: HexCoord(3, 3), to: HexCoord(5, 3), occupiedByEnemy: [])
-        XCTAssertNotNil(path, "Should find path around the wall")
-        if let path = path {
-            XCTAssertGreaterThan(path.count, 3, "Path should go around the wall (not straight through)")
-        }
+        let around = try XCTUnwrap(path, "Should find path around the wall")
+        XCTAssertGreaterThan(around.count, 3, "Path should go around the wall (not straight through)")
+        XCTAssertTrue(around.contains { $0.col == 4 && $0.row >= 8 }, "through the gap at the bottom of the wall")
+        XCTAssertFalse(around.contains { $0.col == 4 && $0.row < 8 }, "and through no obstacle")
+        XCTAssertEqual(around.last, HexCoord(5, 3))
     }
 
-    func testDifficultTerrain_costsExtra() {
-        let board = makeBoard(cols: 10, rows: 10)
-        // Make hex (3,3) difficult terrain
-        board.cells[HexCoord(3, 3)] = HexCell(coord: HexCoord(3, 3), tileRef: "test", passable: true, overlay: .difficultTerrain)
-
-        let reachable = Pathfinder.reachableHexes(
-            board: board, from: HexCoord(2, 3), range: 2,
-            occupiedByEnemy: [], occupiedByAlly: []
-        )
-
-        // Hex (3,3) costs 2 to enter, so with range 2 we can reach it but nothing beyond in that direction
-        XCTAssertNotNil(reachable[HexCoord(3, 3)], "Should be reachable but costs 2 movement")
-    }
-
-    func testFlyingIgnoresTerrainCost() {
-        let board = makeBoard(cols: 10, rows: 10)
-        board.cells[HexCoord(3, 3)] = HexCell(coord: HexCoord(3, 3), tileRef: "test", passable: true, overlay: .difficultTerrain)
-
-        let reachable = Pathfinder.reachableHexes(
-            board: board, from: HexCoord(2, 3), range: 2,
-            flying: true,
-            occupiedByEnemy: [], occupiedByAlly: []
-        )
-
-        // Flying: difficult terrain costs 1 instead of 2
-        let reachableCoords = Set(reachable.keys)
-        // With flying + range 2, should reach further than without
-        XCTAssertTrue(reachableCoords.count > 0)
-    }
+    // Difficult terrain costing 2 and flying ignoring it: RB_TerrainTests (exact costs).
 
     func testLineOfSight_adjacentAlwaysVisible() {
         let board = makeBoard(cols: 10, rows: 10)
@@ -778,16 +632,8 @@ final class E2EPathfindingTests: XCTestCase {
         }
     }
 
-    func testLineOfSight_blockedByObstacle() {
-        let board = makeBoard(cols: 10, rows: 10)
-        board.cells[HexCoord(5, 5)]!.passable = false // obstacle
-
-        let hasLOS = LineOfSight.hasLOS(from: HexCoord(4, 5), to: HexCoord(6, 5), board: board)
-        // LOS through an obstacle in a straight line should be blocked
-        // (depends on exact corner calculation — may or may not block depending on geometry)
-        // This tests the basic LOS infrastructure works without crashing
-        _ = hasLOS // Just verify it doesn't crash
-    }
+    // An obstacle never blocks line of sight (p.15): LineOfSightTests.testLOS_notBlockedByObstacleDirectlyBetween.
+    // (The test that was here was named for the opposite and asserted nothing.)
 }
 
 // MARK: - E2E: Attack Modifier Deck
@@ -807,47 +653,30 @@ final class E2EAttackModifierTests: XCTestCase {
         }
 
         XCTAssertEqual(drawnCards.count, deckSize, "Should draw all cards")
+        XCTAssertEqual(deckSize, 20)
+        XCTAssertEqual(Set(drawnCards.map(\.id)).count, 20, "each card once: nothing is drawn twice before a shuffle")
+        XCTAssertEqual(drawnCards.filter(\.shuffle).count, 2, "the ×2 and the Null are among them")
+        XCTAssertTrue(t.game.monsterAttackModifierDeck.needsShuffle,
+                      "Deck should need shuffle after drawing shuffle-flagged card")
+        XCTAssertEqual(t.game.monsterAttackModifierDeck.remainingCount, 0)
 
-        // Verify deck needs shuffle (contains x2 or null cards with shuffle flag)
-        let hasShuffle = drawnCards.contains(where: { $0.shuffle })
-        if hasShuffle {
-            XCTAssertTrue(t.game.monsterAttackModifierDeck.needsShuffle,
-                          "Deck should need shuffle after drawing shuffle-flagged card")
-        }
+        // One more draw finds the pile empty: the deck is shuffled then and there.
+        XCTAssertNotNil(t.attackModifierManager.drawMonsterCard())
+        XCTAssertEqual(t.game.monsterAttackModifierDeck.remainingCount, 19)
     }
 
-    func testBlessCurseInteraction() {
-        let t = TestGame()
-
-        // Add bless and curse
-        t.attackModifierManager.addBless(to: .monster)
-        t.attackModifierManager.addCurse(to: .monster)
-
-        let blessCount = t.game.monsterAttackModifierDeck.cards.filter { $0.type == .bless }.count
-        let curseCount = t.game.monsterAttackModifierDeck.cards.filter { $0.type == .curse }.count
-
-        XCTAssertEqual(blessCount, 1)
-        XCTAssertEqual(curseCount, 1)
-
-        // Shuffle should remove special cards
-        t.attackModifierManager.shuffleDeck(&t.game.monsterAttackModifierDeck)
-
-        let blessAfter = t.game.monsterAttackModifierDeck.cards.filter { $0.type == .bless }.count
-        let curseAfter = t.game.monsterAttackModifierDeck.cards.filter { $0.type == .curse }.count
-
-        // After shuffle, bless/curse from used cards are removed but undrawn ones stay
-        // Since we didn't draw any, they should still be in the deck
-        XCTAssertTrue(blessAfter + curseAfter >= 0, "Bless/curse handled by shuffle")
-    }
+    // Bless and Curse through a shuffle (undrawn ones stay, drawn ones go):
+    // RoundRuleTests.testAnUndrawnBlessStaysInTheDeckThroughAReshuffle and
+    // testBlessAndCurseAreRemovedWhenDrawnAndCauseNoReshuffle.
 }
 
 // MARK: - E2E: Real Monster Data Integration
 
 final class E2ERealMonsterTests: XCTestCase {
 
-    func testLoadCultistAndComputeTurn() {
+    func testLoadCultistAndComputeTurn() throws {
         let t = TestGame()
-        t.addCharacter(pos: HexCoord(3, 3))
+        let character = t.addCharacter(pos: HexCoord(3, 3))
 
         // Add a real cultist from edition data
         guard let monster = t.addMonster(name: "cultist", positions: [(.normal, HexCoord(6, 3))]) else {
@@ -861,22 +690,31 @@ final class E2ERealMonsterTests: XCTestCase {
 
         // Draw an ability
         t.monsterManager.drawAbility(for: monster)
-        let ability = t.monsterManager.currentAbility(for: monster)
-        XCTAssertNotNil(ability, "Should have drawn an ability card")
+        let ability = try XCTUnwrap(t.monsterManager.currentAbility(for: monster), "Should have drawn an ability card")
+        XCTAssertTrue((604...611).contains(ability.cardId ?? 0), "a card of the Cultist deck: \(ability.cardId ?? 0)")
+        XCTAssertEqual(monster.drawnInitiative, ability.initiative)
 
         // Compute a turn
-        if let ability = ability, let entity = monster.aliveEntities.first {
-            let result = MonsterAI.computeTurn(
-                pieceID: .monster(name: "cultist", standee: entity.number),
-                monster: monster,
-                entity: entity,
-                ability: ability,
-                board: t.board,
-                gameState: t.game
-            )
+        let entity = try XCTUnwrap(monster.aliveEntities.first)
+        let result = MonsterAI.computeTurn(
+            pieceID: .monster(name: "cultist", standee: entity.number),
+            monster: monster,
+            entity: entity,
+            ability: ability,
+            board: t.board,
+            gameState: t.game
+        )
 
-            XCTAssertNotNil(result.focusTarget, "Cultist should find character as focus")
-        }
+        XCTAssertEqual(result.focusTarget, .character(character.id), "Cultist should find character as focus")
+        XCTAssertEqual(result.initiative, ability.initiative)
+        // Three hexes away with Move 2 on its stat card: whatever the card, it moves only if
+        // the card has a Move, never past the hex beside its focus, and attacks only from there.
+        let hasMove = (ability.actions ?? []).contains { $0.type == .move }
+        if !hasMove { XCTAssertTrue(result.movementPath.isEmpty, "no Move on card \(ability.cardId ?? 0)") }
+        let end = result.movementPath.last ?? HexCoord(6, 3)
+        XCTAssertGreaterThanOrEqual(end.distance(to: HexCoord(3, 3)), 1)
+        XCTAssertEqual(result.attackTargets.isEmpty, end.distance(to: HexCoord(3, 3)) > 1 || !MonsterAbility.hasAttack(ability.actions ?? []),
+                       "it attacks exactly when its card has an attack and it stands beside its focus")
     }
 
     func testLoadLivingBonesAndVerifyStats() {
@@ -891,10 +729,20 @@ final class E2ERealMonsterTests: XCTestCase {
         XCTAssertGreaterThan(entity.health, 0, "Living Bones should have health")
         XCTAssertGreaterThan(entity.maxHealth, 0)
 
-        // Verify stats are loaded
+        // Verify stats are loaded: a normal Living Bones at level 1 is 5 hit points, Move 3,
+        // Attack 1, Target 2 and Shield 1.
+        XCTAssertEqual(entity.health, 5)
+        XCTAssertEqual(entity.maxHealth, 5)
         let stat = monster.stat(for: .normal)
         XCTAssertNotNil(stat, "Should have normal stat block")
-        XCTAssertNotNil(stat?.attack, "Should have attack value")
-        XCTAssertNotNil(stat?.movement, "Should have movement value")
+        XCTAssertEqual(stat?.attackValue(characterCount: 2, level: 1), 1, "Should have attack value")
+        XCTAssertEqual(stat?.movementValue(characterCount: 2, level: 1), 3, "Should have movement value")
+        XCTAssertEqual(stat?.actions?.first { $0.type == .target }?.value?.intValue, 2)
+        XCTAssertEqual(stat?.actions?.first { $0.type == .shield }?.value?.intValue, 1)
+        XCTAssertEqual(monster.stat(for: .elite)?.movementValue(characterCount: 2, level: 1), 4)
+        // The stat card's Shield is the monster's own from the moment it is on the board.
+        t.monsterManager.applyStatEffects(for: monster)
+        XCTAssertEqual(entity.shieldPersistent?.value?.intValue, 1)
+        XCTAssertNil(entity.shield, "nothing from an ability card")
     }
 }

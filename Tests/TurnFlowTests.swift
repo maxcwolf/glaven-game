@@ -216,9 +216,11 @@ final class TurnFlowTests: XCTestCase {
         XCTAssertTrue(taught.contains(.resting), "\(taught)")
     }
 
-    /// Once the scenario is won (or lost) this round, no short rest is offered before the end
-    /// (iPad playthrough 2026-10-09: two rest prompts came between the last kill and victory).
-    func testNoShortRestOnceTheScenarioIsDecided() {
+    /// A short rest may be taken in a scenario's last round (FAQ) — it can decide a battle goal —
+    /// so the offer still comes once the scenario is won; declined, the round ends in victory.
+    /// (The iPad playthrough of 2026-10-09 found the prompts between the last kill and the
+    /// victory surprising; the rule allows the rest, so they stay, and can be skipped.)
+    func testAShortRestIsStillOfferedOnceTheScenarioIsDecided() {
         coord.autoResolvePrompts = false
         let brute = add("brute", at: HexCoord(3, 3))
         coord.boardPhase = .execution
@@ -229,8 +231,11 @@ final class TurnFlowTests: XCTestCase {
         coord.turnOrder = []
         coord.currentTurnIndex = -1
         coord.advanceToNextFigure()   // the round ends
-        XCTAssertNil(coord.pendingShortRest)
+        XCTAssertEqual(coord.pendingShortRest?.characterID, brute.id)
+        XCTAssertNil(coord.scenarioResult)
+        coord.skipShortRest()
         XCTAssertEqual(coord.scenarioResult, .victory)
+        XCTAssertEqual(brute.discardedCards, [1, 2])
     }
 
     // MARK: - Consuming elements
@@ -307,8 +312,9 @@ final class TurnFlowTests: XCTestCase {
         XCTAssertEqual(PlayerTextTests.lint(detail), [])
     }
 
-    /// A plain move doesn't offer staying put.
-    func testAPlainMoveDoesNotOfferTheCharactersHex() throws {
+    /// Any move may be made for no hexes (FAQ: "Move 0 is allowed"), so the character's own
+    /// hex is offered too.
+    func testAPlainMoveOffersTheCharactersHexToo() throws {
         let brute = add("brute", at: HexCoord(3, 3))
         let trample = try XCTUnwrap(deck("brute").first { $0.name == "Trample" })
         let dagger = try XCTUnwrap(deck("brute").first { $0.name == "Spare Dagger" })
@@ -316,7 +322,8 @@ final class TurnFlowTests: XCTestCase {
         turn.skipRemainingActions()
         turn.executeCurrentAction()
         guard case .selectingMove(_, _, let hexes, _, _) = coord.interactionMode else { return XCTFail("a move") }
-        XCTAssertFalse(hexes.contains(HexCoord(3, 3)))
+        XCTAssertTrue(hexes.contains(HexCoord(3, 3)))
+        XCTAssertGreaterThan(hexes.count, 1)
     }
 
     // MARK: - The log

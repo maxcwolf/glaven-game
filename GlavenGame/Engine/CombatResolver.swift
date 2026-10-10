@@ -389,14 +389,41 @@ enum CombatResolver {
         }
     }
 
-    /// Pick the better of two modifier cards (ties → the card drawn first).
+    /// Pick the better of two modifier cards; where neither is clearly better, the card drawn
+    /// first (GH p.20).
     private static func betterCard(_ a: AttackModifier, _ b: AttackModifier, base: Int?) -> AttackModifier {
-        score(a, base: base) >= score(b, base: base) ? a : b
+        isClearlyBetter(b, than: a, base: base) ? b : a
     }
 
-    /// Pick the worse of two modifier cards (ties → the card drawn first).
+    /// Pick the worse of two modifier cards; where neither is clearly worse, the card drawn first.
     private static func worseCard(_ a: AttackModifier, _ b: AttackModifier, base: Int?) -> AttackModifier {
-        score(a, base: base) <= score(b, base: base) ? a : b
+        isClearlyBetter(a, than: b, base: base) ? b : a
+    }
+
+    /// Whether `card` is better than `other` beyond doubt (FAQ, "Advantage/Disadvantage"): an
+    /// effect printed on a card — a condition, an element, a heal, Pierce, a push — is worth
+    /// something, but how much is undefined. So a card is clearly better only when it is at
+    /// least as good in the attack it makes and carries everything the other does, and is ahead
+    /// in one of the two: "+1 Stun" beats "+1"; "+0 Stun" against "+2", or "+1 Stun" against
+    /// "+1 Fire", is ambiguous.
+    static func isClearlyBetter(_ card: AttackModifier, than other: AttackModifier, base: Int?) -> Bool {
+        let mine = score(card, base: base), theirs = score(other, base: base)
+        let myEffects = effectKeys(card), theirEffects = effectKeys(other)
+        guard mine >= theirs, myEffects.isSuperset(of: theirEffects) else { return false }
+        return mine > theirs || myEffects.count > theirEffects.count
+    }
+
+    /// What a card's effects are, for telling whether one card has all of another's.
+    private static func effectKeys(_ card: AttackModifier) -> Set<String> {
+        var keys = Set<String>()
+        func visit(_ effects: [AttackModifierEffect]) {
+            for effect in effects {
+                keys.insert("\(effect.type.rawValue):\(effect.value.map { String(describing: $0) } ?? "")")
+                visit(effect.effects ?? [])
+            }
+        }
+        visit(card.effects)
+        return keys
     }
 
     /// How good a card is for this attack: the attack value it makes from `base` (a null is

@@ -7,6 +7,9 @@ final class ScenarioManager {
     private let monsterManager: MonsterManager
     private let levelManager: LevelManager
     var onBeforeMutate: (() -> Void)?
+    /// Called as a scenario finishes (won or lost, abandoned too), before its rewards: the board
+    /// settles what the way it ended changes — a conclusion section's rewards, a chest handed back.
+    var onFinishing: ((_ success: Bool) -> Void)?
     var scenarioStatsManager: ScenarioStatsManager?
 
     init(game: GameState, editionStore: EditionDataStore,
@@ -23,6 +26,8 @@ final class ScenarioManager {
         onBeforeMutate?()
         let scenario = Scenario(data: scenarioData)
         game.scenario = scenario
+        // Standees are drawn at random as monsters are set up, revealed, spawned and summoned.
+        monsterManager.randomStandees = true
         recordStartingTallies()
         // Every scenario starts with all elements inert (iPad playthrough 2026-10-09: the last
         // scenario's Earth was still lit as #2 began); its own rules may infuse some below.
@@ -49,8 +54,8 @@ final class ScenarioManager {
         for character in game.characters where !character.absent {
             // Each brings only what fits beside the items before it.
             editionStore.fitLoadout(character, unlimited: game.tableRules.bringEveryItem)
-            guard !character.hasCustomPerk("ignoreNegativeItem") else { continue }
-            for key in character.carriedItems {
+            // The perk spares the character their items' −1 cards, nothing else.
+            for key in character.carriedItems where !character.hasCustomPerk("ignoreNegativeItem") {
                 let parts = key.split(separator: "-")
                 guard let id = parts.last.flatMap({ Int($0) }),
                       let item = editionStore.itemData(id: id, edition: parts.dropLast().joined(separator: "-")),
@@ -93,6 +98,7 @@ final class ScenarioManager {
         // Experience gained in the scenario itself, before the success bonus (for battle goals).
         let xpGained = scenarioXPGained()
         recordCampaign(success: success, data: data)
+        onFinishing?(success)
 
         if success {
             // Record completion
@@ -123,6 +129,7 @@ final class ScenarioManager {
                     if result.checksAwarded > 0,
                        let character = game.characters.first(where: { $0.id == charID }) {
                         character.addBattleGoalChecks(result.checksAwarded)
+                        character.record.battleGoalChecks += result.checksAwarded
                     }
                 }
             }
@@ -180,10 +187,12 @@ final class ScenarioManager {
             character.lostCards.removeAll()
             character.roundBonusCards.removeAll()
             character.lostWhenRemoved.removeAll()
+            character.bottomHalvesInPlay.removeAll()
             // Bless, Curse and scenario-added cards leave the attack modifier deck.
             character.attackModifierDeck.removeScenarioCards()
             character.shield = nil
             character.shieldPersistent = nil
+            character.itemsBarred = false
             character.retaliate = []
             character.retaliatePersistent = []
             character.summons.removeAll()
@@ -220,27 +229,56 @@ final class ScenarioManager {
         // exhausted mid-scenario (which is what activeCharacters would do).
         let playerCount = max(2, game.characters.filter { !$0.absent }.count)
 
-        // Spawn monsters from room — elites first so they get lowest standee numbers
-        if let standees = room.monster {
-            let activeStandees = standees.compactMap { standee -> (MonsterStandeeData, MonsterType)? in
-                guard let type = standee.monsterType(forPlayerCount: playerCount) else { return nil }
-                return (standee, type)
-            }
-            let sorted = activeStandees.sorted { a, b in
-                if a.1 == b.1 { return false }
-                return a.1 == .elite
-            }
-            for (standee, monsterType) in sorted {
-                spawnMonster(name: standee.name, type: monsterType, edition: edition,
-                             number: standee.number, marker: standee.marker, health: standee.health)
-            }
-        }
+        // Spawn monsters from room — elites first so they get lowest standee numbers. Those the
+        // scenario sets up later wait for their rule.
+        let held = heldBackMonsters(in: scenario)
+        setUpMonsters(of: room, playerCount: playerCount, edition: edition) { !held.contains($0) }
 
         // Spawn objectives for this room
         if let objectiveIndices = room.objectives {
             for objRef in objectiveIndices {
                 spawnObjectiveByReference(objRef, scenario: scenario)
             }
+        }
+    }
+
+    /// Monster types of this scenario that aren't set up with their rooms yet.
+    func heldBackMonsters(in scenario: Scenario) -> Set<String> {
+        guard scenario.data.solo == nil else { return [] }
+        let later = ScenarioPlacementStore.shared.placements(for: scenario.data.index, edition: scenario.data.edition)?.later ?? []
+        return Set(later).subtracting(scenario.releasedMonsters)
+    }
+
+    /// Set up the monster types held back so far, in every room already revealed; rooms
+    /// revealed from now on bring theirs as usual.
+    func setUpHeldBack(_ names: [String]) {
+        guard let scenario = game.scenario else { return }
+        let waiting = heldBackMonsters(in: scenario).intersection(names)
+        // Types that stand inactive until a rule says so are woken the same way.
+        let asleep = Set((ScenarioPlacementStore.shared.placements(for: scenario.data.index, edition: scenario.data.edition)?
+            .inactive ?? []).filter { $0.untilSetUp == true }.flatMap(\.monsters)).intersection(names)
+            .subtracting(scenario.releasedMonsters)
+        guard !waiting.isEmpty || !asleep.isEmpty else { return }
+        onBeforeMutate?()
+        scenario.releasedMonsters.formUnion(waiting.union(asleep))
+        let playerCount = max(2, game.characters.filter { !$0.absent }.count)
+        for room in scenario.data.rooms ?? [] where scenario.revealedRooms.contains(room.roomNumber) {
+            setUpMonsters(of: room, playerCount: playerCount, edition: scenario.data.edition) { waiting.contains($0) }
+        }
+    }
+
+    private func setUpMonsters(of room: RoomData, playerCount: Int, edition: String, where include: (String) -> Bool) {
+        let activeStandees = (room.monster ?? []).compactMap { standee -> (MonsterStandeeData, MonsterType)? in
+            guard include(standee.name), let type = standee.monsterType(forPlayerCount: playerCount) else { return nil }
+            return (standee, type)
+        }
+        let sorted = activeStandees.sorted { a, b in
+            if a.1 == b.1 { return false }
+            return a.1 == .elite
+        }
+        for (standee, monsterType) in sorted {
+            spawnMonster(name: standee.name, type: monsterType, edition: edition,
+                         number: standee.number, marker: standee.marker, health: standee.health)
         }
     }
 
@@ -279,29 +317,22 @@ final class ScenarioManager {
     }
 
     func isAvailable(_ scenario: ScenarioData) -> Bool {
-        let edition = scenario.edition
         if scenario.isInitial { return true }
-        let unlocked = isScenarioUnlocked(scenario, edition: edition) || game.manualScenarios.contains(scenario.id)
-        let meetsReqs = checkRequirements(scenario)
-        let blocked = isScenarioBlocked(scenario, edition: edition)
-        return unlocked && meetsReqs && !blocked
+        return isUnlocked(scenario) && checkRequirements(scenario) && !isScenarioBlocked(scenario, edition: scenario.edition)
     }
 
     func isBlocked(_ scenario: ScenarioData) -> Bool {
         isScenarioBlocked(scenario, edition: scenario.edition)
     }
 
-    /// Unlocked by a won scenario (or by hand), whether or not it can be played yet: on the
-    /// board game's map it has its sticker.
+    /// Unlocked — by a won scenario, or by an event, a treasure, a personal quest or a choice —
+    /// whether or not it can be played yet: on the board game's map it has its sticker.
     func isUnlocked(_ scenario: ScenarioData) -> Bool {
         scenario.isInitial || isScenarioUnlocked(scenario, edition: scenario.edition) || game.manualScenarios.contains(scenario.id)
     }
 
     func isLocked(_ scenario: ScenarioData) -> Bool {
-        let edition = scenario.edition
-        let unlocked = isScenarioUnlocked(scenario, edition: edition) || game.manualScenarios.contains(scenario.id)
-        if !unlocked { return true }
-        return !checkRequirements(scenario)
+        !isUnlocked(scenario) || !checkRequirements(scenario)
     }
 
     // MARK: - Available Scenarios
@@ -321,19 +352,8 @@ final class ScenarioManager {
                 return false
             }
 
-            // Initial scenarios are always available
-            if scenario.isInitial { return true }
-
-            // Unlocked by a completed scenario, or by an event, treasure or reward
-            let isUnlocked = isScenarioUnlocked(scenario, edition: edition) || game.manualScenarios.contains(scenario.id)
-
-            // Check requirements (achievements, etc.)
-            let meetsRequirements = checkRequirements(scenario)
-
-            // Check if blocked
-            let isBlocked = isScenarioBlocked(scenario, edition: edition)
-
-            return isUnlocked && meetsRequirements && !isBlocked
+            // Unlocked, its requirements met, and not closed off by another scenario
+            return isAvailable(scenario)
         }.sorted { a, b in
             // Sort by index numerically if possible
             let aNum = Int(a.index) ?? Int.max
@@ -382,9 +402,11 @@ final class ScenarioManager {
 
                 monsterManager.addMonster(name: name, edition: edition)
                 if let monster = game.monsters.last(where: { $0.name == name && $0.edition == edition }) {
-                    monster.level = spec.level(forScenarioLevel: game.level)
+                    monster.level = spec.level(forScenarioLevel: game.monsterLevel)
                     monster.isAlly = isAlly
                     monster.isAllied = isAllied
+                    monster.standsApart = data.solo == nil && ScenarioPlacementStore.shared
+                        .placements(for: data.index, edition: data.edition)?.apart?.contains(name) == true
                     if let drawExtra = data.drawExtra, drawExtra.contains(name) {
                         monster.drawExtra = true
                     }
@@ -392,10 +414,12 @@ final class ScenarioManager {
             }
         }
 
-        // Add objectives
+        // Add objectives. One the rooms list arrives with its room, once per mention; one no
+        // room lists is set up now.
         if let objectives = data.objectives {
-            for (idx, objData) in objectives.enumerated() {
-                addObjective(objData, index: idx + 1, edition: edition)
+            let listed = Set((data.rooms ?? []).flatMap { $0.objectives ?? [] }.map { Self.objectiveReference($0).index })
+            for (idx, objData) in objectives.enumerated() where !listed.contains(idx + 1) {
+                for _ in 0..<objData.resolvedCount { addObjectiveEntity(objData, index: idx + 1, edition: edition) }
             }
         }
 
@@ -441,7 +465,7 @@ final class ScenarioManager {
         if monster == nil {
             monsterManager.addMonster(name: name, edition: edition)
             monster = game.monsters.last(where: { $0.name == name && $0.edition == edition })
-            monster?.level = spec.level(forScenarioLevel: game.level)
+            monster?.level = spec.level(forScenarioLevel: game.monsterLevel)
         }
         guard let monster = monster else { return }
 
@@ -469,49 +493,55 @@ final class ScenarioManager {
 
     // MARK: - Private: Objective Spawning
 
-    private func addObjective(_ objData: ObjectiveData, index: Int, edition: String) {
-        let container = GameObjectiveContainer(
-            name: objData.name ?? "Objective \(index)",
-            edition: edition,
-            title: objData.name ?? "",
-            escort: objData.isEscort,
-            level: game.level
-        )
-        container.initiative = objData.resolvedInitiative
-        container.escortActions = objData.actions ?? []
-        container.useAllyDeck = objData.useAllyDeck
-
-        // Calculate health and create entities (count > 1 for multi-instance objectives)
-        let entityCount = objData.resolvedCount
-        if let healthValue = objData.health {
-            let hp = evaluateEntityValue(healthValue, level: game.level,
-                                          characterCount: game.characters.filter { !$0.absent }.count)
-            for i in 0..<entityCount {
-                let entity = GameObjectiveEntity(number: index + i, health: hp, maxHealth: hp)
-                if let marker = objData.marker {
-                    entity.marker = marker
-                }
-                container.entities.append(entity)
+    /// One more of the scenario's objective `index` (1-based): its own piece, with a number no
+    /// other objective has. Objectives of one kind share a container, as monsters of a type do.
+    private func addObjectiveEntity(_ objData: ObjectiveData, index: Int, edition: String) {
+        let name = objData.name ?? "Objective \(index)"
+        let container: GameObjectiveContainer
+        if let existing = game.objectives.first(where: { $0.objectiveIndex == index && $0.name == name }) {
+            container = existing
+        } else {
+            container = GameObjectiveContainer(name: name, edition: edition, title: objData.name ?? "",
+                                               escort: objData.isEscort, level: game.level)
+            container.initiative = objData.resolvedInitiative
+            container.escortActions = objData.actions ?? []
+            container.useAllyDeck = objData.useAllyDeck
+            container.objectiveIndex = index
+            if let scenario = game.scenario?.data, scenario.solo == nil {
+                let written = ScenarioPlacementStore.shared.placements(for: scenario.index, edition: scenario.edition)
+                container.isProtected = written?.protect?.contains(index) ?? false
+                container.isSheltered = written?.sheltered?.contains(index) ?? false
             }
+            game.figures.append(.objective(container))
         }
+        guard let healthValue = objData.health else { return }
+        let hp = evaluateEntityValue(healthValue, level: game.level,
+                                     characterCount: game.characters.filter { !$0.absent }.count)
+        let entity = GameObjectiveEntity(number: game.nextObjectiveNumber, health: hp, maxHealth: hp)
+        if let marker = objData.marker { entity.marker = marker }
+        if let tags = objData.tags { entity.tags = tags }
+        container.entities.append(entity)
+    }
 
-        game.figures.append(.objective(container))
+    /// A room's mention of an objective: its number, or "2:C > 2" — objective 2, only with more
+    /// than two characters.
+    static func objectiveReference(_ ref: IntOrString) -> (index: Int, condition: String?) {
+        switch ref {
+        case .int(let index): return (index, nil)
+        case .string(let text):
+            let parts = text.split(separator: ":", maxSplits: 1).map { $0.trimmingCharacters(in: .whitespaces) }
+            return (Int(parts.first ?? "") ?? 0, parts.count > 1 ? parts[1] : nil)
+        }
     }
 
     private func spawnObjectiveByReference(_ ref: IntOrString, scenario: Scenario) {
         guard let objectives = scenario.data.objectives else { return }
-        let index = ref.intValue
+        let (index, condition) = Self.objectiveReference(ref)
         guard index > 0, index <= objectives.count else { return }
-        let objData = objectives[index - 1]
-
-        // Check if already spawned
-        let name = objData.name ?? "Objective \(index)"
-        if game.figures.contains(where: {
-            if case .objective(let o) = $0 { return o.name == name }
-            return false
-        }) { return }
-
-        addObjective(objData, index: index, edition: scenario.data.edition)
+        let characters = max(2, game.characters.filter { !$0.absent }.count)
+        if let condition,
+           ScenarioExpression.condition(condition, variables: ["C": characters, "L": game.level]) != true { return }
+        addObjectiveEntity(objectives[index - 1], index: index, edition: scenario.data.edition)
     }
 
     // MARK: - Private: Requirements Checking
@@ -526,16 +556,6 @@ final class ScenarioManager {
             if let completedScenario = editionStore.scenarioData(index: completedIndex, edition: edition) {
                 if let unlocks = completedScenario.unlocks, unlocks.contains(scenario.index) {
                     return true
-                }
-            }
-        }
-
-        // Check requires chains (legacy format)
-        if let requires = scenario.requires {
-            // requires is [[String]] — any inner array must have all scenarios completed
-            return requires.contains { group in
-                group.allSatisfy { reqIndex in
-                    game.completedScenarios.contains("\(edition)-\(reqIndex)")
                 }
             }
         }
@@ -561,6 +581,12 @@ final class ScenarioManager {
     }
 
     private func checkRequirements(_ scenario: ScenarioData) -> Bool {
+        // `requires`: the scenarios that must be won first (any one group, all of it). It never
+        // unlocks a scenario by itself: #20 needs #8 won, but only #7 or the Seer's choice
+        // after #13 puts it on the map.
+        if let requires = scenario.requires, !requires.isEmpty, !requires.contains(where: { group in
+            group.allSatisfy { game.completedScenarios.contains("\(scenario.edition)-\($0)") }
+        }) { return false }
         guard let requirements = scenario.requirements else { return true }
 
         // Any requirement set must be fully met (OR between sets, AND within)
@@ -577,7 +603,10 @@ final class ScenarioManager {
                     let name = String(g.dropFirst())
                     if game.globalAchievements.contains(name) { return false }
                 } else {
-                    if !game.globalAchievements.contains(g) { return false }
+                    // "end-of-corruption:3": earned that many times.
+                    let parts = g.split(separator: ":").map(String.init)
+                    let needed = parts.count > 1 ? Int(parts[1]) ?? 1 : 1
+                    if globalAchievementCount(parts[0]) < needed { return false }
                 }
             }
         }
@@ -627,15 +656,27 @@ final class ScenarioManager {
         return true
     }
 
+    /// How many times the world has earned a global achievement. A save from before the count
+    /// was kept is counted from the won scenarios that award it.
+    func globalAchievementCount(_ id: String) -> Int {
+        guard game.globalAchievements.contains(id) else { return 0 }
+        let awarded = game.completedScenarios.filter { completed in
+            let parts = completed.split(separator: "-", maxSplits: 1).map(String.init)
+            guard parts.count == 2 else { return false }
+            return editionStore.scenarioData(index: parts[1], edition: parts[0])?.rewards?.globalAchievements?.contains(id) ?? false
+        }.count
+        return max(game.globalAchievementCount(id), awarded)
+    }
+
     // MARK: - Private: Rewards
 
     private func applyRewards(_ rewards: ScenarioRewards, edition: String,
                               choices: ScenarioRewardChoices = ScenarioRewardChoices()) {
         if let globals = rewards.globalAchievements {
-            for g in globals { game.globalAchievements.insert(g) }
+            for g in globals { game.gainGlobalAchievement(g) }
         }
         if let party = rewards.partyAchievements {
-            for p in party { game.partyAchievements.insert(p) }
+            for p in party { game.gainPartyAchievement(p) }
         }
         if let lostParty = rewards.lostPartyAchievements {
             for p in lostParty { game.partyAchievements.remove(p) }
@@ -656,10 +697,11 @@ final class ScenarioManager {
         }
         if let rep = rewards.reputation {
             // Reputation runs from −20 to +20 (p.48).
-            game.partyReputation = max(-20, min(20, game.partyReputation + resolveRewardInt(rep)))
+            game.changeReputation(by: resolveRewardInt(rep), labels: editionStore)
         }
         if let pros = rewards.prosperity {
-            game.partyProsperity += resolveRewardInt(pros)
+            // A loss (#35, #50) never undoes a prosperity level already reached (FAQ).
+            game.changeProsperity(by: resolveRewardInt(pros))
         }
         if let gold = rewards.gold {
             let amount = resolveRewardInt(gold)
@@ -677,17 +719,21 @@ final class ScenarioManager {
     }
 
     /// Fold the scenario into each character's campaign record, for personal quests: a win,
-    /// their kills, and exhaustions in the party.
+    /// their kills, their own exhaustion and the other characters'.
     private func recordCampaign(success: Bool, data: ScenarioData) {
         let party = game.characters.filter { !$0.absent }
-        let exhaustions = party.filter(\.exhausted).count
+        // Leaving through the exit isn't exhaustion.
+        func exhausted(_ character: GameCharacter) -> Bool {
+            scenarioStatsManager?.wasExhausted(character) ?? character.exhausted
+        }
+        let exhaustions = party.filter(exhausted).count
         for character in party {
             let stats = scenarioStatsManager?.stats(for: character.name) ?? ScenarioCharacterStats()
             if success { character.record.scenariosCompleted.insert(data.id) }
             for (monster, count) in stats.killsByMonster { character.record.kills[monster, default: 0] += count }
             character.record.eliteKills += stats.eliteKills
-            if character.exhausted { character.record.timesExhausted += 1 }
-            character.record.partyExhaustions += exhaustions
+            if exhausted(character) { character.record.timesExhausted += 1 }
+            character.record.partyExhaustions += exhaustions - (exhausted(character) ? 1 : 0)
         }
     }
 
@@ -721,17 +767,19 @@ final class ScenarioManager {
 
     /// Draw a random scenario from the pool of random-flagged, not-yet-completed scenarios.
     func drawRandomScenario() -> ScenarioData? {
-        guard let edition = game.edition else { return nil }
-        let allScenarios = editionStore.scenarios(for: edition)
+        Self.drawRandomScenario(game: game, editionStore: editionStore)
+    }
 
-        let candidates = allScenarios.filter { scenario in
+    /// A random side scenario not yet on the map (shared with class unlocks).
+    static func drawRandomScenario(game: GameState, editionStore: EditionDataStore) -> ScenarioData? {
+        guard let edition = game.edition else { return nil }
+        let candidates = editionStore.scenarios(for: edition).filter { scenario in
             guard scenario.random == true else { return false }
             guard !scenario.isConclusion else { return false }
-            guard !isCompleted(scenario) else { return false }
+            guard !game.completedScenarios.contains(scenario.id) else { return false }
             guard !game.manualScenarios.contains(scenario.id) else { return false }
             return true
         }
-
         return candidates.randomElement(using: &GameRandom.shared)
     }
 

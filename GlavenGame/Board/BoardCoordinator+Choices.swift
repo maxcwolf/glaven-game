@@ -14,8 +14,8 @@ extension BoardCoordinator {
     /// on the board does.
     func accessibleChoices() -> [BoardChoice] {
         switch interactionMode {
-        case .placingCharacter:
-            let free = boardState.startingLocations.filter { !boardState.isOccupied($0) }
+        case .placingCharacter(let characterID):
+            let free = freeStartingHexes(for: characterID)
             return hexChoices(free, from: nil) { "Start \($0)" }
 
         case .selectingMove(let mover, _, let hexes, let teleport, _):
@@ -91,7 +91,7 @@ extension BoardCoordinator {
         var parts = [name(piece)]
         if let entity = entity(for: piece) { parts.append("\(entity.health) of \(entity.maxHealth) health") }
         if let origin, let hex = boardState.piecePositions[piece] {
-            let steps = origin.distance(to: hex)
+            let steps = boardState.steps(from: origin, to: hex)
             parts.append(steps == 0 ? "yourself" : steps == 1 ? "next to you" : "\(steps) hexes away")
         }
         return parts.joined(separator: ", ")
@@ -118,14 +118,14 @@ extension BoardCoordinator {
     func spokenHex(_ hex: HexCoord, from origin: HexCoord?) -> String {
         var parts: [String] = []
         if let origin {
-            let steps = origin.distance(to: hex)
+            let steps = boardState.steps(from: origin, to: hex)
             parts.append(steps == 0 ? "where you stand" : "\(steps) hex\(steps == 1 ? "" : "es") \(Self.direction(from: origin, to: hex))")
         } else {
             parts.append("at column \(hex.col), row \(hex.row)")
         }
         if let cell = boardState.cells[hex] {
             switch cell.overlay {
-            case .trap: parts.append("trap")
+            case .trap: parts.append(trapDescription(at: hex).map { "trap (\($0))" } ?? "trap")
             case .hazard: parts.append("hazardous terrain")
             case .difficultTerrain: parts.append("difficult terrain")
             case .treasure: parts.append("treasure")
@@ -135,7 +135,7 @@ extension BoardCoordinator {
         }
         if (boardState.lootTokens[hex] ?? 0) > 0 { parts.append("money token") }
         // Whoever stands at the origin (the mover, the one pushed) isn't news.
-        let beside = hex.neighbors.filter { $0 != origin }.compactMap { boardState.piece(at: $0) }.sorted()
+        let beside = boardState.neighbors(of: hex).filter { $0 != origin }.compactMap { boardState.piece(at: $0) }.sorted()
         if !beside.isEmpty { parts.append("next to \(GameText.list(beside.map(name)))") }
         return parts.joined(separator: ", ")
     }
@@ -151,6 +151,6 @@ extension BoardCoordinator {
 
     private func distance(_ origin: HexCoord?, _ hex: HexCoord?) -> Int {
         guard let origin, let hex else { return 0 }
-        return origin.distance(to: hex)
+        return boardState.steps(from: origin, to: hex)
     }
 }

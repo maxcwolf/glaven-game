@@ -49,6 +49,27 @@ final class CardPoolTests: XCTestCase {
                        "cards not chosen stay out of the pool")
     }
 
+    /// A recruit above level 1 makes each level's choice in turn (p.44, 45): at level 3, a
+    /// level 2 card first, and only then one of level 3 or lower — never two level 3 cards.
+    func testAHigherLevelRecruitChoosesALevelAtATime() throws {
+        gm.game.partyProsperity = 9   // prosperity level 3
+        manager.addCharacter(name: "tinkerer", edition: "gh", level: 3)
+        let tinkerer = try XCTUnwrap(gm.game.characters.first { $0.name == "tinkerer" })
+        func levels() -> Set<Int> { Set(manager.choosableCards(for: tinkerer).compactMap { CardPool.level(of: $0) }) }
+        func cards(_ level: Int) -> [Int] {
+            manager.abilities(for: tinkerer).filter { CardPool.level(of: $0) == level }.compactMap(\.cardId)
+        }
+        XCTAssertEqual(manager.pendingCardChoices(for: tinkerer), 2)
+        XCTAssertEqual(levels(), [2], "the level 2 choice comes first")
+        XCTAssertFalse(manager.chooseCard(cards(3)[0], for: tinkerer), "not a level 3 card for the level 2 choice")
+        XCTAssertTrue(manager.chooseCard(cards(2)[0], for: tinkerer))
+        XCTAssertEqual(levels(), [2, 3])
+        XCTAssertTrue(manager.chooseCard(cards(3)[0], for: tinkerer))
+        XCTAssertFalse(manager.chooseCard(cards(3)[1], for: tinkerer), "one card a level")
+        XCTAssertEqual(manager.pendingCardChoices(for: tinkerer), 0)
+        XCTAssertEqual(tinkerer.chosenCards, [cards(2)[0], cards(3)[0]])
+    }
+
     func testAHandComesFromThePoolAndFillsTheHandSize() throws {
         let pool = manager.cardPool(for: brute).compactMap(\.cardId)
         XCTAssertGreaterThan(pool.count, brute.handSize, "the X cards make the pool bigger than the hand")

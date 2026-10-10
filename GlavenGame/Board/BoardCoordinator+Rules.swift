@@ -47,16 +47,67 @@ extension BoardCoordinator {
         return summonOwner(of: pieceID)
     }
 
-    /// Whether two pieces are on opposing sides.
-    func areEnemies(_ a: PieceID, _ b: PieceID) -> Bool {
-        isPlayerSide(a) != isPlayerSide(b)
+    /// The objective a piece is one of.
+    func objectiveContainer(of pieceID: PieceID) -> GameObjectiveContainer? {
+        guard case .objective(let number) = pieceID else { return nil }
+        return gameManager?.game.objectives.first { $0.entities.contains { $0.number == number } }
     }
 
-    /// Characters, their summons, objectives (escorts) and allied monsters fight on the players' side.
+    /// An objective that isn't an escort: a thing on the map (an altar, a barred door, a
+    /// captive). It is no one's ally, takes no conditions and is never moved. With hit points it
+    /// is there to be destroyed — an enemy of the players' side — or, one the scenario has the
+    /// party protect, of the monsters.
+    func isScenery(_ pieceID: PieceID) -> Bool {
+        objectiveContainer(of: pieceID).map { !$0.escort } ?? false
+    }
+
+    /// Scenery without hit points (a water pump): nothing attacks it.
+    private func isUntouchable(_ pieceID: PieceID) -> Bool {
+        // An ally only to be healed is no one's enemy either, and nothing affects an inactive monster.
+        if objectiveContainer(of: pieceID)?.isSheltered == true || isInactive(pieceID) { return true }
+        guard isScenery(pieceID) else { return false }
+        return (entity(for: pieceID)?.maxHealth ?? 0) <= 0
+    }
+
+    /// Whether two pieces are on opposing sides.
+    func areEnemies(_ a: PieceID, _ b: PieceID) -> Bool {
+        side(of: a) != side(of: b) && !isUntouchable(a) && !isUntouchable(b)
+    }
+
+    /// The side a piece fights on. Monsters that stand apart are a third, against both others.
+    func side(of pieceID: PieceID) -> MonsterAI.Side {
+        if case .monster(let name, _) = pieceID, let monster = gameManager?.game.monsters.first(where: { $0.name == name }) {
+            return MonsterAI.side(of: monster)
+        }
+        return isPlayerSide(pieceID) ? .party : .monsters
+    }
+
+    /// Whether two pieces fight on the same side. Scenery is on no side, and what the party only
+    /// protects (a captive, a crystal, the villagers) is no one's ally: it isn't healed or helped.
+    func areAllies(_ a: PieceID, _ b: PieceID) -> Bool {
+        side(of: a) == side(of: b) && !isScenery(a) && !isScenery(b) && !isProtected(a) && !isProtected(b)
+            && !isInactive(a) && !isInactive(b)
+    }
+
+    /// A monster of a type that sits this round out, or hasn't woken yet.
+    func isInactive(_ pieceID: PieceID) -> Bool {
+        guard case .monster(let name, _) = pieceID, let game = gameManager?.game else { return false }
+        return MonsterAI.inactiveMonsters(game).contains(name)
+    }
+
+    /// An objective the party is to keep from harm without its being an ally.
+    func isProtected(_ pieceID: PieceID) -> Bool {
+        objectiveContainer(of: pieceID)?.isProtected ?? false
+    }
+
+    /// Characters, their summons, escorts and allied monsters fight on the players' side; what
+    /// the party protects stands on it.
     func isPlayerSide(_ pieceID: PieceID) -> Bool {
         switch pieceID {
-        case .character, .summon, .objective:
+        case .character, .summon:
             return true
+        case .objective:
+            return objectiveContainer(of: pieceID).map { $0.escort || $0.isProtected } ?? true
         case .monster(let name, _):
             guard let monster = gameManager?.game.monsters.first(where: { $0.name == name }) else { return false }
             return MonsterAI.isAllyFaction(monster)
@@ -79,7 +130,7 @@ extension BoardCoordinator {
         guard let gameManager, let entity = entity(for: pieceID) else { return 0 }
         var amount = amount
         // Master Physician: the healer's heals first remove the healed figure's negative conditions.
-        if let source, useFirstCharge(of: source, where: { $0 == .healCleanses }) != nil {
+        if let source, healCleanses(by: source) {
             entity.entityConditions.removeAll { $0.name.isNegative && !$0.permanent }
         }
         // Cauterize: +2 each time the character is healed.
@@ -112,6 +163,12 @@ extension BoardCoordinator {
     /// their owner's deck; allied monsters use the ally deck).
     func applyCondition(_ condition: ConditionName, to pieceID: PieceID) {
         guard let gameManager, let entity = entity(for: pieceID) else { return }
+        // An objective on the map (an altar, a door) is immune to every condition.
+        guard !isScenery(pieceID) else {
+            boardScene?.floatText("Immune", over: pieceID, style: .info)
+            log("\(name(pieceID)) is immune to \(GameText.conditionName(condition))", category: .condition)
+            return
+        }
         if let topic = LearnTopic.id(for: condition) {
             teach(topic, "\(name(pieceID)) has \(GameText.conditionName(condition)).", at: .piece(pieceID))
         }
@@ -122,7 +179,7 @@ extension BoardCoordinator {
             return
         }
         let itemImmunity = (entity as? GameCharacter).map { PassiveItems.immune($0.carriedItems, to: condition) } ?? false
-        guard !entity.immunities.contains(condition), !itemImmunity else {
+        guard !entity.immunities.contains(condition), !itemImmunity, !scenarioWardsOff(condition, from: pieceID) else {
             boardScene?.floatText("Immune", over: pieceID, style: .info)
             log("\(name(pieceID)) is immune to \(GameText.conditionName(condition))", category: .condition)
             return
@@ -164,6 +221,12 @@ extension BoardCoordinator {
     @discardableResult
     func sufferDamage(_ amount: Int, to pieceID: PieceID, killer: PieceID? = nil) -> Bool {
         guard amount > 0, let gameManager, let entity = entity(for: pieceID) else { return false }
+        // What the scenario lets nothing damage (Chained Isle's Living Spirits).
+        if isUndamageable(pieceID) {
+            log("\(name(pieceID)) can\u{2019}t be damaged", category: .damage)
+            boardScene?.pieceUnharmed(id: pieceID, missed: false)
+            return false
+        }
         // Intervening Apparitions: the owner's summons suffer no damage.
         if case .summon = pieceID, let owner = summonOwner(of: pieceID),
            useFirstCharge(of: .character(owner.id), where: { $0 == .summonsNegateDamage }) != nil {
@@ -210,14 +273,45 @@ extension BoardCoordinator {
     @discardableResult
     @MainActor func sufferDamageWithMitigation(_ amount: Int, to pieceID: PieceID, source: String,
                                     killer: PieceID? = nil) async -> Bool {
-        guard amount > 0 else { return false }
-        if case .character(let id) = pieceID, !negatesDamage(pieceID, amount: amount),
+        await resolveDamage(amount, to: pieceID, source: source, killer: killer).died
+    }
+
+    /// The same, saying also whether the damage was prevented by losing cards. Where a bonus
+    /// would take the damage (Frost Armor, Juggernaut), the player may still lose cards first
+    /// and keep its charge (FAQ); left alone, the charge takes it.
+    @MainActor func resolveDamage(_ amount: Int, to pieceID: PieceID, source: String,
+                                  killer: PieceID? = nil) async -> (died: Bool, prevented: Bool) {
+        guard amount > 0 else { return (false, false) }
+        if case .character(let id) = pieceID,
            let character = gameManager?.game.characters.first(where: { $0.id == id }),
-           await promptDamageMitigation(character: character, damage: amount, source: source) {
+           await promptDamageMitigation(character: character, damage: amount, source: source,
+                                        absorbedBy: negatingBonusName(pieceID, amount: amount)) {
             if isOnBoard(pieceID) { boardScene?.floatText("Prevented", over: pieceID, style: .info) }
+            return (false, true)
+        }
+        return (sufferDamage(amount, to: pieceID, killer: killer), false)
+    }
+
+    /// Damage a character brings on themself in their turn — a printed "suffer 2 damage", an
+    /// item's cost, the Berserker's "suffer up to N" — may be negated by losing cards like damage
+    /// from any other source (GH p.22, FAQ). With cards to lose the player is asked, and `then`
+    /// runs once they have answered (true is returned); otherwise the damage is taken now.
+    @discardableResult
+    func sufferOwnDamage(_ amount: Int, characterID: String, source: String, then: (() -> Void)? = nil) -> Bool {
+        let piece = PieceID.character(characterID)
+        guard amount > 0, !autoResolvePrompts,
+              let character = gameManager?.game.characters.first(where: { $0.id == characterID }),
+              !losableHandCards(of: character).isEmpty || character.discardedCards.count >= 2 else {
+            sufferDamage(amount, to: piece)
             return false
         }
-        return sufferDamage(amount, to: pieceID, killer: killer)
+        let generation = boardGeneration
+        Task { @MainActor in
+            await self.sufferDamageWithMitigation(amount, to: piece, source: source)
+            guard self.isCurrentBoard(generation) else { return }
+            then?()
+        }
+        return true
     }
 
     /// Hand cards a character can lose to negate damage. The two cards played this round are no
@@ -229,7 +323,8 @@ extension BoardCoordinator {
 
     /// Offer the "lose 1 hand card or 2 discards to negate the damage" choice.
     /// Returns true if the damage was negated.
-    @MainActor func promptDamageMitigation(character: GameCharacter, damage: Int, source: String) async -> Bool {
+    @MainActor func promptDamageMitigation(character: GameCharacter, damage: Int, source: String,
+                                           absorbedBy: String? = nil) async -> Bool {
         let canLoseHand = !losableHandCards(of: character).isEmpty
         let canLoseDiscard = character.discardedCards.count >= 2
         guard canLoseHand || canLoseDiscard, !autoResolvePrompts else { return false }
@@ -238,7 +333,7 @@ extension BoardCoordinator {
         let choice = await withCheckedContinuation { (continuation: CheckedContinuation<DamageMitigationChoice, Never>) in
             teach(.preventingDamage)
             pendingDamage = PendingDamage(characterID: character.id, damage: damage,
-                                          sourceDescription: source, continuation: continuation)
+                                          sourceDescription: source, continuation: continuation, absorbedBy: absorbedBy)
         }
         // The board was left while the player chose: nothing is lost and no damage is taken.
         guard isCurrentBoard(generation) else { return true }
@@ -264,8 +359,8 @@ extension BoardCoordinator {
         }
     }
 
-    /// Resolve a figure reaching 0 HP: monsters die (money token for normal/elite monsters that
-    /// were not summoned or spawned), summons are removed, characters become exhausted.
+    /// Resolve a figure reaching 0 HP: monsters die (a money token for an enemy monster that was
+    /// not summoned or spawned), summons are removed, characters become exhausted.
     /// `overkill` and `fromFullHealth` describe the blow that killed it, for battle goals.
     func handleDeath(of pieceID: PieceID, killer: PieceID? = nil, overkill: Int = 0, fromFullHealth: Bool = false) {
         guard let gameManager else { return }
@@ -284,6 +379,7 @@ extension BoardCoordinator {
                 return
             }
             entity.dead = true
+            let fellAt = boardState.piecePositions[pieceID]
             log("\(self.name(pieceID)) dies", category: .death)
             // Cultists: "On death: Attack +2" on this round's card, made from where it fell.
             if let position = boardState.piecePositions[pieceID],
@@ -294,14 +390,16 @@ extension BoardCoordinator {
                 pendingDeathAttacks.append(DeathAttack(attacker: pieceID, monster: name, type: entity.type,
                                                        position: position, action: attack))
             }
-            // GH p.19: a money token drops where a monster dies unless it was summoned or spawned;
-            // bosses and named monsters drop none either.
-            if entity.summonState == nil && entity.type != .boss && !monster.isBoss {
+            // GH p.21: a money token drops where a monster dies unless it was summoned or spawned —
+            // a boss set up with the room like any other. An allied monster drops none (FAQ).
+            if entity.summonState == nil && !MonsterAI.isAllyFaction(monster) {
                 dropLoot(for: pieceID)
             }
             noteDoomedDeath(pieceID)
             removePieceFromBoard(pieceID)
             recordMonsterKill(name: name)
+            grantReprieve(forDeathOf: name, killer: killer)
+            if entity.type == .elite, !MonsterAI.isAllyFaction(monster) { boardState.eliteKills += 1 }
             if let character = creditedCharacter(for: killer) {
                 gameManager.scenarioStatsManager.recordKill(by: character.name, monster: name, elite: entity.type == .elite,
                                                            overkill: max(0, overkill), fromFullHealth: fromFullHealth)
@@ -310,12 +408,18 @@ extension BoardCoordinator {
                let character = gameManager.game.characters.first(where: { $0.id == id }) {
                 rewardKillOnOwnTurn(character)
             }
+            // What its death brings appears where it fell (the Infiltrator, in the place of the
+            // guard marked for it).
+            fallenFigure = fellAt.map { (markers: entity.markers, hex: $0) }
             gameManager.scenarioRulesManager.evaluateRules()
+            fallenFigure = nil
+            updateLocks()
         case .summon(let id):
             if let owner = summonOwner(of: pieceID),
                let summon = owner.summons.first(where: { $0.id == id }) {
                 summon.dead = true
                 log("\(name(pieceID)) dies", category: .death)
+                retireSummonCard(of: summon, owner: owner)
             }
             removePieceFromBoard(pieceID)
         case .objective(let number):
@@ -324,27 +428,95 @@ extension BoardCoordinator {
                     entity.dead = true
                 }
             }
-            log("\(name(pieceID)) is destroyed", category: .death)
+            log("\(name(pieceID)) is \(isScenery(pieceID) && !isPlayerSide(pieceID) ? "destroyed" : "killed")", category: .death)
+            // What its destruction spawns appears where it stood (a corpse from a dug-up grave).
+            fallenFigure = boardState.piecePositions[pieceID].flatMap { hex in
+                (entity(for: pieceID) as? GameObjectiveEntity).map { (markers: [$0.marker] + $0.markers, hex: hex) }
+            }
+            let stood = boardState.piecePositions[pieceID]
+            let index = objectiveContainer(of: pieceID)?.objectiveIndex
             removePieceFromBoard(pieceID)
+            clearObjectiveSite(number)
+            // What the scenario has appear in its place (a Living Corpse from a dug-up grave).
+            if let stood, let index, let risen = scenarioData?.placements?.whenDestroyed?[String(index)],
+               let type = risen.monsterType(forPlayerCount: max(2, gameManager.game.characters.filter { !$0.absent }.count)),
+               let piece = spawnMonster(name: risen.name, type: type, at: stood, origin: .spawned) {
+                log("\(name(piece)) appears", category: .setup, trace: "at \(stood)")
+            }
             gameManager.scenarioRulesManager.evaluateRules()
+            fallenFigure = nil
         }
         checkVictoryDefeat()
+    }
+
+    /// A summon's card stays in the active area only while its summon lives (GH p.26): with the
+    /// last of a card's summons dead, the card leaves — to the lost pile if its action has the
+    /// lost icon.
+    func retireSummonCard(of summon: GameSummon, owner: GameCharacter) {
+        guard let gameManager else { return }
+        let deck = gameManager.characterManager.abilities(for: owner)
+        for cardId in owner.activeCards {
+            guard let card = deck.first(where: { $0.cardId == cardId }) else { continue }
+            let top = isTopHalfInPlay(cardId, of: owner)
+            let names = Self.summonNames(in: (top ? card.actions : card.bottomActions) ?? [])
+            guard names.contains(summon.name),
+                  !owner.summons.contains(where: { !$0.dead && $0.uuid != summon.uuid && names.contains($0.name) }) else { continue }
+            owner.removeFromActiveArea(cardId)
+            log("\(card.name ?? "The card") leaves \(name(.character(owner.id)))\u{2019}s active area", category: .info)
+            return
+        }
+    }
+
+    /// The summons a half of a card brings, by name.
+    static func summonNames(in actions: [ActionModel]) -> Set<String> {
+        var names = Set<String>()
+        for action in actions {
+            if action.type == .summon, let name = action.summonValueObject?.name ?? action.value?.stringValue {
+                names.insert(name)
+            }
+            names.formUnion(summonNames(in: action.subActions ?? []))
+        }
+        return names
     }
 
     /// Exhaust a character: all its cards go to the lost pile, its figure and summons leave the
     /// board, and it takes no further part in the scenario (GH p.27).
     func exhaust(_ character: GameCharacter, reason: String) {
         guard !character.exhausted || boardState.piecePositions[.character(character.id)] != nil else { return }
-        character.exhausted = true
-        boardScene?.play(.exhaust)
-        character.lostCards.append(contentsOf: character.handCards + character.discardedCards + character.activeCards)
-        character.handCards = []
-        character.discardedCards = []
-        character.activeCards = []
-        character.roundBonusCards = []
-        character.lostWhenRemoved = []
+        // Where a scenario is lost by a character's exhaustion (away from the exit, before the
+        // treasure is looted), it is judged where they stood.
+        let loss = exhaustionLoss(of: character, at: boardState.piecePositions[.character(character.id)])
         log("\(characterName(character.id)) is exhausted", category: .death, trace: reason)
         gameManager?.scenarioStatsManager.recordExhausted(character.name)
+        leaveScenario(character)
+        updateLocks()
+        if let loss, scenarioResult == nil, pendingResult == nil {
+            pendingResult = .defeat
+            endReason = .ruleLost(loss)
+            log("Scenario failed — the scenario ends at the end of this round.", category: .death)
+        }
+        checkVictoryDefeat()
+    }
+
+    /// A character takes no further part in the scenario: its figure and summons leave the
+    /// board. Exhausted, all its cards are lost (GH p.27). Gone through the exit it is marked the
+    /// same way, so that no turn or choice comes to it again, but it isn't exhausted
+    /// (`ScenarioStatsManager.wasExhausted`): it keeps its hand and discards as they were, and
+    /// only its cards in play are put away.
+    func leaveScenario(_ character: GameCharacter, exhausted: Bool = true) {
+        character.exhausted = true
+        if exhausted {
+            boardScene?.play(.exhaust)
+            character.lostCards.append(contentsOf: character.handCards + character.discardedCards + character.activeCards)
+            character.handCards = []
+            character.discardedCards = []
+            character.activeCards = []
+            character.roundBonusCards = []
+            character.lostWhenRemoved = []
+            character.bottomHalvesInPlay = []
+        } else {
+            for cardId in character.activeCards { character.removeFromActiveArea(cardId) }
+        }
         removePieceFromBoard(.character(character.id))
         if let turn = activePlayerTurn, turn.characterID == character.id {
             turn.endForExhaustion()
@@ -354,7 +526,6 @@ extension BoardCoordinator {
             summon.dead = true
             removePieceFromBoard(.summon(id: summon.id))
         }
-        checkVictoryDefeat()
     }
 
     func removePieceFromBoard(_ pieceID: PieceID) {
@@ -385,7 +556,9 @@ extension BoardCoordinator {
                     removePieceFromBoard(pieceID)
                 }
             case .objective:
-                if let objective = entity(for: pieceID) as? GameObjectiveEntity, objective.health <= 0 || objective.dead {
+                // One without hit points (a water pump) isn't destroyed by having none.
+                if let objective = entity(for: pieceID) as? GameObjectiveEntity,
+                   objective.dead || (objective.health <= 0 && objective.maxHealth > 0) {
                     handleDeath(of: pieceID)
                 }
             }

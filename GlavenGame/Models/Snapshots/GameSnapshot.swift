@@ -228,6 +228,9 @@ struct CharacterSnapshot: Codable {
     var itemSlotsUsed: [String: Int]?
     var bonusChargesUsed: [Int: Int]?
     var itemsLeftBehind: [String]?
+    var itemsBarred: Bool?
+    /// Nil in saves from before the half a card is in play for was recorded.
+    var bottomHalvesInPlay: [Int]?
 
     init(name: String, edition: String, level: Int, off: Bool, active: Bool,
          number: Int, health: Int, maxHealth: Int,
@@ -339,6 +342,8 @@ struct CharacterSnapshot: Codable {
         itemSlotsUsed = try container.decodeIfPresent([String: Int].self, forKey: .itemSlotsUsed)
         bonusChargesUsed = try container.decodeIfPresent([Int: Int].self, forKey: .bonusChargesUsed)
         itemsLeftBehind = try container.decodeIfPresent([String].self, forKey: .itemsLeftBehind)
+        itemsBarred = try container.decodeIfPresent(Bool.self, forKey: .itemsBarred)
+        bottomHalvesInPlay = try container.decodeIfPresent([Int].self, forKey: .bottomHalvesInPlay)
     }
 }
 
@@ -359,6 +364,7 @@ struct MonsterSnapshot: Codable {
     var isAllied: Bool
     var tags: [String]
     var drawExtra: Bool
+    var standsApart: Bool? = nil
     // Scenario stat-effect overrides (optional for backward compatibility with saved games)
     var displayName: String?
     var deckOverride: String?
@@ -366,6 +372,10 @@ struct MonsterSnapshot: Codable {
     var additionalImmunities: [ConditionName]?
     var statEffectHealthExpr: String?
     var statEffectHealthAbsolute: Bool?
+    var statEffectX: Int?
+    var statBonusAttack: Int?
+    var statBonusMovement: Int?
+    var statBonusRange: Int?
     /// This round's ability card initiative (nil between rounds, and in older saves).
     var drawnInitiative: Int?
 }
@@ -407,6 +417,12 @@ struct ObjectiveContainerSnapshot: Codable {
     var active: Bool
     var initiative: Int
     var entities: [ObjectiveEntitySnapshot]
+    /// Optional: older saves have none of these.
+    var escortActions: [ActionModel]? = nil
+    var useAllyDeck: Bool? = nil
+    var objectiveIndex: Int? = nil
+    var isProtected: Bool? = nil
+    var isSheltered: Bool? = nil
 }
 
 // MARK: - Objective Entity Snapshot
@@ -481,4 +497,5 @@ struct ScenarioSnapshot: Codable {
     var partyStats: ScenarioPartyStats?
     /// "won"/"lost" once a scenario rule has decided the outcome, applied at the end of the round.
     var pendingFinish: String?
+    var releasedMonsters: Set<String>?
 }

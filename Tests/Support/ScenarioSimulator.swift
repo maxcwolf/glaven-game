@@ -5,7 +5,9 @@ import SwiftData
 /// Plays a real scenario headlessly through the BoardCoordinator turn loop. A `PlayerPolicy`
 /// makes every player decision through the same coordinator calls the UI makes (card selection,
 /// rests, hex and target picks, modifier draws, damage negation), while observers check every
-/// attack, every movement and the board after each step against the rules.
+/// attack, every movement and the board after each step against the rules: line of sight and
+/// range, no enemy attacked twice by one ability, the order of turns, rests, the cards each
+/// character holds, and the gold paid for money tokens (`PlayLedger`).
 ///
 /// Seeded runs are fully deterministic, so a transcript (`transcript`) can be compared against a
 /// golden file.
@@ -22,6 +24,26 @@ final class ScenarioSimulator {
         /// Let the coordinator resolve modifier draws, damage negation and push choices itself
         /// instead of the policy answering the prompts.
         var autoResolvePrompts = false
+        /// The scenario level the players choose, instead of the recommended one (p.15: "the
+        /// scenario level is chosen by the players … any number from 0 to 7").
+        var scenarioLevel: Int?
+        /// Characters above level 1 bring what their levels gave them (p.44): a card chosen at
+        /// each level in their hand, and a perk for each level. Without it they play their
+        /// level's hit points with a first-level hand and deck.
+        var veterans = false
+
+        /// A party that should win: ninth-level characters with their cards and perks — by
+        /// default the Brute, the Sunkeeper and the Berserker, three who fight at close quarters
+        /// with plain attacks — playing at scenario level 0. Nothing here is outside the rules:
+        /// it is the party a long campaign ends with, on a level its players chose; no hit
+        /// points are added and no monster's turn is skipped.
+        static func veteranParty(_ characters: [String] = veterans, seed: UInt64, scenarioLevel: Int = 0) -> Options {
+            Options(characters: characters, characterLevel: 9, seed: seed, scenarioLevel: scenarioLevel, veterans: true)
+        }
+
+        static let veterans = ["brute", "sun", "lightning"]
+        /// The same with a Scoundrel, who brings Invisible, Poison and single-target tricks into play.
+        static let veteransWithAScoundrel = ["brute", "scoundrel", "sun", "lightning"]
     }
 
     enum Outcome: String {
@@ -37,6 +59,14 @@ final class ScenarioSimulator {
     private(set) var violations: [String] = []
     /// The turn log, with a board summary at the end of every round.
     private(set) var transcript: [String] = []
+
+    /// The checks that need a memory of the round: who has acted, who was attacked by what.
+    private let ledger = PlayLedger()
+    private var ledgerRound = -1
+    /// The figures on the board when the round's first figure acted: anyone else arrived since.
+    private var presentAtRoundStart: Set<AnyHashable> = []
+    /// Characters whose rest for the round has been looked at ("round-id").
+    private var restsChecked: Set<String> = []
 
     private var logCursor = 0
     private var summarizedRound = -1
@@ -63,7 +93,15 @@ final class ScenarioSimulator {
             character.health = character.maxHealth
         }
 
+        if options.veterans {
+            for character in gm.game.characters { Self.giveLevelUps(to: character, gm: gm) }
+        }
+
         gm.game.difficulty = options.difficulty
+        if let level = options.scenarioLevel {
+            gm.game.levelCalculation = false
+            gm.levelManager.setLevel(level)
+        }
         let scenario = try XCTUnwrap(gm.editionStore.scenarios(for: "gh").first { $0.index == index && $0.solo == nil },
                                      "scenario \(index) exists")
         gm.startScenarioOnBoard(scenario)
@@ -83,7 +121,7 @@ final class ScenarioSimulator {
 
         // Characters go on free starting hexes (allies may stand on some), where the policy wants.
         for character in gm.game.characters where !character.absent {
-            let free = coord.boardState.startingLocations.filter { !coord.boardState.isOccupied($0) }
+            let free = coord.freeStartingHexes(for: character.id)
             guard !free.isEmpty else {
                 XCTFail("scenario \(index): no free starting hex for \(character.name)")
                 break
@@ -92,6 +130,33 @@ final class ScenarioSimulator {
         }
         coord.finishSetup()
         collectLog()
+    }
+
+    /// What a character gained level by level (p.44): at each level a card of that level or
+    /// lower — here the highest on offer, the first in card order — and a perk, taken in the
+    /// order the perk sheet lists them. The hand is every chosen card, filled up with the
+    /// class's first-level and X cards.
+    static func giveLevelUps(to character: GameCharacter, gm: GameManager) {
+        let manager = gm.characterManager
+        while manager.pendingCardChoices(for: character) > 0 {
+            let options = manager.choosableCards(for: character)
+            guard let best = options.max(by: { a, b in
+                let la = CardPool.level(of: a) ?? 0, lb = CardPool.level(of: b) ?? 0
+                return la == lb ? (a.cardId ?? 0) > (b.cardId ?? 0) : la < lb
+            }), let id = best.cardId, manager.chooseCard(id, for: character) else { break }
+        }
+        let perks = character.characterData?.perks ?? []
+        var index = 0
+        while manager.perksAvailable(for: character) > 0, index < perks.count {
+            if !manager.takePerk(at: index, for: character) { index += 1 }
+        }
+        let pool = manager.cardPool(for: character)
+        let starting = pool.filter { !character.chosenCards.contains($0.cardId ?? -1) }.compactMap(\.cardId)
+        let size = min(character.handSize, pool.count)
+        let hand = Array((character.chosenCards + starting).prefix(size))
+        if !manager.setHand(hand, for: character) {
+            XCTFail("\(character.name): the hand of chosen cards was refused")
+        }
     }
 
     /// Keep playing a scenario that `gm` resumed from a save (it is on the board, in card selection).
@@ -125,11 +190,15 @@ final class ScenarioSimulator {
         var idleSteps = 0
         var lastSignature = ""
         while coord.scenarioResult == nil && !(gm.game.round >= rounds && coord.boardPhase == .cardSelection) {
+            let money = moneyOnTheTable()
+            let turnBefore = coord.activePlayerTurn
             eachStep?()
             step()
             await settle()
             collectLog()
             checkBoard()
+            // Within one character's turn only that character takes money off the board.
+            checkMoney(since: money, monstersActing: turnBefore == nil || coord.activePlayerTurn !== turnBefore)
 
             let signature = progressSignature()
             if signature == lastSignature {
@@ -158,6 +227,12 @@ final class ScenarioSimulator {
             return "scenario \(index) did not finish (round \(gm.game.round))"
         case .victory:
             if scenario?.pendingFinish == "won" { return nil }
+            // The book's goal for the objectives (destroy the altars, bring the escort home). Met
+            // at some moment is enough: the round it was met in is played out, whatever else
+            // happens in it (GH p.33).
+            if let goal = coord.scenarioData?.placements?.goal, goal.replacesKillAll {
+                return goalSeenMet || coord.goalMet(goal) ? nil : "scenario \(index) won without its goal met"
+            }
             if scenario?.data.rules?.contains(where: { $0.finish == "won" }) == true {
                 return "scenario \(index) won by killing everything, but it has its own goal"
             }
@@ -167,6 +242,9 @@ final class ScenarioSimulator {
             return nil
         case .defeat:
             if scenario?.pendingFinish == "lost" { return nil }
+            // What the party was to protect is lost.
+            if let goal = coord.scenarioData?.placements?.goal, coord.goalLost(goal) != nil { return nil }
+            if case .ruleLost = coord.endReason { return nil }
             let standing = gm.game.characters.filter { !$0.absent && !$0.exhausted }
             return standing.isEmpty ? nil : "scenario \(index) lost with \(standing.map(\.name)) still standing"
         }
@@ -232,10 +310,15 @@ final class ScenarioSimulator {
         }
         if let pending = coord.pendingDamage,
            let character = character(pending.characterID) {
-            coord.resolvePendingDamage(choice: policy.negateDamage(pending.damage, character: character, sim: self))
+            // A bonus in play takes it (Frost Armor): no card is lost for that.
+            coord.resolvePendingDamage(choice: pending.absorbedBy != nil
+                ? .takeDamage : policy.negateDamage(pending.damage, character: character, sim: self))
             return
         }
         if let rest = coord.pendingShortRest, let character = character(rest.characterID) {
+            if !rest.committed, let problem = PlayLedger.restProblem(character.name, rest: "short", discards: character.discardedCards.count) {
+                violation(problem)
+            }
             if !rest.committed {
                 switch policy.shortRest(character: character, cardToLose: rest.randomCardId, sim: self) {
                 case .skip:
@@ -260,12 +343,15 @@ final class ScenarioSimulator {
         }
         if coord.boardPhase == .cardSelection {
             summarize(final: false)
+            checkDeclaredRests()
             if let id = coord.cardSelectingCharacterID, let character = character(id) {
                 if let pair = policy.chooseCards(for: character, hand: hand(of: character), sim: self) {
                     coord.chooseCards(for: id, leading: pair.leading, other: pair.other)
                 } else {
                     coord.chooseLongRest(for: id)
                 }
+                // Before anyone acts: rests declared, or forced on those who chose after.
+                checkDeclaredRests()
             }
             return
         }
@@ -462,8 +548,9 @@ final class ScenarioSimulator {
         transcript.append("!! VIOLATION: \(message)")
     }
 
-    /// Every attack: both figures on the board, enemies of each other, the target visible and in
-    /// line of sight (GH p.18–19).
+    /// Every attack: both figures on the board, enemies of each other, the target visible, in
+    /// line of sight and within the attack's range; no enemy attacked twice by one attack
+    /// ability; and the attacker acting at its place in the round (GH p.18–19).
     private func checkAttack(_ attacker: PieceID, _ target: PieceID) {
         // A fallen Cultist attacks from the hex it fell on.
         let fallen = coord.deathAttackInProgress.flatMap { $0.attacker == attacker ? $0.position : nil }
@@ -472,12 +559,218 @@ final class ScenarioSimulator {
             return
         }
         if attacker == target { violation("\(attacker) attacks itself") }
+        if coord.isInactive(attacker) { violation("\(attacker) attacks while its kind sits the round out") }
         if !coord.areEnemies(attacker, target) { violation("\(attacker) attacks its ally \(target)") }
         if coord.entity(for: target)?.entityConditions.contains(where: { $0.name == .invisible && !$0.expired }) == true {
             violation("\(attacker) attacks invisible \(target)")
         }
-        if !LineOfSight.hasLOS(from: from, to: to, board: coord.boardState) {
+        // An attack drawn onto a provoking character lands whatever the range.
+        if !coord.attackWasRedirected, !LineOfSight.hasLOS(from: from, to: to, board: coord.boardState) {
             violation("\(attacker) at \(from) attacks \(target) at \(to) without line of sight")
+        }
+        // Range is never counted through a wall: with no way round, nothing is in range.
+        if !coord.attackWasRedirected, coord.boardState.range(from: from, to: to) == nil {
+            violation("\(attacker) at \(from) attacks \(target) at \(to), which no range reaches round the walls")
+        }
+        // The rest is judged for the figure whose turn it is, making its own attack.
+        guard fallen == nil, !coord.attackWasRedirected, coord.actingPiece == attacker else { return }
+        noteTurn(of: attacker)
+        if let reach = reach(of: attacker),
+           let problem = PlayLedger.rangeProblem(attacker: attacker, target: target, from: from, to: to, reach: reach) {
+            violation(problem)
+        }
+        if let (ability, allowed) = attackAbility(of: attacker),
+           let problem = ledger.noteAttack(ability: ability, target: target, allowed: allowed) {
+            violation(problem)
+        }
+    }
+
+    /// How far the attack being made can reach (GH p.19), read from what prints it: the step of
+    /// the character's card (and the range the game announced for it, which may hold a bonus),
+    /// a summon's own range, a monster's stat card and ability card. Nil when the attack isn't
+    /// one of range: an attack on everyone moved through, a boss's special, an escort's.
+    private func reach(of attacker: PieceID) -> Int? {
+        switch attacker {
+        case .character(let id):
+            guard let turn = coord.activePlayerTurn, turn.characterID == id, turn.currentActionIndex < turn.currentSteps.count
+            else { return nil }
+            let step = turn.currentSteps[turn.currentActionIndex]
+            let subs = step.subActions ?? []
+            // An attack whose own words say whom it reaches ("all enemies within 2", "every
+            // enemy moved through", "a doomed enemy at any range") isn't measured by a range.
+            guard step.type == .attack, turn.attackTexts.isEmpty,
+                  !subs.contains(where: { $0.type == .custom || $0.type == .specialTarget }) else { return nil }
+            let printed = subs.filter { $0.type == .range }.compactMap { $0.value?.intValue }.max() ?? 1
+            let range = max(1, printed, turn.currentAttackRange())
+            return turn.pendingAreaPattern.map { PlayLedger.areaReach($0, range: range) } ?? range
+        case .summon:
+            guard let summon = coord.entity(for: attacker) as? GameSummon else { return nil }
+            return max(1, summon.range)
+        case .monster(let name, let standee):
+            guard let monster = gm.game.monsters.first(where: { $0.name == name }), !monster.isBoss,
+                  let entity = coord.monsterEntity(name: name, standee: standee), entity.type != .boss,
+                  let card = gm.monsterManager.currentAbility(for: monster) else { return nil }
+            let statRange = monster.stat(for: entity.type)?.range?.intValue ?? 0
+            return PlayLedger.monsterReach(statRange: statRange, card: card.actions ?? [])
+        case .objective:
+            return nil
+        }
+    }
+
+    /// The attack ability an attack belongs to, and how often it may attack one enemy (ATK-9):
+    /// once for a step of a character's card and for a summon's attack; for a monster once for
+    /// each Attack its card prints (each is its own ability, MON-7).
+    private func attackAbility(of attacker: PieceID) -> (key: String, allowed: Int)? {
+        switch attacker {
+        case .character(let id):
+            guard let turn = coord.activePlayerTurn, turn.characterID == id else { return nil }
+            return ("\(attacker) \(turn.phase) step \(turn.currentActionIndex)", 1)
+        case .summon:
+            return ("\(attacker)", 1)
+        case .monster(let name, let standee):
+            guard let monster = gm.game.monsters.first(where: { $0.name == name }), !monster.isBoss,
+                  let entity = coord.monsterEntity(name: name, standee: standee),
+                  let card = gm.monsterManager.currentAbility(for: monster) else { return nil }
+            let statTargets = monster.stat(for: entity.type)?.actions?.first { $0.type == .target }?.value?.intValue ?? 1
+            // By the monster itself: its standee number may pass to another within the round.
+            return ("\(attacker) \(identity(of: attacker).hashValue)",
+                    PlayLedger.attacksOnOneEnemy(card: card.actions ?? [], statTargets: statTargets))
+        case .objective:
+            return nil
+        }
+    }
+
+    /// The figure whose turn it is has moved or attacked: its place in the round's order
+    /// (RND-6, RND-8), by its own cards.
+    private func noteTurn(of piece: PieceID) {
+        guard coord.actingPiece == piece else { return }
+        let round = gm.game.round
+        if round != ledgerRound {
+            ledgerRound = round
+            presentAtRoundStart = Set(coord.boardState.piecePositions.keys.map(identity(of:)))
+        }
+        var initiative = 0.0
+        var owner: PieceID?
+        var summoned = false
+        switch piece {
+        case .character(let id):
+            guard let character = character(id) else { return }
+            initiative = PlayLedger.characterInitiative(character.initiative, longRest: character.longRest)
+        case .summon:
+            guard let summoner = coord.summonOwner(of: piece), let summon = coord.entity(for: piece) as? GameSummon else { return }
+            initiative = PlayLedger.summonInitiative(
+                ownerInitiative: PlayLedger.characterInitiative(summoner.initiative, longRest: summoner.longRest))
+            owner = .character(summoner.id)
+            summoned = summon.state == .new
+        case .monster(let name, let standee):
+            guard let monster = gm.game.monsters.first(where: { $0.name == name }),
+                  let card = gm.monsterManager.currentAbility(for: monster) else { return }
+            initiative = Double(card.initiative)
+            summoned = coord.monsterEntity(name: name, standee: standee)?.summonState == .new
+        case .objective:
+            return
+        }
+        let who = identity(of: piece)
+        // A boss's special that has its minions act again (GH #9): each gets one more turn,
+        // taken when the boss says, not at its initiative.
+        while actAgainCursor < coord.turnLog.count {
+            if coord.turnLog[actAgainCursor].message.hasSuffix("act again") {
+                actAgainRound = round
+                lastActor = nil   // whoever acted last starts afresh too
+            }
+            actAgainCursor += 1
+        }
+        var outOfOrder = !presentAtRoundStart.contains(who)
+        if case .monster = piece, actAgainRound == round {
+            // Its own turn and the one the boss gives it, in either order: each time it starts
+            // to act, what it did before is set aside.
+            if lastActor != who { ledger.anotherTurn(for: piece, identity: who) }
+            outOfOrder = true
+        }
+        lastActor = who
+        for problem in ledger.noteAct(round: round, piece: piece, initiative: initiative,
+                                      newcomer: outOfOrder, owner: owner,
+                                      summonedThisRound: summoned, identity: who) {
+            violation(problem)
+        }
+    }
+
+    private var actAgainCursor = 0
+    private var actAgainRound = -1
+    private var lastActor: AnyHashable?
+
+    /// The figure behind a piece: a monster's standee number passes to another monster when
+    /// the first has died, so a monster is known by its entity.
+    private func identity(of piece: PieceID) -> AnyHashable {
+        if case .monster(let name, let standee) = piece, let entity = coord.monsterEntity(name: name, standee: standee) {
+            // Held on to, so that no later monster can come to live at the same address.
+            if knownEntities.insert(ObjectIdentifier(entity)).inserted { heldEntities.append(entity) }
+            return AnyHashable(ObjectIdentifier(entity))
+        }
+        return AnyHashable(piece)
+    }
+
+    private var knownEntities: Set<ObjectIdentifier> = []
+    private var heldEntities: [GameMonsterEntity] = []
+
+    /// A long rest needs two discards when it is declared (RND-4) — chosen or forced.
+    private func checkDeclaredRests() {
+        for character in gm.game.characters where character.longRest && !character.exhausted && !character.absent {
+            guard restsChecked.insert("\(gm.game.round)-\(coord.boardPhase)-\(character.id)").inserted else { continue }
+            if let problem = PlayLedger.restProblem(character.name, rest: "long", discards: character.discardedCards.count) {
+                violation(problem)
+            }
+        }
+    }
+
+    // MARK: Money
+
+    private struct Money {
+        var gold: [String: Int] = [:]
+        var tokens: [HexCoord: Int] = [:]
+        /// Money printed on the map (a coin tile is worth its amount in tokens).
+        var coins: [HexCoord: Int] = [:]
+        /// Numbered treasure tiles, by hex.
+        var treasures: [HexCoord: String] = [:]
+    }
+
+    private func moneyOnTheTable() -> Money {
+        var money = Money()
+        for character in gm.game.characters { money.gold[character.id] = character.loot }
+        money.tokens = coord.boardState.lootTokens.filter { $0.value > 0 }
+        for cell in coord.boardState.cells.values where cell.overlay == .treasure {
+            if cell.overlaySubType == "coin" || cell.treasureID == nil {
+                money.coins[cell.coord] = max(1, cell.treasureAmount ?? 1)
+            } else if let id = cell.treasureID, id != BoardCoordinator.goalTreasureID {
+                money.treasures[cell.coord] = id
+            }
+        }
+        return money
+    }
+
+    /// Gold per money token by scenario level (GH p.15).
+    static let goldPerToken = [2, 2, 3, 3, 4, 4, 5, 6]
+
+    /// Every token that left the board in a step was paid for at the level's rate, and nothing
+    /// else was paid (TRN-5, SET-4) — but for the gold a numbered treasure holds.
+    private func checkMoney(since before: Money, monstersActing: Bool) {
+        guard coord.scenarioResult == nil else { return }
+        let now = moneyOnTheTable()
+        let gained = now.gold.reduce(0) { $0 + max(0, $1.value - (before.gold[$1.key] ?? $1.value)) }
+        var tokensGone = before.tokens.reduce(0) { $0 + max(0, $1.value - (now.tokens[$1.key] ?? 0)) }
+        tokensGone += before.coins.filter { now.coins[$0.key] == nil }.values.reduce(0, +)
+        var treasureGold = 0
+        for (hex, id) in before.treasures where now.treasures[hex] == nil {
+            guard let index = Int(id), let reward = gm.editionStore.treasureReward(index: index, edition: "gh") else { continue }
+            for part in reward.split(separator: "|") where part.hasPrefix("gold:") {
+                treasureGold += Int(part.dropFirst(5)) ?? 0
+            }
+        }
+        guard gained > 0 || tokensGone > 0 else { return }
+        let rate = Self.goldPerToken[max(0, min(7, gm.game.level))]
+        if let problem = PlayLedger.goldProblem(gained: gained, tokensGone: tokensGone, treasureGold: treasureGold,
+                                                rate: rate, monstersActing: monstersActing) {
+            violation(problem)
         }
     }
 
@@ -486,13 +779,22 @@ final class ScenarioSimulator {
     /// doors never enter a closed one; the move ends on an empty hex (GH p.17).
     private func checkMove(_ piece: PieceID, _ path: [HexCoord], _ style: MovementStyle) {
         let board = coord.boardState
+        if style != .forced { noteTurn(of: piece) }
         guard path.first == position(piece) else {
             violation("\(piece) moves from \(path.first.map { "\($0)" } ?? "?") but stands at \(position(piece).map { "\($0)" } ?? "nowhere")")
             return
         }
-        let opensDoors: Bool = { if case .character = piece { return true }; return false }()
-        for (a, b) in zip(path, path.dropFirst()) where a.distance(to: b) != 1 {
-            violation("\(piece) moves from \(a) to non-adjacent \(b)")
+        // Characters open doors by walking into them, and so does an escort.
+        let opensDoors: Bool = {
+            if case .character = piece { return true }
+            if case .objective = piece { return !coord.isScenery(piece) }
+            return false
+        }()
+        for (a, b) in zip(path, path.dropFirst()) where !board.areAdjacent(a, b) {
+            // A character may cross between the two ends of a crossing (Demonic Rift's altars).
+            if case .character = piece, style != .forced, board.crossingExits(from: a).contains(b) { continue }
+            violation(board.isWalled(a, b) ? "\(piece) moves across the wall line between \(a) and \(b)"
+                                           : "\(piece) moves from \(a) to non-adjacent \(b)")
         }
         for (i, hex) in path.enumerated().dropFirst() {
             let isLast = i == path.count - 1
@@ -505,8 +807,11 @@ final class ScenarioSimulator {
             }
             switch style {
             case .normal, .forced:
-                if !cell.passable { violation("\(piece) moves through the obstacle at \(hex) (\(style))") }
-                if let other = board.piece(at: hex), other != piece, coord.areEnemies(piece, other) || style == .forced {
+                // A flying figure is forced over obstacles and any figure; a walker passes only
+                // its allies, as when it moves by itself (FAQ, "Push/Pull").
+                let flown = style == .forced && coord.flies(piece)
+                if !cell.passable && !flown { violation("\(piece) moves through the obstacle at \(hex) (\(style))") }
+                if let other = board.piece(at: hex), other != piece, coord.areEnemies(piece, other), !flown {
                     violation("\(piece) moves through \(other) at \(hex) (\(style))")
                 }
             case .jump:
@@ -520,9 +825,13 @@ final class ScenarioSimulator {
         }
     }
 
+    /// Whether the scenario's written goal has held at the end of some step.
+    private var goalSeenMet = false
+
     /// Board consistency after every step.
     private func checkBoard() {
         let board = coord.boardState
+        if !goalSeenMet, let goal = coord.scenarioGoal, goal.replacesKillAll, coord.goalMet(goal) { goalSeenMet = true }
         var seen: [HexCoord: PieceID] = [:]
         for (piece, hex) in board.piecePositions.sorted(by: { $0.key < $1.key }) {
             if let other = seen[hex] { violation("\(piece) and \(other) share \(hex)") }
@@ -557,11 +866,13 @@ final class ScenarioSimulator {
                 if entity.health <= 0 { violation("\(piece) is on the board with \(entity.health) HP") }
             }
         }
-        for character in gm.game.characters where !character.exhausted && !character.absent {
-            let total = character.handCards.count + character.discardedCards.count
-                + character.lostCards.count + character.activeCards.count
-            if total != character.handSize {
-                violation("\(character.name) has \(total) of \(character.handSize) cards")
+        // Cards are conserved, and an exhausted character holds none (all are lost, GH p.28).
+        for character in gm.game.characters where !character.absent {
+            if let problem = PlayLedger.cardProblem(character.name, exhausted: character.exhausted,
+                                                    hand: character.handCards.count, discard: character.discardedCards.count,
+                                                    lost: character.lostCards.count, active: character.activeCards.count,
+                                                    handSize: character.handSize) {
+                violation(problem)
             }
         }
         for monster in gm.game.monsters {

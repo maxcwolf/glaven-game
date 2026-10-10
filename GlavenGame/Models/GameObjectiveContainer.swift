@@ -17,6 +17,15 @@ final class GameObjectiveContainer: Figure {
     var escortActions: [ActionModel] = []
     /// Whether this escort uses the ally attack modifier deck instead of the monster deck.
     var useAllyDeck: Bool = false
+    /// Not an escort, but the monsters' target all the same: something to keep from harm that
+    /// is no ally (captives, a gate under siege).
+    var isProtected: Bool = false
+    /// An ally only to be healed: no monster attacks it and no ability touches it (the tree of
+    /// Toxic Moor, which only the scenario harms).
+    var isSheltered: Bool = false
+    /// Which of the scenario's objectives this is (1-based, as its rooms refer to them); nil for
+    /// one a rule spawned.
+    var objectiveIndex: Int?
 
     var figureType: FigureType { .objectiveContainer }
 
@@ -45,7 +54,21 @@ final class GameObjectiveContainer: Figure {
 
     /// Whether this escort has any actions to execute (some escorts are passive — no move/attack).
     var hasEscortActions: Bool {
-        !escortActions.isEmpty && (escortMove > 0 || escortAttack > 0)
+        !escortActions.isEmpty && (escortMove > 0 || escortAttack > 0 || standingAttack != nil)
+    }
+
+    /// The attack of an escort that holds its place and strikes every enemy beside it (Fish of
+    /// Lost Temple: "Attack 3" on all adjacent enemies, written inside his rule text).
+    var standingAttack: Int? {
+        for action in escortActions where action.type == .custom {
+            for inner in action.subActions ?? [] where inner.type == .attack {
+                let allAdjacent = (inner.subActions ?? []).contains {
+                    $0.type == .specialTarget && $0.value?.stringValue.lowercased() == "enemiesadjacent"
+                }
+                if allAdjacent, let value = inner.value?.intValue { return value }
+            }
+        }
+        return nil
     }
 
     init(name: String = "", edition: String = "", title: String = "", escort: Bool = false, level: Int = 0) {

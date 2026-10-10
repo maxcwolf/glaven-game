@@ -121,13 +121,15 @@ final class PersonalQuestTests: XCTestCase {
         XCTAssertEqual(CharacterRecord.baseMonsterName("vermling-scout"), "vermling-scout")
     }
 
-    /// Seeker of Xorn: three Crypt scenarios won, then Noxious Cellar (only after the first).
+    /// Seeker of Xorn: three Crypt scenarios won, then Noxious Cellar (only after the first)
+    /// followed to its conclusion, the Palace of Ice.
     func testScenarioRequirementsAndTheirOrder() throws {
         give("510", to: brute)
         brute.record.scenariosCompleted = ["gh-5", "gh-6", "gh-1"]   // two crypts and Black Barrow
-        gm.game.completedScenarios.insert("gh-52")
+        gm.game.completedScenarios.formUnion(["gh-52", "gh-53", "gh-54"])
         PersonalQuestEvaluator.updateProgress(character: brute, game: gm.game, editionStore: gm.editionStore)
         XCTAssertEqual(brute.personalQuestProgress, [2, 0], "the cellar waits for the third crypt")
+        XCTAssertFalse(gm.game.manualScenarios.contains("gh-52"))
         brute.record.scenariosCompleted.insert("gh-19")
         PersonalQuestEvaluator.updateProgress(character: brute, game: gm.game, editionStore: gm.editionStore)
         XCTAssertEqual(brute.personalQuestProgress, [3, 1])
@@ -164,13 +166,18 @@ final class PersonalQuestTests: XCTestCase {
     // MARK: - Retiring and saving
 
     func testACompletedQuestRetiresTheCharacter() throws {
-        give("519", to: brute)   // Battle Legend: 15 checkmarks; unlocks the Soothsinger
+        give("519", to: brute)   // Battle Legend: 15 checkmarks from battle goals; unlocks the Soothsinger
         brute.battleGoalProgress = 15
+        brute.record.battleGoalChecks = 14
+        PersonalQuestEvaluator.updateProgress(character: brute, game: gm.game, editionStore: gm.editionStore)
+        XCTAssertFalse(manager.questComplete(brute))
+        XCTAssertFalse(manager.retireCharacter(brute), "not before the quest is fulfilled")
+        brute.record.battleGoalChecks = 15
         PersonalQuestEvaluator.updateProgress(character: brute, game: gm.game, editionStore: gm.editionStore)
         XCTAssertTrue(manager.questComplete(brute))
         let prosperity = gm.game.partyProsperity
         let retiree = brute
-        manager.retireCharacter(retiree)
+        XCTAssertTrue(manager.retireCharacter(retiree))
         XCTAssertFalse(gm.game.characters.contains { $0 === retiree })
         XCTAssertTrue(gm.game.unlockedCharacters.contains("gh-music-note"))
         XCTAssertEqual(gm.game.partyProsperity, prosperity + 1)
@@ -181,9 +188,9 @@ final class PersonalQuestTests: XCTestCase {
     /// the class it unlocks brings its own; each goes into both the city and the road deck.
     func testRetiringAddsTheClassEvents() throws {
         give("519", to: brute)   // unlocks the Soothsinger
-        brute.battleGoalProgress = 15
+        brute.record.battleGoalChecks = 15
         PersonalQuestEvaluator.updateProgress(character: brute, game: gm.game, editionStore: gm.editionStore)
-        manager.retireCharacter(brute)
+        XCTAssertTrue(manager.retireCharacter(brute))
         for deck in ["city", "road"] {
             let cards = gm.game.events.cards(deck)
             XCTAssertTrue(cards.contains("42"), "the Brute's retirement event, \(deck)")

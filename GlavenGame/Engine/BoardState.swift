@@ -13,6 +13,9 @@ struct DoorInfo: Codable, Sendable, Equatable {
     /// The origin point in the child tile's local space.
     let origin: HexCoord
     var isOpen: Bool = false
+    /// The tile ref on this side of the door, the one revealed first. Optional: older saves
+    /// have none.
+    var fromTileRef: String? = nil
     /// Path of door indices from the map's root tile to the tile behind this door. The same tile
     /// name can appear several times in the map tree (once per connector), and only one copy
     /// carries its monsters, overlays and onward doors, so rooms are located by path.
@@ -47,6 +50,56 @@ final class BoardState {
     /// Loot tokens on the board (dropped when monsters die). Value = token count at that hex.
     var lootTokens: [HexCoord: Int] = [:]
 
+    /// The lettered spawn hexes of the revealed tiles, by marker ("a").
+    var markerHexes: [String: [HexCoord]] = [:]
+
+    /// Places for objectives in the revealed tiles that no objective stands on yet.
+    var openObjectiveSlots: [ObjectiveSlot] = []
+
+    /// Where each objective on the board stands, by its number: the hexes it covers and whether
+    /// it bars a door.
+    var objectiveSites: [Int: ObjectiveSlot] = [:]
+
+    /// Doors a scenario rule keeps locked: walking into one doesn't open it.
+    var lockedDoors: Set<HexCoord> = []
+
+    /// Doors of revealed rooms that have shut again (held open only while a pressure plate is
+    /// stood on). The room behind stays revealed.
+    var shutDoors: Set<HexCoord> = []
+
+    /// The scenario's locks (by their place in its list) whose key has been turned.
+    var releasedLocks: Set<Int> = []
+
+    /// The map's places for monsters of revealed rooms that are set up later (`ScenarioPlacements.later`).
+    var heldMonsterSlots: [MonsterSlot] = []
+
+    /// Characters (by id) a scenario's water has cleansed (`ScenarioPlacements.Water.cleanses`).
+    var cleansed: [String] = []
+
+    /// How many places each cycling boss has been to (`ScenarioPlacements.Cycle`), by monster type.
+    var cycleSteps: [String: Int] = [:]
+
+    /// Goal treasure tiles looted so far, and elite monsters killed (both open doors somewhere).
+    var goalTreasuresLooted = 0
+    var eliteKills = 0
+
+    /// Characters (by id) who have looted a goal treasure tile, once each.
+    var goalLooters: [String] = []
+
+    /// Characters (by id) who left the scenario through an exit.
+    var escapedCharacters: [String] = []
+
+    /// Characters (by id) who were exhausted while standing on an exit hex: an escape is
+    /// complete without them.
+    var exhaustedOnExit: [String] = []
+
+    /// The conclusion section the scenario was won by, where its goal has more than one way
+    /// (`ScenarioPlacements.Goal.conclusion`).
+    var conclusion: String?
+
+    /// A character has entered the hex the goal asks someone to reach (`Reach.enter`).
+    var goalReached = false
+
     // MARK: - Derived
 
     /// Reverse lookup: which piece is at a given coordinate.
@@ -64,15 +117,129 @@ final class BoardState {
         piecePositions.values.contains(coord)
     }
 
+    // MARK: - Walls between hexes
+
+    /// Wall lines: the sides between neighbouring hexes of two map tiles that no door or corridor
+    /// joins. The edge of a map tile is a wall, also where two tiles' full hexes meet (beside a
+    /// door, say): such hexes are not adjacent, nothing moves or is pushed across the line, range
+    /// isn't counted across it and it blocks line of sight (GH p.19, FAQ).
+    var wallEdges: Set<HexEdge> = []
+
+    /// Hexes joined though far apart: a character beside one may spend 1 movement to stand
+    /// beside the other (the two altars of Demonic Rift). Not the hexes themselves — those
+    /// can't be entered — but the hexes around each.
+    var crossings: [HexCoord] = []
+
+    /// Where a character on `hex` may cross to for 1 movement: the hexes beside the other end of
+    /// a crossing it stands beside.
+    func crossingExits(from hex: HexCoord) -> [HexCoord] {
+        guard crossings.count == 2 else { return [] }
+        var exits: [HexCoord] = []
+        for (near, far) in [(crossings[0], crossings[1]), (crossings[1], crossings[0])] where areAdjacent(hex, near) {
+            exits += neighbors(of: far).filter { cells[$0] != nil }
+        }
+        return exits
+    }
+
+    /// Whether a wall line runs between two neighbouring hexes.
+    func isWalled(_ a: HexCoord, _ b: HexCoord) -> Bool {
+        !wallEdges.isEmpty && wallEdges.contains(HexEdge(a, b))
+    }
+
+    /// Whether two hexes are adjacent: neighbours with no wall line between them.
+    func areAdjacent(_ a: HexCoord, _ b: HexCoord) -> Bool {
+        a.isAdjacent(to: b) && !isWalled(a, b)
+    }
+
+    /// The hexes adjacent to one (on the map or not), leaving out those across a wall line.
+    func neighbors(of hex: HexCoord) -> [HexCoord] {
+        wallEdges.isEmpty ? hex.neighbors : hex.neighbors.filter { !isWalled(hex, $0) }
+    }
+
+    /// The room a hex is in: every hex reached from it without going through a doorway or
+    /// across a wall. Tiles joined by a corridor are one large room; a hex in a doorway is in no
+    /// room (FAQ).
+    func room(of hex: HexCoord) -> Set<HexCoord> {
+        func inRoom(_ other: HexCoord) -> Bool {
+            guard let cell = cells[other] else { return false }
+            return cell.overlay != .wall && cell.overlay != .door
+        }
+        guard inRoom(hex) else { return [] }
+        var seen: Set<HexCoord> = [hex]
+        var frontier = [hex]
+        while let next = frontier.popLast() {
+            for neighbor in neighbors(of: next) where inRoom(neighbor) && !seen.contains(neighbor) {
+                seen.insert(neighbor)
+                frontier.append(neighbor)
+            }
+        }
+        return seen
+    }
+
+    /// Whether range can be counted through a hex: it is on the map, not a wall and not a closed
+    /// door. Figures and obstacles don't matter.
+    func rangePasses(through hex: HexCoord) -> Bool {
+        guard let cell = cells[hex] else { return false }
+        return cell.overlay != .wall && !isClosedDoor(hex)
+    }
+
+    /// How many hexes apart two hexes are, counted as range is: hex by hex, never through a wall
+    /// or across a wall line (GH p.19, FAQ: two hexes with a wall line between them are two
+    /// hexes apart). Nil when the count would pass `limit`, or no way round exists.
+    func range(from start: HexCoord, to end: HexCoord, limit: Int = 99) -> Int? {
+        if start == end { return 0 }
+        let straight = start.distance(to: end)
+        guard straight <= limit else { return nil }
+        // Nothing in the way of the straight line: that is the count.
+        let line = start.line(to: end)
+        if zip(line, line.dropFirst()).allSatisfy({ !isWalled($0, $1) && ($1 == end || rangePasses(through: $1)) }) {
+            return straight
+        }
+        var frontier = [start]
+        var seen: Set<HexCoord> = [start]
+        var steps = 0
+        while !frontier.isEmpty, steps < limit {
+            steps += 1
+            var next: [HexCoord] = []
+            for hex in frontier {
+                for neighbor in hex.neighbors where !seen.contains(neighbor) && !isWalled(hex, neighbor) {
+                    if neighbor == end { return steps }
+                    guard rangePasses(through: neighbor) else { continue }
+                    seen.insert(neighbor)
+                    next.append(neighbor)
+                }
+            }
+            frontier = next
+        }
+        return nil
+    }
+
+    /// How far apart two hexes are for telling and for ordering (nearest first): the range count,
+    /// or the plain distance where no count reaches.
+    func steps(from start: HexCoord, to end: HexCoord) -> Int {
+        range(from: start, to: end) ?? start.distance(to: end)
+    }
+
+    /// Whether `end` is within `range` hexes of `start`, counted not through walls.
+    func isWithin(_ range: Int, from start: HexCoord, to end: HexCoord) -> Bool {
+        self.range(from: start, to: end, limit: range) != nil
+    }
+
     /// Whether a hex is passable and exists on the board.
     func isPassable(_ coord: HexCoord) -> Bool {
         cells[coord]?.passable ?? false
     }
 
-    /// Whether a closed (unopened) door sits on this hex. Characters may enter it (which
-    /// opens the door); monsters and summons treat it as a wall.
+    /// Whether a closed door sits on this hex: one never opened, or one that has shut again.
+    /// Characters may enter it (which opens the door) unless it is locked; monsters and summons
+    /// treat it as a wall.
     func isClosedDoor(_ coord: HexCoord) -> Bool {
-        doors.contains { $0.coord == coord && !$0.isOpen }
+        shutDoors.contains(coord) || doors.contains { $0.coord == coord && !$0.isOpen }
+    }
+
+    /// Whether a closed door on this hex can't be opened by walking into it.
+    func isLockedDoor(_ coord: HexCoord) -> Bool {
+        lockedDoors.contains(coord) && isClosedDoor(coord)
     }
 
     /// Whether this hex is a "negative hex" for movement: an active trap or hazardous
@@ -127,6 +294,7 @@ final class BoardState {
         cells[coord]?.overlayImageName = nil
         cells[coord]?.overlaySubType = nil
         cells[coord]?.trapDamage = nil
+        cells[coord]?.trapEffect = nil
     }
 
     /// Place loot tokens at a hex (monsters drop these when killed).
@@ -150,6 +318,28 @@ final class BoardState {
         cells[coord]?.passable = false
     }
 
+    /// Whether an obstacle on `hex` would cut one part of the map off from another: the hexes
+    /// beside it could no longer all reach each other (GH p.15: obstacles can never be placed so,
+    /// even where a figure could fly or jump over). A closed door counts as a way through — the
+    /// room behind it is part of the map.
+    func obstacleWouldDivideMap(at hex: HexCoord) -> Bool {
+        func open(_ other: HexCoord) -> Bool {
+            guard other != hex, let cell = cells[other] else { return false }
+            return cell.overlay != .wall && cell.overlay != .obstacle
+        }
+        let around = neighbors(of: hex).filter(open)
+        guard let first = around.first else { return false }
+        var seen: Set<HexCoord> = [first]
+        var frontier = [first]
+        while let next = frontier.popLast() {
+            for neighbor in neighbors(of: next) + crossingExits(from: next) where open(neighbor) && !seen.contains(neighbor) {
+                seen.insert(neighbor)
+                frontier.append(neighbor)
+            }
+        }
+        return !around.allSatisfy(seen.contains)
+    }
+
     /// Remove an obstacle from a hex (makes it passable again).
     func removeObstacle(at coord: HexCoord) {
         guard cells[coord] != nil else { return }
@@ -158,12 +348,15 @@ final class BoardState {
         cells[coord]?.passable = true
     }
 
-    /// Place a trap at a hex.
-    func placeTrap(at coord: HexCoord, damage: Int, subType: String? = nil) {
+    /// Place a trap at a hex. `effect` is what it does as the card or ability that makes it
+    /// prints (`damage` is then the amount it deals, if it deals any); without one it is
+    /// guessed from `subType`, the art it is drawn with.
+    func placeTrap(at coord: HexCoord, damage: Int, subType: String? = nil, effect: TrapEffect? = nil) {
         guard cells[coord] != nil else { return }
         cells[coord]?.overlay = .trap
         cells[coord]?.overlaySubType = subType
         cells[coord]?.trapDamage = damage
+        cells[coord]?.trapEffect = effect
     }
 
     /// Place hazardous terrain at a hex.

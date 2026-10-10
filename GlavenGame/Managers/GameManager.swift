@@ -150,6 +150,14 @@ final class GameManager {
             }
         }
 
+        rulesManager.onSetUpMonsters = { [weak self] names in
+            guard let self else { return }
+            self.scenarioManager.setUpHeldBack(names)
+            if self.appPhase == .board, self.boardCoordinator.scenarioData != nil {
+                self.boardCoordinator.placeMonstersSetUpLater(names)
+            }
+        }
+
         // Wire undo state capture into all sub-managers
         let beforeMutate: () -> Void = { [weak self] in self?.pushUndoState() }
         charMgr.onBeforeMutate = beforeMutate
@@ -274,6 +282,14 @@ final class GameManager {
 
     func setEdition(_ edition: String) {
         game.edition = edition
+        // A new world starts with its printed achievements (scenario book p.1: City Rule:
+        // Militaristic); a world that has moved on keeps the one that replaced it.
+        for id in GameState.startingGlobalAchievements[edition] ?? [] {
+            let type = GameState.globalAchievementType(id)
+            if type == nil || !game.globalAchievements.contains(where: { GameState.globalAchievementType($0) == type }) {
+                game.globalAchievements.insert(id)
+            }
+        }
         if let info = editionStore.editions.first(where: { $0.edition == edition }) {
             game.conditions = info.conditions ?? [
                 .stun, .immobilize, .disarm, .wound, .muddle, .poison,

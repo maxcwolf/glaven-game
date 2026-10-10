@@ -1,6 +1,7 @@
 import Foundation
 
-/// The campaign's city and road event decks and what their events leave for the next scenario.
+/// The campaign's city and road event decks, what their events leave for the next scenario, and
+/// the rest of what the town keeps between scenarios.
 struct EventState: Codable, Equatable {
     /// Card ids from the top of the deck down; nil until the deck is first used (it then starts as
     /// cards 01–30, shuffled).
@@ -19,6 +20,25 @@ struct EventState: Codable, Equatable {
     var departingFor: String?
     var roadEventDoneFor: String?
 
+    // What the campaign keeps beside the decks (see `CampaignRules`).
+
+    /// Global achievements without a type can be earned more than once (End of Corruption,
+    /// Ancient Technology): how many of each the world has, when more than one.
+    var achievementCounts: [String: Int] = [:]
+    /// Copies in the city's supply of items whose design it doesn't have: sold back, or left by a
+    /// character who retired or was dismissed. Item key ("gh-114") → copies.
+    var looseItems: [String: Int] = [:]
+    /// Enhancements stay on a class's cards when its character leaves (GH p.48): class id
+    /// ("gh-brute") → its stickers, for the next character of the class.
+    var classEnhancements: [String: [Enhancement]] = [:]
+    /// Extra perks waiting for the next recruits: one entry for each player whose character
+    /// retired (or left) and who hasn't made a new one yet.
+    var perksForRecruits: [Int] = []
+    /// Personal quests removed from the game: their holder fulfilled them and retired (GH p.48).
+    var questsRemoved: Set<String> = []
+    /// Reputation milestones already reached (GH p.49), so each adds its events once.
+    var reputationMilestones: Set<Int> = []
+
     static let startingCards = (1...30).map { String(format: "%02d", $0) }
 
     init() {}
@@ -34,6 +54,12 @@ struct EventState: Codable, Equatable {
         donatedThisVisit = try c.decodeIfPresent(Set<String>.self, forKey: .donatedThisVisit) ?? []
         departingFor = try c.decodeIfPresent(String.self, forKey: .departingFor)
         roadEventDoneFor = try c.decodeIfPresent(String.self, forKey: .roadEventDoneFor)
+        achievementCounts = try c.decodeIfPresent([String: Int].self, forKey: .achievementCounts) ?? [:]
+        looseItems = try c.decodeIfPresent([String: Int].self, forKey: .looseItems) ?? [:]
+        classEnhancements = try c.decodeIfPresent([String: [Enhancement]].self, forKey: .classEnhancements) ?? [:]
+        perksForRecruits = try c.decodeIfPresent([Int].self, forKey: .perksForRecruits) ?? []
+        questsRemoved = try c.decodeIfPresent(Set<String>.self, forKey: .questsRemoved) ?? []
+        reputationMilestones = try c.decodeIfPresent(Set<Int>.self, forKey: .reputationMilestones) ?? []
     }
 
     /// A deck, top card first, starting it (cards 01–30, shuffled) on first use. Only that first

@@ -82,8 +82,15 @@ final class EventCardManager {
 
     /// The outcome an option leads to: the first whose condition holds.
     func outcome(_ event: EventCardData, option label: String) -> EventOutcome? {
-        guard let option = event.options?.first(where: { $0.label == label }) else { return nil }
-        return option.outcomes?.first { holds($0.condition) }
+        guard let option = event.options?.first(where: { $0.label == label }), let outcomes = option.outcomes else { return nil }
+        // An outcome with no condition and no effect ahead of others is the option's own text
+        // (city event 15, B): it is read, then the first of the rest that holds applies.
+        if outcomes.count > 1, let lead = outcomes.first, lead.condition == nil, (lead.effects ?? []).isEmpty,
+           var next = outcomes.dropFirst().first(where: { holds($0.condition) }) {
+            next.narrative = [lead.narrative, next.narrative].compactMap { $0 }.joined(separator: "\n\n")
+            return next
+        }
+        return outcomes.first { holds($0.condition) }
     }
 
     /// Whether a condition holds for the party right now.
@@ -222,16 +229,17 @@ final class EventCardManager {
         switch effect.type {
         case "noEffect": break
         case "reputation", "reputationAdditional":
-            game.partyReputation = min(20, game.partyReputation + amount)
+            game.changeReputation(by: amount, labels: editionStore)
             lines.append("Reputation +\(amount).")
         case "loseReputation":
-            game.partyReputation = max(-20, game.partyReputation - amount)
+            game.changeReputation(by: -amount, labels: editionStore)
             lines.append("Reputation \u{2212}\(amount).")
         case "prosperity":
-            game.partyProsperity += amount
+            game.changeProsperity(by: amount)
             lines.append("Prosperity +\(amount).")
         case "loseProsperity":
-            game.partyProsperity = max(0, game.partyProsperity - amount)
+            // Never below the prosperity level already reached (FAQ).
+            game.changeProsperity(by: -amount)
             lines.append("Prosperity \u{2212}\(amount).")
         case "gold", "goldAdditional":
             for character in party { character.loot += amount }
@@ -256,12 +264,12 @@ final class EventCardManager {
             lines.append("Each character loses \(amount) battle goal checkmark\(amount == 1 ? "" : "s").")
         case "partyAchievement":
             for id in values.compactMap(\.stringValue) {
-                game.partyAchievements.insert(id)
+                game.gainPartyAchievement(id)
                 lines.append("Party achievement: \(achievementName(id, kind: "partyAchievements")).")
             }
         case "globalAchievement":
             for id in values.compactMap(\.stringValue) {
-                game.globalAchievements.insert(id)
+                game.gainGlobalAchievement(id)
                 lines.append("Global achievement: \(achievementName(id, kind: "globalAchievements")).")
             }
         case "unlockScenario":

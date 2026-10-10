@@ -1,5 +1,15 @@
 import Foundation
 
+/// The side two neighbouring hexes share (in either order).
+struct HexEdge: Hashable, Codable, Sendable {
+    let a: HexCoord
+    let b: HexCoord
+
+    init(_ first: HexCoord, _ second: HexCoord) {
+        if first < second { a = first; b = second } else { a = second; b = first }
+    }
+}
+
 /// A hex coordinate in odd-row offset format.
 /// Row 0 is "even" row (no x-offset). Row 1 is "odd" row (half-cell x-offset).
 struct HexCoord: Hashable, Codable, Sendable {

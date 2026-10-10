@@ -75,25 +75,9 @@ final class RB_AttackPipelineTests: XCTestCase {
         XCTAssertEqual(result.damage, 0, "p.18: Damage cannot go below 0")
     }
 
-    func testPipeline_missStillAppliesConditions() {
-        // p.19: attack effects "are applied regardless of whether the attack does damage";
-        // a null only means no damage is dealt.
-        let result = resolve(base: 3, modifier: nullCard(), conditions: [.poison, .wound])
-        XCTAssertEqual(result.damage, 0, "p.19: Null deals no damage")
-        XCTAssertEqual(result.appliedConditions, [.poison, .wound], "p.19: Null still applies conditions")
-    }
-
-    func testPipeline_killedTargetGetsNoConditions() {
-        // p.19: "any additional effects of an attack are not applied once a monster dies"
-        let result = resolve(base: 5, modifier: plus(0), conditions: [.poison], defenderHealth: 4)
-        XCTAssertTrue(result.killed)
-        XCTAssertTrue(result.appliedConditions.isEmpty, "p.19: No effects on a killed target")
-    }
-
-    func testPipeline_hitAppliesConditions() {
-        let result = resolve(base: 3, modifier: plus(0), conditions: [.poison])
-        XCTAssertEqual(result.appliedConditions, [.poison], "p.18: Hit applies ability conditions")
-    }
+    // What an attack's conditions do on a Null draw, and on a target the attack kills, is tested on
+    // the board (AttackRuleTests.testAnAttacksConditionsAndPushLandOnANullDraw,
+    // testAnAttackThatKillsItsTargetAppliesNoneOfItsEffects): performAttack applies them itself.
 
     // MARK: - Rolling Modifiers (p.19)
 
@@ -177,28 +161,9 @@ final class RB_AttackPipelineTests: XCTestCase {
         XCTAssertEqual(result.damage, 4, "Normal single draw: 3+1=4")
     }
 
-    // MARK: - Retaliate (p.22)
-
-    func testRetaliate_withinRange() {
-        let result = resolve(base: 3, modifier: plus(0),
-                             retaliateValue: 2, retaliateRange: 1, distance: 1)
-        XCTAssertEqual(result.retaliateDamage, 2, "p.22: Retaliate triggers at range 1")
-    }
-
-    func testRetaliate_outOfRange() {
-        let result = resolve(base: 3, modifier: plus(0),
-                             retaliateValue: 2, retaliateRange: 1, distance: 2)
-        XCTAssertEqual(result.retaliateDamage, 0, "p.22: Retaliate does NOT trigger beyond range")
-    }
-
-    func testRetaliate_notOnKill() {
-        // p.22: "If the retaliating figure is killed...retaliate does not trigger"
-        let result = resolve(base: 10, modifier: plus(0),
-                             retaliateValue: 5, retaliateRange: 1, distance: 1,
-                             defenderHealth: 3)
-        XCTAssertTrue(result.killed)
-        XCTAssertEqual(result.retaliateDamage, 0, "p.22: Dead defender can't retaliate")
-    }
+    // Retaliate is resolved by performAttack, after the attack's push or pull: see
+    // ForcedMovementTests (amount, reach, death, push and pull) and
+    // AttackRuleTests.testRetaliateDrawsNoCardAndIgnoresShieldAndPoison.
 
     // MARK: - Helpers
 
@@ -219,8 +184,6 @@ final class RB_AttackPipelineTests: XCTestCase {
         base: Int, modifier: AttackModifier,
         isPoisoned: Bool = false,
         shield: Int = 0, pierce: Int = 0,
-        conditions: [ConditionName] = [],
-        retaliateValue: Int = 0, retaliateRange: Int = 1, distance: Int = 1,
         defenderHealth: Int = 20
     ) -> AttackResult {
         CombatResolver.resolveAttack(
@@ -229,9 +192,6 @@ final class RB_AttackPipelineTests: XCTestCase {
             baseAttack: base,
             isPoisoned: isPoisoned,
             shield: shield, pierce: pierce,
-            conditions: conditions,
-            retaliateValue: retaliateValue, retaliateRange: retaliateRange,
-            attackerDefenderDistance: distance,
             preDrawnCards: [modifier],
             drawModifier: { nil },
             defenderHealth: defenderHealth
@@ -246,12 +206,47 @@ final class RB_MonsterFocusTests: XCTestCase {
     // p.29: "A monster will focus on the enemy figure to which it has the
     //        shortest path to an attack position"
 
-    func testFocus_shortestPath() {
+    func testFocus_shortestPath() throws {
         let t = TestGame()
-        // Character A is 2 hexes away, Character B is 4 hexes away
+        // Character A is 2 hexes away but walled in by obstacles on every side except the far
+        // one; character B is 3 hexes away across open floor. The path decides, not the distance.
+        let monsterHex = HexCoord(2, 3)
         let charA = t.addCharacter(name: "a", pos: HexCoord(4, 3), initiative: 10)
-        let charB = t.addCharacter(name: "b", pos: HexCoord(8, 3), initiative: 10)
-        _ = charA; _ = charB
+        let charB = t.addCharacter(name: "b", pos: HexCoord(2, 6), initiative: 90)
+        let open = HexCoord(5, 3)
+        for hex in HexCoord(4, 3).neighbors where hex != open { t.board.placeObstacle(at: hex) }
+        XCTAssertEqual(monsterHex.distance(to: HexCoord(4, 3)), 2)
+        XCTAssertEqual(monsterHex.distance(to: HexCoord(2, 6)), 3)
+        let monster = t.addSimpleMonster(positions: [(1, monsterHex, 5)])
+
+        let ability = AbilityModel(cardId: 1, initiative: 50, actions: [
+            ActionModel(type: .move, value: .int(5)),
+            ActionModel(type: .attack, value: .int(2))
+        ])
+
+        let result = MonsterAI.computeTurn(
+            pieceID: .monster(name: "test-monster", standee: 1),
+            monster: monster, entity: monster.entities[0],
+            ability: ability, board: t.board, gameState: t.game
+        )
+
+        XCTAssertEqual(result.focusTarget, .character(charB.id),
+                       "p.29: the enemy it needs the least movement to attack, though another is nearer in hexes")
+        let near = try XCTUnwrap(result.focusCandidates.first { $0.pieceID == .character(charA.id) }, "A can be reached too")
+        let far = try XCTUnwrap(result.focusCandidates.first { $0.pieceID == .character(charB.id) })
+        XCTAssertLessThan(far.pathCost, near.pathCost)
+        XCTAssertGreaterThan(far.proximity, near.proximity)
+        XCTAssertEqual(FocusCandidate.reason(far, over: near), .movement)
+    }
+
+    // p.29: Tiebreaker 1: proximity (hex distance)
+    func testFocus_tiebreakProximity() throws {
+        let t = TestGame()
+        // Both cost 2 movement to attack: A is 2 hexes away behind difficult terrain, B is 3
+        // hexes away across open floor. A, the nearer in hexes, is the focus, though B acts first.
+        let charA = t.addCharacter(name: "a", pos: HexCoord(4, 3), initiative: 90)
+        let charB = t.addCharacter(name: "b", pos: HexCoord(2, 6), initiative: 10)
+        for hex in HexCoord(4, 3).neighbors { t.board.cells[hex]?.overlay = .difficultTerrain }
         let monster = t.addSimpleMonster(positions: [(1, HexCoord(2, 3), 5)])
 
         let ability = AbilityModel(cardId: 1, initiative: 50, actions: [
@@ -265,34 +260,13 @@ final class RB_MonsterFocusTests: XCTestCase {
             ability: ability, board: t.board, gameState: t.game
         )
 
-        if case .character(let name) = result.focusTarget {
-            XCTAssertEqual(name, "gh-a", "p.29: Focus on nearest (shortest path) enemy")
-        } else {
-            XCTFail("Should focus a character")
-        }
-    }
-
-    // p.29: Tiebreaker 1: proximity (hex distance)
-    func testFocus_tiebreakProximity() {
-        let t = TestGame()
-        // Both are equally reachable by path, but A is closer by hex distance
-        let charA = t.addCharacter(name: "a", pos: HexCoord(4, 3), initiative: 50)
-        let charB = t.addCharacter(name: "b", pos: HexCoord(4, 5), initiative: 10)
-        _ = charA; _ = charB
-        let monster = t.addSimpleMonster(positions: [(1, HexCoord(3, 3), 5)])
-
-        let ability = AbilityModel(cardId: 1, initiative: 50, actions: [
-            ActionModel(type: .move, value: .int(5)),
-            ActionModel(type: .attack, value: .int(2))
-        ])
-
-        let result = MonsterAI.computeTurn(
-            pieceID: .monster(name: "test-monster", standee: 1),
-            monster: monster, entity: monster.entities[0],
-            ability: ability, board: t.board, gameState: t.game
-        )
-
-        // A is closer by proximity (distance 1) vs B (distance ~2)
+        let near = try XCTUnwrap(result.focusCandidates.first { $0.pieceID == .character(charA.id) })
+        let far = try XCTUnwrap(result.focusCandidates.first { $0.pieceID == .character(charB.id) })
+        XCTAssertEqual(near.pathCost, 2)
+        XCTAssertEqual(far.pathCost, 2, "a real tie on movement")
+        XCTAssertLessThan(near.proximity, far.proximity)
+        XCTAssertEqual(FocusCandidate.reason(near, over: far), .proximity)
+        // A is closer by proximity (distance 2) vs B (distance 3)
         if case .character(let name) = result.focusTarget {
             XCTAssertEqual(name, "gh-a", "p.29: Tiebreak by proximity — closer hex distance wins")
         } else {
@@ -361,7 +335,7 @@ final class RB_MonsterMovementTests: XCTestCase {
 
     // p.30: "A monster will move the minimum number of hexes to reach the
     //        focus target's attack position"
-    func testMovement_minimumToReachAttackPosition() {
+    func testMovement_minimumToReachAttackPosition() throws {
         let t = TestGame()
         t.addCharacter(pos: HexCoord(5, 3))
         let monster = t.addSimpleMonster(positions: [(1, HexCoord(2, 3), 5)])
@@ -379,23 +353,23 @@ final class RB_MonsterMovementTests: XCTestCase {
 
         // Monster needs to reach an adjacent hex to the character (melee range 1)
         // Should stop at attack position, not keep moving past it
-        if let finalPos = result.movementPath.last {
-            let distToTarget = finalPos.distance(to: HexCoord(5, 3))
-            XCTAssertEqual(distToTarget, 1, "p.30: Stops at attack position (adjacent for melee)")
-        }
+        let finalPos = try XCTUnwrap(result.movementPath.last, "it has to move to attack")
+        XCTAssertEqual(finalPos.distance(to: HexCoord(5, 3)), 1, "p.30: Stops at attack position (adjacent for melee)")
+        XCTAssertEqual(result.movementPath.count - 1, 2, "the two hexes it needs, of the ten it has")
         XCTAssertFalse(result.attackTargets.isEmpty, "Should be able to attack after moving")
     }
 
     // p.30: Monsters can't move through enemies
-    func testMovement_cantMoveThroughEnemies() {
+    func testMovement_cantMoveThroughEnemies() throws {
         let t = TestGame()
-        // Character blocks the direct path
-        t.addCharacter(name: "a", pos: HexCoord(4, 3))
-        t.addCharacter(name: "b", pos: HexCoord(7, 3), initiative: 10)
-        let monster = t.addSimpleMonster(positions: [(1, HexCoord(2, 3), 5)])
+        // A corridor one hex wide: character A stands in it, between the monster and character B.
+        for hex in Array(t.board.cells.keys) where hex.row != 3 { t.board.cells[hex] = nil }
+        let charA = t.addCharacter(name: "a", pos: HexCoord(4, 3), initiative: 90)
+        let charB = t.addCharacter(name: "b", pos: HexCoord(7, 3), initiative: 10)
+        let monster = t.addSimpleMonster(positions: [(1, HexCoord(1, 3), 5)])
 
         let ability = AbilityModel(cardId: 1, initiative: 50, actions: [
-            ActionModel(type: .move, value: .int(2)),
+            ActionModel(type: .move, value: .int(9)),
             ActionModel(type: .attack, value: .int(2))
         ])
 
@@ -405,15 +379,18 @@ final class RB_MonsterMovementTests: XCTestCase {
             ability: ability, board: t.board, gameState: t.game
         )
 
-        // Monster should NOT end up at (4,3) where character A stands
-        if let finalPos = result.movementPath.last {
-            XCTAssertNotEqual(finalPos, HexCoord(4, 3), "p.30: Can't move through enemies")
-        }
+        // With all the movement it could want it never gets past A: B, who acts first, can't
+        // be reached at all, so A is the only enemy it can focus on.
+        XCTAssertEqual(result.focusCandidates.map(\.pieceID), [.character(charA.id)], "p.30: Can't move through enemies")
+        XCTAssertEqual(result.focusTarget, .character(charA.id))
+        XCTAssertEqual(try XCTUnwrap(result.movementPath.last), HexCoord(3, 3), "it stops in front of A")
+        XCTAssertFalse(result.movementPath.contains(HexCoord(4, 3)))
+        _ = charB
     }
 
     // p.30: "Ranged monsters will try to find a position from which they can
     //        attack without disadvantage (i.e. not adjacent)"
-    func testRangedMonster_avoidsAdjacentDisadvantage() {
+    func testRangedMonster_avoidsAdjacentDisadvantage() throws {
         let t = TestGame()
         t.addCharacter(pos: HexCoord(5, 5))
         let monster = t.addSimpleMonster(positions: [(1, HexCoord(5, 6), 5)])
@@ -433,11 +410,13 @@ final class RB_MonsterMovementTests: XCTestCase {
         )
 
         // Ranged monster adjacent to target should try to move away
-        if let finalPos = result.movementPath.last {
-            let distAfter = finalPos.distance(to: HexCoord(5, 5))
-            XCTAssertGreaterThan(distAfter, 1,
-                "p.30: Ranged monster moves away from adjacent target to avoid disadvantage")
-        }
+        let finalPos = try XCTUnwrap(result.movementPath.last, "it moves")
+        let distAfter = finalPos.distance(to: HexCoord(5, 5))
+        XCTAssertGreaterThan(distAfter, 1,
+            "p.30: Ranged monster moves away from adjacent target to avoid disadvantage")
+        XCTAssertLessThanOrEqual(distAfter, 3, "and stays within its range")
+        XCTAssertEqual(result.movementPath.count - 1, 1, "one step is enough")
+        XCTAssertEqual(result.attackTargets.count, 1, "it attacks from there")
     }
 }
 
@@ -463,19 +442,7 @@ final class RB_ConditionTests: XCTestCase {
         XCTAssertEqual(char.health, 8, "p.23: Wound persists and deals again next turn")
     }
 
-    // p.23: "Poison — all healing on the figure is negated...+1 to all attack values targeting it"
-    func testPoison_plusOneToAttack() {
-        let result = CombatResolver.resolveAttack(
-            attacker: .monster(name: "m", standee: 1),
-            defender: .character("c"),
-            baseAttack: 3,
-            isPoisoned: true,
-            preDrawnCards: [AttackModifier(type: .plus0, value: 0)],
-            drawModifier: { nil },
-            defenderHealth: 10
-        )
-        XCTAssertEqual(result.damage, 4, "p.23: Poison adds +1 to incoming attack")
-    }
+    // Poison's +1 on an enemy's attack: AttackRuleTests.testPoisonOnTheTargetAddsOneToAnEnemysAttack.
 
     // p.23: "Stun — figure loses its entire next turn"
     func testStun_skipsEntireTurn() {
@@ -540,27 +507,10 @@ final class RB_ConditionTests: XCTestCase {
         XCTAssertNotNil(result.focusTarget, "Disarmed figure still picks a focus for movement")
     }
 
-    // p.24: "Strengthen — gives advantage on the figure's next attack"
-    func testStrengthen_givesAdvantage() {
-        let entity = GameMonsterEntity(number: 1, type: .normal, health: 5, maxHealth: 5, level: 1)
-        entity.entityConditions.append(EntityCondition(name: .strengthen, state: .normal))
-        XCTAssertTrue(CombatResolver.hasAdvantage(attacker: entity), "p.24: Strengthen = advantage")
-    }
-
-    // p.24: "Muddle — gives disadvantage on the figure's next attack"
-    func testMuddle_givesDisadvantage() {
-        let entity = GameMonsterEntity(number: 1, type: .normal, health: 5, maxHealth: 5, level: 1)
-        entity.entityConditions.append(EntityCondition(name: .muddle, state: .normal))
-        XCTAssertTrue(CombatResolver.hasDisadvantage(attacker: entity, isRangedAdjacent: false),
-                      "p.24: Muddle = disadvantage")
-    }
-
-    // p.20: "Ranged attacks against adjacent targets give disadvantage"
-    func testRangedAdjacent_givesDisadvantage() {
-        let entity = GameMonsterEntity(number: 1, type: .normal, health: 5, maxHealth: 5, level: 1)
-        XCTAssertTrue(CombatResolver.hasDisadvantage(attacker: entity, isRangedAdjacent: true),
-                      "p.20: Ranged attack adjacent = disadvantage")
-    }
+    // Strengthen (Advantage), Muddle (Disadvantage) and a ranged attack on an adjacent enemy are
+    // tested where they are decided, in performAttack, by the cards drawn:
+    // ConditionRuleTests.testStrengthenGivesAdvantageMuddleDisadvantageAndBothCancel and
+    // AttackRuleTests.testARangedAttackOnAnAdjacentEnemyDrawsTwoCardsAndKeepsTheWorse.
 
     // FH: "Regenerate — heal 1 at the start of each of the figure's turns. Persistent;
     // it is NOT removed after one heal (it is removed only when the figure suffers damage)."
@@ -661,7 +611,7 @@ final class RB_TerrainTests: XCTestCase {
     }
 
     // p.15: "Monsters will avoid traps if a path exists"
-    func testMonsterTrapAvoidance() {
+    func testMonsterTrapAvoidance() throws {
         let board = makeBoard(cols: 10, rows: 3)
         // Trap on the direct path
         board.cells[HexCoord(3, 1)] = HexCell(coord: HexCoord(3, 1), tileRef: "test",
@@ -679,17 +629,16 @@ final class RB_TerrainTests: XCTestCase {
             avoidTraps: false, occupiedByEnemy: []
         )
 
-        XCTAssertNotNil(pathAvoiding, "Should find alternative path avoiding trap")
-        XCTAssertNotNil(pathDirect, "Should find path through trap")
-
-        if let avoiding = pathAvoiding {
-            let goesThrough = avoiding.contains(HexCoord(3, 1))
-            XCTAssertFalse(goesThrough, "p.15: Trap-avoiding path should not include trap hex")
-        }
+        let avoiding = try XCTUnwrap(pathAvoiding, "Should find alternative path avoiding trap")
+        let direct = try XCTUnwrap(pathDirect, "Should find path through trap")
+        XCTAssertFalse(avoiding.contains(HexCoord(3, 1)), "p.15: Trap-avoiding path should not include trap hex")
+        XCTAssertEqual(avoiding.last, HexCoord(5, 1))
+        XCTAssertEqual(direct.count - 1, 4, "the straight way is four hexes")
+        XCTAssertGreaterThanOrEqual(avoiding.count, direct.count, "going round is never shorter")
     }
 
     // p.15: "If only path includes trap, monsters will use it"
-    func testMonsterTrapsOnlyPath() {
+    func testMonsterTrapsOnlyPath() throws {
         let board = makeBoard(cols: 7, rows: 3)
         // Block all rows except through the trap
         for col in 2...4 {
@@ -704,17 +653,16 @@ final class RB_TerrainTests: XCTestCase {
             avoidTraps: true, occupiedByEnemy: []
         )
 
-        XCTAssertNotNil(path, "p.15: Falls back to trap path when no alternative")
-        if let path = path {
-            XCTAssertTrue(path.contains(HexCoord(3, 1)), "Must go through trap as only option")
-        }
+        let only = try XCTUnwrap(path, "p.15: Falls back to trap path when no alternative")
+        XCTAssertTrue(only.contains(HexCoord(3, 1)), "Must go through trap as only option")
     }
 
     // p.14: "Figures cannot move through enemy-occupied hexes"
     func testCantMoveThroughEnemies() {
         let board = makeBoard(cols: 10, rows: 3)
 
-        // Enemy blocks the only path
+        // Enemy blocks the only path: a corridor one hex wide
+        for hex in Array(board.cells.keys) where hex.row != 1 { board.cells[hex] = nil }
         let reachable = Pathfinder.reachableHexes(
             board: board, from: HexCoord(1, 1), range: 3,
             occupiedByEnemy: [HexCoord(2, 1)], occupiedByAlly: []
@@ -722,6 +670,19 @@ final class RB_TerrainTests: XCTestCase {
 
         // Can't stop on the enemy hex
         XCTAssertNil(reachable[HexCoord(2, 1)], "p.14: Can't stop on enemy hex")
+        XCTAssertNil(reachable[HexCoord(3, 1)], "p.14: nor get past it")
+        XCTAssertNil(reachable[HexCoord(4, 1)])
+        XCTAssertNotNil(reachable[HexCoord(0, 1)], "the other way is open")
+        XCTAssertNil(Pathfinder.findPath(board: board, from: HexCoord(1, 1), to: HexCoord(4, 1), occupiedByEnemy: [HexCoord(2, 1)]))
+
+        // An ally in the same place is walked through, but not stopped on (p.14).
+        let pastAlly = Pathfinder.reachableHexes(
+            board: board, from: HexCoord(1, 1), range: 3,
+            occupiedByEnemy: [], occupiedByAlly: [HexCoord(2, 1)]
+        )
+        XCTAssertNil(pastAlly[HexCoord(2, 1)])
+        XCTAssertEqual(pastAlly[HexCoord(3, 1)], 2)
+        XCTAssertEqual(pastAlly[HexCoord(4, 1)], 3)
     }
 }
 
@@ -833,89 +794,27 @@ final class RB_ScenarioTests: XCTestCase {
 
 final class RB_AttackModifierDeckTests: XCTestCase {
 
-    // p.23: "There can only be 10 Bless cards in a single deck"
-    func testMaxBlessLimit() {
-        let t = TestGame()
-        for _ in 0..<15 {
-            t.attackModifierManager.addBless(to: .monster)
-        }
-        let count = t.game.monsterAttackModifierDeck.cards.filter { $0.type == .bless }.count
-        XCTAssertEqual(count, 10, "p.23: Max 10 bless per deck")
-    }
-
-    // p.23: "There can only be 10 Curse cards in a single deck"
-    func testMaxCurseLimit() {
-        let t = TestGame()
-        for _ in 0..<15 {
-            t.attackModifierManager.addCurse(to: .monster)
-        }
-        let count = t.game.monsterAttackModifierDeck.cards.filter { $0.type == .curse }.count
-        XCTAssertEqual(count, 10, "p.23: Max 10 curse per deck")
-    }
-
-    // p.19: "Bless/curse cards are removed from the deck when drawn"
-    func testBlessCurseRemovedOnShuffle() {
-        let t = TestGame()
-        t.attackModifierManager.addBless(to: .monster)
-        t.attackModifierManager.addCurse(to: .monster)
-
-        // Draw all cards (so bless/curse end up in "drawn" portion)
-        let total = t.game.monsterAttackModifierDeck.cards.count
-        for _ in 0..<total {
-            _ = t.attackModifierManager.drawMonsterCard()
-        }
-
-        // Shuffle: bless/curse from drawn portion should be removed
-        t.attackModifierManager.shuffleDeck(&t.game.monsterAttackModifierDeck)
-
-        let bless = t.game.monsterAttackModifierDeck.cards.filter { $0.type == .bless }.count
-        let curse = t.game.monsterAttackModifierDeck.cards.filter { $0.type == .curse }.count
-        XCTAssertEqual(bless, 0, "p.19: Bless removed from deck on shuffle after drawing")
-        XCTAssertEqual(curse, 0, "p.19: Curse removed from deck on shuffle after drawing")
-    }
+    // The ten Blesses and the two sets of ten Curses, through applyCondition:
+    // CombatEffectsTests.testBlessAndCurseCardsAreSharedBetweenDecks and
+    // ConditionRuleTests.testTheTenCursesOfEachSide. A drawn Bless or Curse leaving the deck, at
+    // the end of a real round: RoundRuleTests.testBlessAndCurseAreRemovedWhenDrawnAndCauseNoReshuffle.
 
     // p.19: Default monster deck has 20 cards
-    func testDefaultDeckSize() {
+    func testDefaultDeckIsTheTwentyStandardCards() {
         let deck = AttackModifierDeck.defaultDeck()
-        XCTAssertEqual(deck.cards.count, 20,
-                       "p.18: Default AM deck has 20 cards (6×+0, 5×+1, 5×-1, 1×+2, 1×-2, 1××2, 1××0)")
+        let counts = Dictionary(grouping: deck.cards, by: \.type).mapValues(\.count)
+        XCTAssertEqual(counts, [.plus0: 6, .plus1: 5, .minus1: 5, .plus2: 1, .minus2: 1, .double_: 1, .null_: 1],
+                       "p.18: 6 × +0, 5 × +1, 5 × −1, one each of +2, −2, ×2 and Null")
+        XCTAssertEqual(deck.cards.count, 20)
+        XCTAssertEqual(deck.cards.filter(\.shuffle).map(\.type).sorted { $0.rawValue < $1.rawValue }, [.double_, .null_],
+                       "only the ×2 and the Null call for a reshuffle")
+        XCTAssertEqual(Set(deck.cards.map(\.id)).count, 20)
+        XCTAssertFalse(deck.needsShuffle)
     }
 }
 
-// MARK: - Loot Rules (Rulebook p.28)
-
-final class RB_LootTests: XCTestCase {
-
-    // p.28: "When a monster is killed, a loot token is placed on the hex"
-    func testMonsterDeathDropsLoot() {
-        let board = makeBoard()
-        let pos = HexCoord(5, 5)
-        board.placeLoot(at: pos)
-        XCTAssertEqual(board.lootTokens[pos], 1, "p.28: Loot token placed on death hex")
-    }
-
-    // p.28: "A character picks up loot when entering a hex with loot"
-    func testLootPickedUpOnEntry() {
-        let board = makeBoard()
-        let pos = HexCoord(5, 5)
-        board.placeLoot(at: pos, count: 2)
-
-        let taken = board.takeLoot(at: pos)
-        XCTAssertEqual(taken, 2, "p.28: All loot picked up on entry")
-        XCTAssertEqual(board.lootTokens[pos], nil, "Loot removed after pickup")
-    }
-
-    // p.28: "At the end of a character's turn, pick up loot on current hex"
-    func testEndOfTurnAutoLoot() {
-        let board = makeBoard()
-        let pos = HexCoord(3, 3)
-        board.placeLoot(at: pos)
-
-        // Simulate end-of-turn pickup
-        let taken = board.takeLoot(at: pos)
-        XCTAssertEqual(taken, 1, "p.28: End-of-turn auto-loot collects tokens")
-    }
-}
+// Looting is tested through real turns in LootRuleTests (the end of a turn, Loot X, a token's
+// worth) and BoardRulesRegressionTests.testKilledMonsterDropsMoneyButSummonedMonsterDoesNot.
 
 // MARK: - Level & Difficulty Rules (Rulebook p.15)
 

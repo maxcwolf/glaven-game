@@ -2,7 +2,7 @@ import Foundation
 
 /// A monster position from the map data. Which monsters appear — and whether they are normal,
 /// elite or boss — comes from the scenario data; the map supplies where they stand.
-struct MonsterSlot: Equatable {
+struct MonsterSlot: Codable, Equatable, Sendable {
     let name: String
     let coord: HexCoord
     /// Map-data type per character count (2/3/4): "normal", "elite" or "none".
@@ -16,6 +16,9 @@ struct MonsterSlot: Equatable {
 /// Builds a BoardState from VGB scenario map data.
 /// Reuses ScenarioMapBuilder's coordinate transform logic.
 enum BoardBuilder {
+
+    /// The connector that is no door but a crossing between two tiles lying apart.
+    static let crossingSubType = "altar"
 
     /// Result of revealing part of the map.
     struct Reveal {
@@ -50,15 +53,16 @@ enum BoardBuilder {
         var reveal = Reveal()
         let start = startingPlacement(in: scenario.mapTileData, initialRoomRefs: initialRoomRefs)
         addRoom(start.tile, path: start.path, root: scenario.mapTileData, to: board,
-                turnAxis: start.axis, reveal: &reveal)
+                turnAxis: start.axis, placements: scenario.placements, traps: scenario.traps, reveal: &reveal)
         // Some scenarios split the party between separate starting tiles (e.g. GH 50, 58, 85: the
         // scenario's first room covers both). Every tile with starting hexes is revealed at setup.
         for placement in findPlacements(in: scenario.mapTileData)
         where hasStartingLocations(placement.tile) && !reveal.visited.contains(placement.path) {
             addRoom(placement.tile, path: placement.path, root: scenario.mapTileData, to: board,
-                    turnAxis: placement.axis, reveal: &reveal)
+                    turnAxis: placement.axis, placements: scenario.placements, traps: scenario.traps, reveal: &reveal)
         }
         recomputeBounds(board)
+        board.wallEdges = wallEdges(in: scenario, among: Set(board.cells.keys))
         return (board, reveal)
     }
 
@@ -81,7 +85,9 @@ enum BoardBuilder {
 
     /// Reveal the room behind a door (cells, overlays, onward doors) without placing monsters;
     /// returns the room's monster slots. Nil if the door's room can't be found.
-    static func revealRoomSlots(door: DoorInfo, scenario: VGBScenario, board: BoardState) -> Reveal? {
+    /// With `opening` false the door stays shut: the tiles are laid out behind it (a room the
+    /// scenario shows from the start, or one entered some other way than by its door).
+    static func revealRoomSlots(door: DoorInfo, scenario: VGBScenario, board: BoardState, opening: Bool = true) -> Reveal? {
         let root = scenario.mapTileData
         let path: [Int]
         let tile: VGBMapTileData
@@ -100,12 +106,14 @@ enum BoardBuilder {
             ? nil
             : (refPoint: (door.refPoint.col, door.refPoint.row), origin: (door.origin.col, door.origin.row))
         var reveal = Reveal(preexisting: Set(board.cells.keys))
-        addRoom(tile, path: path, root: root, to: board, turnAxis: turnAxis, reveal: &reveal)
+        addRoom(tile, path: path, root: root, to: board, turnAxis: turnAxis,
+                placements: scenario.placements, traps: scenario.traps, reveal: &reveal)
 
-        if let idx = board.doors.firstIndex(where: { $0.coord == door.coord }) {
+        if opening, let idx = board.doors.firstIndex(where: { $0.coord == door.coord }) {
             board.doors[idx].isOpen = true
         }
         recomputeBounds(board)
+        board.wallEdges = wallEdges(in: scenario, among: Set(board.cells.keys))
         return reveal
     }
 
@@ -141,6 +149,35 @@ enum BoardBuilder {
         }
         walk(root, path: [], axis: nil)
         return result
+    }
+
+    /// Where a lettered hex is on the whole map, revealed or not, with the path of its tile.
+    static func markerSites(_ marker: String, in scenario: VGBScenario) -> [(path: [Int], coord: HexCoord)] {
+        guard let placements = scenario.placements else { return [] }
+        var sites: [(path: [Int], coord: HexCoord)] = []
+        for placement in findPlacements(in: scenario.mapTileData) {
+            for cell in placements.tiles[placement.tile.ref.lowercased()]?.markers?[marker] ?? [] where cell.count >= 2 {
+                let global = HexMath.normaliseAndRotatePoint(
+                    turns: placement.tile.turns, refPoint: placement.axis?.refPoint ?? (0, 0),
+                    origin: placement.axis?.origin ?? (0, 0), tileCoord: (cell[0], cell[1])
+                )
+                let coord = HexCoord(global.0, global.1)
+                if !sites.contains(where: { $0.coord == coord }) { sites.append((placement.path, coord)) }
+            }
+        }
+        return sites
+    }
+
+    /// Every tile of the room behind a door: its own, and those joined to it by corridors.
+    static func roomRefs(behind door: DoorInfo, in scenario: VGBScenario) -> Set<String> {
+        var refs: Set<String> = [door.childTileRef.lowercased()]
+        guard let path = door.childPath, let start = tile(at: path, in: scenario.mapTileData) else { return refs }
+        func walk(_ tile: VGBMapTileData) {
+            refs.insert(tile.ref.lowercased())
+            for connector in tile.doors where connector.subType == "corridor" { walk(connector.mapTileData) }
+        }
+        walk(start)
+        return refs
     }
 
     /// The tile at a door-index path from the root.
@@ -204,10 +241,21 @@ enum BoardBuilder {
         root: VGBMapTileData,
         to board: BoardState,
         turnAxis: TurnAxis?,
+        placements: ScenarioPlacements?,
+        traps: ScenarioTraps?,
         reveal: inout Reveal
     ) {
         guard !reveal.visited.contains(path) else { return }
         reveal.visited.insert(path)
+
+        // A tile reached by two connectors is in the map data twice, and only one copy carries
+        // its overlays, monsters and onward connectors. Entered by the other one, it is that
+        // copy which is laid out (the room was revealed empty: #7's F1b from D2b, #53's J2a).
+        if let full = fullCopy(of: tileData, path: path, axis: turnAxis, in: root) {
+            addRoom(full.tile, path: full.path, root: root, to: board, turnAxis: full.axis,
+                    placements: placements, traps: traps, reveal: &reveal)
+            return
+        }
 
         let refPoint = turnAxis?.refPoint ?? (0, 0)
         let origin = turnAxis?.origin ?? (0, 0)
@@ -263,7 +311,10 @@ enum BoardBuilder {
                 case .trap:
                     board.cells[coord]?.overlay = .trap
                     board.cells[coord]?.overlaySubType = overlay.ref.subType
-                    // Damage (2 + L) is computed from the scenario level when the trap springs.
+                    // What it does is what the scenario book's legend says of it, not what its
+                    // art suggests (a "Stun Trap" drawn as a bear trap deals no damage). Damage
+                    // (2 + L) is computed from the scenario level when the trap springs.
+                    board.cells[coord]?.trapEffect = traps?.kind(tile: tileData.ref, cell: cell, art: overlay.ref.subType)?.effect
 
                 case .hazard:
                     board.cells[coord]?.overlay = .hazard
@@ -323,14 +374,61 @@ enum BoardBuilder {
 
             if door.subType == "corridor" {
                 // No door: the connected tile is part of this room.
-                addRoom(door.mapTileData, path: path + [index], root: root, to: board, turnAxis: axis, reveal: &reveal)
+                addRoom(door.mapTileData, path: path + [index], root: root, to: board, turnAxis: axis,
+                        placements: placements, traps: traps, reveal: &reveal)
                 continue
             }
-            recordDoor(at: doorCoord, subType: door.subType, leadingTo: door.mapTileData.ref,
+            if door.subType == Self.crossingSubType {
+                // Not a door but one end of a crossing (the altars of Demonic Rift): the tile
+                // beyond lies apart and is on the map from the start; its own altar is the
+                // other end.
+                board.cells[doorCoord]?.overlay = .obstacle
+                board.cells[doorCoord]?.overlaySubType = door.subType
+                board.cells[doorCoord]?.passable = false
+                addRoom(door.mapTileData, path: path + [index], root: root, to: board, turnAxis: axis,
+                        placements: placements, traps: traps, reveal: &reveal)
+                let far = board.cells.values.filter {
+                    $0.coord != doorCoord && $0.overlay == .obstacle && $0.overlaySubType == door.subType
+                        && $0.tileRef == door.mapTileData.ref
+                }.map(\.coord).min()
+                if let far, board.crossings.isEmpty { board.crossings = [doorCoord, far] }
+                continue
+            }
+            recordDoor(at: doorCoord, subType: door.subType, leadingTo: door.mapTileData.ref, from: tileData.ref,
                        path: path + [index], axis: axis, on: board)
         }
 
-        // 5. Connector back to the parent tile, when this tile was revealed before its parent.
+        // 5. Objective places and spawn markers written for this tile (once per hex: a tile
+        //    joined by several corridors appears once per connector in the map data).
+        if let written = placements?.tiles[tileData.ref.lowercased()] {
+            let place: ([Int]) -> HexCoord? = { cell in
+                guard cell.count >= 2 else { return nil }
+                let global = HexMath.normaliseAndRotatePoint(
+                    turns: tileData.turns, refPoint: refPoint, origin: origin, tileCoord: (cell[0], cell[1])
+                )
+                return HexCoord(global.0, global.1)
+            }
+            for objective in written.objectives ?? [] {
+                let cells = objective.cells.compactMap(place)
+                guard let coord = cells.first, board.cells[coord] != nil, !reveal.preexisting.contains(coord),
+                      !board.openObjectiveSlots.contains(where: { $0.coord == coord }),
+                      !board.objectiveSites.values.contains(where: { $0.coord == coord }) else { continue }
+                board.openObjectiveSlots.append(ObjectiveSlot(objective: objective.objective, coord: coord, cells: cells,
+                                                              barsDoor: objective.door ?? false))
+            }
+            for (marker, hexes) in (written.markers ?? [:]).sorted(by: { $0.key < $1.key }) {
+                for coord in hexes.compactMap(place) where board.cells[coord] != nil
+                    && !(board.markerHexes[marker] ?? []).contains(coord) {
+                    board.markerHexes[marker, default: []].append(coord)
+                }
+            }
+        }
+
+        // 6. Connectors from tiles that hold only an empty copy of this one.
+        addConnectorsFromEmptyCopies(of: tileData, path: path, axis: turnAxis, root: root, to: board,
+                                     placements: placements, traps: traps, reveal: &reveal)
+
+        // 7. Connector back to the parent tile, when this tile was revealed before its parent.
         if let last = path.last, let parent = tile(at: Array(path.dropLast()), in: root),
            last < parent.doors.count {
             let parentPath = Array(path.dropLast())
@@ -338,17 +436,116 @@ enum BoardBuilder {
             let door = parent.doors[last]
             let doorCoord = doorCoordinate(door, in: parent, axis: parentPlacement.axis)
             if door.subType == "corridor" {
-                addRoom(parent, path: parentPath, root: root, to: board, turnAxis: parentPlacement.axis, reveal: &reveal)
+                addRoom(parent, path: parentPath, root: root, to: board, turnAxis: parentPlacement.axis,
+                        placements: placements, traps: traps, reveal: &reveal)
             } else if !board.visibleRooms.contains(parent.ref) || !reveal.visited.contains(parentPath) {
                 let parentAxis = parentPlacement.axis ?? (refPoint: (0, 0), origin: (0, 0))
-                recordDoor(at: doorCoord, subType: door.subType, leadingTo: parent.ref,
+                recordDoor(at: doorCoord, subType: door.subType, leadingTo: parent.ref, from: tileData.ref,
                            path: parentPath, axis: parentAxis, on: board)
             }
         }
     }
 
+    /// The wall lines among `cells` (the hexes on the board): every side shared by full hexes of
+    /// two different tiles. The edge of a map tile is a wall unless a door or corridor covers it
+    /// (FAQ), and those cover the hexes the two tiles' half-hexes make together — so two full
+    /// hexes that meet across the border, beside a door or anywhere else, have a wall line
+    /// between them. Hexes outside every tile's own grid (doors, corridors) join what they touch.
+    static func wallEdges(in scenario: VGBScenario, among cells: Set<HexCoord>) -> Set<HexEdge> {
+        var tileOf: [HexCoord: Int] = [:]
+        var connectors = Set<HexCoord>()
+        var tiles: [Set<HexCoord>] = []
+        for placement in findPlacements(in: scenario.mapTileData) {
+            let grid = cellSet(of: placement.tile, axis: placement.axis)
+            // A tile reached by two connectors is in the data twice: one tile.
+            let id = tiles.firstIndex(of: grid) ?? {
+                tiles.append(grid)
+                return tiles.count - 1
+            }()
+            for cell in grid where tileOf[cell] == nil { tileOf[cell] = id }
+            for door in placement.tile.doors {
+                connectors.insert(doorCoordinate(door, in: placement.tile, axis: placement.axis))
+            }
+            for overlay in placement.tile.overlays {
+                for cell in overlay.cells where cell.count >= 2 {
+                    let global = HexMath.normaliseAndRotatePoint(
+                        turns: placement.tile.turns, refPoint: placement.axis?.refPoint ?? (0, 0),
+                        origin: placement.axis?.origin ?? (0, 0), tileCoord: (cell[0], cell[1])
+                    )
+                    let coord = HexCoord(global.0, global.1)
+                    if !grid.contains(coord) { connectors.insert(coord) }
+                }
+            }
+        }
+        var edges = Set<HexEdge>()
+        for cell in cells where !connectors.contains(cell) {
+            guard let mine = tileOf[cell] else { continue }
+            for neighbor in cell.neighbors where cells.contains(neighbor) && !connectors.contains(neighbor) {
+                if let theirs = tileOf[neighbor], theirs != mine { edges.insert(HexEdge(cell, neighbor)) }
+            }
+        }
+        return edges
+    }
+
+    /// The hexes a tile covers on the board, placed by `axis`.
+    private static func cellSet(of tile: VGBMapTileData, axis: TurnAxis?) -> Set<HexCoord> {
+        var cells = Set<HexCoord>()
+        for (y, row) in TileGrids.grid(for: tile.ref).enumerated() {
+            for (x, exists) in row.enumerated() where exists {
+                let global = HexMath.normaliseAndRotatePoint(
+                    turns: tile.turns, refPoint: axis?.refPoint ?? (0, 0), origin: axis?.origin ?? (0, 0), tileCoord: (x, y)
+                )
+                cells.insert(HexCoord(global.0, global.1))
+            }
+        }
+        return cells
+    }
+
+    /// For an empty copy of a tile (one reached through an extra connector), the copy of the
+    /// same tile, on the same hexes, that carries its content.
+    private static func fullCopy(of tile: VGBMapTileData, path: [Int], axis: TurnAxis?, in root: VGBMapTileData)
+        -> (path: [Int], tile: VGBMapTileData, axis: TurnAxis?)? {
+        guard !hasContent(tile) else { return nil }
+        let cells = cellSet(of: tile, axis: axis)
+        return findPlacements(in: root).first {
+            $0.path != path && $0.tile.ref == tile.ref && hasContent($0.tile) && cellSet(of: $0.tile, axis: $0.axis) == cells
+        }
+    }
+
+    /// Connectors that reach this tile from tiles holding only an empty copy of it: from this
+    /// side they exist too — a door to open, or a corridor that makes the other tile part of
+    /// this room.
+    private static func addConnectorsFromEmptyCopies(of tileData: VGBMapTileData, path: [Int], axis: TurnAxis?,
+                                                     root: VGBMapTileData, to board: BoardState,
+                                                     placements: ScenarioPlacements?, traps: ScenarioTraps?,
+                                                     reveal: inout Reveal) {
+        let cells = cellSet(of: tileData, axis: axis)
+        for placement in findPlacements(in: root) where placement.path != path {
+            for (index, door) in placement.tile.doors.enumerated()
+            where door.mapTileData.ref == tileData.ref && !hasContent(door.mapTileData) && placement.path + [index] != path {
+                let copyAxis = childAxis(of: door, in: placement.tile, parentAxis: placement.axis)
+                guard cellSet(of: door.mapTileData, axis: copyAxis) == cells else { continue }
+                let doorCoord = doorCoordinate(door, in: placement.tile, axis: placement.axis)
+                if door.subType == "corridor" {
+                    if board.cells[doorCoord] == nil {
+                        board.cells[doorCoord] = HexCell(coord: doorCoord, tileRef: tileData.ref, passable: true)
+                    }
+                    addRoom(placement.tile, path: placement.path, root: root, to: board, turnAxis: placement.axis,
+                            placements: placements, traps: traps, reveal: &reveal)
+                } else if !reveal.visited.contains(placement.path),
+                          !cellSet(of: placement.tile, axis: placement.axis).isSubset(of: Set(board.cells.keys)) {
+                    if board.cells[doorCoord] == nil {
+                        board.cells[doorCoord] = HexCell(coord: doorCoord, tileRef: tileData.ref, passable: true)
+                    }
+                    recordDoor(at: doorCoord, subType: door.subType, leadingTo: placement.tile.ref, from: tileData.ref,
+                               path: placement.path, axis: placement.axis ?? (refPoint: (0, 0), origin: (0, 0)), on: board)
+                }
+            }
+        }
+    }
+
     /// Record a closed door (once per hex).
-    private static func recordDoor(at coord: HexCoord, subType: String, leadingTo ref: String,
+    private static func recordDoor(at coord: HexCoord, subType: String, leadingTo ref: String, from: String,
                                    path: [Int], axis: TurnAxis, on board: BoardState) {
         guard !board.doors.contains(where: { $0.coord == coord }) else { return }
         board.doors.append(DoorInfo(
@@ -357,6 +554,7 @@ enum BoardBuilder {
             subType: subType,
             refPoint: HexCoord(axis.refPoint.0, axis.refPoint.1),
             origin: HexCoord(axis.origin.0, axis.origin.1),
+            fromTileRef: from,
             childPath: path
         ))
         board.cells[coord]?.overlay = .door

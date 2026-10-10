@@ -64,9 +64,11 @@ extension CharacterManager {
         return text.prefix(1).uppercased() + text.dropFirst()
     }
 
-    /// Deal two quests to a recruit, from those no one in the party holds.
+    /// Deal two quests to a recruit, from those no one in the party holds. A quest fulfilled by
+    /// a retired character is out of the game (p.48) and never dealt again.
     func dealQuests(to character: GameCharacter) {
-        let held = Set(game.characters.compactMap(\.personalQuest))
+        let held = Set(game.characters.compactMap(\.personalQuest)).union(game.events.questsRemoved)
+            .union(game.retiredCharacters.compactMap(\.personalQuest))
         let deck = editionStore.personalQuests(for: character.edition).map(\.cardId).filter { !held.contains($0) }
         character.questChoices = Array(deck.shuffled(using: &GameRandom.shared).prefix(2))
     }
@@ -88,6 +90,7 @@ extension CharacterManager {
         while character.personalQuestProgress.count <= index { character.personalQuestProgress.append(0) }
         let target = quest.requirements[index].target
         character.personalQuestProgress[index] = max(0, min(target, character.personalQuestProgress[index] + delta))
+        PersonalQuestEvaluator.unlockQuestScenarios(character: character, game: game, editionStore: editionStore)
     }
 
     func questComplete(_ character: GameCharacter) -> Bool {

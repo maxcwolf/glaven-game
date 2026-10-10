@@ -614,6 +614,7 @@ struct GameSetupView: View {
                 .padding(2)
                 .background(BoardTheme.raised, in: Capsule())
                 .fixedSize()
+                soloRow
             }
             difficultyHint
             HStack(spacing: 16) {
@@ -762,6 +763,23 @@ struct GameSetupView: View {
         .accessibilityHint("Explains each rule the first time it comes up, and \u{201C}Why?\u{201D} on what the monsters do")
     }
 
+    /// Solo play (GH p.15): one player runs every character and so knows all their plans, which
+    /// the game makes up for with monsters and traps a level higher. Gold and bonus experience
+    /// stay at the scenario level.
+    private var soloRow: some View {
+        Toggle(isOn: Binding(get: { gameManager.game.solo },
+                             set: { gameManager.game.solo = $0 })) {
+            Label("Solo", systemImage: "person.fill")
+                .font(BoardTheme.font(size: 13))
+                .foregroundStyle(gameManager.game.solo ? BoardTheme.brass : BoardTheme.secondaryText)
+        }
+        .toggleStyle(.switch)
+        .tint(BoardTheme.brass)
+        .fixedSize()
+        .accessibilityLabel("Solo play")
+        .accessibilityHint("One player runs the whole party: monsters and traps are one level higher, gold and bonus experience are not")
+    }
+
     /// Always present, so the rows below never move as the party changes.
     private var difficultyHint: some View {
         ScenarioLevelLine(text: Self.difficultyHint(for: gameManager))
@@ -777,7 +795,11 @@ struct GameSetupView: View {
         guard !gameManager.game.characters.isEmpty else {
             return "Add characters to set the scenario level"
         }
-        return "Scenario level \(gameManager.levelManager.scenarioLevel()) · \(gameManager.game.difficulty.description)"
+        let level = gameManager.levelManager.scenarioLevel()
+        let hint = "Scenario level \(level) · \(gameManager.game.difficulty.description)"
+        guard gameManager.game.solo else { return hint }
+        // Solo play raises what the party meets, not what it earns.
+        return hint + " · solo: monsters and traps at level \(min(7, level + 1))"
     }
 }
 

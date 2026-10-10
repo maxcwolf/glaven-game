@@ -10,6 +10,8 @@ final class Scenario {
     var disabledRules: Set<Int> = []
     /// Cumulative kill counts by monster name, incremented by BoardCoordinator on entity death.
     var killCounts: [String: Int] = [:]
+    /// Monster types the placements held back (`later`) that a rule has since set up.
+    var releasedMonsters: Set<String> = []
     /// Set by ScenarioRulesManager when a finish rule fires; checked in BoardCoordinator.checkVictoryDefeat().
     var pendingFinish: String? = nil
     /// Each character's experience and gold when the scenario began (by character id), so the

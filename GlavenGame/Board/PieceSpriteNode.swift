@@ -22,6 +22,9 @@ struct PieceAppearance {
     var isPlayerSide: Bool
     /// What VoiceOver calls the figure ("Bandit Guard 1"); empty falls back to the initials.
     var name: String = ""
+    /// An objective the map already draws (an altar, a door): only the ring, its number and its
+    /// HP bar are drawn, so the art beneath shows.
+    var isHollow = false
 
     static let normalRim = SKColor(red: 0.91, green: 0.89, blue: 0.85, alpha: 1)
     static let eliteRim = SKColor(red: 0.89, green: 0.70, blue: 0.24, alpha: 1)
@@ -118,8 +121,14 @@ class PieceSpriteNode: SKNode {
         shadow.zPosition = -1
         addChild(shadow)
         addChild(rimNode)
+        if appearance.isHollow {
+            shadow.isHidden = true
+            rimNode.fillColor = .clear
+        }
 
-        if let portrait = appearance.portrait,
+        if appearance.isHollow {
+            // Nothing in the middle: the map's own art is the picture.
+        } else if let portrait = appearance.portrait,
            let texture = Self.circularTexture(portrait, key: appearance.portraitKey, diameter: radius * 2 - 4) {
             let sprite = SKSpriteNode(texture: texture, size: CGSize(width: radius * 2 - 4, height: radius * 2 - 4))
             sprite.zPosition = 1

@@ -311,7 +311,7 @@ extension BoardCoordinator {
 
     /// Whether a summon would have an empty hex next to the character.
     private func hasRoomToSummon(next character: GameCharacter) -> Bool {
-        boardState.piecePositions[.character(character.id)]?.neighbors.contains(where: isEmptyHex) ?? false
+        boardState.piecePositions[.character(character.id)].map { boardState.neighbors(of: $0).contains(where: isEmptyHex) } ?? false
     }
 
     private func isMoment(_ moment: BoardItemEffect.Moment, for turn: PlayerTurnController) -> Bool {
@@ -320,7 +320,9 @@ extension BoardCoordinator {
         case (.turn, .watchingMonsterTurn), (.turn, .placingCharacter):
             return false
         case (.turn, _):
-            return turn.phase == .executeTopAction || turn.phase == .executeBottomAction || turn.phase == .executeExtraHalf
+            // At any time in the turn (FAQ): between and after the two halves, until the turn
+            // is ended, and on a long-rest turn until its card is chosen.
+            return turn.phase != .selectTopCard
         case (.move, .selectingMove(let mover, _, _, let teleport, _)):
             return mover == me && !teleport
         case (.attack, .selectingAttackTarget(let attacker, _, _)),
@@ -474,8 +476,9 @@ extension BoardCoordinator {
                 break
             }
         case .sufferDamage(let amount):
+            // The item's price is damage like any other: it may be negated by losing cards.
             log("\(name(me)) suffers \(amount) damage", category: .damage)
-            sufferDamage(amount, to: me)
+            sufferOwnDamage(amount, characterID: character.id, source: item.name)
         case .loot(let range):
             collectLootInRange(pieceID: me, range: range)
         case .refreshItems(let count, let smallOnly):
@@ -517,7 +520,7 @@ extension BoardCoordinator {
             turn.attackTexts.append(text)
         case .disarmTraps(let range):
             guard let origin = boardState.piecePositions[me] else { break }
-            let traps = boardState.cells.values.filter { $0.isTrap && $0.coord.distance(to: origin) <= range }.map(\.coord).sorted()
+            let traps = boardState.cells.values.filter { $0.isTrap && boardState.isWithin(range, from: origin, to: $0.coord) }.map(\.coord).sorted()
             for hex in traps {
                 boardState.removeTrap(at: hex)
                 boardScene?.removeOverlaySprite(at: hex, offsetCol: offsetCol, offsetRow: offsetRow)
@@ -651,7 +654,8 @@ extension BoardCoordinator {
     func initiativeItemOffers() -> [PendingInitiativeChange] {
         guard !autoResolvePrompts, let game = gameManager?.game else { return [] }
         return game.activeCharacters.filter { !$0.exhausted && !$0.absent && !$0.longRest }.compactMap { character in
-            guard let key = character.carriedItems.first(where: { Self.initiativeBoots[$0] != nil }),
+            guard canUseItems(character),
+                  let key = character.carriedItems.first(where: { Self.initiativeBoots[$0] != nil }),
                   !character.spentItems.contains(key), let item = itemData(key) else { return nil }
             return PendingInitiativeChange(characterID: character.id, itemKey: key, itemName: item.name,
                                            amount: Self.initiativeBoots[key] ?? 0, initiative: character.initiative)
@@ -731,12 +735,20 @@ extension BoardCoordinator {
         pendingSufferChoice = nil
         let chosen = max(0, min(amount, pending.most))
         let me = PieceID.character(pending.characterID)
-        if chosen > 0 {
-            log("\(name(me)) suffers \(chosen) damage", category: .damage)
-            sufferDamage(chosen, to: me)
+        let turn = activePlayerTurn
+        guard chosen > 0, let character = entity(for: me) else {
+            turn?.advanceAfterAsyncAction()
+            return
         }
-        activePlayerTurn?.damageSuffered += chosen
-        activePlayerTurn?.advanceAfterAsyncAction()
+        // "X is the amount you suffered": what was really lost. Damage negated by losing cards
+        // (which the player may, as with any damage) or by a bonus in play wasn't suffered.
+        let before = character.health
+        log("\(name(me)) suffers \(chosen) damage", category: .damage)
+        let finish = {
+            turn?.damageSuffered += max(0, before - character.health)
+            turn?.advanceAfterAsyncAction()
+        }
+        if !sufferOwnDamage(chosen, characterID: pending.characterID, source: turn?.currentCard?.name ?? "their own card", then: finish) { finish() }
     }
 
     // MARK: - An ally recovers cards
@@ -1050,33 +1062,68 @@ extension BoardCoordinator {
         pending.continuation?.resume(returning: use)
     }
 
-    /// Offer a defence item to the character being attacked; true when they use it (it is then
-    /// spent and counted). Headless play never uses them.
-    @MainActor func offerDefenseItem(_ item: DefenseItem, to target: PieceID, from attacker: PieceID) async -> Bool {
-        let key = item.key
-        // The holder: the figure attacked, or for a summon's item (Phasing Idol) its owner.
+    /// A stunned character uses no items (GH p.22). What works by itself — a passive item, an
+    /// armour with use circles — isn't "used" and goes on working (FAQ).
+    func canUseItems(_ character: GameCharacter) -> Bool {
+        !isConditionActive(.stun, on: .character(character.id))
+    }
+
+    /// Who would use a defence item against an attack on `target`, if they hold it unspent: the
+    /// figure attacked, or for a summon's item (Phasing Idol) its owner.
+    private func holder(of item: DefenseItem, attacked target: PieceID) -> (character: GameCharacter, data: ItemData)? {
         let holderID: String? = {
             if item.forSummons { return summonOwner(of: target)?.id }
             if case .character(let id) = target { return id }
             return nil
         }()
-        guard let id = holderID, !autoResolvePrompts, let gameManager,
+        guard let id = holderID, let gameManager,
               let character = gameManager.game.characters.first(where: { $0.id == id }),
-              character.carriedItems.contains(key),
-              !character.spentItems.contains(key), !character.consumedItems.contains(key),
+              character.carriedItems.contains(item.key),
+              !character.spentItems.contains(item.key), !character.consumedItems.contains(item.key),
               item.consumes.map(gameManager.game.isElementAvailable) ?? true,
-              let data = itemData(key) else { return false }
+              let data = itemData(item.key) else { return nil }
+        return (character, data)
+    }
+
+    /// An item with several use circles (Hide Armor, Chainmail, Splintmail, Platemail, Steam
+    /// Armor, Swordedge Armor) works like a persistent bonus: whenever its trigger applies it is
+    /// used and a circle is marked, without the player being asked (FAQ, "Item Use") — in
+    /// headless play too, and while its wearer is stunned. True when `target` wears `item`, it
+    /// is such an armour and it has a use left.
+    func isChargedArmour(_ item: DefenseItem, wornBy target: PieceID) -> Bool {
+        holder(of: item, attacked: target).map { $0.data.slots > 1 } ?? false
+    }
+
+    /// Mark a use of an armour with use circles that took part in an attack on `target`.
+    func useChargedArmour(_ item: DefenseItem, wornBy target: PieceID) {
+        guard let (character, data) = holder(of: item, attacked: target), data.slots > 1 else { return }
+        markDefenseItemUsed(item, data: data, by: character, attacked: target)
+    }
+
+    /// Offer a defence item to the character being attacked; true when they use it (it is then
+    /// spent and counted). The player's choice: headless play never uses them, and a stunned
+    /// character can't. Armours with use circles aren't offered (`isChargedArmour`).
+    @MainActor func offerDefenseItem(_ item: DefenseItem, to target: PieceID, from attacker: PieceID) async -> Bool {
+        guard !autoResolvePrompts, let (character, data) = holder(of: item, attacked: target),
+              data.slots <= 1, canUseItems(character) else { return false }
         let generation = boardGeneration
         let use = await withCheckedContinuation { (continuation: CheckedContinuation<Bool, Never>) in
-            pendingItemUse = PendingItemUse(characterID: id, itemName: data.name, question: item.question,
+            pendingItemUse = PendingItemUse(characterID: character.id, itemName: data.name, question: item.question,
                                             attacker: name(attacker), continuation: continuation)
         }
         guard use, isCurrentBoard(generation) else { return false }
+        markDefenseItemUsed(item, data: data, by: character, attacked: target)
+        return true
+    }
+
+    private func markDefenseItemUsed(_ item: DefenseItem, data: ItemData, by character: GameCharacter, attacked target: PieceID) {
+        guard let gameManager else { return }
+        let (key, id) = (item.key, character.id)
         gameManager.characterManager.onBeforeMutate?()
-        // An item with use slots (Hide Armor: two) is spent once they are all marked.
         if let element = item.consumes, gameManager.game.consumeElements([element]) != nil {
             log("\(name(target)) consumes \(GameText.elementName(element))", category: .element)
         }
+        // An item with use slots (Hide Armor: two) is spent once they are all marked.
         let used = character.itemSlotsUsed[key, default: 0] + 1
         if data.slots > 1 && used < data.slots {
             character.itemSlotsUsed[key] = used
@@ -1089,6 +1136,5 @@ extension BoardCoordinator {
         }
         gameManager.scenarioStatsManager.recordItemUse(by: character.name)
         log("\(name(.character(id))) uses \(data.name)", category: .info)
-        return true
     }
 }

@@ -93,9 +93,10 @@ enum BattleGoalEvaluator {
         case "475":
             return stats.largestOverkill >= 4
 
-        // Purist: "Use no items during the scenario"
+        // Purist: "Use no items during the scenario". Counted as items are used: a long rest
+        // refreshes spent items, so what is still spent at the end says nothing.
         case "476":
-            return character.spentItems.isEmpty && character.consumedItems.isEmpty
+            return stats.itemUses == 0
 
         // Opener: "Be the first to kill a monster"
         case "477":
@@ -150,9 +151,10 @@ enum BattleGoalEvaluator {
             let stats = statsManager.stats(for: character.name)
             let xp = scenarioXPGained[character.id] ?? 0
 
-            // Check if any OTHER character is exhausted (not this one)
+            // Check if any OTHER character is exhausted (not this one); one who left through
+            // the exit wasn't.
             let alliesExhausted = game.characters.contains {
-                $0.id != character.id && !$0.absent && $0.exhausted
+                $0.id != character.id && !$0.absent && statsManager.wasExhausted($0)
             }
 
             let achieved = evaluate(

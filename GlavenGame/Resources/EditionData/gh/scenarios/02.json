@@ -130,7 +130,7 @@
     },
     {
       "roomNumber": 4,
-      "ref": "A3b",
+      "ref": "A4b",
       "marker": "b",
       "treasures": [
         67
@@ -165,7 +165,7 @@
     },
     {
       "roomNumber": 6,
-      "ref": "A4b",
+      "ref": "A3b",
       "marker": "d",
       "monster": [
         {

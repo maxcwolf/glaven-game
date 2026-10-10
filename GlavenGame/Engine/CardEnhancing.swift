@@ -57,6 +57,14 @@ enum CardEnhancing {
     static func options(for slot: Slot, edition: String) -> [EnhancementAction] {
         EnhancementsManager.availableActions(for: slot.type, actionType: slot.action.type, isSummon: false, edition: edition)
             .filter { plays($0, in: slot) }
+            // Gloomhaven puts conditions and elements on main ability lines only (GH p.47): a
+            // small line under one (Range, Target, Pierce, Push, Pull) takes its +1.
+            .filter { edition != "gh" || !isSmallLine(slot) || $0 == .plus1 || $0 == .hex }
+    }
+
+    /// A line that modifies the ability above it rather than being one itself.
+    static func isSmallLine(_ slot: Slot) -> Bool {
+        slot.actionIndex >= 100 && ![.attack, .move, .heal, .shield, .retaliate, .loot].contains(slot.action.type)
     }
 
     static func plays(_ enhancement: EnhancementAction, in slot: Slot) -> Bool {
@@ -65,23 +73,39 @@ enum CardEnhancing {
             return slot.action.value?.intValue != nil && plusOneTypes.contains(slot.action.type)
         case .jump:
             return slot.action.type == .move && slot.host.type == .move
+                && !(slot.host.subActions ?? []).contains { $0.type == .jump }
         case .hex:
             // An area with a hex marked where the card has room for one more.
             return slot.action.type == .area && slot.action.value?.stringValue.contains("enhance") == true
         case .wild:
-            return [.attack, .move, .heal, .shield, .retaliate].contains(slot.host.type)
+            return [.attack, .move, .heal, .shield, .retaliate].contains(slot.host.type) || isConditionForEveryone(slot)
         default:
             if enhancement.isNegativeCondition {
-                return slot.host.type == .attack && ConditionName(rawValue: enhancement.rawValue) != nil
+                guard ConditionName(rawValue: enhancement.rawValue) != nil else { return false }
+                return slot.host.type == .attack || (isConditionForEveryone(slot) && slot.host.value?.stringValue != enhancement.rawValue)
             }
             if enhancement.isPositiveCondition {
-                return [.heal, .shield, .retaliate].contains(slot.host.type) && ConditionName(rawValue: enhancement.rawValue) != nil
+                guard ConditionName(rawValue: enhancement.rawValue) != nil else { return false }
+                return [.heal, .shield, .retaliate].contains(slot.host.type)
+                    || (isConditionForEveryone(slot) && slot.host.value?.stringValue != enhancement.rawValue)
             }
             if ElementType(rawValue: enhancement.rawValue) != nil {
-                return [.attack, .move, .heal, .shield, .retaliate].contains(slot.host.type)
+                return [.attack, .move, .heal, .shield, .retaliate].contains(slot.host.type) || isConditionForEveryone(slot)
             }
             return false
         }
+    }
+
+    /// A condition printed as an ability of its own ("Stun, all adjacent enemies") that reaches
+    /// everyone it names with no choosing: the board plays an element or a second condition
+    /// beside it. One with a single target to pick isn't played with them yet.
+    static func isConditionForEveryone(_ slot: Slot) -> Bool {
+        guard slot.actionIndex < 100, slot.host.type == .condition,
+              let spec = slot.host.subActions?.first(where: { $0.type == .specialTarget })?.value?.stringValue.lowercased()
+        else { return false }
+        return ["self", "enemiesadjacent", "enemies", "alliesadjacent", "alliesadjacentaffect", "alliesaffect",
+                "selfalliesaffect", "selfalliesadjacentaffect"].contains(spec)
+            || ["enemiesrange:", "alliesrangeaffect:", "selfalliesaffectrange:"].contains { spec.hasPrefix($0) }
     }
 
     private static let plusOneTypes: Set<ActionType> = [
@@ -102,20 +126,30 @@ enum CardEnhancing {
             }.count
             let targets = max(1, pattern.components(separatedBy: "target").count - 1 + added)
             let level = max(0, (card.level?.intValue ?? 1) - 1) * 25
-            let earlier = EnhancementsManager.enhancementCount(on: slot.cardId, in: enhancements) * 75
+            let earlier = EnhancementsManager.enhancementCount(on: slot.cardId, half: slot.half, in: enhancements) * 75
             return 200 / targets + level + earlier
         }
+        // Dearer for each enhancement already on the same action — this half of the card.
         return EnhancementsManager.enhancementCost(
             action: enhancement, slotType: slot.type, actionType: slot.action.type,
             cardLevel: card.level?.intValue ?? 1,
-            previousEnhancements: EnhancementsManager.enhancementCount(on: slot.cardId, in: enhancements),
-            isMultiTarget: targetsSeveral(slot.host),
+            previousEnhancements: EnhancementsManager.enhancementCount(on: slot.cardId, half: slot.half, in: enhancements),
+            isMultiTarget: targetsSeveral(slot.host) && !neverDoubled(enhancement, in: slot),
             isLost: slot.half == "top" ? card.lost == true : card.bottomLost == true,
             isPersistent: card.persistent == true,
             isSummon: false, edition: edition)
     }
 
-    /// An ability that targets several figures costs double (GH p.43).
+    /// The doubling for several targets "does not apply to target, area-of-effect hex, or
+    /// element enhancements" (GH p.47): one more target is itself the cost of reaching more, and
+    /// an element is infused once however many are hit.
+    static func neverDoubled(_ enhancement: EnhancementAction, in slot: Slot) -> Bool {
+        enhancement.isElement || enhancement == .hex || (enhancement == .plus1 && slot.action.type == .target)
+    }
+
+    /// An ability that targets several figures costs double (GH p.47). An ability that reaches
+    /// several only by consuming an element, or that summons several figures, is single-target
+    /// (FAQ): only what is printed beside the ability itself counts.
     static func targetsSeveral(_ action: ActionModel) -> Bool {
         (action.subActions ?? []).contains { sub in
             switch sub.type {
@@ -149,6 +183,8 @@ enum CardEnhancing {
     static func apply(_ enhancements: [Enhancement], to actions: [ActionModel], cardId: Int?, half: String) -> [ActionModel] {
         guard let cardId else { return actions }
         var result = actions
+        // A condition added to a condition ability is played as one more beside it.
+        var beside: [(index: Int, action: ActionModel)] = []
         let mine = enhancements.filter { $0.cardId == cardId && $0.actionHalf == half }
             .sorted { ($0.actionIndex, $0.slotIndex) < ($1.actionIndex, $1.slotIndex) }
         for enhancement in mine {
@@ -156,6 +192,12 @@ enum CardEnhancing {
             let subIndex = enhancement.actionIndex < 100 ? nil : enhancement.actionIndex % 100
             guard result.indices.contains(index) else { continue }
             var host = result[index]
+            if subIndex == nil, host.type == .condition, enhancement.action.isCondition {
+                let reach = (host.subActions ?? []).filter { [.specialTarget, .range, .target].contains($0.type) }
+                beside.append((index, ActionModel(type: .condition, value: .string(enhancement.action.rawValue),
+                                                  subActions: reach.isEmpty ? nil : reach)))
+                continue
+            }
             if let subIndex {
                 guard var subs = host.subActions, subs.indices.contains(subIndex) else { continue }
                 if enhancement.action == .plus1 {
@@ -171,6 +213,9 @@ enum CardEnhancing {
                 host = addingHex(enhancement.slotIndex, of: original, to: host)
             }
             result[index] = host
+        }
+        for extra in beside.reversed() {
+            result.insert(extra.action, at: extra.index + 1)
         }
         return result
     }

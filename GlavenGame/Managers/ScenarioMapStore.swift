@@ -20,8 +20,10 @@ final class ScenarioMapStore {
         ) else { return nil }
 
         guard let data = try? Data(contentsOf: url),
-              let scenario = try? JSONDecoder().decode(VGBScenario.self, from: data)
+              var scenario = try? JSONDecoder().decode(VGBScenario.self, from: data)
         else { return nil }
+        scenario.placements = ScenarioPlacementStore.shared.placements(for: index)
+        scenario.traps = ScenarioTrapStore.shared.traps(for: index)
 
         cache[index] = scenario
         return scenario

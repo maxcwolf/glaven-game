@@ -11,7 +11,14 @@ final class EnhancementsManager {
 
     // MARK: - Available Actions for Slot Types
 
+    /// What a slot can take (GH p.47). The data marks each slot with the kind of line it is on:
+    /// a square on a line that only takes +1 (Range, a summon's stats), a circle on a main line
+    /// (+1 or an element), a diamond on a main line that targets enemies (also a negative
+    /// condition), a diamond with a plus on one that affects allies or the character (also
+    /// Bless or Strengthen), a hex on an area. Jump goes on any Move line.
     static func availableActions(for slotType: EnhancementSlotType, actionType: ActionType, isSummon: Bool, edition: String) -> [EnhancementAction] {
+        // A summon's stat line takes +1 and nothing else.
+        if isSummon { return [.plus1] }
         var actions: [EnhancementAction] = []
 
         switch slotType {
@@ -23,9 +30,11 @@ final class EnhancementsManager {
         case .diamond:
             actions.append(.plus1)
             actions.append(contentsOf: negativeConditions(edition: edition))
+            actions.append(contentsOf: elementActions)
         case .diamond_plus:
             actions.append(.plus1)
             actions.append(contentsOf: positiveConditions(edition: edition))
+            actions.append(contentsOf: elementActions)
         case .hex:
             actions.append(.hex)
         case .any:
@@ -33,10 +42,10 @@ final class EnhancementsManager {
             actions.append(contentsOf: elementActions)
             actions.append(contentsOf: negativeConditions(edition: edition))
             actions.append(contentsOf: positiveConditions(edition: edition))
-            if actionType == .move {
-                actions.append(.jump)
-            }
             actions.append(.hex)
+        }
+        if actionType == .move, slotType != .hex {
+            actions.append(.jump)
         }
 
         return actions
@@ -55,9 +64,10 @@ final class EnhancementsManager {
     }
 
     private static func positiveConditions(edition: String) -> [EnhancementAction] {
-        var conditions: [EnhancementAction] = [.strengthen, .bless, .regenerate]
+        // Gloomhaven's Enhancer sells Strengthen and Bless; Regenerate and Ward are Frosthaven's.
+        var conditions: [EnhancementAction] = [.strengthen, .bless]
         if edition == "fh" {
-            conditions.append(.ward)
+            conditions.append(contentsOf: [.regenerate, .ward])
         }
         return conditions
     }
@@ -109,7 +119,7 @@ final class EnhancementsManager {
 
     private static func baseCost(for action: EnhancementAction, actionType: ActionType, isSummon: Bool, isFH: Bool) -> Int {
         if isSummon {
-            return summonBaseCost(for: action, isFH: isFH)
+            return summonBaseCost(for: action, actionType: actionType, isFH: isFH)
         }
         return standardBaseCost(for: action, actionType: actionType, isFH: isFH)
     }
@@ -127,27 +137,27 @@ final class EnhancementsManager {
             case .heal: return isFH ? 20 : 30
             case .push, .pull: return isFH ? 15 : 30
             case .teleport: return isFH ? 40 : 50
-            case .target: return isFH ? 50 : 75
+            case .target: return 50
             default: return isFH ? 30 : 50
             }
         case .jump:
-            return isFH ? 35 : 60
+            return isFH ? 35 : 50
         case .hex:
             return isFH ? 80 : 200
         case .poison: return isFH ? 25 : 75
         case .wound: return isFH ? 25 : 75
         case .muddle: return isFH ? 25 : 50
-        case .immobilize: return isFH ? 50 : 150
+        case .immobilize: return isFH ? 50 : 100
         case .disarm: return 150
-        case .curse: return isFH ? 50 : 150
+        case .curse: return isFH ? 50 : 75
         case .bane: return 50
         case .brittle: return 25
         case .impair: return 50
         case .chill: return 25
         case .infect: return 25
         case .rupture: return 25
-        case .strengthen: return isFH ? 50 : 100
-        case .bless: return isFH ? 50 : 75
+        case .strengthen: return 50
+        case .bless: return 50
         case .regenerate: return isFH ? 25 : 40
         case .ward: return 50
         case .dodge: return 50
@@ -158,10 +168,13 @@ final class EnhancementsManager {
         }
     }
 
-    private static func summonBaseCost(for action: EnhancementAction, isFH: Bool) -> Int {
+    /// A summon's stats (GH p.47): +1 Move or Attack 100, +1 Range or hit points 50. The hit
+    /// point line is the summon's `heal` slot in the data.
+    private static func summonBaseCost(for action: EnhancementAction, actionType: ActionType, isFH: Bool) -> Int {
         switch action {
         case .plus1:
-            return isFH ? 40 : 100 // summon stats are more expensive
+            if isFH { return 40 }
+            return [.range, .heal].contains(actionType) ? 50 : 100
         case .poison, .wound: return isFH ? 30 : 100
         case .muddle: return isFH ? 30 : 75
         case .immobilize: return isFH ? 75 : 200
@@ -181,6 +194,8 @@ final class EnhancementsManager {
         case slotTaken
         /// The board doesn't play it yet (hex areas, any element), so it isn't sold.
         case notPlayable
+        /// The class already has as many enhanced cards as the city's prosperity level (GH p.47).
+        case cardLimit
         case tooExpensive
     }
 
@@ -197,10 +212,25 @@ final class EnhancementsManager {
         if Self.enhancement(on: slot.cardId, half: slot.half, actionIndex: slot.actionIndex,
                             slotIndex: slot.slotIndex, in: character.enhancements) != nil { return .slotTaken }
         if !CardEnhancing.options(for: slot, edition: character.edition).contains(enhancement) { return .notPlayable }
+        if !canEnhanceAnotherCard(slot.cardId, for: character) { return .cardLimit }
         let cost = CardEnhancing.cost(enhancement, in: slot, card: card, enhancements: character.enhancements,
                                       edition: character.edition)
         if character.loot < cost { return .tooExpensive }
         return nil
+    }
+
+    /// The cards of the character's class that carry an enhancement: every card of the class
+    /// counts, whoever had it enhanced (FAQ).
+    static func enhancedCards(of character: GameCharacter) -> Set<Int> {
+        Set(character.enhancements.map(\.cardId))
+    }
+
+    /// Whether the card may take an enhancement: Gloomhaven allows a class as many enhanced
+    /// cards as the city's prosperity level (GH p.47); a card already enhanced may take more.
+    func canEnhanceAnotherCard(_ cardId: Int, for character: GameCharacter) -> Bool {
+        guard character.edition == "gh" else { return true }
+        let enhanced = Self.enhancedCards(of: character)
+        return enhanced.contains(cardId) || enhanced.count < game.prosperityLevel
     }
 
     /// Buy an enhancement for one of the character's cards: it stays on the card for good, and
@@ -235,6 +265,12 @@ final class EnhancementsManager {
     /// Count of enhancements on a specific card.
     static func enhancementCount(on cardId: Int, in enhancements: [Enhancement]) -> Int {
         enhancements.filter { $0.cardId == cardId }.count
+    }
+
+    /// Count of enhancements on one action of a card — its top or its bottom half. Each one
+    /// makes the next on that action dearer (GH p.47); the other half's don't.
+    static func enhancementCount(on cardId: Int, half: String, in enhancements: [Enhancement]) -> Int {
+        enhancements.filter { $0.cardId == cardId && $0.actionHalf == half }.count
     }
 
     /// Get enhancement applied to a specific slot.

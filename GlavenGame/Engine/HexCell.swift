@@ -12,6 +12,37 @@ enum OverlayType: String, Codable, Sendable {
     case rift
 }
 
+/// What a trap does to the figure that springs it. A scenario's map legend names each of its
+/// traps ("Damage Trap", "Stun Trap", "Poison and Damage Trap"): some deal no damage at all, and
+/// the art a trap is drawn with says nothing about which it is.
+struct TrapEffect: Codable, Sendable, Equatable {
+    /// Whether it deals trap damage: 2 + L, or the amount printed on the card that made it.
+    var damage: Bool
+    /// The conditions it gives, in the order the legend names them.
+    var conditions: [ConditionName] = []
+
+    /// A plain damage trap.
+    static let damageOnly = TrapEffect(damage: true)
+
+    /// What a trap is guessed to do from its art alone (the map data's sub-type), for traps no
+    /// legend or card describes.
+    static func guess(fromArt subType: String?) -> TrapEffect {
+        switch subType {
+        case "poison": return TrapEffect(damage: true, conditions: [.poison])
+        case "bear": return TrapEffect(damage: true, conditions: [.immobilize])
+        case "thorns": return TrapEffect(damage: true, conditions: [.wound])
+        default: return .damageOnly
+        }
+    }
+
+    /// The trap as a legend names it: "Damage", "Stun", "Poison and Damage", "Immobilize and Poison".
+    var legendName: String {
+        var parts = conditions.map { $0.rawValue.prefix(1).uppercased() + $0.rawValue.dropFirst() }
+        if damage { parts.append("Damage") }
+        return parts.joined(separator: " and ")
+    }
+}
+
 /// A single hex cell on the game board.
 struct HexCell: Codable, Sendable, Equatable {
     let coord: HexCoord
@@ -28,6 +59,11 @@ struct HexCell: Codable, Sendable, Equatable {
     /// Explicit damage override for a trap placed mid-scenario; nil means the standard
     /// damage-trap value (2 + scenario level).
     var trapDamage: Int?
+    /// What a trap does when sprung, where something says so: the scenario book's legend for a
+    /// trap of the map, the card or monster ability for one placed in play. Nil only for a trap
+    /// nothing describes (a map without a written legend, an old save), which is guessed from
+    /// the art it is drawn with.
+    var trapEffect: TrapEffect?
     /// Treasure ID for treasure chests/coins.
     var treasureID: String?
     /// Treasure coin amount (for coin tokens).
@@ -38,4 +74,7 @@ struct HexCell: Codable, Sendable, Equatable {
     var isHazard: Bool { overlay == .hazard }
     /// Whether this cell has an active trap.
     var isTrap: Bool { overlay == .trap }
+    /// What the trap on this cell does when sprung: what is written for it, else the guess
+    /// from its art.
+    var resolvedTrapEffect: TrapEffect { trapEffect ?? .guess(fromArt: overlaySubType) }
 }

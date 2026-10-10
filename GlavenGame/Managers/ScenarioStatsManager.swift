@@ -9,6 +9,8 @@ struct ScenarioCharacterStats: Codable, Equatable {
     var coinsLooted: Int = 0
     var roundsSurvived: Int = 0
     var exhausted: Bool = false
+    /// Left through the exit: out of play like an exhausted character, but not exhausted.
+    var escaped: Bool = false
     var conditionsApplied: Int = 0
     var conditionsReceived: Int = 0
     var cardsLost: Int = 0
@@ -49,6 +51,7 @@ extension ScenarioCharacterStats {
         coinsLooted = try c.decodeIfPresent(Int.self, forKey: .coinsLooted) ?? 0
         roundsSurvived = try c.decodeIfPresent(Int.self, forKey: .roundsSurvived) ?? 0
         exhausted = try c.decodeIfPresent(Bool.self, forKey: .exhausted) ?? false
+        escaped = try c.decodeIfPresent(Bool.self, forKey: .escaped) ?? false
         conditionsApplied = try c.decodeIfPresent(Int.self, forKey: .conditionsApplied) ?? 0
         conditionsReceived = try c.decodeIfPresent(Int.self, forKey: .conditionsReceived) ?? 0
         cardsLost = try c.decodeIfPresent(Int.self, forKey: .cardsLost) ?? 0
@@ -115,6 +118,13 @@ final class ScenarioStatsManager {
     func recordConditionApplied(by characterName: String) { update(characterName) { $0.conditionsApplied += 1 } }
     func recordConditionReceived(by characterName: String) { update(characterName) { $0.conditionsReceived += 1 } }
     func recordExhausted(_ characterName: String) { update(characterName) { $0.exhausted = true } }
+    func recordEscaped(_ characterName: String) { update(characterName) { $0.escaped = true } }
+    /// Whether a character was exhausted in the scenario. One who left through the exit takes no
+    /// further part either, and the board marks them the same way, but that is no exhaustion:
+    /// it isn't counted for personal quests or held against anyone's battle goal.
+    func wasExhausted(_ character: GameCharacter) -> Bool {
+        character.exhausted && !stats(for: character.name).escaped
+    }
     func recordTrap(by characterName: String) { update(characterName) { $0.trapsTriggered += 1 } }
     func recordTreasure(by characterName: String) { update(characterName) { $0.treasuresLooted += 1 } }
     func recordDoor(by characterName: String) { update(characterName) { $0.doorsOpened += 1 } }

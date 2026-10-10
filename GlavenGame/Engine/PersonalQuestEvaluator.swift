@@ -56,10 +56,59 @@ enum PersonalQuestEvaluator {
                 return idx >= 0 && idx < requirements.count
                     && character.personalQuestProgress[idx] >= requirements[idx].counterValue
             }) { continue }
-            let value = count(how, character: character, game: game, editionStore: editionStore)
+            var value = count(how, character: character, game: game, editionStore: editionStore)
+            // Battle goals met and retirements seen only ever add up (FAQ: checkmarks lost
+            // later don't undo Battle Legacy).
+            if case .auto(let auto) = how, ["battleGoals", "retiredChars"].contains(auto) {
+                value = max(value, character.personalQuestProgress[i])
+            }
             character.personalQuestProgress[i] = min(value, req.counterValue)
         }
+        unlockQuestScenarios(character: character, game: game, editionStore: editionStore)
         return isComplete(character: character, quest: quest)
+    }
+
+    // MARK: - Quest scenarios
+
+    /// The scenarios a quest sends its holder through ("then unlock Noxious Cellar and follow it
+    /// to a conclusion"), in order: the one the requirement names, then each one the last unlocks.
+    static func questChain(_ requirement: PersonalQuestRequirement, edition: String,
+                           editionStore: EditionDataStore) -> [ScenarioData] {
+        guard let auto = requirement.autotrack, auto.hasPrefix("scenario:"),
+              let first = auto.dropFirst("scenario:".count).split(separator: "|").first.map(String.init) else { return [] }
+        var chain: [ScenarioData] = []
+        var next: String? = first
+        while let index = next, chain.count < 10, !chain.contains(where: { $0.index == index }),
+              let scenario = editionStore.scenarioData(index: index, edition: edition) {
+            chain.append(scenario)
+            next = scenario.unlocks?.first
+        }
+        return chain
+    }
+
+    /// A quest's scenario goes on the map the moment the conditions before it are met (FAQ:
+    /// quests 510, 513, 521, 526 and 529). Returns the scenarios newly unlocked.
+    @discardableResult
+    static func unlockQuestScenarios(character: GameCharacter, game: GameState, editionStore: EditionDataStore) -> [ScenarioData] {
+        guard let questId = character.personalQuest,
+              let quest = editionStore.personalQuest(cardId: questId, edition: character.edition) else { return [] }
+        var unlocked: [ScenarioData] = []
+        for req in quest.requirements {
+            guard let prereqs = req.requires, !prereqs.isEmpty,
+                  let scenario = questChain(req, edition: character.edition, editionStore: editionStore).first,
+                  !game.manualScenarios.contains(scenario.id), !game.completedScenarios.contains(scenario.id),
+                  prereqs.allSatisfy({ index in
+                      let idx = index - 1
+                      return quest.requirements.indices.contains(idx) && idx < character.personalQuestProgress.count
+                          && character.personalQuestProgress[idx] >= quest.requirements[idx].counterValue
+                  }) else { continue }
+            game.manualScenarios.insert(scenario.id)
+            game.campaignLog.append(CampaignLogEntry(
+                type: .questCompleted,
+                message: "\(GameText.characterName(character, labels: editionStore))\u{2019}s quest leads to #\(scenario.index) \(scenario.name)"))
+            unlocked.append(scenario)
+        }
+        return unlocked
     }
 
     static func isComplete(character: GameCharacter, quest: PersonalQuestData) -> Bool {
@@ -111,12 +160,15 @@ enum PersonalQuestEvaluator {
         switch parts[0] {
         case "gold": return character.loot
         case "scenariosCompleted": return record.scenariosCompleted.count
-        case "battleGoals": return character.battleGoalProgress
+        // Only checkmarks from battle goals count, not those events and treasures give (FAQ).
+        case "battleGoals": return record.battleGoalChecks
         case "exhaustedSelf": return record.timesExhausted
         case "exhaustedChars": return record.partyExhaustions
         case "scenario":
-            let indices = value.split(separator: "|").map { "\(character.edition)-\($0)" }
-            return indices.filter(game.completedScenarios.contains).count
+            // "Follow it to a conclusion": the last scenario of the chain is won.
+            let requirement = PersonalQuestRequirement(name: "", counter: nil, autotrack: autotrack, requires: nil)
+            guard let last = questChain(requirement, edition: character.edition, editionStore: editionStore).last else { return 0 }
+            return game.completedScenarios.contains(last.id) ? 1 : 0
         case "itemType":
             let slots = value.split(separator: "|").map(String.init)
             return character.items.filter { key in
@@ -135,7 +187,8 @@ enum PersonalQuestEvaluator {
                 (scenario.monsters ?? []).contains { editionStore.monsterData(name: $0, edition: scenario.edition)?.isBoss == true }
             }.count
         case "donatedGold": return record.donatedGold
-        case "retiredChars": return game.retiredCharacters.count
+        // Retirements while they were in the party, not those before they joined.
+        case "retiredChars": return record.retirementsSeen
         default: return 0
         }
     }

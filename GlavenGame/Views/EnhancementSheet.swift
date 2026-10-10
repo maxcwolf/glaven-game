@@ -99,9 +99,15 @@ struct EnhancementSheet: View {
                     .font(BoardTheme.font(size: 13))
                     .foregroundStyle(BoardTheme.secondaryText)
                 if count > 0 {
-                    Text("Each enhancement already on a card adds \(character.edition == "fh" ? 50 : 75) gold.")
+                    Text(Self.surchargeNote(edition: character.edition))
                         .font(BoardTheme.font(size: 12))
                         .foregroundStyle(BoardTheme.secondaryText)
+                } else if !enhancer.canEnhanceAnotherCard(card.cardId ?? 0, for: character) {
+                    Text(Self.cardLimitNote(enhanced: EnhancementsManager.enhancedCards(of: character).count,
+                                            prosperity: gameManager.game.prosperityLevel))
+                        .font(BoardTheme.font(size: 12))
+                        .foregroundStyle(BoardTheme.secondaryText)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
                 ForEach(CardEnhancing.slots(of: card)) { slot in
                     slotRow(slot, card: card)
@@ -188,7 +194,8 @@ struct EnhancementSheet: View {
                         .buttonStyle(.plain)
                         .disabled(problem != nil)
                         .accessibilityLabel("\(option.displayName), \(cost) gold")
-                        .accessibilityHint(problem == .tooExpensive ? "Not enough gold" : "")
+                        .accessibilityHint(problem == .tooExpensive ? "Not enough gold"
+                                           : problem == .cardLimit ? "The class has as many enhanced cards as the city allows" : "")
                     }
                 }
             }
@@ -196,6 +203,16 @@ struct EnhancementSheet: View {
         .padding(12)
         .background(BoardTheme.panel, in: RoundedRectangle(cornerRadius: 14))
         .overlay(RoundedRectangle(cornerRadius: 14).stroke(BoardTheme.border.opacity(0.45), lineWidth: 1))
+    }
+
+    /// What earlier enhancements cost the next one: counted on the same half of the card.
+    static func surchargeNote(edition: String) -> String {
+        "Each enhancement already on the same half of a card adds \(edition == "fh" ? 50 : 75) gold to the next one there."
+    }
+
+    /// Why a card with nothing on it can't be enhanced: the class is at the city's limit.
+    static func cardLimitNote(enhanced: Int, prosperity: Int) -> String {
+        "\(enhanced) of this class\u{2019}s cards \(enhanced == 1 ? "is" : "are") enhanced, as many as the city\u{2019}s prosperity level (\(prosperity)) allows. This card can be enhanced once prosperity rises."
     }
 
     /// The printed line a slot sits on: "Attack 3", or "Attack 3 · Pierce 2" for a sub-action.

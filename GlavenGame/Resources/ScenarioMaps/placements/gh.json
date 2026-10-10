@@ -1,0 +1,253 @@
+{
+  "2": {"goal": {"text": "Kill the Bandit Commander and all revealed enemies.", "kill": ["bandit-commander"], "enemies": "revealed"}, "notes": ["The doors to the side rooms are locked: only the Bandit Commander opens them. With his first special he jumps to the next of them in turn, however far away, and opens it."], "locks": [{"between": ["m1a", "a1a"], "note": "Locked: only the Bandit Commander opens it."}, {"between": ["m1a", "a4b"], "note": "Locked: only the Bandit Commander opens it."}, {"between": ["m1a", "a2a"], "note": "Locked: only the Bandit Commander opens it."}, {"between": ["m1a", "a3b"], "note": "Locked: only the Bandit Commander opens it."}], "cycles": {"bandit-commander": {"doors": true}}, "tiles": {
+  }},
+  "3": {"goal": {"text": "Kill a number of enemies equal to five times the number of characters.", "killCount": {"count": "5xC"}}, "tiles": {
+    "l1b": {"markers": {"a": [[0, 3]]}}
+  }},
+  "6": {"goal": {"text": "Reveal the M tile and kill all revealed enemies.", "reveal": ["m1a"], "enemies": "revealed"}, "tiles": {
+  }},
+  "7": {"goal": {"text": "Loot all treasure tiles.", "loot": "goal"}, "lootActionOnly": true, "tiles": {
+  }},
+  "8": {"goal": {"text": "Kill both Inox Bodyguards.", "kill": ["inox-bodyguard"]}, "tiles": {
+  }},
+  "9": {"goal": {"text": "Kill the Merciless Overseer and loot the treasure tile.", "kill": ["merciless-overseer"], "loot": "goal"}, "tiles": {
+  }},
+  "11": {"goal": {"text": "Kill the Captain of the Guard.", "kill": ["captain-of-the-guard"]}, "tiles": {
+  }},
+  "12": {"goal": {"text": "Kill the necromancer Jekserah.", "kill": ["jekserah"]}, "tiles": {
+  }},
+  "15": {"goal": {"text": "Loot the treasure tile.", "loot": "goal"}, "notes": ["The side rooms open when a character ends a turn on the pressure plate; the treasure room opens when every character stands on a side-room plate as a turn ends."], "locks": [{"between": ["d1a", "h3b"], "plate": ["c"], "note": "Locked: it opens when a character ends their turn on the pressure plate (c)."}, {"between": ["d1a", "h1b"], "plate": ["c"], "note": "Locked: it opens when a character ends their turn on the pressure plate (c)."}, {"between": ["d1a", "c1a"], "allOnPlates": {"markers": ["d"], "more": {"3": ["e"], "4": ["e", "f"]}}, "note": "Locked: it opens when every character stands on a pressure plate in the side rooms as a turn ends."}], "tiles": {
+    "d1a": {"markers": {"c": [[2, 2]]}},
+    "h1b": {"markers": {"d": [[6, 1]], "f": [[0, 1]]}},
+    "h3b": {"markers": {"d": [[0, 1]], "e": [[6, 1]]}}
+  }},
+  "19": {"goal": {"text": "Protect Hail until she reaches the altar.", "arrive": {"objective": 1, "marker": "b", "count": 1, "adjacent": true}, "lostAt": {"1": 1}}, "tiles": {
+    "c2b": {"markers": {"e": [[0, 2]]}},
+    "d1a": {"markers": {"d": [[1, 3]]}},
+    "d2a": {"objectives": [{"objective": 1, "cells": [[0, 2]]}], "markers": {"c": [[2, 4]]}},
+    "i1b": {"markers": {"b": [[2, 3]]}}
+  }},
+  "20": {"goal": {"text": "Kill the necromancer Jekserah.", "kill": ["jekserah"]}, "tiles": {
+  }},
+  "21": {"goal": {"text": "Kill the Prime Demon.", "kill": ["prime-demon"]}, "tiles": {
+  }},
+  "22": {"goal": {"text": "Destroy all altars.", "destroy": [1]}, "tiles": {
+    "c1a": {"objectives": [{"objective": 1, "cells": [[0, 3]]}]},
+    "c2b": {"objectives": [{"objective": 1, "cells": [[2, 3]]}]},
+    "d1a": {"objectives": [{"objective": 1, "cells": [[0, 3]]}]},
+    "d2a": {"objectives": [{"objective": 1, "cells": [[3, 1]]}]}
+  }},
+  "23": {"goal": {"text": "Occupy all pressure plates simultaneously.", "occupy": {"markers": ["a"], "more": {"3": ["b"], "4": ["b", "c"]}}}, "tiles": {
+    "d1a": {"markers": {"a": [[1, 4]], "c": [[1, 0]]}},
+    "m1a": {"markers": {"a": [[4, 4]], "b": [[1, 2]]}}
+  }},
+  "24": {"goal": {"text": "Open all doors.", "reveal": ["*"]}, "tiles": {
+  }},
+  "25": {"goal": {"text": "All characters must escape through the exit.", "escape": {"marker": "a"}, "lostIfExhausted": ["offExit"]}, "tiles": {
+    "g2a": {"markers": {"a": [[7, 2], [6, 2], [6, 1], [7, 0], [6, 0]]}}
+  }},
+  "26": {"notes": ["Each water pump summons a normal Black Imp beside it as every round ends."], "tiles": {
+    "l1a": {"objectives": [{"objective": 1, "cells": [[0, 5]]}, {"objective": 1, "cells": [[3, 5]]}, {"objective": 2, "cells": [[0, 1]]}, {"objective": 3, "cells": [[3, 1]]}]}
+  }},
+  "27": {"goal": {"lostAt": {"1": 1}}, "notes": ["Hail does nothing, but takes a turn at initiative 99: a Wound hurts her then like anyone.", "Demons arrive in the corners as rounds end: one after each of the first two rounds, then two a round \u2014 Night, Wind, Frost, Sun, Earth, Flame, and round again."], "passiveTurns": [1], "tiles": {
+    "m1a": {"objectives": [{"objective": 1, "cells": [[2, 3]]}], "markers": {"b": [[4, 6]], "c": [[4, 0]], "d": [[1, 0]], "e": [[1, 6]]}}
+  }},
+  "29": {"tiles": {
+    "e1a": {"objectives": [{"objective": 1, "cells": [[1, -1]], "door": true}, {"objective": 1, "cells": [[1, 5]], "door": true}, {"objective": 1, "cells": [[5, 2]], "door": true}]}
+  }},
+  "30": {"goal": {"text": "Loot the treasure tile.", "loot": "goal"}, "lootActionOnly": true, "tiles": {
+  }},
+  "31": {"goal": {"text": "Destroy the rock column.", "destroy": [1]}, "tiles": {
+    "l2a": {"objectives": [{"objective": 1, "cells": [[2, 3]]}], "markers": {"b": [[4, 0]], "c": [[4, 6]]}}
+  }},
+  "32": {"goal": {"text": "Reveal the G tile, kill all revealed enemies and loot the treasure tile.", "reveal": ["g2b"], "enemies": "revealed", "loot": "goal"}, "tiles": {
+  }},
+  "33": {"goal": {"text": "Loot all treasure tiles, then all characters must escape through the exit.", "loot": "goal", "escape": {"marker": "a"}, "lostIfExhausted": ["offExit"]}, "notes": ["The barred door opens when it is destroyed; the treasure room opens when every character stands on a pressure plate as a turn ends.", "When the treasure room is opened a Savvas Lavaflow arrives in the first room as the round ends; a Savvas Icestorm follows at the end of the round in which the last treasure is looted."], "locks": [{"between": ["i1b", "m1a"], "allOnPlates": {"markers": ["c"]}, "note": "Locked: it opens when every character stands on a pressure plate (c) as a turn ends."}], "rules": [{"round": "true", "once": true, "when": [{"looted": "goal"}], "spawns": [{"monster": {"name": "savvas-icestorm", "player2": "normal", "player3": "normal", "player4": "elite"}, "marker": "d"}]}], "tiles": {
+    "a3b": {"markers": {"a": [[0, 2], [0, 1], [1, 2], [1, 1], [2, 2], [2, 1]]}},
+    "a4b": {"objectives": [{"objective": 1, "cells": [[3, 0]], "door": true}]},
+    "c2b": {"markers": {"d": [[1, 0]]}},
+    "i1b": {"markers": {"c": [[0, 0], [5, 0], [0, 2], [5, 2]]}}
+  }},
+  "34": {"goal": {"text": "Kill the Elder Drake.", "kill": ["elder-drake"]}, "notes": ["The huge boulders can't be destroyed."], "indestructible": {"subTypes": ["boulder-3"]}, "tiles": {
+  }},
+  "35": {"goal": {"text": "Destroy the door and kill the Captain of the Guard.", "destroy": [1], "kill": ["captain-of-the-guard"]}, "notes": ["The demons fight on your side and attack the gate \u2014 it is their focus whenever they can get within range of it. The City Archers on the battlements shoot from the start; the other defenders aren't set up until the gate is destroyed or one of you gets over the wall.", "The wall sections can't be destroyed."], "focusFirst": [1], "indestructible": {"subTypes": ["wall-section"]}, "laidOut": ["i1b", "b2b"], "tiles": {
+    "b2b": {"markers": {"b": [[2, 0], [3, 0]]}},
+    "i1b": {"markers": {"a": [[0, 0], [1, 0]]}},
+    "l3a": {"objectives": [{"objective": 1, "cells": [[4, 7]], "door": true}]}
+  }},
+  "36": {"goal": {"text": "Kill the Prime Demon.", "kill": ["prime-demon"]}, "notes": ["The Prime Demon isn't on the map until the gate falls; it then appears outside it, having suffered (2\u00d7C)+L\u22122 damage for every round the gate stood.", "The demons attack the gate \u2014 it is their focus whenever they can get within range \u2014 and it is no ally and can't be healed; after eight rounds it falls by itself.", "A demon arrives as every round ends: Flame, Earth, Frost, Wind, and round again. The City Archers fight on your side.", "The Prime Demon's specials are both \"Move +0, Attack +0\" here.", "The wall sections can't be destroyed."], "later": ["prime-demon"], "rules": [{"round": "R == 9", "start": true, "figures": [{"identifier": {"type": "objective", "edition": "objective", "name": "Door", "marker": "1"}, "type": "damage", "value": 999}]}, {"round": "true", "always": true, "once": true, "figures": [{"identifier": {"type": "objective", "edition": "objective", "name": "Door", "marker": "1"}, "type": "dead"}], "spawns": [{"monster": {"name": "prime-demon", "type": "boss"}, "marker": "e", "placed": true}]}, {"round": "true", "always": true, "once": true, "figures": [{"identifier": {"type": "monster", "edition": "gh", "name": "prime-demon"}, "type": "present"}, {"identifier": {"type": "monster", "edition": "gh", "name": "prime-demon"}, "type": "damage", "value": "(R-1)x((2xC)+L-2)"}]}], "protect": [1], "specials": {"prime-demon": [[{"type": "move", "value": 0, "valueType": "plus"}, {"type": "attack", "value": 0, "valueType": "plus"}], [{"type": "move", "value": 0, "valueType": "plus"}, {"type": "attack", "value": 0, "valueType": "plus"}]]}, "focusFirst": [1], "indestructible": {"subTypes": ["wall-section"]}, "tiles": {
+    "l1b": {"markers": {"c": [[2, 6]], "d": [[0, 4]]}},
+    "l3a": {"objectives": [{"objective": 1, "cells": [[4, 7]], "door": true}], "markers": {"a": [[0, 2]], "b": [[2, 0]], "e": [[4, 5]]}}
+  }},
+  "37": {"goal": {"text": "All characters must escape through the exit.", "escape": {"marker": "a"}, "lostIfExhausted": ["offExit"]}, "tiles": {
+    "k2a": {"markers": {"a": [[6, 3], [7, 4], [6, 4], [6, 5], [5, 4], [5, 5]]}}
+  }},
+  "38": {"goal": {"text": "Kill all enemies and protect the Orchid.", "lostAt": {"1": 1}}, "tiles": {
+    "c2a": {"objectives": [{"objective": 1, "cells": [[1, 3]]}]}
+  }},
+  "39": {"goal": {"text": "Destroy the altar.", "destroy": [1]}, "notes": ["The dark pits can't be destroyed."], "indestructible": {"subTypes": ["dark-pit"]}, "tiles": {
+    "d2b": {"objectives": [{"objective": 1, "cells": [[3, 4]]}]}
+  }},
+  "40": {"goal": {"text": "Occupy both pressure plates simultaneously.", "occupy": {"markers": ["a"]}}, "tiles": {
+    "a4b": {"markers": {"a": [[3, 2]]}},
+    "l1a": {"markers": {"a": [[2, 2]]}}
+  }},
+  "41": {"goal": {"text": "All characters must escape through the exit.", "escape": {"marker": "a", "leave": true}, "lostIfExhausted": ["any"], "lostIfExhaustedOnceRevealed": "e1a"}, "notes": ["The middle room's Stone Golems and Ancient Artilleries aren't set up until a character ends a turn on the pressure plate, which also unlocks the last door.", "As every round ends, characters standing on the exit leave the scenario with their summons."], "locks": [{"between": ["l1a", "e1a"], "plate": ["b"], "unlocksOnly": true, "note": "Locked: it can be opened once a character has ended a turn on the pressure plate (b)."}], "rules": [{"round": "true", "always": true, "once": true, "when": [{"lock": 0}], "spawns": [{"monster": {"name": "ancient-artillery", "type": "normal"}, "marker": "c", "count": 2, "placed": true}, {"monster": {"name": "ancient-artillery", "player3": "normal", "player4": "normal"}, "marker": "d", "count": 1, "placed": true}, {"monster": {"name": "ancient-artillery", "player4": "normal"}, "marker": "e", "count": 1, "placed": true}, {"monster": {"name": "stone-golem", "player2": "normal", "player3": "normal", "player4": "elite"}, "marker": "f", "count": 1, "placed": true}, {"monster": {"name": "stone-golem", "player2": "normal", "player3": "elite", "player4": "elite"}, "marker": "g", "count": 1, "placed": true}]}], "tiles": {
+    "e1a": {"markers": {"a": [[2, 4]]}},
+    "l1a": {"markers": {"b": [[2, 3]], "c": [[4, 0], [4, 6]], "d": [[0, 0]], "e": [[0, 6]], "f": [[2, 0]], "g": [[2, 6]]}}
+  }},
+  "42": {"goal": {"text": "Destroy all vocal chords.", "destroy": [1, 2, 3, 4, 5, 6]}, "notes": ["Chord 1, while it stands: all monsters add +1 Attack to all their attacks.", "Chord 2, while it stands: all monsters gain Advantage on all their attacks.", "Chord 3, while it stands: all monsters heal 1 hit point at the start of each of their turns.", "Chord 4, while it stands: all characters and character summons suffer 1 damage at the start of each of their turns.", "Chord 5, while it stands: all characters and character summons gain Disadvantage on all their attacks.", "Chord 6, while it stands: all characters and character summons deduct -1 Attack from all their attacks."], "rules": [{"round": "true", "always": true, "alwaysApplyTurn": "turn", "figures": [{"type": "present", "identifier": {"type": "objective", "edition": "objective", "name": "Vocal Cord", "marker": "3"}}, {"identifier": {"type": "monster", "name": ".*"}, "type": "heal", "value": 1}]}, {"round": "true", "always": true, "alwaysApplyTurn": "turn", "figures": [{"type": "present", "identifier": {"type": "objective", "edition": "objective", "name": "Vocal Cord", "marker": "4"}}, {"identifier": {"type": "characterWithSummon", "name": ".*"}, "type": "damage", "value": 1}]}], "effects": [{"on": "monsters", "whileStanding": 1, "attack": 1}, {"on": "monsters", "whileStanding": 2, "advantage": true}, {"on": "party", "whileStanding": 5, "disadvantage": true}, {"on": "party", "whileStanding": 6, "attack": -1}], "tiles": {
+    "l2a": {"objectives": [{"objective": 1, "cells": [[0, 6]]}, {"objective": 2, "cells": [[0, 5]]}, {"objective": 3, "cells": [[0, 4]]}, {"objective": 4, "cells": [[0, 2]]}, {"objective": 5, "cells": [[0, 1]]}, {"objective": 6, "cells": [[0, 0]]}]}
+  }},
+  "43": {"goal": {"text": "Kill a number of drakes equal to four times the number of characters.", "killCount": {"count": "4xC", "of": ["rending-drake", "spitting-drake"]}}, "tiles": {
+  }},
+  "44": {"goal": {"text": "Kill all enemies and protect all captive Orchids."}, "protect": [2], "tiles": {
+    "b1b": {"objectives": [{"objective": 1, "cells": [[0, 2]]}]},
+    "b3a": {"objectives": [{"objective": 2, "cells": [[1, 3]]}]},
+    "b4a": {"objectives": [{"objective": 2, "cells": [[2, 3]]}, {"objective": 2, "cells": [[3, 2]]}]},
+    "l1b": {"objectives": [{"objective": 2, "cells": [[4, 6]]}]},
+    "m1b": {"objectives": [{"objective": 2, "cells": [[1, 0]]}, {"objective": 2, "cells": [[3, 0]]}, {"objective": 2, "cells": [[5, 2]]}, {"objective": 2, "cells": [[2, 3]]}, {"objective": 2, "cells": [[5, 4]]}]}
+  }},
+  "45": {"goal": {"text": "Destroy all totems.", "destroy": [1]}, "notes": ["A monster within two hexes of a totem heals 2 as its turn starts."], "rules": [{"round": "true", "always": true, "alwaysApplyTurn": "turn", "figures": [{"identifier": {"type": "monster", "name": ".*", "near": {"objective": "Totem", "range": 2}}, "type": "heal", "value": 2}]}], "tiles": {
+    "d1b": {"objectives": [{"objective": 1, "cells": [[3, 4]]}]},
+    "f1b": {"objectives": [{"objective": 1, "cells": [[0, 2]]}, {"objective": 1, "cells": [[0, 8]]}]},
+    "g1a": {"objectives": [{"objective": 1, "cells": [[1, 2]]}]},
+    "m1b": {"objectives": [{"objective": 1, "cells": [[1, 0]]}, {"objective": 1, "cells": [[5, 4]]}]}
+  }},
+  "46": {"goal": {"text": "Kill the Winged Horror.", "kill": ["winged-horror"]}, "notes": ["With one special the Winged Horror lays an egg for each character beside it (2+L/2 hit points each, rounded up); with the other, once it has attacked, every egg on the map hatches into a normal Night Demon. Destroy the eggs first."], "tiles": {
+  }},
+  "47": {"goal": {"text": "Kill the Sightless Eye.", "kill": ["the-sightless-eye"]}, "notes": ["Once the door is open, every character and summon still in the first cave suffers 3+L damage as each round ends.", "The Sightless Eye can't be pushed or pulled."], "rules": [{"round": "true", "requiredRooms": [2], "figures": [{"identifier": {"type": "characterWithSummon", "name": ".*", "tile": "j1a"}, "type": "damage", "value": "3+L"}]}], "tiles": {
+  }},
+  "48": {"goal": {"text": "Kill the Dark Rider.", "kill": ["dark-rider"]}, "notes": ["The Dark Rider isn't on the map at the start. As its turn begins it appears on the next of six marked hexes around the clearing, then acts.", "It vanishes again the moment it has made a melee attack."], "cycles": {"dark-rider": {"letters": ["a", "b", "c", "d", "e", "f"], "appears": true, "leavesAfterMelee": true}}, "tiles": {
+    "l1b": {"markers": {"b": [[2, 6]], "d": [[0, 3]], "f": [[2, 0]]}},
+    "l3a": {"markers": {"a": [[0, 3]], "c": [[2, 6]], "e": [[2, 0]]}}
+  }},
+  "49": {"goal": {"text": "Kill the Siege Cannon.", "kill": ["siege-cannon"]}, "tiles": {
+  }},
+  "50": {"goal": {"text": "Loot all treasure tiles.", "loot": "goal"}, "notes": ["There are two starting rooms: no more than half the party (rounded up) may start in the same one."], "lootActionOnly": true, "splitStart": true, "tiles": {
+  }},
+  "51": {"goal": {"text": "Kill the Gloom.", "kill": ["the-gloom"]}, "notes": ["Every character and summon suffers 2 damage at the end of each of their turns.", "Special 2: before attacking, the Gloom jumps to the next of three marked hexes, one in each room, round and round.", "The dark pits can't be destroyed."], "cycles": {"the-gloom": {"letters": ["a", "b", "c"]}}, "indestructible": {"subTypes": ["dark-pit"]}, "tiles": {
+    "d1a": {"markers": {"b": [[3, 2]]}},
+    "d2a": {"markers": {"a": [[2, 1]]}},
+    "m1a": {"markers": {"c": [[2, 3]]}}
+  }},
+  "52": {"goal": {"text": "All characters must loot one treasure tile.", "loot": "each", "lostIfExhausted": ["beforeLoot"]}, "lootActionOnly": true, "notes": ["The obstacles of the centre room can't be destroyed."], "indestructible": {"tiles": ["m1a"]}, "tiles": {
+  }},
+  "53": {"notes": ["The doors are locked and open by themselves, two more rooms as each of rounds 2, 4, 6 and 8 begins."], "locks": [{"between": ["m1a", "j1a"], "afterRound": 1, "note": "Locked: it opens at the start of round 2."}, {"between": ["m1a", "j2a"], "afterRound": 3, "note": "Locked: it opens at the start of round 4."}, {"between": ["m1a", "d2a"], "afterRound": 5, "note": "Locked: it opens at the start of round 6."}, {"between": ["m1a", "d1a"], "afterRound": 7, "note": "Locked: it opens at the start of round 8."}], "tiles": {
+  }},
+  "56": {"tiles": {
+    "m1b": {"objectives": [{"objective": 1, "cells": [[0, 1]]}, {"objective": 1, "cells": [[1, 0]]}, {"objective": 1, "cells": [[2, 0]]}]}
+  }},
+  "57": {"goal": {"text": "Kill the Infiltrator.", "kill": ["infiltrator"]}, "notes": ["When the elite City Guard of the main barracks dies, the Infiltrator takes his place where he fell: an elite Harrower Infester a level above the scenario's.", "City Guards arrive on the corridor when the storage room is opened."], "dropRules": [0], "rules": [{"round": "true", "always": true, "once": true, "requiredRooms": [3], "figures": [{"identifier": {"type": "monster", "edition": "gh", "name": "city-guard", "marker": "2"}, "type": "dead"}], "spawns": [{"monster": {"name": "infiltrator:+1", "type": "boss"}, "marker": "2"}]}], "tiles": {
+    "f1b": {"markers": {"a": [[1, 1]]}}
+  }},
+  "58": {"goal": {"text": "Kill the Harvester.", "kill": ["the-harvester"]}, "notes": ["There are two starting rooms: no more than half the party (rounded up) may start in the same one.", "For each bone pile still standing the Harvester has Shield 1 more and heals C\u22121 as every round ends \u2014 a heal for each pile, so Poison stops only the first. The bone piles can be attacked."], "rules": [{"round": "true", "requiredRooms": [3], "figures": [{"type": "present", "identifier": {"type": "objective", "edition": "objective", "name": "Bone Pile"}}, {"identifier": {"type": "monster", "edition": "gh", "name": "the-harvester"}, "type": "heal", "value": "C-1", "times": "F"}]}], "effects": [{"on": "the-harvester", "shield": "X", "per": {"objective": 1}}], "splitStart": true, "tiles": {
+    "b1a": {"objectives": [{"objective": 1, "cells": [[0, 0]]}, {"objective": 1, "cells": [[3, 0]]}, {"objective": 1, "cells": [[0, 3]]}, {"objective": 1, "cells": [[2, 3]]}]}
+  }},
+  "59": {"goal": {"text": "Kill all enemies and loot the treasure tile.", "enemies": "all", "loot": "goal"}, "lootActionOnly": true, "tiles": {
+  }},
+  "60": {"goal": {"text": "Loot all treasure tiles, then all characters must escape through the entrance.", "loot": "goal", "escape": {"start": true}, "lostIfExhausted": ["beforeLoot", "offExit"]}, "tiles": {
+  }},
+  "61": {"goal": {"text": "Loot all treasure tiles.", "loot": "goal"}, "notes": ["In odd rounds only the Oozes and Giant Vipers act; in even rounds only the Flame Demons and Frost Demons.", "The group sitting a round out can't be attacked or affected by anything; figures may move through its monsters' hexes but not stop there."], "lootActionOnly": true, "inactive": [{"monsters": ["flame-demon", "frost-demon"], "rounds": "odd"}, {"monsters": ["ooze", "giant-viper"], "rounds": "even"}], "tiles": {
+  }},
+  "62": {"goal": {"text": "Kill the Hungry Soul.", "kill": ["hungry-soul"]}, "notes": ["A Living Bones rises at each end of the first room as every round begins.", "When ten Living Bones have been killed the Hungry Soul appears: an elite Living Bones with more hit points, +2 Attack and Shield 5 on top of its own \u2014 less 1 for every other Living Bones on the map."], "rules": [{"round": "true", "always": true, "once": true, "figures": [{"identifier": {"type": "monster", "edition": "gh", "name": "living-bones"}, "type": "killed", "value": 10}], "spawns": [{"monster": {"name": "hungry-soul", "type": "boss"}, "marker": "c"}]}], "effects": [{"on": "hungry-soul", "shield": "0-X", "per": {"monster": "living-bones"}}], "tiles": {
+    "b2b": {"markers": {"c": [[1, 3]]}},
+    "m1a": {"markers": {"a": [[0, 2]], "b": [[5, 2]]}}
+  }},
+  "65": {"goal": {"text": "Kill all enemies and loot all treasure tiles.", "enemies": "all", "loot": "goal"}, "tiles": {
+  }},
+  "66": {"goal": {"text": "Occupy the pressure plate in the last room.", "reach": {"marker": "e"}}, "notes": ["The first door opens when a character ends their turn on the pressure plate of the starting room.", "From then on a door stays open only while a character stands on one of its pressure plates; a figure in the doorway as it shuts suffers trap damage and is moved aside.", "The two side rooms open when a character ends a turn on the fourth plate."], "locks": [{"between": ["j1b", "c1a"], "held": ["a", "b"], "firstAtTurnEnd": true, "note": "It opens when a character ends their turn on pressure plate (a); after that it stays open only while a character stands on plate (a) or (b)."}, {"between": ["c1a", "d1a"], "held": ["b", "c"], "note": "It stays open only while a character stands on pressure plate (b) or (c)."}, {"between": ["d1a", "d2a"], "held": ["c", "d"], "note": "It stays open only while a character stands on pressure plate (c) or (d)."}, {"between": ["d2a", "c2b"], "held": ["d"], "note": "It stays open only while a character stands on pressure plate (d)."}, {"between": ["d1a", "a1a"], "plate": ["d"], "note": "Locked: it opens when a character ends their turn on the pressure plate (d)."}, {"between": ["d2a", "a2a"], "plate": ["d"], "note": "Locked: it opens when a character ends their turn on the pressure plate (d)."}], "plates": ["e"], "tiles": {
+    "c1a": {"markers": {"b": [[1, 2]]}},
+    "c2b": {"markers": {"e": [[1, 1]]}},
+    "d1a": {"markers": {"c": [[2, 2]]}},
+    "d2a": {"markers": {"d": [[2, 2]]}},
+    "j1b": {"markers": {"a": [[6, 4]]}}
+  }},
+  "67": {"goal": {"text": "Kill the Arcane Golem.", "kill": ["stone-golem"]}, "notes": ["The second door stays open only while a character stands on a pressure plate."], "locks": [{"between": ["a2a", "m1a"], "held": ["a"], "note": "It stays open only while a character stands on a pressure plate (a)."}], "tiles": {
+    "g1b": {"markers": {"a": [[0, 0]]}},
+    "m1a": {"markers": {"a": [[3, 0]]}}
+  }},
+  "68": {"goal": {"text": "Kill all enemies and protect the tree.", "lostAt": {"1": 1}}, "notes": ["The tree suffers 2 damage as every round ends \u2014 once its room is open, only in a round that ends with a Rending Drake on the room's tile.", "The tree can be healed like an ally; nothing else affects it, and no monster attacks it.", "A character or summon with Poison that enters a water hex suffers trap damage."], "dropRules": [1], "rules": [{"round": "true", "when": [{"unrevealed": 2}], "figures": [{"identifier": {"type": "objective", "edition": "objective", "name": "Tree", "marker": "a"}, "type": "damage", "value": 2}]}, {"round": "true", "requiredRooms": [2], "figures": [{"type": "present", "identifier": {"type": "monster", "edition": "gh", "name": "rending-drake", "tile": "m1b"}}, {"identifier": {"type": "objective", "edition": "objective", "name": "Tree", "marker": "a"}, "type": "damage", "value": 2}]}], "sheltered": [1], "water": {"hurtsThePoisoned": true}, "tiles": {
+    "b1b": {"objectives": [{"objective": 1, "cells": [[2, -6], [1, -6], [1, -5]]}]}
+  }},
+  "69": {"goal": {"text": "Bring the doll to the well.", "reach": {"marker": "a", "adjacent": true, "enter": true}}, "notes": ["The door is locked until a character ends a turn on the pressure plate.", "When it opens, two damage traps appear in the plate's room; a figure on foot standing where one appears springs it at once.", "Entering a hex beside the well is enough: the turn needn't end there."], "rules": [{"round": "true", "always": true, "once": true, "requiredRooms": [3], "traps": ["d"]}], "locks": [{"between": ["l3a", "j1a"], "plate": ["b"], "note": "Locked: it opens when a character ends their turn on the pressure plate (b)."}], "tiles": {
+    "b1b": {"markers": {"b": [[1, 3]], "d": [[2, 0], [1, 0]]}},
+    "d2a": {"markers": {"a": [[2, 2]]}},
+    "l3a": {"markers": {"c": [[3, 5]]}}
+  }},
+  "70": {"goal": {"text": "Kill all demons.", "kill": ["night-demon", "wind-demon"]}, "notes": ["Living Spirits rise on the starting tile as rounds end, and can't be damaged in any way; conditions still take hold of them.", "Each time a demon dies, a Living Spirit is banished: the one nearest whoever killed it."], "undamageable": ["living-spirit"], "reprieve": {"killed": ["night-demon", "wind-demon"], "removes": "living-spirit"}, "tiles": {
+    "l1b": {"markers": {"b": [[4, 2]]}},
+    "l3a": {"markers": {"a": [[4, 4]]}}
+  }},
+  "71": {"goal": {"text": "Loot all treasure tiles, then all characters must escape through the exit.", "loot": "goal", "escape": {"marker": "a"}, "lostIfExhausted": ["offExit"]}, "notes": ["Each treasure tile looted opens the next locked door."], "locks": [{"between": ["h2b", "a2b"], "looted": 1, "note": "Locked: it opens when the first treasure tile is looted."}, {"between": ["l3a", "a3a"], "looted": 2, "note": "Locked: it opens when the second treasure tile is looted."}, {"between": ["h2b", "g2a"], "looted": 3, "note": "Locked: it opens when the third treasure tile is looted."}], "tiles": {
+    "g2a": {"markers": {"a": [[5, 2], [4, 2], [3, 2], [2, 2]]}}
+  }},
+  "72": {"goal": {"text": "Destroy all trees and kill all Oozes.", "destroy": [1, 2, 3], "kill": ["ooze"]}, "tiles": {
+    "l1b": {"objectives": [{"objective": 2, "cells": [[1, 0], [0, 0], [0, 1]]}]},
+    "l3a": {"objectives": [{"objective": 3, "cells": [[4, 0], [3, 0], [3, 1]]}]},
+    "m1b": {"objectives": [{"objective": 1, "cells": [[2, 0], [2, 1], [3, 0]]}]}
+  }},
+  "73": {"goal": {"text": "Kill all enemies and loot all treasure tiles.", "enemies": "all", "loot": "goal"}, "notes": ["The dark pits can't be destroyed."], "indestructible": {"subTypes": ["dark-pit"]}, "tiles": {
+  }},
+  "74": {"notes": ["The doors open as the third and the sixth rounds end."], "locks": [{"between": ["g2b", "i2b"], "afterRound": 3, "note": "Locked: it opens at the end of the third round."}, {"between": ["g2b", "i1a"], "afterRound": 6, "note": "Locked: it opens at the end of the sixth round."}], "tiles": {
+    "b1a": {"markers": {"a": [[1, 3]], "b": [[2, 3], [0, 3]], "d": [[3, 0], [0, 0]]}},
+    "g2b": {"markers": {"c": [[0, 0], [7, 0]], "e": [[0, 1], [6, 1]]}}
+  }},
+  "75": {"goal": {"text": "Dig up all graves and kill the Bloated Regent.", "destroy": [1, 2, 3], "kill": ["bloated-regent"]}, "notes": ["Each grave dug up (attack it) lets out a Living Corpse where it stood; the grave in the last room lets out the Bloated Regent."], "dropRules": [0, 1], "whenDestroyed": {"1": {"name": "living-corpse", "player2": "normal", "player3": "normal", "player4": "elite"}, "2": {"name": "living-corpse", "player2": "normal", "player3": "elite", "player4": "elite"}}, "tiles": {
+    "b1b": {"objectives": [{"objective": 3, "cells": [[2, 2], [1, 2]]}]},
+    "g1a": {"objectives": [{"objective": 1, "cells": [[3, 2]]}, {"objective": 2, "cells": [[0, 0], [1, 0]]}]},
+    "l1b": {"objectives": [{"objective": 2, "cells": [[0, 0]]}, {"objective": 1, "cells": [[3, 4]]}, {"objective": 2, "cells": [[1, 6]]}]},
+    "l3a": {"objectives": [{"objective": 1, "cells": [[0, 2]]}, {"objective": 1, "cells": [[3, 5]]}, {"objective": 2, "cells": [[2, 0], [2, 1]]}]}
+  }},
+  "77": {"goal": {"text": "Loot all treasure tiles and kill all City Guards before the alarm is raised.", "loot": "goal", "kill": ["city-guard"], "lostIfStands": {"monsters": ["city-guard"], "marker": "a"}}, "notes": ["City Guards don't act normally: each goes \"Move 2\" toward the nearest pressure plate to raise the alarm, opening the first door if it walks into it, then does whatever else its card has.", "A City Guard arrives in the main room when each treasure tile is looted."], "plates": ["a"], "rules": [{"round": "true", "always": true, "once": true, "when": [{"looted": "b2b"}], "spawns": [{"monster": {"name": "city-guard", "player2": "normal", "player3": "elite", "player4": "elite"}, "marker": "b"}]}, {"round": "true", "always": true, "once": true, "when": [{"looted": "b3b"}], "spawns": [{"monster": {"name": "city-guard", "player2": "normal", "player3": "normal", "player4": "elite"}, "marker": "c"}]}], "march": {"city-guard": {"toward": ["a"], "move": 2, "opensDoors": true}}, "tiles": {
+    "n1b": {"markers": {"a": [[3, 6], [4, 6]], "b": [[0, 0]], "c": [[7, 0]]}}
+  }},
+  "79": {"goal": {"text": "Kill the Betrayer.", "kill": ["the-betrayer"], "lostAt": {"1": 1}}, "notes": ["The Stone Golems can't act or be affected by anything until every pressure plate in play has a figure on it as a turn ends; then they wake and act as if just revealed.", "Fish holds one plate. On initiative 99 he returns to it if he has been moved off, then attacks every enemy beside him for 3.", "The last door opens when every Stone Golem is dead."], "locks": [{"between": ["d2a", "m1a"], "note": "Locked: it opens when all Stone Golems are killed."}], "rules": [{"round": "true", "always": true, "once": true, "when": [{"occupied": {"markers": ["a"], "more": {"3": ["b"], "4": ["b", "c"]}}}], "setUp": ["stone-golem"]}], "inactive": [{"monsters": ["stone-golem"], "untilSetUp": true}], "tiles": {
+    "d2a": {"objectives": [{"objective": 1, "cells": [[0, 3]]}], "markers": {"a": [[0, 3]]}},
+    "k1a": {"markers": {"a": [[1, 3]], "b": [[5, 3]]}},
+    "k2b": {"markers": {"a": [[5, 3]], "c": [[1, 3]]}}
+  }},
+  "80": {"goal": {"text": "Every character must loot one treasure tile, then all must reach the B tile.", "loot": "each", "escape": {"tile": "b1a"}, "lostIfExhausted": ["offExit"]}, "notes": ["Until a character has looted a treasure tile they attack with Disadvantage and can't use any item.", "Each character may loot only one treasure tile."], "effects": [{"on": "party", "untilLooted": true, "disadvantage": true, "noItems": true}], "tiles": {
+  }},
+  "81": {"goal": {"text": "Kill the Colorless.", "kill": ["the-colorless"]}, "notes": ["Light and Dark are strong and every other element inert as each round begins.", "The Colorless pays for its specials with them: Dark for a Night Demon, Light for a Sun Demon."], "tiles": {
+  }},
+  "82": {"goal": {"text": "Loot the treasure, then sacrifice an artifact on the altar hex or escape with them all.", "lootIDs": ["62"], "either": [{"reach": {"marker": "g"}, "conclusion": "82-A"}, {"escape": {"start": true}, "conclusion": "82-B"}]}, "notes": ["The doors are locked and open one by one, each time an elite monster is killed.", "Sacrificing an artifact on the altar hex and escaping with them both are different conclusions, with different rewards.", "If the scenario is lost, the treasure is left behind to be looted again."], "resetOnLoss": ["62"], "locks": [{"between": ["k1a", "c1a"], "eliteKills": 1, "note": "Locked: the doors open one by one, in order, each time an elite monster is killed."}, {"between": ["k1a", "d1a"], "eliteKills": 2, "note": "Locked: the doors open one by one, in order, each time an elite monster is killed."}, {"between": ["c1a", "i1b"], "eliteKills": 3, "note": "Locked: the doors open one by one, in order, each time an elite monster is killed."}, {"between": ["b2b", "d1a"], "eliteKills": 4, "note": "Locked: the doors open one by one, in order, each time an elite monster is killed."}, {"between": ["c1a", "empty"], "eliteKills": 5, "note": "Locked: the doors open one by one, in order, each time an elite monster is killed."}, {"between": ["empty", "d1a"], "eliteKills": 6, "note": "Locked: the doors open one by one, in order, each time an elite monster is killed."}], "tiles": {
+    "empty": {"markers": {"g": [[0, 0]]}}
+  }},
+  "83": {"notes": ["Once the last room is open, and until every Cultist is dead: within two hexes of the altar, characters and summons suffer 1 damage and monsters heal 1 as their turns start.", "The Flame Demons aren't set up until every Cultist is dead. From then on the altar's first rules are over: every character and summon suffers 2 damage as their turn starts instead, wherever they stand, and Fire is strong every round."], "later": ["flame-demon"], "rules": [{"round": "true", "always": true, "alwaysApplyTurn": "turn", "requiredRooms": [3], "figures": [{"identifier": {"type": "characterWithSummon", "name": ".*", "near": {"marker": "a", "range": 2}}, "type": "damage", "value": 1}]}, {"round": "true", "always": true, "alwaysApplyTurn": "turn", "requiredRooms": [3], "figures": [{"identifier": {"type": "monster", "name": ".*", "near": {"marker": "a", "range": 2}}, "type": "heal", "value": 1}]}, {"round": "true", "always": true, "once": true, "requiredRooms": [3], "figures": [{"identifier": {"type": "monster", "edition": "gh", "name": "cultist"}, "type": "killed", "value": "all"}], "setUp": ["flame-demon"], "disableRules": [{"index": 0}, {"index": 1}]}, {"round": "true", "always": true, "alwaysApplyTurn": "turn", "requiredRooms": [3], "figures": [{"identifier": {"type": "monster", "edition": "gh", "name": "cultist"}, "type": "killed", "value": "all"}, {"identifier": {"type": "characterWithSummon", "name": ".*"}, "type": "damage", "value": 2}]}, {"round": "true", "start": true, "requiredRooms": [3], "figures": [{"identifier": {"type": "monster", "edition": "gh", "name": "cultist"}, "type": "killed", "value": "all"}], "elements": [{"type": "fire", "state": "strong"}]}], "tiles": {
+    "m1a": {"markers": {"a": [[2, 3]]}}
+  }},
+  "84": {"goal": {"text": "Kill all enemies and protect the crystal.", "lostAt": {"1": 1}}, "notes": ["The cave walls can't be passed: they come down as rounds 4, 6 and 9 begin, each opening a room.", "A monster that can get within range of the crystal this turn focuses on it."], "locks": [{"between": ["l2a", "a3a"], "afterRound": 3, "note": "A cave wall: it comes down as round 4 begins."}, {"between": ["l2a", "a2b"], "afterRound": 5, "note": "A cave wall: it comes down as round 6 begins."}, {"between": ["l2a", "e1b"], "afterRound": 8, "note": "A cave wall: it comes down as round 9 begins."}], "protect": [1], "focusFirst": [1], "tiles": {
+    "l2a": {"objectives": [{"objective": 1, "cells": [[0, 3]]}]}
+  }},
+  "85": {"notes": ["There are two starting rooms: no more than half the party (rounded up) may start in the same one.", "The Sun Demons are enemies to you and to all other monsters alike.", "With the party achievement Sun-Blessed, every round starts with Light strong and Dark inert."], "rules": [{"round": "true", "start": true, "when": [{"partyAchievement": "sun-blessed"}], "elements": [{"type": "light", "state": "strong"}, {"type": "dark", "state": "inert"}]}], "apart": ["sun-demon"], "splitStart": true, "tiles": {
+  }},
+  "86": {"goal": {"text": "Save seven villagers before five are killed.", "arrive": {"objective": 1, "marker": "b", "count": 7}, "lostAt": {"1": 5}}, "notes": ["A Vermling Scout arrives at each of two points as every round begins.", "Villagers walk for the end of the docks on initiative 99; one that gets there is saved.", "The Lurkers aren't set up until the end of the round in which the first villager is saved."], "later": ["lurker"], "rules": [{"round": "true", "once": true, "when": [{"saved": 1}], "setUp": ["lurker"]}], "protect": [1], "tiles": {
+    "a4a": {"objectives": [{"objective": 1, "cells": [[3, 1]]}]},
+    "b1b": {"markers": {"c": [[0, 1]], "e": [[1, 0]]}},
+    "b2a": {"objectives": [{"objective": 1, "cells": [[0, 3]]}, {"objective": 1, "cells": [[1, 2]]}, {"objective": 1, "cells": [[1, 3]]}]},
+    "b3a": {"objectives": [{"objective": 1, "cells": [[2, 0]]}, {"objective": 1, "cells": [[2, 3]]}, {"objective": 1, "cells": [[0, 2]]}]},
+    "h3a": {"markers": {"b": [[4, 6], [3, 6]]}},
+    "m1b": {"objectives": [{"objective": 1, "cells": [[4, 2]]}, {"objective": 1, "cells": [[2, 4]]}, {"objective": 1, "cells": [[1, 0]]}, {"objective": 1, "cells": [[0, 3]]}], "markers": {"d": [[4, 1]], "f": [[4, 5]]}}
+  }},
+  "87": {"goal": {"text": "Kill the Giant Ooze.", "kill": ["giant-ooze"]}, "notes": ["The Giant Ooze starts with four tokens and has Shield 2 for each of them; it loses one every time an Ooze dies.", "A character who ends a turn on a water hex of the main room is cleansed, once: the water goes, and for the rest of the scenario they have Shield 2 against Ooze attacks and can't be poisoned."], "effects": [{"on": "giant-ooze", "shield": "2xX", "per": {"tokens": 4, "lostWith": "ooze"}}], "water": {"cleanses": {"tiles": ["l2a", "l3b"], "shield": 2, "against": ["ooze", "giant-ooze"]}}, "tiles": {
+  }},
+  "88": {"goal": {"text": "Bring the Lurker King's claw to the crystal.", "kill": ["lurker-king"], "reach": {"marker": "a", "adjacent": true}}, "notes": ["Every Move ability of a character or of a character's summon is one less."], "effects": [{"on": "party", "move": -1}], "tiles": {
+    "n1a": {"markers": {"a": [[3, 6]]}}
+  }},
+  "90": {"goal": {"text": "Close the rift: kill the demons, then every Living Spirit.", "kill": ["living-spirit"], "lostBelow": 2, "lostIfEmpty": [{"tiles": ["m1b"], "text": "No character is in the left room."}, {"tiles": ["d1b", "c2a"], "onceAppeared": "living-spirit", "text": "No character is in the right room once the Living Spirits have come."}]}, "indestructible": {"subTypes": ["altar"]}, "notes": ["The two rooms are joined only by their altars: a character beside one altar may spend 1 movement to stand beside the other. Summons and monsters can’t cross.", "As every even round ends with no character in the right-hand room, a Night Demon appears beside the altar of the left one.", "When every demon is dead and a character stands in each room, four Living Spirits appear in the two rooms; killing them closes the rift. From then on a character must be in each room."], "dropRules": [0], "rules": [{"round": "true", "always": true, "once": true, "requiredRooms": [2], "when": [{"characterOn": ["m1b"]}, {"characterOn": ["d1b", "c2a"]}], "figures": [{"identifier": {"type": "monster", "edition": "gh", "name": "earth-demon"}, "type": "killed", "value": "all"}, {"identifier": {"type": "monster", "edition": "gh", "name": "night-demon"}, "type": "killed", "value": "all"}, {"identifier": {"type": "monster", "edition": "gh", "name": "wind-demon"}, "type": "killed", "value": "all"}], "spawns": [{"monster": {"name": "living-spirit", "player2": "normal", "player3": "elite", "player4": "elite"}, "marker": "b", "count": 2}, {"monster": {"name": "living-spirit", "player2": "normal", "player3": "normal", "player4": "elite"}, "marker": "c", "count": 2}]}, {"round": "R % 2 == 0", "when": [{"noCharacterOn": ["d1b", "c2a"]}], "spawns": [{"monster": {"name": "night-demon", "player2": "normal", "player4": "elite"}, "marker": "b"}, {"monster": {"name": "night-demon", "player3": "normal"}, "marker": "b", "count": "N % 2"}, {"monster": {"name": "night-demon", "player3": "elite"}, "marker": "b", "count": "1 - (N % 2)"}]}], "tiles": {
+    "d1b": {"markers": {"a": [[0, 1]], "c": [[0, 2], [1, 0]]}},
+    "m1b": {"markers": {"a": [[2, 3]], "b": [[2, 4], [3, 4]]}}
+  }},
+  "91": {"notes": ["The Cave Bears and Hounds fight on your side.", "The Living Spirits are enemies to you and to all other monsters alike."], "apart": ["living-spirit"], "tiles": {
+  }},
+  "92": {"goal": {"text": "Kill all non-city enemies.", "spare": ["city-guard", "city-archer"], "lostIfKilled": ["city-guard", "city-archer"]}, "notes": ["The City Guards and the City Archer are set up at the far end of the first room, behind you, when the second room opens. They are enemies to you and to the other monsters alike, but killing one loses the scenario."], "dropRules": [0], "rules": [{"round": "true", "always": true, "once": true, "requiredRooms": [2], "spawns": [{"monster": {"name": "city-archer", "player2": "normal", "player3": "elite", "player4": "elite"}, "marker": "a", "placed": true}, {"monster": {"name": "city-guard", "type": "normal"}, "marker": "b", "placed": true}, {"monster": {"name": "city-guard", "player2": "normal", "player3": "normal", "player4": "elite"}, "marker": "c", "placed": true}]}], "apart": ["city-guard", "city-archer"], "tiles": {
+    "h3b": {"markers": {"a": [[0, 1]], "b": [[1, 1]], "c": [[1, 0]]}}
+  }},
+  "93": {"rules": [{"round": "R == 1", "start": true, "figures": [{"identifier": {"type": "character", "name": ".*"}, "type": "gainCondition", "value": "immobilize", "scenarioEffect": true}]}], "tiles": {
+  }},
+  "94": {"goal": {"text": "Kill all enemies and loot the treasure tile.", "enemies": "all", "loot": "goal"}, "tiles": {
+  }},
+  "95": {"goal": {"text": "Kill the Prime Lieutenant.", "kill": ["prime-lieutenant"]}, "notes": ["Any figure that ends its turn in a water hex suffers 1+L damage."], "water": {"endOfTurn": "1+L"}, "tiles": {
+  }}
+}

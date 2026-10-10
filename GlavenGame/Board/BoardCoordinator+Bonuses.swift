@@ -181,10 +181,32 @@ enum ChargedBonus: Equatable {
         "gh-316": .doubleNextAttack,                                    // Grim Bargain: double the next attack
     ]
 
-    /// The bonus of a card in play: its round half's when that's the half played.
-    static func bonus(edition: String, cardId: Int, roundHalf: Bool) -> ChargedBonus? {
+    /// Cards both of whose halves are round bonuses, where `byCard` is the top half's (the other
+    /// half is played as printed actions).
+    static let topRoundHalves: Set<String> = []
+    /// Likewise, where `byCard` is the bottom half's.
+    static let bottomRoundHalves: Set<String> = ["gh-13"]            // Wall of Doom: "+1 Attack this round"
+
+    /// The bonus of a card in play — only that of the half it was played for (GH p.25: the two
+    /// halves of a card are separate actions). `byCard` holds a card's persistent half, or its
+    /// round half when it has no persistent one; `byRoundHalf` the round half of a card that
+    /// has both.
+    static func bonus(edition: String, card: AbilityModel, top: Bool) -> ChargedBonus? {
+        guard let cardId = card.cardId else { return nil }
         let key = "\(edition)-\(cardId)"
-        return roundHalf ? (byRoundHalf[key] ?? byCard[key]) : byCard[key]
+        let mine = PlayerTurnController.markers(in: (top ? card.actions : card.bottomActions) ?? [])
+        let other = PlayerTurnController.markers(in: (top ? card.bottomActions : card.actions) ?? [])
+        if mine.contains("persistent") {
+            // Both halves persistent (the Doomstalker's dooms): the table holds the top's.
+            return other.contains("persistent") && !top ? nil : byCard[key]
+        }
+        guard mine.contains("round") else { return nil }
+        if let own = byRoundHalf[key] { return own }
+        if other.contains("persistent") { return nil }
+        if other.contains("round") {
+            return (top ? topRoundHalves : bottomRoundHalves).contains(key) ? byCard[key] : nil
+        }
+        return byCard[key]
     }
 
     /// The experience each charge slot gives, in order (0 for a plain slot).
@@ -216,11 +238,35 @@ extension BoardCoordinator {
         }
         // A doom card in play is its doom (bottom half), not its top half's bonus.
         let dooming = Set(activeDooms.filter { $0.doom.characterID == character.id }.map(\.doom.cardId))
-        let roundHalves = Set(character.roundBonusCards + (activePlayerTurn?.characterID == character.id
-                                                            ? activePlayerTurn?.roundCardsThisTurn ?? [] : []))
         return cards.filter { !dooming.contains($0) }.compactMap { id in
-            ChargedBonus.bonus(edition: character.edition, cardId: id, roundHalf: roundHalves.contains(id)).map { (id, $0) }
+            bonusInPlay(id, of: character).map { (id, $0) }
         }
+    }
+
+    /// The bonus a card in play gives: that of the half it is in play for.
+    func bonusInPlay(_ cardId: Int, of character: GameCharacter) -> ChargedBonus? {
+        guard let card = gameManager?.characterManager.abilities(for: character).first(where: { $0.cardId == cardId }) else { return nil }
+        return ChargedBonus.bonus(edition: character.edition, card: card, top: isTopHalfInPlay(cardId, of: character))
+    }
+
+    /// Whether a card in play (in the active area, or played this turn) is there for its top half.
+    /// Read from the card where only one half can be in play, or the two differ in kind
+    /// (persistent or round); where both are the same kind, from what was recorded as it was played.
+    func isTopHalfInPlay(_ cardId: Int, of character: GameCharacter) -> Bool {
+        let turn = activePlayerTurn?.characterID == character.id ? activePlayerTurn : nil
+        if let turn, !character.activeCards.contains(cardId), let top = turn.halfInPlayThisTurn[cardId] {
+            return top
+        }
+        let recorded = !character.bottomHalvesInPlay.contains(cardId)
+        guard let card = gameManager?.characterManager.abilities(for: character).first(where: { $0.cardId == cardId }) else { return recorded }
+        let kinds: Set<String> = ["persistent", "round"]
+        let top = PlayerTurnController.markers(in: card.actions ?? []).intersection(kinds)
+        let bottom = PlayerTurnController.markers(in: card.bottomActions ?? []).intersection(kinds)
+        if top.isEmpty != bottom.isEmpty { return bottom.isEmpty }
+        let round = character.roundBonusCards.contains(cardId) || turn?.roundCardsThisTurn.contains(cardId) == true
+        let kind = round ? "round" : "persistent"
+        if top.contains(kind) != bottom.contains(kind) { return top.contains(kind) }
+        return recorded
     }
 
     func chargedBonuses(of piece: PieceID) -> [(cardId: Int, bonus: ChargedBonus)] {
@@ -233,7 +279,7 @@ extension BoardCoordinator {
     /// area once every charge is marked.
     func useCharge(_ cardId: Int, of character: GameCharacter) {
         let roundHalf = character.roundBonusCards.contains(cardId) || activePlayerTurn?.roundCardsThisTurn.contains(cardId) == true
-        if ChargedBonus.bonus(edition: character.edition, cardId: cardId, roundHalf: roundHalf)?.isUnlimited == true { return }
+        if bonusInPlay(cardId, of: character)?.isUnlimited == true { return }
         guard let card = gameManager?.characterManager.abilities(for: character).first(where: { $0.cardId == cardId }) else { return }
         // A round half's single use (Grim Bargain's doubled attack): the other half's slots aren't its.
         let slots = roundHalf && ChargedBonus.byRoundHalf["\(character.edition)-\(cardId)"] != nil ? [] : ChargedBonus.slots(of: card)
@@ -275,14 +321,48 @@ extension BoardCoordinator {
         }
     }
 
+    /// Conditions the attacker's bonuses add to the one attack about to be made, marking a charge
+    /// of each: Voice of the Night's Stun "on your next five attacks while invisible" — a charge
+    /// for every enemy attacked, not one for a whole Target 3 or area attack.
+    func conditionsFromBonuses(attacker: PieceID) -> [ConditionName] {
+        guard isConditionActive(.invisible, on: attacker),
+              case .conditionWhileInvisible(let condition)? = useFirstCharge(of: attacker, where: {
+                  if case .conditionWhileInvisible = $0 { return true }; return false }) else { return [] }
+        log("\(name(attacker))\u{2019}s bonus: \(GameText.conditionName(condition))", category: .attack)
+        return [condition]
+    }
+
+    /// Master Physician: "Before your next six Heal actions, remove all negative conditions on
+    /// the healed figure(s)" — a charge for each Heal action, however many figures it heals.
+    /// A heal made outside a card's Heal step (an item's, a rest's) is an action of its own.
+    func healCleanses(by source: PieceID) -> Bool {
+        let spend = { self.useFirstCharge(of: source, where: { $0 == .healCleanses }) != nil }
+        guard let turn = activePlayerTurn, PieceID.character(turn.characterID) == source, turn.performingHeal else { return spend() }
+        if let decided = turn.healActionCleanses { return decided }
+        let cleanses = spend()
+        turn.healActionCleanses = cleanses
+        return cleanses
+    }
+
+    /// The card whose charge would take `amount` damage for the character, by name.
+    func negatingBonusName(_ piece: PieceID, amount: Int) -> String? {
+        guard case .character(let id) = piece, let gameManager,
+              let character = gameManager.game.characters.first(where: { $0.id == id }) else { return nil }
+        let found = chargedBonuses(of: character).first {
+            $0.bonus == .negateDamage || $0.bonus == .negateNextDamage || ($0.bonus == .negateLethal && amount >= character.health)
+        }
+        guard let found else { return nil }
+        return gameManager.characterManager.abilities(for: character).first { $0.cardId == found.cardId }?.name ?? "A bonus in play"
+    }
+
     /// Provoking Roar: an enemy attacking an ally beside a provoking character attacks that
     /// character instead, whatever the range. Returns who is really attacked.
     func provokedTarget(of attacker: PieceID, aimingAt target: PieceID) -> PieceID {
         guard let game = gameManager?.game, let position = boardState.piecePositions[target] else { return target }
         for character in game.characters {
             let provoker = PieceID.character(character.id)
-            guard provoker != target, areEnemies(attacker, provoker), !areEnemies(provoker, target),
-                  let theirs = boardState.piecePositions[provoker], theirs.isAdjacent(to: position),
+            guard provoker != target, areEnemies(attacker, provoker), areAllies(provoker, target),
+                  let theirs = boardState.piecePositions[provoker], boardState.areAdjacent(theirs, position),
                   chargedBonuses(of: character).contains(where: { $0.bonus == .drawAttacksFromAdjacentAllies }) else { continue }
             log("\(name(provoker)) draws the attack meant for \(name(target))", category: .attack)
             return provoker
@@ -307,7 +387,7 @@ extension BoardCoordinator {
         guard let position = boardState.piecePositions[attacker] else { return total }
         for character in game.characters where PieceID.character(character.id) != attacker {
             guard let theirs = boardState.piecePositions[.character(character.id)],
-                  theirs.isAdjacent(to: position), !areEnemies(attacker, .character(character.id)) else { continue }
+                  boardState.areAdjacent(theirs, position), areAllies(attacker, .character(character.id)) else { continue }
             for (_, bonus) in chargedBonuses(of: character) {
                 if case .roundAttackBonusWithAdjacentAllies(let n) = bonus { total += n }
             }
@@ -320,9 +400,9 @@ extension BoardCoordinator {
     /// "XP +1 for each enemy targeted" (Backstab, Submissive Affliction, Net Shooter…).
     func attackTextBonus(_ texts: [String], attacker: PieceID, target: PieceID) -> (attack: Int, experience: Int) {
         guard let targetPos = boardState.piecePositions[target], let defender = entity(for: target) else { return (0, 0) }
-        let neighbours = targetPos.neighbors.compactMap { boardState.piece(at: $0) }
-        let attackersAllies = neighbours.filter { $0 != attacker && !areEnemies($0, attacker) }.count
-        let isolated = !neighbours.contains { $0 != target && !areEnemies($0, target) }
+        let neighbours = boardState.neighbors(of: targetPos).compactMap { boardState.piece(at: $0) }
+        let attackersAllies = neighbours.filter { $0 != attacker && areAllies($0, attacker) }.count
+        let isolated = !neighbours.contains { $0 != target && areAllies($0, target) }
         let negatives = defender.entityConditions.filter { $0.name.isNegative && !$0.expired }.count
         func number(_ pattern: String, in text: String) -> Int {
             guard let match = text.firstMatch(of: try! Regex(pattern)), let value = match.output[1].substring else { return 0 }
@@ -344,7 +424,7 @@ extension BoardCoordinator {
             } else if text.contains("for each of your allies adjacent to the target") {
                 attack += bonus * attackersAllies
             } else if text.contains("double the shield value of the target") {
-                attack += 2 * CombatResolver.totalShield(shield: defender.shield, shieldPersistent: defender.shieldPersistent)
+                attack += 2 * shield(of: target)
             } else if text.contains("for each negative condition on the target") {
                 attack += bonus * negatives
                 experience += xp * negatives
@@ -383,10 +463,10 @@ extension BoardCoordinator {
     /// Cull the Weak, Smoke Bomb, Spring the Trap), marking a charge of each that applies.
     func attackValueWithBonuses(_ value: Int, attacker: PieceID, target: PieceID) -> Int {
         guard case .character = attacker, let targetPos = boardState.piecePositions[target] else { return value }
-        let neighbours = targetPos.neighbors.compactMap { boardState.piece(at: $0) }
+        let neighbours = boardState.neighbors(of: targetPos).compactMap { boardState.piece(at: $0) }
         // The target's allies are the figures on its side; the attacker's, those on theirs.
-        let isolated = !neighbours.contains { $0 != target && !areEnemies($0, target) }
-        let flanked = isolated && neighbours.contains { $0 != attacker && !areEnemies($0, attacker) }
+        let isolated = !neighbours.contains { $0 != target && areAllies($0, target) }
+        let flanked = isolated && neighbours.contains { $0 != attacker && areAllies($0, attacker) }
         let disabled = [.disarm, .immobilize, .stun].contains { isConditionActive($0, on: target) }
         var result = value
         for (_, bonus) in chargedBonuses(of: attacker) {
@@ -403,10 +483,15 @@ extension BoardCoordinator {
             case .doubleAgainstFlanked where flanked:
                 result *= 2
                 useFirstCharge(of: attacker) { $0 == bonus }
+            case .attackBonusOrElement(let n, _, _):
+                // Crackling Air: "on your next four attacks", so a charge for each target.
+                let turn = activePlayerTurn.flatMap { PieceID.character($0.characterID) == attacker ? $0 : nil }
+                result += turn?.bonusPerAttack ?? n
+                useFirstCharge(of: attacker) { $0 == bonus }
             case .destroyObstacleForAttack(let n):
                 // "When possible": a melee attack with an obstacle beside the character.
-                guard let attackerPos = boardState.piecePositions[attacker], attackerPos.distance(to: targetPos) <= 1,
-                      let obstacle = attackerPos.neighbors.sorted().first(where: { boardState.cells[$0]?.overlay == .obstacle })
+                guard let attackerPos = boardState.piecePositions[attacker], boardState.areAdjacent(attackerPos, targetPos),
+                      let obstacle = boardState.neighbors(of: attackerPos).sorted().first(where: isDestructibleObstacle)
                 else { break }
                 boardState.removeObstacle(at: obstacle)
                 boardScene?.removeOverlaySprite(at: obstacle, offsetCol: offsetCol, offsetRow: offsetRow)
@@ -421,3 +506,95 @@ extension BoardCoordinator {
         return result
     }
 }
+
+// MARK: - Ending a bonus
+
+extension BoardCoordinator {
+
+    /// A card in a character's active area, as the party panel lists it.
+    struct ActiveCard: Identifiable, Equatable {
+        let id: Int
+        let name: String
+        /// Charges not yet marked, for a bonus with use circles.
+        var usesLeft: Int? = nil
+        /// A bonus that ends with the round anyway.
+        var forTheRound = false
+        /// Where the card goes when it leaves play: the lost pile, or the discard pile.
+        var lost = false
+        /// The summons that leave the board with it.
+        var summons: [String] = []
+
+        /// The panel's line: "Frost Armor · 1 left", "Wall of Doom · this round".
+        var line: String {
+            if let usesLeft { return "\(name) \u{00B7} \(usesLeft) left" }
+            return forTheRound ? "\(name) \u{00B7} this round" : name
+        }
+
+        /// What ending it does, for the question asked before it is ended.
+        var consequence: String {
+            let pile = "The card goes to the \(lost ? "lost" : "discard") pile and its bonus ends."
+            guard !summons.isEmpty else { return pile }
+            return pile + " \(GameText.list(summons)) \(summons.count == 1 ? "leaves" : "leave") the board."
+        }
+    }
+
+    /// The cards in a character's active area, in the order they were played.
+    func activeCards(of character: GameCharacter) -> [ActiveCard] {
+        guard let gameManager, !character.exhausted else { return [] }
+        let deck = gameManager.characterManager.abilities(for: character)
+        return character.activeCards.compactMap { cardId in
+            guard let card = deck.first(where: { $0.cardId == cardId }) else { return nil }
+            var entry = ActiveCard(id: cardId, name: card.name ?? "Card \(cardId)")
+            entry.forTheRound = character.roundBonusCards.contains(cardId)
+            entry.lost = character.lostWhenRemoved.contains(cardId)
+            entry.summons = summons(broughtBy: card, of: character).map { name(.summon(id: $0.id)) }
+            let slots = ChargedBonus.slots(of: card)
+            if !entry.forTheRound, !slots.isEmpty, bonusInPlay(cardId, of: character)?.isUnlimited != true {
+                entry.usesLeft = max(0, slots.count - character.bonusChargesUsed[cardId, default: 0])
+            }
+            return entry
+        }
+    }
+
+    /// The living summons a card in play brought (by the half it is in play for).
+    private func summons(broughtBy card: AbilityModel, of character: GameCharacter) -> [GameSummon] {
+        guard let cardId = card.cardId else { return [] }
+        let names = Self.summonNames(in: (isTopHalfInPlay(cardId, of: character) ? card.actions : card.bottomActions) ?? [])
+        return character.summons.filter { !$0.dead && names.contains($0.name) }
+    }
+
+    /// A player may at any time move a card from their active area to its pile, ending its
+    /// bonus (GH p.25): the lost pile if the action it was played for has the lost icon, the
+    /// discard pile if not. A summon's card leaving play takes its summon off the board (p.26),
+    /// and a Doom's takes its token off the enemy.
+    @discardableResult
+    func endActiveBonus(_ cardId: Int, of character: GameCharacter) -> Bool {
+        guard let gameManager, !character.exhausted, character.activeCards.contains(cardId) else { return false }
+        gameManager.characterManager.onBeforeMutate?()
+        let me = PieceID.character(character.id)
+        let card = gameManager.characterManager.abilities(for: character).first { $0.cardId == cardId }
+        let cardName = card?.name ?? "a card"
+        let lost = character.lostWhenRemoved.contains(cardId)
+        log("\(name(me)) ends \(cardName): the card goes to the \(lost ? "lost" : "discard") pile", category: .info)
+        if let doomed = activeDooms.first(where: { $0.doom.characterID == character.id && $0.doom.cardId == cardId }) {
+            endDoom(doomed.doom, on: doomed.piece, reason: "its card left play")
+            return true
+        }
+        for summon in card.map({ summons(broughtBy: $0, of: character) }) ?? [] {
+            let piece = PieceID.summon(id: summon.id)
+            log("\(name(piece)) leaves the board", category: .info)
+            summon.dead = true
+            removePieceFromBoard(piece)
+        }
+        character.removeFromActiveArea(cardId)
+        // Put away in the turn it was played, it no longer counts as in play for that turn.
+        if let turn = activePlayerTurn, turn.characterID == character.id {
+            turn.persistentCardsThisTurn.removeAll { $0 == cardId }
+            turn.roundCardsThisTurn.removeAll { $0 == cardId }
+        }
+        if lost { boardScene?.play(.lose) }
+        boardScene?.refreshStatus(of: me)
+        return true
+    }
+}
+

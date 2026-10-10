@@ -49,6 +49,105 @@ final class AttackModifierRulesTests: XCTestCase {
         XCTAssertEqual(plus3.map(\.value), [3])
     }
 
+    // MARK: - Perks as they are taken in town
+
+    /// A character with `perks` perks to take, at the level that earns them.
+    @MainActor
+    private func veteran(_ name: String, perks: Int) throws -> (GameManager, GameCharacter) {
+        let gm = try SaveAndContinueTestsSupport.manager()
+        gm.game.partyProsperity = 64
+        gm.characterManager.addCharacter(name: name, edition: "gh", level: perks + 1)
+        gm.characterManager.addCharacter(name: name == "tinkerer" ? "spellweaver" : "tinkerer", edition: "gh")
+        let character = gm.game.characters[0]
+        XCTAssertEqual(gm.characterManager.perksAvailable(for: character), perks)
+        return (gm, character)
+    }
+
+    private func count(_ type: AttackModifierType, in character: GameCharacter) -> Int {
+        character.attackModifierDeck.attackModifiers.filter { $0.type == type && !$0.rolling }.count
+    }
+
+    /// Brute: "Replace one −1 card with one +1 card" — the deck stays 20 cards.
+    @MainActor
+    func testAReplacePerkSwapsOneCardForAnother() throws {
+        let (gm, brute) = try veteran("brute", perks: 1)
+        XCTAssertEqual([count(.minus1, in: brute), count(.plus1, in: brute)], [5, 5])
+        XCTAssertTrue(gm.characterManager.takePerk(at: 1, for: brute))
+        XCTAssertEqual([count(.minus1, in: brute), count(.plus1, in: brute)], [4, 6])
+        XCTAssertEqual(brute.attackModifierDeck.attackModifiers.count, 20)
+    }
+
+    /// Brute: "Add three rolling Push 1 cards" (twice), "Add one rolling Stun card", and "Add
+    /// one +1 Shield 1, Self card": rolling cards roll, and each carries its effect.
+    @MainActor
+    func testRollingAndEffectPerkCardsJoinTheDeck() throws {
+        let (gm, brute) = try veteran("brute", perks: 4)
+        for index in [4, 4, 6, 9] { XCTAssertTrue(gm.characterManager.takePerk(at: index, for: brute), "perk \(index)") }
+        let deck = brute.attackModifierDeck.attackModifiers
+        XCTAssertEqual(deck.count, 20 + 6 + 1 + 1)
+        let rolling = deck.filter(\.rolling)
+        XCTAssertEqual(rolling.count, 7)
+        XCTAssertTrue(rolling.allSatisfy { $0.value == 0 }, "a rolling card adds its effect, not a number")
+        XCTAssertEqual(rolling.filter { $0.effects.first?.type == .push && $0.effects.first?.value?.intValue == 1 }.count, 6)
+        XCTAssertEqual(rolling.filter { $0.effects.first?.type == .condition && $0.effects.first?.value?.stringValue == "stun" }.count, 1)
+        let shield = try XCTUnwrap(deck.first { !$0.rolling && $0.effects.first?.type == .shield })
+        XCTAssertEqual(shield.value, 1)
+        XCTAssertEqual(shield.effects.first?.value?.intValue, 1)
+        XCTAssertFalse(deck.contains { $0.rolling && $0.shuffle }, "no perk card calls a reshuffle")
+    }
+
+    /// Brute: "Ignore negative item effects and add one +1 card". Hide Armor's two −1 cards
+    /// stay out of the deck as the scenario starts; without the perk they go in.
+    @MainActor
+    func testThePerkIgnoresAnItemsMinusOneCards() throws {
+        let scenario = { (gm: GameManager) in try XCTUnwrap(gm.editionStore.scenarioData(index: "1", edition: "gh")) }
+        let (plain, bare) = try veteran("brute", perks: 1)
+        bare.items = ["gh-3"]   // Hide Armor: two −1 cards
+        plain.startScenarioOnBoard(try scenario(plain))
+        XCTAssertEqual(count(.minus1, in: bare), 7)
+
+        let (gm, brute) = try veteran("brute", perks: 1)
+        XCTAssertTrue(gm.characterManager.takePerk(at: 10, for: brute))
+        XCTAssertEqual(count(.plus1, in: brute), 6, "the perk's own +1 card")
+        brute.items = ["gh-3"]
+        gm.startScenarioOnBoard(try scenario(gm))
+        XCTAssertEqual(count(.minus1, in: brute), 5, "no −1 cards from the armor")
+    }
+
+    /// Second Skin sets two −1 cards aside for the scenario. That is the item's gift, not a
+    /// negative effect: the perk that ignores negative item effects doesn't cancel it.
+    @MainActor
+    func testSecondSkinStillWorksWithThePerk() throws {
+        let (gm, brute) = try veteran("brute", perks: 1)
+        XCTAssertTrue(gm.characterManager.takePerk(at: 10, for: brute))
+        brute.items = [PassiveItems.secondSkin, "gh-38"]   // with a Heavy Basinet: two −1 cards
+        gm.startScenarioOnBoard(try XCTUnwrap(gm.editionStore.scenarioData(index: "1", edition: "gh")))
+        XCTAssertEqual(count(.minus1, in: brute), 3, "five, less Second Skin's two, and none from the helmet")
+        gm.completeScenario(success: false)
+        XCTAssertEqual(count(.minus1, in: brute), 5, "back after the scenario")
+
+        let (plain, bare) = try veteran("brute", perks: 1)
+        bare.items = [PassiveItems.secondSkin, "gh-38"]
+        plain.startScenarioOnBoard(try XCTUnwrap(plain.editionStore.scenarioData(index: "1", edition: "gh")))
+        XCTAssertEqual(count(.minus1, in: bare), 5, "without the perk: plus the helmet's two, less Second Skin's two")
+    }
+
+    /// Doomstalker: "Ignore negative scenario effects". #6 Decaying Crypt gives every character
+    /// three Curses as a scenario effect; the perk's holder gets none, their companion all three.
+    @MainActor
+    func testThePerkIgnoresNegativeScenarioEffects() throws {
+        let (gm, doomstalker) = try veteran("angry-face", perks: 1)
+        let companion = gm.game.characters[1]
+        XCTAssertTrue(gm.characterManager.takePerk(at: 9, for: doomstalker))
+        XCTAssertTrue(doomstalker.hasCustomPerk("ignoreNegativeScenario"))
+        gm.startScenarioOnBoard(try XCTUnwrap(gm.editionStore.scenarioData(index: "6", edition: "gh")))
+        // The first round begins: the scenario's effect lands.
+        gm.game.round = 1
+        gm.scenarioRulesManager.evaluateRules(phase: .roundStart)
+        XCTAssertEqual(companion.attackModifierDeck.undrawnCount(of: .curse), 3)
+        XCTAssertEqual(doomstalker.attackModifierDeck.undrawnCount(of: .curse), 0)
+    }
+
     // MARK: - Deck behaviour
 
     func testEmptyDeckReshufflesOnDraw() {
@@ -207,5 +306,106 @@ final class AttackModifierRulesTests: XCTestCase {
                                                   baseAttack: 1, advantage: true,
                                                   drawModifier: draw([double, plus2]), defenderHealth: 10)
         XCTAssertEqual(result.damage, 3)
+    }
+
+    /// The FAQ's examples for cards with effects: an effect is worth something, but how much is
+    /// undefined, so a card is better beyond doubt only when it is no worse in value and has all
+    /// the other's effects; otherwise the card drawn first is used.
+    func testAdvantageWeighsACardsEffects() {
+        func draw(_ cards: [AttackModifier]) -> () -> AttackModifier? {
+            var queue = cards
+            return { queue.isEmpty ? nil : queue.removeFirst() }
+        }
+        func card(_ type: AttackModifierType, _ id: String, _ condition: String? = nil, element: String? = nil) -> AttackModifier {
+            var card = AttackModifier.standard(type)
+            card.id = id
+            if let condition { card.effects.append(AttackModifierEffect(type: .condition, value: .string(condition))) }
+            if let element { card.effects.append(AttackModifierEffect(type: .element, value: .string(element))) }
+            return card
+        }
+        func kept(_ cards: [AttackModifier], advantage: Bool, base: Int = 3) -> String? {
+            CombatResolver.drawModifiers(advantage: advantage, disadvantage: !advantage, baseAttack: base,
+                                         draw: draw(cards)).first?.id
+        }
+        let plus1 = card(.plus1, "+1"), plus1Stun = card(.plus1, "+1 stun", "stun"), plus2 = card(.plus2, "+2")
+        let plus0Stun = card(.plus0, "+0 stun", "stun"), plus1Fire = card(.plus1, "+1 fire", element: "fire")
+        let plus0Muddle = card(.plus0, "+0 muddle", "muddle"), plus2Stun = card(.plus2, "+2 stun", "stun")
+
+        // "+1 Stun vs. +1: +1 Stun is better" — whichever is drawn first.
+        XCTAssertEqual(kept([plus1, plus1Stun], advantage: true), "+1 stun")
+        XCTAssertEqual(kept([plus1Stun, plus1], advantage: true), "+1 stun")
+        XCTAssertEqual(kept([plus1Stun, plus1], advantage: false), "+1", "and the worse for disadvantage")
+        XCTAssertEqual(kept([plus1, plus1Stun], advantage: false), "+1")
+
+        // "+0 Stun vs. +2", "+1 Stun vs. +1 Fire", "+0 Muddle vs. +2 Stun": ambiguous — the first drawn.
+        for pair in [[plus0Stun, plus2], [plus1Stun, plus1Fire], [plus0Muddle, plus2Stun]] {
+            for advantage in [true, false] {
+                XCTAssertEqual(kept(pair, advantage: advantage), pair[0].id)
+                XCTAssertEqual(kept(pair.reversed(), advantage: advantage), pair[1].id)
+            }
+        }
+
+        // The same effect on both: the value decides.
+        XCTAssertEqual(kept([plus0Stun, plus2Stun], advantage: true), "+2 stun")
+        XCTAssertEqual(kept([plus2Stun, plus0Stun], advantage: false), "+0 stun")
+
+        // "2x vs. Attack 2 and +2: ambiguous" (both make 4); "2x vs. Attack 2 and +1: 2x is better".
+        let double = card(.double_, "x2")
+        XCTAssertEqual(kept([plus2, double], advantage: true, base: 2), "+2")
+        XCTAssertEqual(kept([double, plus2], advantage: true, base: 2), "x2")
+        XCTAssertEqual(kept([plus1, double], advantage: true, base: 2), "x2")
+        XCTAssertEqual(kept([double, plus1], advantage: false, base: 2), "+1")
+
+        // A null is worse than anything, effect or not.
+        XCTAssertEqual(kept([card(.null_, "miss"), plus0Stun], advantage: true), "+0 stun")
+        XCTAssertEqual(kept([plus0Stun, card(.null_, "miss")], advantage: false), "miss")
+    }
+}
+
+/// The end-of-round shuffle (GH p.11, 20): a deck that drew a ×2 or Null in the round is
+/// shuffled when the round ends.
+@MainActor
+final class ModifierDeckRoundEndTests: XCTestCase {
+
+    /// A deck that runs out in the middle of a round is shuffled to go on drawing. That doesn't
+    /// settle the Null drawn before it ran out: the deck is still shuffled as the round ends.
+    func testADeckThatRanOutMidRoundIsStillShuffledAtTheEndOfTheRound() throws {
+        var tried = 0
+        for seed in 1...12 as ClosedRange<UInt64> {
+            GameRandom.shared = GameRandom(seed: seed)
+            let gm = try SaveAndContinueTestsSupport.manager()
+            let cards = [AttackModifier.standard(.null_)] + (0..<9).map { _ in AttackModifier.standard(.plus0) }
+            gm.game.monsterAttackModifierDeck = AttackModifierDeck(attackModifiers: cards, cards: cards)
+            gm.game.state = .next
+            gm.game.round = 1
+            for _ in 0..<10 { _ = gm.attackModifierManager.drawMonsterCard() }   // the Null and the nine others
+            XCTAssertEqual(gm.game.monsterAttackModifierDeck.remainingCount, 0)
+            // One more attack this round: the discards are shuffled and the draw is made from them.
+            // (Where that draw is the Null itself, the game tells us nothing: another seed.)
+            guard gm.attackModifierManager.drawMonsterCard()?.type != .null_ else { continue }
+            tried += 1
+            let deck = gm.game.monsterAttackModifierDeck
+            XCTAssertTrue(deck.needsShuffle, "seed \(seed): the Null drawn earlier this round still calls for a shuffle")
+
+            gm.roundManager.nextGameState()   // the round ends
+            XCTAssertEqual(gm.game.state, .draw)
+            XCTAssertEqual(gm.game.monsterAttackModifierDeck.current, -1, "seed \(seed): shuffled, nothing drawn")
+            XCTAssertEqual(gm.game.monsterAttackModifierDeck.cards.count, 10)
+            XCTAssertFalse(gm.game.monsterAttackModifierDeck.needsShuffle, "and the debt is settled")
+        }
+        XCTAssertGreaterThan(tried, 6)
+    }
+
+    /// Running out with no ×2 or Null drawn that round owes nothing.
+    func testADeckThatRanOutWithoutAShuffleCardIsLeftAsItIs() throws {
+        GameRandom.shared = GameRandom(seed: 3)
+        let gm = try SaveAndContinueTestsSupport.manager()
+        let cards = (0..<4).map { _ in AttackModifier.standard(.plus0) }
+        gm.game.monsterAttackModifierDeck = AttackModifierDeck(attackModifiers: cards, cards: cards)
+        gm.game.state = .next
+        for _ in 0..<5 { _ = gm.attackModifierManager.drawMonsterCard() }
+        XCTAssertFalse(gm.game.monsterAttackModifierDeck.needsShuffle)
+        gm.roundManager.nextGameState()
+        XCTAssertEqual(gm.game.monsterAttackModifierDeck.current, 0, "one card drawn since it ran out, and no shuffle at the round's end")
     }
 }

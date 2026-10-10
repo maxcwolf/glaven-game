@@ -97,9 +97,14 @@ enum RestText {
     }
 
     static func longRestLines(discards: Int, hand: Int) -> [String] {
-        ["Heal 2 and refresh your spent items.",
+        ["Refresh your spent items, and Heal 2 if you like.",
          "Choose one of your \(discards) discarded cards to lose, and take back the rest.",
          "Hand \(hand) \u{2192} \(hand + discards - 1)"]
+    }
+
+    /// The switch for the rest's heal: what it would do now.
+    static func longRestHeal(poisoned: Bool) -> String {
+        poisoned ? "Heal 2: removes Poison instead of healing" : "Heal 2, self"
     }
 
     /// Once the re-draw is used, the button gives way to this.
@@ -209,6 +214,8 @@ struct LongRestSheet: View {
     let coordinator: BoardCoordinator
     @Environment(GameManager.self) private var gameManager
     @State private var chosen: Int?
+    /// The rest's "Heal 2, self" is the player's to take or leave (FAQ).
+    @State private var takesHeal = true
 
     var body: some View {
         let labels = gameManager.editionStore
@@ -218,9 +225,30 @@ struct LongRestSheet: View {
                 RestHeading(kicker: "Initiative 99 \u{00B7} \(name)", title: "Long Rest", systemImage: "bed.double.fill")
                 ForEach(RestText.longRestLines(discards: character.discardedCards.count,
                                                hand: character.handCards.count), id: \.self) { RestLine(text: $0) }
+                Toggle(isOn: $takesHeal) {
+                    RestLine(text: RestText.longRestHeal(poisoned: character.entityConditions.contains { $0.name == .poison && !$0.expired }))
+                }
+                .tint(BoardTheme.brass)
+                .fixedSize()
+                // A long rest is a turn: items may be used on it, before the card is chosen.
+                let items = coordinator.usableItems()
+                if !items.isEmpty {
+                    FlowLayout(spacing: 8) {
+                        ForEach(items, id: \.itemKey) { item in
+                            Button {
+                                coordinator.useItem(item)
+                            } label: {
+                                Label("Use \(item.name)", systemImage: item.consumed ? "flask" : "shield.lefthalf.filled")
+                            }
+                            .buttonStyle(.boardQuietCompact)
+                            .accessibilityHint(item.consumed ? "Used up for the scenario"
+                                               : item.spent ? "Spent until a long rest" : "Can be used again")
+                        }
+                    }
+                }
                 let cardName = chosen.flatMap { character.discardedCards.indices.contains($0) ? ability(character.discardedCards[$0])?.name : nil }
                 Button {
-                    if let chosen { coordinator.resolveLongRest(characterID: character.id, discardIndex: chosen) }
+                    if let chosen { coordinator.resolveLongRest(characterID: character.id, discardIndex: chosen, heal: takesHeal) }
                 } label: {
                     Label(cardName.map { "Lose \($0)" } ?? "Choose a Card to Lose", systemImage: "checkmark")
                         .lineLimit(1)

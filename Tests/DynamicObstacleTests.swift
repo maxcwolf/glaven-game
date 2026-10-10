@@ -103,15 +103,15 @@ final class DynamicObstacleTests: XCTestCase {
 
     // MARK: - E2E: Monster AI Reacts to Dynamic Obstacles
 
-    func testMonsterAI_pathsAroundDynamicObstacle() {
+    func testMonsterAI_pathsAroundDynamicObstacle() throws {
         let t = TestGame()
-        t.addCharacter(pos: HexCoord(6, 3))
+        let character = t.addCharacter(pos: HexCoord(6, 3))
         let monster = t.addSimpleMonster(positions: [(1, HexCoord(2, 3), 5)])
 
-        // Place obstacle blocking direct path
-        t.board.placeObstacle(at: HexCoord(4, 3))
-        t.board.placeObstacle(at: HexCoord(4, 2))
-        t.board.placeObstacle(at: HexCoord(4, 4))
+        // Place obstacles blocking the direct path: a wall down column 4 with its only gap
+        // five rows below the monster.
+        let wall = (0...7).map { HexCoord(4, $0) }
+        for hex in wall { t.board.placeObstacle(at: hex) }
 
         let ability = AbilityModel(cardId: 1, initiative: 50, actions: [
             ActionModel(type: .move, value: .int(4)),
@@ -125,28 +125,49 @@ final class DynamicObstacleTests: XCTestCase {
         )
 
         // Monster should still find focus (path goes around)
-        XCTAssertNotNil(result.focusTarget, "Monster should find path around dynamic obstacles")
-        if !result.movementPath.isEmpty {
-            for coord in result.movementPath {
-                XCTAssertTrue(t.board.cells[coord]?.passable ?? false,
-                              "Monster path should not include obstacle hexes")
-            }
+        XCTAssertEqual(result.focusTarget, .character(character.id), "Monster should find path around dynamic obstacles")
+        XCTAssertEqual(result.movementPath.count - 1, 4, "it moves its whole Move 4 along the way round")
+        for coord in result.movementPath {
+            XCTAssertTrue(t.board.cells[coord]?.passable ?? false,
+                          "Monster path should not include obstacle hexes")
+            XCTAssertFalse(wall.contains(coord))
         }
+        let end = try XCTUnwrap(result.movementPath.last)
+        XCTAssertLessThan(end.distance(to: HexCoord(4, 8)), HexCoord(2, 3).distance(to: HexCoord(4, 8)), "toward the gap")
+        XCTAssertLessThan(end.col, 4, "still on its own side of the wall")
+        XCTAssertTrue(result.attackTargets.isEmpty, "the way round is too long to attack this turn")
+
+        // With the obstacle in its line removed, the same monster walks straight up and attacks.
+        t.board.removeObstacle(at: HexCoord(4, 3))
+        let direct = MonsterAI.computeTurn(
+            pieceID: .monster(name: "test-monster", standee: 1),
+            monster: monster, entity: monster.entities[0],
+            ability: ability, board: t.board, gameState: t.game
+        )
+        XCTAssertEqual(direct.movementPath.count - 1, 3)
+        XCTAssertEqual(direct.movementPath.last, HexCoord(5, 3))
+        XCTAssertEqual(direct.attackTargets, [.character(character.id)])
     }
 
     // MARK: - E2E: Dynamic Trap Placement + Trigger
 
-    func testDynamicTrap_triggersOnEntry() {
-        let board = makeBoard()
+    /// A trap a card places is sprung by the first figure to walk onto it, for the damage the
+    /// card gave it (not the scenario level's), and is gone afterwards.
+    @MainActor func testDynamicTrap_triggersOnEntry() async throws {
+        let board = try RuleBoard(level: 1)
         let trapCoord = HexCoord(3, 3)
+        board.coord.boardState.placeTrap(at: trapCoord, damage: 4, subType: "spike")
+        XCTAssertTrue(board.coord.boardState.cells[trapCoord]!.isTrap, "Dynamic trap exists")
 
-        // Place trap dynamically
-        board.placeTrap(at: trapCoord, damage: 4, subType: "spike")
+        let walker = try board.monster(at: HexCoord(2, 3))
+        await board.coord.moveAlong(walker.piece, path: [HexCoord(2, 3), trapCoord, HexCoord(4, 3)], style: .normal)
+        XCTAssertEqual(walker.entity.health, 30 - 4, "the trap's own 4 damage, where the level's would be 3")
+        XCTAssertFalse(board.coord.boardState.cells[trapCoord]!.isTrap, "Trap removed after trigger")
+        XCTAssertEqual(board.hex(walker.piece), HexCoord(4, 3), "and the walk goes on")
 
-        XCTAssertTrue(board.cells[trapCoord]!.isTrap, "Dynamic trap exists")
-
-        // Trigger it
-        board.removeTrap(at: trapCoord)
-        XCTAssertFalse(board.cells[trapCoord]!.isTrap, "Trap removed after trigger")
+        // The next to pass that way finds nothing.
+        let second = try board.monster(at: HexCoord(2, 4))
+        await board.coord.moveAlong(second.piece, path: [HexCoord(2, 4), trapCoord], style: .normal)
+        XCTAssertEqual(second.entity.health, 30)
     }
 }

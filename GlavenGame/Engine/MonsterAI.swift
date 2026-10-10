@@ -84,7 +84,8 @@ enum MonsterAI {
         consumed: Set<UUID> = []
     ) -> MonsterTurnResult {
         let standee = entity.number
-        let actions = ability.actions ?? []
+        // An attack laid out in a grid with its element bonus is still the card's attack.
+        let actions = MonsterAbility.flattened(ability.actions ?? [])
 
         var candidates: [FocusCandidate] = []
         func result(path: [HexCoord] = [], targets: [PieceID] = [], from: HexCoord? = nil,
@@ -135,8 +136,11 @@ enum MonsterAI {
             MonsterAbility.attack($0, stat: stat, baseAttack: baseAttack, baseRange: baseRange, consumed: consumed)
                 .reduced(by: doomPenalty)
         }
-        let focusRange = attackSpec?.range ?? 1
-        let isRanged = attackSpec?.isRanged ?? false
+        // A disarmed monster finds its focus and moves as if it had no attack either: as for a
+        // melee attack, as near its focus as it can get (FAQ).
+        let plannedAttack = isDisarmed ? nil : attackSpec
+        let focusRange = plannedAttack?.range ?? 1
+        let isRanged = plannedAttack?.isRanged ?? false
         let mode: MoveMode = monster.monsterData?.flying == true ? .fly : (moveSpec?.jump == true ? .jump : .normal)
 
         guard let currentPos = board.piecePositions[pieceID] else {
@@ -157,19 +161,11 @@ enum MonsterAI {
             enemyPositions: blockingPositions,
             gameState: gameState,
             mode: mode,
-            attack: attackSpec
+            attack: plannedAttack
         )
-        guard let focus = findFocus(
-            from: currentPos,
-            enemies: enemies,
-            board: board,
-            range: focusRange,
-            isRanged: isRanged,
-            enemyPositions: blockingPositions,
-            gameState: gameState,
-            mode: mode,
-            attack: attackSpec
-        ), let focusPos = board.piecePositions[focus] else {
+        // What the scenario has monsters go for first comes first, when it is within reach.
+        candidates = prioritized(candidates, move: totalMove, gameState: gameState)
+        guard let focus = candidates.first?.pieceID, let focusPos = board.piecePositions[focus] else {
             // No focus: the monster neither moves nor attacks (p.30).
             return result(disarmed: isDisarmed, attack: attackSpec)
         }
@@ -184,13 +180,14 @@ enum MonsterAI {
                 range: focusRange,
                 moveRange: totalMove,
                 isRanged: isRanged,
-                attack: attackSpec,
+                attack: plannedAttack,
                 enemies: enemies,
                 board: board,
                 enemyPositions: blockingPositions,
                 allyPositions: allyPositions,
                 gameState: gameState,
-                mode: mode
+                mode: mode,
+                disadvantaged: isActive(.muddle, on: entity)
             ).path
             movePath = truncate(path ?? [], toBudget: totalMove, board: board, mode: mode)
         }
@@ -243,7 +240,7 @@ enum MonsterAI {
 
     /// Whether a figure at `from` can attack a figure at `to` within `range` (LOS required).
     static func canAttack(from: HexCoord, to: HexCoord, range: Int, board: BoardState) -> Bool {
-        from.distance(to: to) <= range && LineOfSight.hasLOS(from: from, to: to, board: board)
+        board.isWithin(range, from: from, to: to) && LineOfSight.hasLOS(from: from, to: to, board: board)
     }
 
     // MARK: - Focus Algorithm
@@ -263,6 +260,20 @@ enum MonsterAI {
     ) -> PieceID? {
         focusCandidates(from: position, enemies: enemies, board: board, range: range, isRanged: isRanged,
                         enemyPositions: enemyPositions, gameState: gameState, mode: mode, attack: attack).first?.pieceID
+    }
+
+    /// Where a scenario has monsters go for an objective first (the gate of the Battlements, the
+    /// crystal): one of them the monster can get within range of this turn leads the candidates.
+    static func prioritized(_ candidates: [FocusCandidate], move: Int, gameState: GameState) -> [FocusCandidate] {
+        guard let scenario = gameState.scenario, scenario.data.solo == nil,
+              let first = ScenarioPlacementStore.shared.placements(for: scenario.data.index, edition: scenario.data.edition)?.focusFirst,
+              !first.isEmpty else { return candidates }
+        func isFirst(_ candidate: FocusCandidate) -> Bool {
+            guard candidate.pathCost <= move, let (container, _) = objectiveEntity(candidate.pieceID, gameState: gameState),
+                  let index = container.objectiveIndex else { return false }
+            return first.contains(index)
+        }
+        return candidates.filter(isFirst) + candidates.filter { !isFirst($0) }
     }
 
     /// Every enemy the monster could attack this turn or later, best focus first.
@@ -307,7 +318,7 @@ enum MonsterAI {
                 pieceID: enemy,
                 negativeHexes: result.negativeHexes,
                 pathCost: result.cost,
-                proximity: position.distance(to: enemyPos),
+                proximity: board.range(from: position, to: enemyPos) ?? 99,
                 initiative: enemyInitiative(enemy, gameState: gameState)
             ))
         }
@@ -333,7 +344,7 @@ enum MonsterAI {
         }
 
         if range <= 1 {
-            for neighbor in target.neighbors {
+            for neighbor in board.neighbors(of: target) {
                 guard standable(neighbor) else { continue }
                 // Can be the source position or unoccupied (can't stop on any occupied hex)
                 guard neighbor == sourcePosition || !board.isOccupied(neighbor) else { continue }
@@ -342,7 +353,7 @@ enum MonsterAI {
             }
         } else {
             for coord in board.cells.keys {
-                guard coord.distance(to: target) <= range, standable(coord) else { continue }
+                guard standable(coord), board.isWithin(range, from: coord, to: target) else { continue }
                 guard coord == sourcePosition || !board.isOccupied(coord) else { continue }
                 guard LineOfSight.hasLOS(from: coord, to: target, board: board) else { continue }
                 hexes.insert(coord)
@@ -356,8 +367,10 @@ enum MonsterAI {
     ///
     /// The monster moves the fewest hexes needed to attack its focus with maximum effect (p.30):
     /// a ranged monster first avoids disadvantage on its focus, then maximizes additional targets,
-    /// then minimizes movement. If no attack position is reachable this turn it moves toward the
-    /// closest one.
+    /// then avoids disadvantage on those, then minimizes movement. If no attack position is
+    /// reachable this turn it moves toward the closest one.
+    /// - Parameter disadvantaged: the monster attacks with Disadvantage wherever it stands
+    ///   (muddled), so it doesn't move to lose the Disadvantage of an adjacent target (FAQ).
     static func findBestAttackPosition(
         from position: HexCoord,
         focusPos: HexCoord,
@@ -371,7 +384,8 @@ enum MonsterAI {
         enemyPositions: Set<HexCoord>,
         allyPositions: Set<HexCoord>,
         gameState: GameState? = nil,
-        mode: MoveMode = .normal
+        mode: MoveMode = .normal,
+        disadvantaged: Bool = false
     ) -> (attackHex: HexCoord?, path: [HexCoord]?) {
         var attackHexes = findAttackHexes(
             target: focusPos, range: range, board: board,
@@ -406,19 +420,30 @@ enum MonsterAI {
         let reachableAttackHexes = attackHexes.filter { reachable[$0] != nil || $0 == position }
 
         if !reachableAttackHexes.isEmpty {
-            func score(_ hex: HexCoord) -> (disadvantage: Int, targets: Int, cost: Int) {
-                let disadvantage = isRanged && hex.isAdjacent(to: focusPos) ? 1 : 0
+            // A ranged attack on an adjacent enemy has Disadvantage — which a monster that has it
+            // anyway doesn't move to avoid.
+            let adjacencyCosts = isRanged && !disadvantaged
+            func score(_ hex: HexCoord) -> (disadvantage: Int, targets: Int, others: Int, cost: Int) {
+                let disadvantage = adjacencyCosts && board.areAdjacent(hex, focusPos) ? 1 : 0
                 var targetCount = 1
-                if let attack, let focus, let gameState, attack.targetCount > 1 || attack.area != nil {
-                    targetCount = targets(for: attack, from: hex, focus: focus, focusPos: focusPos,
-                                          enemies: enemies, board: board, gameState: gameState).count
+                // Additional targets it would attack with Disadvantage from here.
+                var others = 0
+                if let attack, let focus, let gameState,
+                   attack.targetCount > 1 || attack.area != nil || attack.allEnemiesWithin != nil {
+                    let hit = targets(for: attack, from: hex, focus: focus, focusPos: focusPos,
+                                      enemies: enemies, board: board, gameState: gameState)
+                    targetCount = hit.count
+                    if adjacencyCosts {
+                        others = hit.filter { $0 != focus && board.piecePositions[$0].map { board.areAdjacent($0, hex) } == true }.count
+                    }
                 }
-                return (disadvantage, targetCount, hex == position ? 0 : (reachable[hex] ?? 0))
+                return (disadvantage, targetCount, others, hex == position ? 0 : (reachable[hex] ?? 0))
             }
             let best = reachableAttackHexes.min { a, b in
                 let sa = score(a), sb = score(b)
                 if sa.disadvantage != sb.disadvantage { return sa.disadvantage < sb.disadvantage }
                 if sa.targets != sb.targets { return sa.targets > sb.targets }
+                if sa.others != sb.others { return sa.others < sb.others }
                 if sa.cost != sb.cost { return sa.cost < sb.cost }
                 return (a.col, a.row) < (b.col, b.row)
             }!
@@ -449,6 +474,26 @@ enum MonsterAI {
         let pushedBack = next < result.path.count && board.isOccupied(result.path[next])
             && Pathfinder.movementCost(of: Array(result.path.prefix(next + 1)), board: board, mode: mode) <= moveRange
         let ideal = max(0, result.cost - moveRange)
+        // A jump's last hex is entered as in a normal move (p.17), so where this turn's jump comes
+        // down counts: not on a trap or hazardous terrain while another hex — or staying — will do.
+        let landsBadly = mode == .jump && stop != position
+            && (board.cells[stop].map { $0.isTrap || $0.isHazard } ?? false)
+        if landsBadly {
+            var best: (negatives: Int, cost: Int, move: Int, hex: HexCoord)?
+            // (`reachable` holds only landings clear of traps and hazards, the start among them.)
+            for (hex, move) in reachable where hex == position || !board.isOccupied(hex) {
+                guard let there = remaining(from: hex) else { continue }
+                let candidate = (negatives: there.negativeHexes, cost: there.cost, move: move, hex: hex)
+                if best == nil || (candidate.negatives, candidate.cost, candidate.move, candidate.hex)
+                    < (best!.negatives, best!.cost, best!.move, best!.hex) {
+                    best = candidate
+                }
+            }
+            guard let best, best.hex != position, let path = Pathfinder.findPath(
+                board: board, from: position, to: best.hex, mode: mode, canOpenDoors: false, maxCost: moveRange,
+                occupiedByEnemy: enemyPositions, occupiedByAlly: allyPositions) else { return (result.target, [position]) }
+            return (result.target, path)
+        }
         if pushedBack, let left = remaining(from: stop), left.cost > ideal {
             var best = (negatives: left.negativeHexes, cost: left.cost, move: reachable[stop] ?? 0, hex: stop)
             for (hex, move) in reachable where hex != stop && !board.isOccupied(hex) {
@@ -502,7 +547,7 @@ enum MonsterAI {
             guard canAttack(from: position, to: enemyPos, range: range, board: board) else { continue }
             candidates.append(Candidate(
                 pieceID: enemy,
-                distance: position.distance(to: enemyPos),
+                distance: board.range(from: position, to: enemyPos) ?? 99,
                 initiative: enemyInitiative(enemy, gameState: gameState)
             ))
         }
@@ -518,8 +563,28 @@ enum MonsterAI {
     // MARK: - Factions
 
     /// Whether a monster fights on the players' side (scenario allies).
+    /// Monsters the scenario lists as allies of the party. (The data's `allied` is something
+    /// else — Fading Lighthouse lists its second group of enemies there — and makes no ally.)
     static func isAllyFaction(_ monster: GameMonster) -> Bool {
-        monster.isAlly || monster.isAllied
+        monster.isAlly
+    }
+
+    /// Monster types that are inactive right now: they don't act, nothing affects them, and
+    /// figures move through their hexes (`ScenarioPlacements.inactive`). Between rounds it is the
+    /// round about to be played that counts.
+    static func inactiveMonsters(_ gameState: GameState) -> Set<String> {
+        guard let scenario = gameState.scenario, scenario.data.solo == nil,
+              let written = ScenarioPlacementStore.shared.placements(for: scenario.data.index, edition: scenario.data.edition),
+              written.inactive != nil else { return [] }
+        return written.inactiveMonsters(round: gameState.state == .draw ? gameState.round + 1 : gameState.round,
+                                        woken: scenario.releasedMonsters)
+    }
+
+    /// The sides of a scenario: the party's, the monsters', and a third that fights both.
+    enum Side { case party, monsters, apart }
+
+    static func side(of monster: GameMonster) -> Side {
+        monster.isAlly ? .party : monster.standsApart ? .apart : .monsters
     }
 
     /// Look up the monster group and entity for a monster piece.
@@ -536,6 +601,8 @@ enum MonsterAI {
     /// cannot be focused on or targeted, but they still block movement).
     static func gatherEnemies(board: BoardState, monster: GameMonster, gameState: GameState, includeInvisible: Bool = false) -> [PieceID] {
         let allyFaction = isAllyFaction(monster)
+        let side = side(of: monster)
+        let inactive = inactiveMonsters(gameState)
         return board.piecePositions.keys.sorted().filter { id in
             switch id {
             case .character(let charID):
@@ -554,12 +621,28 @@ enum MonsterAI {
                 return false
             case .monster:
                 guard let (group, entity) = monsterEntity(id, gameState: gameState),
-                      isAllyFaction(group) != allyFaction else { return false }
+                      self.side(of: group) != side, !inactive.contains(group.name) else { return false }
                 return includeInvisible || !isActive(.invisible, on: entity)
             case .objective:
-                return false
+                // Escorts fight on the players' side, and what the party protects is the monsters'
+                // to attack; a thing to destroy (an altar, a gate) is the players' side's target —
+                // monsters allied to the party included (the demons at the Battlements).
+                guard let (container, entity) = objectiveEntity(id, gameState: gameState) else { return false }
+                if allyFaction { return !container.escort && !container.isProtected && entity.maxHealth > 0 }
+                guard !container.isSheltered,
+                      container.escort || (container.isProtected && entity.maxHealth > 0) else { return false }
+                return includeInvisible || !isActive(.invisible, on: entity)
             }
         }
+    }
+
+    /// The living objective behind a piece, with the container it belongs to.
+    static func objectiveEntity(_ id: PieceID, gameState: GameState) -> (GameObjectiveContainer, GameObjectiveEntity)? {
+        guard case .objective(let number) = id else { return nil }
+        for container in gameState.objectives {
+            if let entity = container.entities.first(where: { $0.number == number && !$0.dead }) { return (container, entity) }
+        }
+        return nil
     }
 
     /// Hexes the monster cannot move through: every enemy figure (visible or not) and objectives.
@@ -579,7 +662,7 @@ enum MonsterAI {
         for (id, coord) in board.piecePositions {
             guard id != excluding, case .monster = id else { continue }
             if let gameState, let (group, _) = monsterEntity(id, gameState: gameState),
-               isAllyFaction(group) != isAllyFaction(monster) {
+               side(of: group) != side(of: monster) {
                 continue
             }
             positions.insert(coord)
@@ -613,7 +696,9 @@ enum MonsterAI {
             let order = (entity.type == .normal ? 0.5 : 0) + Double(entity.number) * 0.01
             return base + order
         case .objective:
-            return 99.5
+            // An escort acts at its own initiative; an objective to destroy counts as 99.
+            guard let (container, _) = objectiveEntity(pieceID, gameState: gameState), container.escort else { return 99.5 }
+            return Double(container.initiative) - 0.5
         }
     }
 
