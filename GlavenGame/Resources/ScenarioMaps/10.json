@@ -245,6 +245,14 @@
                                                     "twoPlayer": "none",
                                                     "threePlayer": "none",
                                                     "fourPlayer": "normal"
+                                                },
+                                                {
+                                                    "monster": "flame-demon",
+                                                    "initialX": 0,
+                                                    "initialY": 3,
+                                                    "twoPlayer": "normal",
+                                                    "threePlayer": "normal",
+                                                    "fourPlayer": "elite"
                                                 }
                                             ],
                                             "turns": 3
@@ -378,7 +386,7 @@
                                         "initialX": 4,
                                         "initialY": 4,
                                         "twoPlayer": "none",
-                                        "threePlayer": "elite",
+                                        "threePlayer": "none",
                                         "fourPlayer": "normal"
                                     }
                                 ],

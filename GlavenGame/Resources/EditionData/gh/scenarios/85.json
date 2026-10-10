@@ -139,6 +139,10 @@
           "player4": "elite"
         },
         {
+          "name": "night-demon",
+          "player4": "normal"
+        },
+        {
           "name": "sun-demon",
           "type": "elite"
         },
@@ -166,6 +170,14 @@
         {
           "name": "sun-demon",
           "player3": "normal",
+          "player4": "normal"
+        },
+        {
+          "name": "sun-demon",
+          "player4": "normal"
+        },
+        {
+          "name": "sun-demon",
           "player4": "normal"
         }
       ]

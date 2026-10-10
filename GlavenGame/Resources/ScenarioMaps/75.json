@@ -312,7 +312,7 @@
                                         "initialX": 3,
                                         "initialY": 6,
                                         "twoPlayer": "none",
-                                        "threePlayer": "elite",
+                                        "threePlayer": "none",
                                         "fourPlayer": "normal"
                                     }
                                 ],

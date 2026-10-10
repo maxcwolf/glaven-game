@@ -370,7 +370,7 @@
                             "initialY": 3,
                             "twoPlayer": "none",
                             "threePlayer": "normal",
-                            "fourPlayer": "elite"
+                            "fourPlayer": "normal"
                         },
                         {
                             "monster": "giant-viper",

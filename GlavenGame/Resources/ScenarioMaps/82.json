@@ -306,7 +306,7 @@
                                         "initialX": 4,
                                         "initialY": 4,
                                         "twoPlayer": "none",
-                                        "threePlayer": "normal",
+                                        "threePlayer": "none",
                                         "fourPlayer": "normal"
                                     }
                                 ],
@@ -372,6 +372,14 @@
                             "twoPlayer": "elite",
                             "threePlayer": "elite",
                             "fourPlayer": "elite"
+                        },
+                        {
+                            "monster": "stone-golem",
+                            "initialX": 3,
+                            "initialY": 2,
+                            "twoPlayer": "none",
+                            "threePlayer": "normal",
+                            "fourPlayer": "normal"
                         }
                     ],
                     "turns": 3

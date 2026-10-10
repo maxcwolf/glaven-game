@@ -76,7 +76,7 @@
                                         "initialY": 2,
                                         "twoPlayer": "normal",
                                         "threePlayer": "normal",
-                                        "fourPlayer": "normal"
+                                        "fourPlayer": "elite"
                                     },
                                     {
                                         "monster": "sun-demon",

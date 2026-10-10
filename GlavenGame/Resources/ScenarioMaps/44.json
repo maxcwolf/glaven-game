@@ -432,6 +432,14 @@
                             "twoPlayer": "normal",
                             "threePlayer": "normal",
                             "fourPlayer": "elite"
+                        },
+                        {
+                            "monster": "hound",
+                            "initialX": 4,
+                            "initialY": 5,
+                            "twoPlayer": "none",
+                            "threePlayer": "normal",
+                            "fourPlayer": "normal"
                         }
                     ],
                     "turns": 0

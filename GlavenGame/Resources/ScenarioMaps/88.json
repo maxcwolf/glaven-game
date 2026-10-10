@@ -209,7 +209,7 @@
                                         "fourPlayer": "elite"
                                     },
                                     {
-                                        "monster": "lurker",
+                                        "monster": "lurker-king",
                                         "initialX": 3,
                                         "initialY": 5,
                                         "twoPlayer": "elite",
@@ -397,7 +397,7 @@
             },
             {
                 "monster": "frost-demon",
-                "initialX": 1,
+                "initialX": 2,
                 "initialY": 0,
                 "twoPlayer": "none",
                 "threePlayer": "normal",

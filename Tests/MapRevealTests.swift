@@ -59,8 +59,7 @@ final class MapRevealTests: XCTestCase {
             })
             let onBoard = layout.overlays.values.filter { $0 == "trap" || $0 == "treasure" }.count
             XCTAssertEqual(onBoard, traps.count, "scenario \(index): every trap and treasure tile of the map is on the board")
-            // By hex: #88's map data puts a Lurker and a Frost Demon on one hex of D2b, and a hex
-            // holds one figure (the other is placed beside it when its room is set up).
+            // By hex: a hex holds one figure (`MapMonsterPlaceTests` checks no two places share one).
             let monsters = Set(placements.flatMap { placement in
                 placement.tile.monsters.map { "\(placement.tile.ref.lowercased()):\($0.initialX),\($0.initialY)" }
             })

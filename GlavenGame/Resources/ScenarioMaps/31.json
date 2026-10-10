@@ -60,9 +60,9 @@
                                         "monster": "night-demon",
                                         "initialX": 1,
                                         "initialY": 3,
-                                        "twoPlayer": "none",
+                                        "twoPlayer": "normal",
                                         "threePlayer": "none",
-                                        "fourPlayer": "normal"
+                                        "fourPlayer": "none"
                                     },
                                     {
                                         "monster": "night-demon",

@@ -188,9 +188,9 @@
                                         "monster": "living-corpse",
                                         "initialX": 2,
                                         "initialY": 5,
-                                        "twoPlayer": "normal",
+                                        "twoPlayer": "none",
                                         "threePlayer": "none",
-                                        "fourPlayer": "none"
+                                        "fourPlayer": "normal"
                                     },
                                     {
                                         "monster": "living-spirit",

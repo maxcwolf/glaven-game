@@ -394,7 +394,7 @@
                                                     "initialY": 2,
                                                     "twoPlayer": "none",
                                                     "threePlayer": "none",
-                                                    "fourPlayer": "none"
+                                                    "fourPlayer": "normal"
                                                 }
                                             ],
                                             "turns": 3

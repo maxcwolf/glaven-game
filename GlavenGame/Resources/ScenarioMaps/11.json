@@ -307,6 +307,22 @@
                                                     "twoPlayer": "normal",
                                                     "threePlayer": "normal",
                                                     "fourPlayer": "none"
+                                                },
+                                                {
+                                                    "monster": "city-archer",
+                                                    "initialX": 3,
+                                                    "initialY": 3,
+                                                    "twoPlayer": "none",
+                                                    "threePlayer": "normal",
+                                                    "fourPlayer": "normal"
+                                                },
+                                                {
+                                                    "monster": "city-guard",
+                                                    "initialX": 4,
+                                                    "initialY": 6,
+                                                    "twoPlayer": "none",
+                                                    "threePlayer": "normal",
+                                                    "fourPlayer": "elite"
                                                 }
                                             ],
                                             "turns": 2

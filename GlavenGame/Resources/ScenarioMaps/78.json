@@ -197,7 +197,7 @@
                             "fourPlayer": "normal"
                         },
                         {
-                            "monster": "cultist",
+                            "monster": "cultist-scenario-78",
                             "initialX": 4,
                             "initialY": 1,
                             "twoPlayer": "elite",
@@ -205,7 +205,7 @@
                             "fourPlayer": "elite"
                         },
                         {
-                            "monster": "cultist",
+                            "monster": "cultist-scenario-78",
                             "initialX": 0,
                             "initialY": 5,
                             "twoPlayer": "elite",

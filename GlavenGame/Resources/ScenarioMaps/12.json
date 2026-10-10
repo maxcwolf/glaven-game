@@ -606,7 +606,7 @@
                             "initialY": 0,
                             "twoPlayer": "normal",
                             "threePlayer": "normal",
-                            "fourPlayer": "normal"
+                            "fourPlayer": "none"
                         },
                         {
                             "monster": "city-guard",
