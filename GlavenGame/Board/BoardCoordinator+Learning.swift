@@ -511,8 +511,13 @@ extension BoardCoordinator {
                 title = "Obstacle"
                 paragraphs.append("Nothing can move through it or stop on it (flying passes over), but it doesn't block line of sight.")
             case .door:
-                title = boardState.isClosedDoor(hex) ? "Closed door" : "Open door"
-                paragraphs.append(LearnTopic.topic(.doors).paragraphs[0])
+                if boardState.isLockedDoor(hex) {
+                    title = "Locked door"
+                    paragraphs.append(lock(at: hex)?.note ?? "A rule of this scenario keeps it shut; walking into it doesn't open it.")
+                } else {
+                    title = boardState.isClosedDoor(hex) ? "Closed door" : "Open door"
+                    paragraphs.append(LearnTopic.topic(.doors).paragraphs[0])
+                }
             case .treasure:
                 title = "Treasure"
                 paragraphs.append("A character who ends their turn here opens it. Some hold items, some gold, some a trap.")
@@ -522,6 +527,10 @@ extension BoardCoordinator {
             default:
                 break
             }
+        }
+        if pressurePlateHexes.contains(hex) {
+            if title == "A hex" { title = "Pressure plate" }
+            paragraphs.append("A pressure plate. Something in this scenario happens when a character stands on it as their turn ends.")
         }
         if (boardState.lootTokens[hex] ?? 0) > 0 {
             if title == "A hex" { title = "Money token" }

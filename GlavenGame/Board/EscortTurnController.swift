@@ -76,7 +76,9 @@ final class EscortTurnController {
     /// into one opens it), or failing that the closed door nearest to it.
     private func doorsToward(_ marker: String) -> [HexCoord] {
         guard let coordinator, let scenario = coordinator.scenarioData else { return [] }
-        let closed = coordinator.boardState.doors.filter { !$0.isOpen && !coordinator.isDoorBarred(at: $0.coord) }
+        let closed = coordinator.boardState.doors.filter {
+            !$0.isOpen && !coordinator.isDoorBarred(at: $0.coord) && !coordinator.boardState.isLockedDoor($0.coord)
+        }
         let sites = BoardBuilder.markerSites(marker, in: scenario)
         let onTheWay = closed.filter { door in
             guard let path = door.childPath else { return false }

@@ -161,6 +161,18 @@ enum BoardBuilder {
         return sites
     }
 
+    /// Every tile of the room behind a door: its own, and those joined to it by corridors.
+    static func roomRefs(behind door: DoorInfo, in scenario: VGBScenario) -> Set<String> {
+        var refs: Set<String> = [door.childTileRef.lowercased()]
+        guard let path = door.childPath, let start = tile(at: path, in: scenario.mapTileData) else { return refs }
+        func walk(_ tile: VGBMapTileData) {
+            refs.insert(tile.ref.lowercased())
+            for connector in tile.doors where connector.subType == "corridor" { walk(connector.mapTileData) }
+        }
+        walk(start)
+        return refs
+    }
+
     /// The tile at a door-index path from the root.
     static func tile(at path: [Int], in root: VGBMapTileData) -> VGBMapTileData? {
         var tile = root
@@ -346,7 +358,7 @@ enum BoardBuilder {
                         placements: placements, reveal: &reveal)
                 continue
             }
-            recordDoor(at: doorCoord, subType: door.subType, leadingTo: door.mapTileData.ref,
+            recordDoor(at: doorCoord, subType: door.subType, leadingTo: door.mapTileData.ref, from: tileData.ref,
                        path: path + [index], axis: axis, on: board)
         }
 
@@ -388,14 +400,14 @@ enum BoardBuilder {
                         placements: placements, reveal: &reveal)
             } else if !board.visibleRooms.contains(parent.ref) || !reveal.visited.contains(parentPath) {
                 let parentAxis = parentPlacement.axis ?? (refPoint: (0, 0), origin: (0, 0))
-                recordDoor(at: doorCoord, subType: door.subType, leadingTo: parent.ref,
+                recordDoor(at: doorCoord, subType: door.subType, leadingTo: parent.ref, from: tileData.ref,
                            path: parentPath, axis: parentAxis, on: board)
             }
         }
     }
 
     /// Record a closed door (once per hex).
-    private static func recordDoor(at coord: HexCoord, subType: String, leadingTo ref: String,
+    private static func recordDoor(at coord: HexCoord, subType: String, leadingTo ref: String, from: String,
                                    path: [Int], axis: TurnAxis, on board: BoardState) {
         guard !board.doors.contains(where: { $0.coord == coord }) else { return }
         board.doors.append(DoorInfo(
@@ -404,6 +416,7 @@ enum BoardBuilder {
             subType: subType,
             refPoint: HexCoord(axis.refPoint.0, axis.refPoint.1),
             origin: HexCoord(axis.origin.0, axis.origin.1),
+            fromTileRef: from,
             childPath: path
         ))
         board.cells[coord]?.overlay = .door

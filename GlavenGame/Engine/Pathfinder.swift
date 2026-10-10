@@ -87,13 +87,15 @@ enum Pathfinder {
         canOpenDoors: Bool = true,
         maxCost: Int? = nil,
         occupiedByEnemy: Set<HexCoord> = [],
-        occupiedByAlly: Set<HexCoord> = []
+        occupiedByAlly: Set<HexCoord> = [],
+        opensLockedDoors: Bool = false
     ) -> [HexCoord]? {
         findPathDetailed(
             board: board, from: from, to: to,
             mode: MoveMode.resolve(mode, flying: flying, jumping: jumping),
             avoidTraps: avoidTraps, canOpenDoors: canOpenDoors, maxCost: maxCost,
-            occupiedByEnemy: occupiedByEnemy, occupiedByAlly: occupiedByAlly
+            occupiedByEnemy: occupiedByEnemy, occupiedByAlly: occupiedByAlly,
+            opensLockedDoors: opensLockedDoors
         )?.path
     }
 
@@ -109,13 +111,14 @@ enum Pathfinder {
         canOpenDoors: Bool = true,
         maxCost: Int? = nil,
         occupiedByEnemy: Set<HexCoord> = [],
-        occupiedByAlly: Set<HexCoord> = []
+        occupiedByAlly: Set<HexCoord> = [],
+        opensLockedDoors: Bool = false
     ) -> PathResult? {
         let context = MoveContext(
             board: board, start: from,
             mode: MoveMode.resolve(mode, flying: flying, jumping: jumping),
             canOpenDoors: canOpenDoors,
-            enemies: occupiedByEnemy, allies: occupiedByAlly
+            enemies: occupiedByEnemy, allies: occupiedByAlly, opensLockedDoors: opensLockedDoors
         )
         let search = LabelSearch(context: context, maxCost: maxCost)
         let negativesFirst = avoidTraps || maxCost != nil
@@ -363,11 +366,12 @@ enum Pathfinder {
         let enemies: Set<HexCoord>
         /// Hexes a move can't END on (every figure except the mover).
         let occupied: Set<HexCoord>
-        /// Closed doors, for figures that can't open them (treated as walls).
+        /// Closed doors the figure can't open (treated as walls): every one for monsters and
+        /// summons, the locked ones for characters.
         let closedDoors: Set<HexCoord>
 
         init(board: BoardState, start: HexCoord, mode: MoveMode, canOpenDoors: Bool,
-             enemies: Set<HexCoord>, allies: Set<HexCoord>) {
+             enemies: Set<HexCoord>, allies: Set<HexCoord>, opensLockedDoors: Bool = false) {
             self.cells = board.cells
             self.start = start
             self.mode = mode
@@ -377,9 +381,9 @@ enum Pathfinder {
             occupied.formUnion(allies)
             occupied.remove(start)
             self.occupied = occupied
-            self.closedDoors = canOpenDoors
-                ? []
-                : Set(board.doors.lazy.filter { !$0.isOpen }.map(\.coord))
+            // A figure that opens doors is still stopped by a locked one.
+            let closed = Set(board.doors.lazy.filter { !$0.isOpen }.map(\.coord)).union(board.shutDoors)
+            self.closedDoors = canOpenDoors ? (opensLockedDoors ? [] : closed.intersection(board.lockedDoors)) : closed
         }
 
         /// The cell at `hex` if it can be moved through at all in any mode:

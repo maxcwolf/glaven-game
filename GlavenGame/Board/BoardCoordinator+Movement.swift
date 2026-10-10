@@ -79,6 +79,7 @@ extension BoardCoordinator {
             let hitsHazard = entered && cell?.isHazard == true && !hazardProof
             let wadesHazard = entered && cell?.isHazard == true && hazardProof
             let opensDoor = opensDoors && boardState.doors.contains { $0.coord == hex && !$0.isOpen }
+                && !boardState.isLockedDoor(hex)
 
             guard hitsTrap || hitsHazard || wadesHazard || opensDoor || isLast else { continue }
 
@@ -113,6 +114,8 @@ extension BoardCoordinator {
                 openDoor(at: hex)
             }
         }
+        // A door held open by a pressure plate opens or shuts as a character steps on or off.
+        if case .character = pieceID { updateLocks() }
         await afterOwnMove(pieceID, path: path, style: style)
         return isOnBoard(pieceID)
     }

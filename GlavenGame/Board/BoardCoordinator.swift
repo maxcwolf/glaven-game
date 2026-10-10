@@ -714,6 +714,7 @@ final class BoardCoordinator {
         afterRuleDamage { [weak self] in
             guard let self else { return }
             self.sweepDeadFigures()
+            self.updateLocks(roundEnded: true)
             self.resolvePendingResult()
             if self.scenarioResult != nil { return }
             self.beginCardSelection()
@@ -816,6 +817,7 @@ final class BoardCoordinator {
         placeRevealedMonsters(slots: startingRoom.slots, newEntities: unplacedMonsterEntities(),
                               playerCount: playerCount, useMapMonsters: !hasRoomData)
         placeRevealedObjectives()
+        updateLocks()
 
         attachToGame()
 
@@ -824,6 +826,7 @@ final class BoardCoordinator {
         gameManager?.game.round = 0
 
         buildScene(for: scenario)
+        showLocksAndPlates()
         boardPhase = .setup
         turnLog = []
         resetLearning()
@@ -850,6 +853,7 @@ final class BoardCoordinator {
         restoreCharacterTraps(from: snapshot)
         attachToGame()
         buildScene(for: scenario)
+        showLocksAndPlates()
         turnLog = []
         resetLearning()
         log("Scenario \(scenario.id): \(scenario.title)", category: .setup)
@@ -1593,6 +1597,7 @@ final class BoardCoordinator {
         activePlayerTurn = nil
         lootAtEndOfTurn(ptc.characterID)
 
+        updateLocks(turnEnded: true)
         checkVictoryDefeat(turnEnded: true)
         if scenarioResult == nil {
             advanceToNextFigure()
@@ -2336,6 +2341,7 @@ final class BoardCoordinator {
                 if id == Self.goalTreasureID {
                     guard mayLootGoalTreasure(charID) else { continue }
                     noteGoalTreasureLooted(by: charID)
+                    boardState.goalTreasuresLooted += 1
                 }
                 let reward = gameManager.scenarioManager.lootTreasure(id, by: character)
                 log("\(characterName(charID)) loots treasure \(id)\(reward.map { ": \($0)" } ?? "")", category: .loot)
@@ -2364,13 +2370,16 @@ final class BoardCoordinator {
         }
         // Treasure can deal damage (e.g. a trapped chest).
         sweepDeadFigures()
+        updateLocks()
     }
 
     // MARK: - Room Reveal
 
     /// Get adjacent unopened doors for a position.
     func adjacentDoors(from coord: HexCoord) -> [DoorInfo] {
-        boardState.doors.filter { !$0.isOpen && (coord.isAdjacent(to: $0.coord) || coord == $0.coord) }
+        boardState.doors.filter {
+            !$0.isOpen && !boardState.isLockedDoor($0.coord) && (coord.isAdjacent(to: $0.coord) || coord == $0.coord)
+        }
     }
 
     /// Open a door and reveal the room behind it.
@@ -2439,6 +2448,8 @@ final class BoardCoordinator {
         // Rules gated on revealed rooms can fire now.
         gameManager.scenarioRulesManager.evaluateRules(phase: .figureChange)
         sweepDeadFigures()
+        // The room's own doors may be locked, and its pressure plates are now in sight.
+        updateLocks()
     }
 
     /// Reveal rooms opened by a scenario rule: through the door leading to the room's tile, or —
@@ -2449,7 +2460,12 @@ final class BoardCoordinator {
             guard let room = scenario.data.rooms?.first(where: { $0.roomNumber == number }),
                   !scenario.revealedRooms.contains(number) else { continue }
             let ref = (room.ref ?? "").lowercased()
-            if let door = boardState.doors.first(where: { !$0.isOpen && $0.childTileRef.lowercased() == ref }) {
+            // The door into the room: its tile may sit behind a corridor from the door's own.
+            let scenarioMap = scenarioData
+            if let door = boardState.doors.first(where: { door in
+                !door.isOpen && (door.childTileRef.lowercased() == ref
+                                 || (scenarioMap.map { BoardBuilder.roomRefs(behind: door, in: $0).contains(ref) } ?? false))
+            }) {
                 openDoor(at: door.coord)
             } else {
                 gameManager.scenarioManager.openRoom(room)

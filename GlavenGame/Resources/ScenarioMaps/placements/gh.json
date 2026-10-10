@@ -1,5 +1,5 @@
 {
-  "2": {"goal": {"text": "Kill the Bandit Commander and all revealed enemies.", "kill": ["bandit-commander"], "enemies": "revealed"}, "tiles": {
+  "2": {"goal": {"text": "Kill the Bandit Commander and all revealed enemies.", "kill": ["bandit-commander"], "enemies": "revealed"}, "locks": [{"between": ["m1a", "a1a"], "note": "Locked: only the Bandit Commander opens it."}, {"between": ["m1a", "a4b"], "note": "Locked: only the Bandit Commander opens it."}, {"between": ["m1a", "a2a"], "note": "Locked: only the Bandit Commander opens it."}, {"between": ["m1a", "a3b"], "note": "Locked: only the Bandit Commander opens it."}], "tiles": {
   }},
   "3": {"goal": {"text": "Kill a number of enemies equal to five times the number of characters.", "killCount": {"count": "5xC"}}, "tiles": {
     "l1b": {"markers": {"a": [[0, 3]]}}
@@ -16,7 +16,10 @@
   }},
   "12": {"goal": {"text": "Kill the necromancer Jekserah.", "kill": ["jekserah"]}, "tiles": {
   }},
-  "15": {"goal": {"text": "Loot the treasure tile.", "loot": "goal"}, "tiles": {
+  "15": {"goal": {"text": "Loot the treasure tile.", "loot": "goal"}, "locks": [{"between": ["d1a", "h3b"], "plate": ["c"], "note": "Locked: it opens when a character ends their turn on the pressure plate (c)."}, {"between": ["d1a", "h1b"], "plate": ["c"], "note": "Locked: it opens when a character ends their turn on the pressure plate (c)."}, {"between": ["d1a", "c1a"], "allOnPlates": {"markers": ["d"], "more": {"3": ["e"], "4": ["e", "f"]}}, "note": "Locked: it opens when every character stands on a pressure plate in the side rooms as a turn ends."}], "tiles": {
+    "d1a": {"markers": {"c": [[2, 2]]}},
+    "h1b": {"markers": {"d": [[6, 1]], "f": [[0, 1]]}},
+    "h3b": {"markers": {"d": [[0, 1]], "e": [[6, 1]]}}
   }},
   "19": {"goal": {"text": "Protect Hail until she reaches the altar.", "arrive": {"objective": 1, "marker": "b", "count": 1, "adjacent": true}, "lostAt": {"1": 1}}, "tiles": {
     "c2b": {"markers": {"e": [[0, 2]]}},
@@ -59,7 +62,7 @@
   }},
   "32": {"goal": {"text": "Reveal the G tile, kill all revealed enemies and loot the treasure tile.", "reveal": ["g2b"], "enemies": "revealed", "loot": "goal"}, "tiles": {
   }},
-  "33": {"goal": {"text": "Loot all treasure tiles, then all characters must escape through the exit.", "loot": "goal", "escape": {"marker": "a"}, "lostIfExhausted": ["offExit"]}, "tiles": {
+  "33": {"goal": {"text": "Loot all treasure tiles, then all characters must escape through the exit.", "loot": "goal", "escape": {"marker": "a"}, "lostIfExhausted": ["offExit"]}, "locks": [{"between": ["i1b", "m1a"], "allOnPlates": {"markers": ["c"]}, "note": "Locked: it opens when every character stands on a pressure plate (c) as a turn ends."}], "tiles": {
     "a3b": {"markers": {"a": [[0, 2], [0, 1], [1, 2], [1, 1], [2, 2], [2, 1]]}},
     "a4b": {"objectives": [{"objective": 1, "cells": [[3, 0]], "door": true}]},
     "c2b": {"markers": {"d": [[1, 0]]}},
@@ -87,7 +90,7 @@
     "a4b": {"markers": {"a": [[3, 2]]}},
     "l1a": {"markers": {"a": [[2, 2]]}}
   }},
-  "41": {"goal": {"text": "All characters must escape through the exit.", "escape": {"marker": "a", "leave": true}, "lostIfExhausted": ["any"], "lostIfExhaustedOnceRevealed": "e1a"}, "tiles": {
+  "41": {"goal": {"text": "All characters must escape through the exit.", "escape": {"marker": "a", "leave": true}, "lostIfExhausted": ["any"], "lostIfExhaustedOnceRevealed": "e1a"}, "locks": [{"between": ["l1a", "e1a"], "plate": ["b"], "unlocksOnly": true, "note": "Locked: it can be opened once a character has ended a turn on the pressure plate (b)."}], "tiles": {
     "e1a": {"markers": {"a": [[2, 4]]}},
     "l1a": {"markers": {"b": [[2, 3]]}}
   }},
@@ -123,6 +126,8 @@
   }},
   "52": {"goal": {"text": "All characters must loot one treasure tile.", "loot": "each", "lostIfExhausted": ["beforeLoot"]}, "tiles": {
   }},
+  "53": {"locks": [{"between": ["m1a", "j1a"], "afterRound": 1, "note": "Locked: it opens at the start of round 2."}, {"between": ["m1a", "j2a"], "afterRound": 3, "note": "Locked: it opens at the start of round 4."}, {"between": ["m1a", "d2a"], "afterRound": 5, "note": "Locked: it opens at the start of round 6."}, {"between": ["m1a", "d1a"], "afterRound": 7, "note": "Locked: it opens at the start of round 8."}], "tiles": {
+  }},
   "56": {"tiles": {
     "m1b": {"objectives": [{"objective": 1, "cells": [[0, 1]]}, {"objective": 1, "cells": [[1, 0]]}, {"objective": 1, "cells": [[2, 0]]}]}
   }},
@@ -144,19 +149,21 @@
   }},
   "65": {"goal": {"text": "Kill all enemies and loot all treasure tiles.", "enemies": "all", "loot": "goal"}, "tiles": {
   }},
-  "66": {"goal": {"text": "Occupy the pressure plate in the last room.", "reach": {"marker": "e"}}, "tiles": {
+  "66": {"goal": {"text": "Occupy the pressure plate in the last room.", "reach": {"marker": "e"}}, "locks": [{"between": ["j1b", "c1a"], "held": ["a", "b"], "note": "It stays open only while a character stands on pressure plate (a) or (b)."}, {"between": ["c1a", "d1a"], "held": ["b", "c"], "note": "It stays open only while a character stands on pressure plate (b) or (c)."}, {"between": ["d1a", "d2a"], "held": ["c", "d"], "note": "It stays open only while a character stands on pressure plate (c) or (d)."}, {"between": ["d2a", "c2b"], "held": ["d"], "note": "It stays open only while a character stands on pressure plate (d)."}, {"between": ["d1a", "a1a"], "plate": ["d"], "note": "Locked: it opens when a character ends their turn on the pressure plate (d)."}, {"between": ["d2a", "a2a"], "plate": ["d"], "note": "Locked: it opens when a character ends their turn on the pressure plate (d)."}], "plates": ["e"], "tiles": {
     "c1a": {"markers": {"b": [[1, 2]]}},
     "c2b": {"markers": {"e": [[1, 1]]}},
     "d1a": {"markers": {"c": [[2, 2]]}},
     "d2a": {"markers": {"d": [[2, 2]]}},
     "j1b": {"markers": {"a": [[6, 4]]}}
   }},
-  "67": {"goal": {"text": "Kill the Arcane Golem.", "kill": ["stone-golem"]}, "tiles": {
+  "67": {"goal": {"text": "Kill the Arcane Golem.", "kill": ["stone-golem"]}, "locks": [{"between": ["a2a", "m1a"], "held": ["a"], "note": "It stays open only while a character stands on a pressure plate (a)."}], "tiles": {
+    "g1b": {"markers": {"a": [[0, 0]]}},
+    "m1a": {"markers": {"a": [[3, 0]]}}
   }},
   "68": {"goal": {"text": "Kill all enemies and protect the tree."}, "tiles": {
     "b1b": {"objectives": [{"objective": 1, "cells": [[2, -6], [1, -6], [1, -5]]}]}
   }},
-  "69": {"goal": {"text": "Bring the doll to the well.", "reach": {"marker": "a", "adjacent": true}}, "tiles": {
+  "69": {"goal": {"text": "Bring the doll to the well.", "reach": {"marker": "a", "adjacent": true}}, "locks": [{"between": ["l3a", "j1a"], "plate": ["b"], "note": "Locked: it opens when a character ends their turn on the pressure plate (b)."}], "tiles": {
     "b1b": {"markers": {"b": [[1, 3]], "d": [[2, 0], [1, 0]]}},
     "d2a": {"markers": {"a": [[2, 2]]}},
     "l3a": {"markers": {"c": [[3, 5]]}}
@@ -165,7 +172,7 @@
     "l1b": {"markers": {"b": [[4, 2]]}},
     "l3a": {"markers": {"a": [[4, 4]]}}
   }},
-  "71": {"goal": {"text": "Loot all treasure tiles, then all characters must escape through the exit.", "loot": "goal", "escape": {"marker": "a"}, "lostIfExhausted": ["offExit"]}, "tiles": {
+  "71": {"goal": {"text": "Loot all treasure tiles, then all characters must escape through the exit.", "loot": "goal", "escape": {"marker": "a"}, "lostIfExhausted": ["offExit"]}, "locks": [{"between": ["h2b", "a2b"], "looted": 1, "note": "Locked: it opens when the first treasure tile is looted."}, {"between": ["l3a", "a3a"], "looted": 2, "note": "Locked: it opens when the second treasure tile is looted."}, {"between": ["h2b", "g2a"], "looted": 3, "note": "Locked: it opens when the third treasure tile is looted."}], "tiles": {
     "g2a": {"markers": {"a": [[5, 2], [4, 2], [3, 2], [2, 2]]}}
   }},
   "72": {"goal": {"text": "Destroy all trees and kill all Oozes.", "destroy": [1, 2, 3], "kill": ["ooze"]}, "tiles": {
@@ -175,7 +182,7 @@
   }},
   "73": {"goal": {"text": "Kill all enemies and loot all treasure tiles.", "enemies": "all", "loot": "goal"}, "tiles": {
   }},
-  "74": {"tiles": {
+  "74": {"locks": [{"between": ["g2b", "i2b"], "afterRound": 3, "note": "Locked: it opens at the end of the third round."}, {"between": ["g2b", "i1a"], "afterRound": 6, "note": "Locked: it opens at the end of the sixth round."}], "tiles": {
     "b1a": {"markers": {"a": [[1, 3]], "b": [[2, 3], [0, 3]], "d": [[3, 0], [0, 0]]}},
     "g2b": {"markers": {"c": [[0, 0], [7, 0]], "e": [[0, 1], [6, 1]]}}
   }},
@@ -187,14 +194,14 @@
   }},
   "77": {"goal": {"text": "Loot all treasure tiles and kill all City Guards before the alarm is raised.", "loot": "goal", "kill": ["city-guard"]}, "tiles": {
   }},
-  "79": {"goal": {"text": "Kill the Betrayer.", "kill": ["the-betrayer"]}, "tiles": {
+  "79": {"goal": {"text": "Kill the Betrayer.", "kill": ["the-betrayer"]}, "locks": [{"between": ["d2a", "m1a"], "note": "Locked: it opens when all Stone Golems are killed."}], "tiles": {
     "d2a": {"objectives": [{"objective": 1, "cells": [[0, 3]]}]}
   }},
   "80": {"goal": {"text": "Every character must loot one treasure tile, then all must reach the B tile.", "loot": "each", "escape": {"tile": "b1a"}, "lostIfExhausted": ["offExit"]}, "tiles": {
   }},
   "81": {"goal": {"text": "Kill the Colorless.", "kill": ["the-colorless"]}, "tiles": {
   }},
-  "82": {"goal": {"text": "Loot the treasure, then sacrifice an artifact on the altar hex or escape with them all.", "lootIDs": ["62"], "either": [{"reach": {"marker": "g"}}, {"escape": {"start": true}}]}, "tiles": {
+  "82": {"goal": {"text": "Loot the treasure, then sacrifice an artifact on the altar hex or escape with them all.", "lootIDs": ["62"], "either": [{"reach": {"marker": "g"}}, {"escape": {"start": true}}]}, "locks": [{"between": ["k1a", "c1a"], "eliteKills": 1, "note": "Locked: the doors open one by one, in order, each time an elite monster is killed."}, {"between": ["k1a", "d1a"], "eliteKills": 2, "note": "Locked: the doors open one by one, in order, each time an elite monster is killed."}, {"between": ["c1a", "i1b"], "eliteKills": 3, "note": "Locked: the doors open one by one, in order, each time an elite monster is killed."}, {"between": ["b2b", "d1a"], "eliteKills": 4, "note": "Locked: the doors open one by one, in order, each time an elite monster is killed."}, {"between": ["c1a", "empty"], "eliteKills": 5, "note": "Locked: the doors open one by one, in order, each time an elite monster is killed."}, {"between": ["empty", "d1a"], "eliteKills": 6, "note": "Locked: the doors open one by one, in order, each time an elite monster is killed."}], "tiles": {
     "empty": {"markers": {"g": [[0, 0]]}}
   }},
   "84": {"goal": {"text": "Kill all enemies and protect the crystal.", "lostAt": {"1": 1}}, "tiles": {

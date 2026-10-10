@@ -47,6 +47,21 @@ ends up on the board:
     `"beforeLoot"`; `lostIfExhaustedOnceRevealed` delays it until a tile is revealed),
     `lostIfKilled` (monster types).
   - Where characters stand (`escape`, `occupy`, `reach`) is judged as a turn or the round ends.
+- `locks`: doors a scenario rule keeps locked (`ScenarioPlacements.Lock`, `BoardCoordinator+Locks`).
+  A lock names the two tiles its door joins (`"between": ["d1a", "h3b"]`) — both doors, where two
+  join the same pair — and at most one key:
+  - `plate` — a character ends a turn on a pressure plate with one of these letters;
+  - `allOnPlates` — every character stands on a plate as a turn ends (plates by letter, `more` by
+    character count);
+  - `afterRound` — the round has ended ("at the start of round 2" is `1`);
+  - `looted` — that many goal treasure tiles looted; `eliteKills` — that many elites killed;
+  - `held` — open only while a character stands on one of these plates; it shuts again when they
+    step off (whoever is in the doorway suffers trap damage and is put out of it);
+  - no key — only a scenario rule or a monster's ability opens it (#2, #79).
+  `"unlocksOnly": true` leaves the door for a character to open; otherwise the key opens it and
+  reveals the room. `note` is what the player is told when asking about the door.
+  A locked door carries a padlock on the board and can't be walked into.
+- `plates`: letters that are pressure plates no lock or goal names. Every plate in play is drawn.
 - `rules`: rules the book prints and the scenario data leaves out, in the data's own rule format
   (#62: the Hungry Soul after ten Living Bones). They are added after the scenario's own.
 
@@ -74,7 +89,7 @@ its map, every door objective is on a door and every objective number exists.
 | 27 Ruinous Rift | Hail | b–e | lost if Hail dies (win at round 10 is a scenario rule) | — |
 | 29 Sanctuary of Gloom | 3 barred doors | — | — | — |
 | 31 Plane of Night | rock column | b, c | win: destroy the column | — |
-| 33 Savvas Armory | barred door | a (exits), c, d | win: loot all, then everyone on the exit; lost if exhausted off it | door 1 isn't locked behind the plates |
+| 33 Savvas Armory | barred door | a (exits), c, d | win: loot all, then everyone on the exit; lost if exhausted off it | — |
 | 35 Gloomhaven Battlements A | barred door | — | — | demons don't prefer the door |
 | 36 Gloomhaven Battlements B | the gate (protected) | a–e | — | Prime Demon's arrival and door timer not modelled |
 | 38 Slave Pens | the Orchid | — | lost if he dies | he heads for the nearest enemy, not the shaman on the D tile |
@@ -87,7 +102,7 @@ its map, every door objective is on a door and every objective number exists.
 | 58 Bloody Shack | 4 bone piles | — | win: kill the Harvester | the bone piles' Shield and healing aren't modelled |
 | 62 Pit of Souls | — | a, b, c | win: kill the Hungry Soul (appears at c after ten kills) | its extra Shield isn't modelled |
 | 68 Toxic Moor | the tree | — | — | its damage should stop once no Rending Drake is on the M tile; until then its death doesn't lose |
-| 69 Well of the Unfortunate | — | a–d | win: a character beside the well | the doll isn't carried; door 1 isn't locked |
+| 69 Well of the Unfortunate | — | a–d | win: a character beside the well | the doll isn't carried |
 | 70 Chained Isle | — | a, b | — | — |
 | 72 Oozing Grove | 3 trees | — (oozes rise beside their tree) | win: destroy all trees, kill all Oozes | — |
 | 74 Merchant Ship | — | a–e | — | water tiles aren't modelled |
@@ -96,6 +111,27 @@ its map, every door objective is on a door and every objective number exists.
 | 84 Crystalline Cave | the crystal | — | lost if it is destroyed | it is treated as an ally (it shouldn't be healable) |
 | 86 Harried Village | 11 villagers | b–f | win: 7 reach the docks; lost at 5 killed | Lurkers are set up from the start |
 | 90 Demonic Rift | — | b, c | — | the altar crossing isn't modelled |
+
+### Locked doors written
+
+| Scenario | Doors | Key |
+|---|---|---|
+| 2 Barrow Lair | the four side rooms | none: the Bandit Commander opens them |
+| 15 Shrine of Strength | both side rooms; the treasure room | plate (c); every character on a side-room plate |
+| 33 Savvas Armory | door 1 | every character on a plate (c) |
+| 41 Timeworn Tomb | door 2 | plate (b) unlocks it |
+| 53 Crypt Basement | all six | as rounds 2, 4, 6 and 8 begin |
+| 66 Clockwork Cove | doors 1, f, g, h; the two side rooms | held open by plates a–d; plate (d) |
+| 67 Arcane Library | door 2 | held open by a plate (a) |
+| 69 Well of the Unfortunate | door 1 | plate (b) |
+| 71 Windswept Highlands | doors b, c, d | the first, second and third treasure tile looted |
+| 74 Merchant Ship | doors 1, 2 | as rounds 3 and 6 end |
+| 79 Lost Temple | door 1 | none: the rule that every Stone Golem is dead opens it |
+| 82 Burning Mountain | all six | one for each elite killed, in order |
+
+Not locked yet: #95's door 1 (its key is the six numbered tokens, which aren't modelled).
+In #66 door 1 opens as a character steps onto plate (a) rather than as their turn ends, and
+trap damage from a closing door can't be negated by losing cards.
 
 Letters written only for a goal: #23 and #40 pressure plates; #25, #37, #41 and #71 exits; #66
 plates a–e; #82 the altar hex g; #88 the crystal.
@@ -145,7 +181,7 @@ goals are checked; the notes say what around a goal is still missing.
 | 30 | Shrine of the Depths | Loot the treasure tile. | yes | — | — |
 | 31 | Plane of Night | Destroy the rock column (a). | yes | — | — |
 | 32 | Decrepit Wood | Reveal the G tile, kill all revealed enemies, and loot the treasure tile. | yes | — | — |
-| 33 | Savvas Armory | Loot all treasure tiles, then all characters must escape through the exit (a). | yes (door 1 isn't locked behind its pressure plates) | Any character becomes exhausted while not standing on an exit hex (a). | yes |
+| 33 | Savvas Armory | Loot all treasure tiles, then all characters must escape through the exit (a). | yes | Any character becomes exhausted while not standing on an exit hex (a). | yes |
 | 34 | Scorched Summit | Kill the Elder Drake. | yes | — | — |
 | 35 | Gloomhaven Battlements A | Destroy door 1 and kill the Captain of the Guard. | yes | — | — |
 | 36 | Gloomhaven Battlements B | Kill the Prime Demon. | yes (the Prime Demon is on the board from the start) | — | — |
@@ -183,7 +219,7 @@ goals are checked; the notes say what around a goal is still missing.
 | 68 | Toxic Moor | Kill all enemies and protect the tree (a). | yes | The tree is destroyed. | **no** — needs the tree's damage to stop first |
 | 69 | Well of the Unfortunate | Bring the doll to the well (a) — complete when the doll is brought to a hex adjacent to the well. | approximately — any character ending a turn beside the well (the doll isn't carried) | — | — |
 | 70 | Chained Isle | Kill all demons. | yes | — | — |
-| 71 | Windswept Highlands | Loot all treasure tiles, then all characters must escape through the exit (a). | yes (doors b–d aren't locked) | Any character becomes exhausted while not occupying an exit hex (a). | yes |
+| 71 | Windswept Highlands | Loot all treasure tiles, then all characters must escape through the exit (a). | yes | Any character becomes exhausted while not occupying an exit hex (a). | yes |
 | 72 | Oozing Grove | Destroy all trees and kill all Oozes. | yes | — | — |
 | 73 | Rockslide Ridge | Kill all enemies and loot all treasure tiles. | yes | — | — |
 | 74 | Merchant Ship | Kill all enemies and keep the ship afloat. | kill all enemies: yes; the water isn't modelled | A water tile has to be added but cannot be placed because the B tile is full. | **no** |
@@ -191,10 +227,10 @@ goals are checked; the notes say what around a goal is still missing.
 | 76 | Harrower Hive | Reveal all rooms and kill all enemies. | **no** — destructible walls aren't modelled; plays as "kill all enemies" | — | — |
 | 77 | Vault of Secrets | Loot all treasure tiles and kill all City Guards before the alarm is raised. | yes | Any City Guard occupies a pressure plate (a). | **no** — guards don't head for the plates |
 | 78 | Sacrifice Pit | Kill all enemies and stop the sacrifice. | kill all enemies: yes; the sacrifice isn't modelled | The victim is sacrificed: a Cultist (b) starts its turn adjacent to the altars (d) while the victim is also adjacent to the altars. | **no** |
-| 79 | Lost Temple | Kill the Betrayer. | yes (the Stone Golems aren't dormant, and door 1 isn't locked) | Fish is killed. | **no** — Fish's turn and the dormant golems come first |
+| 79 | Lost Temple | Kill the Betrayer. | yes (the Stone Golems aren't dormant) | Fish is killed. | **no** — Fish's turn and the dormant golems come first |
 | 80 | Vigil Keep | Every character must loot one treasure tile, and then all characters must reach the B tile (escape). | yes | Any character becomes exhausted while not occupying the B tile. | yes |
 | 81 | Temple of the Eclipse | Kill the Colorless. | yes | — | — |
-| 82 | Burning Mountain | Sacrifice one artifact, or escape with all artifacts. | approximately — with the treasure looted, a character on the altar hex or everyone at the entrance (doors aren't locked, no artifact is removed) | — | — |
+| 82 | Burning Mountain | Sacrifice one artifact, or escape with all artifacts. | approximately — with the treasure looted, a character on the altar hex or everyone at the entrance (no artifact is removed) | — | — |
 | 83 | Shadows Within | Kill all enemies. | yes | — | — |
 | 84 | Crystalline Cave | Kill all enemies and protect the crystal (a). | yes | The crystal is destroyed. | yes |
 | 85 | Sun Temple | Kill all enemies. | yes | — | — |

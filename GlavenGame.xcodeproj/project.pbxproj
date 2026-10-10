@@ -31,6 +31,7 @@
 		1E105B509AA9841848BDC003 /* Enhancement.swift in Sources */ = {isa = PBXBuildFile; fileRef = EBE9E8D46F66914CB111FEC5 /* Enhancement.swift */; };
 		20DF67A50B1E99F5D18B9FDC /* BoardCoordinator+Items.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8AF5F88A83DE6D05C0E02C99 /* BoardCoordinator+Items.swift */; };
 		21FA5E07EC8A712DE13F6A66 /* EntityCondition.swift in Sources */ = {isa = PBXBuildFile; fileRef = 96B5B3B671FF141F5F296A83 /* EntityCondition.swift */; };
+		2203254D273B4392BFDCCB19 /* BoardCoordinator+Locks.swift in Sources */ = {isa = PBXBuildFile; fileRef = DB6CDBF26961D824070C1C08 /* BoardCoordinator+Locks.swift */; };
 		23EEDDA02650AAB2CEC70482 /* ClassUnlocks.swift in Sources */ = {isa = PBXBuildFile; fileRef = 81BE25FE48E9D7E8CC4C14A6 /* ClassUnlocks.swift */; };
 		24867CD051F861D7479B3148 /* BoardCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06273638779D4902224E1602 /* BoardCoordinator.swift */; };
 		264672DD5FA11BF550313E8D /* CardSelectionPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4C2B76831C29EEA9CE98F5A8 /* CardSelectionPanel.swift */; };
@@ -419,6 +420,7 @@
 		D9D1DCB6F2E36C85EC7CA983 /* QuestPicker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuestPicker.swift; sourceTree = "<group>"; };
 		DA5E6D17711BE40800C3537F /* PersonalQuestData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PersonalQuestData.swift; sourceTree = "<group>"; };
 		DAF0FC6C2F01CFD4173515AC /* CharacterClass.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CharacterClass.swift; sourceTree = "<group>"; };
+		DB6CDBF26961D824070C1C08 /* BoardCoordinator+Locks.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "BoardCoordinator+Locks.swift"; sourceTree = "<group>"; };
 		DCC5DD17CCF9E224A30CC1B4 /* ElementType.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ElementType.swift; sourceTree = "<group>"; };
 		DD46F8601A585EB5676DCC0D /* SoakDriver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SoakDriver.swift; sourceTree = "<group>"; };
 		DD73A01447A2167AF7A93D4D /* MonsterType.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MonsterType.swift; sourceTree = "<group>"; };
@@ -791,6 +793,7 @@
 				AD54276A54BB6F54BABE7D2E /* BoardCoordinator+Goals.swift */,
 				8AF5F88A83DE6D05C0E02C99 /* BoardCoordinator+Items.swift */,
 				DDBAC7539C505743F35168AA /* BoardCoordinator+Learning.swift */,
+				DB6CDBF26961D824070C1C08 /* BoardCoordinator+Locks.swift */,
 				B6C9F8BE9CC7A895A0360304 /* BoardCoordinator+Movement.swift */,
 				509EFE74015D273EBFFE3C19 /* BoardCoordinator+Outcome.swift */,
 				FEE4B8CCAC34578B98FDB7D1 /* BoardCoordinator+Playback.swift */,
@@ -1007,6 +1010,7 @@
 				D4D98296B27433380EEC45FE /* BoardCoordinator+Goals.swift in Sources */,
 				20DF67A50B1E99F5D18B9FDC /* BoardCoordinator+Items.swift in Sources */,
 				B07CD09C3B00B44267349F5C /* BoardCoordinator+Learning.swift in Sources */,
+				2203254D273B4392BFDCCB19 /* BoardCoordinator+Locks.swift in Sources */,
 				BF775F0114B6F567A1A74F92 /* BoardCoordinator+Movement.swift in Sources */,
 				33FD3A501A143207CF670827 /* BoardCoordinator+Outcome.swift in Sources */,
 				375BA9334D8B1CD3A07B0510 /* BoardCoordinator+Playback.swift in Sources */,

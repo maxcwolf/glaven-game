@@ -366,8 +366,9 @@ final class MonsterTurnController {
         let movement = monster.stat(for: entity.type)?.movementValue(characterCount: characterCount, level: monster.level) ?? 0
         let (enemies, allies) = coordinator.movementSets(for: pieceID)
         let paths = coordinator.boardState.doors.filter { !$0.isOpen }.compactMap { door in
+            // It opens the doors no one else can (Barrow Lair's are locked to the party).
             Pathfinder.findPath(board: coordinator.boardState, from: start, to: door.coord, avoidTraps: true, canOpenDoors: true,
-                                occupiedByEnemy: enemies, occupiedByAlly: allies)
+                                occupiedByEnemy: enemies, occupiedByAlly: allies, opensLockedDoors: true)
         }
         let board = coordinator.boardState
         // The nearest door by movement (difficult terrain costs 2), not by hexes.

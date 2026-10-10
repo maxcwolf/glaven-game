@@ -173,6 +173,8 @@ class BoardScene: SKScene {
         highlightNodes.removeAll()
         drawnRooms = []
         overlaysDrawn = []
+        lockedHexes = []
+        plateHexes = []
         self.storedAppearances = characterAppearances
         drawNewlyVisible(from: board, scenario: scenario)
 
@@ -440,6 +442,48 @@ class BoardScene: SKScene {
     func removeOverlaySprite(at coord: HexCoord, offsetCol: Int, offsetRow: Int) {
         let name = "overlay_\(coord.col)_\(coord.row)"
         overlayLayer.childNode(withName: name)?.removeFromParent()
+    }
+
+    // MARK: - Locks and pressure plates
+
+    /// The hexes showing a padlock and a pressure plate (for tests).
+    private(set) var lockedHexes: Set<HexCoord> = []
+    private(set) var plateHexes: Set<HexCoord> = []
+
+    /// Show a padlock on each locked door and a plate on each pressure plate; anything shown
+    /// before and no longer listed goes.
+    func showLocks(on doors: Set<HexCoord>, plates: Set<HexCoord>, offsetCol: Int, offsetRow: Int) {
+        for hex in lockedHexes.subtracting(doors) { overlayLayer.childNode(withName: "lock_\(hex.col)_\(hex.row)")?.removeFromParent() }
+        for hex in doors.subtracting(lockedHexes) {
+            let badge = SKShapeNode(circleOfRadius: HexMath.cellStepX * 0.17)
+            badge.fillColor = SKColor(red: 0.10, green: 0.08, blue: 0.07, alpha: 0.9)
+            badge.strokeColor = SKColor(red: 0.89, green: 0.70, blue: 0.24, alpha: 1)
+            badge.lineWidth = 2
+            badge.position = hexCenterInScene(col: hex.col - offsetCol, row: hex.row - offsetRow)
+            badge.zPosition = 6
+            badge.name = "lock_\(hex.col)_\(hex.row)"
+            let glyph = SKLabelNode(text: "\u{1F512}")
+            glyph.fontSize = HexMath.cellStepX * 0.2
+            glyph.verticalAlignmentMode = .center
+            glyph.horizontalAlignmentMode = .center
+            badge.addChild(glyph)
+            overlayLayer.addChild(badge)
+        }
+        lockedHexes = doors
+
+        for hex in plateHexes.subtracting(plates) { overlayLayer.childNode(withName: "plate_\(hex.col)_\(hex.row)")?.removeFromParent() }
+        for hex in plates.subtracting(plateHexes) {
+            let name = "corridor-pressure-plate-1"
+            guard let image = MapImageCache.shared.image(named: "overlays/\(name)") else { continue }
+            let texture = Self.overlayTexture(name, image: image)
+            let sprite = SKSpriteNode(texture: texture)
+            sprite.setScale(HexMath.cellSize / max(texture.size().width, texture.size().height))
+            sprite.position = hexCenterInScene(col: hex.col - offsetCol, row: hex.row - offsetRow)
+            sprite.zPosition = 0.5
+            sprite.name = "plate_\(hex.col)_\(hex.row)"
+            overlayLayer.addChild(sprite)
+        }
+        plateHexes = plates
     }
 
     // MARK: - Loot Sprites

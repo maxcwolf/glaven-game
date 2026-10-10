@@ -13,6 +13,9 @@ struct DoorInfo: Codable, Sendable, Equatable {
     /// The origin point in the child tile's local space.
     let origin: HexCoord
     var isOpen: Bool = false
+    /// The tile ref on this side of the door, the one revealed first. Optional: older saves
+    /// have none.
+    var fromTileRef: String? = nil
     /// Path of door indices from the map's root tile to the tile behind this door. The same tile
     /// name can appear several times in the map tree (once per connector), and only one copy
     /// carries its monsters, overlays and onward doors, so rooms are located by path.
@@ -57,6 +60,20 @@ final class BoardState {
     /// it bars a door.
     var objectiveSites: [Int: ObjectiveSlot] = [:]
 
+    /// Doors a scenario rule keeps locked: walking into one doesn't open it.
+    var lockedDoors: Set<HexCoord> = []
+
+    /// Doors of revealed rooms that have shut again (held open only while a pressure plate is
+    /// stood on). The room behind stays revealed.
+    var shutDoors: Set<HexCoord> = []
+
+    /// The scenario's locks (by their place in its list) whose key has been turned.
+    var releasedLocks: Set<Int> = []
+
+    /// Goal treasure tiles looted so far, and elite monsters killed (both open doors somewhere).
+    var goalTreasuresLooted = 0
+    var eliteKills = 0
+
     /// Characters (by id) who have looted a goal treasure tile, once each.
     var goalLooters: [String] = []
 
@@ -85,10 +102,16 @@ final class BoardState {
         cells[coord]?.passable ?? false
     }
 
-    /// Whether a closed (unopened) door sits on this hex. Characters may enter it (which
-    /// opens the door); monsters and summons treat it as a wall.
+    /// Whether a closed door sits on this hex: one never opened, or one that has shut again.
+    /// Characters may enter it (which opens the door) unless it is locked; monsters and summons
+    /// treat it as a wall.
     func isClosedDoor(_ coord: HexCoord) -> Bool {
-        doors.contains { $0.coord == coord && !$0.isOpen }
+        shutDoors.contains(coord) || doors.contains { $0.coord == coord && !$0.isOpen }
+    }
+
+    /// Whether a closed door on this hex can't be opened by walking into it.
+    func isLockedDoor(_ coord: HexCoord) -> Bool {
+        lockedDoors.contains(coord) && isClosedDoor(coord)
     }
 
     /// Whether this hex is a "negative hex" for movement: an active trap or hazardous

@@ -12,6 +12,10 @@ struct ScenarioPlacements: Codable, Equatable {
     /// The scenario's goal and loss conditions as the scenario book prints them, where the
     /// scenario data has no rule for them.
     var goal: Goal?
+    /// Doors a scenario rule keeps locked, and what opens each.
+    var locks: [Lock]?
+    /// Letters that are pressure plates no lock or goal names, to be drawn as plates.
+    var plates: [String]?
     /// Rules the scenario book prints and the scenario data leaves out, in the data's own rule
     /// format; they are added after the scenario's own.
     var rules: [ScenarioRule]?
@@ -116,6 +120,30 @@ struct ScenarioPlacements: Codable, Equatable {
         var marker: String
         /// Whether ending a turn next to the lettered hex is enough (a well can't be stood on).
         var adjacent: Bool?
+    }
+
+    /// A locked door (or the doors) between two tiles. Walking into it doesn't open it; one of
+    /// the keys below does. With no key it opens only by a scenario rule or a monster's ability.
+    struct Lock: Codable, Equatable {
+        /// The two tiles the door joins ("d1a", "h3b").
+        var between: [String]
+        /// What the player is told about it: "Opens when a character ends a turn on the pressure plate."
+        var note: String?
+        /// A character ends a turn on a pressure plate with one of these letters.
+        var plate: [String]?
+        /// Every character stands on a pressure plate as a turn ends.
+        var allOnPlates: Plates?
+        /// This round has ended ("at the start of round 2" is after round 1).
+        var afterRound: Int?
+        /// This many goal treasure tiles have been looted.
+        var looted: Int?
+        /// This many elite monsters have been killed.
+        var eliteKills: Int?
+        /// It stays open only while a character stands on a plate with one of these letters,
+        /// and shuts again when they step off.
+        var held: [String]?
+        /// The key unlocks it rather than opening it: a character still has to walk in.
+        var unlocksOnly: Bool?
     }
 
     struct Tile: Codable, Equatable {

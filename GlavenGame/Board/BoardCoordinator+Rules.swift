@@ -336,6 +336,7 @@ extension BoardCoordinator {
             noteDoomedDeath(pieceID)
             removePieceFromBoard(pieceID)
             recordMonsterKill(name: name)
+            if entity.type == .elite, !MonsterAI.isAllyFaction(monster) { boardState.eliteKills += 1 }
             if let character = creditedCharacter(for: killer) {
                 gameManager.scenarioStatsManager.recordKill(by: character.name, monster: name, elite: entity.type == .elite,
                                                            overkill: max(0, overkill), fromFullHealth: fromFullHealth)
@@ -345,6 +346,7 @@ extension BoardCoordinator {
                 rewardKillOnOwnTurn(character)
             }
             gameManager.scenarioRulesManager.evaluateRules()
+            updateLocks()
         case .summon(let id):
             if let owner = summonOwner(of: pieceID),
                let summon = owner.summons.first(where: { $0.id == id }) {
@@ -381,6 +383,7 @@ extension BoardCoordinator {
         log("\(characterName(character.id)) is exhausted", category: .death, trace: reason)
         gameManager?.scenarioStatsManager.recordExhausted(character.name)
         leaveScenario(character)
+        updateLocks()
         if let loss, scenarioResult == nil, pendingResult == nil {
             pendingResult = .defeat
             endReason = .ruleLost(loss)
