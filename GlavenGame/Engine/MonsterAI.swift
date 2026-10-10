@@ -518,8 +518,10 @@ enum MonsterAI {
     // MARK: - Factions
 
     /// Whether a monster fights on the players' side (scenario allies).
+    /// Monsters the scenario lists as allies of the party. (The data's `allied` is something
+    /// else — Fading Lighthouse lists its second group of enemies there — and makes no ally.)
     static func isAllyFaction(_ monster: GameMonster) -> Bool {
-        monster.isAlly || monster.isAllied
+        monster.isAlly
     }
 
     /// Look up the monster group and entity for a monster piece.
@@ -558,9 +560,11 @@ enum MonsterAI {
                 return includeInvisible || !isActive(.invisible, on: entity)
             case .objective:
                 // Escorts fight on the players' side, and what the party protects is the monsters'
-                // to attack; a thing to destroy (an altar) is not.
-                guard !allyFaction, let (container, entity) = objectiveEntity(id, gameState: gameState),
-                      container.escort || (container.isProtected && entity.maxHealth > 0) else { return false }
+                // to attack; a thing to destroy (an altar, a gate) is the players' side's target —
+                // monsters allied to the party included (the demons at the Battlements).
+                guard let (container, entity) = objectiveEntity(id, gameState: gameState) else { return false }
+                if allyFaction { return !container.escort && !container.isProtected && entity.maxHealth > 0 }
+                guard container.escort || (container.isProtected && entity.maxHealth > 0) else { return false }
                 return includeInvisible || !isActive(.invisible, on: entity)
             }
         }

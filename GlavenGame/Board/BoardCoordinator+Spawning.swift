@@ -202,7 +202,13 @@ extension BoardCoordinator {
             .filter { !$0.dead && ($0.marker == marker || $0.markers.contains(marker)) }
             .sorted { $0.number < $1.number }
             .compactMap { boardState.piecePositions[.objective(id: $0.number)] }
-        return carriers.first
+        // One for each that carries it: the next goes beside the one with the fewest already there.
+        func crowd(_ hex: HexCoord) -> Int {
+            hex.neighbors.filter { neighbor in
+                boardState.pieces(at: neighbor).contains { if case .monster = $0 { return true }; return false }
+            }.count
+        }
+        return carriers.enumerated().min { (crowd($0.element), $0.offset) < (crowd($1.element), $1.offset) }?.element
     }
 }
 

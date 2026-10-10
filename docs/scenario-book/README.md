@@ -33,7 +33,14 @@ ends up on the board:
   when it is destroyed. `"door": true` — it bars the door on that hex, which opens when it is
   destroyed.
 - `markers`: the hexes of a letter. A rule's spawn "at c" goes to the first free one.
-- `protect`: objectives that are the monsters' to attack and no ally of the party (captives, a gate).
+- `protect`: objectives that are the monsters' to attack and no ally of the party (captives, a gate,
+  the crystal, the villagers): they aren't healed or helped.
+- `rules`: rules the scenario data lacks, in its own format, added after the scenario's own.
+  `dropRules`: the scenario's own rules to leave out, by their place in its list (from 0) — ones the
+  data gets wrong or leaves for a person to trigger, written again in `rules`. A dropped rule keeps
+  its place, since rules refer to each other by index.
+- `whenDestroyed`: what appears where an objective stood when it is destroyed, by objective
+  (`{"1": {"name": "living-corpse", "player2": "normal", …}}`): a Living Corpse from each grave.
 - `goal`: the scenario's goal and losses as the book prints them (`ScenarioPlacements.Goal`).
   Everything under "to win" must hold at once; any loss loses.
   - `text` — the goal in the book's words, for the scenario brief.
@@ -94,7 +101,7 @@ its map, every door objective is on a door and every objective number exists.
 | 29 Sanctuary of Gloom | 3 barred doors | — | — | — |
 | 31 Plane of Night | rock column | b, c | win: destroy the column | — |
 | 33 Savvas Armory | barred door | a (exits), c, d | win: loot all, then everyone on the exit; lost if exhausted off it | — |
-| 35 Gloomhaven Battlements A | barred door | — | — | demons don't prefer the door |
+| 35 Gloomhaven Battlements A | barred door | — | — | the allied demons attack the door as any enemy, without preferring it |
 | 36 Gloomhaven Battlements B | the gate (protected) | a–e | — | Prime Demon's arrival and door timer not modelled |
 | 38 Slave Pens | the Orchid | — | lost if he dies | he heads for the nearest enemy, not the shaman on the D tile |
 | 39 Treacherous Divide | altar | — | win: destroy the altar | — |
@@ -112,9 +119,9 @@ its map, every door objective is on a door and every objective number exists.
 | 74 Merchant Ship | — | a–e | — | water tiles aren't modelled |
 | 75 Overgrown Graveyard | 9 graves | — (what rises, rises where the grave was) | win: all graves and the Bloated Regent | graves are attacked rather than dug up with movement |
 | 79 Lost Temple | Fish | — | win: kill the Betrayer | Fish's turn, the dormant golems and his loss aren't modelled |
-| 84 Crystalline Cave | the crystal | — | lost if it is destroyed | it is treated as an ally (it shouldn't be healable) |
+| 84 Crystalline Cave | the crystal | — | lost if it is destroyed | protected, no ally; losing a card to spare it and the timed corridors aren't modelled |
 | 86 Harried Village | 11 villagers | b–f | win: 7 reach the docks; lost at 5 killed | Lurkers are set up from the start |
-| 90 Demonic Rift | — | b, c | — | the altar crossing isn't modelled |
+| 90 Demonic Rift | — | b, c (the Living Spirits, once every demon is dead) | win: every Living Spirit killed | the altar crossing and the losses for leaving a room aren't modelled |
 
 ### Locked doors written
 
@@ -242,7 +249,7 @@ goals are checked; the notes say what around a goal is still missing.
 | 87 | Corrupted Cove | Kill the Giant Ooze. | yes | — | — |
 | 88 | Plane of Water | Bring the Lurker King's claw to the crystal (a) — the scenario is complete when the claw is carried to a hex adjacent to the crystal. | approximately — the Lurker King dead and any character ending a turn beside the crystal (the claw isn't carried) | — | — |
 | 89 | Syndicate Hideout | Kill all enemies. | yes | — | — |
-| 90 | Demonic Rift | Close the rift (after Section 1: kill all Living Spirits). | **no** — the altar crossing and the rift aren't modelled; plays as "kill all enemies" | No character is present in the left room at any time; only one character is left unexhausted; after Section 1, either room has no character present at any time. | **no** |
+| 90 | Demonic Rift | Close the rift (after Section 1: kill all Living Spirits). | yes — the spirits come when every demon is dead | No character is present in the left room at any time; only one character is left unexhausted; after Section 1, either room has no character present at any time. | **no** |
 | 91 | Wild Melee | Kill all enemies. | yes | — | — |
 | 92 | Back Alley Brawl | Kill all non-city enemies. | yes | A City Guard or City Archer is killed. | yes |
 | 93 | Sunken Vessel | Kill all enemies. | yes | — | — |

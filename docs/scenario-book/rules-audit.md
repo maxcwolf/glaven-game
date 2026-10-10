@@ -2,7 +2,7 @@
 
 An audit of every rule the scenario book prints (as noted in
 [gh-scenario-rules.md](gh-scenario-rules.md)) against the scenario data, the placements and the code,
-made on 2026-10-09 at commit  by reading — nothing here was established by playing.
+made on 2026-10-09 at commit `a3caf18` by reading — nothing here was established by playing.
 Each row is one printed rule: **done**, **partial** (it works in a simplified way; the row says how
 it differs) or **missing**, with where it is implemented or what happens instead.
 
@@ -13,7 +13,15 @@ The most rules outstanding: #88 (7 missing, 1 partial), #34 (6 missing, 1 partia
 Fixed since the audit (the rows below still describe the state it found): boss summons bring the
 number and rank their player count says (#9, #12, #20, #48, #79 and others); goal treasure that
 needs a Loot action (#7, #30, #50, #52, #59, #61); #3's guard arrives as each round begins for
-three or four characters. Later fixes are listed in .
+three or four characters; #22's altars strengthen the demons (hit points, attack, movement and
+range for each one standing); figures immune to push and pull aren't moved (#47, the Elder Drake);
+#51's damage lands as each turn ends, on summons too; #84's crystal and #86's villagers are
+protected rather than allies; #75's graves each let out their own corpse; #26's imps appear beside
+their own pump; #35's allied demons attack the gate; #61's demons are enemies (the alternating
+rounds are still missing); #41 is won without waiting for a character exhausted on the way; #45
+and #52 add two cards, as the book says; the Hungry Soul's and Bloated Regent's hit points round
+up (#62, #75); #92's city guards arrive with the second room and needn't die; #90's Living Spirits
+come when the demons are dead and killing them wins. Later fixes are listed in `TODO.md`.
 
 ### 1 · Black Barrow
 | Rule (from the book) | Status | Where / what's missing |

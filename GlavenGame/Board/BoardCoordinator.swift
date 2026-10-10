@@ -1327,6 +1327,11 @@ final class BoardCoordinator {
                 gameManager.roundManager.toggleFigure(turnOrder[currentTurnIndex].figure)
                 currentTurnToggled = false
             }
+            // Damage a rule deals as a turn ends (The Void) is suffered now, not when the round is over.
+            if !ruleDamageDue.isEmpty {
+                afterRuleDamage { [weak self] in self?.advanceToNextFigure() }
+                return
+            }
             sweepDeadFigures()
             if scenarioResult != nil { return }
         }
@@ -1915,7 +1920,7 @@ final class BoardCoordinator {
     }
 
     /// "Attack all enemies moved through" (Trample): every enemy standing on a hex the
-    /// character passed over in this half's move.
+    /// character passed over in this half's move. An invisible one can't be targeted (p.21).
     func attackEnemiesMovedThrough(from pieceID: PieceID, hexes: [HexCoord]) {
         if isConditionActive(.disarm, on: pieceID) {
             log("\(name(pieceID)) is disarmed and can\u{2019}t attack", category: .condition)
@@ -1923,7 +1928,8 @@ final class BoardCoordinator {
             return
         }
         let passed = Set(hexes)
-        let targets = boardState.piecePositions.filter { passed.contains($0.value) && areEnemies(pieceID, $0.key) }
+        let targets = boardState.piecePositions
+            .filter { passed.contains($0.value) && areEnemies(pieceID, $0.key) && !isConditionActive(.invisible, on: $0.key) }
             .map(\.key).sorted { $0.description < $1.description }
         if targets.isEmpty { log("\(name(pieceID)) moved through no enemy", category: .attack) }
         attackEach(targets, from: pieceID, range: 1)
@@ -2268,6 +2274,11 @@ final class BoardCoordinator {
     @MainActor func performPushPull(target: PieceID, attackerPos: HexCoord, steps: Int, isPush: Bool) async {
         // An objective on the map (an altar, a door) is never moved.
         guard steps > 0, boardState.piecePositions[target] != nil, !isScenery(target) else { return }
+        // Some can't be forced to move (the Sightless Eye, the Elder Drake).
+        if entity(for: target)?.immunities.contains(isPush ? .push : .pull) == true {
+            log("\(name(target)) can\u{2019}t be \(isPush ? "pushed" : "pulled")", category: .move)
+            return
+        }
         if case .character(let id) = target,
            gameManager?.game.characters.first(where: { $0.id == id })?.carriedItems.contains(PassiveItems.unmovable) == true {
             log("\(name(target))\u{2019}s Heavy Greaves hold them in place", category: .move)

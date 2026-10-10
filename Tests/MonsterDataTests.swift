@@ -202,17 +202,19 @@ final class MonsterDataTests: XCTestCase {
         XCTAssertEqual(stat.attackValue(characterCount: 2), 0)
     }
 
-    func testHalvedBossHealth_roundsDown() throws {
+    /// The Bloated Regent and the Hungry Soul have (H×C)/2 hit points rounded up (scenario book
+    /// #75, #62).
+    func testHalvedBossHealth_roundsUp() throws {
         let regent = try XCTUnwrap(try monster("bloated-regent").stat(for: .boss, at: 1))
-        XCTAssertEqual(regent.health, .string("10xC/2"))
         XCTAssertEqual(regent.healthValue(characterCount: 3), 15)
         let regent3 = try XCTUnwrap(try monster("bloated-regent").stat(for: .boss, at: 3))
-        XCTAssertEqual(regent3.health, .string("13xC/2"))
-        XCTAssertEqual(regent3.healthValue(characterCount: 3), 19) // 19.5 rounded down
+        XCTAssertEqual(regent3.healthValue(characterCount: 3), 20) // 19.5 rounded up
+        XCTAssertEqual(regent3.healthValue(characterCount: 4), 26)
 
         let soul = try XCTUnwrap(try monster("hungry-soul").stat(for: .boss, at: 1))
-        XCTAssertEqual(soul.health, .string("(6xC)/2"))
         XCTAssertEqual(soul.healthValue(characterCount: 3), 9)
+        let soul2 = try XCTUnwrap(try monster("hungry-soul").stat(for: .boss, at: 2))
+        XCTAssertEqual(soul2.healthValue(characterCount: 3), 11) // 10.5 rounded up
     }
 
     func testEvaluator_allDataExpressionForms() {

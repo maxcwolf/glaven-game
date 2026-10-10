@@ -417,9 +417,17 @@ final class ScenarioRulesManager {
             guard let identifier = effect.identifier,
                   let statEffect = effect.statEffect else { continue }
 
-            // Check reference condition (e.g. "Altar present")
+            // Check reference condition (e.g. "Altar present"). An effect counted in X — "for each
+            // altar that isn't destroyed" — still applies with none left, as nothing at all.
+            let usesX = [statEffect.health, statEffect.attack, statEffect.movement, statEffect.range]
+                .contains { $0?.contains("X") == true }
+            var x = 0
             if let reference = effect.reference {
-                guard checkStatEffectReference(reference, edition: edition) else { continue }
+                if usesX, reference.type == "present", let counted = reference.identifier {
+                    x = findTargets(identifier: counted).count
+                } else {
+                    guard checkStatEffectReference(reference, edition: edition) else { continue }
+                }
             }
 
             let targetEdition = identifier.edition ?? edition
@@ -433,7 +441,7 @@ final class ScenarioRulesManager {
                 var effectToApply = statEffect
                 if let name = statEffect.name, monster.displayName == name { effectToApply.name = nil }
                 if let deck = statEffect.deck, monster.deckOverride == deck { effectToApply.deck = nil }
-                monsterManager.applyScenarioStatEffect(effectToApply, to: monster, charCount: playerCount)
+                monsterManager.applyScenarioStatEffect(effectToApply, to: monster, charCount: playerCount, x: x)
             }
         }
     }

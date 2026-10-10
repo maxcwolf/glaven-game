@@ -366,6 +366,10 @@ struct MonsterSnapshot: Codable {
     var additionalImmunities: [ConditionName]?
     var statEffectHealthExpr: String?
     var statEffectHealthAbsolute: Bool?
+    var statEffectX: Int?
+    var statBonusAttack: Int?
+    var statBonusMovement: Int?
+    var statBonusRange: Int?
     /// This round's ability card initiative (nil between rounds, and in older saves).
     var drawnInitiative: Int?
 }

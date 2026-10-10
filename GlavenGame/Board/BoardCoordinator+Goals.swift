@@ -110,8 +110,10 @@ extension BoardCoordinator {
 
     /// Whether everyone has left through the exit (which, with everyone gone, is a win).
     var everyoneEscaped: Bool {
-        guard scenarioGoal?.escape?.leave == true, !party.isEmpty else { return false }
-        return party.allSatisfy { boardState.escapedCharacters.contains($0.id) }
+        // Someone exhausted on the way (where that doesn't lose the scenario) isn't waited for.
+        guard scenarioGoal?.escape?.leave == true, party.contains(where: { boardState.escapedCharacters.contains($0.id) })
+        else { return false }
+        return party.allSatisfy { boardState.escapedCharacters.contains($0.id) || $0.exhausted }
     }
 
     /// A character is exhausted at `hex`: the reason that loses the scenario, if it does.
@@ -155,7 +157,7 @@ extension BoardCoordinator {
     func goalMet(_ goal: ScenarioPlacements.Goal, turnEnded: Bool = true) -> Bool {
         guard let game = gameManager?.game, let scenario = game.scenario else { return false }
         let allRoomsRevealed = boardState.doors.allSatisfy(\.isOpen)
-        let hostile = game.monsters.filter { !MonsterAI.isAllyFaction($0) }
+        let hostile = game.monsters.filter { !MonsterAI.isAllyFaction($0) && goal.spare?.contains($0.name) != true }
 
         for index in goal.destroy ?? [] {
             let all = objectiveEntities(index)
@@ -178,7 +180,7 @@ extension BoardCoordinator {
             let counted = wanted.of ?? hostile.map(\.name)
             guard counted.reduce(0, { $0 + (scenario.killCounts[$1] ?? 0) }) >= needed else { return false }
         }
-        switch goal.enemies {
+        switch goal.enemies ?? (goal.spare != nil ? "all" : nil) {
         case "all":
             guard hostile.contains(where: { !$0.entities.isEmpty }), allRoomsRevealed,
                   hostile.allSatisfy({ $0.off || $0.aliveEntities.isEmpty }) else { return false }

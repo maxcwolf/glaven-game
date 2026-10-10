@@ -89,7 +89,7 @@ extension BoardCoordinator {
         return entries
     }
 
-    private func isPlayerSideMonster(_ monster: GameMonster) -> Bool { monster.isAlly || monster.isAllied }
+    private func isPlayerSideMonster(_ monster: GameMonster) -> Bool { MonsterAI.isAllyFaction(monster) }
 
     /// "2 of 3 acting" for the monster type whose turn it is: standees act elites first, then by number.
     private func actingDetail(_ monster: GameMonster) -> String? {

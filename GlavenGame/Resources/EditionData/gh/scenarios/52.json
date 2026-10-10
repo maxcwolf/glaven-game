@@ -31,7 +31,7 @@
             "name": ".*"
           },
           "type": "amAdd",
-          "value": "curse:3",
+          "value": "curse:2",
           "scenarioEffect": true
         }
       ]

@@ -72,9 +72,15 @@ extension BoardCoordinator {
         isPlayerSide(a) != isPlayerSide(b) && !isUntouchable(a) && !isUntouchable(b)
     }
 
-    /// Whether two pieces fight on the same side. Scenery is on no side.
+    /// Whether two pieces fight on the same side. Scenery is on no side, and what the party only
+    /// protects (a captive, a crystal, the villagers) is no one's ally: it isn't healed or helped.
     func areAllies(_ a: PieceID, _ b: PieceID) -> Bool {
-        isPlayerSide(a) == isPlayerSide(b) && !isScenery(a) && !isScenery(b)
+        isPlayerSide(a) == isPlayerSide(b) && !isScenery(a) && !isScenery(b) && !isProtected(a) && !isProtected(b)
+    }
+
+    /// An objective the party is to keep from harm without its being an ally.
+    func isProtected(_ pieceID: PieceID) -> Bool {
+        objectiveContainer(of: pieceID)?.isProtected ?? false
     }
 
     /// Characters, their summons, escorts and allied monsters fight on the players' side; what
@@ -365,8 +371,16 @@ extension BoardCoordinator {
             fallenObjective = boardState.piecePositions[pieceID].flatMap { hex in
                 (entity(for: pieceID) as? GameObjectiveEntity).map { (markers: [$0.marker] + $0.markers, hex: hex) }
             }
+            let stood = boardState.piecePositions[pieceID]
+            let index = objectiveContainer(of: pieceID)?.objectiveIndex
             removePieceFromBoard(pieceID)
             clearObjectiveSite(number)
+            // What the scenario has appear in its place (a Living Corpse from a dug-up grave).
+            if let stood, let index, let risen = scenarioData?.placements?.whenDestroyed?[String(index)],
+               let type = risen.monsterType(forPlayerCount: max(2, gameManager.game.characters.filter { !$0.absent }.count)),
+               let piece = spawnMonster(name: risen.name, type: type, at: stood, origin: .spawned) {
+                log("\(name(piece)) appears", category: .setup, trace: "at \(stood)")
+            }
             gameManager.scenarioRulesManager.evaluateRules()
             fallenObjective = nil
         }

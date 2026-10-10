@@ -22,6 +22,12 @@ struct ScenarioPlacements: Codable, Equatable {
     /// Rules the scenario book prints and the scenario data leaves out, in the data's own rule
     /// format; they are added after the scenario's own.
     var rules: [ScenarioRule]?
+    /// The scenario's own rules to leave out, by their place in its list (from 0): ones the data
+    /// gets wrong or leaves for a person to trigger, written again in `rules`.
+    var dropRules: [Int]?
+    /// What appears where an objective stood when it is destroyed, by objective (1-based): a
+    /// Living Corpse from each grave dug up.
+    var whenDestroyed: [String: MonsterStandeeData]?
 
     /// What wins and loses a scenario. Everything set under "to win" must hold at once; any one
     /// of the losses loses. With nothing to win set, the goal is the default: every enemy dead
@@ -42,6 +48,8 @@ struct ScenarioPlacements: Codable, Equatable {
         /// "all": every enemy dead with every room revealed. "revealed": every enemy on the
         /// board dead, whatever is still behind doors.
         var enemies: String?
+        /// Monster types that needn't die for `enemies` (the City Guards of Back Alley Brawl).
+        var spare: [String]?
         /// Map tiles to reveal ("m1a"), or "*" for every room.
         var reveal: [String]?
         /// "goal": every goal treasure tile looted. "each": every character has looted one.
@@ -75,7 +83,7 @@ struct ScenarioPlacements: Codable, Equatable {
         var replacesKillAll: Bool {
             destroy != nil || kill != nil || killCount != nil || reveal != nil || loot != nil || lootIDs != nil
                 || arrive != nil || escape != nil || occupy != nil || reach != nil || enemies == "revealed"
-                || either != nil
+                || either != nil || spare != nil
         }
 
         /// Whether part of the goal is where characters stand, judged as a turn ends.
@@ -164,6 +172,16 @@ struct ScenarioPlacements: Codable, Equatable {
         /// It bars the door on its hex: the door can't be opened, and opens when it is destroyed.
         var door: Bool?
     }
+}
+
+extension ScenarioRule {
+    /// A rule that never applies: it holds the place of one left out.
+    static let nothing: ScenarioRule = {
+        guard let rule = try? JSONDecoder().decode(ScenarioRule.self, from: Data(#"{"round": "R < 0"}"#.utf8)) else {
+            fatalError("an empty scenario rule decodes")
+        }
+        return rule
+    }()
 }
 
 /// A place for one objective on the board, from the placements of a revealed tile.

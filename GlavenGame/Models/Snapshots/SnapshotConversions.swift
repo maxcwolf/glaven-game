@@ -258,6 +258,10 @@ extension GameMonster {
             additionalImmunities: additionalImmunities.isEmpty ? nil : additionalImmunities,
             statEffectHealthExpr: statEffectHealthExpr,
             statEffectHealthAbsolute: statEffectHealthAbsolute ? true : nil,
+            statEffectX: statEffectX == 0 ? nil : statEffectX,
+            statBonusAttack: statBonusAttack == 0 ? nil : statBonusAttack,
+            statBonusMovement: statBonusMovement == 0 ? nil : statBonusMovement,
+            statBonusRange: statBonusRange == 0 ? nil : statBonusRange,
             drawnInitiative: drawnInitiative
         )
     }
@@ -283,6 +287,10 @@ extension MonsterSnapshot {
         m.additionalImmunities = additionalImmunities ?? []
         m.statEffectHealthExpr = statEffectHealthExpr
         m.statEffectHealthAbsolute = statEffectHealthAbsolute ?? false
+        m.statEffectX = statEffectX ?? 0
+        m.statBonusAttack = statBonusAttack ?? 0
+        m.statBonusMovement = statBonusMovement ?? 0
+        m.statBonusRange = statBonusRange ?? 0
         m.drawnInitiative = drawnInitiative
         return m
     }

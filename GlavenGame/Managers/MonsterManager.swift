@@ -48,7 +48,8 @@ final class MonsterManager {
         var hp = evaluateEntityValue(stat.health ?? .int(0), level: monster.level, characterCount: charCount)
         // Apply scenario stat-effect health override
         if let healthExpr = monster.statEffectHealthExpr {
-            hp = evaluateStatEffectHealth(healthExpr, baseHealth: hp, level: monster.level, charCount: charCount)
+            hp = evaluateStatEffectHealth(healthExpr, baseHealth: hp, level: monster.level, charCount: charCount,
+                                          x: monster.statEffectX, absolute: monster.statEffectHealthAbsolute)
         }
         let entity = GameMonsterEntity(
             number: standeeNumber,
@@ -208,7 +209,19 @@ final class MonsterManager {
     }
 
     /// Apply a scenario-rule stat effect to a monster (display name, deck, health, actions, immunities).
-    func applyScenarioStatEffect(_ effect: StatEffectData, to monster: GameMonster, charCount: Int) {
+    /// `x`: the value of X in the effect's formulas — how many of the figures the rule counts are
+    /// in play ("for each altar that isn't destroyed…").
+    func applyScenarioStatEffect(_ effect: StatEffectData, to monster: GameMonster, charCount: Int, x: Int = 0) {
+        monster.statEffectX = x
+        // 0. What the rule adds to attack, movement and range.
+        let bonus: (String?) -> Int? = { expression in
+            expression.map { evaluateEntityValue(.string($0), level: monster.level, characterCount: max(2, charCount),
+                                                 variables: ["X": x]) }
+        }
+        if let attack = bonus(effect.attack) { monster.statBonusAttack = attack }
+        if let movement = bonus(effect.movement) { monster.statBonusMovement = movement }
+        if let range = bonus(effect.range) { monster.statBonusRange = range }
+
         // 1. Name override → display name + ability deck if one exists under that name
         if let name = effect.name {
             monster.displayName = name
@@ -247,8 +260,17 @@ final class MonsterManager {
                 let statBaseHP = evaluateEntityValue(stat.health ?? .int(0), level: monster.level,
                                                       characterCount: resolvedCharCount)
                 let targetMax = evaluateStatEffectHealth(healthExpr, baseHealth: statBaseHP,
-                                                          level: monster.level, charCount: resolvedCharCount)
+                                                          level: monster.level, charCount: resolvedCharCount,
+                                                          x: x, absolute: monster.statEffectHealthAbsolute)
                 guard entity.maxHealth != targetMax else { continue }
+                if Self.isHealthBonus(healthExpr, absolute: monster.statEffectHealthAbsolute) {
+                    // A bonus coming or going: a point more is a point healed, a point fewer
+                    // only lowers the ceiling.
+                    let gained = targetMax - entity.maxHealth
+                    entity.health = max(1, gained > 0 ? entity.health + gained : min(entity.health, targetMax))
+                    entity.maxHealth = targetMax
+                    continue
+                }
                 let ratio = entity.maxHealth > 0 ? Double(entity.health) / Double(entity.maxHealth) : 1.0
                 entity.maxHealth = targetMax
                 entity.health = max(1, Int((Double(targetMax) * ratio).rounded()))
@@ -256,10 +278,18 @@ final class MonsterManager {
         }
     }
 
-    private func evaluateStatEffectHealth(_ expr: String, baseHealth: Int, level: Int, charCount: Int) -> Int {
+    /// A health effect written without H ("X") is a bonus on top of the stat card's hit points;
+    /// one written with H ("Hx2", "HxC"), or marked absolute, is the hit points themselves.
+    static func isHealthBonus(_ expr: String, absolute: Bool) -> Bool {
+        !absolute && !expr.contains("H")
+    }
+
+    private func evaluateStatEffectHealth(_ expr: String, baseHealth: Int, level: Int, charCount: Int,
+                                          x: Int = 0, absolute: Bool = false) -> Int {
         // Substitute H = base health value, then evaluate using the standard expression evaluator.
         let withH = expr.replacingOccurrences(of: "H", with: "\(baseHealth)")
-        return max(1, evaluateEntityValue(.string(withH), level: level, characterCount: charCount))
+        let value = evaluateEntityValue(.string(withH), level: level, characterCount: charCount, variables: ["X": x])
+        return max(1, Self.isHealthBonus(expr, absolute: absolute) ? baseHealth + value : value)
     }
 
     private func applyStatAction(_ action: ActionModel, to entity: GameMonsterEntity, persistent: Bool) {

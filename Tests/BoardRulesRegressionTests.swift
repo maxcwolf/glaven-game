@@ -792,6 +792,31 @@ final class BoardRulesRegressionTests: XCTestCase {
         XCTAssertEqual(bandits[1].health, 50, "the invisible one is untouched")
     }
 
+    /// Trample's "Attack 2, target all enemies moved through" passes an invisible enemy by, and
+    /// so does a condition given to enemies moved through (all-scenarios playthrough, #90 seed 1:
+    /// the Brute hit an invisible Wind Demon he jumped over).
+    func testEnemiesMovedThroughLeaveOutTheInvisible() async throws {
+        let brute = addCharacter(at: HexCoord(1, 3))
+        let seen = addMonster("bandit-guard", at: HexCoord(2, 3))
+        let unseen = addMonster("bandit-guard", at: HexCoord(3, 3))
+        for bandit in [seen, unseen] {
+            bandit.health = 50
+            bandit.maxHealth = 50
+        }
+        guard let hidden = coord.boardState.piecePositions.first(where: { $0.value == HexCoord(3, 3) })?.key else { return XCTFail() }
+        coord.applyCondition(.invisible, to: hidden)
+        _ = turn(for: brute, top: try card("Spare Dagger", of: "brute"), bottom: try card("Trample", of: "brute"))
+        coord.attackEnemiesMovedThrough(from: .character(brute.id), hexes: [HexCoord(2, 3), HexCoord(3, 3)])
+        _ = await waitUntil { self.coord.turnLog.contains { $0.message.contains("attacks Bandit Guard") } }
+        for _ in 0..<50 { await Task.yield() }
+        XCTAssertEqual(coord.turnLog.filter { $0.message.contains("attacks Bandit Guard") }.count, 1)
+        XCTAssertEqual(unseen.health, 50, "the invisible one is untouched")
+
+        coord.applyCondition(.muddle, toEnemiesOn: [HexCoord(2, 3), HexCoord(3, 3)], from: .character(brute.id))
+        XCTAssertTrue(seen.entityConditions.contains { $0.name == .muddle })
+        XCTAssertFalse(unseen.entityConditions.contains { $0.name == .muddle })
+    }
+
     func testPrintedBonusTextBecomesActions() {
         let clod = PlayerTurnController.actions(fromText: "Immobilize, XP +1")
         XCTAssertEqual(clod.map(\.type), [.condition, .card])
