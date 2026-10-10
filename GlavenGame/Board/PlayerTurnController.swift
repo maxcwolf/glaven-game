@@ -1119,8 +1119,11 @@ final class PlayerTurnController {
             var allTargets: String?
             resetPendingAttack(value: variableValue(action) ?? action.value?.intValue ?? 2, range: 1)
             // Element augments are paid only when the attack has a target (and can be made).
+            // Inferno: "Target all enemies in the same room as you".
+            let roomWide = customTexts(of: action).contains { $0.contains("all enemies in the same room") }
             let hasTarget = !coordinator.isConditionActive(.disarm, on: pieceID)
-                && !coordinator.targetableEnemies(of: pieceID, range: attackRange(of: action)).isEmpty
+                && (roomWide ? !coordinator.enemiesInRoom(of: pieceID).isEmpty
+                             : !coordinator.targetableEnemies(of: pieceID, range: attackRange(of: action)).isEmpty)
             let bonus = hasTarget ? consumeAugments(of: action) : []
             for sub in (action.subActions ?? []) + bonus {
                 switch sub.type {
@@ -1230,6 +1233,13 @@ final class PlayerTurnController {
                 applyPrintedEffects(of: action, coordinator: coordinator)
             }
 
+            if roomWide {
+                coordinator.log("\(who): Attack \(pendingAttackValue) on every enemy in the room", category: .attack)
+                if hasTarget { applyPerformedEffects() }
+                let allyDamage = attackTexts.first { $0.contains("all allies in the same room") }.map(Self.damageAmount) ?? 0
+                coordinator.attackAllEnemiesInRoom(from: pieceID, allyDamage: allyDamage)
+                return true
+            }
             if allTargets?.lowercased() == "enemiesmovedthrough" {
                 coordinator.log("\(who): Attack \(pendingAttackValue) on every enemy moved through", category: .attack)
                 if coordinator.hasEnemiesMovedThrough(by: pieceID, hexes: hexesPassed) { applyPerformedEffects() }

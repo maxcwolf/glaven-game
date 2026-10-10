@@ -156,6 +156,26 @@ final class BoardState {
         wallEdges.isEmpty ? hex.neighbors : hex.neighbors.filter { !isWalled(hex, $0) }
     }
 
+    /// The room a hex is in: every hex reached from it without going through a doorway or
+    /// across a wall. Tiles joined by a corridor are one large room; a hex in a doorway is in no
+    /// room (FAQ).
+    func room(of hex: HexCoord) -> Set<HexCoord> {
+        func inRoom(_ other: HexCoord) -> Bool {
+            guard let cell = cells[other] else { return false }
+            return cell.overlay != .wall && cell.overlay != .door
+        }
+        guard inRoom(hex) else { return [] }
+        var seen: Set<HexCoord> = [hex]
+        var frontier = [hex]
+        while let next = frontier.popLast() {
+            for neighbor in neighbors(of: next) where inRoom(neighbor) && !seen.contains(neighbor) {
+                seen.insert(neighbor)
+                frontier.append(neighbor)
+            }
+        }
+        return seen
+    }
+
     /// Whether range can be counted through a hex: it is on the map, not a wall and not a closed
     /// door. Figures and obstacles don't matter.
     func rangePasses(through hex: HexCoord) -> Bool {

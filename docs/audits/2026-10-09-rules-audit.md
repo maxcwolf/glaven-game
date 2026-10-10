@@ -184,7 +184,7 @@ Larger mechanics still not built are listed in `TODO.md` ("Scenario special rule
 | N2 | SET-1 | In nine rooms the map data's monster places disagree with the book (the scenario data, which decides who appears, is right): #3 B1a, #6 M1a, #10 L1b/L3a, #11 L2b, #12 H1b, #17 B4a, #26 C1a, #31 L2a, #44 M1b. A monster with no place of its own is put on a fallback hex | open |
 | N3 | CMP-9 | Nothing in the data unlocks #72, #73, #76 or #77 (pinned by `testEveryScenarioCanBeUnlocked`) | question |
 | N4 | CMP-6 | The FAQ's special cases for the doubled cost aren't followed (an element on a multi-target ability and a multi-figure summon are priced as single-target) | open |
-| N5 | — | "All allies in the same room as you suffer 2 damage" hurts adjacent allies only | open |
+| N5 | — | Inferno (Spellweaver 9): "Target all enemies in the same room as you" attacked one adjacent enemy, and "All allies in the same room as you suffer 2 damage" did nothing | fixed: a room is what walls and doorways bound (`BoardState.room`); every enemy in it in line of sight is attacked, in melee, and the allies in it suffer the damage (`InfernoTests`) |
 | N6 | CMP-8 | Travelling on without returning to Gloomhaven, a linked scenario or a retry skipping the road event, and the city event being optional all need town-screen changes (F19) | open |
 
 ## Tests that don't prove what they say

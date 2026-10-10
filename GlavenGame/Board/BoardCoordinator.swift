@@ -2114,6 +2114,38 @@ final class BoardCoordinator {
         attackEach(targets, from: pieceID, range: range)
     }
 
+    /// The enemies in the same room as a figure that it can attack: in line of sight (every
+    /// attack needs it) and not invisible, whatever the distance.
+    func enemiesInRoom(of pieceID: PieceID) -> [PieceID] {
+        guard let pos = boardState.piecePositions[pieceID] else { return [] }
+        let room = boardState.room(of: pos)
+        return boardState.piecePositions.filter { id, hex in
+            id != pieceID && room.contains(hex) && areEnemies(pieceID, id) && entity(for: id) != nil
+                && !isConditionActive(.invisible, on: id) && LineOfSight.hasLOS(from: pos, to: hex, board: boardState)
+        }.keys.sorted { $0.description < $1.description }
+    }
+
+    /// Inferno: attack every enemy in the same room (a melee attack: no range is printed), then
+    /// "all allies in the same room as you suffer N damage".
+    func attackAllEnemiesInRoom(from pieceID: PieceID, allyDamage: Int) {
+        let disarmed = isConditionActive(.disarm, on: pieceID)
+        if disarmed { log("\(name(pieceID)) is disarmed and can\u{2019}t attack", category: .condition) }
+        let targets = disarmed ? [] : enemiesInRoom(of: pieceID)
+        if targets.isEmpty { activePlayerTurn?.abilityDidNothing() }
+        attackEach(targets, from: pieceID, range: 1) { [weak self] in
+            guard let self, allyDamage > 0, let pos = self.boardState.piecePositions[pieceID] else { return }
+            let room = self.boardState.room(of: pos)
+            let allies = self.boardState.piecePositions.filter { id, hex in
+                id != pieceID && room.contains(hex) && self.areAllies(pieceID, id) && self.isFigure(id)
+            }.keys.sorted()
+            let generation = self.boardGeneration
+            for ally in allies where self.isOnBoard(ally) && self.isCurrentBoard(generation) {
+                self.log("\(self.name(ally)) suffers \(allyDamage) damage", category: .damage)
+                await self.sufferDamageWithMitigation(allyDamage, to: ally, source: self.name(pieceID), killer: pieceID)
+            }
+        }
+    }
+
     /// The enemies an "attack all enemies within N" reaches, in the order they are attacked.
     private func enemiesToAttack(from pieceID: PieceID, within range: Int, exactly: Bool) -> [PieceID] {
         guard let pos = boardState.piecePositions[pieceID] else { return [] }
@@ -2157,7 +2189,8 @@ final class BoardCoordinator {
     }
 
     /// One attack of the current action against each target in turn, then the action ends.
-    private func attackEach(_ targets: [PieceID], from pieceID: PieceID, range: Int) {
+    private func attackEach(_ targets: [PieceID], from pieceID: PieceID, range: Int,
+                            then afterwards: (@MainActor () async -> Void)? = nil) {
         let value = activePlayerTurn?.currentAttackValue() ?? 2
         let turn = activePlayerTurn, generation = boardGeneration
         Task { @MainActor in
@@ -2166,6 +2199,8 @@ final class BoardCoordinator {
                 await self.resolvePlayerAttack(attacker: pieceID, target: target, attackValue: value,
                                                range: range, advanceAction: false)
             }
+            guard self.isCurrentBoard(generation) else { return }
+            await afterwards?()
             guard self.isCurrentBoard(generation) else { return }
             turn?.advanceAfterAsyncAction()
         }
