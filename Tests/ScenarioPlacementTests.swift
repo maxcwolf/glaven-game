@@ -232,6 +232,19 @@ final class ScenarioPlacementTests: XCTestCase {
         XCTAssertEqual(coord.boardState.piecePositions[third]?.distance(to: pumpHex), 1, "beside the pump")
     }
 
+    /// Inox Encampment: for three or four characters a guard arrives at (a) as every round
+    /// begins — before anyone acts — and for two, as odd rounds end.
+    func testTheEncampmentsGuardArrivesAsTheRoundBegins() async throws {
+        for (party, early) in [(["brute", "spellweaver", "cragheart"], true), (["brute", "spellweaver"], false)] {
+            let sim = try simulator("3", characters: party)
+            await sim.play(rounds: 1)
+            let arrival = try XCTUnwrap(sim.transcript.firstIndex { $0.contains("Inox Guard") && $0.contains("appears") && $0.contains("marker a") },
+                                        "\(party.count): a guard arrives in round 1")
+            let firstTurn = try XCTUnwrap(sim.transcript.firstIndex { $0.contains("turn:") || $0.contains("\u{2019}s turn") })
+            XCTAssertEqual(arrival < firstTurn, early, "\(party.count) characters")
+        }
+    }
+
     // MARK: - Escorts
 
     /// An escort fights on the players' side: monsters focus on it as on a character.

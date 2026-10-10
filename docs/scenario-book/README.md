@@ -7,6 +7,8 @@ goal is**. Those come from the scenario book, and this folder is where what was 
 
 - [gh-scenario-rules.md](gh-scenario-rules.md) — the rules of all 95 scenarios as short notes:
   goal, losses, objectives, sections, special rules, boss specials, map letters.
+- [rules-audit.md](rules-audit.md) — every one of those rules against the game: done, partial or
+  missing, and where.
 - `GlavenGame/Resources/ScenarioMaps/placements/gh.json` — the hexes, and the goals the game
   enforces for objectives (below).
 
@@ -47,6 +49,8 @@ ends up on the board:
     `"beforeLoot"`; `lostIfExhaustedOnceRevealed` delays it until a tile is revealed),
     `lostIfKilled` (monster types).
   - Where characters stand (`escape`, `occupy`, `reach`) is judged as a turn or the round ends.
+- `lootActionOnly`: the goal treasure tiles can only be looted with a Loot action; ending a turn
+  on one doesn't pick it up (#7, #30, #50, #52, #59, #61).
 - `locks`: doors a scenario rule keeps locked (`ScenarioPlacements.Lock`, `BoardCoordinator+Locks`).
   A lock names the two tiles its door joins (`"between": ["d1a", "h3b"]`) — both doors, where two
   join the same pair — and at most one key:

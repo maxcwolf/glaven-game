@@ -172,10 +172,32 @@ final class ScenarioGoalTests: XCTestCase {
         XCTAssertNil(sim.coord.pendingResult, "the treasure's room isn't revealed")
         revealAll(sim)
         let chest = try XCTUnwrap(goalTreasure(sim).first)
-        sim.coord.lootHexes(for: character(sim, 0), coords: [chest])
+        sim.coord.lootHexes(for: character(sim, 0), coords: [chest], byLootAction: true)
         sim.coord.checkVictoryDefeat()
         XCTAssertEqual(sim.coord.pendingResult, .victory)
         XCTAssertFalse(pieces(sim).isEmpty)
+    }
+
+    /// There the treasure takes a Loot action: ending a turn on it, or walking over it, leaves
+    /// it where it is. A scenario without that rule (Diamond Mine) lets a turn's end pick it up.
+    func testGoalTreasureThatNeedsALootAction() async throws {
+        let sim = try await simulator("30")
+        revealAll(sim)
+        let chest = try XCTUnwrap(goalTreasure(sim).first)
+        stand(sim, 0, on: chest)
+        sim.coord.lootAtEndOfTurn(sim.gm.game.characters[0].id)
+        XCTAssertEqual(goalTreasure(sim), [chest], "still there")
+        sim.coord.collectLootInRange(pieceID: character(sim, 0), range: 1)
+        XCTAssertTrue(goalTreasure(sim).isEmpty, "a Loot action takes it")
+        sim.coord.checkVictoryDefeat()
+        XCTAssertEqual(sim.coord.pendingResult, .victory)
+
+        let mine = try await simulator("9")
+        revealAll(mine)
+        let goal = try XCTUnwrap(goalTreasure(mine).first)
+        stand(mine, 0, on: goal)
+        mine.coord.lootAtEndOfTurn(mine.gm.game.characters[0].id)
+        XCTAssertTrue(goalTreasure(mine).isEmpty)
     }
 
     /// Forgotten Grove wants the enemies dead as well.
@@ -183,7 +205,7 @@ final class ScenarioGoalTests: XCTestCase {
         let sim = try await simulator("59")
         revealAll(sim)
         let chest = try XCTUnwrap(goalTreasure(sim).first)
-        sim.coord.lootHexes(for: character(sim, 0), coords: [chest])
+        sim.coord.lootHexes(for: character(sim, 0), coords: [chest], byLootAction: true)
         sim.coord.checkVictoryDefeat()
         XCTAssertNil(sim.coord.pendingResult, "enemies remain")
         kill(sim, pieces(sim))
@@ -196,12 +218,12 @@ final class ScenarioGoalTests: XCTestCase {
         revealAll(sim)
         let chests = goalTreasure(sim)
         XCTAssertEqual(chests.count, 4)
-        sim.coord.lootHexes(for: character(sim, 0), coords: [chests[0]])
-        sim.coord.lootHexes(for: character(sim, 0), coords: [chests[1]])
+        sim.coord.lootHexes(for: character(sim, 0), coords: [chests[0]], byLootAction: true)
+        sim.coord.lootHexes(for: character(sim, 0), coords: [chests[1]], byLootAction: true)
         XCTAssertEqual(goalTreasure(sim).count, 3, "a second tile isn't theirs to take")
         sim.coord.checkVictoryDefeat()
         XCTAssertNil(sim.coord.pendingResult)
-        sim.coord.lootHexes(for: character(sim, 1), coords: [chests[1]])
+        sim.coord.lootHexes(for: character(sim, 1), coords: [chests[1]], byLootAction: true)
         sim.coord.checkVictoryDefeat()
         XCTAssertEqual(sim.coord.pendingResult, .victory)
     }
@@ -215,7 +237,7 @@ final class ScenarioGoalTests: XCTestCase {
 
         sim = try await simulator("52")
         revealAll(sim)
-        sim.coord.lootHexes(for: character(sim, 0), coords: [try XCTUnwrap(goalTreasure(sim).first)])
+        sim.coord.lootHexes(for: character(sim, 0), coords: [try XCTUnwrap(goalTreasure(sim).first)], byLootAction: true)
         sim.coord.exhaust(sim.gm.game.characters[0], reason: "test")
         XCTAssertNil(sim.coord.pendingResult)
     }
@@ -269,7 +291,7 @@ final class ScenarioGoalTests: XCTestCase {
         coord.checkVictoryDefeat(turnEnded: true)
         XCTAssertNil(coord.pendingResult, "nothing looted yet")
         revealAll(sim)
-        coord.lootHexes(for: character(sim, 0), coords: goalTreasure(sim))
+        coord.lootHexes(for: character(sim, 0), coords: goalTreasure(sim), byLootAction: true)
         coord.checkVictoryDefeat(turnEnded: true)
         XCTAssertEqual(coord.pendingResult, .victory)
     }
@@ -315,8 +337,8 @@ final class ScenarioGoalTests: XCTestCase {
         coord.checkVictoryDefeat(turnEnded: true)
         XCTAssertNil(coord.pendingResult, "no one has looted")
         let chests = goalTreasure(sim)
-        coord.lootHexes(for: character(sim, 0), coords: [chests[0]])
-        coord.lootHexes(for: character(sim, 1), coords: [chests[1]])
+        coord.lootHexes(for: character(sim, 0), coords: [chests[0]], byLootAction: true)
+        coord.lootHexes(for: character(sim, 1), coords: [chests[1]], byLootAction: true)
         coord.checkVictoryDefeat(turnEnded: true)
         XCTAssertEqual(coord.pendingResult, .victory)
     }
@@ -392,7 +414,7 @@ final class ScenarioGoalTests: XCTestCase {
             XCTAssertNil(coord.pendingResult, "the treasure isn't looted")
             let chest = try XCTUnwrap(coord.boardState.cells.values.first { $0.treasureID == "62" }?.coord)
             stand(sim, 1, on: chest)
-            coord.lootHexes(for: character(sim, 1), coords: [chest])
+            coord.lootHexes(for: character(sim, 1), coords: [chest], byLootAction: true)
             if way == "entrance" {
                 stand(sim, 0, on: start[0])
                 coord.checkVictoryDefeat(turnEnded: true)

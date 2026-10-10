@@ -66,7 +66,11 @@ struct ActionModel: Codable, Hashable, Identifiable {
         // Silently ignore arrays (monster summon format) or missing keys.
         summonValueObject = try? container.decodeIfPresent(SummonValueObject.self, forKey: .valueObject)
         monsterSummons = (try? container.decodeIfPresent([MonsterSummonSpec.Wrapper].self, forKey: .valueObject))?
-            .map(\.monster)
+            .map { entry in
+                var spec = entry.monster
+                spec.count = entry.count ?? spec.count
+                return spec
+            }
     }
 
     func encode(to encoder: Encoder) throws {
@@ -79,7 +83,8 @@ struct ActionModel: Codable, Hashable, Identifiable {
         try container.encodeIfPresent(hidden, forKey: .hidden)
         try container.encodeIfPresent(enhancementTypes, forKey: .enhancementTypes)
         if let monsterSummons {
-            try container.encode(monsterSummons.map(MonsterSummonSpec.Wrapper.init), forKey: .valueObject)
+            try container.encode(monsterSummons.map { MonsterSummonSpec.Wrapper(monster: $0, count: $0.count) },
+                                 forKey: .valueObject)
         } else {
             try container.encodeIfPresent(summonValueObject, forKey: .valueObject)
         }
@@ -94,17 +99,29 @@ struct MonsterSummonSpec: Codable, Hashable {
     var player3: MonsterType?
     var player4: MonsterType?
     var health: IntOrString?
+    /// How many are summoned (the data writes it beside the monster); one when absent.
+    var count: Int?
 
     struct Wrapper: Codable, Hashable {
         var monster: MonsterSummonSpec
+        var count: Int?
     }
 
-    /// Normal/elite for the given character count (2-player setup for fewer than 2).
-    func type(forPlayerCount count: Int) -> MonsterType {
+    /// Normal or elite for the given character count, or nil when this entry isn't for that
+    /// count: a boss's summon lists one entry per player count ("two normal for two characters,
+    /// one of each for three…"), and only those written for the count at the table are summoned.
+    func type(forPlayerCount count: Int) -> MonsterType? {
+        if let type { return type }
         switch count {
-        case ...2: return player2 ?? type ?? .normal
-        case 3: return player3 ?? type ?? .normal
-        default: return player4 ?? type ?? .normal
+        case ...2: return player2
+        case 3: return player3
+        default: return player4
         }
+    }
+
+    /// What this entry summons for the given character count: `count` of its type, or nothing.
+    func summoned(forPlayerCount players: Int) -> [MonsterType] {
+        guard let type = type(forPlayerCount: players) else { return [] }
+        return Array(repeating: type, count: max(1, count ?? 1))
     }
 }

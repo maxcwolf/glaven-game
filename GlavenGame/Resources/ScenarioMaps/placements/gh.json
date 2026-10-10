@@ -6,7 +6,7 @@
   }},
   "6": {"goal": {"text": "Reveal the M tile and kill all revealed enemies.", "reveal": ["m1a"], "enemies": "revealed"}, "tiles": {
   }},
-  "7": {"goal": {"text": "Loot all treasure tiles.", "loot": "goal"}, "tiles": {
+  "7": {"goal": {"text": "Loot all treasure tiles.", "loot": "goal"}, "lootActionOnly": true, "tiles": {
   }},
   "8": {"goal": {"text": "Kill both Inox Bodyguards.", "kill": ["inox-bodyguard"]}, "tiles": {
   }},
@@ -55,7 +55,7 @@
   "29": {"tiles": {
     "e1a": {"objectives": [{"objective": 1, "cells": [[1, -1]], "door": true}, {"objective": 1, "cells": [[1, 5]], "door": true}, {"objective": 1, "cells": [[5, 2]], "door": true}]}
   }},
-  "30": {"goal": {"text": "Loot the treasure tile.", "loot": "goal"}, "tiles": {
+  "30": {"goal": {"text": "Loot the treasure tile.", "loot": "goal"}, "lootActionOnly": true, "tiles": {
   }},
   "31": {"goal": {"text": "Destroy the rock column.", "destroy": [1]}, "tiles": {
     "l2a": {"objectives": [{"objective": 1, "cells": [[2, 3]]}], "markers": {"b": [[4, 0]], "c": [[4, 6]]}}
@@ -120,11 +120,11 @@
   }},
   "49": {"goal": {"text": "Kill the Siege Cannon.", "kill": ["siege-cannon"]}, "tiles": {
   }},
-  "50": {"goal": {"text": "Loot all treasure tiles.", "loot": "goal"}, "tiles": {
+  "50": {"goal": {"text": "Loot all treasure tiles.", "loot": "goal"}, "lootActionOnly": true, "tiles": {
   }},
   "51": {"goal": {"text": "Kill the Gloom.", "kill": ["the-gloom"]}, "tiles": {
   }},
-  "52": {"goal": {"text": "All characters must loot one treasure tile.", "loot": "each", "lostIfExhausted": ["beforeLoot"]}, "tiles": {
+  "52": {"goal": {"text": "All characters must loot one treasure tile.", "loot": "each", "lostIfExhausted": ["beforeLoot"]}, "lootActionOnly": true, "tiles": {
   }},
   "53": {"locks": [{"between": ["m1a", "j1a"], "afterRound": 1, "note": "Locked: it opens at the start of round 2."}, {"between": ["m1a", "j2a"], "afterRound": 3, "note": "Locked: it opens at the start of round 4."}, {"between": ["m1a", "d2a"], "afterRound": 5, "note": "Locked: it opens at the start of round 6."}, {"between": ["m1a", "d1a"], "afterRound": 7, "note": "Locked: it opens at the start of round 8."}], "tiles": {
   }},
@@ -137,11 +137,11 @@
   "58": {"goal": {"text": "Kill the Harvester.", "kill": ["the-harvester"]}, "tiles": {
     "b1a": {"objectives": [{"objective": 1, "cells": [[0, 0]]}, {"objective": 1, "cells": [[3, 0]]}, {"objective": 1, "cells": [[0, 3]]}, {"objective": 1, "cells": [[2, 3]]}]}
   }},
-  "59": {"goal": {"text": "Kill all enemies and loot the treasure tile.", "enemies": "all", "loot": "goal"}, "tiles": {
+  "59": {"goal": {"text": "Kill all enemies and loot the treasure tile.", "enemies": "all", "loot": "goal"}, "lootActionOnly": true, "tiles": {
   }},
   "60": {"goal": {"text": "Loot all treasure tiles, then all characters must escape through the entrance.", "loot": "goal", "escape": {"start": true}, "lostIfExhausted": ["beforeLoot", "offExit"]}, "tiles": {
   }},
-  "61": {"goal": {"text": "Loot all treasure tiles.", "loot": "goal"}, "tiles": {
+  "61": {"goal": {"text": "Loot all treasure tiles.", "loot": "goal"}, "lootActionOnly": true, "tiles": {
   }},
   "62": {"goal": {"text": "Kill the Hungry Soul.", "kill": ["hungry-soul"]}, "rules": [{"round": "true", "always": true, "once": true, "figures": [{"identifier": {"type": "monster", "edition": "gh", "name": "living-bones"}, "type": "killed", "value": 10}], "spawns": [{"monster": {"name": "hungry-soul", "type": "boss"}, "marker": "c"}]}], "tiles": {
     "b2b": {"markers": {"c": [[1, 3]]}},

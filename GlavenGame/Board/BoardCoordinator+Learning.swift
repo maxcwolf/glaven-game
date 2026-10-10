@@ -520,7 +520,11 @@ extension BoardCoordinator {
                 }
             case .treasure:
                 title = "Treasure"
-                paragraphs.append("A character who ends their turn here opens it. Some hold items, some gold, some a trap.")
+                if goalTreasureNeedsLootAction, cell.treasureID == Self.goalTreasureID {
+                    paragraphs.append("In this scenario it can only be looted with a Loot action: ending a turn here doesn't open it.")
+                } else {
+                    paragraphs.append("A character who ends their turn here opens it. Some hold items, some gold, some a trap.")
+                }
             case .wall:
                 title = "Wall"
                 paragraphs.append("Walls block movement and line of sight.")

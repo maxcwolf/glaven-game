@@ -586,7 +586,7 @@ final class MonsterTurnController {
               let specs = action.monsterSummons else { return }
         let characterCount = max(2, game.characters.filter { !$0.absent }.count)
         for spec in specs {
-            let type = spec.type(forPlayerCount: characterCount)
+          for type in spec.summoned(forPlayerCount: characterCount) {
             let before = Set(game.monsters.first { $0.name == spec.name }?.aliveEntities.map(\.number) ?? [])
             if !coordinator.summonMonster(name: spec.name, type: type, near: pieceID) {
                 coordinator.log("\(coordinator.name(pieceID)) can\u{2019}t summon \(coordinator.monsterTypeName(spec.name)): no room", category: .info)
@@ -599,6 +599,7 @@ final class MonsterTurnController {
                 .first(where: { !before.contains($0.number) }) {
                 summoned.health = min(summoner.health, summoned.maxHealth)
             }
+          }
         }
     }
 }

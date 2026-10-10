@@ -81,6 +81,9 @@ extension BoardCoordinator {
         checkVictoryDefeat()
     }
 
+    /// Whether the scenario's goal treasure can only be looted with a Loot action.
+    var goalTreasureNeedsLootAction: Bool { scenarioData?.placements?.lootActionOnly == true }
+
     /// A character looted a goal treasure tile.
     func noteGoalTreasureLooted(by characterID: String) {
         if !boardState.goalLooters.contains(characterID) { boardState.goalLooters.append(characterID) }

@@ -49,6 +49,7 @@
     },
     {
       "round": "true",
+      "start": true,
       "spawns": [
         {
           "monster": {

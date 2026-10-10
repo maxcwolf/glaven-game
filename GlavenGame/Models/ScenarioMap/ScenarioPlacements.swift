@@ -12,6 +12,9 @@ struct ScenarioPlacements: Codable, Equatable {
     /// The scenario's goal and loss conditions as the scenario book prints them, where the
     /// scenario data has no rule for them.
     var goal: Goal?
+    /// The goal treasure tiles can only be looted with a Loot action: ending a turn on one, or
+    /// walking over it, doesn't pick it up.
+    var lootActionOnly: Bool?
     /// Doors a scenario rule keeps locked, and what opens each.
     var locks: [Lock]?
     /// Letters that are pressure plates no lock or goal names, to be drawn as plates.

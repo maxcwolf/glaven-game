@@ -2306,7 +2306,7 @@ final class BoardCoordinator {
             log("\(name(pieceID)) finds nothing to loot within range \(range)", category: .loot)
             return
         }
-        lootHexes(for: pieceID, coords: coords.sorted())
+        lootHexes(for: pieceID, coords: coords.sorted(), byLootAction: true)
     }
 
     /// Whether a hex holds a money token or an unlooted treasure tile.
@@ -2317,7 +2317,9 @@ final class BoardCoordinator {
     /// Loot every money token and treasure tile in `coords` for a character. Money tokens are
     /// worth the scenario level's gold conversion; numbered treasures give their reward from the
     /// treasure index. Summons and monsters never loot this way.
-    func lootHexes(for pieceID: PieceID, coords: [HexCoord]) {
+    /// `byLootAction`: a Loot ability is doing the looting — in some scenarios the only way
+    /// to pick up the goal treasure.
+    func lootHexes(for pieceID: PieceID, coords: [HexCoord], byLootAction: Bool = false) {
         guard case .character(let charID) = pieceID,
               let gameManager = gameManager,
               let character = gameManager.game.characters.first(where: { $0.id == charID }) else { return }
@@ -2339,6 +2341,7 @@ final class BoardCoordinator {
             } else if let id = cell.treasureID {
                 // Where every character must loot one goal treasure tile, each loots only one.
                 if id == Self.goalTreasureID {
+                    guard byLootAction || !goalTreasureNeedsLootAction else { continue }
                     guard mayLootGoalTreasure(charID) else { continue }
                     noteGoalTreasureLooted(by: charID)
                     boardState.goalTreasuresLooted += 1
