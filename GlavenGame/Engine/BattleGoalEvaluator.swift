@@ -93,9 +93,10 @@ enum BattleGoalEvaluator {
         case "475":
             return stats.largestOverkill >= 4
 
-        // Purist: "Use no items during the scenario"
+        // Purist: "Use no items during the scenario". Counted as items are used: a long rest
+        // refreshes spent items, so what is still spent at the end says nothing.
         case "476":
-            return character.spentItems.isEmpty && character.consumedItems.isEmpty
+            return stats.itemUses == 0
 
         // Opener: "Be the first to kill a monster"
         case "477":

@@ -16,7 +16,10 @@ final class CampaignLogTests: XCTestCase {
         let character = gm.game.characters[0]
         character.experience = 45
         gm.characterManager.levelUp(character)
-        gm.characterManager.retireCharacter(character)
+        // Only a fulfilled personal quest lets a character retire: Greed is Good, 200 gold.
+        character.personalQuest = "512"
+        character.personalQuestProgress = [200]
+        XCTAssertTrue(gm.characterManager.retireCharacter(character))
 
         let types = Set(gm.game.campaignLog.map(\.type))
         for expected: CampaignLogType in [.characterAdded, .scenarioCompleted, .eventResolved, .levelUp, .characterRetired] {

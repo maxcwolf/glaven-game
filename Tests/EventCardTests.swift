@@ -252,13 +252,58 @@ final class EventCardTests: XCTestCase {
                     XCTAssertNil(events.resolve(deck, option: label), "\(card.id) \(label) can't be taken")
                     continue
                 }
+                let outcome = try XCTUnwrap(events.outcome(card, option: label))
                 let resolution = try XCTUnwrap(events.resolve(deck, option: label), "\(card.id) \(label)")
                 XCTAssertFalse(resolution.narrative.isEmpty, "\(card.id) \(label)")
                 for line in resolution.effects {
                     XCTAssertEqual(PlayerTextTests.lint(line), [], "\(card.id) \(label): \(line)")
                 }
+                // The outcome taken is one the card prints an effect for (if only "no effect"):
+                // an option's opening words, with the real outcomes after them, are never it.
+                if (option.outcomes ?? []).count > 1 {
+                    XCTAssertNotNil(outcome.effects, "\(card.id) \(label) stopped at the option's own text")
+                }
+                // What the card gives or takes for certain is reported, and a price is paid.
+                let certain: Set<String> = ["reputation", "loseReputation", "prosperity", "loseProsperity", "gold", "loseGold",
+                                            "experience", "battleGoal", "loseBattleGoal", "partyAchievement", "globalAchievement",
+                                            "unlockScenario", "collectiveGold", "loseCollectiveGold", "scenarioDamage", "scenarioCondition"]
+                if (outcome.effects ?? []).contains(where: { certain.contains($0.type) && $0.condition == nil }) {
+                    XCTAssertNotEqual(resolution.effects, ["No effect."], "\(card.id) \(label)")
+                }
+                if outcome.condition?.type == "payCollectiveGold", let price = outcome.condition?.values?.first?.intValue {
+                    XCTAssertTrue(resolution.effects.contains("The party pays \(price) gold."), "\(card.id) \(label)")
+                }
+                // Resolved, the card is out of the game unless it says it returns to the deck.
+                if !(outcome.effects ?? []).contains(where: { $0.type == "outcome" }) {
+                    XCTAssertEqual(events.deck(deck).contains(card.cardId), outcome.returnToDeck ?? option.returnToDeck ?? false,
+                                   "\(card.id) \(label)")
+                }
+                for character in game.characters { character.loot = 30 }   // each option meets the same party
             }
         }
+    }
+
+    /// City event 15, killing the guard: the party pays 15 gold between them to have the
+    /// bodies disappear, and nothing else happens; a party that can't pay cleans up itself, and
+    /// each character loses a checkmark.
+    func testDisposingOfTheBodiesCostsGoldOrACheckmark() throws {
+        for character in game.characters { character.battleGoalProgress = 2 }
+        brute.loot = 10
+        tinkerer.loot = 9
+        top(.city, "15")
+        let paid = try XCTUnwrap(events.resolve(.city, option: "B"))
+        XCTAssertEqual(paid.effects, ["The party pays 15 gold."])
+        XCTAssertEqual(brute.loot + tinkerer.loot, 4)
+        XCTAssertEqual(game.characters.map(\.battleGoalProgress), [2, 2])
+        XCTAssertTrue(paid.narrative.contains("falls to your blade"), "the option's own words are read first")
+        XCTAssertTrue(paid.narrative.contains("make the bodies disappear"))
+        XCTAssertFalse(events.deck(.city).contains("15"), "removed from the game")
+
+        top(.city, "15")
+        let unpaid = try XCTUnwrap(events.resolve(.city, option: "B"))
+        XCTAssertEqual(unpaid.effects, ["Each character loses 1 battle goal checkmark."])
+        XCTAssertEqual(brute.loot + tinkerer.loot, 4, "nothing to pay with, nothing taken")
+        XCTAssertEqual(game.characters.map(\.battleGoalProgress), [1, 1])
     }
 
     /// `EVENT_RENDER_OUT=/tmp/e swift test --filter testRenderEvent` renders city 05 and road 28.

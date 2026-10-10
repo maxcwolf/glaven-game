@@ -51,8 +51,8 @@ final class ScenarioManager {
         for character in game.characters where !character.absent {
             // Each brings only what fits beside the items before it.
             editionStore.fitLoadout(character, unlimited: game.tableRules.bringEveryItem)
-            guard !character.hasCustomPerk("ignoreNegativeItem") else { continue }
-            for key in character.carriedItems {
+            // The perk spares the character their items' −1 cards, nothing else.
+            for key in character.carriedItems where !character.hasCustomPerk("ignoreNegativeItem") {
                 let parts = key.split(separator: "-")
                 guard let id = parts.last.flatMap({ Int($0) }),
                       let item = editionStore.itemData(id: id, edition: parts.dropLast().joined(separator: "-")),
@@ -125,6 +125,7 @@ final class ScenarioManager {
                     if result.checksAwarded > 0,
                        let character = game.characters.first(where: { $0.id == charID }) {
                         character.addBattleGoalChecks(result.checksAwarded)
+                        character.record.battleGoalChecks += result.checksAwarded
                     }
                 }
             }
@@ -312,29 +313,22 @@ final class ScenarioManager {
     }
 
     func isAvailable(_ scenario: ScenarioData) -> Bool {
-        let edition = scenario.edition
         if scenario.isInitial { return true }
-        let unlocked = isScenarioUnlocked(scenario, edition: edition) || game.manualScenarios.contains(scenario.id)
-        let meetsReqs = checkRequirements(scenario)
-        let blocked = isScenarioBlocked(scenario, edition: edition)
-        return unlocked && meetsReqs && !blocked
+        return isUnlocked(scenario) && checkRequirements(scenario) && !isScenarioBlocked(scenario, edition: scenario.edition)
     }
 
     func isBlocked(_ scenario: ScenarioData) -> Bool {
         isScenarioBlocked(scenario, edition: scenario.edition)
     }
 
-    /// Unlocked by a won scenario (or by hand), whether or not it can be played yet: on the
-    /// board game's map it has its sticker.
+    /// Unlocked — by a won scenario, or by an event, a treasure, a personal quest or a choice —
+    /// whether or not it can be played yet: on the board game's map it has its sticker.
     func isUnlocked(_ scenario: ScenarioData) -> Bool {
         scenario.isInitial || isScenarioUnlocked(scenario, edition: scenario.edition) || game.manualScenarios.contains(scenario.id)
     }
 
     func isLocked(_ scenario: ScenarioData) -> Bool {
-        let edition = scenario.edition
-        let unlocked = isScenarioUnlocked(scenario, edition: edition) || game.manualScenarios.contains(scenario.id)
-        if !unlocked { return true }
-        return !checkRequirements(scenario)
+        !isUnlocked(scenario) || !checkRequirements(scenario)
     }
 
     // MARK: - Available Scenarios
@@ -354,19 +348,8 @@ final class ScenarioManager {
                 return false
             }
 
-            // Initial scenarios are always available
-            if scenario.isInitial { return true }
-
-            // Unlocked by a completed scenario, or by an event, treasure or reward
-            let isUnlocked = isScenarioUnlocked(scenario, edition: edition) || game.manualScenarios.contains(scenario.id)
-
-            // Check requirements (achievements, etc.)
-            let meetsRequirements = checkRequirements(scenario)
-
-            // Check if blocked
-            let isBlocked = isScenarioBlocked(scenario, edition: edition)
-
-            return isUnlocked && meetsRequirements && !isBlocked
+            // Unlocked, its requirements met, and not closed off by another scenario
+            return isAvailable(scenario)
         }.sorted { a, b in
             // Sort by index numerically if possible
             let aNum = Int(a.index) ?? Int.max
@@ -573,16 +556,6 @@ final class ScenarioManager {
             }
         }
 
-        // Check requires chains (legacy format)
-        if let requires = scenario.requires {
-            // requires is [[String]] — any inner array must have all scenarios completed
-            return requires.contains { group in
-                group.allSatisfy { reqIndex in
-                    game.completedScenarios.contains("\(edition)-\(reqIndex)")
-                }
-            }
-        }
-
         return false
     }
 
@@ -604,6 +577,12 @@ final class ScenarioManager {
     }
 
     private func checkRequirements(_ scenario: ScenarioData) -> Bool {
+        // `requires`: the scenarios that must be won first (any one group, all of it). It never
+        // unlocks a scenario by itself: #20 needs #8 won, but only #7 or the Seer's choice
+        // after #13 puts it on the map.
+        if let requires = scenario.requires, !requires.isEmpty, !requires.contains(where: { group in
+            group.allSatisfy { game.completedScenarios.contains("\(scenario.edition)-\($0)") }
+        }) { return false }
         guard let requirements = scenario.requirements else { return true }
 
         // Any requirement set must be fully met (OR between sets, AND within)
@@ -620,7 +599,10 @@ final class ScenarioManager {
                     let name = String(g.dropFirst())
                     if game.globalAchievements.contains(name) { return false }
                 } else {
-                    if !game.globalAchievements.contains(g) { return false }
+                    // "end-of-corruption:3": earned that many times.
+                    let parts = g.split(separator: ":").map(String.init)
+                    let needed = parts.count > 1 ? Int(parts[1]) ?? 1 : 1
+                    if globalAchievementCount(parts[0]) < needed { return false }
                 }
             }
         }
@@ -670,15 +652,27 @@ final class ScenarioManager {
         return true
     }
 
+    /// How many times the world has earned a global achievement. A save from before the count
+    /// was kept is counted from the won scenarios that award it.
+    func globalAchievementCount(_ id: String) -> Int {
+        guard game.globalAchievements.contains(id) else { return 0 }
+        let awarded = game.completedScenarios.filter { completed in
+            let parts = completed.split(separator: "-", maxSplits: 1).map(String.init)
+            guard parts.count == 2 else { return false }
+            return editionStore.scenarioData(index: parts[1], edition: parts[0])?.rewards?.globalAchievements?.contains(id) ?? false
+        }.count
+        return max(game.globalAchievementCount(id), awarded)
+    }
+
     // MARK: - Private: Rewards
 
     private func applyRewards(_ rewards: ScenarioRewards, edition: String,
                               choices: ScenarioRewardChoices = ScenarioRewardChoices()) {
         if let globals = rewards.globalAchievements {
-            for g in globals { game.globalAchievements.insert(g) }
+            for g in globals { game.gainGlobalAchievement(g) }
         }
         if let party = rewards.partyAchievements {
-            for p in party { game.partyAchievements.insert(p) }
+            for p in party { game.gainPartyAchievement(p) }
         }
         if let lostParty = rewards.lostPartyAchievements {
             for p in lostParty { game.partyAchievements.remove(p) }
@@ -699,10 +693,11 @@ final class ScenarioManager {
         }
         if let rep = rewards.reputation {
             // Reputation runs from −20 to +20 (p.48).
-            game.partyReputation = max(-20, min(20, game.partyReputation + resolveRewardInt(rep)))
+            game.changeReputation(by: resolveRewardInt(rep), labels: editionStore)
         }
         if let pros = rewards.prosperity {
-            game.partyProsperity += resolveRewardInt(pros)
+            // A loss (#35, #50) never undoes a prosperity level already reached (FAQ).
+            game.changeProsperity(by: resolveRewardInt(pros))
         }
         if let gold = rewards.gold {
             let amount = resolveRewardInt(gold)
@@ -720,7 +715,7 @@ final class ScenarioManager {
     }
 
     /// Fold the scenario into each character's campaign record, for personal quests: a win,
-    /// their kills, and exhaustions in the party.
+    /// their kills, their own exhaustion and the other characters'.
     private func recordCampaign(success: Bool, data: ScenarioData) {
         let party = game.characters.filter { !$0.absent }
         let exhaustions = party.filter(\.exhausted).count
@@ -730,7 +725,7 @@ final class ScenarioManager {
             for (monster, count) in stats.killsByMonster { character.record.kills[monster, default: 0] += count }
             character.record.eliteKills += stats.eliteKills
             if character.exhausted { character.record.timesExhausted += 1 }
-            character.record.partyExhaustions += exhaustions
+            character.record.partyExhaustions += exhaustions - (character.exhausted ? 1 : 0)
         }
     }
 
@@ -764,17 +759,19 @@ final class ScenarioManager {
 
     /// Draw a random scenario from the pool of random-flagged, not-yet-completed scenarios.
     func drawRandomScenario() -> ScenarioData? {
-        guard let edition = game.edition else { return nil }
-        let allScenarios = editionStore.scenarios(for: edition)
+        Self.drawRandomScenario(game: game, editionStore: editionStore)
+    }
 
-        let candidates = allScenarios.filter { scenario in
+    /// A random side scenario not yet on the map (shared with class unlocks).
+    static func drawRandomScenario(game: GameState, editionStore: EditionDataStore) -> ScenarioData? {
+        guard let edition = game.edition else { return nil }
+        let candidates = editionStore.scenarios(for: edition).filter { scenario in
             guard scenario.random == true else { return false }
             guard !scenario.isConclusion else { return false }
-            guard !isCompleted(scenario) else { return false }
+            guard !game.completedScenarios.contains(scenario.id) else { return false }
             guard !game.manualScenarios.contains(scenario.id) else { return false }
             return true
         }
-
         return candidates.randomElement(using: &GameRandom.shared)
     }
 

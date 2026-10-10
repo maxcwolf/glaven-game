@@ -62,6 +62,31 @@ final class BoardItemTests: XCTestCase {
         XCTAssertEqual(gm.scenarioStatsManager.stats(for: brute.name).itemUses, 1)
     }
 
+    /// Purist ("use no items") is judged on what was used, not on what is still spent at the
+    /// end: the boots are refreshed by a long rest, and the goal is missed all the same.
+    func testAnItemUsedBeforeALongRestStillBreaksPurist() throws {
+        brute.battleGoalCardIds = ["476", "470"]   // Purist, Pacifist
+        gm.scenarioManager.chooseBattleGoal(0, for: brute)
+        func checks() -> Int? {
+            BattleGoalEvaluator.evaluateAll(game: gm.game, statsManager: gm.scenarioStatsManager, scenarioXPGained: [:],
+                                            battleGoalData: gm.editionStore.battleGoals(for: "gh"))[brute.id]?.checksAwarded
+        }
+        XCTAssertEqual(checks(), 2, "no item used yet: Purist's two checkmarks")
+
+        let turn = try startTurn()
+        turn.swapCards()
+        turn.setBottomFirst(true)
+        turn.executeCurrentAction()
+        try use("gh-1")
+        XCTAssertTrue(brute.spentItems.contains("gh-1"))
+
+        // The long-rest turn begins: Heal 2, and every spent item is refreshed.
+        brute.longRest = true
+        gm.roundManager.toggleFigure(.character(brute))
+        XCTAssertTrue(brute.spentItems.isEmpty)
+        XCTAssertEqual(checks(), 0, "the boots were used")
+    }
+
     func testAttackItemsJoinTheAttack() async throws {
         let piece = try XCTUnwrap(coord.spawnMonster(name: "bandit-guard", type: .normal, at: HexCoord(4, 3), origin: .placed))
         let bandit = try XCTUnwrap(coord.entity(for: piece))

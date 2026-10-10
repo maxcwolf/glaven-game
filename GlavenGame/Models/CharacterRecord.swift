@@ -2,7 +2,7 @@ import Foundation
 
 /// What a character has done over the campaign, for personal quests: the scenarios they took
 /// part in and won, the monsters they killed, how often they and their party were exhausted,
-/// and the gold they gave the sanctuary.
+/// the gold they gave the sanctuary, the battle goals they met and the retirements they saw.
 struct CharacterRecord: Codable, Equatable {
     /// Scenario ids ("gh-12") won with this character in the party.
     var scenariosCompleted: Set<String> = []
@@ -10,9 +10,17 @@ struct CharacterRecord: Codable, Equatable {
     var kills: [String: Int] = [:]
     var eliteKills = 0
     var timesExhausted = 0
-    /// Exhaustions of anyone in the party (themselves included) in scenarios they played.
+    /// Exhaustions of the other characters in the party in scenarios they played: their own
+    /// don't count for A Study of Anatomy (FAQ).
     var partyExhaustions = 0
     var donatedGold = 0
+    /// Checkmarks earned from battle goals alone, never lowered: events, treasures and rewards
+    /// give and take checkmarks that don't count for Battle Legacy (FAQ).
+    var battleGoalChecks = 0
+    /// Other characters' retirements they were in the party for (A Helping Hand).
+    var retirementsSeen = 0
+    /// Extra perks from their player's earlier retirements (GH p.48).
+    var extraPerks = 0
 
     init() {}
 
@@ -24,6 +32,9 @@ struct CharacterRecord: Codable, Equatable {
         timesExhausted = try c.decodeIfPresent(Int.self, forKey: .timesExhausted) ?? 0
         partyExhaustions = try c.decodeIfPresent(Int.self, forKey: .partyExhaustions) ?? 0
         donatedGold = try c.decodeIfPresent(Int.self, forKey: .donatedGold) ?? 0
+        battleGoalChecks = try c.decodeIfPresent(Int.self, forKey: .battleGoalChecks) ?? 0
+        retirementsSeen = try c.decodeIfPresent(Int.self, forKey: .retirementsSeen) ?? 0
+        extraPerks = try c.decodeIfPresent(Int.self, forKey: .extraPerks) ?? 0
     }
 
     /// "cultist-scenario-78" → "cultist"; "bandit-guard-music-note-solo" → "bandit-guard".

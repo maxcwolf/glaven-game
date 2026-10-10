@@ -22,13 +22,18 @@ final class CharacterManager {
         guard let data = editionStore.characterData(name: name, edition: edition) else { return }
         // Prevent duplicates
         guard !game.characters.contains(where: { $0.name == name && $0.edition == edition }) else { return }
-        let clampedLevel = max(1, min(9, level))
+        // No higher than the city's prosperity level (p.45), whatever was asked for.
+        let clampedLevel = max(1, min(highestStartingLevel, level))
         let character = GameCharacter(name: name, edition: edition, level: clampedLevel, characterData: data)
         // A new character starts with the experience of their level and 15 × (level + 1) gold (p.45).
         character.experience = GameCharacter.xpThresholds[clampedLevel - 1]
         character.loot = Self.startingGold(level: clampedLevel)
         character.attackModifierDeck = .defaultDeck()
         character.selectedPerks = Array(repeating: 0, count: data.perks?.count ?? 0)
+        // The class's cards keep the enhancements earlier characters bought (p.48), and the
+        // player of a retired character brings one more perk for each retirement (p.48).
+        character.enhancements = game.classEnhancements(for: character.id)
+        game.claimPerksForRecruit(character)
         // Assign unique number
         var number = 1
         while game.characters.contains(where: { $0.number == number }) { number += 1 }
@@ -49,6 +54,17 @@ final class CharacterManager {
 
     func removeCharacter(_ character: GameCharacter) {
         onBeforeMutate?()
+        leave(character, retired: false)
+    }
+
+    /// A character leaves the party for good: their items go back to the city's supply (p.48),
+    /// their class keeps its enhancements, and their player keeps the perks retirements earned.
+    private func leave(_ character: GameCharacter, retired: Bool) {
+        for key in character.items {
+            guard let item = editionStore.itemData(key: key) else { continue }
+            game.returnToSupply(key, designKnown: ItemManager.designKnown(item, game: game))
+        }
+        game.noteDeparture(of: character, retired: retired)
         game.figures.removeAll { $0.id == "char-\(character.edition)-\(character.name)" }
     }
 
@@ -62,7 +78,11 @@ final class CharacterManager {
         }
     }
 
-    func retireCharacter(_ character: GameCharacter, addRetirementEvents: Bool = true) {
+    /// Retire a character whose personal quest is fulfilled (p.48); anyone else stays. Returns
+    /// whether they retired.
+    @discardableResult
+    func retireCharacter(_ character: GameCharacter, addRetirementEvents: Bool = true) -> Bool {
+        guard questComplete(character) else { return false }
         onBeforeMutate?()
 
         // Mark as retired
@@ -71,14 +91,26 @@ final class CharacterManager {
         // Archive as snapshot
         game.retiredCharacters.append(character.toSnapshot())
 
-        // Unlock character from personal quest if complete
+        // The fulfilled quest opens its box — a class already unlocked brings a random item
+        // design and side scenario instead (see `unlockClass`) — and its card leaves the game.
         if let questId = character.personalQuest,
-           let quest = editionStore.personalQuest(cardId: questId) {
-            if let unlock = quest.unlockCharacter {
+           let quest = editionStore.personalQuest(cardId: questId, edition: character.edition) {
+            // (Not twice: the scenario that ends a quest's chain opens the same box itself.)
+            let openedByItsScenario = quest.requirements.contains { requirement in
+                let last = PersonalQuestEvaluator.questChain(requirement, edition: character.edition, editionStore: editionStore).last
+                return last.map { $0.rewards?.unlockCharacter == quest.unlockCharacter && game.completedScenarios.contains($0.id) } ?? false
+            }
+            if let unlock = quest.unlockCharacter, !openedByItsScenario {
                 game.unlockClass(unlock, edition: character.edition,
                                  how: "Via retirement of \(GameText.characterName(character, labels: editionStore))",
                                  labels: editionStore)
             }
+            game.events.questsRemoved.insert(questId)
+        }
+        // The others in the party saw it (A Helping Hand).
+        for other in game.characters where other !== character {
+            other.record.retirementsSeen += 1
+            PersonalQuestEvaluator.updateProgress(character: other, game: game, editionStore: editionStore)
         }
         if addRetirementEvents {
             game.addRetirementEvents(of: character.name, edition: character.edition, labels: editionStore)
@@ -99,8 +131,9 @@ final class CharacterManager {
             details: "Level \(character.level), \(character.experience) XP, \(character.loot) Gold"
         ))
 
-        // Remove from active game
-        game.figures.removeAll { $0.id == "char-\(character.edition)-\(character.name)" }
+        // Their items return to the city, their gold is gone, and they leave the party.
+        leave(character, retired: true)
+        return true
     }
 
     // MARK: - Ability cards
@@ -270,28 +303,26 @@ final class CharacterManager {
         character.notes = notes
     }
 
-    func setBattleGoalProgress(_ progress: Int, for character: GameCharacter) {
-        onBeforeMutate?()
-        character.battleGoalProgress = max(0, min(GameCharacter.maxBattleGoalChecks, progress))
-    }
-
-    /// Perks a character has earned but not taken: one for each level after the first and one
-    /// for every three battle-goal checkmarks (p.44, p.46).
+    /// Perks a character has earned but not taken: one for each level after the first, one for
+    /// every three battle-goal checkmarks, and one for each character their player has retired
+    /// (p.44, p.46, p.48).
     func perksAvailable(for character: GameCharacter) -> Int {
-        let earned = (character.level - 1) + character.battleGoalProgress / 3
+        let earned = (character.level - 1) + character.battleGoalProgress / 3 + character.record.extraPerks
         return max(0, earned - character.selectedPerks.reduce(0, +))
     }
 
-    /// Take one more of a perk (if one is earned and the perk has more), or, once it's full or
-    /// no perk is left to take, give that perk's marks back.
-    func togglePerk(at index: Int, for character: GameCharacter) {
+    /// Take one more of a perk, if one is earned and the perk has a box left. A perk once marked
+    /// stays (p.44); Undo takes back a slip. Returns whether it was taken.
+    @discardableResult
+    func takePerk(at index: Int, for character: GameCharacter) -> Bool {
+        guard let perks = character.characterData?.perks, index < perks.count else { return false }
+        let taken = index < character.selectedPerks.count ? character.selectedPerks[index] : 0
+        guard taken < perks[index].count, perksAvailable(for: character) > 0 else { return false }
         onBeforeMutate?()
-        guard let perks = character.characterData?.perks, index < perks.count else { return }
         while character.selectedPerks.count <= index { character.selectedPerks.append(0) }
-        let perk = perks[index]
-        character.selectedPerks[index] = character.selectedPerks[index] < perk.count && perksAvailable(for: character) > 0
-            ? character.selectedPerks[index] + 1 : 0
+        character.selectedPerks[index] = taken + 1
         attackModifierManager.buildCharacterDeck(for: character)
+        return true
     }
 
     private func nextSummonNumber(for character: GameCharacter) -> Int {

@@ -56,14 +56,16 @@ extension ScenarioManager {
             if let amount { character?.experience += amount }
         case "item", "itemFh":
             // A specific item is taken from the unique items and goes to the looting character
-            // (p.43); if they already own it, it is sold to the city's supply instead.
+            // (p.43); if they already own it, they gain what it sells for and the copy goes to
+            // the city's supply (FAQ).
             for id in (value ?? "").split(separator: "+").compactMap({ Int($0) }) {
                 let itemKey = "\(edition)-\(id)"
                 if let character, !character.items.contains(itemKey) {
                     character.items.append(itemKey)
                     editionStore.fitLoadout(character, unlimited: game.tableRules.bringEveryItem)
-                } else {
-                    game.unlockedItems.insert(itemKey)
+                } else if let item = editionStore.itemData(id: id, edition: edition) {
+                    character?.loot += item.cost / 2
+                    game.returnToSupply(itemKey, designKnown: ItemManager.designKnown(item, game: game))
                 }
             }
         case "itemDesign":
@@ -87,12 +89,17 @@ extension ScenarioManager {
                 }
             }
         case "partyAchievement":
-            if let value { game.partyAchievements.insert(value) }
+            if let value { game.gainPartyAchievement(value) }
         case "randomItemDesign":
             // A random item design joins the city's supply (p.43).
             guard let item = ItemManager.drawRandomItem(game: game, editionStore: editionStore) else { return nil }
             game.unlockedItems.insert("\(item.edition)-\(item.id)")
             return item.name
+        case "scenario":
+            // A map to a scenario: it goes on the map (treasure 49: #17 Lost Island).
+            guard let value, let scenario = editionStore.scenarioData(index: value, edition: edition) else { return nil }
+            game.manualScenarios.insert(scenario.id)
+            return "#\(scenario.index) \(scenario.name)"
         case "randomScenario":
             // A random side scenario is unlocked (p.43).
             guard let scenario = drawRandomScenario() else { return nil }

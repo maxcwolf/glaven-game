@@ -217,17 +217,12 @@ struct CharacterSheetView: View {
                 ForEach(0..<(GameCharacter.maxBattleGoalChecks / 3), id: \.self) { group in
                     HStack(spacing: 2) {
                         ForEach(0..<3, id: \.self) { i in
+                            // Earned from battle goals, events and rewards, never set by hand.
                             let n = group * 3 + i
-                            Button {
-                                manager.setBattleGoalProgress(n < checks ? n : n + 1, for: character)
-                            } label: {
-                                TownCheckBox(ticked: n < checks)
-                                    .padding(.vertical, 6)
-                                    .contentShape(Rectangle())
-                            }
-                            .buttonStyle(.plain)
-                            .accessibilityLabel("Checkmark \(n + 1)")
-                            .accessibilityAddTraits(n < checks ? .isSelected : [])
+                            TownCheckBox(ticked: n < checks)
+                                .padding(.vertical, 6)
+                                .accessibilityLabel("Checkmark \(n + 1)")
+                                .accessibilityAddTraits(n < checks ? .isSelected : [])
                         }
                     }
                     .padding(.horizontal, 3)
@@ -268,7 +263,7 @@ struct CharacterSheetView: View {
             VStack(spacing: 2) {
                 ForEach(Array((character.characterData?.perks ?? []).enumerated()), id: \.offset) { index, perk in
                     perkRow(perk, taken: index < character.selectedPerks.count ? character.selectedPerks[index] : 0) {
-                        manager.togglePerk(at: index, for: character)
+                        manager.takePerk(at: index, for: character)
                     }
                 }
             }

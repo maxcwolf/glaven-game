@@ -49,6 +49,105 @@ final class AttackModifierRulesTests: XCTestCase {
         XCTAssertEqual(plus3.map(\.value), [3])
     }
 
+    // MARK: - Perks as they are taken in town
+
+    /// A character with `perks` perks to take, at the level that earns them.
+    @MainActor
+    private func veteran(_ name: String, perks: Int) throws -> (GameManager, GameCharacter) {
+        let gm = try SaveAndContinueTestsSupport.manager()
+        gm.game.partyProsperity = 64
+        gm.characterManager.addCharacter(name: name, edition: "gh", level: perks + 1)
+        gm.characterManager.addCharacter(name: name == "tinkerer" ? "spellweaver" : "tinkerer", edition: "gh")
+        let character = gm.game.characters[0]
+        XCTAssertEqual(gm.characterManager.perksAvailable(for: character), perks)
+        return (gm, character)
+    }
+
+    private func count(_ type: AttackModifierType, in character: GameCharacter) -> Int {
+        character.attackModifierDeck.attackModifiers.filter { $0.type == type && !$0.rolling }.count
+    }
+
+    /// Brute: "Replace one −1 card with one +1 card" — the deck stays 20 cards.
+    @MainActor
+    func testAReplacePerkSwapsOneCardForAnother() throws {
+        let (gm, brute) = try veteran("brute", perks: 1)
+        XCTAssertEqual([count(.minus1, in: brute), count(.plus1, in: brute)], [5, 5])
+        XCTAssertTrue(gm.characterManager.takePerk(at: 1, for: brute))
+        XCTAssertEqual([count(.minus1, in: brute), count(.plus1, in: brute)], [4, 6])
+        XCTAssertEqual(brute.attackModifierDeck.attackModifiers.count, 20)
+    }
+
+    /// Brute: "Add three rolling Push 1 cards" (twice), "Add one rolling Stun card", and "Add
+    /// one +1 Shield 1, Self card": rolling cards roll, and each carries its effect.
+    @MainActor
+    func testRollingAndEffectPerkCardsJoinTheDeck() throws {
+        let (gm, brute) = try veteran("brute", perks: 4)
+        for index in [4, 4, 6, 9] { XCTAssertTrue(gm.characterManager.takePerk(at: index, for: brute), "perk \(index)") }
+        let deck = brute.attackModifierDeck.attackModifiers
+        XCTAssertEqual(deck.count, 20 + 6 + 1 + 1)
+        let rolling = deck.filter(\.rolling)
+        XCTAssertEqual(rolling.count, 7)
+        XCTAssertTrue(rolling.allSatisfy { $0.value == 0 }, "a rolling card adds its effect, not a number")
+        XCTAssertEqual(rolling.filter { $0.effects.first?.type == .push && $0.effects.first?.value?.intValue == 1 }.count, 6)
+        XCTAssertEqual(rolling.filter { $0.effects.first?.type == .condition && $0.effects.first?.value?.stringValue == "stun" }.count, 1)
+        let shield = try XCTUnwrap(deck.first { !$0.rolling && $0.effects.first?.type == .shield })
+        XCTAssertEqual(shield.value, 1)
+        XCTAssertEqual(shield.effects.first?.value?.intValue, 1)
+        XCTAssertFalse(deck.contains { $0.rolling && $0.shuffle }, "no perk card calls a reshuffle")
+    }
+
+    /// Brute: "Ignore negative item effects and add one +1 card". Hide Armor's two −1 cards
+    /// stay out of the deck as the scenario starts; without the perk they go in.
+    @MainActor
+    func testThePerkIgnoresAnItemsMinusOneCards() throws {
+        let scenario = { (gm: GameManager) in try XCTUnwrap(gm.editionStore.scenarioData(index: "1", edition: "gh")) }
+        let (plain, bare) = try veteran("brute", perks: 1)
+        bare.items = ["gh-3"]   // Hide Armor: two −1 cards
+        plain.startScenarioOnBoard(try scenario(plain))
+        XCTAssertEqual(count(.minus1, in: bare), 7)
+
+        let (gm, brute) = try veteran("brute", perks: 1)
+        XCTAssertTrue(gm.characterManager.takePerk(at: 10, for: brute))
+        XCTAssertEqual(count(.plus1, in: brute), 6, "the perk's own +1 card")
+        brute.items = ["gh-3"]
+        gm.startScenarioOnBoard(try scenario(gm))
+        XCTAssertEqual(count(.minus1, in: brute), 5, "no −1 cards from the armor")
+    }
+
+    /// Second Skin sets two −1 cards aside for the scenario. That is the item's gift, not a
+    /// negative effect: the perk that ignores negative item effects doesn't cancel it.
+    @MainActor
+    func testSecondSkinStillWorksWithThePerk() throws {
+        let (gm, brute) = try veteran("brute", perks: 1)
+        XCTAssertTrue(gm.characterManager.takePerk(at: 10, for: brute))
+        brute.items = [PassiveItems.secondSkin, "gh-38"]   // with a Heavy Basinet: two −1 cards
+        gm.startScenarioOnBoard(try XCTUnwrap(gm.editionStore.scenarioData(index: "1", edition: "gh")))
+        XCTAssertEqual(count(.minus1, in: brute), 3, "five, less Second Skin's two, and none from the helmet")
+        gm.completeScenario(success: false)
+        XCTAssertEqual(count(.minus1, in: brute), 5, "back after the scenario")
+
+        let (plain, bare) = try veteran("brute", perks: 1)
+        bare.items = [PassiveItems.secondSkin, "gh-38"]
+        plain.startScenarioOnBoard(try XCTUnwrap(plain.editionStore.scenarioData(index: "1", edition: "gh")))
+        XCTAssertEqual(count(.minus1, in: bare), 5, "without the perk: plus the helmet's two, less Second Skin's two")
+    }
+
+    /// Doomstalker: "Ignore negative scenario effects". #6 Decaying Crypt gives every character
+    /// three Curses as a scenario effect; the perk's holder gets none, their companion all three.
+    @MainActor
+    func testThePerkIgnoresNegativeScenarioEffects() throws {
+        let (gm, doomstalker) = try veteran("angry-face", perks: 1)
+        let companion = gm.game.characters[1]
+        XCTAssertTrue(gm.characterManager.takePerk(at: 9, for: doomstalker))
+        XCTAssertTrue(doomstalker.hasCustomPerk("ignoreNegativeScenario"))
+        gm.startScenarioOnBoard(try XCTUnwrap(gm.editionStore.scenarioData(index: "6", edition: "gh")))
+        // The first round begins: the scenario's effect lands.
+        gm.game.round = 1
+        gm.scenarioRulesManager.evaluateRules(phase: .roundStart)
+        XCTAssertEqual(companion.attackModifierDeck.undrawnCount(of: .curse), 3)
+        XCTAssertEqual(doomstalker.attackModifierDeck.undrawnCount(of: .curse), 0)
+    }
+
     // MARK: - Deck behaviour
 
     func testEmptyDeckReshufflesOnDraw() {

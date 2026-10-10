@@ -17,6 +17,18 @@ final class ItemManager {
     /// added by an item design, a scenario reward, a treasure or a random item draw. Scenario
     /// reward items, treasure items and random item designs start out of the supply.
     func isItemAvailable(_ item: ItemData) -> Bool {
+        // A loose copy: sold back, or left by a character who retired or was dismissed.
+        Self.designKnown(item, game: game) || looseCopies(item) > 0
+    }
+
+    /// Copies in the supply of an item whose design the city doesn't have.
+    func looseCopies(_ item: ItemData) -> Int {
+        game.events.looseItems[item.itemKey] ?? 0
+    }
+
+    /// Whether the city has the item's design, and so every copy of it: by prosperity, a design,
+    /// a scenario or a random draw.
+    static func designKnown(_ item: ItemData, game: GameState) -> Bool {
         // Explicitly unlocked items (designs, rewards nobody could take, random draws)
         let key = "\(item.edition)-\(item.id)"
         if game.unlockedItems.contains(key) { return true }
@@ -77,9 +89,10 @@ final class ItemManager {
         }
     }
 
-    /// Whether the item still has copies available in the shop.
+    /// Whether the item still has copies available in the shop: of a design the city has, the
+    /// copies no one owns; of any other item, the loose copies brought back.
     func inStock(_ item: ItemData) -> Bool {
-        ownedCount(item) < item.count
+        Self.designKnown(item, game: game) ? ownedCount(item) < item.count : looseCopies(item) > 0
     }
 
     // MARK: - Buying and Selling
@@ -119,6 +132,9 @@ final class ItemManager {
         guard purchaseProblem(item, for: character) == nil else { return false }
         onBeforeMutate?()
         character.loot -= price(item)
+        if !Self.designKnown(item, game: game) {
+            game.events.looseItems[item.itemKey] = looseCopies(item) > 1 ? looseCopies(item) - 1 : nil
+        }
         character.items.append(item.itemKey)
         editionStore.fitLoadout(character, unlimited: game.tableRules.bringEveryItem)   // left at home if there's no room for it
         return true
@@ -151,7 +167,8 @@ final class ItemManager {
                             item: { self.editionStore.itemData(key: $0) })
     }
 
-    /// Sell an item back to the shop for half its price, rounded down (p.47).
+    /// Sell an item back to the shop for half its price, rounded down (p.47). The copy returns
+    /// to the city's supply, whether or not the city sold it in the first place.
     @discardableResult
     func sell(_ item: ItemData, for character: GameCharacter) -> Bool {
         guard let index = character.items.firstIndex(of: item.itemKey) else { return false }
@@ -159,6 +176,7 @@ final class ItemManager {
         character.items.remove(at: index)
         character.itemsLeftBehind.removeAll { $0 == item.itemKey }
         character.loot += salePrice(item)
+        game.returnToSupply(item.itemKey, designKnown: Self.designKnown(item, game: game))
         return true
     }
 

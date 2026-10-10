@@ -88,20 +88,35 @@ final class PersonalQuestAutotrackTests: XCTestCase {
     func testAutotrack_scenario() {
         let t = TestGame()
         let char = t.addCharacter()
-        char.personalQuest = "510"  // Requires completing scenario 52 or 53
+        char.personalQuest = "510"  // Three Crypts, then follow #52 Noxious Cellar to a conclusion
 
-        // Complete scenario 52
-        t.game.completedScenarios.insert("gh-52")
         // The first requirement, three Crypt scenarios, is counted from the character's record.
         char.record.scenariosCompleted = ["gh-4", "gh-5", "gh-6"]
+        PersonalQuestEvaluator.updateProgress(character: char, game: t.game, editionStore: t.editionStore)
+        XCTAssertEqual(t.game.manualScenarios, ["gh-52"], "the quest's scenario is unlocked at once (FAQ)")
 
-        PersonalQuestEvaluator.updateProgress(
-            character: char, game: t.game, editionStore: t.editionStore
-        )
+        // #52 and #53 are on the way; the conclusion is #54 Palace of Ice.
+        for (won, progress) in [("52", 0), ("53", 0), ("54", 1)] {
+            t.game.completedScenarios.insert("gh-\(won)")
+            let complete = PersonalQuestEvaluator.updateProgress(character: char, game: t.game, editionStore: t.editionStore)
+            XCTAssertEqual(char.personalQuestProgress, [3, progress], "after #\(won)")
+            XCTAssertEqual(complete, won == "54")
+        }
+        let chain = PersonalQuestEvaluator.questChain(
+            PersonalQuestRequirement(name: "", counter: nil, autotrack: "scenario:52|53", requires: [1]),
+            edition: "gh", editionStore: t.editionStore)
+        XCTAssertEqual(chain.map(\.index), ["52", "53", "54"])
+    }
 
-        // Second requirement should now be met
-        XCTAssertEqual(char.personalQuestProgress.count, 2)
-        XCTAssertEqual(char.personalQuestProgress[1], 1, "Scenario 52 completed counts as 1")
+    /// The other quests with a scenario of their own end with the last one of their chain.
+    func testEveryQuestChainEndsWhereTheStoryDoes() throws {
+        let t = TestGame()
+        let ends = ["510": ["52", "53", "54"], "513": ["59", "60"], "521": ["55", "56"], "526": ["57", "58"], "529": ["61", "62"]]
+        for (questId, expected) in ends {
+            let quest = try XCTUnwrap(t.editionStore.personalQuest(cardId: questId, edition: "gh"))
+            let chains = quest.requirements.map { PersonalQuestEvaluator.questChain($0, edition: "gh", editionStore: t.editionStore).map(\.index) }
+            XCTAssertEqual(chains.filter { !$0.isEmpty }, [expected], "quest \(questId)")
+        }
     }
 
     // MARK: - Unit Tests: Scenarios Completed Autotrack
@@ -127,9 +142,13 @@ final class PersonalQuestAutotrackTests: XCTestCase {
     func testAutotrack_battleGoals() {
         let t = TestGame()
         let char = t.addCharacter()
-        char.personalQuest = "519"  // Need 15 battle goal checkmarks
+        char.personalQuest = "519"  // Need 15 checkmarks from battle goals
+        // Checkmarks on the sheet may come from events and treasures: those don't count (FAQ).
         char.battleGoalProgress = 15
+        XCTAssertFalse(PersonalQuestEvaluator.updateProgress(character: char, game: t.game, editionStore: t.editionStore))
+        XCTAssertEqual(char.personalQuestProgress, [0])
 
+        char.record.battleGoalChecks = 15
         let complete = PersonalQuestEvaluator.updateProgress(
             character: char, game: t.game, editionStore: t.editionStore
         )
@@ -142,14 +161,17 @@ final class PersonalQuestAutotrackTests: XCTestCase {
     func testAutotrack_retiredChars() {
         let t = TestGame()
         let char = t.addCharacter()
-        char.personalQuest = "532"  // Need 2 retired characters
+        char.personalQuest = "532"  // Need to see 2 other characters retire
 
-        // Add 2 retired character snapshots
+        // Two who retired before this character joined: not theirs to count.
         let retired1 = GameCharacter(name: "old1", edition: "gh", level: 9, characterData: nil)
         let retired2 = GameCharacter(name: "old2", edition: "gh", level: 9, characterData: nil)
         t.game.retiredCharacters.append(retired1.toSnapshot())
         t.game.retiredCharacters.append(retired2.toSnapshot())
+        XCTAssertFalse(PersonalQuestEvaluator.updateProgress(character: char, game: t.game, editionStore: t.editionStore))
+        XCTAssertEqual(char.personalQuestProgress, [0])
 
+        char.record.retirementsSeen = 2
         let complete = PersonalQuestEvaluator.updateProgress(
             character: char, game: t.game, editionStore: t.editionStore
         )

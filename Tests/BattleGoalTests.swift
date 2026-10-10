@@ -109,14 +109,15 @@ final class BattleGoalTests: XCTestCase {
         XCTAssertEqual(BattleGoalEvaluator.evaluate(cardId: "471", character: char, stats: stats2, scenarioXP: 0, alliesExhausted: false), false)
     }
 
+    /// Purist is judged on the items used over the scenario, not on what is still spent at the
+    /// end: a long rest refreshes spent items.
     func testPurist_476_noItemsUsed() {
         let (char, stats) = makeChar()
-        char.spentItems = []
-        char.consumedItems = []
         XCTAssertEqual(BattleGoalEvaluator.evaluate(cardId: "476", character: char, stats: stats, scenarioXP: 0, alliesExhausted: false), true)
 
-        char.spentItems = ["gh-1"]
-        XCTAssertEqual(BattleGoalEvaluator.evaluate(cardId: "476", character: char, stats: stats, scenarioXP: 0, alliesExhausted: false), false)
+        let used = ScenarioCharacterStats(itemUses: 1)
+        XCTAssertEqual(BattleGoalEvaluator.evaluate(cardId: "476", character: char, stats: used, scenarioXP: 0, alliesExhausted: false), false,
+                       "an item used and since refreshed is still an item used")
     }
 
     /// Every Gloomhaven goal is judged now; the ones that used to need tracking each pass and
