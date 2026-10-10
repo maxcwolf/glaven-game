@@ -73,6 +73,9 @@ final class BoardState {
     /// The map's places for monsters of revealed rooms that are set up later (`ScenarioPlacements.later`).
     var heldMonsterSlots: [MonsterSlot] = []
 
+    /// How many places each cycling boss has been to (`ScenarioPlacements.Cycle`), by monster type.
+    var cycleSteps: [String: Int] = [:]
+
     /// Goal treasure tiles looted so far, and elite monsters killed (both open doors somewhere).
     var goalTreasuresLooted = 0
     var eliteKills = 0

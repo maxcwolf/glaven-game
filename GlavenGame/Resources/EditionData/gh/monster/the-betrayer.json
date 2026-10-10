@@ -22,22 +22,17 @@
             {
               "monster": {
                 "name": "giant-viper",
-                "player2": "normal",
-                "player3": "normal"
-              }
-            },
-            {
-              "monster": {
-                "name": "giant-viper",
-                "player3": "elite"
-              }
-            },
-            {
-              "monster": {
-                "name": "giant-viper",
+                "player2": "elite",
+                "player3": "elite",
                 "player4": "elite"
-              },
-              "count": 2
+              }
+            },
+            {
+              "monster": {
+                "name": "giant-viper",
+                "player3": "normal",
+                "player4": "elite"
+              }
             }
           ]
         }

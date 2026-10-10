@@ -156,9 +156,11 @@ final class MonsterTextTests: XCTestCase {
         XCTAssertTrue(hex.isAdjacent(to: HexCoord(7, 3)), "beside the Brute")
     }
 
-    /// Barrow Lair's Bandit Commander, special 1: "Move to next door and reveal room".
+    /// The Bandit Commander's special 1, "Move to next door and reveal room", where no order of
+    /// doors is written for him (in Barrow Lair he jumps to them in turn:
+    /// `testTheCommanderJumpsToEachDoorInTurn`): he walks for the nearest closed door.
     func testTheBanditCommanderHeadsForTheNextDoor() async throws {
-        let scenario = try XCTUnwrap(gm.editionStore.scenarios(for: "gh").first { $0.index == "2" && $0.solo == nil })
+        let scenario = try XCTUnwrap(gm.editionStore.scenarios(for: "gh").first { $0.index == "1" && $0.solo == nil })
         gm.characterManager.addCharacter(name: "brute", edition: "gh")
         gm.startScenarioOnBoard(scenario)
         coord.autoResolvePrompts = true
@@ -187,7 +189,7 @@ final class MonsterTextTests: XCTestCase {
 
     /// An immobilized Bandit Commander doesn't head for the door: its special is a move.
     func testAnImmobilizedBanditCommanderStaysPut() async throws {
-        let scenario = try XCTUnwrap(gm.editionStore.scenarios(for: "gh").first { $0.index == "2" && $0.solo == nil })
+        let scenario = try XCTUnwrap(gm.editionStore.scenarios(for: "gh").first { $0.index == "1" && $0.solo == nil })
         gm.characterManager.addCharacter(name: "brute", edition: "gh")
         gm.startScenarioOnBoard(scenario)
         coord.autoResolvePrompts = true
@@ -211,7 +213,7 @@ final class MonsterTextTests: XCTestCase {
 
     /// Difficult terrain costs the Bandit Commander 2 movement per hex on its way to the door.
     func testTheBanditCommanderPaysForDifficultTerrain() async throws {
-        let scenario = try XCTUnwrap(gm.editionStore.scenarios(for: "gh").first { $0.index == "2" && $0.solo == nil })
+        let scenario = try XCTUnwrap(gm.editionStore.scenarios(for: "gh").first { $0.index == "1" && $0.solo == nil })
         gm.characterManager.addCharacter(name: "brute", edition: "gh")
         gm.startScenarioOnBoard(scenario)
         coord.autoResolvePrompts = true

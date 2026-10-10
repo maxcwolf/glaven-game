@@ -43,6 +43,11 @@ struct ScenarioPlacements: Codable, Equatable {
     var inactive: [Inactive]?
     /// What water hexes do in this scenario.
     var water: Water?
+    /// Bosses that go from one marked hex (or locked door) to the next, by monster type.
+    var cycles: [String: Cycle]?
+    /// A boss's special abilities as this scenario prints them, in place of its stat card's
+    /// (Battlements B: "Move+0, Attack+0" for both).
+    var specials: [String: [[ActionModel]]]?
     /// What appears where an objective stood when it is destroyed, by objective (1-based): a
     /// Living Corpse from each grave dug up.
     var whenDestroyed: [String: MonsterStandeeData]?
@@ -193,6 +198,20 @@ struct ScenarioPlacements: Codable, Equatable {
 }
 
 extension ScenarioPlacements {
+    /// A boss that goes round a set of places: the Gloom's jumps, the Dark Rider's appearances,
+    /// the Bandit Commander's doors.
+    struct Cycle: Codable, Equatable {
+        /// The lettered hexes in order; after the last comes the first again.
+        var letters: [String]?
+        /// The scenario's locked doors (`locks`, in order) instead of letters: it jumps into
+        /// the doorway and opens it.
+        var doors: Bool?
+        /// It isn't set up: off the map as its turn starts, it appears on its next hex.
+        var appears: Bool?
+        /// It leaves the map right after any melee attack it makes.
+        var leavesAfterMelee: Bool?
+    }
+
     struct Inactive: Codable, Equatable {
         var monsters: [String]
         /// The rounds in which they are inactive: `"odd"` or `"even"` (Fading Lighthouse's two groups).

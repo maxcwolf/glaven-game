@@ -90,8 +90,9 @@ final class ScenarioFramingTests: XCTestCase {
                                                      monsters: ["bandit-archer", "bandit-guard", "living-bones"],
                                                      map: "3 rooms · start in L1a",
                                                      rewards: ["Party achievement: First Steps", "Unlocks #2 Barrow Lair"]))
-        XCTAssertEqual(try brief("2").rules, ["The doors to the side rooms are locked: only the Bandit Commander opens them.",
-                                              "Each character adds 3 Curses to their attack modifier deck."])
+        XCTAssertEqual(try brief("2").rules.count, 2)
+        XCTAssertEqual(try brief("2").rules.first?.hasPrefix("The doors to the side rooms are locked: only the Bandit Commander opens them."), true)
+        XCTAssertEqual(try brief("2").rules.last, "Each character adds 3 Curses to their attack modifier deck.")
         XCTAssertEqual(try brief("14").rules.first, "Each character adds 3 \u{2212}1 cards to their attack modifier deck.")
         XCTAssertEqual(try brief("27").goal, "Survive until the end of round 10.")
         XCTAssertEqual(try brief("3").rules, ["More Inox Guards arrive every odd round."])

@@ -2578,7 +2578,8 @@ final class BoardCoordinator {
     func unplacedMonsterEntities() -> [(GameMonster, GameMonsterEntity)] {
         guard let game = gameManager?.game else { return [] }
         var result: [(GameMonster, GameMonsterEntity)] = []
-        for monster in game.monsters {
+        // (One that comes and goes is off the map on purpose.)
+        for monster in game.monsters where !comesAndGoes(monster.name) {
             for entity in monster.entities where !entity.dead {
                 if boardState.piecePositions[.monster(name: monster.name, standee: entity.number)] == nil {
                     result.append((monster, entity))

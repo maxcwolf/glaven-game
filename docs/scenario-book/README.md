@@ -77,6 +77,14 @@ ends up on the board:
   whose hexes figures move through but can't stop on: `{"monsters": [...], "rounds": "odd"}`
   (or `"even"`: #61's two groups) or `"untilSetUp": true` (asleep until a rule's `setUp` names
   them: #79's Stone Golems). Drawn hollow.
+- `cycles`: bosses that go round a set of places, by monster type: `letters` (lettered hexes in
+  order, then the first again) or `"doors": true` (the scenario's `locks`, in order — it jumps
+  into the doorway and opens it: #2's Bandit Commander); `"appears": true` (it isn't set up, and
+  off the map as its turn starts it appears on its next hex) and `"leavesAfterMelee": true`
+  (#48's Dark Rider). A `teleport` action in a special (#51's Gloom) takes the next hex. A
+  figure on the hex means the closest free one.
+- `specials`: a boss's two specials as this scenario prints them, in place of its stat card's
+  (#36: "Move +0, Attack +0").
 - `water`: what water hexes do — `hurtsThePoisoned` (a poisoned character or summon walking in
   suffers trap damage, #68), `endOfTurn` (damage for any figure ending its turn there, #95).
 - `notes`: the special rules in words for the scenario brief — only those the game enforces.
@@ -146,7 +154,7 @@ its map, every door objective is on a door and every objective number exists.
 | 31 Plane of Night | rock column | b, c | win: destroy the column | — |
 | 33 Savvas Armory | barred door | a (exits), c, d | win: loot all, then everyone on the exit; lost if exhausted off it | — |
 | 35 Gloomhaven Battlements A | barred door | — | — | the allied demons attack the door as any enemy, without preferring it |
-| 36 Gloomhaven Battlements B | the gate (protected) | a–e | — | the demons don't prefer the gate; the Prime Demon's specials are its stat card's |
+| 36 Gloomhaven Battlements B | the gate (protected) | a–e | — | the demons don't prefer the gate |
 | 38 Slave Pens | the Orchid | — | lost if he dies | he heads for the nearest enemy, not the shaman on the D tile |
 | 39 Treacherous Divide | altar | — | win: destroy the altar | — |
 | 42 Realm of the Voice | 6 vocal chords | — | win: destroy all | — |

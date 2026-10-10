@@ -125,6 +125,17 @@ final class ScenarioPlacementTests: XCTestCase {
             if let damage = placements.water?.endOfTurn {
                 XCTAssertNotNil(ScenarioExpression.integerValue(damage, variables: ["C": 2, "L": 1]), "\(index): \(damage)")
             }
+            for (name, cycle) in placements.cycles ?? [:] {
+                XCTAssertTrue(monsters.contains(name), "\(index): no monster \(name)")
+                XCTAssertTrue((cycle.letters?.isEmpty == false) != (cycle.doors == true), "\(index): letters or doors")
+                for letter in cycle.letters ?? [] { XCTAssertTrue(letters.contains(letter), "\(index): no hex lettered \(letter)") }
+                if cycle.doors == true { XCTAssertFalse((placements.locks ?? []).isEmpty, "\(index): no locked doors to go round") }
+                if cycle.appears == true || cycle.leavesAfterMelee == true { XCTAssertNotNil(cycle.letters, index) }
+            }
+            for (name, specials) in placements.specials ?? [:] {
+                XCTAssertTrue(monsters.contains(name), "\(index): no monster \(name)")
+                XCTAssertEqual(specials.count, 2, "\(index): a boss has two specials")
+            }
             for entry in placements.inactive ?? [] {
                 XCTAssertFalse(entry.monsters.isEmpty, index)
                 for name in entry.monsters { XCTAssertTrue(monsters.contains(name), "\(index): no monster \(name)") }

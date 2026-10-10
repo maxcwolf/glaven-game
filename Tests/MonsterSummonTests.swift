@@ -25,6 +25,19 @@ final class MonsterSummonTests: XCTestCase {
         XCTAssertEqual(try summons(jekserah, players: 4), [.elite, .elite])
     }
 
+    /// The Betrayer's first special, from the monster data: one elite Giant Viper for two
+    /// characters, a normal and an elite for three, two elite for four (scenario book #79; the
+    /// data had a normal one for two).
+    @MainActor func testTheBetrayerSummonsItsVipers() throws {
+        let gm = try SaveAndContinueTestsSupport.manager()
+        let special = try XCTUnwrap(gm.editionStore.monsterData(name: "the-betrayer", edition: "gh")?.stat(for: .boss, at: 1)?.special?.first)
+        let summon = try XCTUnwrap(special.first { $0.type == .summon }?.monsterSummons)
+        func vipers(_ players: Int) -> [MonsterType] { summon.flatMap { $0.summoned(forPlayerCount: players) }.sorted { $0.rawValue < $1.rawValue } }
+        XCTAssertEqual(vipers(2), [.elite])
+        XCTAssertEqual(vipers(3), [.elite, .normal])
+        XCTAssertEqual(vipers(4), [.elite, .elite])
+    }
+
     /// A plain summon (a Cultist's Living Bones) is one of its type at any count.
     func testAPlainSummonIsOne() throws {
         let cultist = #"{"type": "summon", "valueObject": [{"monster": {"name": "living-bones", "type": "normal"}}]}"#

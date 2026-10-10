@@ -47,8 +47,13 @@ turn in it.
 
 Then monsters that sit out: #61's two groups act and can be affected in alternate rounds only;
 #79's Stone Golems are inactive until every plate in play is held (Fish holds one), and Fish
-returns to his plate and attacks all adjacent enemies on initiative 99 — his death loses. Later
-fixes are listed in `TODO.md`.
+returns to his plate and attacks all adjacent enemies on initiative 99 — his death loses.
+
+Then boss specials: #2's Bandit Commander jumps to each locked door in turn and opens it; #51's
+Gloom jumps a → b → c before its second special's attack; #48's Dark Rider isn't set up, appears
+on a–f in turn as its turns start and vanishes after any melee attack; #36's Prime Demon performs
+"Move +0, Attack +0" for both specials; #79's Betrayer summons the Giant Vipers the book says.
+Later fixes are listed in `TODO.md`.
 
 ### 1 · Black Barrow
 | Rule (from the book) | Status | Where / what's missing |

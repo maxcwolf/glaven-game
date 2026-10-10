@@ -1,5 +1,5 @@
 {
-  "2": {"goal": {"text": "Kill the Bandit Commander and all revealed enemies.", "kill": ["bandit-commander"], "enemies": "revealed"}, "notes": ["The doors to the side rooms are locked: only the Bandit Commander opens them."], "locks": [{"between": ["m1a", "a1a"], "note": "Locked: only the Bandit Commander opens it."}, {"between": ["m1a", "a4b"], "note": "Locked: only the Bandit Commander opens it."}, {"between": ["m1a", "a2a"], "note": "Locked: only the Bandit Commander opens it."}, {"between": ["m1a", "a3b"], "note": "Locked: only the Bandit Commander opens it."}], "tiles": {
+  "2": {"goal": {"text": "Kill the Bandit Commander and all revealed enemies.", "kill": ["bandit-commander"], "enemies": "revealed"}, "notes": ["The doors to the side rooms are locked: only the Bandit Commander opens them. With his first special he jumps to the next of them in turn, however far away, and opens it."], "locks": [{"between": ["m1a", "a1a"], "note": "Locked: only the Bandit Commander opens it."}, {"between": ["m1a", "a4b"], "note": "Locked: only the Bandit Commander opens it."}, {"between": ["m1a", "a2a"], "note": "Locked: only the Bandit Commander opens it."}, {"between": ["m1a", "a3b"], "note": "Locked: only the Bandit Commander opens it."}], "cycles": {"bandit-commander": {"doors": true}}, "tiles": {
   }},
   "3": {"goal": {"text": "Kill a number of enemies equal to five times the number of characters.", "killCount": {"count": "5xC"}}, "tiles": {
     "l1b": {"markers": {"a": [[0, 3]]}}
@@ -73,7 +73,7 @@
   "35": {"goal": {"text": "Destroy the door and kill the Captain of the Guard.", "destroy": [1], "kill": ["captain-of-the-guard"]}, "notes": ["The demons fight on your side and attack the gate. The defenders behind it aren't set up until it is destroyed."], "tiles": {
     "l3a": {"objectives": [{"objective": 1, "cells": [[4, 7]], "door": true}]}
   }},
-  "36": {"goal": {"text": "Kill the Prime Demon.", "kill": ["prime-demon"]}, "notes": ["The Prime Demon isn't on the map until the gate falls; it then appears outside it, having suffered (2\u00d7C)+L\u22122 damage for every round the gate stood.", "The demons attack the gate, which is no ally and can't be healed; after eight rounds it falls by itself.", "A demon arrives as every round ends: Flame, Earth, Frost, Wind, and round again. The City Archers fight on your side."], "later": ["prime-demon"], "rules": [{"round": "R == 9", "start": true, "figures": [{"identifier": {"type": "objective", "edition": "objective", "name": "Door", "marker": "1"}, "type": "damage", "value": 999}]}, {"round": "true", "always": true, "once": true, "figures": [{"identifier": {"type": "objective", "edition": "objective", "name": "Door", "marker": "1"}, "type": "dead"}], "spawns": [{"monster": {"name": "prime-demon", "type": "boss"}, "marker": "e", "placed": true}]}, {"round": "true", "always": true, "once": true, "figures": [{"identifier": {"type": "monster", "edition": "gh", "name": "prime-demon"}, "type": "present"}, {"identifier": {"type": "monster", "edition": "gh", "name": "prime-demon"}, "type": "damage", "value": "(R-1)x((2xC)+L-2)"}]}], "protect": [1], "tiles": {
+  "36": {"goal": {"text": "Kill the Prime Demon.", "kill": ["prime-demon"]}, "notes": ["The Prime Demon isn't on the map until the gate falls; it then appears outside it, having suffered (2\u00d7C)+L\u22122 damage for every round the gate stood.", "The demons attack the gate, which is no ally and can't be healed; after eight rounds it falls by itself.", "A demon arrives as every round ends: Flame, Earth, Frost, Wind, and round again. The City Archers fight on your side.", "The Prime Demon's specials are both \"Move +0, Attack +0\" here."], "later": ["prime-demon"], "rules": [{"round": "R == 9", "start": true, "figures": [{"identifier": {"type": "objective", "edition": "objective", "name": "Door", "marker": "1"}, "type": "damage", "value": 999}]}, {"round": "true", "always": true, "once": true, "figures": [{"identifier": {"type": "objective", "edition": "objective", "name": "Door", "marker": "1"}, "type": "dead"}], "spawns": [{"monster": {"name": "prime-demon", "type": "boss"}, "marker": "e", "placed": true}]}, {"round": "true", "always": true, "once": true, "figures": [{"identifier": {"type": "monster", "edition": "gh", "name": "prime-demon"}, "type": "present"}, {"identifier": {"type": "monster", "edition": "gh", "name": "prime-demon"}, "type": "damage", "value": "(R-1)x((2xC)+L-2)"}]}], "protect": [1], "specials": {"prime-demon": [[{"type": "move", "value": 0, "valueType": "plus"}, {"type": "attack", "value": 0, "valueType": "plus"}], [{"type": "move", "value": 0, "valueType": "plus"}, {"type": "attack", "value": 0, "valueType": "plus"}]]}, "tiles": {
     "l1b": {"markers": {"c": [[2, 6]], "d": [[0, 4]]}},
     "l3a": {"objectives": [{"objective": 1, "cells": [[4, 7]], "door": true}], "markers": {"a": [[0, 2]], "b": [[2, 0]], "e": [[4, 5]]}}
   }},
@@ -116,13 +116,18 @@
   }},
   "47": {"goal": {"text": "Kill the Sightless Eye.", "kill": ["the-sightless-eye"]}, "notes": ["Once the door is open, every character and summon still in the first cave suffers 3+L damage as each round ends.", "The Sightless Eye can't be pushed or pulled."], "rules": [{"round": "true", "requiredRooms": [2], "figures": [{"identifier": {"type": "characterWithSummon", "name": ".*", "tile": "j1a"}, "type": "damage", "value": "3+L"}]}], "tiles": {
   }},
-  "48": {"goal": {"text": "Kill the Dark Rider.", "kill": ["dark-rider"]}, "tiles": {
+  "48": {"goal": {"text": "Kill the Dark Rider.", "kill": ["dark-rider"]}, "notes": ["The Dark Rider isn't on the map at the start. As its turn begins it appears on the next of six marked hexes around the clearing, then acts.", "It vanishes again the moment it has made a melee attack."], "cycles": {"dark-rider": {"letters": ["a", "b", "c", "d", "e", "f"], "appears": true, "leavesAfterMelee": true}}, "tiles": {
+    "l1b": {"markers": {"b": [[2, 6]], "d": [[0, 3]], "f": [[2, 0]]}},
+    "l3a": {"markers": {"a": [[0, 3]], "c": [[2, 6]], "e": [[2, 0]]}}
   }},
   "49": {"goal": {"text": "Kill the Siege Cannon.", "kill": ["siege-cannon"]}, "tiles": {
   }},
   "50": {"goal": {"text": "Loot all treasure tiles.", "loot": "goal"}, "lootActionOnly": true, "tiles": {
   }},
-  "51": {"goal": {"text": "Kill the Gloom.", "kill": ["the-gloom"]}, "notes": ["Every character and summon suffers 2 damage at the end of each of their turns."], "tiles": {
+  "51": {"goal": {"text": "Kill the Gloom.", "kill": ["the-gloom"]}, "notes": ["Every character and summon suffers 2 damage at the end of each of their turns.", "Special 2: before attacking, the Gloom jumps to the next of three marked hexes, one in each room, round and round."], "cycles": {"the-gloom": {"letters": ["a", "b", "c"]}}, "tiles": {
+    "d1a": {"markers": {"b": [[3, 2]]}},
+    "d2a": {"markers": {"a": [[2, 1]]}},
+    "m1a": {"markers": {"c": [[2, 3]]}}
   }},
   "52": {"goal": {"text": "All characters must loot one treasure tile.", "loot": "each", "lostIfExhausted": ["beforeLoot"]}, "lootActionOnly": true, "tiles": {
   }},

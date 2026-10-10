@@ -60,7 +60,8 @@ final class MonsterTurnController {
         for entity in sortedEntities {
             guard !isStale else { return }
             let pieceID = PieceID.monster(name: monster.name, standee: entity.number)
-            guard !entity.dead, coordinator.isOnBoard(pieceID) else { continue }
+            // One that comes and goes (the Dark Rider) appears as its turn starts.
+            guard !entity.dead, coordinator.appearIfOffMap(pieceID) else { continue }
             coordinator.setActing(pieceID)
 
             // Start of this monster's turn: its conditions become active and tick (wound).
@@ -241,6 +242,8 @@ final class MonsterTurnController {
                     coordinator.log("\(coordinator.name(pieceID)) heals for \(healed)", category: .heal)
                 }
                 if stillHere() { await performPrintedText(printed.filter { !$0.contains("adjacent to the target") }, pieceID: pieceID) }
+                // The Dark Rider is gone the moment it has made a melee attack.
+                if !spec.isRanged, stillHere() { coordinator.leaveAfterMeleeAttack(pieceID) }
                 // Deep Terror: "Summon a Deep Terror in a hex adjacent to the target."
                 for summon in (action.subActions ?? []) where summon.type == .summon {
                     guard let near = targets.first(where: { coordinator.isOnBoard($0) }) ?? (stillHere() ? pieceID : nil) else { continue }
@@ -249,6 +252,12 @@ final class MonsterTurnController {
 
             case .heal:
                 performHeal(action, pieceID: pieceID, entity: entity, monster: monster, consumed: consumed)
+
+            case .teleport:
+                // The Gloom: to the next marked hex, from where it looks for its focus anew.
+                await coordinator.jumpAlongCycle(pieceID)
+                guard stillHere() else { return }
+                state.focus = currentTurn().focusTarget
 
             case .condition, .push, .pull, .concatenation:
                 await performTargetedEffect(action, pieceID: pieceID, monster: monster, baseRange: baseRange)
@@ -316,13 +325,18 @@ final class MonsterTurnController {
                 // (so their Move/Attack drive focus and movement); scenario-specific text must be
                 // resolved by the players.
                 let index = (action.value?.intValue ?? 1) - 1
-                guard let special = stat?.special, index >= 0, index < special.count else { continue }
+                // The scenario may print its own in place of the stat card's.
+                guard let special = coordinator.scenarioData?.placements?.specials?[monster.name] ?? stat?.special,
+                      index >= 0, index < special.count else { continue }
                 coordinator.log("\(coordinator.name(pieceID)) uses special ability \(index + 1)", category: .info)
                 let specialTexts = texts(in: ActionModel(type: .concatenation, subActions: special[index]), monster: monster)
                 var unresolved = false
                 for text in specialTexts {
                     if text.contains("move to next door and reveal room") {
-                        await moveToNextDoor(pieceID: pieceID, entity: entity, monster: monster)
+                        // Barrow Lair's doors are jumped to, in order, however far away.
+                        if await !coordinator.jumpToNextDoor(pieceID) {
+                            await moveToNextDoor(pieceID: pieceID, entity: entity, monster: monster)
+                        }
                     } else if text.contains("all allies add") && text.contains("attack") && text.contains("this round") {
                         // Captain of the Guard: "All allies add +1 Attack to all attacks this round."
                         let extra = text.firstMatch(of: #/\+(\d+) attack/#).flatMap { Int($0.1) } ?? 1

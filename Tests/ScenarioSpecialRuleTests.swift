@@ -1215,6 +1215,146 @@ final class ScenarioSpecialRuleTests: XCTestCase {
         XCTAssertEqual(coord.pendingResult, .defeat)
     }
 
+    // MARK: - Bosses
+
+    /// Give a boss the ability card that calls one of its specials, and its turn.
+    private func perform(special number: Int, of name: String, in sim: ScenarioSimulator) async throws {
+        let boss = try group(sim, name)
+        let deck = sim.gm.monsterManager.abilities(for: boss)
+        let card = try XCTUnwrap(deck.firstIndex { ($0.actions ?? []).contains { $0.type == .special && $0.value?.intValue == number } },
+                                 "\(name) has a card for special \(number)")
+        boss.abilities = [card]
+        boss.ability = 0
+        boss.abilityDrawn = true
+        sim.gm.game.state = .next
+        await MonsterTurnController(coordinator: sim.coord, gameManager: sim.gm).executeMonsterGroup(boss)
+    }
+
+    /// The Void: with its second special the Gloom jumps to the next of three marked hexes —
+    /// a, b, c, then a again — before it attacks.
+    func testTheGloomJumpsRoundItsThreeHexes() async throws {
+        let sim = try simulator("51")
+        let coord = sim.coord
+        revealAll(sim)
+        let gloom = try XCTUnwrap(pieces(sim, named: "the-gloom").first)
+        let boss = try entity(sim, gloom)
+        boss.maxHealth = 200
+        boss.health = 200
+        let marks = try ["a", "b", "c"].map { try XCTUnwrap(hexes(sim, $0).first, $0) }
+        XCTAssertEqual(Set(marks.compactMap { coord.boardState.cells[$0]?.tileRef.lowercased() }), ["d2a", "d1a", "m1a"], "one in each room")
+        for character in sim.gm.game.characters { character.maxHealth = 99; character.health = 99 }
+        for round in 0..<4 {
+            try await perform(special: 2, of: "the-gloom", in: sim)
+            XCTAssertEqual(coord.boardState.piecePositions[gloom], marks[round % 3], "jump \(round + 1)")
+        }
+        XCTAssertEqual(coord.turnLog.filter { $0.message.contains("jumps across the room") }.count, 4)
+        // A save keeps its place in the round.
+        let copy = BoardState()
+        BoardSnapshot.from(coord.boardState).restore(to: copy)
+        XCTAssertEqual(copy.cycleSteps, ["the-gloom": 4])
+        // A figure on the marked hex: the closest free one.
+        stand(sim, 0, on: marks[1])
+        try await perform(special: 2, of: "the-gloom", in: sim)
+        XCTAssertEqual(coord.boardState.piecePositions[gloom]?.distance(to: marks[1]), 1)
+        // It jumps; it doesn't come and go.
+        coord.boardState.removePiece(gloom)
+        XCTAssertFalse(coord.appearIfOffMap(gloom))
+    }
+
+    /// Barrow Lair: with his first special the Bandit Commander jumps to the next side-room
+    /// door — a, b, c, d — however far away, opens it and stands in the doorway; then a again.
+    func testTheCommanderJumpsToEachDoorInTurn() async throws {
+        let sim = try simulator("2")
+        let coord = sim.coord
+        let first = try XCTUnwrap(coord.boardState.doors.first { !$0.isOpen && !coord.boardState.isLockedDoor($0.coord) })
+        coord.openDoor(at: first.coord)
+        let commander = try XCTUnwrap(pieces(sim, named: "bandit-commander").first)
+        let boss = try entity(sim, commander)
+        boss.maxHealth = 200
+        boss.health = 200
+        var doorways: [HexCoord] = []
+        for (index, room) in ["a1a", "a4b", "a2a", "a3b"].enumerated() {
+            XCTAssertFalse(coord.boardState.visibleRooms.contains { $0.lowercased() == room }, "\(room) is shut")
+            try await perform(special: 1, of: "bandit-commander", in: sim)
+            XCTAssertTrue(coord.boardState.visibleRooms.contains { $0.lowercased() == room }, "door \(index + 1) opens \(room)")
+            let door = try XCTUnwrap(coord.boardState.doors.first { $0.childTileRef.lowercased() == room })
+            XCTAssertTrue(door.isOpen)
+            XCTAssertEqual(coord.boardState.piecePositions[commander], door.coord, "in the doorway of \(room)")
+            doorways.append(door.coord)
+        }
+        try await perform(special: 1, of: "bandit-commander", in: sim)
+        XCTAssertEqual(coord.boardState.piecePositions[commander], doorways[0], "then back to the first")
+    }
+
+    /// Shadow Weald: the Dark Rider isn't set up. Off the map as its turn starts it appears on
+    /// the next of six marked hexes, and it is gone again after any melee attack.
+    func testTheDarkRiderComesAndGoes() async throws {
+        let sim = try simulator("48")
+        let coord = sim.coord
+        sim.gm.game.state = .next
+        let riders = try group(sim, "dark-rider")
+        let rider = PieceID.monster(name: "dark-rider", standee: try XCTUnwrap(riders.aliveEntities.first).number)
+        XCTAssertFalse(coord.isOnBoard(rider), "not set up")
+        XCTAssertFalse(coord.unplacedMonsterEntities().contains { $0.0.name == "dark-rider" }, "and not waiting for a place")
+        for character in sim.gm.game.characters { character.maxHealth = 99; character.health = 99 }
+        let marks = try ["a", "b", "c", "d", "e", "f"].map { try XCTUnwrap(hexes(sim, $0).first, $0) }
+
+        // A character beside (a): the Rider appears there, strikes, and is gone.
+        stand(sim, 0, on: try XCTUnwrap(marks[0].neighbors.sorted().first(where: coord.isEmptyHex)))
+        var attacks = 0
+        coord.attackObserver = { attacker, _ in if attacker == rider { attacks += 1 } }
+        let plain = try XCTUnwrap(sim.gm.monsterManager.abilities(for: riders).firstIndex {
+            let types = ($0.actions ?? []).map(\.type)
+            return types == [.move, .attack]
+        })
+        riders.abilities = [plain]
+        riders.ability = 0
+        riders.abilityDrawn = true
+        await MonsterTurnController(coordinator: coord, gameManager: sim.gm).executeMonsterGroup(riders)
+        XCTAssertTrue(coord.turnLog.contains { $0.message.contains("Dark Rider") && $0.message.hasSuffix("appears") })
+        XCTAssertEqual(attacks, 1)
+        XCTAssertFalse(coord.isOnBoard(rider), "gone after its melee attack")
+        XCTAssertTrue(coord.turnLog.contains { $0.message.contains("Dark Rider") && $0.message.hasSuffix("vanishes") })
+        XCTAssertNil(coord.pendingResult, "off the map isn't dead")
+
+        // Next it comes at (b), then (c) … and (a) again after (f).
+        for index in 1...6 {
+            XCTAssertTrue(coord.appearIfOffMap(rider))
+            XCTAssertEqual(coord.boardState.piecePositions[rider], marks[index % 6], "appearance \(index + 1)")
+            // Still on the map as a turn starts, it stays where it is.
+            XCTAssertTrue(coord.appearIfOffMap(rider))
+            XCTAssertEqual(coord.boardState.piecePositions[rider], marks[index % 6])
+            coord.leaveAfterMeleeAttack(rider)
+            XCTAssertFalse(coord.isOnBoard(rider))
+        }
+        // Other monsters don't come and go.
+        let imp = try XCTUnwrap(pieces(sim, named: "forest-imp").first)
+        coord.leaveAfterMeleeAttack(imp)
+        XCTAssertTrue(coord.isOnBoard(imp))
+        coord.boardState.removePiece(imp)
+        XCTAssertFalse(coord.appearIfOffMap(imp))
+    }
+
+    /// Battlements B prints its own specials for the Prime Demon — a plain move and attack —
+    /// in place of the stat card's summoning; elsewhere the stat card's stand.
+    func testThePrimeDemonsSpecialsAtTheBattlements() async throws {
+        let sim = try simulator("36")
+        let coord = sim.coord
+        coord.sufferDamage(999, to: try XCTUnwrap(objectives(sim).first))
+        XCTAssertNotNil(pieces(sim, named: "prime-demon").first)
+        let demons = { self.pieces(sim).count }
+        let before = demons()
+        try await perform(special: 1, of: "prime-demon", in: sim)
+        XCTAssertTrue(coord.turnLog.contains { $0.message.contains("uses special ability 1") })
+        XCTAssertFalse(coord.turnLog.contains { $0.message.contains("as printed on its stat card") })
+        XCTAssertLessThanOrEqual(demons(), before, "it summons nothing")
+
+        let throne = try simulator("21")
+        revealAll(throne)
+        try await perform(special: 1, of: "prime-demon", in: throne)
+        XCTAssertTrue(throne.coord.turnLog.contains { $0.message.contains("as printed on its stat card") }, "the stat card's own")
+    }
+
     // MARK: - What the brief says
 
     /// The brief says the rules the game enforces in the book's sense, not a guess from the data.
