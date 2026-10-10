@@ -37,7 +37,7 @@ final class MonsterManager {
         let resolvedType = monster.isBoss ? .boss : type
         guard let stat = monster.stat(for: resolvedType) else { return }
         // Only as many monsters as there are standees can be on the board (p.17).
-        guard let standeeNumber = number ?? availableStandeeNumbers(for: monster).first else { return }
+        guard let standeeNumber = number ?? nextStandeeNumber(for: monster) else { return }
         // Prevent duplicate numbers
         guard !monster.entities.contains(where: { !$0.dead && $0.number == standeeNumber }) else { return }
         // A standee number freed by a dead monster is reused: drop the old record so lookups by
@@ -66,6 +66,18 @@ final class MonsterManager {
             entity.immunities.append(immunity)
         }
         monster.entities.append(entity)
+    }
+
+    /// Whether a new monster takes a standee at random (GH p.13: "standees should be placed
+    /// randomly" — within a type, monsters act in standee order, so the numbers decide who goes
+    /// first). On from the moment a scenario is set up; boards built by hand number in order.
+    var randomStandees = false
+
+    /// The standee a new monster of this type takes: any free one, at random. Nil when every
+    /// standee of the type is on the board.
+    func nextStandeeNumber(for monster: GameMonster) -> Int? {
+        let free = availableStandeeNumbers(for: monster)
+        return randomStandees ? free.randomElement(using: &GameRandom.shared) : free.first
     }
 
     /// Standee numbers not currently in use. Empty when every standee of the type is on the

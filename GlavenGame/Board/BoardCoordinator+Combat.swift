@@ -61,9 +61,12 @@ extension BoardCoordinator {
         attack.value = max(0, attack.value + scenarioAttackBonus(of: attacker))
         let isPoisoned = defender.entityConditions.contains { $0.name == .poison && !$0.expired }
         var shield = shield(of: target) + cleansedShield(of: target, against: attacker)
-        var retaliate = CombatResolver.retaliateDamage(retaliate: defender.retaliate,
-                                                       retaliatePersistent: defender.retaliatePersistent,
-                                                       distance: distance)
+        // Retaliate gained for this attack alone (a charge, an item), each with its reach. Whether
+        // any retaliate lands is judged after the attack's push or pull (FAQ).
+        var gainedRetaliates: [(amount: Int, range: Int)] = []
+        let retaliateInView = CombatResolver.retaliateDamage(retaliate: defender.retaliate,
+                                                             retaliatePersistent: defender.retaliatePersistent,
+                                                             distance: distance)
 
         // Helm of the Mountain: attacking its wearer while Earth is strong immobilizes the attacker.
         if case .character(let id) = target, areEnemies(attacker, target),
@@ -117,7 +120,8 @@ extension BoardCoordinator {
 
         var preDrawn = await performModifierDraw(
             attacker: attacker, defender: target, baseAttack: attack.value,
-            comparedAttack: attack.value + (isPoisoned ? 1 : 0),
+            // Cards are compared on the attack's own value; Poison's +1 isn't counted (FAQ).
+            comparedAttack: attack.value,
             advantage: advantage, disadvantage: disadvantage,
             drawCard: drawCard ?? modifierDrawer(for: attacker)
         )
@@ -149,7 +153,7 @@ extension BoardCoordinator {
         if areEnemies(attacker, target) {
             if !attack.isRanged && distance <= 1, case .retaliateAgainstMelee(let amount)? = useFirstCharge(of: target, where: {
                 if case .retaliateAgainstMelee = $0 { return true }; return false }) {
-                retaliate += amount
+                gainedRetaliates.append((amount, 1))
             }
             if result.damage > 0, case .shieldAgainstAttacks(let amount)? = useFirstCharge(of: target, where: {
                 if case .shieldAgainstAttacks = $0 { return true }; return false }) {
@@ -159,13 +163,13 @@ extension BoardCoordinator {
             if result.damage > 0, case .negateAttackAndRetaliate(let amount, let range)? = useFirstCharge(of: target, where: {
                 if case .negateAttackAndRetaliate = $0 { return true }; return false }) {
                 negated = true
-                if distance <= range { retaliate += amount }
+                gainedRetaliates.append((amount, range))
             }
         }
         for item in DefenseItem.onDamage where result.damage > 0 && !negated && areEnemies(attacker, target) {
             if await offerDefenseItem(item, to: target, from: attacker) {
                 shield += item.shield
-                if distance <= 1 { retaliate += item.retaliate }
+                if item.retaliate > 0 { gainedRetaliates.append((item.retaliate, 1)) }
                 negated = item.negates
                 result = resolve()
             }
@@ -177,7 +181,9 @@ extension BoardCoordinator {
         let sum = CombatResolver.readableBreakdown(
             base: attack.value, isPoisoned: isPoisoned, preDrawnCards: preDrawn,
             shield: shield, pierce: attack.pierce, isMiss: result.isMiss, finalDamage: result.damage)
-        log("\(name(attacker)) attacks \(name(target)): \(sum)", category: .attack, trace: breakdown)
+        // Said in the log, so a transcript can be checked: two cards were drawn and one kept.
+        let how = advantage == disadvantage ? "" : (advantage ? " with advantage" : " with disadvantage")
+        log("\(name(attacker)) attacks \(name(target))\(how): \(sum)", category: .attack, trace: breakdown)
         if lastModifierReveal?.attacker == attacker, lastModifierReveal?.defender == target, lastModifierReveal?.sum == nil {
             lastModifierReveal?.sum = sum
             lastModifierReveal?.chips = CombatResolver.sumChips(
@@ -192,7 +198,7 @@ extension BoardCoordinator {
                 }
             }
         }
-        if shield > 0 || retaliate > 0 { teach(.shieldAndRetaliate, at: .piece(target)) }
+        if shield > 0 || retaliateInView > 0 || !gainedRetaliates.isEmpty { teach(.shieldAndRetaliate, at: .piece(target)) }
 
         if result.damage == 0 {
             boardScene?.pieceUnharmed(id: target, missed: result.isMiss)
@@ -249,7 +255,17 @@ extension BoardCoordinator {
             log("\(name(attacker)) heals for \(healed)", category: .heal)
         }
 
-        // Retaliate: after the attack, only if the retaliating figure survived (p.24).
+        // Retaliate: after the attack and all its effects, only if the retaliating figure survived
+        // (p.24) and the attacker is within its reach where the two now stand — pushed out of
+        // reach it doesn't land, pulled into reach it does (FAQ).
+        var retaliate = 0
+        if !died, let targetNow = boardState.piecePositions[target],
+           let attackerNow = origin ?? boardState.piecePositions[attacker] {
+            let reach = attackerNow.distance(to: targetNow)
+            retaliate = CombatResolver.retaliateDamage(retaliate: defender.retaliate,
+                                                       retaliatePersistent: defender.retaliatePersistent, distance: reach)
+                + gainedRetaliates.filter { reach <= $0.range }.reduce(0) { $0 + $1.amount }
+        }
         if !died && retaliate > 0 && isOnBoard(target) && isOnBoard(attacker) {
             log("\(name(target)) retaliates for \(retaliate)", category: .damage)
             boardScene?.play(.retaliate)

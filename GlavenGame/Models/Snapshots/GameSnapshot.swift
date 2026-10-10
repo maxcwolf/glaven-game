@@ -229,6 +229,8 @@ struct CharacterSnapshot: Codable {
     var bonusChargesUsed: [Int: Int]?
     var itemsLeftBehind: [String]?
     var itemsBarred: Bool?
+    /// Nil in saves from before the half a card is in play for was recorded.
+    var bottomHalvesInPlay: [Int]?
 
     init(name: String, edition: String, level: Int, off: Bool, active: Bool,
          number: Int, health: Int, maxHealth: Int,
@@ -341,6 +343,7 @@ struct CharacterSnapshot: Codable {
         bonusChargesUsed = try container.decodeIfPresent([Int: Int].self, forKey: .bonusChargesUsed)
         itemsLeftBehind = try container.decodeIfPresent([String].self, forKey: .itemsLeftBehind)
         itemsBarred = try container.decodeIfPresent(Bool.self, forKey: .itemsBarred)
+        bottomHalvesInPlay = try container.decodeIfPresent([Int].self, forKey: .bottomHalvesInPlay)
     }
 }
 

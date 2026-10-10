@@ -92,12 +92,16 @@ final class ActionsManagerTests: XCTestCase {
                        "earth is inert, so the augment can't be paid and fire is not consumed")
     }
 
+    /// The rules for an element that is infused and consumed in the same turn are in
+    /// ElementRuleTests.
     func testInfusingWaningElementMakesItStrongAgain() {
         let game = GameState()
         game.elementBoard = ElementModel.defaultBoard()
         let i = game.elementBoard.firstIndex { $0.type == .ice }!
         game.elementBoard[i].state = .waning
         game.infuseElement(.ice)
-        XCTAssertEqual(game.elementBoard[i].state, .new, "becomes strong at the end of the turn")
+        XCTAssertTrue(game.isElementAvailable(.ice), "the waning Ice that was there can still be consumed this turn")
+        game.settleElementsAtEndOfTurn()
+        XCTAssertEqual(game.elementBoard[i].state, .strong, "strong at the end of the turn")
     }
 }

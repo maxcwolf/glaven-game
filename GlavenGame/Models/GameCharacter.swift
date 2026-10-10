@@ -95,12 +95,16 @@ final class GameCharacter: Figure, Entity {
     /// Active-area cards whose used half had the lost icon: they go to the lost pile, not the
     /// discard pile, when they leave the active area.
     var lostWhenRemoved: [Int] = []
+    /// Active-area cards that are there for their bottom half (the others for their top half):
+    /// a card in play gives only the bonus of the half it was played for.
+    var bottomHalvesInPlay: [Int] = []
 
     /// Move a card out of the active area to the lost or discard pile, as its icon requires.
     func removeFromActiveArea(_ cardId: Int) {
         activeCards.removeAll { $0 == cardId }
         bonusChargesUsed[cardId] = nil
         roundBonusCards.removeAll { $0 == cardId }
+        bottomHalvesInPlay.removeAll { $0 == cardId }
         if lostWhenRemoved.contains(cardId) {
             lostWhenRemoved.removeAll { $0 == cardId }
             lostCards.append(cardId)

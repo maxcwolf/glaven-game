@@ -208,4 +208,57 @@ final class AttackModifierRulesTests: XCTestCase {
                                                   drawModifier: draw([double, plus2]), defenderHealth: 10)
         XCTAssertEqual(result.damage, 3)
     }
+
+    /// The FAQ's examples for cards with effects: an effect is worth something, but how much is
+    /// undefined, so a card is better beyond doubt only when it is no worse in value and has all
+    /// the other's effects; otherwise the card drawn first is used.
+    func testAdvantageWeighsACardsEffects() {
+        func draw(_ cards: [AttackModifier]) -> () -> AttackModifier? {
+            var queue = cards
+            return { queue.isEmpty ? nil : queue.removeFirst() }
+        }
+        func card(_ type: AttackModifierType, _ id: String, _ condition: String? = nil, element: String? = nil) -> AttackModifier {
+            var card = AttackModifier.standard(type)
+            card.id = id
+            if let condition { card.effects.append(AttackModifierEffect(type: .condition, value: .string(condition))) }
+            if let element { card.effects.append(AttackModifierEffect(type: .element, value: .string(element))) }
+            return card
+        }
+        func kept(_ cards: [AttackModifier], advantage: Bool, base: Int = 3) -> String? {
+            CombatResolver.drawModifiers(advantage: advantage, disadvantage: !advantage, baseAttack: base,
+                                         draw: draw(cards)).first?.id
+        }
+        let plus1 = card(.plus1, "+1"), plus1Stun = card(.plus1, "+1 stun", "stun"), plus2 = card(.plus2, "+2")
+        let plus0Stun = card(.plus0, "+0 stun", "stun"), plus1Fire = card(.plus1, "+1 fire", element: "fire")
+        let plus0Muddle = card(.plus0, "+0 muddle", "muddle"), plus2Stun = card(.plus2, "+2 stun", "stun")
+
+        // "+1 Stun vs. +1: +1 Stun is better" — whichever is drawn first.
+        XCTAssertEqual(kept([plus1, plus1Stun], advantage: true), "+1 stun")
+        XCTAssertEqual(kept([plus1Stun, plus1], advantage: true), "+1 stun")
+        XCTAssertEqual(kept([plus1Stun, plus1], advantage: false), "+1", "and the worse for disadvantage")
+        XCTAssertEqual(kept([plus1, plus1Stun], advantage: false), "+1")
+
+        // "+0 Stun vs. +2", "+1 Stun vs. +1 Fire", "+0 Muddle vs. +2 Stun": ambiguous — the first drawn.
+        for pair in [[plus0Stun, plus2], [plus1Stun, plus1Fire], [plus0Muddle, plus2Stun]] {
+            for advantage in [true, false] {
+                XCTAssertEqual(kept(pair, advantage: advantage), pair[0].id)
+                XCTAssertEqual(kept(pair.reversed(), advantage: advantage), pair[1].id)
+            }
+        }
+
+        // The same effect on both: the value decides.
+        XCTAssertEqual(kept([plus0Stun, plus2Stun], advantage: true), "+2 stun")
+        XCTAssertEqual(kept([plus2Stun, plus0Stun], advantage: false), "+0 stun")
+
+        // "2x vs. Attack 2 and +2: ambiguous" (both make 4); "2x vs. Attack 2 and +1: 2x is better".
+        let double = card(.double_, "x2")
+        XCTAssertEqual(kept([plus2, double], advantage: true, base: 2), "+2")
+        XCTAssertEqual(kept([double, plus2], advantage: true, base: 2), "x2")
+        XCTAssertEqual(kept([plus1, double], advantage: true, base: 2), "x2")
+        XCTAssertEqual(kept([double, plus1], advantage: false, base: 2), "+1")
+
+        // A null is worse than anything, effect or not.
+        XCTAssertEqual(kept([card(.null_, "miss"), plus0Stun], advantage: true), "+0 stun")
+        XCTAssertEqual(kept([plus0Stun, card(.null_, "miss")], advantage: false), "miss")
+    }
 }

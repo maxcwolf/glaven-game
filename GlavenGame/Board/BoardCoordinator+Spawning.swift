@@ -36,7 +36,7 @@ extension BoardCoordinator {
             return nil
         }
 
-        guard let number = gameManager.monsterManager.availableStandeeNumbers(for: monster).first else {
+        guard let number = gameManager.monsterManager.nextStandeeNumber(for: monster) else {
             log("No \(monsterTypeName(spec.name)) standee is left, so none is placed", category: .setup)
             return nil
         }
@@ -61,7 +61,8 @@ extension BoardCoordinator {
 
         let pieceID = PieceID.monster(name: monster.name, standee: number)
         boardState.placePiece(pieceID, at: destination)
-        if entity.type == .elite { boardState.eliteStandees.insert(pieceID) }
+        // A standee number is reused once its monster is dead: the mark follows the newcomer.
+        if entity.type == .elite { boardState.eliteStandees.insert(pieceID) } else { boardState.eliteStandees.remove(pieceID) }
         boardScene?.addPieceSprite(id: pieceID, at: destination, offsetCol: offsetCol, offsetRow: offsetRow)
         // A room's monsters arrive with its door; one spawned or summoned later announces itself.
         if origin != .placed { boardScene?.play(.summon) }

@@ -9,10 +9,10 @@ elements: none
 tinkerer (1,2) hp 8/8 hand 12 discard 0 lost 0 active 0 xp 0 gold 30
 mindthief (0,3) hp 6/6 hand 10 discard 0 lost 0 active 0 xp 0 gold 30
 spellweaver (1,4) hp 6/6 hand 8 discard 0 lost 0 active 0 xp 0 gold 30
-bandit-archer #1 normal (4,0) hp 5/5
-bandit-archer #2 normal (3,1) hp 5/5
+bandit-archer #3 normal (4,0) hp 5/5
+bandit-archer #4 normal (3,1) hp 5/5
 living-bones #1 elite (2,1) hp 6/6
-living-bones #2 elite (3,2) hp 6/6
+living-bones #9 elite (3,2) hp 6/6
 doors open: 0/1
 Tinkerer plays Toxic Bolt (18) and Enhancement Field
 Mindthief plays Fearsome Blade (27) and Submissive Affliction
@@ -23,7 +23,7 @@ Turn order: Tinkerer 18, Mindthief 27, Spellweaver 36, Bandit Archer 44, Living 
 Tinkerer’s turn: Toxic Bolt and Enhancement Field
 Tinkerer takes the top half from Enhancement Field and the bottom half from Toxic Bolt
 Tinkerer: Attack 3, Range 3
-Tinkerer attacks Bandit Archer 2: 3 − 1 = 2 damage [3 -1(mod) = 2]
+Tinkerer attacks Bandit Archer 4: 3 − 1 = 2 damage [3 -1(mod) = 2]
 Tinkerer: Attack 5, Range 2
 Tinkerer gains 2 XP
 Tinkerer attacks Living Bones 1: 5 − 2 − 1 shield = 2 damage [5 -2(mod) -1(shield) = 2]
@@ -44,23 +44,23 @@ Spellweaver takes the top half from Fire Orbs and the bottom half from Flame Str
 Spellweaver: Attack 3, Range 3, Target 3
 Spellweaver: choose up to 3 targets
 Spellweaver targets Living Bones 1 (1 of 3)
-Spellweaver targets Living Bones 2 (2 of 3)
+Spellweaver targets Living Bones 9 (2 of 3)
 Spellweaver attacks Living Bones 1: 3 + 1 − 1 shield = 3 damage [3 +1(mod) -1(shield) = 3]
 Living Bones 1 dies
 A money token drops [at (2,1)]
 Spellweaver gains 1 XP
-Spellweaver attacks Living Bones 2: 3 + 0 − 1 shield = 2 damage [3 +0(mod) -1(shield) = 2]
+Spellweaver attacks Living Bones 9: 3 + 0 − 1 shield = 2 damage [3 +0(mod) -1(shield) = 2]
 Spellweaver gains 1 XP
 Spellweaver infuses Fire
 Spellweaver: Attack 2, Range 2
 Spellweaver has no target within range 2
 Spellweaver ends the turn
 Bandit Archer’s turn: ability card (44)
-Bandit Archer 1 attacks Mindthief: 3 + 1 = 4 damage [3 +1(mod) = 4]
-Bandit Archer 2 attacks Mindthief: 3 − 1 = 2 damage [3 -1(mod) = 2]
+Bandit Archer 3 attacks Mindthief: 3 + 1 = 4 damage [3 +1(mod) = 4]
+Bandit Archer 4 attacks Mindthief: 3 − 1 = 2 damage [3 -1(mod) = 2]
 Mindthief loses a card from hand to prevent 2 damage
 Living Bones’s turn: ability card (81)
-Living Bones 2 can’t reach its focus
+Living Bones 9 can’t reach its focus
 Round 1 complete
 === Round 2 ===
 --- state after round 1 ---
@@ -68,9 +68,9 @@ elements: fire waning
 tinkerer (1,2) hp 8/8 hand 10 discard 1 lost 1 active 0 xp 2 gold 30
 mindthief (1,1) hp 2/6 hand 7 discard 1 lost 2 active 0 xp 3 gold 30
 spellweaver (1,4) hp 6/6 hand 6 discard 1 lost 1 active 0 xp 2 gold 30
-bandit-archer #1 normal (4,0) hp 5/5
-bandit-archer #2 normal (3,1) hp 3/5
-living-bones #2 elite (3,2) hp 4/6
+bandit-archer #3 normal (4,0) hp 5/5
+bandit-archer #4 normal (3,1) hp 3/5
+living-bones #9 elite (3,2) hp 4/6
 money tokens: (2,1)x1
 doors open: 0/1
 Tinkerer plays Net Shooter (19) and Hook Gun
@@ -82,10 +82,10 @@ Turn order: Spellweaver 7, Mindthief 8, Bandit Archer 16, Tinkerer 19, Living Bo
 Spellweaver’s turn: Mana Bolt and Impaling Eruption
 Spellweaver takes the top half from Impaling Eruption and the bottom half from Mana Bolt
 Spellweaver: Attack 3, Range 4
-Spellweaver attacks Living Bones 2: 3 − 2 − 1 shield = no damage [3 -2(mod) -1(shield) = 0]
+Spellweaver attacks Living Bones 9: 3 − 2 − 1 shield = no damage [3 -2(mod) -1(shield) = 0]
 Spellweaver gains 1 XP
-Spellweaver attacks Bandit Archer 2: 3 ×2 = 6 damage [3 ×2(mod) = 6]
-Bandit Archer 2 dies
+Spellweaver attacks Bandit Archer 4: 3 ×2 = 6 damage [3 ×2(mod) = 6]
+Bandit Archer 4 dies
 A money token drops [at (3,1)]
 Spellweaver gains 1 XP
 Spellweaver infuses Earth
@@ -100,35 +100,33 @@ Mindthief: Attack 1, Range 1
 Mindthief has no target within range 1
 Mindthief: Attack 1, Range 2, Stun
 Mindthief has no target within range 2
-Mindthief infuses Ice
-Mindthief gains 1 XP
 Mindthief ends the turn
 Bandit Archer’s turn: ability card (16)
-Bandit Archer 1 attacks Mindthief: 1 + 1 = 2 damage [1 +1(mod) = 2]
+Bandit Archer 3 attacks Mindthief: 1 + 1 = 2 damage [1 +1(mod) = 2]
 Mindthief loses 2 discarded cards to prevent 2 damage
 Tinkerer’s turn: Net Shooter and Hook Gun
 Tinkerer: Attack 3, Range 3, Immobilize
 Tinkerer’s area attack hits 1 enemy
-Tinkerer attacks Living Bones 2: 3 + 1 − 1 shield = 3 damage [3 +1(mod) -1(shield) = 3]
-Living Bones 2 gains Immobilize
+Tinkerer attacks Living Bones 9: 3 + 1 − 1 shield = 3 damage [3 +1(mod) -1(shield) = 3]
+Living Bones 9 gains Immobilize
 Tinkerer gains 1 XP
 Tinkerer: Loot 2
 Tinkerer loots 1 money token (2 gold)
 Tinkerer gains 1 XP
 Tinkerer ends the turn
 Living Bones’s turn: ability card (64)
-Living Bones 2 is immobilized and can’t move
-Living Bones 2 can’t reach its focus
+Living Bones 9 is immobilized and can’t move
+Living Bones 9 can’t reach its focus
 Spellweaver skips the short rest
 Round 2 complete
 === Round 3 ===
 --- state after round 2 ---
-elements: ice waning, earth waning
+elements: earth waning
 spellweaver (1,4) hp 6/6 hand 4 discard 2 lost 2 active 0 xp 4 gold 30
-mindthief (0,1) hp 2/6 hand 5 discard 1 lost 4 active 0 xp 4 gold 30
+mindthief (0,1) hp 2/6 hand 5 discard 1 lost 4 active 0 xp 3 gold 30
 tinkerer (1,2) hp 8/8 hand 8 discard 1 lost 3 active 0 xp 4 gold 32
-bandit-archer #1 normal (4,0) hp 5/5
-living-bones #2 elite (3,2) hp 1/6
+bandit-archer #3 normal (4,0) hp 5/5
+living-bones #9 elite (3,2) hp 1/6
 money tokens: (3,1)x1
 doors open: 0/1
 Spellweaver plays Frost Armor (20) and Reviving Ether
@@ -139,8 +137,8 @@ Living Bones draws an ability card (74)
 Turn order: Mindthief 11, Tinkerer 20, Spellweaver 20, Bandit Archer 32, Living Bones 74
 Mindthief’s turn: Empathetic Assault and Feedback Loop
 Mindthief: Attack 4, Range 5, Disarm
-Mindthief attacks Living Bones 2: 4 + 0 − 1 shield = 3 damage [4 +0(mod) -1(shield) = 3]
-Living Bones 2 dies
+Mindthief attacks Living Bones 9: 4 + 0 − 1 shield = 3 damage [4 +0(mod) -1(shield) = 3]
+Living Bones 9 dies
 A money token drops [at (3,2)]
 Mindthief infuses Ice
 Mindthief gains 2 XP
@@ -152,19 +150,21 @@ Tinkerer takes the top half from Flamethrower and the bottom half from Stun Shot
 Tinkerer: Move 4
 Tinkerer moves 3 hexes [to (3,1)]
 Tinkerer: Attack 3, Range 1, Wound
+Tinkerer gains 2 XP
+Tinkerer infuses Fire
 Tinkerer’s area attack hits 1 enemy
-Tinkerer attacks Bandit Archer 1: 3 + 0 = 3 damage [3 +0(mod) = 3]
-Bandit Archer 1 gains Wound
+Tinkerer attacks Bandit Archer 3: 3 + 0 = 3 damage [3 +0(mod) = 3]
+Bandit Archer 3 gains Wound
 Tinkerer ends the turn
 Tinkerer loots 1 money token (2 gold)
 Spellweaver’s turn: Frost Armor and Reviving Ether
 Spellweaver: Jump 4
 Spellweaver moves 3 hexes [to (3,2)]
-Spellweaver consumes Ice
+Spellweaver consumes Fire
 Spellweaver: Attack 3, Range 3
 Spellweaver gains 1 XP
-Spellweaver attacks Bandit Archer 1: 3 − 1 = 2 damage [3 -1(mod) = 2]
-Bandit Archer 1 dies
+Spellweaver attacks Bandit Archer 3: 3 + 1 = 4 damage [3 +1(mod) = 4]
+Bandit Archer 3 dies
 A money token drops [at (4,0)]
 Spellweaver ends the turn
 Spellweaver loots 1 money token (2 gold)

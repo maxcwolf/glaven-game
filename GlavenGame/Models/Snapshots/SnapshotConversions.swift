@@ -167,6 +167,7 @@ extension GameCharacter {
         snapshot.bonusChargesUsed = bonusChargesUsed.isEmpty ? nil : bonusChargesUsed
         snapshot.itemsLeftBehind = itemsLeftBehind.isEmpty ? nil : itemsLeftBehind
         snapshot.itemsBarred = itemsBarred ? true : nil
+        snapshot.bottomHalvesInPlay = bottomHalvesInPlay.isEmpty ? nil : bottomHalvesInPlay
         return snapshot
     }
 }
@@ -228,6 +229,7 @@ extension CharacterSnapshot {
         c.consumedItems = Set(consumedItems ?? [])
         c.roundBonusCards = roundBonusCards ?? []
         c.lostWhenRemoved = lostWhenRemoved ?? []
+        c.bottomHalvesInPlay = bottomHalvesInPlay ?? []
         c.record = record ?? CharacterRecord()
         c.questChoices = questChoices ?? []
         c.itemSlotsUsed = itemSlotsUsed ?? [:]

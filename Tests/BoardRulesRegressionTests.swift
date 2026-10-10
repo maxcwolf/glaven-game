@@ -187,6 +187,7 @@ final class BoardRulesRegressionTests: XCTestCase {
 
     // MARK: - Turns
 
+    /// The rest's own rules, through a whole resting turn, are in RestRuleTests.
     func testLongRestHealsTwoOnceAndRefreshesSpentItems() {
         let character = addCharacter(at: HexCoord(3, 3))
         character.health = 5
@@ -194,6 +195,8 @@ final class BoardRulesRegressionTests: XCTestCase {
         character.spentItems = ["gh-1"]
         character.discardedCards = [1, 2, 3]
         character.handCards = Array(4...10)
+        // On the board the rest does its own healing, once (not the round manager as well).
+        gm.roundManager.figuresTakeOwnTurns = true
         gm.roundManager.toggleFigure(.character(character))
         coord.resolveLongRest(characterID: character.id, discardIndex: 0)
         XCTAssertEqual(character.health, 7, "a long rest heals 2, once")
@@ -202,8 +205,9 @@ final class BoardRulesRegressionTests: XCTestCase {
         XCTAssertTrue(character.discardedCards.isEmpty)
     }
 
-    func testCardRoutingAfterTurn() throws {
+    func testCardRoutingAfterTurn() async throws {
         let character = addCharacter(at: HexCoord(3, 3))
+        addMonster("bandit-guard", at: HexCoord(4, 3))
         let deck = gm.editionStore.abilities(forDeck: "brute", edition: "gh")
         let shieldBash = try XCTUnwrap(deck.first { $0.name == "Shield Bash" })   // top lost; bottom round bonus
         let wardingStrength = try XCTUnwrap(deck.first { $0.name == "Warding Strength" }) // bottom persistent + lost
@@ -212,8 +216,15 @@ final class BoardRulesRegressionTests: XCTestCase {
         let turn = PlayerTurnController(characterID: character.id, coordinator: coord, gameManager: gm)
         coord.activePlayerTurn = turn
         turn.selectCards(top: shieldBash, bottom: wardingStrength)
-        // Both halves performed (a half skipped whole is discarded: TurnFlowTests).
-        while turn.phase == .executeTopAction { turn.executeCurrentAction() }      // top half (lost icon)
+        // Both halves performed (a half skipped whole is discarded: TurnFlowTests; so is one
+        // whose attack had no target: ActionPerformedTests).
+        turn.executeCurrentAction()                                                // top half (lost icon)
+        guard case .selectingAttackTarget(_, _, let targets) = coord.interactionMode, let target = targets.first else {
+            return XCTFail("the attack waits for its target")
+        }
+        coord.handlePieceTap(target)
+        _ = await waitUntil { !turn.isWaiting }
+        while turn.phase == .executeTopAction { turn.executeCurrentAction() }
         while turn.phase == .executeBottomAction { turn.executeCurrentAction() }   // bottom half (persistent)
         XCTAssertEqual(turn.phase, .turnComplete)
         XCTAssertEqual(character.lostCards, [shieldBash.cardId!])
@@ -363,6 +374,7 @@ final class BoardRulesRegressionTests: XCTestCase {
         XCTAssertEqual(scoundrel.experience, 1)
 
         let tinkerer = addCharacter("tinkerer", at: HexCoord(6, 6))
+        coord.boardState.placeLoot(at: HexCoord(7, 6))
         let hook = PlayerTurnController(characterID: tinkerer.id, coordinator: coord, gameManager: gm)
         coord.activePlayerTurn = hook
         hook.selectCards(top: try card("Stun Shot", of: "tinkerer"), bottom: try card("Hook Gun", of: "tinkerer"))
@@ -371,18 +383,24 @@ final class BoardRulesRegressionTests: XCTestCase {
         XCTAssertEqual(tinkerer.experience, 1)
     }
 
-    /// An element inside a block of the card (Perverse Edge bottom: "ice, +1 XP") is infused once.
-    func testBlockInfusionIsAppliedOnce() throws {
+    /// An element inside a block of the card (Perverse Edge bottom: "ice, +1 XP") is infused once,
+    /// with the XP, as soon as the attack they come with has been made.
+    func testBlockInfusionIsAppliedOnce() async throws {
         let mindthief = addCharacter("mindthief", at: HexCoord(3, 3))
+        addMonster("bandit-guard", at: HexCoord(5, 3))
         let turn = PlayerTurnController(characterID: mindthief.id, coordinator: coord, gameManager: gm)
         coord.activePlayerTurn = turn
         turn.selectCards(top: try card("Scurry", of: "mindthief"), bottom: try card("Perverse Edge", of: "mindthief"))
         turn.setBottomFirst(true)
-        turn.executeCurrentAction() // Attack 1, Range 2, Stun: no target
-        turn.executeCurrentAction() // ice
-        turn.executeCurrentAction() // +1 XP
+        turn.executeCurrentAction() // Attack 1, Range 2, Stun
+        guard case .selectingAttackTarget(_, _, let targets) = coord.interactionMode, let target = targets.first else {
+            return XCTFail("the attack waits for its target")
+        }
+        coord.handlePieceTap(target)
+        _ = await waitUntil { turn.phase != .executeBottomAction || turn.currentActionIndex == turn.currentSteps.count }
         XCTAssertEqual(coord.turnLog.filter { $0.message.hasSuffix("infuses Ice") }.count, 1)
         XCTAssertEqual(mindthief.experience, 1)
+        XCTAssertEqual(turn.currentActionIndex, turn.currentSteps.count, "the infusion and the XP needed no tap")
     }
 
     /// Immobilize takes effect at once: a figure caught in a bear trap stops moving. A push is not
@@ -657,7 +675,8 @@ final class BoardRulesRegressionTests: XCTestCase {
         coord.handleHexTap(HexCoord(2, 3))
         XCTAssertEqual(coord.boardState.cells[HexCoord(4, 3)]?.passable, false)
         XCTAssertEqual(coord.boardState.cells[HexCoord(2, 3)]?.passable, false)
-        XCTAssertEqual(turn.currentActionIndex, 1)
+        XCTAssertEqual(turn.currentActionIndex, 2, "the step is done, and its Earth with it")
+        XCTAssertEqual(gm.game.elementBoard.first { $0.type == .earth }?.state, .new)
     }
 
     /// Regression: Balanced Measure's "X" (hexes moved; damage inflicted) was played as 2.
@@ -920,6 +939,28 @@ final class BoardRulesRegressionTests: XCTestCase {
         guard case .selectingMove(let mover, let range, _, _, _) = coord.interactionMode else { return XCTFail("the enemy moves") }
         XCTAssertEqual(mover, bandit)
         XCTAssertEqual(range, 1)
+    }
+
+    /// A closed door is a wall to a monster, also when a character's card moves it: Parasitic
+    /// Influence can't walk an enemy onto a closed door (found by the scenario 1 playthrough,
+    /// where a Bandit Guard was parked on door 1 without opening it).
+    func testAnEnemyMovedByACardCannotEnterAClosedDoor() throws {
+        let mindthief = addCharacter("mindthief", at: HexCoord(3, 3))
+        addMonster("bandit-guard", at: HexCoord(6, 3))
+        let door = HexCoord(7, 3)
+        coord.boardState.doors.append(DoorInfo(coord: door, childTileRef: "x", subType: "stone",
+                                               refPoint: door, origin: HexCoord(0, 0)))
+        coord.boardState.cells[door]?.overlay = .door
+        let turn = turn(for: mindthief, top: try card("Scurry", of: "mindthief"), bottom: try card("Parasitic Influence", of: "mindthief"),
+                        bottomFirst: true)
+        turn.executeCurrentAction()
+        guard case .choosingPerformer(_, _, let candidates) = coord.interactionMode, let bandit = candidates.first else {
+            return XCTFail("which enemy")
+        }
+        coord.handlePieceTap(bandit)
+        guard case .selectingMove(_, _, let hexes, _, _) = coord.interactionMode else { return XCTFail("the enemy moves") }
+        XCTAssertFalse(hexes.contains(door), "monsters don't open doors")
+        XCTAssertTrue(hexes.contains(HexCoord(5, 3)))
     }
 
     /// Submissive Affliction: "Force one enemy within Range 5 to perform Attack 2, Range +0,

@@ -519,8 +519,11 @@ final class ScenarioSimulator {
             }
             switch style {
             case .normal, .forced:
-                if !cell.passable { violation("\(piece) moves through the obstacle at \(hex) (\(style))") }
-                if let other = board.piece(at: hex), other != piece, coord.areEnemies(piece, other) || style == .forced {
+                // A flying figure is forced over obstacles and any figure; a walker passes only
+                // its allies, as when it moves by itself (FAQ, "Push/Pull").
+                let flown = style == .forced && coord.flies(piece)
+                if !cell.passable && !flown { violation("\(piece) moves through the obstacle at \(hex) (\(style))") }
+                if let other = board.piece(at: hex), other != piece, coord.areEnemies(piece, other), !flown {
                     violation("\(piece) moves through \(other) at \(hex) (\(style))")
                 }
             case .jump:

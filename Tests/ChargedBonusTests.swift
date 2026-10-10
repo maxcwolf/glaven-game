@@ -233,8 +233,12 @@ final class ChargedBonusTests: XCTestCase {
     func testWallOfDoomAndEnhancementFieldAddToAttacks() throws {
         let brute = add("brute", at: HexCoord(3, 3))
         let tinkerer = add("tinkerer", at: HexCoord(4, 3))
-        brute.activeCards = [13]   // Wall of Doom: +1 on every attack this round
+        brute.activeCards = [13]   // Wall of Doom
+        brute.roundBonusCards = [13]
         tinkerer.activeCards = [40]   // Enhancement Field: +1 for the Tinkerer and adjacent allies
+        XCTAssertEqual(coord.roundAttackBonus(for: .character(brute.id), ranged: false), 1,
+                       "Wall of Doom in play for its top half (Retaliate 2, Shield 2) adds nothing to attacks")
+        brute.bottomHalvesInPlay = [13]   // its bottom half: +1 on every attack this round
         XCTAssertEqual(coord.roundAttackBonus(for: .character(brute.id), ranged: false), 2)
         XCTAssertEqual(coord.roundAttackBonus(for: .character(tinkerer.id), ranged: true), 1)
         coord.boardState.movePiece(.character(brute.id), to: HexCoord(8, 8))

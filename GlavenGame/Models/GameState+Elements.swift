@@ -33,17 +33,34 @@ extension GameState {
         return chosen
     }
 
-    /// Infuse an element: it becomes strong at the end of the current turn (it can't be consumed
-    /// by the infusing figure this turn). A waning element is renewed; a strong one stays strong.
+    /// Infuse an element: it becomes strong at the end of the current turn, so what was made
+    /// this turn can't be consumed this turn. An element that was already there stays as it was
+    /// until then — strong or waning, it can still be consumed, before or after the infusion,
+    /// and it ends the turn strong either way (GH p.24, FAQ).
     func infuseElement(_ type: ElementType) {
-        guard type != .wild, let idx = elementBoard.firstIndex(where: { $0.type == type }) else { return }
+        guard type != .wild, let idx = elementBoard.firstIndex(where: { $0.type == type }),
+              elementBoard[idx].state != .always else { return }
+        let fresh = elementsInfusedThisTurn.insert(type).inserted
         switch elementBoard[idx].state {
-        case .strong, .new, .always:
-            break
+        case .strong, .waning, .new, .always:
+            if fresh, elementBoard[idx].state != .strong { onElementChange?(.infused) }
         default:
             elementBoard[idx].state = .new
             onElementChange?(.infused)
         }
+    }
+
+    /// The end of a figure's turn: what it consumed is gone, and what it infused is strong.
+    func settleElementsAtEndOfTurn() {
+        for i in elementBoard.indices {
+            if elementBoard[i].state == .consumed || elementBoard[i].state == .partlyConsumed {
+                elementBoard[i].state = .inert
+            }
+            if elementBoard[i].state == .new || (elementsInfusedThisTurn.contains(elementBoard[i].type) && elementBoard[i].state != .always) {
+                elementBoard[i].state = .strong
+            }
+        }
+        elementsInfusedThisTurn = []
     }
 
     /// Pick concrete elements for an augment: named elements first, then each "wild" takes a

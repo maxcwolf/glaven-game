@@ -161,15 +161,8 @@ final class RoundManager {
             o.active.toggle()
         }
 
-        // Advance consumed elements to inert after any turn
-        for i in game.elementBoard.indices {
-            if game.elementBoard[i].state == .consumed || game.elementBoard[i].state == .partlyConsumed {
-                game.elementBoard[i].state = .inert
-            }
-            if game.elementBoard[i].state == .new {
-                game.elementBoard[i].state = .strong
-            }
-        }
+        // What the turn consumed is gone; what it infused is strong from now on.
+        game.settleElementsAtEndOfTurn()
     }
 
     private func beforeTurn(character: GameCharacter) {
@@ -184,7 +177,9 @@ final class RoundManager {
 
         // Long rest: "Heal 2, Self" as part of the resting turn, after start-of-turn wound damage.
         // Healing follows the normal rules (poison blocks it; it removes poison and wound).
-        if character.longRest && character.health > 0 {
+        // On the board the rest itself does this, once its card is chosen (the wound's damage
+        // comes first and can be negated; the heal is the player's to take).
+        if character.longRest && character.health > 0 && !figuresTakeOwnTurns {
             entityManager.heal(character, amount: 2)
             character.spentItems.removeAll()
             character.itemSlotsUsed.removeAll()
@@ -221,6 +216,7 @@ final class RoundManager {
         game.round = 0
         game.state = .draw
         game.elementBoard = ElementModel.defaultBoard()
+        game.elementsInfusedThisTurn = []
         game.monsterAttackModifierDeck = .defaultDeck()
         game.allyAttackModifierDeck = .defaultDeck()
         game.lootDeck = LootDeck()

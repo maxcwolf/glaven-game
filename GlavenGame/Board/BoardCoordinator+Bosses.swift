@@ -71,7 +71,8 @@ extension BoardCoordinator {
               let entity = monsterEntity(name: name, standee: standee), !entity.dead,
               let hex = takeNextCycleHex(for: pieceID) else { return false }
         boardState.placePiece(pieceID, at: hex)
-        if entity.type == .elite { boardState.eliteStandees.insert(pieceID) }
+        // A standee number is reused once its monster is dead: the mark follows the newcomer.
+        if entity.type == .elite { boardState.eliteStandees.insert(pieceID) } else { boardState.eliteStandees.remove(pieceID) }
         boardScene?.addPieceSprite(id: pieceID, at: hex, offsetCol: offsetCol, offsetRow: offsetRow)
         boardScene?.play(.summon)
         syncPieceVisuals()

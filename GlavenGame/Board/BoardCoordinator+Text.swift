@@ -199,8 +199,9 @@ extension BoardCoordinator {
                                detail: "Tap a highlighted hex next to your character", canSkip: false)
         case .selectingPushPullHex(let target, _, _, let remaining, let isPush):
             return Instruction(title: "\(isPush ? "Push" : "Pull") \(name(target))",
-                               detail: "Tap the hex to \(isPush ? "push" : "pull") them into (\(remaining) left)",
-                               canSkip: false)
+                               detail: "Tap the hex to \(isPush ? "push" : "pull") them into (\(remaining) left)"
+                                   + (pushPullDeclinable ? ", or skip it: all or none" : ""),
+                               canSkip: pushPullDeclinable)
         case .selectingConditionTarget(_, let condition, _):
             return Instruction(title: GameText.conditionName(condition),
                                detail: "Tap a highlighted figure to apply it", canSkip: ownTurn)

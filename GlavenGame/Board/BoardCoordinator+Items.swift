@@ -320,7 +320,9 @@ extension BoardCoordinator {
         case (.turn, .watchingMonsterTurn), (.turn, .placingCharacter):
             return false
         case (.turn, _):
-            return turn.phase == .executeTopAction || turn.phase == .executeBottomAction || turn.phase == .executeExtraHalf
+            // At any time in the turn (FAQ): between and after the two halves, until the turn
+            // is ended, and on a long-rest turn until its card is chosen.
+            return turn.phase != .selectTopCard
         case (.move, .selectingMove(let mover, _, _, let teleport, _)):
             return mover == me && !teleport
         case (.attack, .selectingAttackTarget(let attacker, _, _)),

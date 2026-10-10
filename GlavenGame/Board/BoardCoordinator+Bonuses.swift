@@ -181,10 +181,32 @@ enum ChargedBonus: Equatable {
         "gh-316": .doubleNextAttack,                                    // Grim Bargain: double the next attack
     ]
 
-    /// The bonus of a card in play: its round half's when that's the half played.
-    static func bonus(edition: String, cardId: Int, roundHalf: Bool) -> ChargedBonus? {
+    /// Cards both of whose halves are round bonuses, where `byCard` is the top half's (the other
+    /// half is played as printed actions).
+    static let topRoundHalves: Set<String> = []
+    /// Likewise, where `byCard` is the bottom half's.
+    static let bottomRoundHalves: Set<String> = ["gh-13"]            // Wall of Doom: "+1 Attack this round"
+
+    /// The bonus of a card in play — only that of the half it was played for (GH p.25: the two
+    /// halves of a card are separate actions). `byCard` holds a card's persistent half, or its
+    /// round half when it has no persistent one; `byRoundHalf` the round half of a card that
+    /// has both.
+    static func bonus(edition: String, card: AbilityModel, top: Bool) -> ChargedBonus? {
+        guard let cardId = card.cardId else { return nil }
         let key = "\(edition)-\(cardId)"
-        return roundHalf ? (byRoundHalf[key] ?? byCard[key]) : byCard[key]
+        let mine = PlayerTurnController.markers(in: (top ? card.actions : card.bottomActions) ?? [])
+        let other = PlayerTurnController.markers(in: (top ? card.bottomActions : card.actions) ?? [])
+        if mine.contains("persistent") {
+            // Both halves persistent (the Doomstalker's dooms): the table holds the top's.
+            return other.contains("persistent") && !top ? nil : byCard[key]
+        }
+        guard mine.contains("round") else { return nil }
+        if let own = byRoundHalf[key] { return own }
+        if other.contains("persistent") { return nil }
+        if other.contains("round") {
+            return (top ? topRoundHalves : bottomRoundHalves).contains(key) ? byCard[key] : nil
+        }
+        return byCard[key]
     }
 
     /// The experience each charge slot gives, in order (0 for a plain slot).
@@ -216,11 +238,35 @@ extension BoardCoordinator {
         }
         // A doom card in play is its doom (bottom half), not its top half's bonus.
         let dooming = Set(activeDooms.filter { $0.doom.characterID == character.id }.map(\.doom.cardId))
-        let roundHalves = Set(character.roundBonusCards + (activePlayerTurn?.characterID == character.id
-                                                            ? activePlayerTurn?.roundCardsThisTurn ?? [] : []))
         return cards.filter { !dooming.contains($0) }.compactMap { id in
-            ChargedBonus.bonus(edition: character.edition, cardId: id, roundHalf: roundHalves.contains(id)).map { (id, $0) }
+            bonusInPlay(id, of: character).map { (id, $0) }
         }
+    }
+
+    /// The bonus a card in play gives: that of the half it is in play for.
+    func bonusInPlay(_ cardId: Int, of character: GameCharacter) -> ChargedBonus? {
+        guard let card = gameManager?.characterManager.abilities(for: character).first(where: { $0.cardId == cardId }) else { return nil }
+        return ChargedBonus.bonus(edition: character.edition, card: card, top: isTopHalfInPlay(cardId, of: character))
+    }
+
+    /// Whether a card in play (in the active area, or played this turn) is there for its top half.
+    /// Read from the card where only one half can be in play, or the two differ in kind
+    /// (persistent or round); where both are the same kind, from what was recorded as it was played.
+    func isTopHalfInPlay(_ cardId: Int, of character: GameCharacter) -> Bool {
+        let turn = activePlayerTurn?.characterID == character.id ? activePlayerTurn : nil
+        if let turn, !character.activeCards.contains(cardId), let top = turn.halfInPlayThisTurn[cardId] {
+            return top
+        }
+        let recorded = !character.bottomHalvesInPlay.contains(cardId)
+        guard let card = gameManager?.characterManager.abilities(for: character).first(where: { $0.cardId == cardId }) else { return recorded }
+        let kinds: Set<String> = ["persistent", "round"]
+        let top = PlayerTurnController.markers(in: card.actions ?? []).intersection(kinds)
+        let bottom = PlayerTurnController.markers(in: card.bottomActions ?? []).intersection(kinds)
+        if top.isEmpty != bottom.isEmpty { return bottom.isEmpty }
+        let round = character.roundBonusCards.contains(cardId) || turn?.roundCardsThisTurn.contains(cardId) == true
+        let kind = round ? "round" : "persistent"
+        if top.contains(kind) != bottom.contains(kind) { return top.contains(kind) }
+        return recorded
     }
 
     func chargedBonuses(of piece: PieceID) -> [(cardId: Int, bonus: ChargedBonus)] {
@@ -233,7 +279,7 @@ extension BoardCoordinator {
     /// area once every charge is marked.
     func useCharge(_ cardId: Int, of character: GameCharacter) {
         let roundHalf = character.roundBonusCards.contains(cardId) || activePlayerTurn?.roundCardsThisTurn.contains(cardId) == true
-        if ChargedBonus.bonus(edition: character.edition, cardId: cardId, roundHalf: roundHalf)?.isUnlimited == true { return }
+        if bonusInPlay(cardId, of: character)?.isUnlimited == true { return }
         guard let card = gameManager?.characterManager.abilities(for: character).first(where: { $0.cardId == cardId }) else { return }
         // A round half's single use (Grim Bargain's doubled attack): the other half's slots aren't its.
         let slots = roundHalf && ChargedBonus.byRoundHalf["\(character.edition)-\(cardId)"] != nil ? [] : ChargedBonus.slots(of: card)

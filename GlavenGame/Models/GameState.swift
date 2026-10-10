@@ -18,6 +18,9 @@ final class GameState {
     var playSeconds: Int = 0
     var totalSeconds: Int = 0
     var elementBoard: [ElementModel] = ElementModel.defaultBoard()
+    /// Elements infused during the turn in progress: strong when it ends (not saved; a save is
+    /// made between turns).
+    var elementsInfusedThisTurn: Set<ElementType> = []
     /// Told when an element is infused or consumed, so the board can sound it (not saved).
     @ObservationIgnored var onElementChange: ((ElementChange) -> Void)?
     var monsterAttackModifierDeck: AttackModifierDeck = .defaultDeck()
@@ -83,6 +86,7 @@ final class GameState {
         playSeconds = fresh.playSeconds
         totalSeconds = fresh.totalSeconds
         elementBoard = fresh.elementBoard
+        elementsInfusedThisTurn = []
         monsterAttackModifierDeck = fresh.monsterAttackModifierDeck
         allyAttackModifierDeck = fresh.allyAttackModifierDeck
         lootDeck = fresh.lootDeck

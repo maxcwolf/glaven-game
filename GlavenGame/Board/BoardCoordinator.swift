@@ -316,6 +316,12 @@ final class BoardCoordinator {
 
     /// Non-nil when a monster push/pull is in progress and the async caller is suspended.
     private var pendingPushPullContinuation: CheckedContinuation<Void, Never>?
+    /// Hexes the figure being pushed or pulled has passed through without stopping (they hold
+    /// figures it may pass), since the last hex it stood on.
+    private var pushPullVia: [HexCoord] = []
+    /// Whether the push or pull being chosen can still be turned down: it is the acting
+    /// character's own, and none of it has happened yet (FAQ: optional, but all or nothing).
+    private(set) var pushPullDeclinable = false
     /// Moves waiting for their animation to finish, by move. A scene torn down mid-move never
     /// finishes them, so teardown resumes them instead.
     var pendingMoveAnimations: [UUID: CheckedContinuation<Void, Never>] = [:]
@@ -521,7 +527,9 @@ final class BoardCoordinator {
     var pendingLongRest: PendingLongRest?
 
     /// Called from the UI when the player picks which discard card to lose during long rest.
-    func resolveLongRest(characterID: String, discardIndex: Int) {
+    /// `heal`: the rest's "Heal 2, self" is the player's to take or leave, as is refreshing
+    /// spent items (FAQ); losing a card and taking the others back is not.
+    func resolveLongRest(characterID: String, discardIndex: Int, heal takesHeal: Bool = true) {
         guard let gameManager = gameManager,
               let character = gameManager.game.characters.first(where: { $0.id == characterID }) else { return }
 
@@ -534,19 +542,52 @@ final class BoardCoordinator {
         boardScene?.play(.rest)
         boardScene?.play(.lose)
 
-        // Recover remaining discard to hand. (Heal 2 and refreshing spent items happen when the
-        // resting turn starts — RoundManager.beforeTurn.)
+        // The rest of the discard pile comes back to the hand.
+        let returned = character.discardedCards.count
         character.handCards.append(contentsOf: character.discardedCards)
         character.discardedCards.removeAll()
 
         let deckName = character.characterData?.deck ?? character.name
         let deckData = gameManager.editionStore.deckData(name: deckName, edition: character.edition)
         let cardName = deckData?.abilities.first(where: { $0.cardId == lostCard })?.name ?? "Card \(lostCard)"
-        log("\(characterName(characterID)) long rests: loses \(cardName), heals 2 and takes back \(character.handCards.count) cards", category: .rest)
+        log("\(characterName(characterID)) long rests: loses \(cardName) and takes back \(Self.cards(returned))", category: .rest)
+        finishLongRest(character, heal: takesHeal)
+    }
 
+    private static func cards(_ count: Int) -> String { count == 1 ? "1 card" : "\(count) cards" }
+
+    /// The rest's Heal 2 (a real heal: Poison stops it, a Wound goes with it) and its refresh of
+    /// spent items — an item with uses left isn't spent, and keeps the uses it has marked (FAQ) —
+    /// then the turn ends like any other.
+    private func finishLongRest(_ character: GameCharacter, heal takesHeal: Bool) {
+        let me = PieceID.character(character.id)
+        if takesHeal, isOnBoard(me) {
+            let healed = heal(me, amount: 2, source: me)
+            log(healLine(me, healed: me, for: healed), category: .heal, trace: "Heal 2, self")
+        }
+        for key in character.spentItems { character.itemSlotsUsed[key] = nil }
+        character.spentItems.removeAll()
+        endCharacterTurn(character.id)
+    }
+
+    /// The end of a character's turn, however it was spent (two cards, a long rest, stunned):
+    /// what the turn's items and active bonuses do as it ends, loot in the character's hex, and
+    /// everything that is judged by where figures stand as a turn ends (pressure plates, goals).
+    private func endCharacterTurn(_ characterID: String) {
+        if let turn = activePlayerTurn, turn.characterID == characterID {
+            applyEndOfTurnItems(turn)
+            applyEndOfTurnBonuses(turn)
+            activePlayerTurn = nil
+        }
         lootAtEndOfTurn(characterID)
-        // Continue to next figure
-        advanceToNextFigure()
+
+        updateLocks(turnEnded: true)
+        // Rules that wait for where figures stand as a turn ends (every plate held).
+        gameManager?.scenarioRulesManager.evaluateRules(phase: .figureChange)
+        checkVictoryDefeat(turnEnded: true)
+        if scenarioResult == nil {
+            advanceToNextFigure()
+        }
     }
 
     // MARK: - Short Rest
@@ -647,13 +688,14 @@ final class BoardCoordinator {
         boardScene?.play(.lose)
 
         // Recover remaining discard to hand
+        let returned = character.discardedCards.count
         character.handCards.append(contentsOf: character.discardedCards)
         character.discardedCards.removeAll()
 
         let deckName = character.characterData?.deck ?? character.name
         let deckData = gameManager.editionStore.deckData(name: deckName, edition: character.edition)
         let cardName = deckData?.abilities.first(where: { $0.cardId == lostCardId })?.name ?? "Card \(lostCardId)"
-        log("\(characterName(character.id)) short rests: loses \(cardName) and takes back \(character.handCards.count) cards", category: .rest)
+        log("\(characterName(character.id)) short rests: loses \(cardName) and takes back \(Self.cards(returned))", category: .rest)
 
         let charID = pending.characterID
         pendingShortRest = nil
@@ -669,23 +711,33 @@ final class BoardCoordinator {
 
         // Suffer 1 damage to keep the card and randomly lose a different one (once per rest).
         log("\(characterName(character.id)) suffers 1 damage to lose a different card", category: .rest)
-        if sufferDamage(1, to: .character(character.id)) {
-            // Exhausted by the damage: the rest is over.
-            pendingShortRest = nil
-            advanceToNextShortRest(startingAfter: pending.characterID)
-            return
-        }
-
         pending.rerollUsed = true
-
-        // Pick a new random card, different from the current one if possible
-        let candidates = character.discardedCards.filter { $0 != pending.randomCardId }
-        if let newCard = candidates.randomElement(using: &GameRandom.shared) {
-            pending.randomCardId = newCard
-        }
-        // If no other candidates exist, keep the same card (only 1 unique card ID scenario — unlikely with >=2 cards)
-
+        // The first card is kept: it can't be the one lost, nor be lost to negate this damage.
+        let kept = pending.randomCardId
         pendingShortRest = pending
+        let generation = boardGeneration
+        Task { @MainActor in
+            // Damage like any other: it may be negated (FAQ), by a card or by a charge.
+            let exhausted = await self.sufferDamageWithMitigation(1, to: .character(character.id), source: "the short rest")
+            guard self.isCurrentBoard(generation), var pending = self.pendingShortRest,
+                  pending.characterID == character.id else { return }
+            if exhausted {
+                // Exhausted by the damage: the rest is over.
+                self.pendingShortRest = nil
+                self.advanceToNextShortRest(startingAfter: pending.characterID)
+                return
+            }
+            // A different card, at random, from what is still in the discard pile.
+            let candidates = character.discardedCards.filter { $0 != kept }
+            if let newCard = candidates.randomElement(using: &GameRandom.shared) {
+                pending.randomCardId = newCard
+                self.pendingShortRest = pending
+            } else if character.discardedCards.count < 2 {
+                // The discard pile was spent on the damage: nothing is left to rest with.
+                self.pendingShortRest = nil
+                self.advanceToNextShortRest(startingAfter: pending.characterID)
+            }
+        }
     }
 
     /// Player declines the short rest — cards stay as-is.
@@ -1312,8 +1364,9 @@ final class BoardCoordinator {
             case .character(let c) where c.exhausted || c.absent:
                 return nil
             case .character(let c) where c.longRest:
-                // Initiative 99; a character goes before a monster type on a tie (p.16).
-                return TurnOrderEntry(figure: figure, initiative: 99 - 0.9)
+                // Initiative 99: before a monster type on a tie (p.16), but after a character
+                // whose card (with Boots of Speed) makes 99 (FAQ: "the long rest goes later").
+                return TurnOrderEntry(figure: figure, initiative: 99 - 0.4)
             case .character(let c):
                 // Ties between characters are broken by their second card's initiative (p.16).
                 let secondCard = Double(selectedCardPairs[c.id]?.bottom.initiative ?? 99) / 1000
@@ -1525,10 +1578,9 @@ final class BoardCoordinator {
     @ObservationIgnored private var woundDue: Set<String> = []
 
     private func deferWoundDamage(of entity: any Entity) -> Bool {
-        // A long rester's heal follows the wound's damage in the same step (and removes the
-        // wound), so that damage stays where it is.
-        guard let character = entity as? GameCharacter, !character.longRest,
-              isOnBoard(.character(character.id)) else { return false }
+        // A resting character too: the wound's damage comes first and can be negated like any
+        // other; the rest's heal, which removes the wound, follows it (FAQ).
+        guard let character = entity as? GameCharacter, isOnBoard(.character(character.id)) else { return false }
         woundDue.insert(character.id)
         return true
     }
@@ -1543,12 +1595,20 @@ final class BoardCoordinator {
             return
         }
 
+        let stunned = character.entityConditions.contains { $0.name == .stun && !$0.expired }
         if character.longRest {
+            // A long rest is a turn (FAQ): items can be used on it — unless stunned, when only
+            // the rest itself happens — and it ends as any turn does.
+            if !stunned {
+                let turn = PlayerTurnController(characterID: character.id, coordinator: self, gameManager: gameManager)
+                turn.selectLongRest()
+                activePlayerTurn = turn
+            }
             if character.discardedCards.count <= 1 {
                 if character.discardedCards.isEmpty {
+                    // The discard pile went to negating damage since the rest was declared.
                     log("\(characterName(character.id)) long rests (no cards to lose)", category: .rest)
-                    lootAtEndOfTurn(character.id)
-                    advanceToNextFigure()
+                    finishLongRest(character, heal: true)
                 } else {
                     resolveLongRest(characterID: character.id, discardIndex: 0)
                 }
@@ -1561,7 +1621,7 @@ final class BoardCoordinator {
         }
 
         // Stun: no abilities and no items; the two played cards are simply discarded (p.22).
-        if character.entityConditions.contains(where: { $0.name == .stun && !$0.expired }) {
+        if stunned {
             if let pair = selectedCardPairs[character.id] {
                 for cardId in [pair.top.cardId, pair.bottom.cardId].compactMap({ $0 }) {
                     character.handCards.removeAll { $0 == cardId }
@@ -1569,9 +1629,9 @@ final class BoardCoordinator {
                 }
             }
             log("\(characterName(character.id)) is stunned: no actions, both cards are discarded", category: .condition)
-            // Looting at the end of the turn isn't an ability: a stunned character still loots.
-            lootAtEndOfTurn(character.id)
-            advanceToNextFigure()
+            // Looting at the end of the turn isn't an ability: a stunned character still loots,
+            // and still stands where they stand (on a pressure plate, on the exit).
+            endCharacterTurn(character.id)
             return
         }
 
@@ -1643,20 +1703,11 @@ final class BoardCoordinator {
     func finishPlayerTurn() {
         // Ignore a second End Turn for the same turn.
         guard let ptc = activePlayerTurn, ptc.phase == .turnComplete else { return }
+        // A long rest ends when its card has been chosen, not from the End Turn button.
+        guard !ptc.isLongRest else { return }
         boardScene?.play(.endTurn)
         teach(.playedCards)
-        applyEndOfTurnItems(ptc)
-        applyEndOfTurnBonuses(ptc)
-        activePlayerTurn = nil
-        lootAtEndOfTurn(ptc.characterID)
-
-        updateLocks(turnEnded: true)
-        // Rules that wait for where figures stand as a turn ends (every plate held).
-        gameManager?.scenarioRulesManager.evaluateRules(phase: .figureChange)
-        checkVictoryDefeat(turnEnded: true)
-        if scenarioResult == nil {
-            advanceToNextFigure()
-        }
+        endCharacterTurn(ptc.characterID)
     }
 
     /// End-of-turn looting: money tokens and treasure in the character's hex (p.28), on every
@@ -1676,13 +1727,9 @@ final class BoardCoordinator {
         for character in gameManager?.game.characters ?? [] {
             for cardId in character.roundBonusCards { character.removeFromActiveArea(cardId) }
         }
-        // Offer short rests before transitioning to the next round — unless the scenario ends
-        // with this round, when a rest changes nothing.
-        if pendingResult != nil {
-            proceedAfterShortRests()
-        } else {
-            offerShortRests()
-        }
+        // Short rests are offered in a scenario's last round too (FAQ): the rest can decide a
+        // battle goal (a short rest taken, cards in hand at the end).
+        offerShortRests()
     }
 
     // MARK: - Victory / Defeat
@@ -1808,6 +1855,7 @@ final class BoardCoordinator {
         if isConditionActive(.immobilize, on: pieceID) {
             log("\(name(pieceID)) is immobilized and can\u{2019}t move", category: .condition)
             interactionMode = .idle
+            activePlayerTurn?.abilityDidNothing()
             activePlayerTurn?.advanceAfterAsyncAction()
             return
         }
@@ -1815,7 +1863,7 @@ final class BoardCoordinator {
         let (enemies, allies) = movementSets(for: pieceID)
         let reachable = Pathfinder.reachableHexes(
             board: boardState, from: pos, range: moveRange, mode: mode,
-            avoidTraps: false, canOpenDoors: true,
+            avoidTraps: false, canOpenDoors: opensDoors(pieceID),
             occupiedByEnemy: enemies, occupiedByAlly: allies
         )
 
@@ -1833,11 +1881,19 @@ final class BoardCoordinator {
         boardScene?.highlightHexes(validHexes, style: style, offsetCol: offsetCol, offsetRow: offsetRow)
     }
 
-    /// Whether the acting character's move prints something that happens as it ends, so moving
-    /// no hexes is worth choosing (GH: any ability may be performed for 0).
+    /// Only characters open doors by walking into them (GH p.14): a closed door is a wall to a
+    /// monster or a summon, also when a character's card moves it (Parasitic Influence).
+    func opensDoors(_ pieceID: PieceID) -> Bool {
+        if case .character = pieceID { return true }
+        return false
+    }
+
+    /// Whether a move may be made for no hexes at all: the acting character's own (FAQ: "Move 0
+    /// is allowed" — the move is performed, with what its action prints: an infusion, XP, text
+    /// that happens as it ends).
     func canStayPut(_ pieceID: PieceID) -> Bool {
         guard case .character(let id) = pieceID, let turn = activePlayerTurn, turn.characterID == id else { return false }
-        return !turn.afterMoveTexts.isEmpty
+        return true
     }
 
     /// Begin a jump move action — ignores figures and terrain except on the last hex.
@@ -1880,7 +1936,7 @@ final class BoardCoordinator {
 
         guard let path = target == pos ? [pos] : Pathfinder.findPath(
             board: boardState, from: pos, to: target, mode: mode,
-            canOpenDoors: true, maxCost: range,
+            canOpenDoors: opensDoors(pieceID), maxCost: range,
             occupiedByEnemy: enemies, occupiedByAlly: allies
         ) else { return }
 
@@ -1956,17 +2012,38 @@ final class BoardCoordinator {
     func attackAllEnemies(from pieceID: PieceID, within range: Int, exactly: Bool = false) {
         if isConditionActive(.disarm, on: pieceID) {
             log("\(name(pieceID)) is disarmed and can\u{2019}t attack", category: .condition)
+            activePlayerTurn?.abilityDidNothing()
             activePlayerTurn?.advanceAfterAsyncAction()
             return
         }
-        guard let pos = boardState.piecePositions[pieceID] else {
-            activePlayerTurn?.advanceAfterAsyncAction()
-            return
-        }
-        let targets = targetableEnemies(of: pieceID, range: range)
+        let targets = enemiesToAttack(from: pieceID, within: range, exactly: exactly)
+        if targets.isEmpty { activePlayerTurn?.abilityDidNothing() }
+        attackEach(targets, from: pieceID, range: range)
+    }
+
+    /// The enemies an "attack all enemies within N" reaches, in the order they are attacked.
+    private func enemiesToAttack(from pieceID: PieceID, within range: Int, exactly: Bool) -> [PieceID] {
+        guard let pos = boardState.piecePositions[pieceID] else { return [] }
+        return targetableEnemies(of: pieceID, range: range)
             .filter { !exactly || boardState.piecePositions[$0].map { pos.distance(to: $0) == range } == true }
             .sorted { $0.description < $1.description }
-        attackEach(targets, from: pieceID, range: range)
+    }
+
+    /// Whether an "attack all enemies within N" has anyone to attack (and the attacker can attack).
+    func hasEnemiesToAttack(from pieceID: PieceID, within range: Int, exactly: Bool = false) -> Bool {
+        !isConditionActive(.disarm, on: pieceID) && !enemiesToAttack(from: pieceID, within: range, exactly: exactly).isEmpty
+    }
+
+    /// The enemies standing on hexes passed over, which "attack all enemies moved through" hits.
+    private func enemiesMovedThrough(by pieceID: PieceID, hexes: [HexCoord]) -> [PieceID] {
+        let passed = Set(hexes)
+        return boardState.piecePositions
+            .filter { passed.contains($0.value) && areEnemies(pieceID, $0.key) && !isConditionActive(.invisible, on: $0.key) }
+            .map(\.key).sorted { $0.description < $1.description }
+    }
+
+    func hasEnemiesMovedThrough(by pieceID: PieceID, hexes: [HexCoord]) -> Bool {
+        !isConditionActive(.disarm, on: pieceID) && !enemiesMovedThrough(by: pieceID, hexes: hexes).isEmpty
     }
 
     /// "Attack all enemies moved through" (Trample): every enemy standing on a hex the
@@ -1974,14 +2051,15 @@ final class BoardCoordinator {
     func attackEnemiesMovedThrough(from pieceID: PieceID, hexes: [HexCoord]) {
         if isConditionActive(.disarm, on: pieceID) {
             log("\(name(pieceID)) is disarmed and can\u{2019}t attack", category: .condition)
+            activePlayerTurn?.abilityDidNothing()
             activePlayerTurn?.advanceAfterAsyncAction()
             return
         }
-        let passed = Set(hexes)
-        let targets = boardState.piecePositions
-            .filter { passed.contains($0.value) && areEnemies(pieceID, $0.key) && !isConditionActive(.invisible, on: $0.key) }
-            .map(\.key).sorted { $0.description < $1.description }
-        if targets.isEmpty { log("\(name(pieceID)) moved through no enemy", category: .attack) }
+        let targets = enemiesMovedThrough(by: pieceID, hexes: hexes)
+        if targets.isEmpty {
+            log("\(name(pieceID)) moved through no enemy", category: .attack)
+            activePlayerTurn?.abilityDidNothing()
+        }
         attackEach(targets, from: pieceID, range: 1)
     }
 
@@ -2021,16 +2099,19 @@ final class BoardCoordinator {
         return Set(placement?.targetHexes ?? [])
     }
 
-    /// Begin a player's attack action.
-    func beginAttackAction(pieceID: PieceID, range: Int, targetCount: Int = 1) {
+    /// Begin a player's attack action. False when it can't be made (disarmed, or no target):
+    /// the action is then over, having done nothing.
+    @discardableResult
+    func beginAttackAction(pieceID: PieceID, range: Int, targetCount: Int = 1) -> Bool {
         if case .character = pieceID { teach(.attacking) }
         abilityTargets = []
         extraTargetsEarned = 0
         if isConditionActive(.disarm, on: pieceID) {
             log("\(name(pieceID)) is disarmed and can\u{2019}t attack", category: .condition)
             interactionMode = .idle
+            activePlayerTurn?.abilityDidNothing()
             activePlayerTurn?.advanceAfterAsyncAction()
-            return
+            return false
         }
 
         var validTargets = targetableEnemies(of: pieceID, range: range)
@@ -2046,8 +2127,9 @@ final class BoardCoordinator {
         if validTargets.isEmpty {
             log("\(name(pieceID)) has no target within range \(range)", category: .attack)
             interactionMode = .idle
+            activePlayerTurn?.abilityDidNothing()
             activePlayerTurn?.advanceAfterAsyncAction()
-            return
+            return false
         }
 
         if targetCount > 1 {
@@ -2062,6 +2144,7 @@ final class BoardCoordinator {
         let targetHexes = Set(validTargets.compactMap { boardState.piecePositions[$0] })
         boardScene?.highlightHexes(targetHexes, style: .attack, offsetCol: offsetCol, offsetRow: offsetRow)
         showAttackPreviews(attacker: pieceID, targets: validTargets)
+        return true
     }
 
     /// Begin an interactive condition-apply action (player taps a single enemy target).
@@ -2075,6 +2158,7 @@ final class BoardCoordinator {
             log("\(name(pieceID)) has no \(onAllies ? "ally" : "target") within range \(range) for \(GameText.conditionName(condition))",
                 category: .condition)
             interactionMode = .idle
+            activePlayerTurn?.abilityDidNothing()
             if !onAllies { activePlayerTurn?.advanceAfterAsyncAction() }
             return false
         }
@@ -2101,6 +2185,7 @@ final class BoardCoordinator {
         for target in targets { applyCondition(condition, to: target) }
         if targets.isEmpty {
             log("\(name(pieceID)) has no enemy within range \(range) for \(GameText.conditionName(condition))", category: .condition)
+            activePlayerTurn?.abilityDidNothing()
         }
     }
 
@@ -2202,6 +2287,7 @@ final class BoardCoordinator {
         let targets = targetableEnemies(of: pieceID, range: range)
         guard !targets.isEmpty else {
             log("\(name(pieceID)) has no enemy within range \(range) to \(isPush ? "push" : "pull")", category: .move)
+            activePlayerTurn?.abilityDidNothing()
             activePlayerTurn?.advanceAfterAsyncAction()
             return
         }
@@ -2218,46 +2304,42 @@ final class BoardCoordinator {
               boardState.piecePositions[target] != nil else {
             let label = isPush ? "Push" : "Pull"
             log("No target to \(label)", category: .move)
+            activePlayerTurn?.abilityDidNothing()
             activePlayerTurn?.advanceAfterAsyncAction()
             return
         }
-        beginPushPull(target: target, attackerPos: attackerPos, remainingSteps: steps, isPush: isPush)
+        beginPushPull(target: target, attackerPos: attackerPos, remainingSteps: steps, isPush: isPush, first: true)
     }
 
-    /// Start the interactive push/pull flow for a target.
-    func beginPushPull(target: PieceID, attackerPos: HexCoord, remainingSteps: Int, isPush: Bool) {
-        guard remainingSteps > 0,
-              let targetPos = boardState.piecePositions[target] else {
+    /// Start the interactive push/pull flow for a target. `first`: nothing of it has happened yet.
+    func beginPushPull(target: PieceID, attackerPos: HexCoord, remainingSteps: Int, isPush: Bool, first: Bool = false) {
+        pushPullDeclinable = false
+        guard remainingSteps > 0, let standing = boardState.piecePositions[target] else {
+            pushPullVia = []
             interactionMode = .idle
             completePushPullAction()
             return
         }
-
-        let candidates = isPush
-            ? targetPos.pushCandidates(awayFrom: attackerPos)
-            : targetPos.pullCandidates(toward: attackerPos)
-
-        // Each step must be into an empty-of-figures, passable hex; figures can't be forced
-        // through a closed door. Difficult terrain doesn't matter (p.20, p.42).
-        // Heaving Swing: "You may push the target into hexes containing obstacles."
-        let intoObstacles = isPush && pushesIntoObstacles
-        let valid = candidates.filter { coord in
-            (boardState.isPassable(coord) || (intoObstacles && boardState.cells[coord]?.overlay == .obstacle))
-                && !boardState.isOccupied(coord) && !boardState.isClosedDoor(coord)
-        }
+        if first { pushPullVia = [] }
+        let from = pushPullVia.last ?? standing
+        let valid = forcedMoveSteps(for: target, from: from, attackerPos: attackerPos, stepsLeft: remainingSteps, isPush: isPush)
 
         if valid.isEmpty {
             let label = isPush ? "Push" : "Pull"
             log("\(name(target)) can\u{2019}t be \(isPush ? "pushed" : "pulled") any further", category: .move, trace: label)
+            pushPullVia = []
             interactionMode = .idle
             completePushPullAction()
             return
         }
 
-        if valid.count == 1 || autoResolvePrompts {
+        // The acting character's own push or pull may be turned down before it starts.
+        let declinable = first && !autoResolvePrompts && !isAutomatedTurn && activePlayerTurn != nil
+        if (valid.count == 1 && !declinable) || autoResolvePrompts {
             executePushPullStep(target: target, to: valid[0], attackerPos: attackerPos, remainingSteps: remainingSteps, isPush: isPush)
         } else {
             let validSet = Set(valid)
+            pushPullDeclinable = declinable
             interactionMode = .selectingPushPullHex(
                 target: target, attackerPos: attackerPos, validHexes: validSet,
                 remainingSteps: remainingSteps, isPush: isPush
@@ -2266,17 +2348,84 @@ final class BoardCoordinator {
         }
     }
 
+    /// The hexes a figure being pushed (pulled) may be forced into next, from `from` (GH p.20,
+    /// FAQ "Push/Pull"): each further from (nearer to) the attacker than the last; never a wall,
+    /// an obstacle or a closed door; through a figure only if it is the mover's ally, and only on
+    /// the way to a hex it can stop on within the steps left. A flying figure is forced over
+    /// obstacles and any figure. Difficult terrain doesn't matter.
+    func forcedMoveSteps(for target: PieceID, from: HexCoord, attackerPos: HexCoord, stepsLeft: Int, isPush: Bool) -> [HexCoord] {
+        let flying = flies(target)
+        // Heaving Swing: "You may push the target into hexes containing obstacles."
+        let intoObstacles = isPush && pushesIntoObstacles
+        func next(_ hex: HexCoord) -> [HexCoord] {
+            isPush ? hex.pushCandidates(awayFrom: attackerPos) : hex.pullCandidates(toward: attackerPos)
+        }
+        func open(_ hex: HexCoord) -> Bool {
+            guard let cell = boardState.cells[hex], cell.overlay != .wall, !boardState.isClosedDoor(hex) else { return false }
+            return cell.passable || (cell.overlay == .obstacle && (flying || intoObstacles))
+        }
+        func canStop(_ hex: HexCoord) -> Bool {
+            open(hex) && (boardState.piece(at: hex) == nil || boardState.piece(at: hex) == target)
+        }
+        func canPass(_ hex: HexCoord) -> Bool {
+            guard open(hex) else { return false }
+            guard let other = boardState.piece(at: hex), other != target else { return true }
+            return flying || areAllies(target, other)
+        }
+        func comesToRest(_ hex: HexCoord, _ left: Int) -> Bool {
+            if canStop(hex) { return true }
+            return left > 0 && next(hex).contains { canPass($0) && comesToRest($0, left - 1) }
+        }
+        return next(from).filter { canPass($0) && comesToRest($0, stepsLeft - 1) }.sorted()
+    }
+
+    /// Whether a figure flies: a flying monster or summon, or a character with a flying item.
+    func flies(_ pieceID: PieceID) -> Bool {
+        switch pieceID {
+        case .monster(let name, _):
+            return gameManager?.game.monsters.first { $0.name == name }?.monsterData?.flying == true
+        case .summon:
+            return (entity(for: pieceID) as? GameSummon)?.flying == true
+        case .character:
+            return (entity(for: pieceID) as? GameCharacter).map { PassiveItems.flies($0.carriedItems) } ?? false
+        case .objective:
+            return false
+        }
+    }
+
+    /// Turn down the push or pull the board is asking about (the whole of it).
+    func declinePushPull() {
+        guard pushPullDeclinable, case .selectingPushPullHex(let target, _, _, _, let isPush) = interactionMode else { return }
+        pushPullDeclinable = false
+        pushPullVia = []
+        boardScene?.clearHighlights()
+        interactionMode = .idle
+        log("\(name(target)) isn\u{2019}t \(isPush ? "pushed" : "pulled")", category: .move)
+        completePushPullAction()
+    }
+
     /// Execute one step of a push/pull. Traps and hazardous terrain trigger on every hex the
-    /// target is forced into.
+    /// target is forced into (unless it flies).
     func executePushPullStep(target: PieceID, to destination: HexCoord, attackerPos: HexCoord, remainingSteps: Int, isPush: Bool) {
         boardScene?.clearHighlights()
         interactionMode = .idle
+        pushPullDeclinable = false
         // The target left the board meanwhile: the push ends, or the attack waiting on it hangs.
-        guard let currentPos = boardState.piecePositions[target] else { return completePushPullAction() }
+        guard let currentPos = boardState.piecePositions[target] else {
+            pushPullVia = []
+            return completePushPullAction()
+        }
+
+        // A hex with a figure the target may pass: it goes on through, to stop further along.
+        if let other = boardState.piece(at: destination), other != target {
+            pushPullVia.append(destination)
+            beginPushPull(target: target, attackerPos: attackerPos, remainingSteps: remainingSteps - 1, isPush: isPush)
+            return
+        }
 
         // Heaving Swing: pushed into an obstacle, it's destroyed; the target suffers 2 damage and
         // the character gains 1 experience.
-        if isPush, pushesIntoObstacles, boardState.cells[destination]?.overlay == .obstacle {
+        if isPush, pushesIntoObstacles, !flies(target), boardState.cells[destination]?.overlay == .obstacle {
             boardState.removeObstacle(at: destination)
             boardScene?.removeOverlaySprite(at: destination, offsetCol: offsetCol, offsetRow: offsetRow)
             log("\(name(target)) is driven into an obstacle and suffers 2 damage", category: .damage)
@@ -2285,13 +2434,16 @@ final class BoardCoordinator {
                 log("\(name(.character(id))) gains 1 XP", category: .info)
             }
             if sufferDamage(2, to: target, killer: activePlayerTurn.map { .character($0.characterID) }) {
+                pushPullVia = []
                 completePushPullAction()
                 return
             }
         }
+        let path = [currentPos] + pushPullVia + [destination]
+        pushPullVia = []
         let generation = boardGeneration
         Task { @MainActor in
-            let alive = await self.moveAlong(target, path: [currentPos, destination], style: .forced)
+            let alive = await self.moveAlong(target, path: path, style: .forced)
             guard self.isCurrentBoard(generation) else { return }
             let stepsLeft = remainingSteps - 1
             if alive && stepsLeft > 0 {
@@ -2337,7 +2489,7 @@ final class BoardCoordinator {
         let monstersTurn = isAutomatedTurn, generation = boardGeneration
         await withCheckedContinuation { [weak self] continuation in
             self?.pendingPushPullContinuation = continuation
-            self?.beginPushPull(target: target, attackerPos: attackerPos, remainingSteps: steps, isPush: isPush)
+            self?.beginPushPull(target: target, attackerPos: attackerPos, remainingSteps: steps, isPush: isPush, first: true)
         }
         // The push leaves the board idle; a monster's turn goes on, with Pause and fast-forward.
         if monstersTurn && isCurrentBoard(generation) { interactionMode = .watchingMonsterTurn }
@@ -2357,17 +2509,20 @@ final class BoardCoordinator {
 
     /// Loot X: pick up every money token and treasure tile within range X and line of sight,
     /// regardless of monsters or obstacles in between (GH p.28).
-    func collectLootInRange(pieceID: PieceID, range: Int) {
-        guard let pos = boardState.piecePositions[pieceID] else { return }
+    /// False when there is nothing to loot in range: a Loot can't then be performed (FAQ).
+    @discardableResult
+    func collectLootInRange(pieceID: PieceID, range: Int) -> Bool {
+        guard let pos = boardState.piecePositions[pieceID] else { return false }
         let coords = boardState.cells.keys.filter { coord in
             guard pos.distance(to: coord) <= range, hasLoot(at: coord) else { return false }
             return coord == pos || LineOfSight.hasLOS(from: pos, to: coord, board: boardState)
         }
         if coords.isEmpty {
             log("\(name(pieceID)) finds nothing to loot within range \(range)", category: .loot)
-            return
+            return false
         }
         lootHexes(for: pieceID, coords: coords.sorted(), byLootAction: true)
+        return true
     }
 
     /// Whether a hex holds a money token or an unlooted treasure tile.
@@ -2662,7 +2817,8 @@ final class BoardCoordinator {
             }
             let pieceID = PieceID.monster(name: monster.name, standee: entity.number)
             boardState.placePiece(pieceID, at: destination)
-            if entity.type == .elite { boardState.eliteStandees.insert(pieceID) }
+            // A standee number is reused once its monster is dead: the mark follows the newcomer.
+            if entity.type == .elite { boardState.eliteStandees.insert(pieceID) } else { boardState.eliteStandees.remove(pieceID) }
             boardScene?.addPieceSprite(id: pieceID, at: destination, offsetCol: offsetCol, offsetRow: offsetRow)
             placed.append((monster.name, entity.number))
         }

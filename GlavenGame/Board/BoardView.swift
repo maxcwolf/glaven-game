@@ -418,7 +418,8 @@ struct BoardView: View {
 
     @ViewBuilder
     private var executionBottomBar: some View {
-        if let playerTurn = coordinator.activePlayerTurn {
+        // A long rest has no cards in play: its own panel asks for what it needs.
+        if let playerTurn = coordinator.activePlayerTurn, !playerTurn.isLongRest {
             let character = gameManager.game.characters.first { $0.id == playerTurn.characterID }
             let edition = character?.edition ?? "gh"
             HStack(alignment: .center, spacing: 16) {

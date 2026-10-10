@@ -23,6 +23,8 @@ final class ScenarioManager {
         onBeforeMutate?()
         let scenario = Scenario(data: scenarioData)
         game.scenario = scenario
+        // Standees are drawn at random as monsters are set up, revealed, spawned and summoned.
+        monsterManager.randomStandees = true
         recordStartingTallies()
         // Every scenario starts with all elements inert (iPad playthrough 2026-10-09: the last
         // scenario's Earth was still lit as #2 began); its own rules may infuse some below.
@@ -180,6 +182,7 @@ final class ScenarioManager {
             character.lostCards.removeAll()
             character.roundBonusCards.removeAll()
             character.lostWhenRemoved.removeAll()
+            character.bottomHalvesInPlay.removeAll()
             // Bless, Curse and scenario-added cards leave the attack modifier deck.
             character.attackModifierDeck.removeScenarioCards()
             character.shield = nil

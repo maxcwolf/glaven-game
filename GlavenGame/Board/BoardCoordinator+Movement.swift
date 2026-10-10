@@ -73,7 +73,8 @@ extension BoardCoordinator {
         for index in 1..<path.count {
             let hex = path[index]
             let isLast = index == path.count - 1
-            let entered = style == .normal || style == .forced || (style == .jump && isLast)
+            // A flying figure forced into a hex doesn't touch what is on it (FAQ).
+            let entered = style == .normal || (style == .forced && !flies(pieceID)) || (style == .jump && isLast)
             let cell = boardState.cells[hex]
             let hitsTrap = entered && cell?.isTrap == true
             let hitsHazard = entered && cell?.isHazard == true && !hazardProof
@@ -297,6 +298,7 @@ extension BoardCoordinator {
         guard !hexes.isEmpty else {
             log(token == .destroyObstacle ? "\(name(pieceID)) has no obstacle beside them"
                                           : "\(name(pieceID)) has no empty hex beside them for \(token.name)", category: .info)
+            activePlayerTurn?.abilityDidNothing()
             return false
         }
         interactionMode = .placingToken(pieceID: pieceID, token: token, remaining: count, validHexes: hexes)
@@ -339,6 +341,7 @@ extension BoardCoordinator {
         guard let position = boardState.piecePositions[pieceID],
               let trap = position.neighbors.sorted().first(where: { boardState.cells[$0]?.isTrap == true }) else {
             log("\(name(pieceID)) has no adjacent trap to disarm", category: .info)
+            activePlayerTurn?.abilityDidNothing()
             return
         }
         boardState.removeTrap(at: trap)

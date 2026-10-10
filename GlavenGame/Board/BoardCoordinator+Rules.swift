@@ -387,6 +387,7 @@ extension BoardCoordinator {
                let summon = owner.summons.first(where: { $0.id == id }) {
                 summon.dead = true
                 log("\(name(pieceID)) dies", category: .death)
+                retireSummonCard(of: summon, owner: owner)
             }
             removePieceFromBoard(pieceID)
         case .objective(let number):
@@ -414,6 +415,36 @@ extension BoardCoordinator {
             fallenFigure = nil
         }
         checkVictoryDefeat()
+    }
+
+    /// A summon's card stays in the active area only while its summon lives (GH p.26): with the
+    /// last of a card's summons dead, the card leaves — to the lost pile if its action has the
+    /// lost icon.
+    func retireSummonCard(of summon: GameSummon, owner: GameCharacter) {
+        guard let gameManager else { return }
+        let deck = gameManager.characterManager.abilities(for: owner)
+        for cardId in owner.activeCards {
+            guard let card = deck.first(where: { $0.cardId == cardId }) else { continue }
+            let top = isTopHalfInPlay(cardId, of: owner)
+            let names = Self.summonNames(in: (top ? card.actions : card.bottomActions) ?? [])
+            guard names.contains(summon.name),
+                  !owner.summons.contains(where: { !$0.dead && $0.uuid != summon.uuid && names.contains($0.name) }) else { continue }
+            owner.removeFromActiveArea(cardId)
+            log("\(card.name ?? "The card") leaves \(name(.character(owner.id)))\u{2019}s active area", category: .info)
+            return
+        }
+    }
+
+    /// The summons a half of a card brings, by name.
+    static func summonNames(in actions: [ActionModel]) -> Set<String> {
+        var names = Set<String>()
+        for action in actions {
+            if action.type == .summon, let name = action.summonValueObject?.name ?? action.value?.stringValue {
+                names.insert(name)
+            }
+            names.formUnion(summonNames(in: action.subActions ?? []))
+        }
+        return names
     }
 
     /// Exhaust a character: all its cards go to the lost pile, its figure and summons leave the
@@ -446,6 +477,7 @@ extension BoardCoordinator {
         character.activeCards = []
         character.roundBonusCards = []
         character.lostWhenRemoved = []
+        character.bottomHalvesInPlay = []
         removePieceFromBoard(.character(character.id))
         if let turn = activePlayerTurn, turn.characterID == character.id {
             turn.endForExhaustion()
