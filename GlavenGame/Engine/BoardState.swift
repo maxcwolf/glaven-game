@@ -47,6 +47,16 @@ final class BoardState {
     /// Loot tokens on the board (dropped when monsters die). Value = token count at that hex.
     var lootTokens: [HexCoord: Int] = [:]
 
+    /// The lettered spawn hexes of the revealed tiles, by marker ("a").
+    var markerHexes: [String: [HexCoord]] = [:]
+
+    /// Places for objectives in the revealed tiles that no objective stands on yet.
+    var openObjectiveSlots: [ObjectiveSlot] = []
+
+    /// Where each objective on the board stands, by its number: the hexes it covers and whether
+    /// it bars a door.
+    var objectiveSites: [Int: ObjectiveSlot] = [:]
+
     // MARK: - Derived
 
     /// Reverse lookup: which piece is at a given coordinate.

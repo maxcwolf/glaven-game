@@ -158,6 +158,10 @@ final class ScenarioSimulator {
             return "scenario \(index) did not finish (round \(gm.game.round))"
         case .victory:
             if scenario?.pendingFinish == "won" { return nil }
+            // The book's goal for the objectives (destroy the altars, bring the escort home).
+            if let goal = coord.scenarioData?.placements?.goal, goal.replacesKillAll {
+                return coord.objectiveGoalMet(goal) ? nil : "scenario \(index) won without its goal met"
+            }
             if scenario?.data.rules?.contains(where: { $0.finish == "won" }) == true {
                 return "scenario \(index) won by killing everything, but it has its own goal"
             }
@@ -167,6 +171,8 @@ final class ScenarioSimulator {
             return nil
         case .defeat:
             if scenario?.pendingFinish == "lost" { return nil }
+            // What the party was to protect is lost.
+            if let goal = coord.scenarioData?.placements?.goal, coord.objectiveLost(goal) != nil { return nil }
             let standing = gm.game.characters.filter { !$0.absent && !$0.exhausted }
             return standing.isEmpty ? nil : "scenario \(index) lost with \(standing.map(\.name)) still standing"
         }

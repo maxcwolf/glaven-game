@@ -1,0 +1,122 @@
+{
+  "3": {"tiles": {
+    "l1b": {"markers": {"a": [[0, 3]]}}
+  }},
+  "19": {"goal": {"text": "Protect Hail until she reaches the altar.", "arrive": {"objective": 1, "marker": "b", "count": 1, "adjacent": true}, "lostAt": {"1": 1}}, "tiles": {
+    "c2b": {"markers": {"e": [[0, 2]]}},
+    "d1a": {"markers": {"d": [[1, 3]]}},
+    "d2a": {"objectives": [{"objective": 1, "cells": [[0, 2]]}], "markers": {"c": [[2, 4]]}},
+    "i1b": {"markers": {"b": [[2, 3]]}}
+  }},
+  "22": {"goal": {"text": "Destroy all altars.", "destroy": [1]}, "tiles": {
+    "c1a": {"objectives": [{"objective": 1, "cells": [[0, 3]]}]},
+    "c2b": {"objectives": [{"objective": 1, "cells": [[2, 3]]}]},
+    "d1a": {"objectives": [{"objective": 1, "cells": [[0, 3]]}]},
+    "d2a": {"objectives": [{"objective": 1, "cells": [[3, 1]]}]}
+  }},
+  "26": {"tiles": {
+    "l1a": {"objectives": [{"objective": 1, "cells": [[0, 5]]}, {"objective": 1, "cells": [[3, 5]]}, {"objective": 2, "cells": [[0, 1]]}, {"objective": 3, "cells": [[3, 1]]}]}
+  }},
+  "27": {"goal": {"lostAt": {"1": 1}}, "tiles": {
+    "m1a": {"objectives": [{"objective": 1, "cells": [[2, 3]]}], "markers": {"b": [[4, 6]], "c": [[4, 0]], "d": [[1, 0]], "e": [[1, 6]]}}
+  }},
+  "29": {"tiles": {
+    "e1a": {"objectives": [{"objective": 1, "cells": [[1, -1]], "door": true}, {"objective": 1, "cells": [[1, 5]], "door": true}, {"objective": 1, "cells": [[5, 2]], "door": true}]}
+  }},
+  "31": {"goal": {"text": "Destroy the rock column.", "destroy": [1]}, "tiles": {
+    "l2a": {"objectives": [{"objective": 1, "cells": [[2, 3]]}], "markers": {"b": [[4, 0]], "c": [[4, 6]]}}
+  }},
+  "33": {"tiles": {
+    "a3b": {"markers": {"a": [[0, 2], [0, 1], [1, 2], [1, 1], [2, 2], [2, 1]]}},
+    "a4b": {"objectives": [{"objective": 1, "cells": [[3, 0]], "door": true}]},
+    "c2b": {"markers": {"d": [[1, 0]]}},
+    "i1b": {"markers": {"c": [[0, 0], [5, 0], [0, 2], [5, 2]]}}
+  }},
+  "35": {"tiles": {
+    "l3a": {"objectives": [{"objective": 1, "cells": [[4, 7]], "door": true}]}
+  }},
+  "36": {"protect": [1], "tiles": {
+    "l1b": {"markers": {"c": [[2, 6]], "d": [[0, 4]]}},
+    "l3a": {"objectives": [{"objective": 1, "cells": [[4, 7]], "door": true}], "markers": {"a": [[0, 2]], "b": [[2, 0]], "e": [[4, 5]]}}
+  }},
+  "38": {"goal": {"text": "Kill all enemies and protect the Orchid.", "lostAt": {"1": 1}}, "tiles": {
+    "c2a": {"objectives": [{"objective": 1, "cells": [[1, 3]]}]}
+  }},
+  "39": {"goal": {"text": "Destroy the altar.", "destroy": [1]}, "tiles": {
+    "d2b": {"objectives": [{"objective": 1, "cells": [[3, 4]]}]}
+  }},
+  "42": {"goal": {"text": "Destroy all vocal chords.", "destroy": [1, 2, 3, 4, 5, 6]}, "tiles": {
+    "l2a": {"objectives": [{"objective": 1, "cells": [[0, 6]]}, {"objective": 2, "cells": [[0, 5]]}, {"objective": 3, "cells": [[0, 4]]}, {"objective": 4, "cells": [[0, 2]]}, {"objective": 5, "cells": [[0, 1]]}, {"objective": 6, "cells": [[0, 0]]}]}
+  }},
+  "44": {"goal": {"text": "Kill all enemies and protect all captive Orchids."}, "protect": [2], "tiles": {
+    "b1b": {"objectives": [{"objective": 1, "cells": [[0, 2]]}]},
+    "b3a": {"objectives": [{"objective": 2, "cells": [[1, 3]]}]},
+    "b4a": {"objectives": [{"objective": 2, "cells": [[2, 3]]}, {"objective": 2, "cells": [[3, 2]]}]},
+    "l1b": {"objectives": [{"objective": 2, "cells": [[4, 6]]}]},
+    "m1b": {"objectives": [{"objective": 2, "cells": [[1, 0]]}, {"objective": 2, "cells": [[3, 0]]}, {"objective": 2, "cells": [[5, 2]]}, {"objective": 2, "cells": [[2, 3]]}, {"objective": 2, "cells": [[5, 4]]}]}
+  }},
+  "45": {"goal": {"text": "Destroy all totems.", "destroy": [1]}, "tiles": {
+    "d1b": {"objectives": [{"objective": 1, "cells": [[3, 4]]}]},
+    "f1b": {"objectives": [{"objective": 1, "cells": [[0, 2]]}, {"objective": 1, "cells": [[0, 8]]}]},
+    "g1a": {"objectives": [{"objective": 1, "cells": [[1, 2]]}]},
+    "m1b": {"objectives": [{"objective": 1, "cells": [[1, 0]]}, {"objective": 1, "cells": [[5, 4]]}]}
+  }},
+  "56": {"tiles": {
+    "m1b": {"objectives": [{"objective": 1, "cells": [[0, 1]]}, {"objective": 1, "cells": [[1, 0]]}, {"objective": 1, "cells": [[2, 0]]}]}
+  }},
+  "57": {"tiles": {
+    "f1b": {"markers": {"a": [[1, 1]]}}
+  }},
+  "58": {"tiles": {
+    "b1a": {"objectives": [{"objective": 1, "cells": [[0, 0]]}, {"objective": 1, "cells": [[3, 0]]}, {"objective": 1, "cells": [[0, 3]]}, {"objective": 1, "cells": [[2, 3]]}]}
+  }},
+  "62": {"tiles": {
+    "b2b": {"markers": {"c": [[1, 3]]}},
+    "m1a": {"markers": {"a": [[0, 2]], "b": [[5, 2]]}}
+  }},
+  "68": {"goal": {"text": "Kill all enemies and protect the tree."}, "tiles": {
+    "b1b": {"objectives": [{"objective": 1, "cells": [[2, -6], [1, -6], [1, -5]]}]}
+  }},
+  "69": {"tiles": {
+    "b1b": {"markers": {"b": [[1, 3]], "d": [[2, 0], [1, 0]]}},
+    "d2a": {"markers": {"a": [[2, 2]]}},
+    "l3a": {"markers": {"c": [[3, 5]]}}
+  }},
+  "70": {"tiles": {
+    "l1b": {"markers": {"b": [[4, 2]]}},
+    "l3a": {"markers": {"a": [[4, 4]]}}
+  }},
+  "72": {"goal": {"text": "Destroy all trees and kill all Oozes.", "destroy": [1, 2, 3], "kill": ["ooze"]}, "tiles": {
+    "l1b": {"objectives": [{"objective": 2, "cells": [[1, 0], [0, 0], [0, 1]]}]},
+    "l3a": {"objectives": [{"objective": 3, "cells": [[4, 0], [3, 0], [3, 1]]}]},
+    "m1b": {"objectives": [{"objective": 1, "cells": [[2, 0], [2, 1], [3, 0]]}]}
+  }},
+  "74": {"tiles": {
+    "b1a": {"markers": {"a": [[1, 3]], "b": [[2, 3], [0, 3]], "d": [[3, 0], [0, 0]]}},
+    "g2b": {"markers": {"c": [[0, 0], [7, 0]], "e": [[0, 1], [6, 1]]}}
+  }},
+  "75": {"goal": {"text": "Dig up all graves and kill the Bloated Regent.", "destroy": [1, 2, 3], "kill": ["bloated-regent"]}, "tiles": {
+    "b1b": {"objectives": [{"objective": 3, "cells": [[2, 2], [1, 2]]}]},
+    "g1a": {"objectives": [{"objective": 1, "cells": [[3, 2]]}, {"objective": 2, "cells": [[0, 0], [1, 0]]}]},
+    "l1b": {"objectives": [{"objective": 2, "cells": [[0, 0]]}, {"objective": 1, "cells": [[3, 4]]}, {"objective": 2, "cells": [[1, 6]]}]},
+    "l3a": {"objectives": [{"objective": 1, "cells": [[0, 2]]}, {"objective": 1, "cells": [[3, 5]]}, {"objective": 2, "cells": [[2, 0], [2, 1]]}]}
+  }},
+  "79": {"tiles": {
+    "d2a": {"objectives": [{"objective": 1, "cells": [[0, 3]]}]}
+  }},
+  "84": {"goal": {"text": "Kill all enemies and protect the crystal.", "lostAt": {"1": 1}}, "tiles": {
+    "l2a": {"objectives": [{"objective": 1, "cells": [[0, 3]]}]}
+  }},
+  "86": {"goal": {"text": "Save seven villagers before five are killed.", "arrive": {"objective": 1, "marker": "b", "count": 7}, "lostAt": {"1": 5}}, "tiles": {
+    "a4a": {"objectives": [{"objective": 1, "cells": [[3, 1]]}]},
+    "b1b": {"markers": {"c": [[0, 1]], "e": [[1, 0]]}},
+    "b2a": {"objectives": [{"objective": 1, "cells": [[0, 3]]}, {"objective": 1, "cells": [[1, 2]]}, {"objective": 1, "cells": [[1, 3]]}]},
+    "b3a": {"objectives": [{"objective": 1, "cells": [[2, 0]]}, {"objective": 1, "cells": [[2, 3]]}, {"objective": 1, "cells": [[0, 2]]}]},
+    "h3a": {"markers": {"b": [[4, 6], [3, 6]]}},
+    "m1b": {"objectives": [{"objective": 1, "cells": [[4, 2]]}, {"objective": 1, "cells": [[2, 4]]}, {"objective": 1, "cells": [[1, 0]]}, {"objective": 1, "cells": [[0, 3]]}], "markers": {"d": [[4, 1]], "f": [[4, 5]]}}
+  }},
+  "90": {"tiles": {
+    "d1b": {"markers": {"c": [[0, 2], [1, 0]]}},
+    "m1b": {"markers": {"b": [[2, 4], [3, 4]]}}
+  }}
+}

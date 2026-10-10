@@ -269,8 +269,18 @@ extension BoardCoordinator {
             }
             let words = name(piece).split(separator: " ")
             appearance.initials = words.prefix(2).compactMap(\.first).map(String.init).joined().uppercased()
-        case .objective:
-            break
+        case .objective(let id):
+            // No portrait: the first letters of its name ("WP" for a Water Pump), numbered when
+            // there are several of the kind.
+            guard let container = objectiveContainer(of: piece) else { break }
+            let words = container.name.split(separator: " ")
+            appearance.initials = words.prefix(2).compactMap(\.first).map(String.init).joined().uppercased()
+            appearance.badge = GameText.objectiveOrdinal(id, game: game).map(String.init)
+            // Standing on the obstacle or door the map draws for it, it lets that show.
+            if let site = boardState.objectiveSites[id], !container.escort,
+               site.barsDoor || boardState.cells[site.coord]?.overlay == .obstacle {
+                appearance.isHollow = true
+            }
         }
         return appearance
     }

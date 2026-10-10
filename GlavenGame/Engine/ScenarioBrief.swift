@@ -21,10 +21,18 @@ struct ScenarioBrief: Equatable {
         let rules = scenario.rules ?? []
         let name = labels?.resolveLabel(key: "scenario.title.\(scenario.edition).\(scenario.index)", edition: scenario.edition)
             ?? scenario.name
+        // What the scenario book asks of the objectives, where the scenario data has no rule for it.
+        let written = scenario.solo == nil
+            ? ScenarioPlacementStore.shared.placements(for: scenario.index, edition: scenario.edition)?.goal : nil
+        let losses = (written?.lostAt ?? [:]).sorted { $0.key < $1.key }.compactMap { key, limit -> String? in
+            guard let index = Int(key), let objectives = scenario.objectives, objectives.indices.contains(index - 1),
+                  let name = objectives[index - 1].name else { return nil }
+            return lossLine(name: name, limit: limit)
+        }
         return ScenarioBrief(
             title: "#\(scenario.index) \(name)",
-            goal: goal(rules.filter { $0.finish == "won" }, edition: scenario.edition, labels: labels),
-            defeat: ["Every character is exhausted."]
+            goal: written?.text ?? goal(rules.filter { $0.finish == "won" }, edition: scenario.edition, labels: labels),
+            defeat: ["Every character is exhausted."] + losses
                 + rules.filter { $0.finish == "lost" }.map { lossText($0, labels: labels, edition: scenario.edition) },
             rules: specialRules(scenario, labels: labels),
             monsters: monsterKeys(scenario.monsters ?? []),
@@ -77,6 +85,11 @@ struct ScenarioBrief: Equatable {
     }
 
     // MARK: - Goal
+
+    /// "Hail is killed." / "5 Villagers are killed."
+    static func lossLine(name: String, limit: Int) -> String {
+        limit == 1 ? "\(name) is killed." : "\(limit) \(plural(name, limit)) are killed."
+    }
 
     private static func goal(_ winRules: [ScenarioRule], edition: String, labels: EditionDataStore?) -> String {
         guard let rule = winRules.first else { return "Kill every enemy." }

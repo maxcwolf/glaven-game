@@ -17,6 +17,12 @@ final class GameObjectiveContainer: Figure {
     var escortActions: [ActionModel] = []
     /// Whether this escort uses the ally attack modifier deck instead of the monster deck.
     var useAllyDeck: Bool = false
+    /// Not an escort, but the monsters' target all the same: something to keep from harm that
+    /// is no ally (captives, a gate under siege).
+    var isProtected: Bool = false
+    /// Which of the scenario's objectives this is (1-based, as its rooms refer to them); nil for
+    /// one a rule spawned.
+    var objectiveIndex: Int?
 
     var figureType: FigureType { .objectiveContainer }
 

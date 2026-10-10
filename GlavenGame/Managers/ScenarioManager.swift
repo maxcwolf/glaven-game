@@ -392,10 +392,12 @@ final class ScenarioManager {
             }
         }
 
-        // Add objectives
+        // Add objectives. One the rooms list arrives with its room, once per mention; one no
+        // room lists is set up now.
         if let objectives = data.objectives {
-            for (idx, objData) in objectives.enumerated() {
-                addObjective(objData, index: idx + 1, edition: edition)
+            let listed = Set((data.rooms ?? []).flatMap { $0.objectives ?? [] }.map { Self.objectiveReference($0).index })
+            for (idx, objData) in objectives.enumerated() where !listed.contains(idx + 1) {
+                for _ in 0..<objData.resolvedCount { addObjectiveEntity(objData, index: idx + 1, edition: edition) }
             }
         }
 
@@ -469,49 +471,54 @@ final class ScenarioManager {
 
     // MARK: - Private: Objective Spawning
 
-    private func addObjective(_ objData: ObjectiveData, index: Int, edition: String) {
-        let container = GameObjectiveContainer(
-            name: objData.name ?? "Objective \(index)",
-            edition: edition,
-            title: objData.name ?? "",
-            escort: objData.isEscort,
-            level: game.level
-        )
-        container.initiative = objData.resolvedInitiative
-        container.escortActions = objData.actions ?? []
-        container.useAllyDeck = objData.useAllyDeck
-
-        // Calculate health and create entities (count > 1 for multi-instance objectives)
-        let entityCount = objData.resolvedCount
-        if let healthValue = objData.health {
-            let hp = evaluateEntityValue(healthValue, level: game.level,
-                                          characterCount: game.characters.filter { !$0.absent }.count)
-            for i in 0..<entityCount {
-                let entity = GameObjectiveEntity(number: index + i, health: hp, maxHealth: hp)
-                if let marker = objData.marker {
-                    entity.marker = marker
-                }
-                container.entities.append(entity)
+    /// One more of the scenario's objective `index` (1-based): its own piece, with a number no
+    /// other objective has. Objectives of one kind share a container, as monsters of a type do.
+    private func addObjectiveEntity(_ objData: ObjectiveData, index: Int, edition: String) {
+        let name = objData.name ?? "Objective \(index)"
+        let container: GameObjectiveContainer
+        if let existing = game.objectives.first(where: { $0.objectiveIndex == index && $0.name == name }) {
+            container = existing
+        } else {
+            container = GameObjectiveContainer(name: name, edition: edition, title: objData.name ?? "",
+                                               escort: objData.isEscort, level: game.level)
+            container.initiative = objData.resolvedInitiative
+            container.escortActions = objData.actions ?? []
+            container.useAllyDeck = objData.useAllyDeck
+            container.objectiveIndex = index
+            if let scenario = game.scenario?.data, scenario.solo == nil {
+                container.isProtected = ScenarioPlacementStore.shared
+                    .placements(for: scenario.index, edition: scenario.edition)?.protect?.contains(index) ?? false
             }
+            game.figures.append(.objective(container))
         }
+        guard let healthValue = objData.health else { return }
+        let hp = evaluateEntityValue(healthValue, level: game.level,
+                                     characterCount: game.characters.filter { !$0.absent }.count)
+        let entity = GameObjectiveEntity(number: game.nextObjectiveNumber, health: hp, maxHealth: hp)
+        if let marker = objData.marker { entity.marker = marker }
+        if let tags = objData.tags { entity.tags = tags }
+        container.entities.append(entity)
+    }
 
-        game.figures.append(.objective(container))
+    /// A room's mention of an objective: its number, or "2:C > 2" — objective 2, only with more
+    /// than two characters.
+    static func objectiveReference(_ ref: IntOrString) -> (index: Int, condition: String?) {
+        switch ref {
+        case .int(let index): return (index, nil)
+        case .string(let text):
+            let parts = text.split(separator: ":", maxSplits: 1).map { $0.trimmingCharacters(in: .whitespaces) }
+            return (Int(parts.first ?? "") ?? 0, parts.count > 1 ? parts[1] : nil)
+        }
     }
 
     private func spawnObjectiveByReference(_ ref: IntOrString, scenario: Scenario) {
         guard let objectives = scenario.data.objectives else { return }
-        let index = ref.intValue
+        let (index, condition) = Self.objectiveReference(ref)
         guard index > 0, index <= objectives.count else { return }
-        let objData = objectives[index - 1]
-
-        // Check if already spawned
-        let name = objData.name ?? "Objective \(index)"
-        if game.figures.contains(where: {
-            if case .objective(let o) = $0 { return o.name == name }
-            return false
-        }) { return }
-
-        addObjective(objData, index: index, edition: scenario.data.edition)
+        let characters = max(2, game.characters.filter { !$0.absent }.count)
+        if let condition,
+           ScenarioExpression.condition(condition, variables: ["C": characters, "L": game.level]) != true { return }
+        addObjectiveEntity(objectives[index - 1], index: index, edition: scenario.data.edition)
     }
 
     // MARK: - Private: Requirements Checking

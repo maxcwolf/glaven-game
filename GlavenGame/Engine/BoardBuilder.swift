@@ -50,13 +50,13 @@ enum BoardBuilder {
         var reveal = Reveal()
         let start = startingPlacement(in: scenario.mapTileData, initialRoomRefs: initialRoomRefs)
         addRoom(start.tile, path: start.path, root: scenario.mapTileData, to: board,
-                turnAxis: start.axis, reveal: &reveal)
+                turnAxis: start.axis, placements: scenario.placements, reveal: &reveal)
         // Some scenarios split the party between separate starting tiles (e.g. GH 50, 58, 85: the
         // scenario's first room covers both). Every tile with starting hexes is revealed at setup.
         for placement in findPlacements(in: scenario.mapTileData)
         where hasStartingLocations(placement.tile) && !reveal.visited.contains(placement.path) {
             addRoom(placement.tile, path: placement.path, root: scenario.mapTileData, to: board,
-                    turnAxis: placement.axis, reveal: &reveal)
+                    turnAxis: placement.axis, placements: scenario.placements, reveal: &reveal)
         }
         recomputeBounds(board)
         return (board, reveal)
@@ -100,7 +100,8 @@ enum BoardBuilder {
             ? nil
             : (refPoint: (door.refPoint.col, door.refPoint.row), origin: (door.origin.col, door.origin.row))
         var reveal = Reveal(preexisting: Set(board.cells.keys))
-        addRoom(tile, path: path, root: root, to: board, turnAxis: turnAxis, reveal: &reveal)
+        addRoom(tile, path: path, root: root, to: board, turnAxis: turnAxis,
+                placements: scenario.placements, reveal: &reveal)
 
         if let idx = board.doors.firstIndex(where: { $0.coord == door.coord }) {
             board.doors[idx].isOpen = true
@@ -141,6 +142,23 @@ enum BoardBuilder {
         }
         walk(root, path: [], axis: nil)
         return result
+    }
+
+    /// Where a lettered hex is on the whole map, revealed or not, with the path of its tile.
+    static func markerSites(_ marker: String, in scenario: VGBScenario) -> [(path: [Int], coord: HexCoord)] {
+        guard let placements = scenario.placements else { return [] }
+        var sites: [(path: [Int], coord: HexCoord)] = []
+        for placement in findPlacements(in: scenario.mapTileData) {
+            for cell in placements.tiles[placement.tile.ref.lowercased()]?.markers?[marker] ?? [] where cell.count >= 2 {
+                let global = HexMath.normaliseAndRotatePoint(
+                    turns: placement.tile.turns, refPoint: placement.axis?.refPoint ?? (0, 0),
+                    origin: placement.axis?.origin ?? (0, 0), tileCoord: (cell[0], cell[1])
+                )
+                let coord = HexCoord(global.0, global.1)
+                if !sites.contains(where: { $0.coord == coord }) { sites.append((placement.path, coord)) }
+            }
+        }
+        return sites
     }
 
     /// The tile at a door-index path from the root.
@@ -204,6 +222,7 @@ enum BoardBuilder {
         root: VGBMapTileData,
         to board: BoardState,
         turnAxis: TurnAxis?,
+        placements: ScenarioPlacements?,
         reveal: inout Reveal
     ) {
         guard !reveal.visited.contains(path) else { return }
@@ -323,14 +342,41 @@ enum BoardBuilder {
 
             if door.subType == "corridor" {
                 // No door: the connected tile is part of this room.
-                addRoom(door.mapTileData, path: path + [index], root: root, to: board, turnAxis: axis, reveal: &reveal)
+                addRoom(door.mapTileData, path: path + [index], root: root, to: board, turnAxis: axis,
+                        placements: placements, reveal: &reveal)
                 continue
             }
             recordDoor(at: doorCoord, subType: door.subType, leadingTo: door.mapTileData.ref,
                        path: path + [index], axis: axis, on: board)
         }
 
-        // 5. Connector back to the parent tile, when this tile was revealed before its parent.
+        // 5. Objective places and spawn markers written for this tile (once per hex: a tile
+        //    joined by several corridors appears once per connector in the map data).
+        if let written = placements?.tiles[tileData.ref.lowercased()] {
+            let place: ([Int]) -> HexCoord? = { cell in
+                guard cell.count >= 2 else { return nil }
+                let global = HexMath.normaliseAndRotatePoint(
+                    turns: tileData.turns, refPoint: refPoint, origin: origin, tileCoord: (cell[0], cell[1])
+                )
+                return HexCoord(global.0, global.1)
+            }
+            for objective in written.objectives ?? [] {
+                let cells = objective.cells.compactMap(place)
+                guard let coord = cells.first, board.cells[coord] != nil, !reveal.preexisting.contains(coord),
+                      !board.openObjectiveSlots.contains(where: { $0.coord == coord }),
+                      !board.objectiveSites.values.contains(where: { $0.coord == coord }) else { continue }
+                board.openObjectiveSlots.append(ObjectiveSlot(objective: objective.objective, coord: coord, cells: cells,
+                                                              barsDoor: objective.door ?? false))
+            }
+            for (marker, hexes) in (written.markers ?? [:]).sorted(by: { $0.key < $1.key }) {
+                for coord in hexes.compactMap(place) where board.cells[coord] != nil
+                    && !(board.markerHexes[marker] ?? []).contains(coord) {
+                    board.markerHexes[marker, default: []].append(coord)
+                }
+            }
+        }
+
+        // 6. Connector back to the parent tile, when this tile was revealed before its parent.
         if let last = path.last, let parent = tile(at: Array(path.dropLast()), in: root),
            last < parent.doors.count {
             let parentPath = Array(path.dropLast())
@@ -338,7 +384,8 @@ enum BoardBuilder {
             let door = parent.doors[last]
             let doorCoord = doorCoordinate(door, in: parent, axis: parentPlacement.axis)
             if door.subType == "corridor" {
-                addRoom(parent, path: parentPath, root: root, to: board, turnAxis: parentPlacement.axis, reveal: &reveal)
+                addRoom(parent, path: parentPath, root: root, to: board, turnAxis: parentPlacement.axis,
+                        placements: placements, reveal: &reveal)
             } else if !board.visibleRooms.contains(parent.ref) || !reveal.visited.contains(parentPath) {
                 let parentAxis = parentPlacement.axis ?? (refPoint: (0, 0), origin: (0, 0))
                 recordDoor(at: doorCoord, subType: door.subType, leadingTo: parent.ref,

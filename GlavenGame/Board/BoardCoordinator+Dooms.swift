@@ -117,7 +117,7 @@ extension BoardCoordinator {
         var bonus = 0
         for doom in targetDooms {
             let owner = PieceID.character(doom.characterID)
-            let isAlly = attacker != owner && !areEnemies(attacker, owner)
+            let isAlly = attacker != owner && areAllies(attacker, owner)
             let isSummon: Bool = { if case .summon = attacker { return true }; return false }()
             switch doom.effect {
             case .attackBonus(let n, let who)? where DoomEffect.benefits(who, attacker: attacker, owner: owner, isAlly: isAlly, isSummon: isSummon):
@@ -252,7 +252,7 @@ extension BoardCoordinator {
             guard isOnBoard(me) else { return }
             log("\(name(me)) heals \(heal(me, amount: n, source: me)) as the doomed enemy dies", category: .heal)
         case .healOwnerAndAllies(let n):
-            let party = boardState.piecePositions.keys.filter { $0 == me || (!areEnemies(me, $0) && isFigure($0)) }.sorted()
+            let party = boardState.piecePositions.keys.filter { $0 == me || (areAllies(me, $0) && isFigure($0)) }.sorted()
             for figure in party {
                 log("\(name(figure)) heals \(heal(figure, amount: n, source: figure))", category: .heal)
             }

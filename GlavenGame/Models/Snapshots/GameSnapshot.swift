@@ -407,6 +407,11 @@ struct ObjectiveContainerSnapshot: Codable {
     var active: Bool
     var initiative: Int
     var entities: [ObjectiveEntitySnapshot]
+    /// Optional: older saves have none of these.
+    var escortActions: [ActionModel]? = nil
+    var useAllyDeck: Bool? = nil
+    var objectiveIndex: Int? = nil
+    var isProtected: Bool? = nil
 }
 
 // MARK: - Objective Entity Snapshot

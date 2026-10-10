@@ -47,16 +47,44 @@ extension BoardCoordinator {
         return summonOwner(of: pieceID)
     }
 
-    /// Whether two pieces are on opposing sides.
-    func areEnemies(_ a: PieceID, _ b: PieceID) -> Bool {
-        isPlayerSide(a) != isPlayerSide(b)
+    /// The objective a piece is one of.
+    func objectiveContainer(of pieceID: PieceID) -> GameObjectiveContainer? {
+        guard case .objective(let number) = pieceID else { return nil }
+        return gameManager?.game.objectives.first { $0.entities.contains { $0.number == number } }
     }
 
-    /// Characters, their summons, objectives (escorts) and allied monsters fight on the players' side.
+    /// An objective that isn't an escort: a thing on the map (an altar, a barred door, a
+    /// captive). It is no one's ally, takes no conditions and is never moved. With hit points it
+    /// is there to be destroyed — an enemy of the players' side — or, one the scenario has the
+    /// party protect, of the monsters.
+    func isScenery(_ pieceID: PieceID) -> Bool {
+        objectiveContainer(of: pieceID).map { !$0.escort } ?? false
+    }
+
+    /// Scenery without hit points (a water pump): nothing attacks it.
+    private func isUntouchable(_ pieceID: PieceID) -> Bool {
+        guard isScenery(pieceID) else { return false }
+        return (entity(for: pieceID)?.maxHealth ?? 0) <= 0
+    }
+
+    /// Whether two pieces are on opposing sides.
+    func areEnemies(_ a: PieceID, _ b: PieceID) -> Bool {
+        isPlayerSide(a) != isPlayerSide(b) && !isUntouchable(a) && !isUntouchable(b)
+    }
+
+    /// Whether two pieces fight on the same side. Scenery is on no side.
+    func areAllies(_ a: PieceID, _ b: PieceID) -> Bool {
+        isPlayerSide(a) == isPlayerSide(b) && !isScenery(a) && !isScenery(b)
+    }
+
+    /// Characters, their summons, escorts and allied monsters fight on the players' side; what
+    /// the party protects stands on it.
     func isPlayerSide(_ pieceID: PieceID) -> Bool {
         switch pieceID {
-        case .character, .summon, .objective:
+        case .character, .summon:
             return true
+        case .objective:
+            return objectiveContainer(of: pieceID).map { $0.escort || $0.isProtected } ?? true
         case .monster(let name, _):
             guard let monster = gameManager?.game.monsters.first(where: { $0.name == name }) else { return false }
             return MonsterAI.isAllyFaction(monster)
@@ -112,6 +140,12 @@ extension BoardCoordinator {
     /// their owner's deck; allied monsters use the ally deck).
     func applyCondition(_ condition: ConditionName, to pieceID: PieceID) {
         guard let gameManager, let entity = entity(for: pieceID) else { return }
+        // An objective on the map (an altar, a door) is immune to every condition.
+        guard !isScenery(pieceID) else {
+            boardScene?.floatText("Immune", over: pieceID, style: .info)
+            log("\(name(pieceID)) is immune to \(GameText.conditionName(condition))", category: .condition)
+            return
+        }
         if let topic = LearnTopic.id(for: condition) {
             teach(topic, "\(name(pieceID)) has \(GameText.conditionName(condition)).", at: .piece(pieceID))
         }
@@ -324,9 +358,15 @@ extension BoardCoordinator {
                     entity.dead = true
                 }
             }
-            log("\(name(pieceID)) is destroyed", category: .death)
+            log("\(name(pieceID)) is \(isScenery(pieceID) && !isPlayerSide(pieceID) ? "destroyed" : "killed")", category: .death)
+            // What its destruction spawns appears where it stood (a corpse from a dug-up grave).
+            fallenObjective = boardState.piecePositions[pieceID].flatMap { hex in
+                (entity(for: pieceID) as? GameObjectiveEntity).map { (markers: [$0.marker] + $0.markers, hex: hex) }
+            }
             removePieceFromBoard(pieceID)
+            clearObjectiveSite(number)
             gameManager.scenarioRulesManager.evaluateRules()
+            fallenObjective = nil
         }
         checkVictoryDefeat()
     }
@@ -385,7 +425,9 @@ extension BoardCoordinator {
                     removePieceFromBoard(pieceID)
                 }
             case .objective:
-                if let objective = entity(for: pieceID) as? GameObjectiveEntity, objective.health <= 0 || objective.dead {
+                // One without hit points (a water pump) isn't destroyed by having none.
+                if let objective = entity(for: pieceID) as? GameObjectiveEntity,
+                   objective.dead || (objective.health <= 0 && objective.maxHealth > 0) {
                     handleDeath(of: pieceID)
                 }
             }

@@ -124,6 +124,12 @@ final class GameState {
         figures.compactMap { $0.asObjective }
     }
 
+    /// A number no objective has had this scenario: each is one piece on the board, whichever
+    /// kind of objective it is.
+    var nextObjectiveNumber: Int {
+        (objectives.flatMap(\.entities).map(\.number).max() ?? 0) + 1
+    }
+
     /// Whether a Bless or Curse card is left to shuffle into a deck (p.23): the box has 10 Bless
     /// cards shared by every deck, 10 Curses for the players' decks and 10 for the monsters'.
     func hasSpecialCardLeft(_ type: AttackModifierType, forMonsterDeck: Bool) -> Bool {

@@ -281,7 +281,7 @@ extension BoardCoordinator {
         guard let game = gameManager?.game, let position = boardState.piecePositions[target] else { return target }
         for character in game.characters {
             let provoker = PieceID.character(character.id)
-            guard provoker != target, areEnemies(attacker, provoker), !areEnemies(provoker, target),
+            guard provoker != target, areEnemies(attacker, provoker), areAllies(provoker, target),
                   let theirs = boardState.piecePositions[provoker], theirs.isAdjacent(to: position),
                   chargedBonuses(of: character).contains(where: { $0.bonus == .drawAttacksFromAdjacentAllies }) else { continue }
             log("\(name(provoker)) draws the attack meant for \(name(target))", category: .attack)
@@ -307,7 +307,7 @@ extension BoardCoordinator {
         guard let position = boardState.piecePositions[attacker] else { return total }
         for character in game.characters where PieceID.character(character.id) != attacker {
             guard let theirs = boardState.piecePositions[.character(character.id)],
-                  theirs.isAdjacent(to: position), !areEnemies(attacker, .character(character.id)) else { continue }
+                  theirs.isAdjacent(to: position), areAllies(attacker, .character(character.id)) else { continue }
             for (_, bonus) in chargedBonuses(of: character) {
                 if case .roundAttackBonusWithAdjacentAllies(let n) = bonus { total += n }
             }
@@ -321,8 +321,8 @@ extension BoardCoordinator {
     func attackTextBonus(_ texts: [String], attacker: PieceID, target: PieceID) -> (attack: Int, experience: Int) {
         guard let targetPos = boardState.piecePositions[target], let defender = entity(for: target) else { return (0, 0) }
         let neighbours = targetPos.neighbors.compactMap { boardState.piece(at: $0) }
-        let attackersAllies = neighbours.filter { $0 != attacker && !areEnemies($0, attacker) }.count
-        let isolated = !neighbours.contains { $0 != target && !areEnemies($0, target) }
+        let attackersAllies = neighbours.filter { $0 != attacker && areAllies($0, attacker) }.count
+        let isolated = !neighbours.contains { $0 != target && areAllies($0, target) }
         let negatives = defender.entityConditions.filter { $0.name.isNegative && !$0.expired }.count
         func number(_ pattern: String, in text: String) -> Int {
             guard let match = text.firstMatch(of: try! Regex(pattern)), let value = match.output[1].substring else { return 0 }
@@ -385,8 +385,8 @@ extension BoardCoordinator {
         guard case .character = attacker, let targetPos = boardState.piecePositions[target] else { return value }
         let neighbours = targetPos.neighbors.compactMap { boardState.piece(at: $0) }
         // The target's allies are the figures on its side; the attacker's, those on theirs.
-        let isolated = !neighbours.contains { $0 != target && !areEnemies($0, target) }
-        let flanked = isolated && neighbours.contains { $0 != attacker && !areEnemies($0, attacker) }
+        let isolated = !neighbours.contains { $0 != target && areAllies($0, target) }
+        let flanked = isolated && neighbours.contains { $0 != attacker && areAllies($0, attacker) }
         let disabled = [.disarm, .immobilize, .stun].contains { isConditionActive($0, on: target) }
         var result = value
         for (_, bonus) in chargedBonuses(of: attacker) {

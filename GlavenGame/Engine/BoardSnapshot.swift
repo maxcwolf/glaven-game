@@ -13,6 +13,10 @@ struct BoardSnapshot: Codable {
     /// Traps a character placed (Proximity Mine), who placed them and the XP an enemy springing
     /// one gives them. Optional: older saves have none.
     var characterTraps: [CharacterTrap]? = nil
+    /// Spawn marker hexes and objective places. Optional: older saves have none.
+    var markerHexes: [String: [HexCoord]]? = nil
+    var openObjectiveSlots: [ObjectiveSlot]? = nil
+    var objectiveSites: [Int: ObjectiveSlot]? = nil
 
     struct CharacterTrap: Codable, Equatable {
         let hex: HexCoord
@@ -33,7 +37,10 @@ struct BoardSnapshot: Codable {
             doors: board.doors,
             bounds: board.bounds,
             eliteStandees: Set(board.eliteStandees.map { PieceIDCodable($0) }),
-            lootTokens: board.lootTokens
+            lootTokens: board.lootTokens,
+            markerHexes: board.markerHexes,
+            openObjectiveSlots: board.openObjectiveSlots,
+            objectiveSites: board.objectiveSites
         )
     }
 
@@ -49,6 +56,9 @@ struct BoardSnapshot: Codable {
         board.bounds = bounds
         board.eliteStandees = Set(eliteStandees.map { $0.pieceID })
         board.lootTokens = lootTokens
+        board.markerHexes = markerHexes ?? [:]
+        board.openObjectiveSlots = openObjectiveSlots ?? []
+        board.objectiveSites = objectiveSites ?? [:]
     }
 }
 

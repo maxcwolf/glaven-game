@@ -557,9 +557,22 @@ enum MonsterAI {
                       isAllyFaction(group) != allyFaction else { return false }
                 return includeInvisible || !isActive(.invisible, on: entity)
             case .objective:
-                return false
+                // Escorts fight on the players' side, and what the party protects is the monsters'
+                // to attack; a thing to destroy (an altar) is not.
+                guard !allyFaction, let (container, entity) = objectiveEntity(id, gameState: gameState),
+                      container.escort || (container.isProtected && entity.maxHealth > 0) else { return false }
+                return includeInvisible || !isActive(.invisible, on: entity)
             }
         }
+    }
+
+    /// The living objective behind a piece, with the container it belongs to.
+    static func objectiveEntity(_ id: PieceID, gameState: GameState) -> (GameObjectiveContainer, GameObjectiveEntity)? {
+        guard case .objective(let number) = id else { return nil }
+        for container in gameState.objectives {
+            if let entity = container.entities.first(where: { $0.number == number && !$0.dead }) { return (container, entity) }
+        }
+        return nil
     }
 
     /// Hexes the monster cannot move through: every enemy figure (visible or not) and objectives.
@@ -613,7 +626,9 @@ enum MonsterAI {
             let order = (entity.type == .normal ? 0.5 : 0) + Double(entity.number) * 0.01
             return base + order
         case .objective:
-            return 99.5
+            // An escort acts at its own initiative; an objective to destroy counts as 99.
+            guard let (container, _) = objectiveEntity(pieceID, gameState: gameState), container.escort else { return 99.5 }
+            return Double(container.initiative) - 0.5
         }
     }
 

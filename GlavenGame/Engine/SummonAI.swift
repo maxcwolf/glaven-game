@@ -84,10 +84,14 @@ enum PlayerSideAI {
         return Plan(focus: focus, path: path, targets: targets, candidates: candidates)
     }
 
-    /// Hostile (non-allied) monsters on the board; invisible ones only when asked (they can't be
-    /// focused or targeted, but still block movement).
+    /// The players' side's enemies on the board: hostile (non-allied) monsters — invisible ones
+    /// only when asked (they can't be focused or targeted, but still block movement) — and
+    /// objectives to destroy (an altar, a barred door), which are enemies like any other.
     static func hostileMonsters(board: BoardState, gameState: GameState, includeInvisible: Bool) -> [PieceID] {
         board.piecePositions.keys.sorted().filter { id in
+            if let (container, entity) = MonsterAI.objectiveEntity(id, gameState: gameState) {
+                return !container.escort && !container.isProtected && entity.maxHealth > 0
+            }
             guard let (group, entity) = MonsterAI.monsterEntity(id, gameState: gameState),
                   !MonsterAI.isAllyFaction(group) else { return false }
             return includeInvisible || !MonsterAI.isActive(.invisible, on: entity)

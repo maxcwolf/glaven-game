@@ -175,6 +175,9 @@ final class BoardCoordinator {
     var pendingRevealedStandees: [String: Set<Int>] = [:]
 
     /// A scenario result triggered this round; it takes effect at the end of the round (p.47).
+    /// The objective being destroyed right now, while the rules its destruction triggers run:
+    /// the letters it carried and where it stood.
+    var fallenObjective: (markers: [String], hex: HexCoord)?
     var pendingResult: ScenarioResult?
     /// Why the scenario ended (or will, at the end of the round).
     var endReason: ScenarioEndReason?
@@ -810,6 +813,7 @@ final class BoardCoordinator {
         let hasRoomData = !(gameManager?.game.scenario?.data.rooms ?? []).isEmpty
         placeRevealedMonsters(slots: startingRoom.slots, newEntities: unplacedMonsterEntities(),
                               playerCount: playerCount, useMapMonsters: !hasRoomData)
+        placeRevealedObjectives()
 
         attachToGame()
 
@@ -1269,7 +1273,8 @@ final class BoardCoordinator {
                 // Use monsterManager to get the real initiative from the drawn ability card
                 let init_ = gameManager.monsterManager.currentAbilityInitiative(for: m)
                 return TurnOrderEntry(figure: figure, initiative: Double(init_ ?? 99))
-            case .objective(let o) where !o.off:
+            case .objective(let o) where !o.off && o.escort && o.entities.contains(where: { !$0.dead }):
+                // An escort takes a turn; an objective on the map (an altar, a door) takes none.
                 return TurnOrderEntry(figure: figure, initiative: Double(o.initiative) - 0.5)
             default:
                 return nil
@@ -1649,6 +1654,16 @@ final class BoardCoordinator {
             return
         }
 
+        // What the scenario book asks of the objectives (`ScenarioPlacements.Goal`): the party
+        // loses what it was to protect, or destroys, kills or brings home what it was to.
+        let objectiveGoal = scenarioData?.placements?.goal
+        if let objectiveGoal, let lost = objectiveLost(objectiveGoal) {
+            pendingResult = .defeat
+            endReason = .ruleLost(lost)
+            log("Scenario failed — the scenario ends at the end of this round.", category: .death)
+            return
+        }
+
         // Default goal: every enemy killed, with every room revealed — unless the scenario defines
         // its own win condition (e.g. survive until round 10), and only once enemies have been
         // in play (some scenarios start empty and spawn monsters every round).
@@ -1657,6 +1672,16 @@ final class BoardCoordinator {
         let enemiesHaveAppeared = hostile.contains { !$0.entities.isEmpty }
         let allEnemiesDead = hostile.allSatisfy { monster in monster.off || monster.aliveEntities.isEmpty }
         let allRoomsRevealed = boardState.doors.allSatisfy { $0.isOpen }
+        if let objectiveGoal, objectiveGoal.replacesKillAll, !hasOwnWinCondition {
+            let enemiesDone = objectiveGoal.enemies != true || (enemiesHaveAppeared && allEnemiesDead && allRoomsRevealed)
+            if objectiveGoalMet(objectiveGoal) && enemiesDone && gameManager.game.round > 0 {
+                let brief = gameManager.game.scenario.map { ScenarioBrief.make(for: $0.data, labels: gameManager.editionStore) }
+                pendingResult = .victory
+                endReason = .goalMet(brief?.goal ?? "The scenario's goal is met.")
+                log("Scenario goal achieved — the scenario ends at the end of this round.", category: .round)
+            }
+            return
+        }
         if !hasOwnWinCondition && enemiesHaveAppeared && allEnemiesDead && allRoomsRevealed
             && gameManager.game.round > 0 {
             pendingResult = .victory
@@ -1848,7 +1873,7 @@ final class BoardCoordinator {
     func alliesInRange(of pieceID: PieceID, range: Int, includeSelf: Bool) -> Set<PieceID> {
         guard let pos = boardState.piecePositions[pieceID] else { return [] }
         var allies: Set<PieceID> = includeSelf ? [pieceID] : []
-        for (id, coord) in boardState.piecePositions where id != pieceID && !areEnemies(pieceID, id) {
+        for (id, coord) in boardState.piecePositions where id != pieceID && areAllies(pieceID, id) {
             guard entity(for: id) != nil, pos.distance(to: coord) <= max(1, range),
                   LineOfSight.hasLOS(from: pos, to: coord, board: boardState) else { continue }
             allies.insert(id)
@@ -2225,7 +2250,8 @@ final class BoardCoordinator {
     /// Asynchronously execute a push/pull. Suspends until the push/pull is fully resolved
     /// (either auto-executed or after the player selects the direction).
     @MainActor func performPushPull(target: PieceID, attackerPos: HexCoord, steps: Int, isPush: Bool) async {
-        guard steps > 0, boardState.piecePositions[target] != nil else { return }
+        // An objective on the map (an altar, a door) is never moved.
+        guard steps > 0, boardState.piecePositions[target] != nil, !isScenery(target) else { return }
         if case .character(let id) = target,
            gameManager?.game.characters.first(where: { $0.id == id })?.carriedItems.contains(PassiveItems.unmovable) == true {
             log("\(name(target))\u{2019}s Heavy Greaves hold them in place", category: .move)
@@ -2335,7 +2361,7 @@ final class BoardCoordinator {
     func openDoor(at coord: HexCoord) {
         guard let door = boardState.doors.first(where: { $0.coord == coord && !$0.isOpen }),
               let scenario = scenarioData,
-              let gameManager = gameManager else { return }
+              let gameManager = gameManager, !isDoorBarred(at: coord) else { return }
         // Explorer: a door opened on a character's turn is theirs.
         if let character = creditedCharacter(for: actingPiece) {
             gameManager.scenarioStatsManager.recordDoor(by: character.name)
@@ -2363,6 +2389,7 @@ final class BoardCoordinator {
         let hasRoomData = !(gameManager.game.scenario?.data.rooms ?? []).isEmpty
         let placed = placeRevealedMonsters(slots: reveal.slots, newEntities: unplacedMonsterEntities(),
                                            playerCount: playerCount, useMapMonsters: !hasRoomData)
+        let objectives = placeRevealedObjectives()
 
         // New monster types draw an ability card this round; all get their stat bonuses.
         for monster in gameManager.game.monsters where placed.contains(where: { $0.name == monster.name }) {
@@ -2390,6 +2417,9 @@ final class BoardCoordinator {
                 log("\(name(id)) appears", category: .setup, trace: "at \(pos)")
             }
         }
+        for piece in objectives {
+            log("\(name(piece)) is here", category: .setup, trace: boardState.piecePositions[piece].map { "at \($0)" })
+        }
         // Rules gated on revealed rooms can fire now.
         gameManager.scenarioRulesManager.evaluateRules(phase: .figureChange)
         sweepDeadFigures()
@@ -2410,6 +2440,7 @@ final class BoardCoordinator {
                 let playerCount = max(2, gameManager.game.characters.filter { !$0.absent }.count)
                 let placed = placeRevealedMonsters(slots: [], newEntities: unplacedMonsterEntities(),
                                                    playerCount: playerCount)
+                placeRevealedObjectives()
                 for monster in gameManager.game.monsters where placed.contains(where: { $0.name == monster.name }) {
                     if isMidRound, !monster.abilityDrawn {
                         gameManager.monsterManager.drawAbility(for: monster)
@@ -2504,15 +2535,16 @@ final class BoardCoordinator {
         return placed
     }
 
-    /// A monster spawned by a scenario rule: placed near the other monsters (the map data has no
-    /// spawn markers). Spawned monsters act this round if spawned during it and drop no money.
+    /// A monster spawned by a scenario rule: on its lettered hex where one is written
+    /// (`ScenarioPlacements`), otherwise near the other monsters. Spawned monsters act this round
+    /// if spawned during it and drop no money.
     func spawnFromScenarioRule(name: String, type: MonsterType, marker: String?, health: String?) -> Bool {
         guard let gameManager, boardScene != nil || !boardState.cells.isEmpty else { return false }
         let monsterPositions = boardState.piecePositions.sorted { $0.key < $1.key }.compactMap { id, coord -> HexCoord? in
             if case .monster = id, !isPlayerSide(id) { return coord }
             return nil
         }
-        let anchor = monsterPositions.first ?? boardState.cells.keys.max { a, b in
+        let anchor = marker.flatMap(spawnHex(forMarker:)) ?? monsterPositions.first ?? boardState.cells.keys.max { a, b in
             let da = boardState.startingLocations.map { a.distance(to: $0) }.min() ?? 0
             let db = boardState.startingLocations.map { b.distance(to: $0) }.min() ?? 0
             return da == db ? a > b : da < db
@@ -2630,7 +2662,7 @@ final class BoardCoordinator {
                         for text in areaTexts where text.contains("allies in the attack area suffer") {
                             let amount = PlayerTurnController.damageAmount(in: text)
                             let allies = self.boardState.piecePositions.filter {
-                                areaHexes.contains($0.value) && $0.key != attackerID && !self.areEnemies(attackerID, $0.key)
+                                areaHexes.contains($0.value) && $0.key != attackerID && self.areAllies(attackerID, $0.key)
                             }.map(\.key).sorted()
                             for ally in allies where self.isOnBoard(ally) && self.isCurrentBoard(generation) {
                                 self.log("\(self.name(ally)) suffers \(amount) damage", category: .damage)

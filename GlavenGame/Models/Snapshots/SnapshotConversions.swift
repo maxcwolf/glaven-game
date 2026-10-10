@@ -333,7 +333,9 @@ extension GameObjectiveContainer {
             uuid: uuid, name: name, edition: edition, title: title,
             escort: escort, level: level, off: off, active: active,
             initiative: initiative,
-            entities: entities.map { $0.toSnapshot() }
+            entities: entities.map { $0.toSnapshot() },
+            escortActions: escortActions, useAllyDeck: useAllyDeck, objectiveIndex: objectiveIndex,
+            isProtected: isProtected
         )
     }
 }
@@ -345,6 +347,10 @@ extension ObjectiveContainerSnapshot {
         o.active = active
         o.initiative = initiative
         o.entities = entities.map { $0.toRuntime() }
+        o.escortActions = escortActions ?? []
+        o.useAllyDeck = useAllyDeck ?? false
+        o.objectiveIndex = objectiveIndex
+        o.isProtected = isProtected ?? false
         return o
     }
 }

@@ -306,8 +306,8 @@ final class ScenarioRulesManager {
             let figureCount = triggerFigureCount(rule)
             for spawn in objectiveSpawns {
                 let count = resolveCount(spawn.count, figureCount: figureCount)
-                for i in 0..<count {
-                    spawnObjective(spawn.objective, edition: edition, number: i + 1, marker: spawn.marker)
+                for _ in 0..<count {
+                    spawnObjective(spawn.objective, edition: edition, marker: spawn.marker)
                 }
             }
         }
@@ -476,7 +476,7 @@ final class ScenarioRulesManager {
         }
     }
 
-    private func spawnObjective(_ objData: ObjectiveData, edition: String, number: Int, marker: String?) {
+    private func spawnObjective(_ objData: ObjectiveData, edition: String, marker: String?) {
         let container = GameObjectiveContainer(
             name: objData.name ?? "Objective",
             edition: edition,
@@ -492,7 +492,7 @@ final class ScenarioRulesManager {
             case .int(let n): hp = n
             case .string(let s): hp = ScenarioExpression.integerValue(s, variables: valueVariables()) ?? 1
             }
-            let entity = GameObjectiveEntity(number: number, health: hp, maxHealth: hp)
+            let entity = GameObjectiveEntity(number: game.nextObjectiveNumber, health: hp, maxHealth: hp)
             if let marker = marker ?? objData.marker { entity.marker = marker }
             container.entities.append(entity)
         }

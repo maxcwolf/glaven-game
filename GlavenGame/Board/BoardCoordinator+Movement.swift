@@ -61,7 +61,12 @@ extension BoardCoordinator {
             activePlayerTurn?.hexesPassed.append(contentsOf: path.dropFirst().dropLast())
         }
         let hazardProof = (entity(for: pieceID) as? GameCharacter).map { PassiveItems.ignoresHazards($0.carriedItems) } ?? false
-        let opensDoors: Bool = { if case .character = pieceID { return true }; return false }()
+        // Characters open doors by walking into them; so does an escort sent somewhere.
+        let opensDoors: Bool = {
+            if case .character = pieceID { return true }
+            if case .objective = pieceID { return !isScenery(pieceID) }
+            return false
+        }()
 
         let generation = boardGeneration
         var segmentStart = 0
@@ -154,13 +159,13 @@ extension BoardCoordinator {
         guard amount > 0 else { return }
         var victims: [PieceID] = []
         if text.contains("all allies suffer") {
-            victims = boardState.piecePositions.keys.filter { $0 != pieceID && !areEnemies(pieceID, $0) && isFigure($0) }
+            victims = boardState.piecePositions.keys.filter { $0 != pieceID && areAllies(pieceID, $0) && isFigure($0) }
         } else if let hex {
             let besides = hex.neighbors.compactMap { boardState.piece(at: $0) }.filter { $0 != pieceID && isFigure($0) }
             if text.contains("allies and enemies") {
                 victims = besides
             } else if text.contains("allies") {
-                victims = besides.filter { !areEnemies(pieceID, $0) }
+                victims = besides.filter { areAllies(pieceID, $0) }
             } else if text.contains("enemies") {
                 victims = besides.filter { areEnemies(pieceID, $0) }
             }
@@ -187,7 +192,7 @@ extension BoardCoordinator {
         guard let position = boardState.piecePositions[pieceID] else { return false }
         let candidates = Set(boardState.piecePositions.filter { piece, hex in
             piece != pieceID && hex.distance(to: position) <= range && entity(for: piece) != nil
-                && areEnemies(pieceID, piece) == enemies && LineOfSight.hasLOS(from: position, to: hex, board: boardState)
+                && (enemies ? areEnemies(pieceID, piece) : areAllies(pieceID, piece)) && LineOfSight.hasLOS(from: position, to: hex, board: boardState)
                 && (!summonsOnly || { if case .character(let id) = pieceID { return summonOwner(of: piece)?.id == id }; return false }())
         }.keys)
         guard !candidates.isEmpty else {

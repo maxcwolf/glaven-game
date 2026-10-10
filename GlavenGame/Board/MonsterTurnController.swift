@@ -417,7 +417,7 @@ final class MonsterTurnController {
         var extra = 0
         for text in texts where text.contains("if the target is adjacent to any of") {
             let flanked = hex.neighbors.compactMap { coordinator.boardState.piece(at: $0) }
-                .contains { $0 != pieceID && $0 != target && !coordinator.areEnemies(pieceID, $0) }
+                .contains { $0 != pieceID && $0 != target && coordinator.areAllies(pieceID, $0) }
             if flanked { extra += text.firstMatch(of: #/\+(\d+) attack/#).flatMap { Int($0.1) } ?? 0 }
         }
         return extra
@@ -490,7 +490,7 @@ final class MonsterTurnController {
         var candidates: [PieceID] = [pieceID]
         if let range, !selfOnly {
             for (other, coord) in coordinator.boardState.piecePositions.sorted(by: { $0.key < $1.key }) where other != pieceID {
-                guard case .monster = other, !coordinator.areEnemies(pieceID, other),
+                guard case .monster = other, coordinator.areAllies(pieceID, other),
                       position.distance(to: coord) <= range,
                       LineOfSight.hasLOS(from: position, to: coord, board: coordinator.boardState) else { continue }
                 candidates.append(other)
@@ -551,7 +551,7 @@ final class MonsterTurnController {
         let pool: [PieceID] = wantsEnemies
             ? MonsterAI.gatherEnemies(board: coordinator.boardState, monster: monster, gameState: game)
             : coordinator.boardState.piecePositions.keys.sorted().filter {
-                $0 != pieceID && !coordinator.areEnemies(pieceID, $0)
+                $0 != pieceID && coordinator.areAllies(pieceID, $0)
             }
         let inRange = pool.filter { id in
             guard let coord = coordinator.boardState.piecePositions[id] else { return false }

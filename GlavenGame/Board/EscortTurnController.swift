@@ -38,17 +38,53 @@ final class EscortTurnController {
             guard !entity.dead, coordinator.isOnBoard(pieceID) else { continue }
 
             let result = EscortAI.computeTurn(escort: container, entity: entity,
-                                              board: coordinator.boardState, gameState: gameManager.game)
+                                              board: coordinator.boardState, gameState: gameManager.game,
+                                              destination: destination(of: container))
             await executeEscortTurn(result: result, container: container, entity: entity, pieceID: pieceID)
 
             guard !isStale else { return }
             if !entity.dead {
                 gameManager.entityManager.expireConditions(entity)
+                coordinator.noteEscortArrival(pieceID)
             }
             coordinator.sweepDeadFigures()
             if coordinator.scenarioResult != nil { return }
             await coordinator.beat()
         }
+    }
+
+    /// Where the escort's move heads when its text names a lettered hex — "Move 2 towards the
+    /// altar (b)" — and the letter is on the revealed map.
+    func destination(of container: GameObjectiveContainer) -> Set<HexCoord> {
+        guard let coordinator, let store = gameManager?.editionStore else { return [] }
+        let notes = container.escortActions.filter { $0.type == .move }
+            .flatMap { $0.subActions ?? [] }.filter { $0.type == .custom }.compactMap { $0.value?.stringValue }
+        var hexes: Set<HexCoord> = []
+        for note in notes {
+            let key = note.trimmingCharacters(in: CharacterSet(charactersIn: "%")).replacingOccurrences(of: "data.", with: "")
+            let text = store.resolveLabel(key: key, edition: container.edition) ?? note
+            for match in text.matches(of: #/%game\.mapMarker\.([a-z0-9]+)%/#) {
+                let marker = String(match.1)
+                let revealed = coordinator.boardState.markerHexes[marker] ?? []
+                hexes.formUnion(revealed.isEmpty ? doorsToward(marker) : revealed)
+            }
+        }
+        return hexes
+    }
+
+    /// The letter is in a room not yet revealed: the closed doors on the way there (walking
+    /// into one opens it), or failing that the closed door nearest to it.
+    private func doorsToward(_ marker: String) -> [HexCoord] {
+        guard let coordinator, let scenario = coordinator.scenarioData else { return [] }
+        let closed = coordinator.boardState.doors.filter { !$0.isOpen && !coordinator.isDoorBarred(at: $0.coord) }
+        let sites = BoardBuilder.markerSites(marker, in: scenario)
+        let onTheWay = closed.filter { door in
+            guard let path = door.childPath else { return false }
+            return sites.contains { $0.path.starts(with: path) }
+        }
+        if !onTheWay.isEmpty { return onTheWay.map(\.coord) }
+        guard let site = sites.first else { return [] }
+        return closed.min { $0.coord.distance(to: site.coord) < $1.coord.distance(to: site.coord) }.map { [$0.coord] } ?? []
     }
 
     @MainActor private func executeEscortTurn(result: EscortTurnResult, container: GameObjectiveContainer,
