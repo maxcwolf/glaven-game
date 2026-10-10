@@ -20,6 +20,9 @@ final class GameObjectiveContainer: Figure {
     /// Not an escort, but the monsters' target all the same: something to keep from harm that
     /// is no ally (captives, a gate under siege).
     var isProtected: Bool = false
+    /// An ally only to be healed: no monster attacks it and no ability touches it (the tree of
+    /// Toxic Moor, which only the scenario harms).
+    var isSheltered: Bool = false
     /// Which of the scenario's objectives this is (1-based, as its rooms refer to them); nil for
     /// one a rule spawned.
     var objectiveIndex: Int?

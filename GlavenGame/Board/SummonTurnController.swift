@@ -59,6 +59,7 @@ final class SummonTurnController {
                 gameManager.entityManager.expireConditions(summon)
                 // Rules that act as a turn ends reach a summon as they do its owner (The Void).
                 gameManager.scenarioRulesManager.evaluateTurnRules(.turnEnd, for: summon)
+                coordinator.sufferWaterAtTurnEnd(pieceID)
             }
             coordinator.sweepDeadFigures()
             if coordinator.scenarioResult != nil { return }

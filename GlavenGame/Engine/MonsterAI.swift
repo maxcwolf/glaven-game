@@ -524,6 +524,13 @@ enum MonsterAI {
         monster.isAlly
     }
 
+    /// The sides of a scenario: the party's, the monsters', and a third that fights both.
+    enum Side { case party, monsters, apart }
+
+    static func side(of monster: GameMonster) -> Side {
+        monster.isAlly ? .party : monster.standsApart ? .apart : .monsters
+    }
+
     /// Look up the monster group and entity for a monster piece.
     static func monsterEntity(_ id: PieceID, gameState: GameState) -> (GameMonster, GameMonsterEntity)? {
         guard case .monster(let name, let standee) = id,
@@ -538,6 +545,7 @@ enum MonsterAI {
     /// cannot be focused on or targeted, but they still block movement).
     static func gatherEnemies(board: BoardState, monster: GameMonster, gameState: GameState, includeInvisible: Bool = false) -> [PieceID] {
         let allyFaction = isAllyFaction(monster)
+        let side = side(of: monster)
         return board.piecePositions.keys.sorted().filter { id in
             switch id {
             case .character(let charID):
@@ -556,7 +564,7 @@ enum MonsterAI {
                 return false
             case .monster:
                 guard let (group, entity) = monsterEntity(id, gameState: gameState),
-                      isAllyFaction(group) != allyFaction else { return false }
+                      self.side(of: group) != side else { return false }
                 return includeInvisible || !isActive(.invisible, on: entity)
             case .objective:
                 // Escorts fight on the players' side, and what the party protects is the monsters'
@@ -564,7 +572,8 @@ enum MonsterAI {
                 // monsters allied to the party included (the demons at the Battlements).
                 guard let (container, entity) = objectiveEntity(id, gameState: gameState) else { return false }
                 if allyFaction { return !container.escort && !container.isProtected && entity.maxHealth > 0 }
-                guard container.escort || (container.isProtected && entity.maxHealth > 0) else { return false }
+                guard !container.isSheltered,
+                      container.escort || (container.isProtected && entity.maxHealth > 0) else { return false }
                 return includeInvisible || !isActive(.invisible, on: entity)
             }
         }
@@ -596,7 +605,7 @@ enum MonsterAI {
         for (id, coord) in board.piecePositions {
             guard id != excluding, case .monster = id else { continue }
             if let gameState, let (group, _) = monsterEntity(id, gameState: gameState),
-               isAllyFaction(group) != isAllyFaction(monster) {
+               side(of: group) != side(of: monster) {
                 continue
             }
             positions.insert(coord)

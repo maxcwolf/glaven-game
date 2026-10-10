@@ -63,19 +63,29 @@ extension BoardCoordinator {
 
     /// Scenery without hit points (a water pump): nothing attacks it.
     private func isUntouchable(_ pieceID: PieceID) -> Bool {
+        // An ally only to be healed is no one's enemy either.
+        if objectiveContainer(of: pieceID)?.isSheltered == true { return true }
         guard isScenery(pieceID) else { return false }
         return (entity(for: pieceID)?.maxHealth ?? 0) <= 0
     }
 
     /// Whether two pieces are on opposing sides.
     func areEnemies(_ a: PieceID, _ b: PieceID) -> Bool {
-        isPlayerSide(a) != isPlayerSide(b) && !isUntouchable(a) && !isUntouchable(b)
+        side(of: a) != side(of: b) && !isUntouchable(a) && !isUntouchable(b)
+    }
+
+    /// The side a piece fights on. Monsters that stand apart are a third, against both others.
+    func side(of pieceID: PieceID) -> MonsterAI.Side {
+        if case .monster(let name, _) = pieceID, let monster = gameManager?.game.monsters.first(where: { $0.name == name }) {
+            return MonsterAI.side(of: monster)
+        }
+        return isPlayerSide(pieceID) ? .party : .monsters
     }
 
     /// Whether two pieces fight on the same side. Scenery is on no side, and what the party only
     /// protects (a captive, a crystal, the villagers) is no one's ally: it isn't healed or helped.
     func areAllies(_ a: PieceID, _ b: PieceID) -> Bool {
-        isPlayerSide(a) == isPlayerSide(b) && !isScenery(a) && !isScenery(b) && !isProtected(a) && !isProtected(b)
+        side(of: a) == side(of: b) && !isScenery(a) && !isScenery(b) && !isProtected(a) && !isProtected(b)
     }
 
     /// An objective the party is to keep from harm without its being an ally.

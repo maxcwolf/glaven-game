@@ -228,6 +228,7 @@ struct CharacterSnapshot: Codable {
     var itemSlotsUsed: [String: Int]?
     var bonusChargesUsed: [Int: Int]?
     var itemsLeftBehind: [String]?
+    var itemsBarred: Bool?
 
     init(name: String, edition: String, level: Int, off: Bool, active: Bool,
          number: Int, health: Int, maxHealth: Int,
@@ -339,6 +340,7 @@ struct CharacterSnapshot: Codable {
         itemSlotsUsed = try container.decodeIfPresent([String: Int].self, forKey: .itemSlotsUsed)
         bonusChargesUsed = try container.decodeIfPresent([Int: Int].self, forKey: .bonusChargesUsed)
         itemsLeftBehind = try container.decodeIfPresent([String].self, forKey: .itemsLeftBehind)
+        itemsBarred = try container.decodeIfPresent(Bool.self, forKey: .itemsBarred)
     }
 }
 
@@ -359,6 +361,7 @@ struct MonsterSnapshot: Codable {
     var isAllied: Bool
     var tags: [String]
     var drawExtra: Bool
+    var standsApart: Bool? = nil
     // Scenario stat-effect overrides (optional for backward compatibility with saved games)
     var displayName: String?
     var deckOverride: String?
@@ -416,6 +419,7 @@ struct ObjectiveContainerSnapshot: Codable {
     var useAllyDeck: Bool? = nil
     var objectiveIndex: Int? = nil
     var isProtected: Bool? = nil
+    var isSheltered: Bool? = nil
 }
 
 // MARK: - Objective Entity Snapshot

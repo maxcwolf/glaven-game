@@ -13,6 +13,9 @@ extension BoardCoordinator {
     }
 
     private func touches(_ effect: ScenarioPlacements.Effect, _ pieceID: PieceID) -> Bool {
+        if effect.untilLooted == true {
+            guard case .character(let id) = pieceID, !boardState.goalLooters.contains(id) else { return false }
+        }
         switch (effect.on, pieceID) {
         case ("party", .character), ("party", .summon): return true
         case ("monsters", .monster): return !isPlayerSide(pieceID)
@@ -33,6 +36,48 @@ extension BoardCoordinator {
             if case .objective = $0 { return objectiveContainer(of: $0)?.objectiveIndex == index }
             return false
         }.count
+    }
+
+    /// Bring every character's bar on items in line with the scenario's effects (Vigil Keep: no
+    /// items until the character has looted a treasure tile).
+    func updateItemBars() {
+        for character in gameManager?.game.characters ?? [] {
+            let barred = scenarioEffects(on: .character(character.id)).contains { $0.noItems == true }
+            if character.itemsBarred != barred { character.itemsBarred = barred }
+        }
+    }
+
+    // MARK: - Water
+
+    private func isWater(_ hex: HexCoord) -> Bool {
+        guard let cell = boardState.cells[hex] else { return false }
+        return cell.overlay == .difficultTerrain && cell.overlaySubType == "water"
+    }
+
+    /// Whether a figure entering `hex` on foot suffers trap damage from its water: a poisoned
+    /// character or character summon, where the scenario says so.
+    func waterHurtsOnEntering(_ hex: HexCoord, _ pieceID: PieceID) -> Bool {
+        guard scenarioData?.placements?.water?.hurtsThePoisoned == true, isWater(hex) else { return false }
+        switch pieceID {
+        case .character, .summon: return isConditionActive(.poison, on: pieceID)
+        default: return false
+        }
+    }
+
+    /// The damage a figure suffers for ending its turn where it stands, in a scenario whose
+    /// water does that.
+    func waterDamageAtTurnEnd(for pieceID: PieceID) -> Int? {
+        guard let formula = scenarioData?.placements?.water?.endOfTurn, let game = gameManager?.game,
+              let hex = boardState.piecePositions[pieceID], isWater(hex) else { return nil }
+        let variables = ["C": max(2, game.characters.filter { !$0.absent }.count), "L": game.level]
+        return ScenarioExpression.integerValue(formula, variables: variables).flatMap { $0 > 0 ? $0 : nil }
+    }
+
+    /// A monster's or summon's turn ends in water that hurts.
+    func sufferWaterAtTurnEnd(_ pieceID: PieceID) {
+        guard let damage = waterDamageAtTurnEnd(for: pieceID) else { return }
+        log("\(name(pieceID)) ends the turn in the water and suffers \(damage) damage", category: .damage)
+        sufferDamage(damage, to: pieceID)
     }
 
     /// What the scenario adds to each of a figure's attacks.

@@ -117,14 +117,23 @@ final class ScenarioPlacementTests: XCTestCase {
                 XCTAssertTrue(rules.contains { ($0.setUp ?? []).contains(name) || ($0.spawns ?? []).contains { $0.monster.name == name } },
                               "\(index): nothing ever sets up \(name)")
             }
+            for name in placements.apart ?? [] { XCTAssertTrue(monsters.contains(name), "\(index): no monster \(name)") }
+            for objective in placements.sheltered ?? [] {
+                XCTAssertEqual(data.objectives?.indices.contains(objective - 1), true, "\(index): no objective \(objective)")
+                XCTAssertEqual(placements.protect?.contains(objective), nil, "\(index): sheltered or protected, not both")
+            }
+            if let damage = placements.water?.endOfTurn {
+                XCTAssertNotNil(ScenarioExpression.integerValue(damage, variables: ["C": 2, "L": 1]), "\(index): \(damage)")
+            }
             for note in placements.notes ?? [] {
                 XCTAssertGreaterThan(note.split(separator: " ").count, 4, "\(index): \(note)")
                 XCTAssertTrue(note.hasSuffix("."), "\(index): \(note)")
             }
             for effect in placements.effects ?? [] {
                 XCTAssertTrue(["monsters", "party"].contains(effect.on) || monsters.contains(effect.on), "\(index): no \(effect.on)")
-                XCTAssertTrue(effect.attack != nil || effect.advantage != nil || effect.disadvantage != nil || effect.shield != nil,
-                              "\(index): an effect that does nothing")
+                XCTAssertTrue(effect.attack != nil || effect.advantage != nil || effect.disadvantage != nil || effect.shield != nil
+                              || effect.noItems != nil, "\(index): an effect that does nothing")
+                if effect.untilLooted == true { XCTAssertEqual(placements.goal?.loot, "each", "\(index): no treasure for each to loot") }
                 for objective in [effect.whileStanding, effect.per?.objective].compactMap({ $0 }) {
                     XCTAssertTrue((1...(data.objectives?.count ?? 0)).contains(objective), "\(index): no objective \(objective)")
                 }
@@ -148,7 +157,8 @@ final class ScenarioPlacementTests: XCTestCase {
                     XCTAssertTrue((data.rooms ?? []).contains { $0.roomNumber == room }, "\(index): no room \(room)")
                 }
                 for fact in rule.when ?? [] {
-                    XCTAssertTrue(fact.saved != nil || fact.lock != nil || fact.looted != nil, "\(index): an empty fact")
+                    XCTAssertTrue(fact.saved != nil || fact.lock != nil || fact.looted != nil || fact.unrevealed != nil, "\(index): an empty fact")
+                    if let room = fact.unrevealed { XCTAssertTrue((data.rooms ?? []).contains { $0.roomNumber == room && $0.initial != true }, "\(index): no room \(room) to reveal") }
                     if let lock = fact.lock { XCTAssertTrue((placements.locks ?? []).indices.contains(lock), "\(index): no lock \(lock)") }
                     if fact.saved != nil { XCTAssertNotNil(placements.goal?.arrive, "\(index): no one to save") }
                     if let looted = fact.looted {

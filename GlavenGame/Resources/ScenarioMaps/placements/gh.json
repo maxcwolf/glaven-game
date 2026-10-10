@@ -160,7 +160,7 @@
     "g1b": {"markers": {"a": [[0, 0]]}},
     "m1a": {"markers": {"a": [[3, 0]]}}
   }},
-  "68": {"goal": {"text": "Kill all enemies and protect the tree."}, "tiles": {
+  "68": {"goal": {"text": "Kill all enemies and protect the tree.", "lostAt": {"1": 1}}, "notes": ["The tree suffers 2 damage as every round ends \u2014 once its room is open, only in a round that ends with a Rending Drake on the room's tile.", "The tree can be healed like an ally; nothing else affects it, and no monster attacks it.", "A character or summon with Poison that enters a water hex suffers trap damage."], "dropRules": [1], "rules": [{"round": "true", "when": [{"unrevealed": 2}], "figures": [{"identifier": {"type": "objective", "edition": "objective", "name": "Tree", "marker": "a"}, "type": "damage", "value": 2}]}, {"round": "true", "requiredRooms": [2], "figures": [{"type": "present", "identifier": {"type": "monster", "edition": "gh", "name": "rending-drake", "tile": "m1b"}}, {"identifier": {"type": "objective", "edition": "objective", "name": "Tree", "marker": "a"}, "type": "damage", "value": 2}]}], "sheltered": [1], "water": {"hurtsThePoisoned": true}, "tiles": {
     "b1b": {"objectives": [{"objective": 1, "cells": [[2, -6], [1, -6], [1, -5]]}]}
   }},
   "69": {"goal": {"text": "Bring the doll to the well.", "reach": {"marker": "a", "adjacent": true}}, "notes": ["The door is locked until a character ends a turn on the pressure plate."], "locks": [{"between": ["l3a", "j1a"], "plate": ["b"], "note": "Locked: it opens when a character ends their turn on the pressure plate (b)."}], "tiles": {
@@ -197,7 +197,7 @@
   "79": {"goal": {"text": "Kill the Betrayer.", "kill": ["the-betrayer"]}, "notes": ["The last door opens when every Stone Golem is dead."], "locks": [{"between": ["d2a", "m1a"], "note": "Locked: it opens when all Stone Golems are killed."}], "tiles": {
     "d2a": {"objectives": [{"objective": 1, "cells": [[0, 3]]}]}
   }},
-  "80": {"goal": {"text": "Every character must loot one treasure tile, then all must reach the B tile.", "loot": "each", "escape": {"tile": "b1a"}, "lostIfExhausted": ["offExit"]}, "tiles": {
+  "80": {"goal": {"text": "Every character must loot one treasure tile, then all must reach the B tile.", "loot": "each", "escape": {"tile": "b1a"}, "lostIfExhausted": ["offExit"]}, "notes": ["Until a character has looted a treasure tile they attack with Disadvantage and can't use any item.", "Each character may loot only one treasure tile."], "effects": [{"on": "party", "untilLooted": true, "disadvantage": true, "noItems": true}], "tiles": {
   }},
   "81": {"goal": {"text": "Kill the Colorless.", "kill": ["the-colorless"]}, "tiles": {
   }},
@@ -209,6 +209,8 @@
   }},
   "84": {"goal": {"text": "Kill all enemies and protect the crystal.", "lostAt": {"1": 1}}, "notes": ["The cave walls can't be passed: they come down as rounds 4, 6 and 9 begin, each opening a room."], "locks": [{"between": ["l2a", "a3a"], "afterRound": 3, "note": "A cave wall: it comes down as round 4 begins."}, {"between": ["l2a", "a2b"], "afterRound": 5, "note": "A cave wall: it comes down as round 6 begins."}, {"between": ["l2a", "e1b"], "afterRound": 8, "note": "A cave wall: it comes down as round 9 begins."}], "protect": [1], "tiles": {
     "l2a": {"objectives": [{"objective": 1, "cells": [[0, 3]]}]}
+  }},
+  "85": {"notes": ["The Sun Demons are enemies to you and to all other monsters alike."], "apart": ["sun-demon"], "tiles": {
   }},
   "86": {"goal": {"text": "Save seven villagers before five are killed.", "arrive": {"objective": 1, "marker": "b", "count": 7}, "lostAt": {"1": 5}}, "notes": ["A Vermling Scout arrives at each of two points as every round begins.", "Villagers walk for the end of the docks on initiative 99; one that gets there is saved.", "The Lurkers aren't set up until the end of the round in which the first villager is saved."], "later": ["lurker"], "rules": [{"round": "true", "once": true, "when": [{"saved": 1}], "setUp": ["lurker"]}], "protect": [1], "tiles": {
     "a4a": {"objectives": [{"objective": 1, "cells": [[3, 1]]}]},
@@ -227,12 +229,14 @@
     "d1b": {"markers": {"c": [[0, 2], [1, 0]]}},
     "m1b": {"markers": {"b": [[2, 4], [3, 4]]}}
   }},
-  "92": {"goal": {"text": "Kill all non-city enemies.", "spare": ["city-guard", "city-archer"], "lostIfKilled": ["city-guard", "city-archer"]}, "notes": ["The City Guards and the City Archer arrive when the second room opens. They attack you, but killing one loses the scenario."], "dropRules": [0], "rules": [{"round": "true", "always": true, "once": true, "requiredRooms": [2], "spawns": [{"monster": {"name": "city-archer", "player2": "normal", "player3": "elite", "player4": "elite"}}, {"monster": {"name": "city-guard", "type": "normal"}}, {"monster": {"name": "city-guard", "player2": "normal", "player3": "normal", "player4": "elite"}}]}], "tiles": {
+  "91": {"notes": ["The Cave Bears and Hounds fight on your side.", "The Living Spirits are enemies to you and to all other monsters alike."], "apart": ["living-spirit"], "tiles": {
+  }},
+  "92": {"goal": {"text": "Kill all non-city enemies.", "spare": ["city-guard", "city-archer"], "lostIfKilled": ["city-guard", "city-archer"]}, "notes": ["The City Guards and the City Archer arrive when the second room opens. They are enemies to you and to the other monsters alike, but killing one loses the scenario."], "dropRules": [0], "rules": [{"round": "true", "always": true, "once": true, "requiredRooms": [2], "spawns": [{"monster": {"name": "city-archer", "player2": "normal", "player3": "elite", "player4": "elite"}}, {"monster": {"name": "city-guard", "type": "normal"}}, {"monster": {"name": "city-guard", "player2": "normal", "player3": "normal", "player4": "elite"}}]}], "apart": ["city-guard", "city-archer"], "tiles": {
   }},
   "93": {"rules": [{"round": "R == 1", "start": true, "figures": [{"identifier": {"type": "character", "name": ".*"}, "type": "gainCondition", "value": "immobilize", "scenarioEffect": true}]}], "tiles": {
   }},
   "94": {"goal": {"text": "Kill all enemies and loot the treasure tile.", "enemies": "all", "loot": "goal"}, "tiles": {
   }},
-  "95": {"goal": {"text": "Kill the Prime Lieutenant.", "kill": ["prime-lieutenant"]}, "tiles": {
+  "95": {"goal": {"text": "Kill the Prime Lieutenant.", "kill": ["prime-lieutenant"]}, "notes": ["Any figure that ends its turn in a water hex suffers 1+L damage."], "water": {"endOfTurn": "1+L"}, "tiles": {
   }}
 }

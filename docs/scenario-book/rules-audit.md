@@ -36,8 +36,14 @@ Then standing effects on attacks and Shields: #42's six vocal chords each do wha
 while they stand; #62's Hungry Soul has Shield 5 on top of an elite Living Bones' own, less 1 for
 every other Living Bones on the map; #58's Harvester has Shield 1 and heals C−1 a round for each
 bone pile; #87's Giant Ooze has Shield 2 for each of four tokens, one lost with every Ooze. The
-scenario brief now says these rules, and the others enforced, in words (`notes`). Later fixes are
-listed in `TODO.md`.
+scenario brief now says these rules, and the others enforced, in words (`notes`).
+
+Then sides and water: #85's Sun Demons, #91's Living Spirits and #92's City Guards and Archer are
+a third side, enemies to the party and to the other monsters; #80 gives Disadvantage and bars
+items until a character has looted a treasure tile; #68's tree is harmed only by the scenario
+(2 a round, and once revealed only with a Rending Drake on its tile), can be healed, and loses the
+scenario when it falls, and water hurts the poisoned; #95's water deals 1+L to whoever ends a
+turn in it. Later fixes are listed in `TODO.md`.
 
 ### 1 · Black Barrow
 | Rule (from the book) | Status | Where / what's missing |

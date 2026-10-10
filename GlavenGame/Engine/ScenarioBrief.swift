@@ -194,7 +194,9 @@ struct ScenarioBrief: Equatable {
         }
         for (index, objective) in (scenario.objectives ?? []).enumerated() where objective.escort == true {
             guard let name = objective.name else { continue }
-            if written?.protect?.contains(index + 1) == true {
+            if written?.sheltered?.contains(index + 1) == true {
+                continue   // its notes say what it is
+            } else if written?.protect?.contains(index + 1) == true {
                 add("The monsters attack \(name.hasPrefix("The ") ? "t" + name.dropFirst() : "the " + plural(name, 2)): no ally of yours, and not to be healed.")
             } else {
                 add("\(name) fights on your side; keep them alive.")

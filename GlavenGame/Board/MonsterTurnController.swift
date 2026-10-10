@@ -87,6 +87,7 @@ final class MonsterTurnController {
             // End of this monster's turn: conditions that last "until the end of its next turn" expire.
             if !entity.dead {
                 gameManager.entityManager.expireConditions(entity)
+                coordinator.sufferWaterAtTurnEnd(pieceID)
             }
             coordinator.sweepDeadFigures()
             if coordinator.scenarioResult != nil { return }

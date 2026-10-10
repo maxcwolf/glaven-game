@@ -33,6 +33,13 @@ struct ScenarioPlacements: Codable, Equatable {
     /// The scenario's special rules in words, for the scenario brief: those the game enforces
     /// that the scenario data has no text for (or says less well).
     var notes: [String]?
+    /// Monster types that are a third side: enemies to the characters and to all other
+    /// monster types.
+    var apart: [String]?
+    /// Objectives (1-based) that are allies only to be healed: nothing attacks or affects them.
+    var sheltered: [Int]?
+    /// What water hexes do in this scenario.
+    var water: Water?
     /// What appears where an objective stood when it is destroyed, by objective (1-based): a
     /// Living Corpse from each grave dug up.
     var whenDestroyed: [String: MonsterStandeeData]?
@@ -183,6 +190,14 @@ struct ScenarioPlacements: Codable, Equatable {
 }
 
 extension ScenarioPlacements {
+    struct Water: Codable, Equatable {
+        /// A character or character summon with Poison that enters a water hex suffers trap
+        /// damage (Toxic Moor).
+        var hurtsThePoisoned: Bool?
+        /// Damage for any figure that ends its turn in a water hex ("1+L", Payment Due).
+        var endOfTurn: String?
+    }
+
     /// Something the scenario does to every attack of some figures, or to their Shield, for as
     /// long as it holds.
     struct Effect: Codable, Equatable {
@@ -193,6 +208,10 @@ extension ScenarioPlacements {
         var whileStanding: Int?
         /// Only once this room is revealed.
         var room: Int?
+        /// Only on a character who hasn't looted a goal treasure tile yet (not on summons).
+        var untilLooted: Bool?
+        /// They can't use any item.
+        var noItems: Bool?
         /// Added to each of their attacks.
         var attack: Int?
         var advantage: Bool?

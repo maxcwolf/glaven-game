@@ -166,6 +166,7 @@ extension GameCharacter {
         snapshot.itemSlotsUsed = itemSlotsUsed.isEmpty ? nil : itemSlotsUsed
         snapshot.bonusChargesUsed = bonusChargesUsed.isEmpty ? nil : bonusChargesUsed
         snapshot.itemsLeftBehind = itemsLeftBehind.isEmpty ? nil : itemsLeftBehind
+        snapshot.itemsBarred = itemsBarred ? true : nil
         return snapshot
     }
 }
@@ -232,6 +233,7 @@ extension CharacterSnapshot {
         c.itemSlotsUsed = itemSlotsUsed ?? [:]
         c.bonusChargesUsed = bonusChargesUsed ?? [:]
         c.itemsLeftBehind = itemsLeftBehind ?? []
+        c.itemsBarred = itemsBarred ?? false
         if let chosenCards {
             c.chosenCards = chosenCards
         } else {
@@ -253,6 +255,7 @@ extension GameMonster {
             ability: ability, abilities: abilities, abilityDrawn: abilityDrawn,
             entities: entities.map { $0.toSnapshot() },
             isAlly: isAlly, isAllied: isAllied, tags: tags, drawExtra: drawExtra,
+            standsApart: standsApart ? true : nil,
             displayName: displayName, deckOverride: deckOverride,
             additionalStatActions: additionalStatActions.isEmpty ? nil : additionalStatActions,
             additionalImmunities: additionalImmunities.isEmpty ? nil : additionalImmunities,
@@ -279,6 +282,7 @@ extension MonsterSnapshot {
         m.entities = entities.map { $0.toRuntime() }
         m.isAlly = isAlly
         m.isAllied = isAllied
+        m.standsApart = standsApart ?? false
         m.tags = tags
         m.drawExtra = drawExtra
         m.displayName = displayName
@@ -343,7 +347,7 @@ extension GameObjectiveContainer {
             initiative: initiative,
             entities: entities.map { $0.toSnapshot() },
             escortActions: escortActions, useAllyDeck: useAllyDeck, objectiveIndex: objectiveIndex,
-            isProtected: isProtected
+            isProtected: isProtected, isSheltered: isSheltered ? true : nil
         )
     }
 }
@@ -359,6 +363,7 @@ extension ObjectiveContainerSnapshot {
         o.useAllyDeck = useAllyDeck ?? false
         o.objectiveIndex = objectiveIndex
         o.isProtected = isProtected ?? false
+        o.isSheltered = isSheltered ?? false
         return o
     }
 }

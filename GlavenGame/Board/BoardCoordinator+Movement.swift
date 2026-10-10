@@ -80,8 +80,10 @@ extension BoardCoordinator {
             let wadesHazard = entered && cell?.isHazard == true && hazardProof
             let opensDoor = opensDoors && boardState.doors.contains { $0.coord == hex && !$0.isOpen }
                 && !boardState.isLockedDoor(hex)
+            // Toxic Moor: water is a trap to the poisoned.
+            let hitsWater = entered && waterHurtsOnEntering(hex, pieceID)
 
-            guard hitsTrap || hitsHazard || wadesHazard || opensDoor || isLast else { continue }
+            guard hitsTrap || hitsHazard || wadesHazard || hitsWater || opensDoor || isLast else { continue }
 
             await animateMove(pieceID, along: Array(path[segmentStart...index]), as: MoveAnimation(style))
             // The board was left or restarted while the figure walked: nothing more happens.
@@ -101,6 +103,11 @@ extension BoardCoordinator {
             }
             if hitsHazard {
                 guard await enterHazard(at: hex, on: pieceID), isCurrentBoard(generation) else { return false }
+            }
+            if hitsWater, let damage = gameManager?.levelManager.trap() {
+                log("\(name(pieceID)) is poisoned and suffers \(damage) damage from the water", category: .damage)
+                if await sufferDamageWithMitigation(damage, to: pieceID, source: "the water") { return false }
+                guard isCurrentBoard(generation) else { return false }
             }
             // Magma Waders: no harm from hazardous terrain, and Heal 2 on a turn that enters it.
             if wadesHazard, let turn = activePlayerTurn,

@@ -55,7 +55,10 @@ final class GameCharacter: Figure, Entity {
     /// Owned items not brought to the scenario (GH p.9: a character brings what fits).
     var itemsLeftBehind: [String] = []
     /// The items brought to the scenario: the ones the board uses.
-    var carriedItems: [String] { items.filter { !itemsLeftBehind.contains($0) } }
+    var carriedItems: [String] { itemsBarred ? [] : items.filter { !itemsLeftBehind.contains($0) } }
+    /// A scenario rule keeps the character from using any item for now (Vigil Keep, until they
+    /// have looted a treasure tile).
+    var itemsBarred = false
     /// Items that have been spent this scenario (flipped down; refreshed on long rest).
     var spentItems: Set<String> = []
     /// Items that have been consumed this scenario (removed until scenario end).

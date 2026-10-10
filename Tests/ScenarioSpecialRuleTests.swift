@@ -808,6 +808,228 @@ final class ScenarioSpecialRuleTests: XCTestCase {
         XCTAssertEqual(coord.shield(of: giant), own, "no tokens left, and no fewer")
     }
 
+    // MARK: - A third side
+
+    private func group(_ sim: ScenarioSimulator, _ name: String) throws -> GameMonster {
+        try XCTUnwrap(sim.gm.game.monsters.first { $0.name == name }, name)
+    }
+
+    private func enemies(_ sim: ScenarioSimulator, of name: String) throws -> Set<PieceID> {
+        Set(MonsterAI.gatherEnemies(board: sim.coord.boardState, monster: try group(sim, name), gameState: sim.gm.game))
+    }
+
+    /// Sun Temple: the Sun Demons are enemies to the characters and to every other monster
+    /// type, and the others are theirs.
+    func testSunDemonsAreEveryonesEnemies() throws {
+        let sim = try simulator("85")
+        let coord = sim.coord
+        revealAll(sim)
+        let sun = try XCTUnwrap(pieces(sim, named: "sun-demon").first), night = try XCTUnwrap(pieces(sim, named: "night-demon").first)
+        let imp = try XCTUnwrap(pieces(sim, named: "black-imp").first)
+        XCTAssertTrue(coord.areEnemies(sun, night))
+        XCTAssertTrue(coord.areEnemies(sun, character(sim, 0)))
+        XCTAssertFalse(coord.areAllies(sun, night))
+        XCTAssertTrue(coord.areAllies(night, imp), "the others are as they were")
+        XCTAssertFalse(coord.areEnemies(night, imp))
+        XCTAssertTrue(try enemies(sim, of: "sun-demon").isSuperset(of: [night, imp, character(sim, 0)]))
+        XCTAssertTrue(try enemies(sim, of: "night-demon").isSuperset(of: [sun, character(sim, 0)]))
+        XCTAssertFalse(try enemies(sim, of: "night-demon").contains(imp))
+        XCTAssertFalse(try enemies(sim, of: "sun-demon").contains(sun), "not its own kind")
+        // Around a Night Demon its allies are the other monsters, not the Sun Demons.
+        let around = MonsterAI.gatherAllyPositions(board: coord.boardState, monster: try group(sim, "night-demon"), excluding: night, gameState: sim.gm.game)
+        XCTAssertFalse(around.contains(try XCTUnwrap(coord.boardState.piecePositions[sun])))
+        XCTAssertTrue(around.contains(try XCTUnwrap(coord.boardState.piecePositions[imp])))
+        // A save keeps the side.
+        let kept = try group(sim, "sun-demon").toSnapshot().toRuntime(editionStore: sim.gm.editionStore)
+        XCTAssertTrue(kept.standsApart)
+        XCTAssertFalse(try group(sim, "night-demon").toSnapshot().toRuntime(editionStore: sim.gm.editionStore).standsApart)
+    }
+
+    /// Wild Melee: bears and hounds for the party, Living Spirits against everyone. Back Alley
+    /// Brawl: the city's men against everyone, and with one another.
+    func testThreeSidesInTheMeleeAndTheBrawl() throws {
+        let melee = try simulator("91")
+        revealAll(melee)
+        let spirit = try XCTUnwrap(pieces(melee, named: "living-spirit").first), bear = try XCTUnwrap(pieces(melee, named: "cave-bear").first)
+        let bandit = try XCTUnwrap(pieces(melee, named: "bandit-guard").first)
+        XCTAssertTrue(try enemies(melee, of: "living-spirit").isSuperset(of: [bear, bandit, character(melee, 0)]))
+        XCTAssertTrue(try enemies(melee, of: "cave-bear").isSuperset(of: [spirit, bandit]))
+        XCTAssertFalse(try enemies(melee, of: "cave-bear").contains(character(melee, 0)))
+        XCTAssertTrue(try enemies(melee, of: "bandit-guard").isSuperset(of: [spirit, bear, character(melee, 0)]))
+
+        let brawl = try simulator("92")
+        revealAll(brawl)
+        let cityGuard = try XCTUnwrap(pieces(brawl, named: "city-guard").first), archer = try XCTUnwrap(pieces(brawl, named: "city-archer").first)
+        let thug = try XCTUnwrap(pieces(brawl, named: "bandit-guard").first)
+        XCTAssertTrue(brawl.coord.areAllies(cityGuard, archer))
+        XCTAssertTrue(brawl.coord.areEnemies(cityGuard, thug))
+        XCTAssertTrue(try enemies(brawl, of: "city-guard").isSuperset(of: [thug, character(brawl, 0)]))
+        XCTAssertFalse(try enemies(brawl, of: "city-guard").contains(archer))
+        XCTAssertTrue(try enemies(brawl, of: "bandit-guard").isSuperset(of: [cityGuard, archer]))
+    }
+
+    // MARK: - Vigil Keep
+
+    /// Until a character has looted a treasure tile they attack with Disadvantage and can't
+    /// use any item; their summons are untouched.
+    func testVigilKeepBarsItemsUntilTheTreasure() throws {
+        let sim = try simulator("80")
+        let coord = sim.coord
+        let brute = sim.gm.game.characters[0], spellweaver = sim.gm.game.characters[1]
+        brute.items = ["gh-4"]
+        XCTAssertTrue(brute.itemsBarred)
+        XCTAssertTrue(brute.carriedItems.isEmpty)
+        XCTAssertTrue(coord.scenarioGivesDisadvantage(to: character(sim, 0)))
+        let summon = GameSummon(name: "bear", health: 6, maxHealth: 6)
+        brute.summons.append(summon)
+        XCTAssertFalse(coord.scenarioGivesDisadvantage(to: .summon(id: summon.id)))
+        XCTAssertTrue(brute.toSnapshot().toRuntime(editionStore: sim.gm.editionStore).itemsBarred, "a save keeps the bar")
+
+        revealAll(sim)
+        let chest = try XCTUnwrap(coord.boardState.cells.values.filter { $0.overlay == .treasure && $0.treasureID == BoardCoordinator.goalTreasureID }.map(\.coord).sorted().first)
+        coord.lootHexes(for: character(sim, 0), coords: [chest], byLootAction: true)
+        XCTAssertFalse(brute.itemsBarred)
+        XCTAssertEqual(brute.carriedItems, ["gh-4"])
+        XCTAssertFalse(coord.scenarioGivesDisadvantage(to: character(sim, 0)))
+        XCTAssertTrue(spellweaver.itemsBarred, "each for themselves")
+        XCTAssertTrue(coord.scenarioGivesDisadvantage(to: character(sim, 1)))
+    }
+
+    // MARK: - Toxic Moor
+
+    /// A hex a figure can be put on, whatever is drawn on it.
+    private func free(_ sim: ScenarioSimulator, _ hex: HexCoord) -> Bool {
+        sim.coord.boardState.cells[hex]?.passable == true && !sim.coord.boardState.isOccupied(hex)
+    }
+
+    private func water(_ sim: ScenarioSimulator) -> [HexCoord] {
+        sim.coord.boardState.cells.values.filter { $0.overlay == .difficultTerrain && $0.overlaySubType == "water" }.map(\.coord).sorted()
+    }
+
+    /// The tree: nothing attacks or affects it but the scenario — 2 damage a round, and once
+    /// its room is open only while a Rending Drake stands on that tile; the party may heal it,
+    /// and its fall loses the scenario.
+    func testTheTreeOfToxicMoor() throws {
+        let sim = try simulator("68")
+        let coord = sim.coord, rules = sim.gm.scenarioRulesManager
+        let tree = try XCTUnwrap(objectives(sim).first)
+        let wood = try XCTUnwrap(coord.entity(for: tree))
+        XCTAssertEqual(wood.health, 17)
+        for monster in sim.gm.game.monsters where !monster.aliveEntities.isEmpty {
+            XCTAssertFalse(try enemies(sim, of: monster.name).contains(tree), "\(monster.name) leaves the tree alone")
+        }
+        let monster = try XCTUnwrap(pieces(sim).first)
+        XCTAssertFalse(coord.areEnemies(monster, tree))
+        XCTAssertFalse(coord.areEnemies(character(sim, 0), tree))
+        XCTAssertTrue(coord.areAllies(character(sim, 0), tree), "to be healed like an ally")
+
+        rules.evaluateRules(phase: .roundEnd)
+        XCTAssertEqual(wood.health, 15, "before its room is open, every round")
+        revealAll(sim)
+        let drakes = pieces(sim, named: "rending-drake").filter { tile(sim, $0) == "m1b" }
+        XCTAssertFalse(drakes.isEmpty)
+        sim.gm.game.round = 2
+        rules.evaluateRules(phase: .roundEnd)
+        XCTAssertEqual(wood.health, 13, "a Rending Drake is on the tile")
+        for drake in drakes { coord.handleDeath(of: drake) }
+        sim.gm.game.round = 3
+        rules.evaluateRules(phase: .roundEnd)
+        XCTAssertEqual(wood.health, 13, "none is")
+        XCTAssertNil(coord.pendingResult)
+        coord.sufferDamage(99, to: tree)
+        coord.checkVictoryDefeat()
+        XCTAssertEqual(coord.pendingResult, .defeat)
+    }
+
+    /// A character or summon with Poison that walks into a water hex suffers trap damage;
+    /// without Poison, or jumping over it, none.
+    func testWaterHurtsThePoisonedInToxicMoor() async throws {
+        let sim = try simulator("68")
+        let coord = sim.coord
+        let brute = sim.gm.game.characters[0]
+        brute.maxHealth = 30
+        brute.health = 30
+        let trap = sim.gm.levelManager.trap()
+        func wade(_ style: MovementStyle) async throws {
+            let wet = try XCTUnwrap(water(sim).first { hex in
+                free(sim, hex) && hex.neighbors.filter { coord.isEmptyHex($0) && !water(sim).contains($0) }.count >= 2
+            })
+            let dry = try XCTUnwrap(wet.neighbors.sorted().first { coord.isEmptyHex($0) && !water(sim).contains($0) })
+            stand(sim, 0, on: dry)
+            if style == .jump {
+                let beyond = try XCTUnwrap(wet.neighbors.sorted().first { $0 != dry && coord.isEmptyHex($0) && !water(sim).contains($0) })
+                _ = await coord.moveAlong(character(sim, 0), path: [dry, wet, beyond], style: .jump)
+            } else {
+                _ = await coord.moveAlong(character(sim, 0), path: [dry, wet], style: style)
+            }
+        }
+        try await wade(.normal)
+        XCTAssertEqual(brute.health, 30, "not poisoned")
+        coord.applyCondition(.poison, to: character(sim, 0))
+        try await wade(.jump)
+        XCTAssertEqual(brute.health, 30, "jumped over")
+        try await wade(.normal)
+        XCTAssertEqual(brute.health, 30 - trap)
+        // Elsewhere water is only water.
+        let cove = try simulator("87")
+        cove.coord.applyCondition(.poison, to: character(cove, 0))
+        XCTAssertFalse(cove.coord.waterHurtsOnEntering(try XCTUnwrap(water(cove).first), character(cove, 0)))
+        // A monster with Poison wades through unharmed.
+        let wet = try XCTUnwrap(water(sim).first { free(sim, $0) && $0.neighbors.contains(where: coord.isEmptyHex) })
+        let imp = try XCTUnwrap(coord.spawnMonster(name: "black-imp", type: .normal, at: try XCTUnwrap(wet.neighbors.first(where: coord.isEmptyHex)), origin: .placed))
+        coord.applyCondition(.poison, to: imp)
+        let health = try entity(sim, imp).health
+        _ = await coord.moveAlong(imp, path: [try XCTUnwrap(coord.boardState.piecePositions[imp]), wet], style: .normal)
+        XCTAssertEqual(try entity(sim, imp).health, health)
+    }
+
+    // MARK: - Payment Due
+
+    /// Any figure that ends its turn in a water hex suffers 1+L damage: characters, summons
+    /// and monsters.
+    func testEndingATurnInTheWaterOfPaymentDue() async throws {
+        let sim = try ScenarioSimulator(scenario: "95", options: .init(characters: ["brute", "spellweaver"], seed: 1, autoResolvePrompts: true))
+        let coord = sim.coord
+        let due = 1 + sim.gm.game.level
+        XCTAssertNil(coord.waterDamageAtTurnEnd(for: character(sim, 0)), "on dry land")
+
+        // Characters who can't leave the water this round (put there once they are placed).
+        var pool: [HexCoord] = []
+        await sim.play(rounds: 1) { [self] in
+            guard pool.isEmpty, coord.boardPhase == .cardSelection else { return }
+            if let door = coord.boardState.doors.first(where: { $0.childTileRef.lowercased() == "d1a" }) {
+                coord.openDoor(at: door.coord)
+                coord.boardPhase = .cardSelection   // opening a door is something done in a turn
+            }
+            pool = water(sim).filter { free(sim, $0) }
+            guard pool.count > 10 else { return }
+            for index in 0...1 {
+                stand(sim, index, on: pool[index])
+                coord.applyCondition(.immobilize, to: character(sim, index))
+            }
+        }
+        XCTAssertGreaterThan(pool.count, 10)
+        let hurt = sim.transcript.filter { $0.contains("suffers \(due) damage from the scenario") }
+        XCTAssertEqual(hurt.count, 2, sim.transcript.suffix(30).joined(separator: "\n"))
+        guard pool.count > 10 else { return }
+
+        // A monster and a summon that stay where they are.
+        let terror = try XCTUnwrap(coord.spawnMonster(name: "deep-terror", type: .normal, at: pool[4], origin: .placed))
+        let health = try entity(sim, terror).health
+        let terrors = try group(sim, "deep-terror")
+        if !terrors.abilityDrawn { sim.gm.monsterManager.drawAbility(for: terrors) }
+        await MonsterTurnController(coordinator: coord, gameManager: sim.gm).executeMonsterGroup(terrors)
+        XCTAssertEqual(try entity(sim, terror).health, health - due)
+
+        let owner = sim.gm.game.characters[0]
+        let summon = GameSummon(name: "bear", health: 10, maxHealth: 10)
+        summon.state = .active
+        owner.summons.append(summon)
+        coord.boardState.placePiece(.summon(id: summon.id), at: pool[5])
+        await SummonTurnController(coordinator: coord, gameManager: sim.gm).executeSummonTurns(for: owner)
+        XCTAssertEqual(summon.health, 10 - due)
+    }
+
     // MARK: - What the brief says
 
     /// The brief says the rules the game enforces in the book's sense, not a guess from the data.

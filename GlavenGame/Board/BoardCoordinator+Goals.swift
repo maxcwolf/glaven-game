@@ -87,6 +87,7 @@ extension BoardCoordinator {
     /// A character looted a goal treasure tile.
     func noteGoalTreasureLooted(by characterID: String) {
         if !boardState.goalLooters.contains(characterID) { boardState.goalLooters.append(characterID) }
+        updateItemBars()
     }
 
     /// Whether a character may loot a goal treasure tile: where every character must loot one,
@@ -248,6 +249,7 @@ extension BoardCoordinator {
             guard arrived >= saved else { return false }
         }
         if let lock = fact.lock, !boardState.releasedLocks.contains(lock) { return false }
+        if let room = fact.unrevealed, gameManager?.game.scenario?.revealedRooms.contains(room) != false { return false }
         if let looted = fact.looted {
             if looted == Self.goalTreasureID {
                 guard treasureIsLooted(looted) else { return false }

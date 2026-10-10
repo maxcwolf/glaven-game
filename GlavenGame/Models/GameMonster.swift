@@ -24,6 +24,9 @@ final class GameMonster: Figure {
     var entities: [GameMonsterEntity] = []
     var isAlly: Bool = false
     var isAllied: Bool = false
+    /// A third side: enemies to the characters and to every other monster type (the Sun Demons
+    /// of the Sun Temple). Those that stand apart are one another's allies.
+    var standsApart: Bool = false
     var tags: [String] = []
     var drawExtra: Bool = false
 

@@ -184,6 +184,7 @@ final class ScenarioManager {
             character.attackModifierDeck.removeScenarioCards()
             character.shield = nil
             character.shieldPersistent = nil
+            character.itemsBarred = false
             character.retaliate = []
             character.retaliatePersistent = []
             character.summons.removeAll()
@@ -410,6 +411,8 @@ final class ScenarioManager {
                     monster.level = spec.level(forScenarioLevel: game.level)
                     monster.isAlly = isAlly
                     monster.isAllied = isAllied
+                    monster.standsApart = data.solo == nil && ScenarioPlacementStore.shared
+                        .placements(for: data.index, edition: data.edition)?.apart?.contains(name) == true
                     if let drawExtra = data.drawExtra, drawExtra.contains(name) {
                         monster.drawExtra = true
                     }
@@ -511,8 +514,9 @@ final class ScenarioManager {
             container.useAllyDeck = objData.useAllyDeck
             container.objectiveIndex = index
             if let scenario = game.scenario?.data, scenario.solo == nil {
-                container.isProtected = ScenarioPlacementStore.shared
-                    .placements(for: scenario.index, edition: scenario.edition)?.protect?.contains(index) ?? false
+                let written = ScenarioPlacementStore.shared.placements(for: scenario.index, edition: scenario.edition)
+                container.isProtected = written?.protect?.contains(index) ?? false
+                container.isSheltered = written?.sheltered?.contains(index) ?? false
             }
             game.figures.append(.objective(container))
         }

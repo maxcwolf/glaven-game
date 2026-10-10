@@ -126,6 +126,8 @@ struct BoardFact: Codable, Hashable {
     /// Treasure looted: `"goal"` for every goal treasure tile, a map tile (`"b2b"`) for the goal
     /// treasure on it, or a treasure's number.
     var looted: String?
+    /// This room (by number) isn't revealed yet.
+    var unrevealed: Int?
 }
 
 // MARK: - Rule Identifier

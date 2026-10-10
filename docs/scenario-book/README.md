@@ -43,7 +43,7 @@ ends up on the board:
   - `when` — things that have happened on the board, all at once: `{"saved": 1}` (that many
     escorts have arrived), `{"lock": 0}` (that lock of `locks`, from 0, has been released),
     `{"looted": "goal"}` (every goal treasure tile; a tile ref for the goal treasure on it; a
-    treasure's number). A rule with `"always": true` fires at once; without it, as the round ends
+    treasure's number), `{"unrevealed": 2}` (that room isn't revealed yet). A rule with `"always": true` fires at once; without it, as the round ends
     ("at the end of the round in which…").
   - `setUp` — monster types held back by `later` are set up now, where the map prints them.
   - in a figure's `identifier`: `"tile": "j1a"` (only figures standing on that tile) and
@@ -62,6 +62,14 @@ ends up on the board:
   X, C and L, added to their Shield, which never falls below none). X is what `per` counts:
   `{"objective": 1}` or `{"monster": "living-bones"}` on the board, or
   `{"tokens": 4, "lostWith": "ooze"}` — tokens of which one goes each time such a monster dies.
+  `untilLooted` — only on a character who hasn't looted a goal treasure tile yet;
+  `noItems` — they can't use any item (#80).
+- `apart`: monster types that are a third side — enemies to the characters and to every other
+  monster type, allies of one another (#85 Sun Demons, #91 Living Spirits, #92 the city's men).
+- `sheltered`: objectives that are allies only to be healed: no monster attacks them and no
+  ability touches them (#68's tree, which only the scenario harms).
+- `water`: what water hexes do — `hurtsThePoisoned` (a poisoned character or summon walking in
+  suffers trap damage, #68), `endOfTurn` (damage for any figure ending its turn there, #95).
 - `notes`: the special rules in words for the scenario brief — only those the game enforces.
   With notes written, the rules written here aren't described a second time from their data,
   no "More … arrive" lines are guessed, and a text the data ships is left out where a note says
@@ -139,7 +147,7 @@ its map, every door objective is on a door and every objective number exists.
 | 57 Investigation | — | a | win: kill the Infiltrator | he appears near other monsters, not where the guard fell |
 | 58 Bloody Shack | 4 bone piles | — | win: kill the Harvester | the bone piles' Shield and healing aren't modelled |
 | 62 Pit of Souls | — | a, b, c | win: kill the Hungry Soul (appears at c after ten kills) | its extra Shield isn't modelled |
-| 68 Toxic Moor | the tree | — | — | its damage should stop once no Rending Drake is on the M tile; until then its death doesn't lose |
+| 68 Toxic Moor | the tree (sheltered) | — | lost if it is destroyed | a poisoned summon doesn't yet avoid water as it would a trap |
 | 69 Well of the Unfortunate | — | a–d | win: a character beside the well | the doll isn't carried |
 | 70 Chained Isle | — | a, b | — | — |
 | 72 Oozing Grove | 3 trees | — (oozes rise beside their tree) | win: destroy all trees, kill all Oozes | — |
@@ -258,7 +266,7 @@ goals are checked; the notes say what around a goal is still missing.
 | 65 | Sulfur Mine | Kill all enemies and loot all treasure tiles. | yes | — | — |
 | 66 | Clockwork Cove | Occupy pressure plate (e) — a character occupies it at the end of their turn. | yes | — | — |
 | 67 | Arcane Library | Kill the Arcane Golem. | yes — the Stone Golem in the library | — | — |
-| 68 | Toxic Moor | Kill all enemies and protect the tree (a). | yes | The tree is destroyed. | **no** — needs the tree's damage to stop first |
+| 68 | Toxic Moor | Kill all enemies and protect the tree (a). | yes | The tree is destroyed. | yes |
 | 69 | Well of the Unfortunate | Bring the doll to the well (a) — complete when the doll is brought to a hex adjacent to the well. | approximately — any character ending a turn beside the well (the doll isn't carried) | — | — |
 | 70 | Chained Isle | Kill all demons. | yes | — | — |
 | 71 | Windswept Highlands | Loot all treasure tiles, then all characters must escape through the exit (a). | yes | Any character becomes exhausted while not occupying an exit hex (a). | yes |
