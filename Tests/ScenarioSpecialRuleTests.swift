@@ -642,4 +642,194 @@ final class ScenarioSpecialRuleTests: XCTestCase {
         coord.updateLocks(turnEnded: true)
         XCTAssertEqual(inTheRoom("ancient-artillery").count, 3, "once")
     }
+
+    // MARK: - Standing effects on attacks and shields
+
+    private func entity(_ sim: ScenarioSimulator, _ piece: PieceID) throws -> GameMonsterEntity {
+        guard case .monster(let name, let standee) = piece else { throw XCTSkip("not a monster") }
+        return try XCTUnwrap(sim.coord.monsterEntity(name: name, standee: standee))
+    }
+
+    /// A monster's own Shield, as its stat card and this round's ability card give it.
+    private func cardShield(_ sim: ScenarioSimulator, _ piece: PieceID) throws -> Int {
+        let entity = try entity(sim, piece)
+        guard case .monster(let name, _) = piece, let monster = sim.gm.game.monsters.first(where: { $0.name == name }) else { return 0 }
+        if !monster.abilityDrawn { sim.gm.monsterManager.drawAbility(for: monster) }
+        sim.gm.monsterManager.applyStatEffects(for: monster)
+        return CombatResolver.totalShield(shield: entity.shield, shieldPersistent: entity.shieldPersistent)
+    }
+
+    /// Realm of the Voice: each vocal chord has its penalty for as long as it stands.
+    func testEachVocalChordHasItsPenalty() async throws {
+        let sim = try simulator("42")
+        let coord = sim.coord, rules = sim.gm.scenarioRulesManager
+        let brute = sim.gm.game.characters[0]
+        brute.health = 30
+        brute.maxHealth = 30
+        func chord(_ number: Int) throws -> PieceID {
+            try XCTUnwrap(objectives(sim).first { coord.objectiveContainer(of: $0)?.objectiveIndex == number }, "chord \(number)")
+        }
+        XCTAssertEqual(objectives(sim).count, 6)
+        // (Not a Night Demon, which gives its attackers disadvantage by itself; and not adjacent,
+        // where a ranged attack has it.)
+        let stood = try XCTUnwrap(coord.boardState.piecePositions[character(sim, 0)])
+        let hex = try XCTUnwrap(coord.boardState.cells.keys.sorted().first { $0.distance(to: stood) == 2 && coord.isEmptyHex($0) })
+        let demon = try XCTUnwrap(coord.spawnMonster(name: "wind-demon", type: .normal, at: hex, origin: .placed))
+        let night = try entity(sim, demon)
+        night.maxHealth = 40
+        night.health = 30
+        night.shield = nil
+        night.shieldPersistent = nil
+        let plain = { AttackModifier(type: .plus0) }
+
+        // Chords 1 and 2: the monsters' attacks.
+        var health = brute.health
+        await coord.performAttack(attacker: demon, target: character(sim, 0), attack: AttackParameters(value: 2), drawCard: plain)
+        XCTAssertEqual(health - brute.health, 3, "+1 Attack")
+        XCTAssertEqual(coord.lastModifierReveal?.advantage, true)
+        coord.sufferDamage(99, to: try chord(1))
+        health = brute.health
+        await coord.performAttack(attacker: demon, target: character(sim, 0), attack: AttackParameters(value: 2), drawCard: plain)
+        XCTAssertEqual(health - brute.health, 2)
+        XCTAssertEqual(coord.lastModifierReveal?.advantage, true, "chord 2 still stands")
+        coord.sufferDamage(99, to: try chord(2))
+        await coord.performAttack(attacker: demon, target: character(sim, 0), attack: AttackParameters(value: 2), drawCard: plain)
+        XCTAssertEqual(coord.lastModifierReveal?.advantage, false)
+
+        // Chords 5 and 6: the party's attacks — and what the board says an attack will do.
+        let deck = sim.gm.editionStore.abilities(forDeck: "brute", edition: "gh")
+        let turn = PlayerTurnController(characterID: brute.id, coordinator: coord, gameManager: sim.gm)
+        coord.activePlayerTurn = turn
+        turn.selectCards(top: try XCTUnwrap(deck.first { $0.name == "Spare Dagger" }), bottom: try XCTUnwrap(deck.first { $0.name == "Trample" }))
+        turn.executeCurrentAction()   // Attack 3, Range 3
+        XCTAssertEqual(coord.expectedDamage(attacker: character(sim, 0), target: demon), 2, "\u{2212}1 Attack")
+        XCTAssertEqual(coord.attackPreview(attacker: character(sim, 0), target: demon)?.contains("disadvantage"), true)
+        var before = night.health
+        await coord.performAttack(attacker: character(sim, 0), target: demon, attack: AttackParameters(value: 3), drawCard: plain)
+        XCTAssertEqual(before - night.health, 2, "\u{2212}1 Attack")
+        XCTAssertEqual(coord.lastModifierReveal?.disadvantage, true)
+        coord.sufferDamage(99, to: try chord(5))
+        XCTAssertEqual(coord.expectedDamage(attacker: character(sim, 0), target: demon), 2, "chord 6 still stands")
+        XCTAssertEqual(coord.attackPreview(attacker: character(sim, 0), target: demon)?.contains("disadvantage"), false)
+        coord.sufferDamage(99, to: try chord(6))
+        XCTAssertEqual(coord.expectedDamage(attacker: character(sim, 0), target: demon), 3)
+        before = night.health
+        await coord.performAttack(attacker: character(sim, 0), target: demon, attack: AttackParameters(value: 3), drawCard: plain)
+        XCTAssertEqual(before - night.health, 3)
+        XCTAssertEqual(coord.lastModifierReveal?.disadvantage, false)
+        coord.activePlayerTurn = nil
+
+        // Chords 3 and 4: as turns start.
+        before = night.health
+        coord.ruleDamageDue = []
+        rules.evaluateTurnRules(.turnStart, for: night)
+        rules.evaluateTurnRules(.turnStart, for: brute)
+        XCTAssertEqual(night.health, before + 1)
+        XCTAssertEqual(coord.ruleDamageDue.map(\.amount), [1])
+        coord.sufferDamage(99, to: try chord(3))
+        coord.sufferDamage(99, to: try chord(4))
+        coord.ruleDamageDue = []
+        rules.evaluateTurnRules(.turnStart, for: night)
+        rules.evaluateTurnRules(.turnStart, for: brute)
+        XCTAssertEqual(night.health, before + 1)
+        XCTAssertTrue(coord.ruleDamageDue.isEmpty)
+    }
+
+    /// Pit of Souls: the Hungry Soul has Shield 5 on top of an elite Living Bones' own, less 1
+    /// for every other Living Bones on the map, never below none.
+    func testTheHungrySoulsShieldFallsWithTheBonesAroundIt() async throws {
+        let sim = try simulator("62")
+        let coord = sim.coord
+        for piece in pieces(sim) { coord.boardState.removePiece(piece) }
+        let free = coord.boardState.cells.keys.sorted().filter(coord.isEmptyHex)
+        let soul = try XCTUnwrap(coord.spawnMonster(name: "hungry-soul", type: .boss, at: free[0], origin: .placed))
+        let bones = try XCTUnwrap(sim.gm.game.monsters.first { $0.name == "living-bones" })
+        let own = try XCTUnwrap(bones.monsterData?.stat(for: .elite, at: bones.level)).actions?.first { $0.type == .shield }?.value?.intValue ?? 0
+        XCTAssertEqual(try cardShield(sim, soul), 5 + own)
+        XCTAssertEqual(coord.shield(of: soul), 5 + own, "no other Living Bones")
+        for hex in free[1...2] { coord.spawnMonster(name: "living-bones", type: .normal, at: hex, origin: .spawned) }
+        XCTAssertEqual(coord.shield(of: soul), 3 + own)
+
+        let entity = try entity(sim, soul)
+        entity.maxHealth = 40
+        entity.health = 40
+        await coord.performAttack(attacker: character(sim, 0), target: soul, attack: AttackParameters(value: 4 + own),
+                                  drawCard: { AttackModifier(type: .plus0) })
+        XCTAssertEqual(entity.health, 39, "one more than its shield")
+
+        for hex in free[3...9] { coord.spawnMonster(name: "living-bones", type: .normal, at: hex, origin: .spawned) }
+        XCTAssertEqual(coord.shield(of: soul), 0, "never below none")
+        XCTAssertEqual(coord.shield(of: try XCTUnwrap(pieces(sim, named: "living-bones").first)), 0, "theirs is their own")
+    }
+
+    /// Bloody Shack: for each bone pile standing the Harvester has Shield 1 more, and heals
+    /// C−1 as every round ends.
+    func testBonePilesShieldAndHealTheHarvester() throws {
+        let sim = try simulator("58")
+        let coord = sim.coord
+        revealAll(sim)
+        let harvester = try XCTUnwrap(pieces(sim, named: "the-harvester").first)
+        let piles = objectives(sim)
+        XCTAssertEqual(piles.count, 4)
+        let own = try cardShield(sim, harvester)
+        XCTAssertEqual(coord.shield(of: harvester), own + 4)
+        coord.sufferDamage(99, to: piles[0])
+        XCTAssertEqual(coord.shield(of: harvester), own + 3)
+
+        let entity = try entity(sim, harvester)
+        entity.maxHealth = 30
+        entity.health = 10
+        sim.gm.scenarioRulesManager.evaluateRules(phase: .roundEnd)
+        XCTAssertEqual(entity.health, 13, "C\u{2212}1 for each of three piles, with two characters")
+        for pile in piles.dropFirst() { coord.sufferDamage(99, to: pile) }
+        sim.gm.game.round = 2
+        sim.gm.scenarioRulesManager.evaluateRules(phase: .roundEnd)
+        XCTAssertEqual(entity.health, 13)
+        XCTAssertEqual(coord.shield(of: harvester), own)
+    }
+
+    /// Corrupted Cove: the Giant Ooze has Shield 2 for each of four tokens and loses one each
+    /// time an Ooze dies.
+    func testTheGiantOozeLosesATokenWithEveryOoze() throws {
+        let sim = try simulator("87")
+        let coord = sim.coord
+        revealAll(sim)
+        let giant = try XCTUnwrap(pieces(sim, named: "giant-ooze").first)
+        let own = try cardShield(sim, giant)
+        XCTAssertEqual(coord.shield(of: giant), own + 8)
+        coord.handleDeath(of: try XCTUnwrap(pieces(sim, named: "ooze").first))
+        XCTAssertEqual(coord.shield(of: giant), own + 6)
+        coord.handleDeath(of: try XCTUnwrap(pieces(sim, named: "black-imp").first))
+        XCTAssertEqual(coord.shield(of: giant), own + 6, "only an Ooze takes a token")
+        for _ in 0..<5 {
+            let hex = try XCTUnwrap(coord.boardState.cells.keys.sorted().first(where: coord.isEmptyHex))
+            coord.handleDeath(of: try XCTUnwrap(coord.spawnMonster(name: "ooze", type: .normal, at: hex, origin: .spawned)))
+        }
+        XCTAssertEqual(coord.shield(of: giant), own, "no tokens left, and no fewer")
+    }
+
+    // MARK: - What the brief says
+
+    /// The brief says the rules the game enforces in the book's sense, not a guess from the data.
+    func testTheBriefSaysTheWrittenRules() throws {
+        let gm = try SaveAndContinueTestsSupport.manager()
+        func rules(_ index: String) throws -> [String] {
+            let data = try XCTUnwrap(gm.editionStore.scenarios(for: "gh").first { $0.index == index && $0.solo == nil })
+            return ScenarioBrief.make(for: data, labels: gm.editionStore).rules
+        }
+        let voice = try rules("42")
+        XCTAssertEqual(voice.count, 6, voice.joined(separator: " / "))
+        XCTAssertTrue(voice.contains("Chord 1, while it stands: all monsters add +1 Attack to all their attacks."))
+        let battlements = try rules("36")
+        XCTAssertFalse(battlements.contains { $0.hasPrefix("More ") }, "who arrives is written out")
+        XCTAssertTrue(battlements.contains { $0.contains("until the gate falls") })
+        XCTAssertTrue(battlements.contains { $0.contains("twice the number of hit points") }, "the data's own text stays")
+        XCTAssertTrue(try rules("84").contains { $0.contains("the Crystal") && $0.contains("no ally") })
+        XCTAssertFalse(try rules("84").contains { $0.contains("fights on your side") })
+        XCTAssertTrue(try rules("38").contains { $0.contains("fights on your side") }, "an escort still does")
+        XCTAssertTrue(try rules("7").contains { $0.contains("Loot action") })
+        XCTAssertTrue(try rules("93").contains("Each character starts the scenario with Immobilize."))
+        XCTAssertTrue(try rules("87").contains { $0.contains("Curses") }, "what the data's own rules do is still said")
+        XCTAssertTrue(try rules("3").contains { $0.hasPrefix("More Inox Guards") }, "and guessed where nothing is written")
+    }
 }

@@ -30,7 +30,14 @@ saved; #83's altar hurts and heals around it, its Flame Demons wait for the Cult
 totems heal the monsters near them; #84's walls come down as rounds 4, 6 and 9 begin; #36's Prime
 Demon arrives at (e) when the gate falls (by itself after eight rounds) with the damage of the
 rounds gone by; #33's Icestorm follows the last treasure; #41's middle-room golems and
-artilleries wake with the plate. Later fixes are listed in `TODO.md`.
+artilleries wake with the plate.
+
+Then standing effects on attacks and Shields: #42's six vocal chords each do what the book says
+while they stand; #62's Hungry Soul has Shield 5 on top of an elite Living Bones' own, less 1 for
+every other Living Bones on the map; #58's Harvester has Shield 1 and heals C−1 a round for each
+bone pile; #87's Giant Ooze has Shield 2 for each of four tokens, one lost with every Ooze. The
+scenario brief now says these rules, and the others enforced, in words (`notes`). Later fixes are
+listed in `TODO.md`.
 
 ### 1 · Black Barrow
 | Rule (from the book) | Status | Where / what's missing |

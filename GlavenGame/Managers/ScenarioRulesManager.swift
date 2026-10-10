@@ -326,8 +326,11 @@ final class ScenarioRulesManager {
             }
         }
 
-        // Apply figure effects (non-trigger entries only)
+        // Apply figure effects (non-trigger entries only); F in a value is the trigger's count
+        // ("heals C−1 for each bone pile").
         if let figures = rule.figures {
+            appliedFigureCount = triggerFigureCount(rule)
+            defer { appliedFigureCount = nil }
             for figureRule in figures where !Self.isTriggerType(figureRule.type) {
                 applyFigureRule(figureRule, edition: edition)
             }
@@ -386,9 +389,12 @@ final class ScenarioRulesManager {
 
     /// Variables for value expressions (damage, hit points, counts). C is at least 2, as in
     /// GHS entity-value formulas.
+    /// F while a rule is being applied: how many figures its triggers count.
+    @ObservationIgnored private var appliedFigureCount: Int?
+
     private func valueVariables(figureCount: Int? = nil) -> [String: Int] {
         var variables = ["C": scenarioPlayerCount, "L": game.level, "R": game.round]
-        if let figureCount { variables["F"] = figureCount }
+        if let figureCount = figureCount ?? appliedFigureCount { variables["F"] = figureCount }
         return variables
     }
 

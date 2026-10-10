@@ -90,14 +90,15 @@ final class ScenarioFramingTests: XCTestCase {
                                                      monsters: ["bandit-archer", "bandit-guard", "living-bones"],
                                                      map: "3 rooms · start in L1a",
                                                      rewards: ["Party achievement: First Steps", "Unlocks #2 Barrow Lair"]))
-        XCTAssertEqual(try brief("2").rules, ["Each character adds 3 Curses to their attack modifier deck."])
+        XCTAssertEqual(try brief("2").rules, ["The doors to the side rooms are locked: only the Bandit Commander opens them.",
+                                              "Each character adds 3 Curses to their attack modifier deck."])
         XCTAssertEqual(try brief("14").rules.first, "Each character adds 3 \u{2212}1 cards to their attack modifier deck.")
         XCTAssertEqual(try brief("27").goal, "Survive until the end of round 10.")
         XCTAssertEqual(try brief("3").rules, ["More Inox Guards arrive every odd round."])
         XCTAssertTrue(try brief("31").rules.contains("More Night Demons arrive every round."))
         XCTAssertEqual(try brief("56").defeat.last, "Captive Orchid is destroyed.")
         XCTAssertEqual(try brief("60").defeat.last, "Round 12 ends before the goal is met.")
-        XCTAssertTrue(try brief("42").rules.contains("All monsters gain Advantage on all their attacks."),
+        XCTAssertTrue(try brief("22").rules.contains { $0.hasPrefix("For each altar that isn't destroyed") },
                       "the scenario's printed rules")
         XCTAssertFalse(try brief("19").rules.contains { $0.lowercased().hasPrefix("towards") },
                        "an escort's move instruction isn't a rule")

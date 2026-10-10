@@ -55,6 +55,17 @@ ends up on the board:
   is saved); a rule's `setUp` brings them, on the places the map data has for them. Monsters the
   data doesn't have at all (the golems of #41's middle room) are spawned by a rule at letters
   written for them — letters the book doesn't print, since nothing shows a letter on the board.
+- `effects`: what the scenario does to attacks and Shields for as long as it holds
+  (`ScenarioPlacements.Effect`): `on` — `"monsters"`, `"party"` (characters and their summons) or
+  one monster type; `whileStanding` — only while that objective stands; then any of `attack` (added
+  to each of their attacks), `advantage`, `disadvantage` and `shield` (a number or a formula over
+  X, C and L, added to their Shield, which never falls below none). X is what `per` counts:
+  `{"objective": 1}` or `{"monster": "living-bones"}` on the board, or
+  `{"tokens": 4, "lostWith": "ooze"}` — tokens of which one goes each time such a monster dies.
+- `notes`: the special rules in words for the scenario brief — only those the game enforces.
+  With notes written, the rules written here aren't described a second time from their data,
+  no "More … arrive" lines are guessed, and a text the data ships is left out where a note says
+  the same and more ("Chord 1, while it stands: …").
 - `whenDestroyed`: what appears where an objective stood when it is destroyed, by objective
   (`{"1": {"name": "living-corpse", "player2": "normal", …}}`): a Living Corpse from each grave.
 - `goal`: the scenario's goal and losses as the book prints them (`ScenarioPlacements.Goal`).

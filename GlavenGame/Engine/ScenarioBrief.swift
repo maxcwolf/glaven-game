@@ -139,6 +139,15 @@ struct ScenarioBrief: Equatable {
             lines.append(line)
         }
 
+        // What the scenario book says, written out where the game enforces it.
+        let written = scenario.solo == nil ? ScenarioPlacementStore.shared.placements(for: scenario.index, edition: edition) : nil
+        let notes = written?.notes ?? []
+        notes.forEach(add)
+        func isNoted(_ line: String) -> Bool {
+            let plain = line.lowercased().trimmingCharacters(in: CharacterSet(charactersIn: ". "))
+            return notes.contains { $0.lowercased().contains(plain) }
+        }
+
         // The scenario's own rule text, where the data ships it.
         if let printed = labels?.labelsByEdition[edition]
             .flatMap({ ($0["scenario"] as? [String: Any])?["rules"] as? [String: Any] })
@@ -151,9 +160,13 @@ struct ScenarioBrief: Equatable {
                 let reference = "%data.scenario.rules.\(edition).\(scenario.index).\(key)%"
                 guard !objectiveText.contains(reference),
                       let rule = text(reference, labels: labels, edition: edition),
-                      rule.split(separator: " ").count >= 5 else { continue }
+                      rule.split(separator: " ").count >= 5, !isNoted(rule) else { continue }
                 add(rule)
             }
+        }
+
+        if written?.lootActionOnly == true {
+            add("The goal treasure can only be looted with a Loot action, not by ending a turn on it.")
         }
 
         var spawns: [String: Set<String>] = [:]   // monster name -> when it appears
@@ -161,7 +174,8 @@ struct ScenarioBrief: Equatable {
             for figure in rule.figures ?? [] {
                 add(describe(figure, edition: edition, labels: labels))
             }
-            for spawn in rule.spawns ?? [] {
+            // Written notes say who arrives, and when, better than this can.
+            for spawn in notes.isEmpty ? rule.spawns ?? [] : [] {
                 // Some names carry a data suffix ("infiltrator:+1").
                 let base = String(spawn.monster.name.split(separator: ":").first ?? "")
                 let name = GameText.monsterName(base, edition: edition, labels: labels)
@@ -178,8 +192,13 @@ struct ScenarioBrief: Equatable {
             let ordered = times.sorted { (Int($0.filter(\.isNumber)) ?? 0, $0) < (Int($1.filter(\.isNumber)) ?? 0, $1) }
             add("More \(plural(name, 2)) arrive \(GameText.list(ordered)).")
         }
-        for objective in scenario.objectives ?? [] where objective.escort == true {
-            if let name = objective.name { add("\(name) fights on your side; keep them alive.") }
+        for (index, objective) in (scenario.objectives ?? []).enumerated() where objective.escort == true {
+            guard let name = objective.name else { continue }
+            if written?.protect?.contains(index + 1) == true {
+                add("The monsters attack \(name.hasPrefix("The ") ? "t" + name.dropFirst() : "the " + plural(name, 2)): no ally of yours, and not to be healed.")
+            } else {
+                add("\(name) fights on your side; keep them alive.")
+            }
         }
         return lines
     }

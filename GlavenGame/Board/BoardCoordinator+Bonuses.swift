@@ -344,7 +344,7 @@ extension BoardCoordinator {
             } else if text.contains("for each of your allies adjacent to the target") {
                 attack += bonus * attackersAllies
             } else if text.contains("double the shield value of the target") {
-                attack += 2 * CombatResolver.totalShield(shield: defender.shield, shieldPersistent: defender.shieldPersistent)
+                attack += 2 * shield(of: target)
             } else if text.contains("for each negative condition on the target") {
                 attack += bonus * negatives
                 experience += xp * negatives

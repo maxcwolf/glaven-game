@@ -117,6 +117,26 @@ final class ScenarioPlacementTests: XCTestCase {
                 XCTAssertTrue(rules.contains { ($0.setUp ?? []).contains(name) || ($0.spawns ?? []).contains { $0.monster.name == name } },
                               "\(index): nothing ever sets up \(name)")
             }
+            for note in placements.notes ?? [] {
+                XCTAssertGreaterThan(note.split(separator: " ").count, 4, "\(index): \(note)")
+                XCTAssertTrue(note.hasSuffix("."), "\(index): \(note)")
+            }
+            for effect in placements.effects ?? [] {
+                XCTAssertTrue(["monsters", "party"].contains(effect.on) || monsters.contains(effect.on), "\(index): no \(effect.on)")
+                XCTAssertTrue(effect.attack != nil || effect.advantage != nil || effect.disadvantage != nil || effect.shield != nil,
+                              "\(index): an effect that does nothing")
+                for objective in [effect.whileStanding, effect.per?.objective].compactMap({ $0 }) {
+                    XCTAssertTrue((1...(data.objectives?.count ?? 0)).contains(objective), "\(index): no objective \(objective)")
+                }
+                for name in [effect.per?.monster, effect.per?.lostWith].compactMap({ $0 }) {
+                    XCTAssertTrue(monsters.contains(name), "\(index): no monster \(name)")
+                }
+                if let room = effect.room { XCTAssertTrue((data.rooms ?? []).contains { $0.roomNumber == room }, "\(index): no room \(room)") }
+                if let shield = effect.shield {
+                    XCTAssertNotNil(ScenarioExpression.integerValue(shield, variables: ["X": 2, "C": 2, "L": 1]), "\(index): \(shield)")
+                    XCTAssertEqual(effect.per?.tokens != nil, effect.per?.lostWith != nil, "\(index): tokens are lost with something")
+                }
+            }
             for rule in rules {
                 checked += 1
                 for spawn in rule.spawns ?? [] {
@@ -150,7 +170,7 @@ final class ScenarioPlacementTests: XCTestCase {
                         XCTAssertGreaterThan(near.range, 0, index)
                     }
                     if let value = figure.value, case .string(let text) = value, ["damage", "heal"].contains(figure.type) {
-                        XCTAssertNotNil(ScenarioExpression.integerValue(text, variables: ["C": 2, "L": 1, "R": 3]), "\(index): \(text)")
+                        XCTAssertNotNil(ScenarioExpression.integerValue(text, variables: ["C": 2, "L": 1, "R": 3, "F": 1]), "\(index): \(text)")
                     }
                 }
             }

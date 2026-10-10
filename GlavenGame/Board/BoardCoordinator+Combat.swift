@@ -57,8 +57,10 @@ extension BoardCoordinator {
         let distance = attackerPos.distance(to: targetPos)
         // The Doomstalker's dooms on the target: +Attack, Pierce, advantage, Curse.
         applyDoomBonuses(to: &attack, attacker: attacker, target: target, distance: distance)
+        // What the scenario does to every attack of this figure (a vocal chord still standing).
+        attack.value = max(0, attack.value + scenarioAttackBonus(of: attacker))
         let isPoisoned = defender.entityConditions.contains { $0.name == .poison && !$0.expired }
-        var shield = CombatResolver.totalShield(shield: defender.shield, shieldPersistent: defender.shieldPersistent)
+        var shield = shield(of: target)
         var retaliate = CombatResolver.retaliateDamage(retaliate: defender.retaliate,
                                                        retaliatePersistent: defender.retaliatePersistent,
                                                        distance: distance)
@@ -79,9 +81,10 @@ extension BoardCoordinator {
             shield += 1
         }
 
-        var advantage = attack.advantage
+        var advantage = attack.advantage || scenarioGivesAdvantage(to: attacker)
         // Giant Viper: "All attacks targeting it this round gain disadvantage."
         var disadvantage = (attack.isRanged && attackerPos.isAdjacent(to: targetPos)) || disadvantagedThisRound.contains(target)
+            || scenarioGivesDisadvantage(to: attacker)
         // Some monsters' stat cards give every attack against them disadvantage (e.g. Night Demon).
         if case .monster(let name, _) = target, let monsterEntity = defender as? GameMonsterEntity,
            let stat = gameManager?.game.monsters.first(where: { $0.name == name })?.stat(for: monsterEntity.type),
@@ -350,11 +353,12 @@ extension BoardCoordinator {
               let from = boardState.piecePositions[attacker], let to = boardState.piecePositions[target] else { return nil }
         var value = turn.currentAttackValue() + attackTextBonus(turn.attackTexts, attacker: attacker, target: target).attack
         if case .monster(let monsterName, _) = target { value += turn.attackBonusAgainst[monsterName] ?? 0 }
+        value = max(0, value + scenarioAttackBonus(of: attacker))
         let poisoned = isConditionActive(.poison, on: target)
-        let shield = max(0, CombatResolver.totalShield(shield: defender.shield, shieldPersistent: defender.shieldPersistent)
-                         - turn.pendingPierce)
+        let shield = max(0, self.shield(of: target) - turn.pendingPierce)
         let ranged = turn.currentAttackRange() > 1
         var disadvantage = (ranged && from.isAdjacent(to: to)) || disadvantagedThisRound.contains(target)
+            || scenarioGivesDisadvantage(to: attacker)
         if case .monster(let name, _) = target, let monsterEntity = defender as? GameMonsterEntity,
            gameManager?.game.monsters.first(where: { $0.name == name })?.stat(for: monsterEntity.type)?.attackersGainDisadvantage == true {
             disadvantage = true
@@ -390,12 +394,12 @@ extension BoardCoordinator {
     /// The damage before the draw (attack, poison, shield and pierce), for the small chip on the board.
     func expectedDamage(attacker: PieceID, target: PieceID) -> Int? {
         guard let turn = activePlayerTurn, case .character(let id) = attacker, turn.characterID == id,
-              let defender = entity(for: target) else { return nil }
+              entity(for: target) != nil else { return nil }
         var value = turn.currentAttackValue() + attackTextBonus(turn.attackTexts, attacker: attacker, target: target).attack
         if case .monster(let monsterName, _) = target { value += turn.attackBonusAgainst[monsterName] ?? 0 }
+        value = max(0, value + scenarioAttackBonus(of: attacker))
         if isConditionActive(.poison, on: target) { value += 1 }
-        let shield = max(0, CombatResolver.totalShield(shield: defender.shield, shieldPersistent: defender.shieldPersistent)
-                         - turn.pendingPierce)
+        let shield = max(0, self.shield(of: target) - turn.pendingPierce)
         return max(0, value - shield)
     }
 

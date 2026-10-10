@@ -28,6 +28,11 @@ struct ScenarioPlacements: Codable, Equatable {
     /// Monster types that aren't set up with their rooms: they wait for a rule's `setUp` (the
     /// Lurkers of Harried Village, until a villager is saved).
     var later: [String]?
+    /// Standing effects on attacks and shields (the vocal chords of Realm of the Voice).
+    var effects: [Effect]?
+    /// The scenario's special rules in words, for the scenario brief: those the game enforces
+    /// that the scenario data has no text for (or says less well).
+    var notes: [String]?
     /// What appears where an objective stood when it is destroyed, by objective (1-based): a
     /// Living Corpse from each grave dug up.
     var whenDestroyed: [String: MonsterStandeeData]?
@@ -174,6 +179,37 @@ struct ScenarioPlacements: Codable, Equatable {
         var cells: [[Int]]
         /// It bars the door on its hex: the door can't be opened, and opens when it is destroyed.
         var door: Bool?
+    }
+}
+
+extension ScenarioPlacements {
+    /// Something the scenario does to every attack of some figures, or to their Shield, for as
+    /// long as it holds.
+    struct Effect: Codable, Equatable {
+        /// Whom it touches: `"monsters"` (the party's enemies), `"party"` (characters and their
+        /// summons), or one monster type.
+        var on: String
+        /// Only while this objective (1-based) still stands.
+        var whileStanding: Int?
+        /// Only once this room is revealed.
+        var room: Int?
+        /// Added to each of their attacks.
+        var attack: Int?
+        var advantage: Bool?
+        var disadvantage: Bool?
+        /// Added to their Shield (which never falls below none): a number, or a formula over X
+        /// (what `per` counts), C and L.
+        var shield: String?
+        var per: Per?
+
+        /// What X counts: an objective (1-based) or other monsters of a type on the board, or
+        /// tokens of which one is lost each time a monster of a type dies.
+        struct Per: Codable, Equatable {
+            var objective: Int?
+            var monster: String?
+            var tokens: Int?
+            var lostWith: String?
+        }
     }
 }
 

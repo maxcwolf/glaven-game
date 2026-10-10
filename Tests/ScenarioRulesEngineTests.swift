@@ -150,7 +150,8 @@ final class ScenarioDataExpressionTests: XCTestCase {
                     for figure in rule.figures ?? [] {
                         if ["damage", "heal", "setHp"].contains(figure.type ?? ""), case .string(let s) = figure.value {
                             checked += 1
-                            XCTAssertNotNil(ScenarioExpression.integerValue(s, variables: ["C": 2, "L": 1, "R": 1]),
+                            // F: how many figures the rule's triggers count ("for each bone pile").
+                            XCTAssertNotNil(ScenarioExpression.integerValue(s, variables: ["C": 2, "L": 1, "R": 1, "F": 1]),
                                             "\(label): \(figure.type ?? "") value '\(s)' does not evaluate")
                         }
                         if figure.type == "killed", case .string(let s) = figure.value, s != "all" {
