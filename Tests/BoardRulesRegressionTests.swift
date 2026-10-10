@@ -86,20 +86,44 @@ final class BoardRulesRegressionTests: XCTestCase {
     func testMonsterAbilityDeckAdvancesAndReshufflesOnlyAfterShuffleCard() {
         addMonster("bandit-guard", at: HexCoord(5, 5))
         let monster = gm.game.monsters.first { $0.name == "bandit-guard" }!
-        var seen: [Int] = []
-        for _ in 0..<4 {
+        let deck = gm.monsterManager.abilities(for: monster)
+        let plain = deck.indices.filter { deck[$0].shuffle != true }
+        let shuffling = deck.indices.filter { deck[$0].shuffle == true }
+        XCTAssertEqual(plain.count, 6)
+        XCTAssertEqual(shuffling.count, 2, "the Guard deck's two shuffle cards")
+
+        // Two plain cards on top, then a shuffle card: the first two leave the pile as it is.
+        monster.abilities = Array(plain.prefix(2)) + [shuffling[0]] + Array(plain.dropFirst(2)) + [shuffling[1]]
+        monster.ability = -1
+        let order = monster.abilities
+        for round in 0..<2 {
             gm.monsterManager.drawAbility(for: monster)
-            seen.append(gm.monsterManager.currentAbilityCardIndex(for: monster)!)
-            let shuffles = gm.monsterManager.currentAbility(for: monster)?.shuffle == true
-            let position = monster.ability
+            XCTAssertEqual(gm.monsterManager.currentAbilityCardIndex(for: monster), order[round], "the next card down")
             gm.monsterManager.finishRound(for: monster)
-            if !shuffles {
-                XCTAssertEqual(monster.ability, position, "the draw position carries over to the next round")
-            } else {
-                XCTAssertEqual(monster.ability, -1, "a shuffle card reshuffles the deck at end of round")
-            }
+            XCTAssertEqual(monster.ability, round, "the draw position carries over to the next round")
+            XCTAssertEqual(monster.abilities, order, "no reshuffle without the shuffle card")
+            XCTAssertFalse(monster.abilityDrawn)
         }
-        XCTAssertGreaterThan(Set(seen).count, 1, "different cards are revealed each round: \(seen)")
+        // The shuffle card: all eight are shuffled together again as the round ends.
+        gm.monsterManager.drawAbility(for: monster)
+        XCTAssertEqual(gm.monsterManager.currentAbility(for: monster)?.shuffle, true)
+        gm.monsterManager.finishRound(for: monster)
+        XCTAssertEqual(monster.ability, -1, "a shuffle card reshuffles the deck at end of round")
+        XCTAssertEqual(monster.abilities.sorted(), Array(deck.indices), "every card is back in the pile")
+
+        // A pile that runs out with no shuffle card drawn is reshuffled for the next draw.
+        monster.abilities = plain
+        monster.ability = -1
+        for index in plain {
+            gm.monsterManager.drawAbility(for: monster)
+            XCTAssertEqual(gm.monsterManager.currentAbilityCardIndex(for: monster), index)
+            gm.monsterManager.finishRound(for: monster)
+        }
+        XCTAssertEqual(monster.abilities, plain, "drawn to the last card, not yet reshuffled")
+        gm.monsterManager.drawAbility(for: monster)
+        XCTAssertEqual(monster.abilities.sorted(), Array(deck.indices), "out of cards: all eight shuffled")
+        XCTAssertEqual(monster.ability, 0, "and the top one drawn")
+        XCTAssertNotNil(gm.monsterManager.currentAbility(for: monster))
     }
 
     // MARK: - Healing and conditions

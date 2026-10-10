@@ -41,11 +41,14 @@ final class MonsterTurnController {
         defer { isExecuting = false }
         coordinator.log("\(coordinator.monsterTypeName(monster.name))\u{2019}s turn: \(ability.name ?? "ability card") (\(ability.initiative))", category: .round)
 
-        let actions = ability.actions ?? []
+        // Groupings on the card (a grid) are only layout: its abilities, in order.
+        let actions = MonsterAbility.flattened(ability.actions ?? [])
+        let card = AbilityModel(cardId: ability.cardId, name: ability.name, initiative: ability.initiative, actions: actions)
 
-        // Monsters always consume elements if they can, and every monster of the type activated
-        // this turn gains the benefit (p.24) — paid when the first monster performs the card.
-        var consumed: Set<UUID>?
+        // Monsters always consume elements if they can: the first monster to perform the ability
+        // a consume belongs to pays for it, and every monster of the type acting after it this
+        // turn gains the benefit (p.24, FAQ).
+        let payments = ElementPayments()
 
         let sortedEntities = monster.aliveEntities
             .filter { only?.contains($0.number) ?? true }
@@ -79,7 +82,6 @@ final class MonsterTurnController {
                 coordinator.log("\(coordinator.name(pieceID)) is stunned and loses the turn", category: .condition)
             } else {
                 anyActed = true
-                if consumed == nil { consumed = await consumeElements(in: actions, by: pieceID) }
                 var turn = MonsterTurnState()
                 if coordinator.march(of: monster.name) != nil {
                     // It marches where the scenario sends it, then does the rest of its card.
@@ -87,12 +89,12 @@ final class MonsterTurnController {
                     guard !isStale else { return }
                     guard !entity.dead, coordinator.isOnBoard(pieceID), coordinator.scenarioResult == nil else { continue }
                     let rest = actions.filter { $0.type != .move }
-                    let card = AbilityModel(cardId: ability.cardId, name: ability.name, initiative: ability.initiative, actions: rest)
+                    let marching = AbilityModel(cardId: ability.cardId, name: ability.name, initiative: ability.initiative, actions: rest)
                     await executeCard(rest, pieceID: pieceID, entity: entity, monster: monster,
-                                      ability: card, consumed: consumed ?? [], turn: &turn)
+                                      ability: marching, payments: payments, turn: &turn)
                 } else {
                     await executeCard(actions, pieceID: pieceID, entity: entity, monster: monster,
-                                      ability: ability, consumed: consumed ?? [], turn: &turn)
+                                      ability: card, payments: payments, turn: &turn)
                 }
                 coordinator.endWhy()
                 guard !isStale else { return }
@@ -109,26 +111,48 @@ final class MonsterTurnController {
 
         // Infusions on the card become strong at the end of the type's turn.
         if anyActed && !isStale {
-            for element in MonsterAbility.elementInfusions(in: actions, consumed: consumed ?? []) {
+            for element in MonsterAbility.elementInfusions(in: actions, consumed: payments.paid) {
                 gameManager.game.infuseElement(element)
                 coordinator.log("\(coordinator.monsterTypeName(monster.name)) infuses \(GameText.elementName(element))", category: .element)
             }
         }
     }
 
-    /// Consume every element the card asks for that is available; returns the paid-for actions.
-    @MainActor private func consumeElements(in actions: [ActionModel], by pieceID: PieceID) async -> Set<UUID> {
-        guard let coordinator, let game = gameManager?.game else { return [] }
+    // MARK: - Elements
+
+    /// The elements a monster type has consumed on its turn. A consume is offered once, to the
+    /// first monster that performs the ability it is printed with (one printed on its own: the
+    /// first to come to it); a monster that doesn't perform the ability consumes nothing (FAQ).
+    private final class ElementPayments {
+        /// The consumes paid for: every monster of the type acting from then on has them.
         var paid = Set<UUID>()
-        for action in MonsterAbility.elementConsumes(in: actions) {
+        /// The consumes a monster has come to, paid or not (the element wasn't there).
+        var offered = Set<UUID>()
+    }
+
+    /// Consume the elements these consumes ask for, where they are available and not yet offered.
+    @MainActor private func pay(_ consumes: [ActionModel], by pieceID: PieceID, into payments: ElementPayments) async {
+        guard let coordinator, let game = gameManager?.game else { return }
+        for action in consumes where !payments.offered.contains(action.id) {
+            payments.offered.insert(action.id)
             // Dampening Ring: a character may consume it first, for nothing.
             if await coordinator.dampenedConsume(MonsterAbility.elements(of: action), by: pieceID) { continue }
+            guard !isStale else { return }
             if let used = game.consumeElements(MonsterAbility.elements(of: action)) {
-                paid.insert(action.id)
+                payments.paid.insert(action.id)
                 coordinator.log("\(GameText.list(used.map(GameText.elementName))) consumed", category: .element)
             }
         }
-        return paid
+    }
+
+    /// The consumes an ability will have when it is performed now: those paid for, and those
+    /// printed with it that are there to be consumed — monsters always consume when they can.
+    private func expected(for action: ActionModel?, payments: ElementPayments) -> Set<UUID> {
+        guard let action, let game = gameManager?.game else { return payments.paid }
+        let open = MonsterAbility.attachedConsumes(of: action).filter {
+            !payments.offered.contains($0.id) && game.canConsumeElements(MonsterAbility.elements(of: $0))
+        }
+        return payments.paid.union(open.map(\.id))
     }
 
     // MARK: - Single Monster
@@ -144,10 +168,11 @@ final class MonsterTurnController {
 
     /// Perform a card's actions, in order, for one monster.
     @MainActor private func executeCard(_ actions: [ActionModel], pieceID: PieceID, entity: GameMonsterEntity,
-                             monster: GameMonster, ability: AbilityModel, consumed: Set<UUID>,
+                             monster: GameMonster, ability: AbilityModel, payments: ElementPayments,
                              turn state: inout MonsterTurnState) async {
         guard let coordinator, let gameManager else { return }
         let game = gameManager.game
+        let actions = MonsterAbility.flattened(actions)
         let stat = monster.attackStat(for: entity.type)
         let characterCount = max(2, game.characters.filter { !$0.absent }.count)
         let baseRange = stat?.rangeValue(characterCount: characterCount, level: monster.level) ?? 0
@@ -158,8 +183,13 @@ final class MonsterTurnController {
         }
 
         func currentTurn() -> MonsterTurnResult {
-            MonsterAI.computeTurn(pieceID: pieceID, monster: monster, entity: entity, ability: ability,
-                                  board: coordinator.boardState, gameState: game, consumed: consumed)
+            // It plans with the attack it will make: an element its attack consumes counts, though
+            // it is consumed only as the attack is made (never by a disarmed monster).
+            let attack = MonsterAI.isActive(.disarm, on: entity) ? nil
+                : MonsterAbility.flattened(ability.actions ?? []).first { $0.type == .attack }
+            return MonsterAI.computeTurn(pieceID: pieceID, monster: monster, entity: entity, ability: ability,
+                                         board: coordinator.boardState, gameState: game,
+                                         consumed: expected(for: attack, payments: payments))
         }
         func stillHere() -> Bool { !isStale && !entity.dead && coordinator.isOnBoard(pieceID) }
 
@@ -215,19 +245,29 @@ final class MonsterTurnController {
                 guard let target = state.focus,
                       let position = coordinator.boardState.piecePositions[pieceID],
                       let focusPos = coordinator.boardState.piecePositions[target] else { continue }
-                let spec = MonsterAbility.attack(action, stat: stat, baseAttack: baseAttack(),
-                                                 baseRange: baseRange, consumed: consumed)
-                    .reduced(by: entity.doomPenalty)
                 let enemies = MonsterAI.gatherEnemies(board: coordinator.boardState, monster: monster, gameState: game)
-                let targets = MonsterAI.targets(for: spec, from: position, focus: target, focusPos: focusPos,
-                                                enemies: enemies, board: coordinator.boardState, gameState: game)
+                func resolved(_ consumed: Set<UUID>) -> (spec: MonsterAttackSpec, targets: [PieceID]) {
+                    let spec = MonsterAbility.attack(action, stat: stat, baseAttack: baseAttack(),
+                                                     baseRange: baseRange, consumed: consumed)
+                        .reduced(by: entity.doomPenalty)
+                    return (spec, MonsterAI.targets(for: spec, from: position, focus: target, focusPos: focusPos,
+                                                    enemies: enemies, board: coordinator.boardState, gameState: game))
+                }
+                // An attack it can't make consumes nothing (FAQ): the elements printed with the
+                // attack are paid for once it has someone to attack.
+                var (spec, targets) = resolved(expected(for: action, payments: payments))
+                if !targets.isEmpty {
+                    await pay(MonsterAbility.attachedConsumes(of: action), by: pieceID, into: payments)
+                    guard stillHere() else { return }
+                    (spec, targets) = resolved(payments.paid)
+                }
                 if targets.isEmpty {
                     coordinator.log("\(coordinator.name(pieceID)) can\u{2019}t reach its focus", category: .move)
                     continue
                 }
                 let printed = texts(in: action, monster: monster)
                 // Text inside a paid element consume (the Harrower's "Heal 2, self for each target damaged").
-                let paid = (action.subActions ?? []).filter { MonsterAbility.isConsume($0) && consumed.contains($0.id) }
+                let paid = (action.subActions ?? []).filter { MonsterAbility.isConsume($0) && payments.paid.contains($0.id) }
                     .flatMap { texts(in: $0, monster: monster) }
                 var damaged = 0
                 for victim in targets {
@@ -237,7 +277,7 @@ final class MonsterTurnController {
                     await coordinator.performAttack(
                         attacker: pieceID, target: victim,
                         attack: AttackParameters(value: spec.value + bonus(printed, against: victim, pieceID: pieceID)
-                                                     + coordinator.monsterAttackBonusThisRound,
+                                                     + roundAttackBonus(of: entity),
                                                  isRanged: spec.isRanged, pierce: spec.pierce,
                                                  conditions: spec.conditions, push: spec.push, pull: spec.pull,
                                                  advantage: spec.advantage, range: max(1, spec.range)))
@@ -265,7 +305,9 @@ final class MonsterTurnController {
                 }
 
             case .heal:
-                performHeal(action, pieceID: pieceID, entity: entity, monster: monster, consumed: consumed)
+                await pay(MonsterAbility.attachedConsumes(of: action), by: pieceID, into: payments)
+                guard stillHere() else { return }
+                performHeal(action, pieceID: pieceID, entity: entity, monster: monster, consumed: payments.paid)
 
             case .teleport:
                 // The Gloom: to the next marked hex, from where it looks for its focus anew.
@@ -274,27 +316,28 @@ final class MonsterTurnController {
                 state.focus = currentTurn().focusTarget
 
             case .condition, .push, .pull, .concatenation:
-                await performTargetedEffect(action, pieceID: pieceID, monster: monster, baseRange: baseRange)
+                await performTargetedEffect(action, pieceID: pieceID, monster: monster, baseRange: baseRange,
+                                            focus: state.focus, payments: payments)
 
             case .element where MonsterAbility.isConsume(action):
                 // An element-consume block with its own effects ("Ice: Heal 3", "Earth: Immobilize
-                // all enemies within range 3", "Fire: Retaliate 3"…). Infusions inside it happen
-                // with the type's other infusions after its turn.
-                guard consumed.contains(action.id) else { continue }
+                // all enemies within range 3", "Fire: Retaliate 3"…), consumed by the first monster
+                // to come to it. Infusions inside it happen with the type's other infusions after
+                // its turn.
+                await pay([action], by: pieceID, into: payments)
+                guard stillHere() else { return }
+                guard payments.paid.contains(action.id) else { continue }
                 let block = (action.subActions ?? []).filter { $0.type != .element }
                 if block.contains(where: { $0.type == .specialTarget }) {
                     await performTargetedEffect(ActionModel(type: .concatenation, subActions: block),
-                                                pieceID: pieceID, monster: monster, baseRange: baseRange)
+                                                pieceID: pieceID, monster: monster, baseRange: baseRange,
+                                                focus: state.focus, payments: payments)
                     let others = block.filter { ![.condition, .push, .pull, .specialTarget].contains($0.type) }
                     await executeCard(others, pieceID: pieceID, entity: entity, monster: monster,
-                                      ability: ability, consumed: consumed, turn: &state)
+                                      ability: ability, payments: payments, turn: &state)
                 } else {
-                    for bonus in block where bonus.type == .shield || bonus.type == .retaliate {
-                        applyRoundBonus(bonus, to: entity)
-                    }
-                    await executeCard(block.filter { $0.type != .shield && $0.type != .retaliate },
-                                      pieceID: pieceID, entity: entity, monster: monster,
-                                      ability: ability, consumed: consumed, turn: &state)
+                    await executeCard(block, pieceID: pieceID, entity: entity, monster: monster,
+                                      ability: ability, payments: payments, turn: &state)
                 }
 
             case .sufferDamage, .suffer:
@@ -309,16 +352,29 @@ final class MonsterTurnController {
                 performSummon(action, pieceID: pieceID, summoner: entity, monster: monster)
 
             case .shield, .retaliate:
-                // The card's own Shield/Retaliate was given when it was revealed; a paid element
-                // inside it adds to it, or replaces it ("Shield 2 instead", the Lurker).
-                for paid in (action.subActions ?? []) where MonsterAbility.isConsume(paid) && consumed.contains(paid.id) {
+                // A Shield or Retaliate on the card (or in a boss special) is gained as the monster
+                // performs it, and lasts until the end of the round (FAQ). A paid element inside
+                // adds to it, or replaces it ("Shield 2 instead", the Lurker).
+                await pay(MonsterAbility.attachedConsumes(of: action), by: pieceID, into: payments)
+                guard stillHere() else { return }
+                var value = action.value?.intValue ?? 0
+                for paid in (action.subActions ?? []) where MonsterAbility.isConsume(paid) && payments.paid.contains(paid.id) {
                     for reward in paid.subActions ?? [] where reward.type == action.type {
-                        let instead = reward.subActions?.contains { $0.value?.stringValue.contains("instead") == true } == true
-                        let extra = (reward.value?.intValue ?? 0) - (instead ? (action.value?.intValue ?? 0) : 0)
-                        guard extra > 0 else { continue }
-                        applyRoundBonus(ActionModel(type: action.type, value: .int(extra)), to: entity)
-                        coordinator.log("\(coordinator.name(pieceID)): \(GameText.actionTitle(reward))", category: .condition)
+                        value = isInstead(reward) ? (reward.value?.intValue ?? 0) : value + (reward.value?.intValue ?? 0)
                     }
+                }
+                guard value > 0 else { continue }
+                // Its range (Retaliate 2, Range 3) stays with it.
+                let bonus = ActionModel(type: action.type, value: .int(value),
+                                        subActions: action.subActions?.filter { $0.type == .range })
+                // "Shield 1, affect self and all allies within Range 2" (Savvas Icestorm).
+                let spec = action.subActions?.first { $0.type == .specialTarget }?.value?.stringValue
+                for figure in figures(for: spec, from: pieceID, monster: monster, baseRange: baseRange, focus: state.focus)
+                where coordinator.isOnBoard(figure) {
+                    guard let gaining = coordinator.entity(for: figure) else { continue }
+                    applyRoundBonus(bonus, to: gaining)
+                    coordinator.log("\(coordinator.name(figure)) gains \(action.type == .shield ? "Shield" : "Retaliate") \(value) this round",
+                                    category: .condition)
                 }
 
             case .custom where action.value?.stringValue.contains("ondeath") == true:
@@ -331,7 +387,7 @@ final class MonsterTurnController {
                 let wrapped = (action.subActions ?? []).filter { $0.type != .custom }
                 if !wrapped.isEmpty {
                     await executeCard(wrapped, pieceID: pieceID, entity: entity, monster: monster,
-                                      ability: ability, consumed: consumed, turn: &state)
+                                      ability: ability, payments: payments, turn: &state)
                 }
 
             case .special:
@@ -354,9 +410,15 @@ final class MonsterTurnController {
                         }
                     } else if text.contains("all allies add") && text.contains("attack") && text.contains("this round") {
                         // Captain of the Guard: "All allies add +1 Attack to all attacks this round."
+                        // His allies: not himself, and not the monsters fighting him.
                         let extra = text.firstMatch(of: #/\+(\d+) attack/#).flatMap { Int($0.1) } ?? 1
-                        coordinator.monsterAttackBonusThisRound += extra
-                        coordinator.log("Monsters add +\(extra) Attack to their attacks this round", category: .attack)
+                        for ally in coordinator.boardState.piecePositions.keys.sorted()
+                        where ally != pieceID && coordinator.areAllies(pieceID, ally) {
+                            guard case .monster = ally, let gaining = coordinator.entity(for: ally) else { continue }
+                            gaining.tags.append("\(MonsterAbility.roundAttackTag)\(extra)")
+                        }
+                        coordinator.log("\(coordinator.name(pieceID))\u{2019}s allies add +\(extra) Attack to their attacks this round",
+                                        category: .attack)
                     } else if text.contains("scouts act again") {
                         // Merciless Overseer: every Vermling Scout takes another turn.
                         if let scouts = gameManager.game.monsters.first(where: { $0.name.contains("scout") }), scouts !== monster {
@@ -375,25 +437,39 @@ final class MonsterTurnController {
                     coordinator.log("Resolve the boss\u{2019}s special ability \(index + 1) as printed on its stat card",
                                     category: .info)
                 }
-                let specialActions = special[index].filter { $0.type != .custom }
+                let specialActions = MonsterAbility.flattened(special[index].filter { $0.type != .custom })
                 let specialCard = AbilityModel(cardId: ability.cardId, name: ability.name,
                                                initiative: ability.initiative, actions: specialActions)
                 var specialState = MonsterTurnState(hexesMoved: state.hexesMoved)
-                // What the special pays for with an element (the Colorless: Dark for a Night Demon).
-                let paid = consumed.union(await consumeElements(in: specialActions, by: pieceID))
-                guard stillHere() else { return }
+                // What the special pays for with an element (the Colorless: Dark for a Night
+                // Demon) is consumed as it comes to it.
                 await executeCard(specialActions, pieceID: pieceID, entity: entity, monster: monster,
-                                  ability: specialCard, consumed: paid, turn: &specialState)
+                                  ability: specialCard, payments: payments, turn: &specialState)
                 state.hexesMoved = specialState.hexesMoved
                 if hatches, !isStale { coordinator.hatchEggs() }
                 if lays, stillHere() { coordinator.layEggs(by: pieceID, count: characterCount) }
 
             default:
-                // Shield/retaliate are applied for the whole round when the card is revealed;
-                // element infusions happen after the type's turn; hints/custom text are display-only.
-                break
+                // Element infusions happen after the type's turn; a hint is a note for the players.
+                // Anything else is an ability this turn doesn't know: say so rather than skip it.
+                if !MonsterAbility.performedKinds.contains(action.type) {
+                    coordinator.log("\(coordinator.name(pieceID)): resolve \u{201C}\(action.type.rawValue)\u{201D} as printed on its card",
+                                    category: .info)
+                }
             }
         }
+    }
+
+    /// "+1 Attack to all attacks this round", given by an ally's ability (the Captain of the Guard).
+    private func roundAttackBonus(of entity: any Entity) -> Int {
+        entity.tags.reduce(0) { total, tag in
+            tag.hasPrefix(MonsterAbility.roundAttackTag) ? total + (Int(tag.dropFirst(MonsterAbility.roundAttackTag.count)) ?? 0) : total
+        }
+    }
+
+    /// A consume's reward printed "instead" of the ability's own value ("Ice: Shield 2 instead").
+    private func isInstead(_ reward: ActionModel) -> Bool {
+        reward.subActions?.contains { $0.value?.stringValue.contains("instead") == true } == true
     }
 
     /// Bandit Commander: "Move to next door and reveal room": toward the nearest closed door, with
@@ -499,8 +575,9 @@ final class MonsterTurnController {
         }
     }
 
-    /// A shield/retaliate gained mid-turn (e.g. from a consumed element) lasts until the end of the round.
-    private func applyRoundBonus(_ action: ActionModel, to entity: GameMonsterEntity) {
+    /// A shield/retaliate gained on a turn (the card's own, a consumed element's, an ally's
+    /// "affect all allies") lasts until the end of the round. Several add.
+    private func applyRoundBonus(_ action: ActionModel, to entity: any Entity) {
         if action.type == .shield {
             let total = (entity.shield?.value?.intValue ?? 0) + (action.value?.intValue ?? 0)
             entity.shield = ActionModel(type: .shield, value: .int(total))
@@ -511,52 +588,76 @@ final class MonsterTurnController {
 
     // MARK: - Non-attack actions
 
-    /// Heal X: the monster heals itself or an ally within range, whichever has lost the most HP (p.31).
+    /// Heal X: the monster heals itself or an ally within range, whichever has lost the most HP
+    /// (p.31) — or everyone the card names: "affect all adjacent allies" (the Shamans), "affect
+    /// self and all allies" (the Captain of the Guard), and with a consumed element "all allies
+    /// within range instead" (Sun Demon) or "Target 3" (Savvas Lavaflow).
     private func performHeal(_ action: ActionModel, pieceID: PieceID, entity: GameMonsterEntity,
                              monster: GameMonster, consumed: Set<UUID>) {
-        guard let coordinator, let position = coordinator.boardState.piecePositions[pieceID] else { return }
+        guard let coordinator else { return }
         var amount = action.value?.intValue ?? 0
         var range: Int?
-        var selfOnly = false
-        for sub in action.subActions ?? [] {
-            switch sub.type {
-            case .range: range = sub.value?.intValue
-            case .specialTarget: selfOnly = sub.value?.stringValue == "self"
-            case .element where consumed.contains(sub.id):
-                for bonus in sub.subActions ?? [] where bonus.type == .heal {
-                    amount += MonsterAbility.signedValue(bonus)
+        var spec: String?
+        var count = 1
+        func read(_ subs: [ActionModel]) {
+            for sub in subs {
+                switch sub.type {
+                case .range: range = sub.value?.intValue
+                case .specialTarget: spec = sub.value?.stringValue
+                case .target: count = max(count, sub.value?.intValue ?? 1)
+                case .heal: amount += MonsterAbility.signedValue(sub)
+                case .element where consumed.contains(sub.id): read(sub.subActions ?? [])
+                default: break
                 }
-            default: break
             }
         }
+        read(action.subActions ?? [])
 
-        var candidates: [PieceID] = [pieceID]
-        if let range, !selfOnly {
-            for (other, coord) in coordinator.boardState.piecePositions.sorted(by: { $0.key < $1.key }) where other != pieceID {
-                guard case .monster = other, coordinator.areAllies(pieceID, other),
-                      position.distance(to: coord) <= range,
-                      LineOfSight.hasLOS(from: position, to: coord, board: coordinator.boardState) else { continue }
-                candidates.append(other)
-            }
+        func lost(_ piece: PieceID) -> Int { coordinator.entity(for: piece).map { $0.maxHealth - $0.health } ?? 0 }
+        let targets: [PieceID]
+        if let spec, MonsterAbility.affected(by: spec, baseRange: range ?? 1).side != nil {
+            // Everyone the card names.
+            targets = figures(for: spec, from: pieceID, monster: monster, baseRange: range ?? 1, focus: nil)
+                .filter { $0 == pieceID || isMonster($0) }
+        } else if let range, spec == nil {
+            // Itself or allies within range: those who have lost the most, one unless "Target N".
+            let within = [pieceID] + figures(for: "alliesRange:\(range)", from: pieceID, monster: monster,
+                                             baseRange: range, focus: nil).filter(isMonster)
+            // (Stable: of two as badly hurt, the monster itself, then the lower piece.)
+            let worst = within.enumerated().sorted { a, b in
+                lost(a.element) != lost(b.element) ? lost(a.element) > lost(b.element) : a.offset < b.offset
+            }.map(\.element)
+            targets = Array(worst.prefix(count))
+        } else {
+            targets = [pieceID]
         }
-        let target = candidates.max { a, b in
-            let lostA = coordinator.entity(for: a).map { $0.maxHealth - $0.health } ?? 0
-            let lostB = coordinator.entity(for: b).map { $0.maxHealth - $0.health } ?? 0
-            return lostA < lostB
-        } ?? pieceID
-        let healed = coordinator.heal(target, amount: amount, source: pieceID)
-        coordinator.log(coordinator.healLine(pieceID, healed: target, for: healed),
-                        category: .heal, trace: "Heal \(amount)")
+        for target in targets where coordinator.isOnBoard(target) {
+            let healed = coordinator.heal(target, amount: amount, source: pieceID)
+            coordinator.log(coordinator.healLine(pieceID, healed: target, for: healed),
+                            category: .heal, trace: "Heal \(amount)")
+        }
+    }
+
+    private func isMonster(_ piece: PieceID) -> Bool {
+        if case .monster = piece { return true }
+        return false
     }
 
     /// Conditions, push or pull applied to the figures named by a `specialTarget`
-    /// (self, adjacent enemies, enemies within range N, allies within range N…).
+    /// (self, adjacent enemies, enemies within range N, allies within range N…). With no one to
+    /// affect the ability isn't performed, and an element printed with it isn't consumed.
     @MainActor private func performTargetedEffect(_ action: ActionModel, pieceID: PieceID, monster: GameMonster,
-                                       baseRange: Int) async {
+                                       baseRange: Int, focus: PieceID?, payments: ElementPayments) async {
         guard let coordinator else { return }
         let parts = action.type == .concatenation ? (action.subActions ?? []) : [action] + (action.subActions ?? [])
         let spec = parts.first { $0.type == .specialTarget }?.value?.stringValue
-        let targets = figures(for: spec, from: pieceID, monster: monster, baseRange: baseRange)
+        let targets = figures(for: spec, from: pieceID, monster: monster, baseRange: baseRange, focus: focus)
+        guard !targets.isEmpty else { return }
+        await pay(parts.flatMap(MonsterAbility.attachedConsumes) + parts.filter(MonsterAbility.isConsume),
+                  by: pieceID, into: payments)
+        guard !isStale else { return }
+        // What a paid element gives a part: more of it, or another value instead ("Air: Push 4 instead").
+        let rewards = parts.filter { MonsterAbility.isConsume($0) && payments.paid.contains($0.id) }.flatMap { $0.subActions ?? [] }
 
         for part in parts {
             switch part.type {
@@ -566,7 +667,10 @@ final class MonsterTurnController {
                     coordinator.applyCondition(condition, to: target)
                 }
             case .push, .pull:
-                let steps = part.value?.intValue ?? 0
+                var steps = part.value?.intValue ?? 0
+                for reward in rewards where reward.type == part.type {
+                    steps = isInstead(reward) ? (reward.value?.intValue ?? 0) : steps + (reward.value?.intValue ?? 0)
+                }
                 guard steps > 0, let origin = coordinator.boardState.piecePositions[pieceID] else { continue }
                 for target in targets where target != pieceID && coordinator.isOnBoard(target) && !isStale {
                     await coordinator.performPushPull(target: target, attackerPos: origin, steps: steps,
@@ -579,39 +683,52 @@ final class MonsterTurnController {
     }
 
     /// Resolve a `specialTarget` value to the affected figures.
-    private func figures(for spec: String?, from pieceID: PieceID, monster: GameMonster, baseRange: Int) -> [PieceID] {
+    /// - Parameter focus: the monster's focus: "one adjacent enemy" is the focus when it is adjacent.
+    private func figures(for spec: String?, from pieceID: PieceID, monster: GameMonster, baseRange: Int,
+                         focus: PieceID?) -> [PieceID] {
         guard let coordinator, let position = coordinator.boardState.piecePositions[pieceID],
               let game = gameManager?.game else { return [] }
-        let raw = (spec ?? "self").lowercased()
-        if raw == "self" { return [pieceID] }
+        let named = MonsterAbility.affected(by: spec, baseRange: baseRange)
+        var result: [PieceID] = named.includesSelf ? [pieceID] : []
+        guard let side = named.side else { return result }
 
-        let wantsEnemies = raw.hasPrefix("enem")
-        let range: Int = {
-            if raw.contains("adjacent") { return 1 }
-            if let colon = raw.firstIndex(of: ":"), let n = Int(raw[raw.index(after: colon)...]) { return n }
-            return max(1, baseRange)
-        }()
-        let pool: [PieceID] = wantsEnemies
-            ? MonsterAI.gatherEnemies(board: coordinator.boardState, monster: monster, gameState: game)
+        // "All enemies", with no range, is no targeting: it reaches the invisible too.
+        let pool: [PieceID] = side == .enemies
+            ? MonsterAI.gatherEnemies(board: coordinator.boardState, monster: monster, gameState: game,
+                                      includeInvisible: named.range == nil)
             : coordinator.boardState.piecePositions.keys.sorted().filter {
                 $0 != pieceID && coordinator.areAllies(pieceID, $0)
             }
-        let inRange = pool.filter { id in
-            guard let coord = coordinator.boardState.piecePositions[id] else { return false }
-            return position.distance(to: coord) <= range
-                && LineOfSight.hasLOS(from: position, to: coord, board: coordinator.boardState)
+        var others = pool
+        if let range = named.range {
+            others = pool.filter { id in
+                guard let coord = coordinator.boardState.piecePositions[id] else { return false }
+                return position.distance(to: coord) <= range
+                    && LineOfSight.hasLOS(from: position, to: coord, board: coordinator.boardState)
+            }
         }
-        if raw.hasPrefix("enemyadjacent") || raw.hasPrefix("allyadjacent") {
-            return Array(inRange.prefix(1))
+        if named.onlyOne {
+            // The focus if it is one of them; otherwise as a focus is chosen among them: all as
+            // near, so the one acting first (p.30).
+            if let focus, others.contains(focus) {
+                others = [focus]
+            } else {
+                others = Array(others.sorted {
+                    MonsterAI.enemyInitiative($0, gameState: game) < MonsterAI.enemyInitiative($1, gameState: game)
+                }.prefix(1))
+            }
         }
-        return inRange
+        result += others
+        return result
     }
 
-    /// Monster loot: pick up every money token within range; those tokens are lost (p.31).
+    /// Monster loot: pick up every money token within range and line of sight; those tokens are
+    /// lost (p.31).
     private func performLoot(range: Int, pieceID: PieceID) {
         guard let coordinator, let position = coordinator.boardState.piecePositions[pieceID] else { return }
         var taken = 0
-        for coord in Array(coordinator.boardState.lootTokens.keys) where position.distance(to: coord) <= range {
+        for coord in coordinator.boardState.lootTokens.keys.sorted()
+        where position.distance(to: coord) <= range && LineOfSight.hasLOS(from: position, to: coord, board: coordinator.boardState) {
             taken += coordinator.boardState.takeLoot(at: coord)
             coordinator.boardScene?.removeLootSprite(at: coord, offsetCol: coordinator.offsetCol,
                                                      offsetRow: coordinator.offsetRow)

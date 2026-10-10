@@ -759,7 +759,9 @@ final class ScenarioSpecialRuleTests: XCTestCase {
 
         for hex in free[3...9] { coord.spawnMonster(name: "living-bones", type: .normal, at: hex, origin: .spawned) }
         XCTAssertEqual(coord.shield(of: soul), 0, "never below none")
-        XCTAssertEqual(coord.shield(of: try XCTUnwrap(pieces(sim, named: "living-bones").first)), 0, "theirs is their own")
+        // (A normal Living Bones' stat card has a Shield of its own from level 1, always on.)
+        let theirs = try XCTUnwrap(bones.monsterData?.stat(for: .normal, at: bones.level)).actions?.first { $0.type == .shield }?.value?.intValue ?? 0
+        XCTAssertEqual(coord.shield(of: try XCTUnwrap(pieces(sim, named: "living-bones").first)), theirs, "theirs is their own")
     }
 
     /// Bloody Shack: for each bone pile standing the Harvester has Shield 1 more, and heals

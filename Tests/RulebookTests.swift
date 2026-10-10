@@ -246,12 +246,47 @@ final class RB_MonsterFocusTests: XCTestCase {
     // p.29: "A monster will focus on the enemy figure to which it has the
     //        shortest path to an attack position"
 
-    func testFocus_shortestPath() {
+    func testFocus_shortestPath() throws {
         let t = TestGame()
-        // Character A is 2 hexes away, Character B is 4 hexes away
+        // Character A is 2 hexes away but walled in by obstacles on every side except the far
+        // one; character B is 3 hexes away across open floor. The path decides, not the distance.
+        let monsterHex = HexCoord(2, 3)
         let charA = t.addCharacter(name: "a", pos: HexCoord(4, 3), initiative: 10)
-        let charB = t.addCharacter(name: "b", pos: HexCoord(8, 3), initiative: 10)
-        _ = charA; _ = charB
+        let charB = t.addCharacter(name: "b", pos: HexCoord(2, 6), initiative: 90)
+        let open = HexCoord(5, 3)
+        for hex in HexCoord(4, 3).neighbors where hex != open { t.board.placeObstacle(at: hex) }
+        XCTAssertEqual(monsterHex.distance(to: HexCoord(4, 3)), 2)
+        XCTAssertEqual(monsterHex.distance(to: HexCoord(2, 6)), 3)
+        let monster = t.addSimpleMonster(positions: [(1, monsterHex, 5)])
+
+        let ability = AbilityModel(cardId: 1, initiative: 50, actions: [
+            ActionModel(type: .move, value: .int(5)),
+            ActionModel(type: .attack, value: .int(2))
+        ])
+
+        let result = MonsterAI.computeTurn(
+            pieceID: .monster(name: "test-monster", standee: 1),
+            monster: monster, entity: monster.entities[0],
+            ability: ability, board: t.board, gameState: t.game
+        )
+
+        XCTAssertEqual(result.focusTarget, .character(charB.id),
+                       "p.29: the enemy it needs the least movement to attack, though another is nearer in hexes")
+        let near = try XCTUnwrap(result.focusCandidates.first { $0.pieceID == .character(charA.id) }, "A can be reached too")
+        let far = try XCTUnwrap(result.focusCandidates.first { $0.pieceID == .character(charB.id) })
+        XCTAssertLessThan(far.pathCost, near.pathCost)
+        XCTAssertGreaterThan(far.proximity, near.proximity)
+        XCTAssertEqual(FocusCandidate.reason(far, over: near), .movement)
+    }
+
+    // p.29: Tiebreaker 1: proximity (hex distance)
+    func testFocus_tiebreakProximity() throws {
+        let t = TestGame()
+        // Both cost 2 movement to attack: A is 2 hexes away behind difficult terrain, B is 3
+        // hexes away across open floor. A, the nearer in hexes, is the focus, though B acts first.
+        let charA = t.addCharacter(name: "a", pos: HexCoord(4, 3), initiative: 90)
+        let charB = t.addCharacter(name: "b", pos: HexCoord(2, 6), initiative: 10)
+        for hex in HexCoord(4, 3).neighbors { t.board.cells[hex]?.overlay = .difficultTerrain }
         let monster = t.addSimpleMonster(positions: [(1, HexCoord(2, 3), 5)])
 
         let ability = AbilityModel(cardId: 1, initiative: 50, actions: [
@@ -265,34 +300,13 @@ final class RB_MonsterFocusTests: XCTestCase {
             ability: ability, board: t.board, gameState: t.game
         )
 
-        if case .character(let name) = result.focusTarget {
-            XCTAssertEqual(name, "gh-a", "p.29: Focus on nearest (shortest path) enemy")
-        } else {
-            XCTFail("Should focus a character")
-        }
-    }
-
-    // p.29: Tiebreaker 1: proximity (hex distance)
-    func testFocus_tiebreakProximity() {
-        let t = TestGame()
-        // Both are equally reachable by path, but A is closer by hex distance
-        let charA = t.addCharacter(name: "a", pos: HexCoord(4, 3), initiative: 50)
-        let charB = t.addCharacter(name: "b", pos: HexCoord(4, 5), initiative: 10)
-        _ = charA; _ = charB
-        let monster = t.addSimpleMonster(positions: [(1, HexCoord(3, 3), 5)])
-
-        let ability = AbilityModel(cardId: 1, initiative: 50, actions: [
-            ActionModel(type: .move, value: .int(5)),
-            ActionModel(type: .attack, value: .int(2))
-        ])
-
-        let result = MonsterAI.computeTurn(
-            pieceID: .monster(name: "test-monster", standee: 1),
-            monster: monster, entity: monster.entities[0],
-            ability: ability, board: t.board, gameState: t.game
-        )
-
-        // A is closer by proximity (distance 1) vs B (distance ~2)
+        let near = try XCTUnwrap(result.focusCandidates.first { $0.pieceID == .character(charA.id) })
+        let far = try XCTUnwrap(result.focusCandidates.first { $0.pieceID == .character(charB.id) })
+        XCTAssertEqual(near.pathCost, 2)
+        XCTAssertEqual(far.pathCost, 2, "a real tie on movement")
+        XCTAssertLessThan(near.proximity, far.proximity)
+        XCTAssertEqual(FocusCandidate.reason(near, over: far), .proximity)
+        // A is closer by proximity (distance 2) vs B (distance 3)
         if case .character(let name) = result.focusTarget {
             XCTAssertEqual(name, "gh-a", "p.29: Tiebreak by proximity — closer hex distance wins")
         } else {
@@ -361,7 +375,7 @@ final class RB_MonsterMovementTests: XCTestCase {
 
     // p.30: "A monster will move the minimum number of hexes to reach the
     //        focus target's attack position"
-    func testMovement_minimumToReachAttackPosition() {
+    func testMovement_minimumToReachAttackPosition() throws {
         let t = TestGame()
         t.addCharacter(pos: HexCoord(5, 3))
         let monster = t.addSimpleMonster(positions: [(1, HexCoord(2, 3), 5)])
@@ -379,23 +393,23 @@ final class RB_MonsterMovementTests: XCTestCase {
 
         // Monster needs to reach an adjacent hex to the character (melee range 1)
         // Should stop at attack position, not keep moving past it
-        if let finalPos = result.movementPath.last {
-            let distToTarget = finalPos.distance(to: HexCoord(5, 3))
-            XCTAssertEqual(distToTarget, 1, "p.30: Stops at attack position (adjacent for melee)")
-        }
+        let finalPos = try XCTUnwrap(result.movementPath.last, "it has to move to attack")
+        XCTAssertEqual(finalPos.distance(to: HexCoord(5, 3)), 1, "p.30: Stops at attack position (adjacent for melee)")
+        XCTAssertEqual(result.movementPath.count - 1, 2, "the two hexes it needs, of the ten it has")
         XCTAssertFalse(result.attackTargets.isEmpty, "Should be able to attack after moving")
     }
 
     // p.30: Monsters can't move through enemies
-    func testMovement_cantMoveThroughEnemies() {
+    func testMovement_cantMoveThroughEnemies() throws {
         let t = TestGame()
-        // Character blocks the direct path
-        t.addCharacter(name: "a", pos: HexCoord(4, 3))
-        t.addCharacter(name: "b", pos: HexCoord(7, 3), initiative: 10)
-        let monster = t.addSimpleMonster(positions: [(1, HexCoord(2, 3), 5)])
+        // A corridor one hex wide: character A stands in it, between the monster and character B.
+        for hex in Array(t.board.cells.keys) where hex.row != 3 { t.board.cells[hex] = nil }
+        let charA = t.addCharacter(name: "a", pos: HexCoord(4, 3), initiative: 90)
+        let charB = t.addCharacter(name: "b", pos: HexCoord(7, 3), initiative: 10)
+        let monster = t.addSimpleMonster(positions: [(1, HexCoord(1, 3), 5)])
 
         let ability = AbilityModel(cardId: 1, initiative: 50, actions: [
-            ActionModel(type: .move, value: .int(2)),
+            ActionModel(type: .move, value: .int(9)),
             ActionModel(type: .attack, value: .int(2))
         ])
 
@@ -405,15 +419,18 @@ final class RB_MonsterMovementTests: XCTestCase {
             ability: ability, board: t.board, gameState: t.game
         )
 
-        // Monster should NOT end up at (4,3) where character A stands
-        if let finalPos = result.movementPath.last {
-            XCTAssertNotEqual(finalPos, HexCoord(4, 3), "p.30: Can't move through enemies")
-        }
+        // With all the movement it could want it never gets past A: B, who acts first, can't
+        // be reached at all, so A is the only enemy it can focus on.
+        XCTAssertEqual(result.focusCandidates.map(\.pieceID), [.character(charA.id)], "p.30: Can't move through enemies")
+        XCTAssertEqual(result.focusTarget, .character(charA.id))
+        XCTAssertEqual(try XCTUnwrap(result.movementPath.last), HexCoord(3, 3), "it stops in front of A")
+        XCTAssertFalse(result.movementPath.contains(HexCoord(4, 3)))
+        _ = charB
     }
 
     // p.30: "Ranged monsters will try to find a position from which they can
     //        attack without disadvantage (i.e. not adjacent)"
-    func testRangedMonster_avoidsAdjacentDisadvantage() {
+    func testRangedMonster_avoidsAdjacentDisadvantage() throws {
         let t = TestGame()
         t.addCharacter(pos: HexCoord(5, 5))
         let monster = t.addSimpleMonster(positions: [(1, HexCoord(5, 6), 5)])
@@ -433,11 +450,13 @@ final class RB_MonsterMovementTests: XCTestCase {
         )
 
         // Ranged monster adjacent to target should try to move away
-        if let finalPos = result.movementPath.last {
-            let distAfter = finalPos.distance(to: HexCoord(5, 5))
-            XCTAssertGreaterThan(distAfter, 1,
-                "p.30: Ranged monster moves away from adjacent target to avoid disadvantage")
-        }
+        let finalPos = try XCTUnwrap(result.movementPath.last, "it moves")
+        let distAfter = finalPos.distance(to: HexCoord(5, 5))
+        XCTAssertGreaterThan(distAfter, 1,
+            "p.30: Ranged monster moves away from adjacent target to avoid disadvantage")
+        XCTAssertLessThanOrEqual(distAfter, 3, "and stays within its range")
+        XCTAssertEqual(result.movementPath.count - 1, 1, "one step is enough")
+        XCTAssertEqual(result.attackTargets.count, 1, "it attacks from there")
     }
 }
 
@@ -714,7 +733,8 @@ final class RB_TerrainTests: XCTestCase {
     func testCantMoveThroughEnemies() {
         let board = makeBoard(cols: 10, rows: 3)
 
-        // Enemy blocks the only path
+        // Enemy blocks the only path: a corridor one hex wide
+        for hex in Array(board.cells.keys) where hex.row != 1 { board.cells[hex] = nil }
         let reachable = Pathfinder.reachableHexes(
             board: board, from: HexCoord(1, 1), range: 3,
             occupiedByEnemy: [HexCoord(2, 1)], occupiedByAlly: []
@@ -722,6 +742,19 @@ final class RB_TerrainTests: XCTestCase {
 
         // Can't stop on the enemy hex
         XCTAssertNil(reachable[HexCoord(2, 1)], "p.14: Can't stop on enemy hex")
+        XCTAssertNil(reachable[HexCoord(3, 1)], "p.14: nor get past it")
+        XCTAssertNil(reachable[HexCoord(4, 1)])
+        XCTAssertNotNil(reachable[HexCoord(0, 1)], "the other way is open")
+        XCTAssertNil(Pathfinder.findPath(board: board, from: HexCoord(1, 1), to: HexCoord(4, 1), occupiedByEnemy: [HexCoord(2, 1)]))
+
+        // An ally in the same place is walked through, but not stopped on (p.14).
+        let pastAlly = Pathfinder.reachableHexes(
+            board: board, from: HexCoord(1, 1), range: 3,
+            occupiedByEnemy: [], occupiedByAlly: [HexCoord(2, 1)]
+        )
+        XCTAssertNil(pastAlly[HexCoord(2, 1)])
+        XCTAssertEqual(pastAlly[HexCoord(3, 1)], 2)
+        XCTAssertEqual(pastAlly[HexCoord(4, 1)], 3)
     }
 }
 

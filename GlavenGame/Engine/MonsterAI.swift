@@ -84,7 +84,8 @@ enum MonsterAI {
         consumed: Set<UUID> = []
     ) -> MonsterTurnResult {
         let standee = entity.number
-        let actions = ability.actions ?? []
+        // An attack laid out in a grid with its element bonus is still the card's attack.
+        let actions = MonsterAbility.flattened(ability.actions ?? [])
 
         var candidates: [FocusCandidate] = []
         func result(path: [HexCoord] = [], targets: [PieceID] = [], from: HexCoord? = nil,
@@ -135,8 +136,11 @@ enum MonsterAI {
             MonsterAbility.attack($0, stat: stat, baseAttack: baseAttack, baseRange: baseRange, consumed: consumed)
                 .reduced(by: doomPenalty)
         }
-        let focusRange = attackSpec?.range ?? 1
-        let isRanged = attackSpec?.isRanged ?? false
+        // A disarmed monster finds its focus and moves as if it had no attack either: as for a
+        // melee attack, as near its focus as it can get (FAQ).
+        let plannedAttack = isDisarmed ? nil : attackSpec
+        let focusRange = plannedAttack?.range ?? 1
+        let isRanged = plannedAttack?.isRanged ?? false
         let mode: MoveMode = monster.monsterData?.flying == true ? .fly : (moveSpec?.jump == true ? .jump : .normal)
 
         guard let currentPos = board.piecePositions[pieceID] else {
@@ -157,7 +161,7 @@ enum MonsterAI {
             enemyPositions: blockingPositions,
             gameState: gameState,
             mode: mode,
-            attack: attackSpec
+            attack: plannedAttack
         )
         // What the scenario has monsters go for first comes first, when it is within reach.
         candidates = prioritized(candidates, move: totalMove, gameState: gameState)
@@ -176,13 +180,14 @@ enum MonsterAI {
                 range: focusRange,
                 moveRange: totalMove,
                 isRanged: isRanged,
-                attack: attackSpec,
+                attack: plannedAttack,
                 enemies: enemies,
                 board: board,
                 enemyPositions: blockingPositions,
                 allyPositions: allyPositions,
                 gameState: gameState,
-                mode: mode
+                mode: mode,
+                disadvantaged: isActive(.muddle, on: entity)
             ).path
             movePath = truncate(path ?? [], toBudget: totalMove, board: board, mode: mode)
         }
@@ -362,8 +367,10 @@ enum MonsterAI {
     ///
     /// The monster moves the fewest hexes needed to attack its focus with maximum effect (p.30):
     /// a ranged monster first avoids disadvantage on its focus, then maximizes additional targets,
-    /// then minimizes movement. If no attack position is reachable this turn it moves toward the
-    /// closest one.
+    /// then avoids disadvantage on those, then minimizes movement. If no attack position is
+    /// reachable this turn it moves toward the closest one.
+    /// - Parameter disadvantaged: the monster attacks with Disadvantage wherever it stands
+    ///   (muddled), so it doesn't move to lose the Disadvantage of an adjacent target (FAQ).
     static func findBestAttackPosition(
         from position: HexCoord,
         focusPos: HexCoord,
@@ -377,7 +384,8 @@ enum MonsterAI {
         enemyPositions: Set<HexCoord>,
         allyPositions: Set<HexCoord>,
         gameState: GameState? = nil,
-        mode: MoveMode = .normal
+        mode: MoveMode = .normal,
+        disadvantaged: Bool = false
     ) -> (attackHex: HexCoord?, path: [HexCoord]?) {
         var attackHexes = findAttackHexes(
             target: focusPos, range: range, board: board,
@@ -412,19 +420,30 @@ enum MonsterAI {
         let reachableAttackHexes = attackHexes.filter { reachable[$0] != nil || $0 == position }
 
         if !reachableAttackHexes.isEmpty {
-            func score(_ hex: HexCoord) -> (disadvantage: Int, targets: Int, cost: Int) {
-                let disadvantage = isRanged && hex.isAdjacent(to: focusPos) ? 1 : 0
+            // A ranged attack on an adjacent enemy has Disadvantage — which a monster that has it
+            // anyway doesn't move to avoid.
+            let adjacencyCosts = isRanged && !disadvantaged
+            func score(_ hex: HexCoord) -> (disadvantage: Int, targets: Int, others: Int, cost: Int) {
+                let disadvantage = adjacencyCosts && hex.isAdjacent(to: focusPos) ? 1 : 0
                 var targetCount = 1
-                if let attack, let focus, let gameState, attack.targetCount > 1 || attack.area != nil {
-                    targetCount = targets(for: attack, from: hex, focus: focus, focusPos: focusPos,
-                                          enemies: enemies, board: board, gameState: gameState).count
+                // Additional targets it would attack with Disadvantage from here.
+                var others = 0
+                if let attack, let focus, let gameState,
+                   attack.targetCount > 1 || attack.area != nil || attack.allEnemiesWithin != nil {
+                    let hit = targets(for: attack, from: hex, focus: focus, focusPos: focusPos,
+                                      enemies: enemies, board: board, gameState: gameState)
+                    targetCount = hit.count
+                    if adjacencyCosts {
+                        others = hit.filter { $0 != focus && board.piecePositions[$0]?.isAdjacent(to: hex) == true }.count
+                    }
                 }
-                return (disadvantage, targetCount, hex == position ? 0 : (reachable[hex] ?? 0))
+                return (disadvantage, targetCount, others, hex == position ? 0 : (reachable[hex] ?? 0))
             }
             let best = reachableAttackHexes.min { a, b in
                 let sa = score(a), sb = score(b)
                 if sa.disadvantage != sb.disadvantage { return sa.disadvantage < sb.disadvantage }
                 if sa.targets != sb.targets { return sa.targets > sb.targets }
+                if sa.others != sb.others { return sa.others < sb.others }
                 if sa.cost != sb.cost { return sa.cost < sb.cost }
                 return (a.col, a.row) < (b.col, b.row)
             }!

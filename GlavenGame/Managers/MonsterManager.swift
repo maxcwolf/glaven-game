@@ -19,10 +19,16 @@ final class MonsterManager {
         guard let data = editionStore.monsterData(name: name, edition: edition) else { return }
         let monster = GameMonster(name: name, edition: edition, level: game.level, monsterData: data)
 
-        // Initialize ability deck
-        let deckName = data.deck ?? name
-        let abilities = editionStore.abilities(forDeck: deckName, edition: edition)
-        monster.abilities = Array(0..<abilities.count).shuffled(using: &GameRandom.shared)
+        // Its ability deck: the one a type already in the game draws from (Bandit Guards and
+        // City Guards share the Guard deck), or a newly shuffled one.
+        if let mate = deckMates(of: monster).first {
+            monster.abilities = mate.abilities
+            monster.ability = mate.ability
+        } else {
+            let deckName = data.deck ?? name
+            let abilities = editionStore.abilities(forDeck: deckName, edition: edition)
+            monster.abilities = Array(0..<abilities.count).shuffled(using: &GameRandom.shared)
+        }
 
         game.figures.append(.monster(monster))
     }
@@ -110,8 +116,28 @@ final class MonsterManager {
     }
 
     func abilities(for monster: GameMonster) -> [AbilityModel] {
-        let deckName = monster.deckOverride ?? monster.monsterData?.deck ?? monster.name
-        return editionStore.abilities(forDeck: deckName, edition: monster.edition)
+        editionStore.abilities(forDeck: deckName(of: monster), edition: monster.edition)
+    }
+
+    /// The ability deck a type draws from: the scenario's own for it, else the one its data
+    /// names ("guard" for Bandit, City and Inox Guards), else its own.
+    func deckName(of monster: GameMonster) -> String {
+        monster.deckOverride ?? monster.monsterData?.deck ?? monster.name
+    }
+
+    /// The other types in the game that draw from the same deck. There is one deck of each kind:
+    /// one card is revealed for it each round and every type using it acts on that card.
+    func deckMates(of monster: GameMonster) -> [GameMonster] {
+        let deck = deckName(of: monster)
+        return game.monsters.filter { $0 !== monster && $0.edition == monster.edition && deckName(of: $0) == deck }
+    }
+
+    /// The deck's draw pile and the place in it, copied to the types that share it.
+    private func shareDeck(of monster: GameMonster) {
+        for mate in deckMates(of: monster) {
+            mate.abilities = monster.abilities
+            mate.ability = monster.ability
+        }
     }
 
     func currentAbility(for monster: GameMonster) -> AbilityModel? {
@@ -138,13 +164,20 @@ final class MonsterManager {
     func drawAbility(for monster: GameMonster) {
         // One card per type per round.
         guard !monster.abilityDrawn else { return }
-        if monster.abilities.isEmpty {
-            shuffleAbilities(for: monster)
-        }
-        monster.ability += 1
-        if monster.ability >= monster.abilities.count {
-            shuffleAbilities(for: monster)
-            monster.ability = 0
+        if let mate = deckMates(of: monster).first(where: \.abilityDrawn) {
+            // The deck's card for this round is already revealed: this type acts on it too.
+            monster.abilities = mate.abilities
+            monster.ability = mate.ability
+        } else {
+            if monster.abilities.isEmpty {
+                shuffleAbilities(for: monster)
+            }
+            monster.ability += 1
+            if monster.ability >= monster.abilities.count {
+                shuffleAbilities(for: monster)
+                monster.ability = 0
+            }
+            shareDeck(of: monster)
         }
         monster.abilityDrawn = true
         monster.drawnInitiative = currentAbilityInitiative(for: monster)
@@ -158,17 +191,22 @@ final class MonsterManager {
         let allAbilities = abilities(for: monster)
         monster.abilities = Array(0..<allAbilities.count).shuffled(using: &GameRandom.shared)
         monster.ability = -1
+        shareDeck(of: monster)
     }
 
     /// End-of-round cleanup for a monster type's ability deck: if the card drawn this round has
     /// the shuffle icon, shuffle the discards back into the deck (GH p.18). The draw position is
-    /// otherwise kept, so next round reveals the next card.
+    /// otherwise kept, so next round reveals the next card. The types sharing the deck are done
+    /// with it together: it is reshuffled once, whichever of them acted on the card.
     func finishRound(for monster: GameMonster) {
-        if monster.abilityDrawn, currentAbility(for: monster)?.shuffle == true {
-            shuffleAbilities(for: monster)
+        let sharing = [monster] + deckMates(of: monster)
+        if let drawn = sharing.first(where: \.abilityDrawn), currentAbility(for: drawn)?.shuffle == true {
+            shuffleAbilities(for: drawn)
         }
-        monster.abilityDrawn = false
-        monster.drawnInitiative = nil
+        for type in sharing {
+            type.abilityDrawn = false
+            type.drawnInitiative = nil
+        }
     }
 
     /// Switch a monster type to a different ability deck. A no-op if it already uses that deck;
@@ -178,27 +216,29 @@ final class MonsterManager {
         let deckAbilities = editionStore.abilities(forDeck: deckName, edition: monster.edition)
         guard !deckAbilities.isEmpty else { return }
         monster.deckOverride = deckName
-        monster.abilities = Array(0..<deckAbilities.count).shuffled(using: &GameRandom.shared)
-        monster.ability = -1
+        if let mate = deckMates(of: monster).first {
+            // Another type already draws from that deck.
+            monster.abilities = mate.abilities
+            monster.ability = mate.ability
+        } else {
+            monster.abilities = Array(0..<deckAbilities.count).shuffled(using: &GameRandom.shared)
+            monster.ability = -1
+        }
         if monster.abilityDrawn {
             monster.abilityDrawn = false
             drawAbility(for: monster)
         }
     }
 
-    /// Apply stat effects (shield, retaliate) from drawn ability card, base stats, and scenario
-    /// overrides to all alive entities — or, for monsters entering play mid-round, only to
-    /// `standees`, so the others keep the round's bonuses they've gained (a consumed element's
-    /// Shield) since the round began.
+    /// Apply the always-on effects (shield, retaliate) of the stat card and of scenario rules to
+    /// all alive entities — or, for monsters entering play mid-round, only to `standees`. What
+    /// the drawn ability card gives isn't theirs yet: a monster gains its card's Shield and
+    /// Retaliate as it performs them on its turn, until the end of the round (FAQ) — on the
+    /// board in `MonsterTurnController`, off it in `applyAbilityBonuses`.
     func applyStatEffects(for monster: GameMonster, only standees: Set<Int>? = nil) {
-        guard let ability = currentAbility(for: monster) else { return }
-        let allActions = (ability.actions ?? []) + (ability.bottomActions ?? [])
-
         for entity in monster.aliveEntities where standees?.contains(entity.number) ?? true {
-            // Rebuild from scratch every round so stat/scenario bonuses don't accumulate.
-            entity.shield = nil
+            // Rebuild from scratch so stat/scenario bonuses don't accumulate.
             entity.shieldPersistent = nil
-            entity.retaliate = []
             entity.retaliatePersistent = []
 
             // Apply base stat actions (permanent effects from monster stat card)
@@ -212,10 +252,21 @@ final class MonsterManager {
             for action in monster.additionalStatActions {
                 applyStatAction(action, to: entity, persistent: true)
             }
+        }
+    }
 
-            // Apply ability card actions (round-based effects)
-            for action in allActions {
-                applyStatAction(action, to: entity, persistent: ability.persistent == true)
+    /// The drawn card's own Shield and Retaliate, gained by the monsters of a type as their turn
+    /// starts where they act as a group without a board: until the end of the round, and not by
+    /// one that is stunned (it performs nothing) or was summoned this round (it takes no turn).
+    func applyAbilityBonuses(for monster: GameMonster) {
+        guard let ability = currentAbility(for: monster) else { return }
+        for entity in monster.aliveEntities where entity.summonState != .new
+            && !entity.entityConditions.contains(where: { $0.name == .stun && !$0.expired }) {
+            // (Once, however often the turn is started.)
+            entity.shield = nil
+            entity.retaliate = []
+            for action in (ability.actions ?? []) + (ability.bottomActions ?? []) {
+                applyStatAction(action, to: entity, persistent: false)
             }
         }
     }

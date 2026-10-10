@@ -245,10 +245,10 @@ final class E2EMonsterCombatTests: XCTestCase {
         XCTAssertTrue(result.attackTargets.isEmpty)
     }
 
-    func testMonsterAI_disarmedMovesButDoesntAttack() {
+    func testMonsterAI_disarmedMovesButDoesntAttack() throws {
         let t = TestGame()
-        t.addCharacter(pos: HexCoord(5, 5))
-        let monster = t.addSimpleMonster(positions: [(1, HexCoord(5, 6), 5)])
+        let character = t.addCharacter(pos: HexCoord(2, 5))
+        let monster = t.addSimpleMonster(positions: [(1, HexCoord(6, 5), 5)])
         let entity = monster.entities[0]
         entity.entityConditions.append(EntityCondition(name: .disarm, state: .normal))
 
@@ -265,7 +265,26 @@ final class E2EMonsterCombatTests: XCTestCase {
         )
 
         XCTAssertTrue(result.disarmed, "Monster should be disarmed")
+        XCTAssertEqual(result.focusTarget, .character(character.id), "it still has a focus")
+        XCTAssertEqual(result.movementPath.count - 1, 2, "and moves toward it")
+        XCTAssertEqual(try XCTUnwrap(result.movementPath.last).distance(to: HexCoord(2, 5)), 2)
         XCTAssertTrue(result.attackTargets.isEmpty, "Disarmed monster should not attack")
+
+        // A ranged attack it can't make doesn't hold it at range: disarmed, it moves as for a
+        // melee attack, as near its focus as it can (FAQ) — where armed it would stay and shoot.
+        let ranged = AbilityModel(cardId: 2, initiative: 50, actions: [
+            ActionModel(type: .move, value: .int(2)),
+            ActionModel(type: .attack, value: .int(3), subActions: [ActionModel(type: .range, value: .int(4))])
+        ])
+        let closing = MonsterAI.computeTurn(pieceID: .monster(name: "test-monster", standee: 1), monster: monster,
+                                            entity: entity, ability: ranged, board: t.board, gameState: t.game)
+        XCTAssertEqual(try XCTUnwrap(closing.movementPath.last).distance(to: HexCoord(2, 5)), 2, "two hexes nearer")
+        XCTAssertTrue(closing.attackTargets.isEmpty)
+        entity.entityConditions = []
+        let armed = MonsterAI.computeTurn(pieceID: .monster(name: "test-monster", standee: 1), monster: monster,
+                                          entity: entity, ability: ranged, board: t.board, gameState: t.game)
+        XCTAssertTrue(armed.movementPath.isEmpty, "in range already")
+        XCTAssertEqual(armed.attackTargets, [.character(character.id)])
     }
 }
 
@@ -689,8 +708,13 @@ final class E2EGameSimulationTests: XCTestCase {
             gameState: t.game
         )
 
-        XCTAssertNotNil(result.focusTarget, "Summon should find a focus target")
-        XCTAssertFalse(result.movementPath.isEmpty, "Summon should move toward monster")
+        let enemy = PieceID.monster(name: "test-monster", standee: 1)
+        XCTAssertEqual(result.focusTarget, enemy, "Summon should find a focus target")
+        XCTAssertEqual(result.movementPath, [HexCoord(3, 2), HexCoord(4, 2)], "one step: beside the monster")
+        XCTAssertEqual(result.attackFromHex, HexCoord(4, 2))
+        XCTAssertEqual(result.attackTargets, [enemy], "and it attacks")
+        XCTAssertEqual(result.attackValue, 2, "with its own Attack 2")
+        XCTAssertFalse(result.stunned)
     }
 
     /// Simulates an escort objective taking a turn.
@@ -845,9 +869,9 @@ final class E2EAttackModifierTests: XCTestCase {
 
 final class E2ERealMonsterTests: XCTestCase {
 
-    func testLoadCultistAndComputeTurn() {
+    func testLoadCultistAndComputeTurn() throws {
         let t = TestGame()
-        t.addCharacter(pos: HexCoord(3, 3))
+        let character = t.addCharacter(pos: HexCoord(3, 3))
 
         // Add a real cultist from edition data
         guard let monster = t.addMonster(name: "cultist", positions: [(.normal, HexCoord(6, 3))]) else {
@@ -861,22 +885,31 @@ final class E2ERealMonsterTests: XCTestCase {
 
         // Draw an ability
         t.monsterManager.drawAbility(for: monster)
-        let ability = t.monsterManager.currentAbility(for: monster)
-        XCTAssertNotNil(ability, "Should have drawn an ability card")
+        let ability = try XCTUnwrap(t.monsterManager.currentAbility(for: monster), "Should have drawn an ability card")
+        XCTAssertTrue((604...611).contains(ability.cardId ?? 0), "a card of the Cultist deck: \(ability.cardId ?? 0)")
+        XCTAssertEqual(monster.drawnInitiative, ability.initiative)
 
         // Compute a turn
-        if let ability = ability, let entity = monster.aliveEntities.first {
-            let result = MonsterAI.computeTurn(
-                pieceID: .monster(name: "cultist", standee: entity.number),
-                monster: monster,
-                entity: entity,
-                ability: ability,
-                board: t.board,
-                gameState: t.game
-            )
+        let entity = try XCTUnwrap(monster.aliveEntities.first)
+        let result = MonsterAI.computeTurn(
+            pieceID: .monster(name: "cultist", standee: entity.number),
+            monster: monster,
+            entity: entity,
+            ability: ability,
+            board: t.board,
+            gameState: t.game
+        )
 
-            XCTAssertNotNil(result.focusTarget, "Cultist should find character as focus")
-        }
+        XCTAssertEqual(result.focusTarget, .character(character.id), "Cultist should find character as focus")
+        XCTAssertEqual(result.initiative, ability.initiative)
+        // Three hexes away with Move 2 on its stat card: whatever the card, it moves only if
+        // the card has a Move, never past the hex beside its focus, and attacks only from there.
+        let hasMove = (ability.actions ?? []).contains { $0.type == .move }
+        if !hasMove { XCTAssertTrue(result.movementPath.isEmpty, "no Move on card \(ability.cardId ?? 0)") }
+        let end = result.movementPath.last ?? HexCoord(6, 3)
+        XCTAssertGreaterThanOrEqual(end.distance(to: HexCoord(3, 3)), 1)
+        XCTAssertEqual(result.attackTargets.isEmpty, end.distance(to: HexCoord(3, 3)) > 1 || !MonsterAbility.hasAttack(ability.actions ?? []),
+                       "it attacks exactly when its card has an attack and it stands beside its focus")
     }
 
     func testLoadLivingBonesAndVerifyStats() {
@@ -891,10 +924,20 @@ final class E2ERealMonsterTests: XCTestCase {
         XCTAssertGreaterThan(entity.health, 0, "Living Bones should have health")
         XCTAssertGreaterThan(entity.maxHealth, 0)
 
-        // Verify stats are loaded
+        // Verify stats are loaded: a normal Living Bones at level 1 is 5 hit points, Move 3,
+        // Attack 1, Target 2 and Shield 1.
+        XCTAssertEqual(entity.health, 5)
+        XCTAssertEqual(entity.maxHealth, 5)
         let stat = monster.stat(for: .normal)
         XCTAssertNotNil(stat, "Should have normal stat block")
-        XCTAssertNotNil(stat?.attack, "Should have attack value")
-        XCTAssertNotNil(stat?.movement, "Should have movement value")
+        XCTAssertEqual(stat?.attackValue(characterCount: 2, level: 1), 1, "Should have attack value")
+        XCTAssertEqual(stat?.movementValue(characterCount: 2, level: 1), 3, "Should have movement value")
+        XCTAssertEqual(stat?.actions?.first { $0.type == .target }?.value?.intValue, 2)
+        XCTAssertEqual(stat?.actions?.first { $0.type == .shield }?.value?.intValue, 1)
+        XCTAssertEqual(monster.stat(for: .elite)?.movementValue(characterCount: 2, level: 1), 4)
+        // The stat card's Shield is the monster's own from the moment it is on the board.
+        t.monsterManager.applyStatEffects(for: monster)
+        XCTAssertEqual(entity.shieldPersistent?.value?.intValue, 1)
+        XCTAssertNil(entity.shield, "nothing from an ability card")
     }
 }

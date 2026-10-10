@@ -50,7 +50,8 @@ final class RoundManager {
         // Evaluate start-of-round scenario rules (spawns, stat changes) before drawing cards.
         onRoundAdvanced?()
 
-        // Draw monster abilities and apply stat effects
+        // Draw monster abilities — one card for each deck, whichever types share it — and apply
+        // the stat cards' effects; a card's own Shield and Retaliate wait for each monster's turn.
         // (Not for a type that sits this round out.)
         let inactive = MonsterAI.inactiveMonsters(game)
         for monster in game.monsters where !monster.off && monster.aliveEntities.count > 0 && !inactive.contains(monster.name) {
@@ -114,6 +115,8 @@ final class RoundManager {
                     // Reset shield/retaliate
                     entity.shield = nil
                     entity.retaliate = []
+                    // "+1 Attack to all attacks this round" (the Captain of the Guard's allies).
+                    entity.tags.removeAll { $0.hasPrefix(MonsterAbility.roundAttackTag) }
                 }
             case .objective(let o):
                 o.active = false
@@ -155,6 +158,8 @@ final class RoundManager {
                 m.active = true
                 if !figuresTakeOwnTurns {
                     for entity in m.aliveEntities { beforeTurnEntity(entity) }
+                    // The card's Shield and Retaliate start with the turn (not for the stunned).
+                    monsterManager.applyAbilityBonuses(for: m)
                 }
             }
         case .objective(let o):

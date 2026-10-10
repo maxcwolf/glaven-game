@@ -354,4 +354,144 @@ final class MonsterDataTests: XCTestCase {
         XCTAssertFalse(try monster("hound").sharesStandees(with: try monster("city-guard"), lookup: lookup))
         XCTAssertEqual(try monster("hound").standeePoolRoot(lookup: lookup).name, "hound")
     }
+
+    // MARK: - Every card is carried out
+
+    /// The ability decks the GH monsters draw from.
+    private func monsterDecks() -> [(name: String, cards: [AbilityModel])] {
+        let names = Set(Self.store.monsters(for: "gh").map { $0.deck ?? $0.name })
+        return names.sorted().map { ($0, Self.store.abilities(forDeck: $0, edition: "gh")) }
+    }
+
+    /// Every boss special in the GH data: the stat card's, at every level.
+    private func bossSpecials() -> [(name: String, number: Int, actions: [ActionModel])] {
+        var result: [(String, Int, [ActionModel])] = []
+        for data in Self.store.monsters(for: "gh").sorted(by: { $0.name < $1.name }) {
+            var seen: [[ActionModel]] = []
+            for level in 0...7 {
+                for (index, special) in (data.stat(for: .boss, at: level)?.special ?? []).enumerated() where !seen.contains(special) {
+                    seen.append(special)
+                    result.append((data.name, index + 1, special))
+                }
+            }
+        }
+        return result
+    }
+
+    /// Every action on every GH monster ability card is of a kind the monster's turn performs:
+    /// a card can't silently do nothing (as the Wind Demon's attack in a grid did).
+    func testEveryMonsterCardActionIsOneTheTurnPerforms() {
+        let decks = monsterDecks()
+        XCTAssertGreaterThan(decks.count, 30)
+        for deck in decks {
+            XCTAssertFalse(deck.cards.isEmpty, "\(deck.name) has cards")
+            for card in deck.cards {
+                XCTAssertEqual(MonsterAbility.unperformed(in: card.actions ?? []), [],
+                               "\(deck.name) card \(card.cardId ?? 0) (\(card.initiative))")
+                XCTAssertNil(card.bottomActions, "\(deck.name) card \(card.cardId ?? 0): a monster card has one half")
+            }
+        }
+    }
+
+    /// The same for boss specials. The ones the turn can't carry out are named here, and the
+    /// game tells the players to resolve them as printed: the Elder Drake's Zephyrs (an
+    /// objective to summon) and the Prime Demon's throne and its "summon a demon".
+    func testEveryBossSpecialActionIsPerformedOrKnownNotToBe() {
+        let specials = bossSpecials()
+        XCTAssertGreaterThan(specials.count, 20)
+        var gaps: [String: [String]] = [:]
+        for special in specials {
+            let unperformed = MonsterAbility.unperformed(in: special.actions.filter { $0.type != .custom })
+            if !unperformed.isEmpty { gaps["\(special.name) \(special.number)"] = unperformed }
+        }
+        XCTAssertEqual(gaps, ["elder-drake 2": ["summon"], "prime-demon 1": ["summon"], "prime-demon 2": ["summon"]])
+    }
+
+    /// What the validator is for: an ability of a kind the turn doesn't know is found, wherever
+    /// it is printed — and a grouping is looked into, not taken for an ability.
+    func testAnAbilityTheTurnDoesNotPerformIsFound() {
+        let swing = ActionModel(type: .swing, value: .int(2))
+        XCTAssertEqual(MonsterAbility.unperformed(in: [swing]), ["swing"])
+        XCTAssertEqual(MonsterAbility.unperformed(in: [ActionModel(type: .grid, subActions: [swing])]), ["grid > swing"])
+        let attack = ActionModel(type: .attack, value: .int(0), valueType: .plus, subActions: [ActionModel(type: .card, value: .int(1))])
+        XCTAssertEqual(MonsterAbility.unperformed(in: [attack]), ["attack > card"])
+        XCTAssertEqual(MonsterAbility.unperformed(in: [ActionModel(type: .summon, value: .string("demon"))]), ["summon"],
+                       "a summon that names no monster")
+    }
+
+    /// Wind Demon 648: the attack in the grid is the card's attack, and the Air beside it gives
+    /// +1 Attack and the six-hex area in place of the three-hex one.
+    func testAGridOnACardIsOpenedIntoItsAbilities() throws {
+        let card = try XCTUnwrap(Self.store.abilities(forDeck: "wind-demon", edition: "gh").first { $0.cardId == 648 })
+        XCTAssertEqual(card.actions?.map(\.type), [.move, .grid])
+        let actions = MonsterAbility.flattened(card.actions ?? [])
+        XCTAssertEqual(actions.map(\.type), [.move, .attack], "its consume belongs to the attack")
+        XCTAssertEqual(MonsterAbility.flattened(actions).map(\.id), actions.map(\.id), "opening it twice changes nothing")
+        let attack = actions[1]
+        let consume = try XCTUnwrap(MonsterAbility.attachedConsumes(of: attack).first)
+        XCTAssertEqual(MonsterAbility.elements(of: consume), [.air])
+        let plain = MonsterAbility.attack(attack, stat: nil, baseAttack: 2, baseRange: 3)
+        let withAir = MonsterAbility.attack(attack, stat: nil, baseAttack: 2, baseRange: 3, consumed: [consume.id])
+        XCTAssertEqual(plain.value, 2)
+        XCTAssertEqual(withAir.value, 3)
+        XCTAssertEqual(plain.area.map { AoEResolver.parsePattern($0).filter(\.isTarget).count }, 3)
+        XCTAssertEqual(withAir.area.map { AoEResolver.parsePattern($0).filter(\.isTarget).count }, 6)
+    }
+
+    /// Whom a card names: the words of each `specialTarget` in the GH monster data.
+    func testWhomAMonsterCardNames() {
+        typealias Affected = MonsterAbility.Affected
+        XCTAssertEqual(MonsterAbility.affected(by: nil, baseRange: 3), Affected(includesSelf: true))
+        XCTAssertEqual(MonsterAbility.affected(by: "self", baseRange: 3), Affected(includesSelf: true))
+        XCTAssertEqual(MonsterAbility.affected(by: "enemiesAdjacent", baseRange: 3), Affected(side: .enemies, range: 1))
+        XCTAssertEqual(MonsterAbility.affected(by: "enemyAdjacent", baseRange: 3), Affected(side: .enemies, range: 1, onlyOne: true))
+        XCTAssertEqual(MonsterAbility.affected(by: "enemiesRange:2", baseRange: 3), Affected(side: .enemies, range: 2))
+        XCTAssertEqual(MonsterAbility.affected(by: "enemiesRange:", baseRange: 3), Affected(side: .enemies, range: 3), "the monster's own range")
+        XCTAssertEqual(MonsterAbility.affected(by: "enemies", baseRange: 3), Affected(side: .enemies), "all of them, anywhere")
+        XCTAssertEqual(MonsterAbility.affected(by: "alliesAdjacentAffect", baseRange: 0), Affected(side: .allies, range: 1))
+        XCTAssertEqual(MonsterAbility.affected(by: "alliesRangeAffect:2", baseRange: 0), Affected(side: .allies, range: 2))
+        XCTAssertEqual(MonsterAbility.affected(by: "alliesRange:3", baseRange: 0), Affected(side: .allies, range: 3))
+        XCTAssertEqual(MonsterAbility.affected(by: "selfAlliesRange:2", baseRange: 0), Affected(includesSelf: true, side: .allies, range: 2))
+        XCTAssertEqual(MonsterAbility.affected(by: "selfAlliesAffect", baseRange: 0), Affected(includesSelf: true, side: .allies))
+        // Every value in the data is one of these forms.
+        var values = Set<String>()
+        func collect(_ actions: [ActionModel]) {
+            for action in actions {
+                if action.type == .specialTarget, let value = action.value?.stringValue { values.insert(value) }
+                collect(action.subActions ?? [])
+            }
+        }
+        for deck in monsterDecks() { for card in deck.cards { collect(card.actions ?? []) } }
+        for special in bossSpecials() { collect(special.actions) }
+        XCTAssertEqual(values.subtracting(["enemyOneAll"]).sorted(),
+                       ["alliesAdjacentAffect", "alliesRange:3", "alliesRangeAffect:2", "enemies", "enemiesAdjacent",
+                        "enemiesRange:", "enemiesRange:2", "enemiesRange:3", "enemiesRange:4", "enemyAdjacent", "self",
+                        "selfAlliesAffect", "selfAlliesRange:2"])
+    }
+
+    /// The printed text on monster cards and boss specials: each line is one the turn acts on.
+    /// The three it can't are named, and the game asks the players to resolve them.
+    func testEveryPrintedLineOnAMonsterCardIsActedOn() {
+        // What `MonsterTurnController` looks for in a card's text (lowercased).
+        let acted = ["trap in an adjacent empty hex", "suffer", "if the target is adjacent to any of", "this round gain disadvantage",
+                     "for each target damaged", "in a hex adjacent to the target", "with h equal to the summoning",
+                     "move to next door and reveal room", "all allies add +1", "scouts act again", "hatch eggs", "eggs",
+                     // Values of a stat formula, read by the attack itself.
+                     "x = hexes moved", "v = number of scouts present"]
+        var texts = Set<String>()
+        func collect(_ actions: [ActionModel]) {
+            for action in actions {
+                if action.type == .custom, let key = action.value?.stringValue, key.hasPrefix("%data.custom.") {
+                    texts.insert(Self.store.resolveCustomText(key, edition: "gh")?.lowercased() ?? "missing: \(key)")
+                }
+                collect(action.subActions ?? [])
+            }
+        }
+        for deck in monsterDecks() { for card in deck.cards { collect(card.actions ?? []) } }
+        for special in bossSpecials() { collect(special.actions) }
+        XCTAssertGreaterThan(texts.count, 15)
+        let left = texts.filter { text in !acted.contains { text.contains($0) } }.sorted()
+        // (The Saw solo scenario's City Guard card has no text in the labels; solo scenarios aren't played.)
+        XCTAssertEqual(left, ["fly to next perch of boulders", "mind control", "missing: %data.custom.gh.city-guard-saw-solo.1%", "throne moves"])
+    }
 }

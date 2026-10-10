@@ -122,9 +122,19 @@ final class MonsterTextTests: XCTestCase {
         monster.abilityDrawn = true
         gm.monsterManager.applyStatEffects(for: monster)
         let entity = try XCTUnwrap(coord.entity(for: piece))
-        let before = entity.shield?.value?.intValue ?? 0
+        // The card's Shield isn't the Lurker's until it takes its turn (FAQ); its stat card's is.
+        XCTAssertNil(entity.shield, "nothing from the card before its turn")
+        let own = entity.shieldPersistent?.value?.intValue ?? 0
         await MonsterTurnController(coordinator: coord, gameManager: gm).executeMonsterGroup(monster)
-        XCTAssertEqual((entity.shield?.value?.intValue ?? 0) - before, 1, "Shield 1 became Shield 2")
+        XCTAssertEqual(entity.shield?.value?.intValue, 2, "Shield 1 became Shield 2")
+        XCTAssertEqual(coord.shield(of: piece), own + 2, "on top of its stat card's")
+    }
+
+    /// The same card with no Ice to consume: Shield 1, from its turn on.
+    func testALurkersShieldWithoutIceIsOne() async throws {
+        _ = character("brute", at: HexCoord(6, 3))
+        let piece = try await play("lurker", card: 612, at: HexCoord(3, 3))
+        XCTAssertEqual(try XCTUnwrap(coord.entity(for: piece)).shield?.value?.intValue, 1)
     }
 
     /// Ooze (696): suffer 2 damage, then split: the new Ooze has the summoner's hit points.

@@ -62,6 +62,154 @@ enum MonsterAbility {
         return result
     }
 
+    /// The consumes that belong to one ability (printed under an attack, a heal, a shield…): paid
+    /// only when that ability is performed (FAQ).
+    static func attachedConsumes(of action: ActionModel) -> [ActionModel] {
+        guard !isConsume(action) else { return [] }
+        return elementConsumes(in: action.subActions ?? [])
+    }
+
+    /// A card's actions with its groupings opened: a `grid` or `box` only lays abilities out
+    /// side by side, and a `concatenation` of abilities ("…and…") is those abilities in order.
+    /// A consume printed beside an attack to change it (the Wind Demon's "Air: +1 Attack" and a
+    /// larger area) becomes that attack's own.
+    static func flattened(_ actions: [ActionModel]) -> [ActionModel] {
+        var result: [ActionModel] = []
+        for action in actions {
+            guard isGrouping(action) else {
+                result.append(action)
+                continue
+            }
+            var members: [ActionModel] = []
+            for member in flattened(action.subActions ?? []) {
+                if isConsume(member), let last = members.indices.last, members[last].type == .attack,
+                   !(member.subActions ?? []).isEmpty,
+                   (member.subActions ?? []).allSatisfy({ $0.type == .attack && ($0.valueType == .add || $0.valueType == .subtract) }) {
+                    members[last].subActions = (members[last].subActions ?? []) + [member]
+                } else {
+                    members.append(member)
+                }
+            }
+            result += members
+        }
+        return result
+    }
+
+    /// Whether an action only groups others. A concatenation that names whom it affects (or only
+    /// lists conditions, pushes and pulls) is one ability: "Wound and Poison all adjacent enemies".
+    static func isGrouping(_ action: ActionModel) -> Bool {
+        switch action.type {
+        case .grid, .box, .forceBox, .boxFhSubActions:
+            return true
+        case .concatenation:
+            return !(action.subActions ?? []).allSatisfy { [.condition, .push, .pull, .specialTarget].contains($0.type) }
+        default:
+            return false
+        }
+    }
+
+    // MARK: - Whom an ability affects
+
+    /// The figures a `specialTarget` names: "self", "enemiesAdjacent", "enemiesRange:3",
+    /// "enemyAdjacent", "alliesAdjacentAffect", "alliesRange:3", "selfAlliesRange:2",
+    /// "selfAlliesAffect", "enemies"…
+    struct Affected: Equatable {
+        enum Side { case enemies, allies }
+        /// The monster itself is among them.
+        var includesSelf = false
+        /// Enemies or allies; nil when it is the monster alone.
+        var side: Side?
+        /// How far they may be; nil for every one of them on the map ("all enemies").
+        var range: Int?
+        /// One figure only ("target one adjacent enemy").
+        var onlyOne = false
+    }
+
+    /// - Parameter baseRange: the range used when the text says "within range" without a number.
+    static func affected(by specialTarget: String?, baseRange: Int) -> Affected {
+        let raw = (specialTarget ?? "self").lowercased()
+        var result = Affected(includesSelf: raw.hasPrefix("self"))
+        let others = result.includesSelf ? String(raw.dropFirst(4)) : raw
+        if others.hasPrefix("enem") {
+            result.side = .enemies
+        } else if others.hasPrefix("all") {
+            result.side = .allies
+        } else {
+            result.includesSelf = true
+            return result
+        }
+        result.onlyOne = others.hasPrefix("enemyadjacent") || others.hasPrefix("allyadjacent")
+        if others.contains("adjacent") {
+            result.range = 1
+        } else if let colon = others.firstIndex(of: ":") {
+            result.range = Int(others[others.index(after: colon)...]) ?? max(1, baseRange)
+        } else if others.contains("range") {
+            result.range = max(1, baseRange)
+        }
+        return result
+    }
+
+    // MARK: - What the turn performs
+
+    /// A monster's allies add to their attacks this round (the Captain of the Guard's special):
+    /// kept on each of them as a tag, "roundAttack:1", until the round ends.
+    static let roundAttackTag = "roundAttack:"
+
+    /// The kinds of action a monster's turn performs when they stand on a card (or in a boss
+    /// special) as an ability of their own. Anything else would silently do nothing.
+    static let performedKinds: Set<ActionType> = [
+        .move, .attack, .heal, .teleport, .condition, .push, .pull, .concatenation, .element,
+        .sufferDamage, .suffer, .loot, .summon, .shield, .retaliate, .custom, .special,
+        .grid, .box, .forceBox, .boxFhSubActions,
+        // Shown only: a note for the players.
+        .hint
+    ]
+
+    /// What may be printed under an ability and is taken into account when it is performed.
+    private static func performedParts(of kind: ActionType) -> Set<ActionType> {
+        switch kind {
+        case .attack:
+            return [.attack, .range, .target, .pierce, .push, .pull, .condition, .area, .specialTarget,
+                    .element, .concatenation, .custom, .summon]
+        case .move: return [.jump, .custom]
+        case .heal: return [.heal, .range, .target, .specialTarget, .element]
+        case .shield, .retaliate: return [kind, .range, .specialTarget, .element, .custom]
+        case .condition, .push, .pull: return [kind, .specialTarget, .element, .custom]
+        case .summon: return [.custom]
+        case .custom, .grid, .box, .forceBox, .boxFhSubActions: return performedKinds.union([.specialTarget])
+        default: return []
+        }
+    }
+
+    /// Every action on a card the monster's turn would not perform, as a path for a message
+    /// ("grid > swing"). Empty when the whole card is carried out.
+    static func unperformed(in actions: [ActionModel]) -> [String] {
+        func check(_ action: ActionModel, allowed: Set<ActionType>, ability: ActionType?, path: String) -> [String] {
+            let here = path.isEmpty ? action.type.rawValue : "\(path) > \(action.type.rawValue)"
+            guard allowed.contains(action.type) else { return [here] }
+            // A summon the data doesn't spell out as monsters (an objective, "a demon").
+            if action.type == .summon && action.monsterSummons == nil { return [here] }
+            var parts: Set<ActionType>
+            var inner = ability
+            switch action.type {
+            case .element where isConsume(action):
+                // Under an ability a consume changes that ability; on its own it holds abilities.
+                parts = ability.map(performedParts) ?? performedKinds.union([.specialTarget])
+            case .element:
+                parts = []
+            case .concatenation:
+                parts = ability.map(performedParts) ?? performedKinds.union([.specialTarget])
+            case .attack where ability == .attack:
+                parts = performedParts(of: .attack)   // "+1 Attack" and what comes with it
+            default:
+                parts = performedParts(of: action.type)
+                inner = [.custom, .grid, .box, .forceBox, .boxFhSubActions].contains(action.type) ? nil : action.type
+            }
+            return (action.subActions ?? []).flatMap { check($0, allowed: parts, ability: inner, path: here) }
+        }
+        return actions.flatMap { check($0, allowed: performedKinds, ability: nil, path: "") }
+    }
+
     /// Element infusions of a card: top-level infusions, plus infusions inside element-consume
     /// blocks that were paid for (e.g. "any element: infuse fire").
     static func elementInfusions(in actions: [ActionModel], consumed: Set<UUID> = []) -> [ElementType] {
@@ -106,7 +254,9 @@ enum MonsterAbility {
         func apply(_ sub: ActionModel) {
             switch sub.type {
             case .attack:
+                // "+1 Attack", and what is printed with it (a larger area).
                 value += signedValue(sub)
+                for inner in sub.subActions ?? [] { apply(inner) }
             case .range:
                 // A card range with no sign sets the range; "+X"/"-X" modifies the base range.
                 cardSpecifiesRange = true

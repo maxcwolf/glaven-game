@@ -57,8 +57,12 @@ enum PlayerSideAI {
             id != pieceID && !blockers.contains(coord) ? coord : nil
         })
 
-        let range = attack?.range ?? 1
-        let isRanged = attack?.isRanged ?? false
+        // Disarmed, it finds its focus and moves as if it had no attack: as for a melee attack,
+        // as near its focus as it can get (FAQ).
+        let disarmed = MonsterAI.isActive(.disarm, on: entity)
+        let planned = disarmed ? nil : attack
+        let range = planned?.range ?? 1
+        let isRanged = planned?.isRanged ?? false
         let mode: MoveMode = flying ? .fly : .normal
         let candidates = MonsterAI.focusCandidates(from: position, enemies: enemies, board: board, range: range,
                                                    isRanged: isRanged, enemyPositions: blockers, gameState: gameState,
@@ -70,14 +74,15 @@ enum PlayerSideAI {
         if totalMove > 0 {
             let route = MonsterAI.findBestAttackPosition(
                 from: position, focusPos: focusPos, focus: focus, range: range, moveRange: totalMove,
-                isRanged: isRanged, attack: attack, enemies: enemies, board: board,
-                enemyPositions: blockers, allyPositions: allies, gameState: gameState, mode: mode
+                isRanged: isRanged, attack: planned, enemies: enemies, board: board,
+                enemyPositions: blockers, allyPositions: allies, gameState: gameState, mode: mode,
+                disadvantaged: MonsterAI.isActive(.muddle, on: entity)
             ).path ?? []
             path = MonsterAI.truncate(route, toBudget: totalMove, board: board, mode: mode)
         }
 
         var targets: [PieceID] = []
-        if let attack, !MonsterAI.isActive(.disarm, on: entity) {
+        if let attack, !disarmed {
             targets = MonsterAI.targets(for: attack, from: path.last ?? position, focus: focus, focusPos: focusPos,
                                         enemies: enemies, board: board, gameState: gameState)
         }

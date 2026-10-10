@@ -196,16 +196,20 @@ extension BoardCoordinator {
     /// negate it by losing cards, as any damage (p.22).
     @MainActor func printedDamage(_ text: String, amount: Int, by pieceID: PieceID, around hex: HexCoord?) async {
         guard amount > 0 else { return }
+        // Who suffers is named before the word, allies and enemies in either order ("all adjacent
+        // enemies and allies", the Night Demon).
+        let subject = text.range(of: "suffer").map { String(text[..<$0.lowerBound]) } ?? text
+        let allies = subject.contains("allies"), enemies = subject.contains("enemies")
         var victims: [PieceID] = []
         if text.contains("all allies suffer") {
             victims = boardState.piecePositions.keys.filter { $0 != pieceID && areAllies(pieceID, $0) && isFigure($0) }
         } else if let hex {
             let besides = hex.neighbors.compactMap { boardState.piece(at: $0) }.filter { $0 != pieceID && isFigure($0) }
-            if text.contains("allies and enemies") {
+            if allies && enemies {
                 victims = besides
-            } else if text.contains("allies") {
+            } else if allies {
                 victims = besides.filter { areAllies(pieceID, $0) }
-            } else if text.contains("enemies") {
+            } else if enemies {
                 victims = besides.filter { areEnemies(pieceID, $0) }
             }
         }
