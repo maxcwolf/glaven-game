@@ -8,7 +8,7 @@ it differs) or **missing**, with where it is implemented or what happens instead
 
 **447 rules: 239 done, 53 partial, 155 missing.**
 34 of 95 scenarios have every printed rule done: #1, #4, #5, #6, #8, #10, #11, #13, #14, #15, #16, #17, #18, #19, #23, #24, #25, #27, #28, #29, #31, #32, #37, #40, #43, #53, #59, #60, #63, #64, #65, #72, #89, #94.
-The most rules outstanding: #88 (7 missing, 1 partial), #34 (6 missing, 1 partial), #55 (6 missing, 1 partial), #42 (6 missing, 0 partial), #73 (6 missing, 0 partial), #78 (6 missing, 0 partial), #90 (5 missing, 2 partial), #95 (6 missing, 0 partial), #58 (5 missing, 1 partial), #79 (5 missing, 1 partial), #84 (5 missing, 1 partial), #71 (5 missing, 0 partial), #76 (4 missing, 2 partial), #77 (5 missing, 0 partial), #83 (5 missing, 0 partial).
+The most rules outstanding: #88 (7 missing, 1 partial), #34 (6 missing, 1 partial), #55 (6 missing, 1 partial), #42 (6 missing, 0 partial), #73 (6 missing, 0 partial), #78 (6 missing, 0 partial), #95 (6 missing, 0 partial), #58 (5 missing, 1 partial), #79 (5 missing, 1 partial), #84 (5 missing, 1 partial), #71 (5 missing, 0 partial), #76 (4 missing, 2 partial), #77 (5 missing, 0 partial), #83 (5 missing, 0 partial).
 
 Fixed since the audit (the rows below still describe the state it found): boss summons bring the
 number and rank their player count says (#9, #12, #20, #48, #79 and others); goal treasure that
@@ -864,13 +864,13 @@ Later fixes are listed in `TODO.md`.
 ### 90 · Demonic Rift
 | Rule (from the book) | Status | Where / what's missing |
 |---|---|---|
-| Goal: close the rift — after Section 1, kill all Living Spirits | partial | no written goal; plays as the default "every enemy dead, every door open", which ends once the spirits and everything else are dead, but the spirits are not gated on Section 1 (next row but three) |
-| Lose: no character is present in the left room at any time | missing | no rule or check |
-| Lose: only one character is left unexhausted | missing | only "all exhausted" loses |
-| Lose: after Section 1, either room has no character present | missing | no rule or check |
-| Section 1 (all demons dead, a character in each room): a Living Spirit at every (b) and (c) — all normal (2); b elite + c normal (3); all elite (4) | partial | rule 0 has the right counts and types (2 at b, 2 at c) but no trigger (`always`, `once`, `round: "true"`, `rooms: [3]`): it fires at the start of round 1. The (c) hexes are on unrevealed D1b then, so those two appear beside the first monster in the left room (`spawnFromScenarioRule` fallback) |
-| Characters cross between the rooms only through the altars: 1 movement from beside one altar to beside the other; summons and monsters cannot | missing | the map joins M1b and D1b with a door of subtype `altar`, treated as an ordinary door: a character walks in to open it and any figure then walks through (README: "the altar crossing isn't modelled") |
-| End of every even round with no character in the right room: a Night Demon spawns next to the left altar (normal for 2; every second one elite for 3; elite for 4) | missing | no rule |
+| Goal: close the rift — after Section 1, kill all Living Spirits | done | written goal `kill: ["living-spirit"]` (`DemonicRiftTests.testTheSpiritsComeWhenTheDemonsAreDeadAndACharacterStandsInEachRoom`) |
+| Lose: no character is present in the left room at any time | done | `lostIfEmpty` (`testTheLeftRoomMayNeverBeEmpty`) |
+| Lose: only one character is left unexhausted | done | `lostBelow: 2` (`testOnlyOneCharacterLeftLosesTheScenario`) |
+| Lose: after Section 1, either room has no character present | done | `lostIfEmpty` with `onceAppeared` (`testTheRightRoomMayNotBeEmptyOnceTheSpiritsHaveCome`) |
+| Section 1 (all demons dead, a character in each room): a Living Spirit at every (b) and (c) — all normal (2); b elite + c normal (3); all elite (4) | done | the written rule waits for every demon's death and `characterOn` each room (`ScenarioEnforcedRuleTests.testTheRiftsSpiritsHaveTheirRanks`) |
+| Characters cross between the rooms only through the altars: 1 movement from beside one altar to beside the other; summons and monsters cannot | done | the `altar` connector is a crossing (`BoardState.crossings`): both rooms are set up at the start, the altars can't be entered or destroyed, and `Pathfinder` lets a character step across (`testACharacterBesideOneAltarStepsBesideTheOtherForOneMovement`) |
+| End of every even round with no character in the right room: a Night Demon spawns next to the left altar (normal for 2; every second one elite for 3; elite for 4) | done | written rule (`ScenarioReauditTests`) |
 
 ### 91 · Wild Melee
 | Rule (from the book) | Status | Where / what's missing |
@@ -961,7 +961,7 @@ Later fixes are listed in `TODO.md`.
     empty or absent `rules` array (start conditions, per-turn damage, timed spawns, element settings).
   - Props the game has no model for: carried tokens (claw #88, Crystal/Sphere #81, numbered tokens #95,
     artifact removal #82), water tiles with effects (#87, #95), the current (#88), destructible boulders
-    (#95), a victim that is carried (#78), an altar crossing (#90).
+    (#95), a victim that is carried (#78).
   - "Not set up until …" and dormant monsters (#79 golems, #83 Flame Demons, #86 Lurkers, #92 city
     figures) and timed room reveals (#84 rounds 4/6/9): rooms simply reveal when a character opens the door.
   - Third-faction monsters ("enemies to the characters and to all other monster types": #85, #91, #92).

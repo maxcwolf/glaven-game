@@ -303,8 +303,12 @@ final class ScenarioEnforcedRuleTests: XCTestCase {
     func testTheRiftsSpiritsHaveTheirRanks() throws {
         for (party, ranks) in zip(Self.parties, [["b": MonsterType.normal, "c": .normal], ["b": .elite, "c": .normal], ["b": .elite, "c": .elite]]) {
             let sim = try simulator("90", characters: party)
-            revealAll(sim)
             for piece in pieces(sim) { sim.coord.handleDeath(of: piece) }
+            // They come once a character stands in each room: one crosses by the altars.
+            let board = sim.coord.boardState
+            let across = try XCTUnwrap(board.neighbors(of: board.crossings[1]).filter { board.isPassable($0) && !board.isOccupied($0) }.sorted().first)
+            board.piecePositions[.character(sim.gm.game.characters[0].id)] = across
+            sim.gm.scenarioRulesManager.evaluateRules()
             let spirits = pieces(sim, named: "living-spirit")
             XCTAssertEqual(spirits.count, 4, "\(party.count) characters")
             for spirit in spirits {

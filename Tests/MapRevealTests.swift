@@ -68,6 +68,39 @@ final class MapRevealTests: XCTestCase {
         }
     }
 
+    /// With every door open, every hex of the map can still be walked to from the starting
+    /// hexes without crossing a wall line: the lines the game draws between tiles never cut a
+    /// room off from its door or corridor. (Obstacles aside: by the rules they never seal an
+    /// area either, but that is the scenario's layout, not the walls'.)
+    func testWallLinesNeverCutOffPartOfAMap() {
+        var walled = 0
+        for (index, scenario) in maps() {
+            let (board, _) = BoardBuilder.buildStartingRoom(from: scenario)
+            var guardCount = 0
+            while let door = board.doors.filter({ !$0.isOpen }).sorted(by: { $0.coord < $1.coord }).first, guardCount < 200 {
+                if BoardBuilder.revealRoomSlots(door: door, scenario: scenario, board: board) == nil,
+                   let at = board.doors.firstIndex(where: { $0.coord == door.coord }) {
+                    board.doors[at].isOpen = true
+                }
+                guardCount += 1
+            }
+            if !board.wallEdges.isEmpty { walled += 1 }
+            var seen = Set(board.startingLocations)
+            var frontier = Array(seen)
+            while let hex = frontier.popLast() {
+                // (A crossing joins rooms that lie apart: the altars of Demonic Rift.)
+                for neighbor in board.neighbors(of: hex) + board.crossingExits(from: hex) where board.cells[neighbor] != nil && board.cells[neighbor]?.overlay != .wall
+                    && !seen.contains(neighbor) {
+                    seen.insert(neighbor)
+                    frontier.append(neighbor)
+                }
+            }
+            let unreachable = board.cells.filter { $0.value.overlay != .wall && !seen.contains($0.key) }.keys.sorted()
+            XCTAssertEqual(unreachable, [], "scenario \(index): hexes no figure could ever reach")
+        }
+        XCTAssertGreaterThan(walled, 30, "many maps have tiles whose full hexes meet across a wall line")
+    }
+
     /// The order the doors are opened in — so which door each room is entered by — makes no
     /// difference to what is revealed. (A room entered by its second door used to appear empty:
     /// no traps, no treasure, no monsters, in thirteen scenarios.)

@@ -17,6 +17,9 @@ struct MonsterSlot: Codable, Equatable, Sendable {
 /// Reuses ScenarioMapBuilder's coordinate transform logic.
 enum BoardBuilder {
 
+    /// The connector that is no door but a crossing between two tiles lying apart.
+    static let crossingSubType = "altar"
+
     /// Result of revealing part of the map.
     struct Reveal {
         /// Monster positions in the revealed tiles.
@@ -59,6 +62,7 @@ enum BoardBuilder {
                     turnAxis: placement.axis, placements: scenario.placements, traps: scenario.traps, reveal: &reveal)
         }
         recomputeBounds(board)
+        board.wallEdges = wallEdges(in: scenario, among: Set(board.cells.keys))
         return (board, reveal)
     }
 
@@ -107,6 +111,7 @@ enum BoardBuilder {
             board.doors[idx].isOpen = true
         }
         recomputeBounds(board)
+        board.wallEdges = wallEdges(in: scenario, among: Set(board.cells.keys))
         return reveal
     }
 
@@ -371,6 +376,22 @@ enum BoardBuilder {
                         placements: placements, traps: traps, reveal: &reveal)
                 continue
             }
+            if door.subType == Self.crossingSubType {
+                // Not a door but one end of a crossing (the altars of Demonic Rift): the tile
+                // beyond lies apart and is on the map from the start; its own altar is the
+                // other end.
+                board.cells[doorCoord]?.overlay = .obstacle
+                board.cells[doorCoord]?.overlaySubType = door.subType
+                board.cells[doorCoord]?.passable = false
+                addRoom(door.mapTileData, path: path + [index], root: root, to: board, turnAxis: axis,
+                        placements: placements, traps: traps, reveal: &reveal)
+                let far = board.cells.values.filter {
+                    $0.coord != doorCoord && $0.overlay == .obstacle && $0.overlaySubType == door.subType
+                        && $0.tileRef == door.mapTileData.ref
+                }.map(\.coord).min()
+                if let far, board.crossings.isEmpty { board.crossings = [doorCoord, far] }
+                continue
+            }
             recordDoor(at: doorCoord, subType: door.subType, leadingTo: door.mapTileData.ref, from: tileData.ref,
                        path: path + [index], axis: axis, on: board)
         }
@@ -421,6 +442,47 @@ enum BoardBuilder {
                            path: parentPath, axis: parentAxis, on: board)
             }
         }
+    }
+
+    /// The wall lines among `cells` (the hexes on the board): every side shared by full hexes of
+    /// two different tiles. The edge of a map tile is a wall unless a door or corridor covers it
+    /// (FAQ), and those cover the hexes the two tiles' half-hexes make together — so two full
+    /// hexes that meet across the border, beside a door or anywhere else, have a wall line
+    /// between them. Hexes outside every tile's own grid (doors, corridors) join what they touch.
+    static func wallEdges(in scenario: VGBScenario, among cells: Set<HexCoord>) -> Set<HexEdge> {
+        var tileOf: [HexCoord: Int] = [:]
+        var connectors = Set<HexCoord>()
+        var tiles: [Set<HexCoord>] = []
+        for placement in findPlacements(in: scenario.mapTileData) {
+            let grid = cellSet(of: placement.tile, axis: placement.axis)
+            // A tile reached by two connectors is in the data twice: one tile.
+            let id = tiles.firstIndex(of: grid) ?? {
+                tiles.append(grid)
+                return tiles.count - 1
+            }()
+            for cell in grid where tileOf[cell] == nil { tileOf[cell] = id }
+            for door in placement.tile.doors {
+                connectors.insert(doorCoordinate(door, in: placement.tile, axis: placement.axis))
+            }
+            for overlay in placement.tile.overlays {
+                for cell in overlay.cells where cell.count >= 2 {
+                    let global = HexMath.normaliseAndRotatePoint(
+                        turns: placement.tile.turns, refPoint: placement.axis?.refPoint ?? (0, 0),
+                        origin: placement.axis?.origin ?? (0, 0), tileCoord: (cell[0], cell[1])
+                    )
+                    let coord = HexCoord(global.0, global.1)
+                    if !grid.contains(coord) { connectors.insert(coord) }
+                }
+            }
+        }
+        var edges = Set<HexEdge>()
+        for cell in cells where !connectors.contains(cell) {
+            guard let mine = tileOf[cell] else { continue }
+            for neighbor in cell.neighbors where cells.contains(neighbor) && !connectors.contains(neighbor) {
+                if let theirs = tileOf[neighbor], theirs != mine { edges.insert(HexEdge(cell, neighbor)) }
+            }
+        }
+        return edges
     }
 
     /// The hexes a tile covers on the board, placed by `axis`.

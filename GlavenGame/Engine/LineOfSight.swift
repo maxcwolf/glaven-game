@@ -9,8 +9,12 @@ import Foundation
 ///
 /// Board model:
 /// - **Walls** = hexes that are not on a revealed map tile (void: gaps between tiles,
-///   partial edge hexes, unrevealed rooms, outside the map) plus cells with a `.wall` overlay.
-/// - Obstacles, traps, hazards, difficult terrain, doors and figures do **not** block LOS
+///   partial edge hexes, unrevealed rooms, outside the map), cells with a `.wall` overlay and
+///   closed doors (FAQ: "Walls and closed doors are the only things that block line of sight").
+/// - **Wall lines** = the sides between full hexes of two tiles that touch with no door or
+///   corridor over them (`BoardState.wallEdges`): the tile's edge is still there as a
+///   one-dimensional wall.
+/// - Obstacles, traps, hazards, difficult terrain, open doors and figures do **not** block LOS
 ///   ("Obstacles do not hinder ranged attacks").
 ///
 /// Geometry: the board is pointy-top hexes in odd-row offset coordinates (see `HexMath` /
@@ -21,21 +25,23 @@ import Foundation
 /// - Hex `(col, row)` has its center at `X = 2·col + (row & 1)`, `Y = 3·row`.
 /// - Its 6 corners are the center plus `(1,1) (0,2) (-1,1) (-1,-1) (0,-2) (1,-1)`.
 ///
-/// A corner-to-corner line is blocked when it overlaps a wall hex (closed hexagon) along a
-/// segment of positive length — i.e. it passes through the wall's interior or runs along
-/// one of its edges. A line that merely touches a single corner point of a wall hex (e.g. it
-/// passes through the corner shared by two open hexes and a wall hex) is not blocked.
-/// Two adjacent hexes always have LOS: the map data has no explicit edge walls between
-/// touching cells.
+/// A corner-to-corner line is blocked when it touches a wall anywhere — passing through it,
+/// running along its edge or only grazing a corner (FAQ: "if the sight line touches any corner
+/// or edge of a wall, or any corner or edge of a hex that is considered a wall"). The two ends
+/// of the line are the exception for wall hexes: the corners of a hex beside a wall lie on it,
+/// and a figure there still sees along and away from the wall. A wall line has no such
+/// exception: a sight line that ends on it would be seeing across it.
+/// Two adjacent hexes always have LOS, unless a wall line runs between them.
 enum LineOfSight {
 
     /// Check if there is line of sight between two hexes.
     static func hasLOS(from source: HexCoord, to target: HexCoord, board: BoardState) -> Bool {
         if source == target { return true }
-        if source.isAdjacent(to: target) { return true }
+        if board.areAdjacent(source, target) { return true }
 
         let blockers = blockingHexes(between: source, and: target, board: board)
-        if blockers.isEmpty { return true }
+        let lines = blockingLines(between: source, and: target, board: board)
+        if blockers.isEmpty && lines.isEmpty { return true }
 
         let sourceCorners = corners(of: source)
         let targetCorners = corners(of: target)
@@ -43,7 +49,7 @@ enum LineOfSight {
         for sc in sourceCorners {
             for tc in targetCorners {
                 let segment = Segment(sc, tc)
-                if !blockers.contains(where: { segment.overlaps($0) }) {
+                if !blockers.contains(where: { segment.touches($0) }) && !lines.contains(where: { segment.touches($0) }) {
                     return true
                 }
             }
@@ -58,16 +64,16 @@ enum LineOfSight {
         range: Int,
         board: BoardState
     ) -> Bool {
-        guard source.distance(to: target) <= range else { return false }
+        guard board.isWithin(range, from: source, to: target) else { return false }
         return hasLOS(from: source, to: target, board: board)
     }
 
     /// Whether a hex acts as a wall for line of sight: it is not part of the revealed map
-    /// (void / gap between tiles / partial edge hex) or it carries a `.wall` overlay.
-    /// Obstacles and every other overlay are transparent.
+    /// (void / gap between tiles / partial edge hex), it carries a `.wall` overlay, or it is a
+    /// closed door. Obstacles and every other overlay are transparent.
     static func blocksLineOfSight(_ coord: HexCoord, board: BoardState) -> Bool {
         guard let cell = board.cells[coord] else { return true }
-        return cell.overlay == .wall
+        return cell.overlay == .wall || board.isClosedDoor(coord)
     }
 
     // MARK: - Lattice Geometry
@@ -120,10 +126,10 @@ enum LineOfSight {
             minY = min(p.y, q.y); maxY = max(p.y, q.y)
         }
 
-        /// Whether this segment overlaps the closed hexagon along a positive length.
+        /// Whether this segment touches the closed hexagon anywhere but at its own two ends.
         /// Exact Liang–Barsky clipping against the hexagon's 6 half-planes using rational
         /// parameters (integer numerator / positive denominator).
-        func overlaps(_ hex: Blocker) -> Bool {
+        func touches(_ hex: Blocker) -> Bool {
             // Bounding-box rejection (closed, so edge-running lines are still tested).
             if maxX < hex.minX || minX > hex.maxX || maxY < hex.minY || minY > hex.maxY {
                 return false
@@ -131,6 +137,8 @@ enum LineOfSight {
 
             let dx = q.x - p.x
             let dy = q.y - p.y
+            // A line of no length (a corner the two hexes share) is all end.
+            if dx == 0 && dy == 0 { return false }
             // Feasible parameter interval [lowN/lowD, highN/highD] ⊆ [0, 1].
             var lowN = 0, lowD = 1
             var highN = 1, highD = 1
@@ -156,9 +164,66 @@ enum LineOfSight {
                     if n * highD < highN * d { highN = n; highD = d }
                 }
             }
-            // Positive-length overlap iff low < high (a single shared point is not a block).
-            return lowN * highD < highN * lowD
+            // The line is in the hexagon for t in [low, high]: a touch when that is not empty
+            // and reaches inside (0, 1) — low ≤ high, low < 1 and high > 0.
+            return lowN * highD <= highN * lowD && lowN < lowD && highN > 0
         }
+
+        /// Whether this segment touches a wall line anywhere, its own ends included.
+        func touches(_ line: WallLine) -> Bool {
+            if maxX < line.minX || minX > line.maxX || maxY < line.minY || minY > line.maxY {
+                return false
+            }
+            func side(_ a: LatticePoint, _ b: LatticePoint, _ c: LatticePoint) -> Int {
+                ((b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x)).signum()
+            }
+            let d1 = side(p, q, line.a), d2 = side(p, q, line.b)
+            let d3 = side(line.a, line.b, p), d4 = side(line.a, line.b, q)
+            // Properly crossing, or one end of either lying on the other: the bounding boxes
+            // overlap (checked above), so collinear ends do touch.
+            if d1 != d2 && d3 != d4 { return true }
+            if d1 == 0 && within(line.a) { return true }
+            if d2 == 0 && within(line.b) { return true }
+            if d3 == 0 && line.contains(p) { return true }
+            if d4 == 0 && line.contains(q) { return true }
+            return false
+        }
+
+        /// Whether a point known to be on this segment's line lies between its ends.
+        private func within(_ point: LatticePoint) -> Bool {
+            point.x >= minX && point.x <= maxX && point.y >= minY && point.y <= maxY
+        }
+    }
+
+    /// A wall line: the side two hexes share.
+    private struct WallLine {
+        let a: LatticePoint
+        let b: LatticePoint
+        let minX: Int, maxX: Int, minY: Int, maxY: Int
+
+        init?(_ edge: HexEdge) {
+            let mine = LineOfSight.corners(of: edge.a), theirs = LineOfSight.corners(of: edge.b)
+            let shared = mine.filter { corner in theirs.contains { $0.x == corner.x && $0.y == corner.y } }
+            guard shared.count == 2 else { return nil }
+            a = shared[0]; b = shared[1]
+            minX = min(a.x, b.x); maxX = max(a.x, b.x)
+            minY = min(a.y, b.y); maxY = max(a.y, b.y)
+        }
+
+        /// Whether a point known to be on this line's line lies between its ends.
+        func contains(_ point: LatticePoint) -> Bool {
+            point.x >= minX && point.x <= maxX && point.y >= minY && point.y <= maxY
+        }
+    }
+
+    /// Wall lines near enough to the two hexes to meet a sight line between them.
+    private static func blockingLines(between source: HexCoord, and target: HexCoord, board: BoardState) -> [WallLine] {
+        guard !board.wallEdges.isEmpty else { return [] }
+        let cols = (min(source.col, target.col) - 2)...(max(source.col, target.col) + 2)
+        let rows = (min(source.row, target.row) - 2)...(max(source.row, target.row) + 2)
+        return board.wallEdges.filter {
+            cols.contains($0.a.col) && rows.contains($0.a.row) && cols.contains($0.b.col) && rows.contains($0.b.row)
+        }.compactMap(WallLine.init)
     }
 
     /// Wall hexes that could intersect any corner-to-corner line between the two hexes.

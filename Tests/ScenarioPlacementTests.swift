@@ -126,6 +126,12 @@ final class ScenarioPlacementTests: XCTestCase {
                 XCTAssertTrue(letters.contains(stands.marker), "\(index): no hex lettered \(stands.marker)")
                 for name in stands.monsters { XCTAssertTrue(monsters.contains(name), "\(index): no monster \(name)") }
             }
+            for room in placements.goal?.lostIfEmpty ?? [] {
+                XCTAssertFalse(room.tiles.isEmpty, index)
+                let onMap = Set(BoardBuilder.findPlacements(in: map.mapTileData).map { $0.tile.ref.lowercased() })
+                for tile in room.tiles { XCTAssertTrue(onMap.contains(tile), "\(index): no tile \(tile)") }
+                if let name = room.onceAppeared { XCTAssertTrue(monsters.contains(name), "\(index): no monster \(name)") }
+            }
             for objective in placements.focusFirst ?? [] {
                 XCTAssertEqual(data.objectives?.indices.contains(objective - 1), true, "\(index): no objective \(objective)")
             }
@@ -228,9 +234,10 @@ final class ScenarioPlacementTests: XCTestCase {
                 }
                 for fact in rule.when ?? [] {
                     XCTAssertTrue(fact.saved != nil || fact.lock != nil || fact.looted != nil || fact.unrevealed != nil
-                                  || fact.occupied != nil || fact.partyAchievement != nil || fact.noCharacterOn != nil,
+                                  || fact.occupied != nil || fact.partyAchievement != nil || fact.noCharacterOn != nil
+                                  || fact.characterOn != nil,
                                   "\(index): an empty fact")
-                    for tile in fact.noCharacterOn ?? [] { XCTAssertTrue(tiles.contains(tile), "\(index): no tile \(tile)") }
+                    for tile in (fact.noCharacterOn ?? []) + (fact.characterOn ?? []) { XCTAssertTrue(tiles.contains(tile), "\(index): no tile \(tile)") }
                     if let achievement = fact.partyAchievement {
                         XCTAssertNotNil(gm.editionStore.resolveLabel(key: "partyAchievements.\(achievement)", edition: "gh")
                                         ?? gm.editionStore.resolveLabel(key: "data.partyAchievements.\(achievement)", edition: "gh"),

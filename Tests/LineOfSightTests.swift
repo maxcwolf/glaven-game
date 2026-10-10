@@ -144,14 +144,19 @@ final class LineOfSightTests: XCTestCase {
 
     // MARK: - Corner grazing
 
-    func testLOS_lineGrazingWallCornerIsNotBlocked() {
+    /// FAQ: "if the sight line touches any corner or edge of a wall, or any corner or edge of a
+    /// hex that is considered a wall", it is blocked.
+    func testLOS_lineGrazingWallCornerIsBlocked() {
         let board = makeBoard(cols: 12, rows: 12)
         board.cells[HexCoord(4, 3)] = nil
         board.cells[HexCoord(4, 4)] = nil
-        // The only clear line runs along the bottom of row 4, touching the void hex (4,4) only
-        // at its bottom corner — the corner shared with the open hexes (3,5) and (4,5).
-        XCTAssertTrue(LineOfSight.hasLOS(from: HexCoord(3, 4), to: HexCoord(5, 4), board: board),
-                      "touching a single corner of a wall hex does not block")
+        // The only line clear of the walls' insides runs along the bottom of row 4, touching the
+        // void hex (4,4) at its bottom corner — the corner shared with the open hexes (3,5) and
+        // (4,5). A touch is enough.
+        XCTAssertFalse(LineOfSight.hasLOS(from: HexCoord(3, 4), to: HexCoord(5, 4), board: board),
+                       "touching a single corner of a wall hex blocks")
+        // One row down nothing is touched.
+        XCTAssertTrue(LineOfSight.hasLOS(from: HexCoord(3, 5), to: HexCoord(5, 5), board: board))
     }
 
     func testLOS_lineThroughVoidInteriorIsBlocked() {
@@ -164,11 +169,25 @@ final class LineOfSightTests: XCTestCase {
         XCTAssertFalse(LineOfSight.hasLOS(from: HexCoord(3, 4), to: HexCoord(5, 4), board: board))
     }
 
-    func testLOS_seesPastSingleVoidHex() {
+    /// A single wall hex in a row hides the rest of the row beyond it: every line between two
+    /// hexes of that row crosses the wall hex or touches one of its corners.
+    func testLOS_singleWallHexHidesTheRowBeyondIt() {
         let board = makeBoard(cols: 12, rows: 12)
         board.cells[HexCoord(4, 5)] = nil
-        // A single wall hex in the middle of a row can be seen around (corner-to-corner).
-        XCTAssertTrue(LineOfSight.hasLOS(from: HexCoord(2, 5), to: HexCoord(6, 5), board: board))
+        XCTAssertFalse(LineOfSight.hasLOS(from: HexCoord(2, 5), to: HexCoord(6, 5), board: board))
+        // A hex two rows up is seen over it: the line from the top corner of (2,5) to the top
+        // corner of (6,3) passes well above the wall hex.
+        XCTAssertTrue(LineOfSight.hasLOS(from: HexCoord(2, 5), to: HexCoord(6, 3), board: board))
+    }
+
+    /// A figure standing against a wall still sees along it: the corners of its hex that lie on
+    /// the wall may be the ends of a sight line, which only mustn't touch a wall between them.
+    func testLOS_alongAWallFromAHexBesideIt() {
+        let board = BoardState()
+        for col in 0..<6 { board.cells[HexCoord(col, 0)] = HexCell(coord: HexCoord(col, 0), tileRef: "test", passable: true) }
+        // A corridor one hex wide: every corner of every hex is on a wall.
+        XCTAssertTrue(LineOfSight.hasLOS(from: HexCoord(0, 0), to: HexCoord(5, 0), board: board))
+        XCTAssertTrue(LineOfSight.hasLOS(from: HexCoord(0, 0), to: HexCoord(1, 0), board: board))
     }
 
     // MARK: - Adjacency

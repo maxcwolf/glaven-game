@@ -1344,11 +1344,11 @@ final class PlayerTurnController {
             case .enemiesBesideSummons:
                 let summonHexes = (character?.summons ?? []).filter { !$0.dead }
                     .compactMap { coordinator.boardState.piecePositions[.summon(id: $0.id)] }
-                coordinator.applyCondition(cond, toEnemiesOn: summonHexes.flatMap(\.neighbors), from: pieceID)
+                coordinator.applyCondition(cond, toEnemiesOn: summonHexes.flatMap(coordinator.boardState.neighbors(of:)), from: pieceID)
             case .enemiesBesideEnemiesWith(let marker):
                 let marked = coordinator.boardState.piecePositions
                     .filter { coordinator.areEnemies(pieceID, $0.key) && coordinator.isConditionActive(marker, on: $0.key) }
-                coordinator.applyCondition(cond, toEnemiesOn: marked.values.flatMap(\.neighbors), from: pieceID)
+                coordinator.applyCondition(cond, toEnemiesOn: marked.values.flatMap(coordinator.boardState.neighbors(of:)), from: pieceID)
             case .everyoneElse:
                 coordinator.applyConditionToAllEnemies(from: pieceID, condition: cond, range: 99)
                 coordinator.applyConditionToAllAllies(from: pieceID, condition: cond, range: 99)

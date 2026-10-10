@@ -30,6 +30,10 @@ struct BoardSnapshot: Codable {
     var exhaustedOnExit: [String]? = nil
     var conclusion: String? = nil
     var goalReached: Bool? = nil
+    /// Wall lines between tiles and the ends of a crossing. Optional: older saves have none
+    /// (the coordinator draws them again from the map).
+    var wallEdges: [HexEdge]? = nil
+    var crossings: [HexCoord]? = nil
 
     struct CharacterTrap: Codable, Equatable {
         let hex: HexCoord
@@ -61,7 +65,8 @@ struct BoardSnapshot: Codable {
             heldMonsterSlots: board.heldMonsterSlots, cycleSteps: board.cycleSteps,
             cleansed: board.cleansed,
             exhaustedOnExit: board.exhaustedOnExit,
-            conclusion: board.conclusion, goalReached: board.goalReached
+            conclusion: board.conclusion, goalReached: board.goalReached,
+            wallEdges: board.wallEdges.sorted { ($0.a, $0.b) < ($1.a, $1.b) }, crossings: board.crossings
         )
     }
 
@@ -93,6 +98,8 @@ struct BoardSnapshot: Codable {
         board.exhaustedOnExit = exhaustedOnExit ?? []
         board.conclusion = conclusion
         board.goalReached = goalReached ?? false
+        if let wallEdges { board.wallEdges = Set(wallEdges) }
+        if let crossings { board.crossings = crossings }
     }
 }
 

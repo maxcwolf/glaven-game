@@ -88,10 +88,10 @@ extension BoardCoordinator {
         let enemyPositions = boardState.piecePositions.compactMap { id, coord in
             areEnemies(summoner, id) ? coord : nil
         }
-        let candidates = origin.neighbors.filter { isEmptyHex($0) }
+        let candidates = boardState.neighbors(of: origin).filter { isEmptyHex($0) }
         guard let spot = candidates.min(by: { a, b in
-            let da = enemyPositions.map { a.distance(to: $0) }.min() ?? Int.max
-            let db = enemyPositions.map { b.distance(to: $0) }.min() ?? Int.max
+            let da = enemyPositions.map { boardState.range(from: a, to: $0) ?? 99 }.min() ?? Int.max
+            let db = enemyPositions.map { boardState.range(from: b, to: $0) ?? 99 }.min() ?? Int.max
             return da == db ? (a.col, a.row) < (b.col, b.row) : da < db
         }) else { return false }
         guard let pieceID = spawnMonster(name: name, type: type, at: spot, origin: .summoned) else { return false }
@@ -124,7 +124,7 @@ extension BoardCoordinator {
             let current = queue[head]
             head += 1
             if isEmptyHex(current) && !reserved.contains(current) { return current }
-            for neighbor in current.neighbors where !visited.contains(neighbor) && boardState.cells[neighbor] != nil {
+            for neighbor in boardState.neighbors(of: current) where !visited.contains(neighbor) && boardState.cells[neighbor] != nil {
                 visited.insert(neighbor)
                 queue.append(neighbor)
             }
@@ -205,7 +205,7 @@ extension BoardCoordinator {
             .compactMap { boardState.piecePositions[.objective(id: $0.number)] }
         // One for each that carries it: the next goes beside the one with the fewest already there.
         func crowd(_ hex: HexCoord) -> Int {
-            hex.neighbors.filter { neighbor in
+            boardState.neighbors(of: hex).filter { neighbor in
                 boardState.pieces(at: neighbor).contains { if case .monster = $0 { return true }; return false }
             }.count
         }
@@ -227,7 +227,7 @@ extension BoardCoordinator {
         let summonName = summonData.name
         guard let charPos = boardState.piecePositions[summoner] else { return false }
 
-        let emptyNeighbors = charPos.neighbors.filter { isEmptyHex($0) }
+        let emptyNeighbors = boardState.neighbors(of: charPos).filter { isEmptyHex($0) }
         guard !emptyNeighbors.isEmpty else {
             log("\(who) can\u{2019}t summon \(GameText.titleCased(summonName)): no empty hex next to them", category: .info)
             return false

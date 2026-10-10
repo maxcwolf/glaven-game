@@ -328,7 +328,7 @@ extension BoardCoordinator {
         for character in game.characters {
             let provoker = PieceID.character(character.id)
             guard provoker != target, areEnemies(attacker, provoker), areAllies(provoker, target),
-                  let theirs = boardState.piecePositions[provoker], theirs.isAdjacent(to: position),
+                  let theirs = boardState.piecePositions[provoker], boardState.areAdjacent(theirs, position),
                   chargedBonuses(of: character).contains(where: { $0.bonus == .drawAttacksFromAdjacentAllies }) else { continue }
             log("\(name(provoker)) draws the attack meant for \(name(target))", category: .attack)
             return provoker
@@ -353,7 +353,7 @@ extension BoardCoordinator {
         guard let position = boardState.piecePositions[attacker] else { return total }
         for character in game.characters where PieceID.character(character.id) != attacker {
             guard let theirs = boardState.piecePositions[.character(character.id)],
-                  theirs.isAdjacent(to: position), areAllies(attacker, .character(character.id)) else { continue }
+                  boardState.areAdjacent(theirs, position), areAllies(attacker, .character(character.id)) else { continue }
             for (_, bonus) in chargedBonuses(of: character) {
                 if case .roundAttackBonusWithAdjacentAllies(let n) = bonus { total += n }
             }
@@ -366,7 +366,7 @@ extension BoardCoordinator {
     /// "XP +1 for each enemy targeted" (Backstab, Submissive Affliction, Net Shooter…).
     func attackTextBonus(_ texts: [String], attacker: PieceID, target: PieceID) -> (attack: Int, experience: Int) {
         guard let targetPos = boardState.piecePositions[target], let defender = entity(for: target) else { return (0, 0) }
-        let neighbours = targetPos.neighbors.compactMap { boardState.piece(at: $0) }
+        let neighbours = boardState.neighbors(of: targetPos).compactMap { boardState.piece(at: $0) }
         let attackersAllies = neighbours.filter { $0 != attacker && areAllies($0, attacker) }.count
         let isolated = !neighbours.contains { $0 != target && areAllies($0, target) }
         let negatives = defender.entityConditions.filter { $0.name.isNegative && !$0.expired }.count
@@ -429,7 +429,7 @@ extension BoardCoordinator {
     /// Cull the Weak, Smoke Bomb, Spring the Trap), marking a charge of each that applies.
     func attackValueWithBonuses(_ value: Int, attacker: PieceID, target: PieceID) -> Int {
         guard case .character = attacker, let targetPos = boardState.piecePositions[target] else { return value }
-        let neighbours = targetPos.neighbors.compactMap { boardState.piece(at: $0) }
+        let neighbours = boardState.neighbors(of: targetPos).compactMap { boardState.piece(at: $0) }
         // The target's allies are the figures on its side; the attacker's, those on theirs.
         let isolated = !neighbours.contains { $0 != target && areAllies($0, target) }
         let flanked = isolated && neighbours.contains { $0 != attacker && areAllies($0, attacker) }
@@ -451,8 +451,8 @@ extension BoardCoordinator {
                 useFirstCharge(of: attacker) { $0 == bonus }
             case .destroyObstacleForAttack(let n):
                 // "When possible": a melee attack with an obstacle beside the character.
-                guard let attackerPos = boardState.piecePositions[attacker], attackerPos.distance(to: targetPos) <= 1,
-                      let obstacle = attackerPos.neighbors.sorted().first(where: isDestructibleObstacle)
+                guard let attackerPos = boardState.piecePositions[attacker], boardState.areAdjacent(attackerPos, targetPos),
+                      let obstacle = boardState.neighbors(of: attackerPos).sorted().first(where: isDestructibleObstacle)
                 else { break }
                 boardState.removeObstacle(at: obstacle)
                 boardScene?.removeOverlaySprite(at: obstacle, offsetCol: offsetCol, offsetRow: offsetRow)

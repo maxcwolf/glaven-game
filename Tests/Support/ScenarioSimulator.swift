@@ -488,6 +488,10 @@ final class ScenarioSimulator {
         if !coord.attackWasRedirected, !LineOfSight.hasLOS(from: from, to: to, board: coord.boardState) {
             violation("\(attacker) at \(from) attacks \(target) at \(to) without line of sight")
         }
+        // Range is never counted through a wall: with no way round, nothing is in range.
+        if !coord.attackWasRedirected, coord.boardState.range(from: from, to: to) == nil {
+            violation("\(attacker) at \(from) attacks \(target) at \(to), which no range reaches round the walls")
+        }
     }
 
     /// Every movement: starts where the figure stands, steps between adjacent hexes on the map,
@@ -505,8 +509,11 @@ final class ScenarioSimulator {
             if case .objective = piece { return !coord.isScenery(piece) }
             return false
         }()
-        for (a, b) in zip(path, path.dropFirst()) where a.distance(to: b) != 1 {
-            violation("\(piece) moves from \(a) to non-adjacent \(b)")
+        for (a, b) in zip(path, path.dropFirst()) where !board.areAdjacent(a, b) {
+            // A character may cross between the two ends of a crossing (Demonic Rift's altars).
+            if case .character = piece, style != .forced, board.crossingExits(from: a).contains(b) { continue }
+            violation(board.isWalled(a, b) ? "\(piece) moves across the wall line between \(a) and \(b)"
+                                           : "\(piece) moves from \(a) to non-adjacent \(b)")
         }
         for (i, hex) in path.enumerated().dropFirst() {
             let isLast = i == path.count - 1

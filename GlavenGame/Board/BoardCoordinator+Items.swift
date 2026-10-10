@@ -311,7 +311,7 @@ extension BoardCoordinator {
 
     /// Whether a summon would have an empty hex next to the character.
     private func hasRoomToSummon(next character: GameCharacter) -> Bool {
-        boardState.piecePositions[.character(character.id)]?.neighbors.contains(where: isEmptyHex) ?? false
+        boardState.piecePositions[.character(character.id)].map { boardState.neighbors(of: $0).contains(where: isEmptyHex) } ?? false
     }
 
     private func isMoment(_ moment: BoardItemEffect.Moment, for turn: PlayerTurnController) -> Bool {
@@ -519,7 +519,7 @@ extension BoardCoordinator {
             turn.attackTexts.append(text)
         case .disarmTraps(let range):
             guard let origin = boardState.piecePositions[me] else { break }
-            let traps = boardState.cells.values.filter { $0.isTrap && $0.coord.distance(to: origin) <= range }.map(\.coord).sorted()
+            let traps = boardState.cells.values.filter { $0.isTrap && boardState.isWithin(range, from: origin, to: $0.coord) }.map(\.coord).sorted()
             for hex in traps {
                 boardState.removeTrap(at: hex)
                 boardScene?.removeOverlaySprite(at: hex, offsetCol: offsetCol, offsetRow: offsetRow)

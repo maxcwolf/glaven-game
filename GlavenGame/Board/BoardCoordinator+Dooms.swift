@@ -257,14 +257,14 @@ extension BoardCoordinator {
                 log("\(name(figure)) heals \(heal(figure, amount: n, source: figure))", category: .heal)
             }
         case .damageAdjacent(let n):
-            for victim in hex.neighbors.compactMap({ boardState.piece(at: $0) }).filter({ areEnemies(me, $0) && isFigure($0) }).sorted() {
+            for victim in boardState.neighbors(of: hex).compactMap({ boardState.piece(at: $0) }).filter({ areEnemies(me, $0) && isFigure($0) }).sorted() {
                 log("\(name(victim)) suffers \(n) damage from the Doom", category: .damage)
                 sufferDamage(n, to: victim, killer: me)
             }
         case .moveAdjacent(let n):
             // "Force all enemies adjacent to the hex in which it died to perform Move 1, with you
             // controlling the actions": moved away from that hex.
-            for victim in hex.neighbors.compactMap({ boardState.piece(at: $0) }).filter({ areEnemies(me, $0) && isFigure($0) }).sorted() {
+            for victim in boardState.neighbors(of: hex).compactMap({ boardState.piece(at: $0) }).filter({ areEnemies(me, $0) && isFigure($0) }).sorted() {
                 await performPushPull(target: victim, attackerPos: hex, steps: n, isPush: true)
             }
         case .attack(let value, let range, let targets):
@@ -299,7 +299,7 @@ extension BoardCoordinator {
         let nearby: (Int) -> [PieceID] = { range in
             self.boardState.piecePositions.compactMap { piece, hex in
                 guard case .monster = piece, piece != death.piece, !self.isPlayerSide(piece),
-                      hex.distance(to: death.position) <= range else { return nil }
+                      self.boardState.isWithin(range, from: death.position, to: hex) else { return nil }
                 return piece
             }.sorted()
         }

@@ -69,7 +69,7 @@ extension BoardCoordinator {
         guard let arrival = scenarioGoal?.arrive, let container = objectiveContainer(of: pieceID),
               container.objectiveIndex == arrival.objective, let entity = entity(for: pieceID) as? GameObjectiveEntity,
               let hex = boardState.piecePositions[pieceID], let lettered = boardState.markerHexes[arrival.marker],
-              lettered.contains(hex) || (arrival.adjacent == true && lettered.contains { $0.distance(to: hex) == 1 })
+              lettered.contains(hex) || (arrival.adjacent == true && lettered.contains { boardState.areAdjacent($0, hex) })
         else { return }
         let who = name(pieceID)
         entity.off = true
@@ -169,6 +169,17 @@ extension BoardCoordinator {
         let kills = gameManager?.game.scenario?.killCounts ?? [:]
         for name in goal.lostIfKilled ?? [] where (kills[name] ?? 0) > 0 {
             return "A \(monsterTypeName(name)) is killed."
+        }
+        // Where characters must be, once they are all on the map.
+        let standing = party.filter { !$0.exhausted }
+        if boardPhase != .setup, !standing.isEmpty {
+            if let least = goal.lostBelow, standing.count < least {
+                return ScenarioBrief.lostBelowLine(least)
+            }
+            for room in goal.lostIfEmpty ?? [] where !isCharacter(on: room.tiles) {
+                if let monster = room.onceAppeared, !hasAppeared(monster) { continue }
+                return room.text
+            }
         }
         if let stands = goal.lostIfStands, let hexes = boardState.markerHexes[stands.marker] {
             for hex in hexes {
@@ -274,7 +285,7 @@ extension BoardCoordinator {
     /// Whether a hex is the one the goal asks someone to reach (or beside it, where that counts).
     private func isAt(_ reach: ScenarioPlacements.Reach, _ at: HexCoord) -> Bool {
         let hexes = allHexes(lettered: reach.marker).filter { boardState.cells[$0] != nil }
-        return hexes.contains(at) || (reach.adjacent == true && hexes.contains { $0.distance(to: at) == 1 })
+        return hexes.contains(at) || (reach.adjacent == true && hexes.contains { boardState.areAdjacent($0, at) })
     }
 
     /// A character has moved along `path`: where the goal is a hex it is enough to enter (beside
@@ -337,6 +348,19 @@ extension BoardCoordinator {
         }
     }
 
+    /// Whether a character still in the scenario stands on one of these map tiles.
+    func isCharacter(on tiles: [String]) -> Bool {
+        let tiles = Set(tiles.map { $0.lowercased() })
+        return party.filter { !$0.exhausted }.compactMap { boardState.piecePositions[.character($0.id)] }
+            .compactMap { boardState.cells[$0]?.tileRef.lowercased() }.contains(where: tiles.contains)
+    }
+
+    /// Whether a monster of this type has been on the map.
+    private func hasAppeared(_ monster: String) -> Bool {
+        gameManager?.game.monsters.first { $0.name == monster }?.entities.isEmpty == false
+            || (gameManager?.game.scenario?.killCounts[monster] ?? 0) > 0
+    }
+
     // MARK: - What rules ask of the board
 
     /// Whether something a rule waits for has happened (`ScenarioRule.when`).
@@ -356,11 +380,8 @@ extension BoardCoordinator {
         }
         if let room = fact.unrevealed, gameManager?.game.scenario?.revealedRooms.contains(room) != false { return false }
         if let achievement = fact.partyAchievement, gameManager?.game.partyAchievements.contains(achievement) != true { return false }
-        if let tiles = fact.noCharacterOn?.map({ $0.lowercased() }) {
-            let stoodOn = party.filter { !$0.exhausted }.compactMap { boardState.piecePositions[.character($0.id)] }
-                .compactMap { boardState.cells[$0]?.tileRef.lowercased() }
-            guard !stoodOn.contains(where: tiles.contains) else { return false }
-        }
+        if let tiles = fact.noCharacterOn, isCharacter(on: tiles) { return false }
+        if let tiles = fact.characterOn, !isCharacter(on: tiles) { return false }
         if let looted = fact.looted {
             if looted == Self.goalTreasureID {
                 guard treasureIsLooted(looted) else { return false }
@@ -404,7 +425,7 @@ extension BoardCoordinator {
                     return place
                 }
             }
-            guard places.contains(where: { $0.distance(to: hex) <= near.range }) else { return false }
+            guard places.contains(where: { boardState.isWithin(near.range, from: $0, to: hex) }) else { return false }
         }
         return true
     }

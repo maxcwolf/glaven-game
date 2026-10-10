@@ -36,7 +36,7 @@ extension BoardCoordinator {
                 hexes.sorted().compactMap(way).min { Pathfinder.movementCost(of: $0, board: boardState) < Pathfinder.movementCost(of: $1, board: boardState) }
             }
             // The plates themselves; with a figure on each, as near to one as it can get.
-            guard let path = nearest(goals) ?? nearest(goals.flatMap(\.neighbors).filter(isEmptyHex)) ?? nearest(doors), path.count > 1 else {
+            guard let path = nearest(goals) ?? nearest(goals.flatMap(boardState.neighbors(of:)).filter(isEmptyHex)) ?? nearest(doors), path.count > 1 else {
                 log("\(self.name(pieceID)) finds no way forward", category: .move)
                 return
             }

@@ -142,7 +142,9 @@ ends up on the board:
     was exhausted while standing on an exit hex (with the rest of the goal done).
   - lost: `lostAt` (objective → how many killed), `lostIfExhausted` (`"any"`, `"offExit"`,
     `"beforeLoot"`; `lostIfExhaustedOnceRevealed` delays it until a tile is revealed),
-    `lostIfKilled` (monster types).
+    `lostIfKilled` (monster types), `lostIfEmpty` (`[{"tiles": [...], "onceAppeared": "living-spirit",
+    "text": "…"}]`: no character stands on those tiles — #90's rooms) and `lostBelow` (fewer than
+    that many characters left unexhausted).
   - Where characters stand (`escape`, `occupy`, `reach`) is judged as a turn or the round ends.
 - `lootActionOnly`: the goal treasure tiles can only be looted with a Loot action; ending a turn
   on one doesn't pick it up (#7, #30, #50, #52, #59, #61).
@@ -211,7 +213,7 @@ its map, every door objective is on a door and every objective number exists.
 | 79 Lost Temple | Fish | a, b, c (pressure plates) | win: kill the Betrayer; lost if Fish is killed | the Betrayer's two specials (forced moves, mind control) aren't modelled |
 | 84 Crystalline Cave | the crystal | — | lost if it is destroyed | protected, no ally; losing a card to spare it isn't modelled |
 | 86 Harried Village | 11 villagers | b–f | win: 7 reach the docks; lost at 5 killed | — |
-| 90 Demonic Rift | — | b, c (the Living Spirits, once every demon is dead; a Night Demon at b as an even round ends with no one in the right-hand room) | win: every Living Spirit killed | the altar crossing and the losses for leaving a room aren't modelled |
+| 90 Demonic Rift | — | b, c (the Living Spirits, once every demon is dead; a Night Demon at b as an even round ends with no one in the right-hand room) | win: every Living Spirit killed | — (`DemonicRiftTests`: both rooms set up, characters cross by the altars for 1 movement, the losses for an empty room) |
 | 92 Back Alley Brawl | — | a, b, c (where the City Archer and the two City Guards are set up; not the book's letters) | win: every non-city enemy killed; lost if a guard or the archer is killed | — |
 
 ### Locked doors written
@@ -407,7 +409,7 @@ goals are checked; the notes say what around a goal is still missing.
 | 87 | Corrupted Cove | Kill the Giant Ooze. | yes | — | — |
 | 88 | Plane of Water | Bring the Lurker King's claw to the crystal (a) — the scenario is complete when the claw is carried to a hex adjacent to the crystal. | approximately — the Lurker King dead and any character ending a turn beside the crystal (the claw isn't carried) | — | — |
 | 89 | Syndicate Hideout | Kill all enemies. | yes | — | — |
-| 90 | Demonic Rift | Close the rift (after Section 1: kill all Living Spirits). | yes — the spirits come when every demon is dead | No character is present in the left room at any time; only one character is left unexhausted; after Section 1, either room has no character present at any time. | **no** |
+| 90 | Demonic Rift | Close the rift (after Section 1: kill all Living Spirits). | yes — the spirits come when every demon is dead and a character stands in each room | No character is present in the left room at any time; only one character is left unexhausted; after Section 1, either room has no character present at any time. | yes |
 | 91 | Wild Melee | Kill all enemies. | yes | — | — |
 | 92 | Back Alley Brawl | Kill all non-city enemies. | yes | A City Guard or City Archer is killed. | yes |
 | 93 | Sunken Vessel | Kill all enemies. | yes | — | — |

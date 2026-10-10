@@ -209,7 +209,7 @@ enum AoEResolver {
                 let reachable = placed.contains { h in
                     h != attackerPos
                         && board.cells[h] != nil
-                        && attackerPos.distance(to: h) <= effectiveRange
+                        && board.isWithin(effectiveRange, from: attackerPos, to: h)
                 }
                 if reachable { placements.append(placed) }
             }

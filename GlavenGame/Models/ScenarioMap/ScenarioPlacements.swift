@@ -130,6 +130,10 @@ struct ScenarioPlacements: Codable, Equatable {
         /// Lost when a monster of these types stands on a hex with this letter (a guard on the
         /// alarm plate).
         var lostIfStands: Stands?
+        /// Lost when no character stands in a room (the two rooms of Demonic Rift).
+        var lostIfEmpty: [Vacancy]?
+        /// Lost when fewer than this many characters are left unexhausted.
+        var lostBelow: Int?
 
         /// Whether winning takes something other than killing every enemy.
         var replacesKillAll: Bool {
@@ -142,6 +146,16 @@ struct ScenarioPlacements: Codable, Equatable {
         var isPositional: Bool {
             escape != nil || occupy != nil || reach != nil || (either ?? []).contains(where: \.isPositional)
         }
+    }
+
+    /// A room that mustn't be left without a character.
+    struct Vacancy: Codable, Equatable {
+        /// The map tiles that make the room.
+        var tiles: [String]
+        /// Only once a monster of this type has appeared (the Living Spirits of Section 1).
+        var onceAppeared: String?
+        /// The loss in the brief's words.
+        var text: String
     }
 
     struct Stands: Codable, Equatable {

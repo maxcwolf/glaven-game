@@ -240,7 +240,7 @@ enum MonsterAI {
 
     /// Whether a figure at `from` can attack a figure at `to` within `range` (LOS required).
     static func canAttack(from: HexCoord, to: HexCoord, range: Int, board: BoardState) -> Bool {
-        from.distance(to: to) <= range && LineOfSight.hasLOS(from: from, to: to, board: board)
+        board.isWithin(range, from: from, to: to) && LineOfSight.hasLOS(from: from, to: to, board: board)
     }
 
     // MARK: - Focus Algorithm
@@ -318,7 +318,7 @@ enum MonsterAI {
                 pieceID: enemy,
                 negativeHexes: result.negativeHexes,
                 pathCost: result.cost,
-                proximity: position.distance(to: enemyPos),
+                proximity: board.range(from: position, to: enemyPos) ?? 99,
                 initiative: enemyInitiative(enemy, gameState: gameState)
             ))
         }
@@ -344,7 +344,7 @@ enum MonsterAI {
         }
 
         if range <= 1 {
-            for neighbor in target.neighbors {
+            for neighbor in board.neighbors(of: target) {
                 guard standable(neighbor) else { continue }
                 // Can be the source position or unoccupied (can't stop on any occupied hex)
                 guard neighbor == sourcePosition || !board.isOccupied(neighbor) else { continue }
@@ -353,7 +353,7 @@ enum MonsterAI {
             }
         } else {
             for coord in board.cells.keys {
-                guard coord.distance(to: target) <= range, standable(coord) else { continue }
+                guard standable(coord), board.isWithin(range, from: coord, to: target) else { continue }
                 guard coord == sourcePosition || !board.isOccupied(coord) else { continue }
                 guard LineOfSight.hasLOS(from: coord, to: target, board: board) else { continue }
                 hexes.insert(coord)
@@ -424,7 +424,7 @@ enum MonsterAI {
             // anyway doesn't move to avoid.
             let adjacencyCosts = isRanged && !disadvantaged
             func score(_ hex: HexCoord) -> (disadvantage: Int, targets: Int, others: Int, cost: Int) {
-                let disadvantage = adjacencyCosts && hex.isAdjacent(to: focusPos) ? 1 : 0
+                let disadvantage = adjacencyCosts && board.areAdjacent(hex, focusPos) ? 1 : 0
                 var targetCount = 1
                 // Additional targets it would attack with Disadvantage from here.
                 var others = 0
@@ -434,7 +434,7 @@ enum MonsterAI {
                                       enemies: enemies, board: board, gameState: gameState)
                     targetCount = hit.count
                     if adjacencyCosts {
-                        others = hit.filter { $0 != focus && board.piecePositions[$0]?.isAdjacent(to: hex) == true }.count
+                        others = hit.filter { $0 != focus && board.piecePositions[$0].map { board.areAdjacent($0, hex) } == true }.count
                     }
                 }
                 return (disadvantage, targetCount, others, hex == position ? 0 : (reachable[hex] ?? 0))
@@ -527,7 +527,7 @@ enum MonsterAI {
             guard canAttack(from: position, to: enemyPos, range: range, board: board) else { continue }
             candidates.append(Candidate(
                 pieceID: enemy,
-                distance: position.distance(to: enemyPos),
+                distance: board.range(from: position, to: enemyPos) ?? 99,
                 initiative: enemyInitiative(enemy, gameState: gameState)
             ))
         }

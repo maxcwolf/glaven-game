@@ -40,6 +40,10 @@ enum MoveMode: String, Sendable, Codable, CaseIterable {
 /// - **Closed doors**: characters may enter a closed door hex (it opens the door).
 ///   Figures that can't open doors (`canOpenDoors: false` — monsters, summons, escorts)
 ///   treat a closed door as a wall in every mode.
+/// - **Wall lines** (`BoardState.wallEdges`): the edge of a map tile is a wall also where two
+///   tiles' full hexes meet, so no step in any mode crosses one.
+/// - **Crossings** (`BoardState.crossings`): a character beside one end may step to any hex
+///   beside the other for 1 movement.
 /// - **Negative hexes** (traps + hazardous terrain): entering one costs a "negative
 ///   hex" (jump: only the landing hex counts; fly: never).
 ///
@@ -179,7 +183,7 @@ enum Pathfinder {
         var candidates: Set<HexCoord> = [from]
         for hex in search.settledHexes {
             candidates.insert(hex)
-            candidates.formUnion(hex.neighbors)
+            candidates.formUnion(context.neighbors(of: hex))
         }
 
         var result: [HexCoord: Int] = [:]
@@ -369,6 +373,18 @@ enum Pathfinder {
         /// Closed doors the figure can't open (treated as walls): every one for monsters and
         /// summons, the locked ones for characters.
         let closedDoors: Set<HexCoord>
+        /// Wall lines between neighbouring hexes of two tiles: nothing moves across one.
+        let walls: Set<HexEdge>
+        /// For a character, the hexes a crossing lets it step to from each hex beside one of
+        /// its ends (1 movement, like any step).
+        let crossings: [HexCoord: [HexCoord]]
+
+        /// The hexes a step from `hex` can reach: its neighbours not across a wall line, and
+        /// the far side of a crossing.
+        func neighbors(of hex: HexCoord) -> [HexCoord] {
+            if walls.isEmpty && crossings.isEmpty { return hex.neighbors }
+            return hex.neighbors.filter { !walls.contains(HexEdge(hex, $0)) } + (crossings[hex] ?? [])
+        }
 
         init(board: BoardState, start: HexCoord, mode: MoveMode, canOpenDoors: Bool,
              enemies: Set<HexCoord>, allies: Set<HexCoord>, opensLockedDoors: Bool = false) {
@@ -384,6 +400,17 @@ enum Pathfinder {
             // A figure that opens doors is still stopped by a locked one.
             let closed = Set(board.doors.lazy.filter { !$0.isOpen }.map(\.coord)).union(board.shutDoors)
             self.closedDoors = canOpenDoors ? (opensLockedDoors ? [] : closed.intersection(board.lockedDoors)) : closed
+            self.walls = board.wallEdges
+            // Only characters cross (they are the figures that open doors).
+            var crossings: [HexCoord: [HexCoord]] = [:]
+            if canOpenDoors, board.crossings.count == 2 {
+                for end in board.crossings {
+                    for hex in board.neighbors(of: end) where board.cells[hex] != nil {
+                        crossings[hex] = board.crossingExits(from: hex)
+                    }
+                }
+            }
+            self.crossings = crossings
         }
 
         /// The cell at `hex` if it can be moved through at all in any mode:
@@ -477,7 +504,7 @@ enum Pathfinder {
                     fewestNegatives[label.hex] = label.negatives
                     settled[label.hex, default: []].append(index)
 
-                    for neighbor in label.hex.neighbors {
+                    for neighbor in context.neighbors(of: label.hex) {
                         guard let step = context.passStep(neighbor) else { continue }
                         let newCost = label.cost + step.cost
                         if let maxCost, newCost > maxCost { continue }
@@ -498,7 +525,7 @@ enum Pathfinder {
             if hex == context.start { return [Ending(cost: 0, negatives: 0, parent: -1)] }
             guard let step = context.endStep(hex) else { return [] }
             var result: [Ending] = []
-            for neighbor in hex.neighbors {
+            for neighbor in context.neighbors(of: hex) {
                 guard let indices = settled[neighbor] else { continue }
                 for index in indices {
                     let label = labels[index]

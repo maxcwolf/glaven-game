@@ -54,7 +54,8 @@ extension BoardCoordinator {
         attackWasRedirected = target != aimedAt
         attackObserver?(attacker, target)
 
-        let distance = attackerPos.distance(to: targetPos)
+        // Counted as range is: round walls, never through them.
+        let distance = boardState.range(from: attackerPos, to: targetPos) ?? attackerPos.distance(to: targetPos)
         // The Doomstalker's dooms on the target: +Attack, Pierce, advantage, Curse.
         applyDoomBonuses(to: &attack, attacker: attacker, target: target, distance: distance)
         // What the scenario does to every attack of this figure (a vocal chord still standing).
@@ -79,14 +80,14 @@ extension BoardCoordinator {
         // Chain Hood: Shield 1 while the wearer is beside three or more monsters.
         if case .character(let id) = target,
            gameManager?.game.characters.first(where: { $0.id == id })?.carriedItems.contains(PassiveItems.chainHood) == true,
-           targetPos.neighbors.compactMap({ boardState.piece(at: $0) })
+           boardState.neighbors(of: targetPos).compactMap({ boardState.piece(at: $0) })
                .filter({ if case .monster = $0 { return true }; return false }).count >= 3 {
             shield += 1
         }
 
         var advantage = attack.advantage || scenarioGivesAdvantage(to: attacker)
         // Giant Viper: "All attacks targeting it this round gain disadvantage."
-        var disadvantage = (attack.isRanged && attackerPos.isAdjacent(to: targetPos)) || disadvantagedThisRound.contains(target)
+        var disadvantage = (attack.isRanged && boardState.areAdjacent(attackerPos, targetPos)) || disadvantagedThisRound.contains(target)
             || scenarioGivesDisadvantage(to: attacker)
         // Some monsters' stat cards give every attack against them disadvantage (e.g. Night Demon).
         if case .monster(let name, _) = target, let monsterEntity = defender as? GameMonsterEntity,
@@ -261,7 +262,7 @@ extension BoardCoordinator {
         var retaliate = 0
         if !died, let targetNow = boardState.piecePositions[target],
            let attackerNow = origin ?? boardState.piecePositions[attacker] {
-            let reach = attackerNow.distance(to: targetNow)
+            let reach = boardState.range(from: attackerNow, to: targetNow) ?? 99
             retaliate = CombatResolver.retaliateDamage(retaliate: defender.retaliate,
                                                        retaliatePersistent: defender.retaliatePersistent, distance: reach)
                 + gainedRetaliates.filter { reach <= $0.range }.reduce(0) { $0 + $1.amount }
@@ -335,13 +336,13 @@ extension BoardCoordinator {
             let enemies = boardState.piecePositions.keys.filter { areEnemies(death.attacker, $0) }.sorted()
             var victims: [PieceID] = []
             if let pattern {
-                for focus in enemies where boardState.piecePositions[focus].map({ $0.isAdjacent(to: death.position) }) == true {
+                for focus in enemies where boardState.piecePositions[focus].map({ boardState.areAdjacent($0, death.position) }) == true {
                     let hit = AoEResolver.resolveTargets(pattern: pattern, attackerPos: death.position, focusTarget: focus,
                                                          enemies: enemies, board: boardState)
                     if hit.count > victims.count { victims = hit }
                 }
             } else {
-                victims = enemies.filter { boardState.piecePositions[$0].map { $0.isAdjacent(to: death.position) } == true }
+                victims = enemies.filter { boardState.piecePositions[$0].map { boardState.areAdjacent($0, death.position) } == true }
             }
             guard !victims.isEmpty else { continue }
             log("\(name(death.attacker)) attacks as it dies", category: .attack)
@@ -373,7 +374,7 @@ extension BoardCoordinator {
         let poisoned = isConditionActive(.poison, on: target)
         let shield = max(0, self.shield(of: target) - turn.pendingPierce)
         let ranged = turn.currentAttackRange() > 1
-        var disadvantage = (ranged && from.isAdjacent(to: to)) || disadvantagedThisRound.contains(target)
+        var disadvantage = (ranged && boardState.areAdjacent(from, to)) || disadvantagedThisRound.contains(target)
             || scenarioGivesDisadvantage(to: attacker)
         if case .monster(let name, _) = target, let monsterEntity = defender as? GameMonsterEntity,
            gameManager?.game.monsters.first(where: { $0.name == name })?.stat(for: monsterEntity.type)?.attackersGainDisadvantage == true {
@@ -450,7 +451,7 @@ extension BoardCoordinator {
         guard case .character = target, case .monster = attacker, areEnemies(attacker, target),
               (entity(for: attacker) as? GameMonsterEntity)?.type == .normal,
               let from = boardState.piecePositions[attacker], let at = boardState.piecePositions[target],
-              from.isAdjacent(to: at) else { return nil }
+              boardState.areAdjacent(from, at) else { return nil }
         let allies = alliesInRange(of: attacker, range: max(1, range), includeSelf: false)
             .filter { entity(for: $0) != nil && areEnemies($0, target) }.sorted()
         guard !allies.isEmpty else { return nil }

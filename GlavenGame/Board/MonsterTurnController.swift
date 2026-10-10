@@ -535,7 +535,7 @@ final class MonsterTurnController {
         guard let coordinator, let hex = coordinator.boardState.piecePositions[target] else { return 0 }
         var extra = 0
         for text in texts where text.contains("if the target is adjacent to any of") {
-            let flanked = hex.neighbors.compactMap { coordinator.boardState.piece(at: $0) }
+            let flanked = coordinator.boardState.neighbors(of: hex).compactMap { coordinator.boardState.piece(at: $0) }
                 .contains { $0 != pieceID && $0 != target && coordinator.areAllies(pieceID, $0) }
             if flanked { extra += text.firstMatch(of: #/\+(\d+) attack/#).flatMap { Int($0.1) } ?? 0 }
         }
@@ -550,9 +550,10 @@ final class MonsterTurnController {
         for text in texts {
             if text.contains("trap in an adjacent empty hex") {
                 let enemies = coordinator.boardState.piecePositions.filter { coordinator.areEnemies(pieceID, $0.key) }.map(\.value)
-                let hexes = position.neighbors.filter(coordinator.isEmptyHex)
+                let hexes = coordinator.boardState.neighbors(of: position).filter(coordinator.isEmptyHex)
                 guard let hex = hexes.min(by: { a, b in
-                    let da = enemies.map { a.distance(to: $0) }.min() ?? 99, db = enemies.map { b.distance(to: $0) }.min() ?? 99
+                    let board = coordinator.boardState
+                    let da = enemies.map { board.range(from: a, to: $0) ?? 99 }.min() ?? 99, db = enemies.map { board.range(from: b, to: $0) ?? 99 }.min() ?? 99
                     return da == db ? a < b : da < db
                 }) else { continue }
                 coordinator.placeTrap(damage: PlayerTurnController.damageAmount(in: text), at: hex, by: pieceID)
@@ -703,7 +704,7 @@ final class MonsterTurnController {
         if let range = named.range {
             others = pool.filter { id in
                 guard let coord = coordinator.boardState.piecePositions[id] else { return false }
-                return position.distance(to: coord) <= range
+                return coordinator.boardState.isWithin(range, from: position, to: coord)
                     && LineOfSight.hasLOS(from: position, to: coord, board: coordinator.boardState)
             }
         }
@@ -728,7 +729,7 @@ final class MonsterTurnController {
         guard let coordinator, let position = coordinator.boardState.piecePositions[pieceID] else { return }
         var taken = 0
         for coord in coordinator.boardState.lootTokens.keys.sorted()
-        where position.distance(to: coord) <= range && LineOfSight.hasLOS(from: position, to: coord, board: coordinator.boardState) {
+        where coordinator.boardState.isWithin(range, from: position, to: coord) && LineOfSight.hasLOS(from: position, to: coord, board: coordinator.boardState) {
             taken += coordinator.boardState.takeLoot(at: coord)
             coordinator.boardScene?.removeLootSprite(at: coord, offsetCol: coordinator.offsetCol,
                                                      offsetRow: coordinator.offsetRow)

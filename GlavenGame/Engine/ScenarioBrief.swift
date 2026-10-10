@@ -40,11 +40,14 @@ struct ScenarioBrief: Equatable {
         let stands = (written?.lostIfStands?.monsters ?? []).map {
             standsLine(GameText.monsterName($0, edition: scenario.edition, labels: labels))
         }
+        var empty: [String] = (written?.lostIfEmpty ?? []).map(\.text)
+        if let least = written?.lostBelow { empty.append(lostBelowLine(least)) }
         let killed = (written?.lostIfKilled ?? []).map { "A \(GameText.monsterName($0, edition: scenario.edition, labels: labels)) is killed." }
+        let writtenLosses: [String] = losses + exhaustion + empty + killed + stands
         return ScenarioBrief(
             title: "#\(scenario.index) \(name)",
             goal: written?.text ?? goal(rules.filter { $0.finish == "won" }, edition: scenario.edition, labels: labels),
-            defeat: ["Every character is exhausted."] + losses + exhaustion + killed + stands
+            defeat: ["Every character is exhausted."] + writtenLosses
                 + rules.filter { $0.finish == "lost" }.map {
                     lossText($0, labels: labels, edition: scenario.edition, objectives: scenario.objectives ?? [])
                 },
@@ -56,6 +59,10 @@ struct ScenarioBrief: Equatable {
     }
 
     /// "A City Guard reaches a pressure plate."
+    static func lostBelowLine(_ least: Int) -> String {
+        least == 2 ? "Only one character is left unexhausted." : "Fewer than \(least) characters are left unexhausted."
+    }
+
     static func standsLine(_ monster: String) -> String { "A \(monster) reaches a pressure plate." }
 
     // MARK: - Monsters, map and rewards

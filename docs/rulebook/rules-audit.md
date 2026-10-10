@@ -12,9 +12,9 @@ Each finding has an id, the rule it breaks, what the game did, and its state:
 - **open** — confirmed by reading the code, not yet corrected;
 - **question** — the rule itself needs a decision.
 
-About 125 findings. As of 2026-10-10 about 85 are fixed and 8 partly (five commits: the turn engine, trap
-legends, the campaign, scenario rules, monster turns) and the rest are open; the largest open ones
-are the walls beside doors (C2), doors ending a move (C3) and rooms with two doors (N1). Scenario-specific rules have their own table in
+About 125 findings. As of 2026-10-10 about 92 are fixed and 8 partly (the turn engine, trap
+legends, the campaign, scenario rules, monster turns, rooms with two doors and doors mid-move, the
+walls between tiles with range and line of sight) and the rest are open. Scenario-specific rules have their own table in
 [../scenario-book/rules-audit.md](../scenario-book/rules-audit.md); the scenario findings here are
 the ones the re-audit found wrong or newly missing.
 
@@ -67,10 +67,10 @@ the ones the re-audit found wrong or newly missing.
 | A6 / C5 | ATK-7: a pushed figure passes through its allies but can't stop on a figure (FAQ) | Any figure behind the target blocked the push | fixed — `testAPushGoesThroughTheTargetsAlliesToAFreeHexBeyond`, `testAPushDoesNotGoThroughTheTargetsEnemies` |
 | A7 / C6 | ATK-7: a push or pull is optional, all or nothing (FAQ) | The player could not decline | fixed — `testThePlayersOwnPushCanBeDeclined`, `testAPushOnceBegunCannotBeDeclined` |
 | A9 | ATK-5: comparing cards with effects (FAQ: "+1 Stun" beats "+1"; "+0 Stun" against "+2" is ambiguous, so the first drawn) | Effects were ignored: Advantage kept a plain +1 over +1 Stun, and always took +2 over +0 Stun. Poison's +1 was counted in the comparison, which the FAQ excludes | fixed — `testAdvantageWeighsACardsEffects` |
-| A2 | LOS-1: a sight line that touches a wall's corner or edge is blocked (FAQ) | Only a line passing through or along a wall is blocked; `LineOfSightTests` lines 147 and 167 assert the opposite of the rule | open |
-| A3 | LOS-1: closed doors block line of sight | A shut door between two revealed rooms (a pressure-plate door that closed again, split starting rooms) doesn't | open |
-| A4 / C10 | LOS-3: range isn't counted through walls | Range is plain hex distance everywhere (attacks, heals, loot, monster targeting, areas) | open |
-| C2 | MOV-1, LOS-3: the edge of a map tile is a wall, also where two tiles' full hexes meet beside a door (FAQ) | Such hexes are adjacent: figures walk, attack in melee, push and see across the wall line. 60 doors in 42 scenarios (in #1, the hexes either side of door 1); seven more scenarios have tiles abutting with no connector at all (#6, #24, #40, #43, #67, #74, #82) | open |
+| A2 | LOS-1: a sight line that touches a wall's corner or edge is blocked (FAQ) | Only a line passing through or along a wall is blocked; `LineOfSightTests` lines 147 and 167 assert the opposite of the rule | fixed: a touch blocks, the two ends of the line excepted (`LineOfSightTests.testLOS_lineGrazingWallCornerIsBlocked`, `testLOS_singleWallHexHidesTheRowBeyondIt`, `testLOS_alongAWallFromAHexBesideIt`) |
+| A3 | LOS-1: closed doors block line of sight | A shut door between two revealed rooms (a pressure-plate door that closed again, split starting rooms) doesn't | fixed (`WallLineTests.testAClosedDoorBlocksLineOfSight`) |
+| A4 / C10 | LOS-3: range isn't counted through walls | Range is plain hex distance everywhere (attacks, heals, loot, monster targeting, areas) | fixed: `BoardState.range` counts round walls, closed doors and wall lines, for attacks, heals, loot, monster focus and targeting, areas and Retaliate (`WallLineTests.testRangeIsCountedRoundAWall`, `testThereIsNoLootingAcrossAWallLine`) |
+| C2 | MOV-1, LOS-3: the edge of a map tile is a wall, also where two tiles' full hexes meet beside a door (FAQ) | Such hexes are adjacent: figures walk, attack in melee, push and see across the wall line. 60 doors in 42 scenarios (in #1, the hexes either side of door 1); seven more scenarios have tiles abutting with no connector at all (#6, #24, #40, #43, #67, #74, #82) | fixed: `BoardState.wallEdges`, drawn by `BoardBuilder.wallEdges` between full hexes of two tiles; no move, jump, flight, push, melee, loot or adjacency across one (`WallLineTests`, `MapRevealTests.testWallLinesNeverCutOffPartOfAMap`) |
 | A8 | ATK-9, ATK-10: an added target is in addition to an area | With Backup Ammunition or Grim Bargain an area attack loses its area; a "+1 Target" modifier card drawn in an area attack gives nothing | open |
 | A10 | ATK-10: the player places and may mirror an area | The game picks the placement covering most enemies; patterns are never mirrored (one chiral card, Scroll of Blizzards) | open |
 | A11 | RND-9 | A deck that runs out and reshuffles mid-round forgets the ×2 or Null drawn earlier, so it isn't reshuffled at the end of the round | open |
@@ -82,7 +82,7 @@ the ones the re-audit found wrong or newly missing.
 | Id | Rule | What the game did | State |
 |---|---|---|---|
 | C1 | MOV-5: a trap does what the scenario's legend says | Effects come from the tile art in the map data (spike / bear / poison), always with 2+L damage. #2's two Stun traps deal damage and Immobilize; #31's Curse traps only damage; #44's Immobilize-and-Poison traps deal damage; about two thirds of the 75 scenarios with traps differ. A Stun trap should also end the move | fixed — `placements/gh-traps.json` holds all 75 legends; `TrapConditionTests` (traps sprung on the real boards of #1, #2, #15, #31, #44), `TrapLegendTests` |
-| C3 | MOV-8: a character who opens a door keeps the rest of the move | The move ends on the door hex (the room beyond doesn't exist until revealed, and the leftover movement isn't offered) | open |
+| C3 | MOV-8: a character who opens a door keeps the rest of the move | The move ends on the door hex (the room beyond doesn't exist until revealed, and the leftover movement isn't offered) | fixed (`DoorRuleTests`) |
 | — | MOV-8: a closed door is a wall to monsters | Parasitic Influence could walk an enemy onto a closed door without opening it (found by a playthrough once the fixes above changed its course) | fixed — `testAnEnemyMovedByACardCannotEnterAClosedDoor` |
 | C8 | ATK-11: allied monsters drop no money (FAQ) | They do (#11, #12, #35, #36, #91). Bosses drop none, which no rule says | open |
 | C9 | MOV-7: obstacles may not be placed to cut the map in two | No check | open |
@@ -180,7 +180,7 @@ Larger mechanics still not built are listed in `TODO.md` ("Scenario special rule
 
 | Id | Rule | What the game does | State |
 |---|---|---|---|
-| N1 | MOV-9 | A room with two doors can be revealed empty: the map data holds a copy of the tile for each door and only one copy has the overlays, monsters and onward doors. Entered by the other door, the room has no traps, treasure or monsters (#7's F1b from D2b; #53's J2a). Maps affected: #6, #7, #15, #21, #24, #32, #43, #53, #76, #78, #82, #84, #94 | open |
+| N1 | MOV-9 | A room with two doors can be revealed empty: the map data holds a copy of the tile for each door and only one copy has the overlays, monsters and onward doors. Entered by the other door, the room has no traps, treasure or monsters (#7's F1b from D2b; #53's J2a). Maps affected: #6, #7, #15, #21, #24, #32, #43, #53, #76, #78, #82, #84, #94 | fixed (`MapRevealTests.testARoomIsTheSameWhicheverDoorItIsEnteredBy`, `testOpeningEveryDoorRevealsEverythingOnTheMap`) |
 | N2 | SET-1 | In nine rooms the map data's monster places disagree with the book (the scenario data, which decides who appears, is right): #3 B1a, #6 M1a, #10 L1b/L3a, #11 L2b, #12 H1b, #17 B4a, #26 C1a, #31 L2a, #44 M1b. A monster with no place of its own is put on a fallback hex | open |
 | N3 | CMP-9 | Nothing in the data unlocks #72, #73, #76 or #77 (pinned by `testEveryScenarioCanBeUnlocked`) | question |
 | N4 | CMP-6 | The FAQ's special cases for the doubled cost aren't followed (an element on a multi-target ability and a multi-figure summon are priced as single-target) | open |

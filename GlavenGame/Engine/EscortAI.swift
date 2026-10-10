@@ -55,7 +55,7 @@ enum EscortAI {
                 : MonsterAbility.attack(ActionModel(type: .attack, value: .int(0), valueType: .plus),
                                         stat: nil, baseAttack: strike, baseRange: 0)
             let targets = stunned || attack == nil ? [] : PlayerSideAI.hostileMonsters(board: board, gameState: gameState, includeInvisible: false)
-                .filter { board.piecePositions[$0]?.distance(to: stands) == 1 }
+                .filter { board.piecePositions[$0].map { board.areAdjacent($0, stands) } == true }
             return EscortTurnResult(escortPieceID: pieceID, entityNumber: entity.number, movementPath: path,
                                     attackTarget: nil, attackFromHex: targets.isEmpty ? nil : stands, focusTarget: targets.first,
                                     stunned: stunned, attackValue: strike, attackRange: 0, attack: attack, attackTargets: targets)
@@ -112,7 +112,7 @@ enum EscortAI {
         let taken = Set(board.piecePositions.values)
         let standable: (HexCoord) -> Bool = { board.isPassable($0) && !taken.contains($0) }
         let open = destination.filter(standable)
-        let targets = open.isEmpty ? Set(destination.flatMap(\.neighbors).filter(standable)) : open
+        let targets = open.isEmpty ? Set(destination.flatMap(board.neighbors(of:)).filter(standable)) : open
         guard !targets.contains(position) else { return [] }
         // It opens the doors in its way, and springs a trap only where no way avoids one.
         let way: (Set<HexCoord>) -> [HexCoord]? = { blocking in

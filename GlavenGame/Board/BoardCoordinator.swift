@@ -860,12 +860,23 @@ final class BoardCoordinator {
                    board.cells[next]?.overlay == nil {
                     extra.append(next)
                 }
-                for neighbor in next.neighbors where board.cells[neighbor] != nil && !visited.contains(neighbor) {
+                for neighbor in board.neighbors(of: next) where board.cells[neighbor] != nil && !visited.contains(neighbor) {
                     visited.insert(neighbor)
                     frontier.append(neighbor)
                 }
             }
             board.startingLocations = extra
+        }
+
+        // A tile on the map from the start that the data counts as another room (the far side of
+        // Demonic Rift's crossing) is set up with it.
+        if let gameManager {
+            let onMap = Set(startingRoom.tileRefs.map { $0.lowercased() })
+            for room in gameManager.game.scenario?.data.rooms ?? []
+            where !room.isInitial && onMap.contains((room.ref ?? "").lowercased())
+                && gameManager.game.scenario?.revealedRooms.contains(room.roomNumber) == false {
+                gameManager.scenarioManager.openRoom(room)
+            }
         }
 
         // The starting room's monsters were created from the scenario data; give them the map's
@@ -907,6 +918,8 @@ final class BoardCoordinator {
         resetForScenario(scenario)
         let board = BoardState()
         snapshot.restore(to: board)
+        // A save from before the game drew wall lines: draw them from the map.
+        if snapshot.wallEdges == nil { board.wallEdges = BoardBuilder.wallEdges(in: scenario, among: Set(board.cells.keys)) }
         boardState = board
         restoreCharacterTraps(from: snapshot)
         attachToGame()
@@ -1197,7 +1210,7 @@ final class BoardCoordinator {
         if let pending, pending.remaining > 0, let data = pending.summonData,
            let gameManager, let character = gameManager.game.characters.first(where: { $0.id == characterID }),
            let charPos = boardState.piecePositions[.character(characterID)] {
-            let hexes = Set(charPos.neighbors.filter { isEmptyHex($0) })
+            let hexes = Set(boardState.neighbors(of: charPos).filter { isEmptyHex($0) })
             if !hexes.isEmpty {
                 gameManager.characterManager.addSummon(from: data, for: character)
                 if let next = character.summons.last {
@@ -1943,7 +1956,7 @@ final class BoardCoordinator {
         var validHexes = Set<HexCoord>()
         for (coord, cell) in boardState.cells {
             guard cell.passable, !boardState.isOccupied(coord) else { continue }
-            guard pos.distance(to: coord) <= range else { continue }
+            guard boardState.isWithin(range, from: pos, to: coord) else { continue }
             validHexes.insert(coord)
         }
 
@@ -2069,7 +2082,7 @@ final class BoardCoordinator {
         let seesInvisible = chargedBonuses(of: pieceID).contains { $0.bonus == .advantageAndSeeInvisible }
         for (id, coord) in boardState.piecePositions where id != pieceID && areEnemies(pieceID, id) {
             guard entity(for: id) != nil, seesInvisible || !isConditionActive(.invisible, on: id) else { continue }
-            guard pos.distance(to: coord) <= max(1, range),
+            guard boardState.isWithin(max(1, range), from: pos, to: coord),
                   LineOfSight.hasLOS(from: pos, to: coord, board: boardState) else { continue }
             targets.insert(id)
         }
@@ -2081,7 +2094,7 @@ final class BoardCoordinator {
         guard let pos = boardState.piecePositions[pieceID] else { return [] }
         var allies: Set<PieceID> = includeSelf ? [pieceID] : []
         for (id, coord) in boardState.piecePositions where id != pieceID && areAllies(pieceID, id) {
-            guard entity(for: id) != nil, pos.distance(to: coord) <= max(1, range),
+            guard entity(for: id) != nil, boardState.isWithin(max(1, range), from: pos, to: coord),
                   LineOfSight.hasLOS(from: pos, to: coord, board: boardState) else { continue }
             allies.insert(id)
         }
@@ -2105,7 +2118,7 @@ final class BoardCoordinator {
     private func enemiesToAttack(from pieceID: PieceID, within range: Int, exactly: Bool) -> [PieceID] {
         guard let pos = boardState.piecePositions[pieceID] else { return [] }
         return targetableEnemies(of: pieceID, range: range)
-            .filter { !exactly || boardState.piecePositions[$0].map { pos.distance(to: $0) == range } == true }
+            .filter { !exactly || boardState.piecePositions[$0].map { boardState.range(from: pos, to: $0) == range } == true }
             .sorted { $0.description < $1.description }
     }
 
@@ -2438,7 +2451,9 @@ final class BoardCoordinator {
         // Heaving Swing: "You may push the target into hexes containing obstacles."
         let intoObstacles = isPush && pushesIntoObstacles
         func next(_ hex: HexCoord) -> [HexCoord] {
-            isPush ? hex.pushCandidates(awayFrom: attackerPos) : hex.pullCandidates(toward: attackerPos)
+            // Never across a wall line between two tiles.
+            (isPush ? hex.pushCandidates(awayFrom: attackerPos) : hex.pullCandidates(toward: attackerPos))
+                .filter { !boardState.isWalled(hex, $0) }
         }
         func open(_ hex: HexCoord) -> Bool {
             guard let cell = boardState.cells[hex], cell.overlay != .wall, !boardState.isClosedDoor(hex) else { return false }
@@ -2595,7 +2610,7 @@ final class BoardCoordinator {
     func collectLootInRange(pieceID: PieceID, range: Int) -> Bool {
         guard let pos = boardState.piecePositions[pieceID] else { return false }
         let coords = boardState.cells.keys.filter { coord in
-            guard pos.distance(to: coord) <= range, hasLoot(at: coord) else { return false }
+            guard hasLoot(at: coord), boardState.isWithin(range, from: pos, to: coord) else { return false }
             return coord == pos || LineOfSight.hasLOS(from: pos, to: coord, board: boardState)
         }
         if coords.isEmpty {

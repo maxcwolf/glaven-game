@@ -116,7 +116,7 @@ extension BoardCoordinator {
         let health = 2 + (game.level + 1) / 2
         var laid = 0
         for _ in 0..<count {
-            guard let hex = origin.neighbors.sorted().first(where: isEmptyHex) ?? nearestEmptyHex(to: origin) else { break }
+            guard let hex = boardState.neighbors(of: origin).sorted().first(where: isEmptyHex) ?? nearestEmptyHex(to: origin) else { break }
             let entity = GameObjectiveEntity(number: game.nextObjectiveNumber, health: health, maxHealth: health)
             container.entities.append(entity)
             let egg = PieceID.objective(id: entity.number)

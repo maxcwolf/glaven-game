@@ -117,6 +117,88 @@ final class BoardState {
         piecePositions.values.contains(coord)
     }
 
+    // MARK: - Walls between hexes
+
+    /// Wall lines: the sides between neighbouring hexes of two map tiles that no door or corridor
+    /// joins. The edge of a map tile is a wall, also where two tiles' full hexes meet (beside a
+    /// door, say): such hexes are not adjacent, nothing moves or is pushed across the line, range
+    /// isn't counted across it and it blocks line of sight (GH p.19, FAQ).
+    var wallEdges: Set<HexEdge> = []
+
+    /// Hexes joined though far apart: a character beside one may spend 1 movement to stand
+    /// beside the other (the two altars of Demonic Rift). Not the hexes themselves — those
+    /// can't be entered — but the hexes around each.
+    var crossings: [HexCoord] = []
+
+    /// Where a character on `hex` may cross to for 1 movement: the hexes beside the other end of
+    /// a crossing it stands beside.
+    func crossingExits(from hex: HexCoord) -> [HexCoord] {
+        guard crossings.count == 2 else { return [] }
+        var exits: [HexCoord] = []
+        for (near, far) in [(crossings[0], crossings[1]), (crossings[1], crossings[0])] where areAdjacent(hex, near) {
+            exits += neighbors(of: far).filter { cells[$0] != nil }
+        }
+        return exits
+    }
+
+    /// Whether a wall line runs between two neighbouring hexes.
+    func isWalled(_ a: HexCoord, _ b: HexCoord) -> Bool {
+        !wallEdges.isEmpty && wallEdges.contains(HexEdge(a, b))
+    }
+
+    /// Whether two hexes are adjacent: neighbours with no wall line between them.
+    func areAdjacent(_ a: HexCoord, _ b: HexCoord) -> Bool {
+        a.isAdjacent(to: b) && !isWalled(a, b)
+    }
+
+    /// The hexes adjacent to one (on the map or not), leaving out those across a wall line.
+    func neighbors(of hex: HexCoord) -> [HexCoord] {
+        wallEdges.isEmpty ? hex.neighbors : hex.neighbors.filter { !isWalled(hex, $0) }
+    }
+
+    /// Whether range can be counted through a hex: it is on the map, not a wall and not a closed
+    /// door. Figures and obstacles don't matter.
+    func rangePasses(through hex: HexCoord) -> Bool {
+        guard let cell = cells[hex] else { return false }
+        return cell.overlay != .wall && !isClosedDoor(hex)
+    }
+
+    /// How many hexes apart two hexes are, counted as range is: hex by hex, never through a wall
+    /// or across a wall line (GH p.19, FAQ: two hexes with a wall line between them are two
+    /// hexes apart). Nil when the count would pass `limit`, or no way round exists.
+    func range(from start: HexCoord, to end: HexCoord, limit: Int = 99) -> Int? {
+        if start == end { return 0 }
+        let straight = start.distance(to: end)
+        guard straight <= limit else { return nil }
+        // Nothing in the way of the straight line: that is the count.
+        let line = start.line(to: end)
+        if zip(line, line.dropFirst()).allSatisfy({ !isWalled($0, $1) && ($1 == end || rangePasses(through: $1)) }) {
+            return straight
+        }
+        var frontier = [start]
+        var seen: Set<HexCoord> = [start]
+        var steps = 0
+        while !frontier.isEmpty, steps < limit {
+            steps += 1
+            var next: [HexCoord] = []
+            for hex in frontier {
+                for neighbor in hex.neighbors where !seen.contains(neighbor) && !isWalled(hex, neighbor) {
+                    if neighbor == end { return steps }
+                    guard rangePasses(through: neighbor) else { continue }
+                    seen.insert(neighbor)
+                    next.append(neighbor)
+                }
+            }
+            frontier = next
+        }
+        return nil
+    }
+
+    /// Whether `end` is within `range` hexes of `start`, counted not through walls.
+    func isWithin(_ range: Int, from start: HexCoord, to end: HexCoord) -> Bool {
+        self.range(from: start, to: end, limit: range) != nil
+    }
+
     /// Whether a hex is passable and exists on the board.
     func isPassable(_ coord: HexCoord) -> Bool {
         cells[coord]?.passable ?? false

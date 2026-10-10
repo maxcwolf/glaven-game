@@ -219,7 +219,7 @@ extension BoardCoordinator {
         if text.contains("all allies suffer") {
             victims = boardState.piecePositions.keys.filter { $0 != pieceID && areAllies(pieceID, $0) && isFigure($0) }
         } else if let hex {
-            let besides = hex.neighbors.compactMap { boardState.piece(at: $0) }.filter { $0 != pieceID && isFigure($0) }
+            let besides = boardState.neighbors(of: hex).compactMap { boardState.piece(at: $0) }.filter { $0 != pieceID && isFigure($0) }
             if allies && enemies {
                 victims = besides
             } else if allies {
@@ -249,7 +249,7 @@ extension BoardCoordinator {
                                 summonsOnly: Bool = false) -> Bool {
         guard let position = boardState.piecePositions[pieceID] else { return false }
         let candidates = Set(boardState.piecePositions.filter { piece, hex in
-            piece != pieceID && hex.distance(to: position) <= range && entity(for: piece) != nil
+            piece != pieceID && boardState.isWithin(range, from: position, to: hex) && entity(for: piece) != nil
                 && (enemies ? areEnemies(pieceID, piece) : areAllies(pieceID, piece)) && LineOfSight.hasLOS(from: position, to: hex, board: boardState)
                 && (!summonsOnly || { if case .character(let id) = pieceID { return summonOwner(of: piece)?.id == id }; return false }())
         }.keys)
@@ -274,7 +274,7 @@ extension BoardCoordinator {
             if action.subActions?.contains(where: { $0.value?.stringValue == "endAdjacentToController" }) == true,
                let controller = activePlayerTurn.flatMap({ boardState.piecePositions[.character($0.characterID)] }),
                case .selectingMove(let mover, let range, let hexes, let teleport, let mode) = interactionMode {
-                let beside = hexes.filter { $0.isAdjacent(to: controller) }
+                let beside = hexes.filter { boardState.areAdjacent($0, controller) }
                 interactionMode = .selectingMove(pieceID: mover, range: range, validHexes: beside, teleport: teleport, mode: mode)
                 boardScene?.highlightHexes(beside, style: .move, offsetCol: offsetCol, offsetRow: offsetRow)
             }
@@ -317,7 +317,7 @@ extension BoardCoordinator {
         let spec = MonsterAbility.attack(forced, stat: stat, baseAttack: baseAttack, baseRange: baseRange)
         let targets = Set(boardState.piecePositions.filter { piece, hex in
             piece != performer && areEnemies(controller, piece) && entity(for: piece) != nil
-                && !isConditionActive(.invisible, on: piece) && position.distance(to: hex) <= spec.range
+                && !isConditionActive(.invisible, on: piece) && boardState.isWithin(spec.range, from: position, to: hex)
                 && LineOfSight.hasLOS(from: position, to: hex, board: boardState)
         }.keys)
         guard !targets.isEmpty else {
@@ -339,7 +339,7 @@ extension BoardCoordinator {
     /// there's no room (the rest of the action is lost).
     func beginPlacingTokens(_ token: PlacedToken, count: Int, by pieceID: PieceID) -> Bool {
         guard count > 0, let position = boardState.piecePositions[pieceID] else { return false }
-        let hexes = Set(position.neighbors.filter { hex in
+        let hexes = Set(boardState.neighbors(of: position).filter { hex in
             token == .destroyObstacle ? isDestructibleObstacle(hex) : isEmptyHex(hex)
         })
         guard !hexes.isEmpty else {
@@ -386,7 +386,7 @@ extension BoardCoordinator {
     /// Thief's Knack: disarm one trap next to the figure.
     func disarmTrap(besides pieceID: PieceID) {
         guard let position = boardState.piecePositions[pieceID],
-              let trap = position.neighbors.sorted().first(where: { boardState.cells[$0]?.isTrap == true }) else {
+              let trap = boardState.neighbors(of: position).sorted().first(where: { boardState.cells[$0]?.isTrap == true }) else {
             log("\(name(pieceID)) has no adjacent trap to disarm", category: .info)
             activePlayerTurn?.abilityDidNothing()
             return

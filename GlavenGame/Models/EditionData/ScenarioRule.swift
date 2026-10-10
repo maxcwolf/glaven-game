@@ -138,6 +138,8 @@ struct BoardFact: Codable, Hashable {
     var partyAchievement: String?
     /// No character stands on any of these map tiles (the right-hand room of Demonic Rift).
     var noCharacterOn: [String]?
+    /// Some character stands on one of these map tiles.
+    var characterOn: [String]?
 }
 
 // MARK: - Rule Identifier

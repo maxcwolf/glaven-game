@@ -277,26 +277,6 @@ final class ScenarioSpecialRuleTests: XCTestCase {
         XCTAssertEqual(Set(pieces(sim)), city)
     }
 
-    // MARK: - #90 Demonic Rift
-
-    /// The Living Spirits come when every demon is dead, not as the scenario starts; killing
-    /// them closes the rift.
-    func testTheRiftsSpiritsComeAfterTheDemons() throws {
-        let sim = try simulator("90")
-        sim.gm.scenarioRulesManager.evaluateRules()
-        XCTAssertTrue(pieces(sim, named: "living-spirit").isEmpty)
-        for piece in pieces(sim) { sim.coord.handleDeath(of: piece) }
-        XCTAssertTrue(pieces(sim, named: "living-spirit").isEmpty, "the second room's demons haven't been met")
-        XCTAssertNil(sim.coord.pendingResult)
-        revealAll(sim)
-        XCTAssertTrue(pieces(sim, named: "living-spirit").isEmpty, "demons still stand")
-        for piece in pieces(sim) { sim.coord.handleDeath(of: piece) }
-        XCTAssertEqual(pieces(sim, named: "living-spirit").count, 4, "two at (b), two at (c)")
-        XCTAssertNil(sim.coord.pendingResult)
-        for piece in pieces(sim) { sim.coord.handleDeath(of: piece) }
-        XCTAssertEqual(sim.coord.pendingResult, .victory)
-    }
-
     // MARK: - Sides
 
     /// Fading Lighthouse's demons are enemies (the data lists them as "allied", which made
