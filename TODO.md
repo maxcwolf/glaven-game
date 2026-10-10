@@ -524,7 +524,7 @@ Still open from it, most important first:
 - [x] Obstacles never placed to divide the map (C9); a jumping monster doesn't land on a trap mid-route (D9); Inferno's room-wide attack and ally damage (N5); +1 Target and elements never doubled at the Enhancer (N4)
 - [ ] Scenario "start of round" rules run after the cards are chosen (#5 Disarm, #48 Muddle, #31/#39 elements)
 - [ ] Travelling on without returning to Gloomhaven, linked scenarios and retries skipping the road event, the optional city event (F19); collective results split by the players (F20); summon stat enhancements (F8)
-- [ ] Map data monster places that differ from the book in nine rooms (N2); #35's archers on the battlements; #76 discarding three cards; #95 boulders with hit points
+- [ ] Map data monster places that differ from the book in nine rooms (N2); #76 discarding three cards and its destructible walls; #95's tokens, lock, spawns and boulders with hit points (#35's battlements are done: `BattlementsTests`)
 - [ ] The simulator has never won a game (0 of 376 runs), so goals and late rooms are only covered by unit tests; the tests listed in the audit as not proving what they say
 
 ### Remaining gaps

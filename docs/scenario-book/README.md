@@ -146,6 +146,10 @@ ends up on the board:
     "text": "…"}]`: no character stands on those tiles — #90's rooms) and `lostBelow` (fewer than
     that many characters left unexhausted).
   - Where characters stand (`escape`, `occupy`, `reach`) is judged as a turn or the round ends.
+- `laidOut`: map tiles on the map from the start though their room isn't revealed (#35's yard
+  behind the gate). Only the monsters an already revealed room's data letters for hexes there
+  (`marker` on the room's monster, the letter written on the tile) are set up; the room's own are
+  set up when its door opens or a character or ally gets onto one of the tiles.
 - `lootActionOnly`: the goal treasure tiles can only be looted with a Loot action; ending a turn
   on one doesn't pick it up (#7, #30, #50, #52, #59, #61).
 - `locks`: doors a scenario rule keeps locked (`ScenarioPlacements.Lock`, `BoardCoordinator+Locks`).

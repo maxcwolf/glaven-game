@@ -881,8 +881,19 @@ final class BoardCoordinator {
 
         // The starting room's monsters were created from the scenario data; give them the map's
         // positions (or fall back to the map's own monster list if the scenario has none).
+        // Tiles laid out behind a door that stays shut (the yard of the Battlements): of their
+        // monster places, only those the first room's monsters are lettered for are used now.
+        var startingSlots = startingRoom.slots
+        for door in board.doors where !door.isOpen && isLaidOut(behind: door, in: scenario) {
+            guard let yard = BoardBuilder.revealRoomSlots(door: door, scenario: scenario, board: board, opening: false) else { continue }
+            let lettered = letteredPlacesOfRevealedRooms()
+            startingSlots += yard.slots.filter { lettered.contains($0.coord) }
+            // The rest wait for the room to be set up.
+            board.heldMonsterSlots += yard.slots.filter { !lettered.contains($0.coord) }
+        }
+
         let hasRoomData = !(gameManager?.game.scenario?.data.rooms ?? []).isEmpty
-        placeRevealedMonsters(slots: holdBack(startingRoom.slots), newEntities: unplacedMonsterEntities(),
+        placeRevealedMonsters(slots: holdBack(startingSlots), newEntities: unplacedMonsterEntities(),
                               playerCount: playerCount, useMapMonsters: !hasRoomData)
         placeRevealedObjectives()
         updateLocks()
@@ -2755,10 +2766,56 @@ final class BoardCoordinator {
             gameManager.scenarioStatsManager.recordDoor(by: character.name)
         }
 
+        revealRoom(behind: door, opening: true)
+    }
+
+    /// Whether the tiles behind a door are on the map though its room isn't revealed.
+    private func isLaidOut(behind door: DoorInfo, in scenario: VGBScenario) -> Bool {
+        guard let laidOut = scenario.placements?.laidOut else { return false }
+        return !BoardBuilder.roomRefs(behind: door, in: scenario).isDisjoint(with: laidOut.map { $0.lowercased() })
+    }
+
+    /// The lettered hexes the monsters of the rooms revealed so far are set up on ("the City
+    /// Archers grouped at (a) and (b)"): places that aren't a later room's to fill.
+    private func letteredPlacesOfRevealedRooms() -> Set<HexCoord> {
+        guard let scenario = gameManager?.game.scenario else { return [] }
+        let letters = (scenario.data.rooms ?? []).filter { scenario.revealedRooms.contains($0.roomNumber) }
+            .flatMap { ($0.monster ?? []).compactMap(\.marker) }
+        return Set(letters.flatMap { boardState.markerHexes[$0] ?? [] })
+    }
+
+    /// A character or one of their allies has got onto tiles laid out behind a door still shut
+    /// (over the wall of the Battlements): the room is set up as if revealed, the door staying
+    /// as it is.
+    func setUpLaidOutRoomsEntered() {
+        guard let scenario = scenarioData, scenario.placements?.laidOut != nil, boardPhase != .setup,
+              let game = gameManager?.game.scenario else { return }
+        for door in boardState.doors where !door.isOpen && isLaidOut(behind: door, in: scenario) {
+            let refs = BoardBuilder.roomRefs(behind: door, in: scenario)
+            let waiting = (game.data.rooms ?? []).contains {
+                refs.contains(($0.ref ?? "").lowercased()) && !game.revealedRooms.contains($0.roomNumber)
+            }
+            let entered = boardState.piecePositions.contains { piece, hex in
+                isPlayerSide(piece) && isFigure(piece) && refs.contains(boardState.cells[hex]?.tileRef.lowercased() ?? "")
+            }
+            if waiting && entered { revealRoom(behind: door, opening: false) }
+        }
+    }
+
+    /// Set up the room behind a door: its tiles (if not yet laid out), monsters and objectives.
+    private func revealRoom(behind door: DoorInfo, opening: Bool) {
+        guard let scenario = scenarioData, let gameManager else { return }
         boardPhase = .roomReveal
-        guard let reveal = BoardBuilder.revealRoomSlots(door: door, scenario: scenario, board: boardState) else {
+        guard var reveal = BoardBuilder.revealRoomSlots(door: door, scenario: scenario, board: boardState, opening: opening) else {
             boardPhase = .execution
             return
+        }
+        // A room laid out earlier: its monster places have been waiting since then.
+        if isLaidOut(behind: door, in: scenario) {
+            let refs = BoardBuilder.roomRefs(behind: door, in: scenario)
+            let waiting = boardState.heldMonsterSlots.filter { refs.contains(boardState.cells[$0.coord]?.tileRef.lowercased() ?? "") }
+            reveal.slots += waiting
+            boardState.heldMonsterSlots.removeAll { slot in waiting.contains { $0.coord == slot.coord } }
         }
 
         // Monsters come from the scenario's room data, counted for every character in the
@@ -2787,7 +2844,8 @@ final class BoardCoordinator {
         boardScene?.fitCamera(animated: true)
 
         boardPhase = .execution
-        log("A door opens and a new room is revealed", category: .door, trace: door.childTileRef)
+        log(opening ? "A door opens and a new room is revealed" : "The defenders beyond the wall are roused", category: .door,
+            trace: door.childTileRef)
         for piece in placed {
             let id = PieceID.monster(name: piece.name, standee: piece.standee)
             if let pos = boardState.piecePositions[id] {
@@ -3122,9 +3180,12 @@ final class BoardCoordinator {
                           let from = boardState.piecePositions[attackerID], let to = boardState.piecePositions[piece] {
                     // Impaling Eruption: every enemy on the way to the target is attacked too.
                     let path = Set(from.line(to: to).dropFirst().dropLast())
-                    // Invisible enemies can't be targeted, on the way or not.
+                    // Invisible enemies can't be targeted, on the way or not; nor one out of sight
+                    // (every attack needs line of sight, and a wall's corner can hide a hex the
+                    // straight way to a visible one passes).
                     let onTheWay = boardState.piecePositions.filter {
                         path.contains($0.value) && areEnemies(attackerID, $0.key) && !isConditionActive(.invisible, on: $0.key)
+                            && LineOfSight.hasLOS(from: from, to: $0.value, board: boardState)
                     }.map(\.key).sorted()
                     interactionMode = .idle
                     let turn = activePlayerTurn, generation = boardGeneration

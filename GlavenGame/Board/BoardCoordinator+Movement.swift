@@ -160,6 +160,8 @@ extension BoardCoordinator {
         // A door held open by a pressure plate opens or shuts as a character steps on or off.
         if case .character = pieceID { updateLocks() }
         noteGoalHexesEntered(by: pieceID, along: path)
+        // Over the wall onto tiles laid out but not yet set up: their defenders appear.
+        if isPlayerSide(pieceID) { setUpLaidOutRoomsEntered() }
         // The acting character opened a door with movement to spare: the move isn't over.
         if openedDoor, movementLeft > 0, style != .forced, case .character(let id) = pieceID,
            activePlayerTurn?.characterID == id, isOnBoard(pieceID),

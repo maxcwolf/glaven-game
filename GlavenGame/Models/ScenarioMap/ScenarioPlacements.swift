@@ -65,6 +65,11 @@ struct ScenarioPlacements: Codable, Equatable {
     /// What appears where an objective stood when it is destroyed, by objective (1-based): a
     /// Living Corpse from each grave dug up.
     var whenDestroyed: [String: MonsterStandeeData]?
+    /// Map tiles laid out from the start though their room isn't revealed (the yard behind the
+    /// gate of Gloomhaven Battlements A, with the archers on its battlements): only the monsters
+    /// an earlier room's data puts on lettered hexes there are set up; the rest wait until the
+    /// door opens or a character or ally gets onto one of the tiles.
+    var laidOut: [String]?
     /// Obstacles no ability destroys (the dark pits, the battlements' wall sections).
     var indestructible: Indestructible?
     /// Numbered treasure whose reward is handed back when the scenario is lost, the tile being

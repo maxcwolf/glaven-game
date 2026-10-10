@@ -85,7 +85,9 @@ enum BoardBuilder {
 
     /// Reveal the room behind a door (cells, overlays, onward doors) without placing monsters;
     /// returns the room's monster slots. Nil if the door's room can't be found.
-    static func revealRoomSlots(door: DoorInfo, scenario: VGBScenario, board: BoardState) -> Reveal? {
+    /// With `opening` false the door stays shut: the tiles are laid out behind it (a room the
+    /// scenario shows from the start, or one entered some other way than by its door).
+    static func revealRoomSlots(door: DoorInfo, scenario: VGBScenario, board: BoardState, opening: Bool = true) -> Reveal? {
         let root = scenario.mapTileData
         let path: [Int]
         let tile: VGBMapTileData
@@ -107,7 +109,7 @@ enum BoardBuilder {
         addRoom(tile, path: path, root: root, to: board, turnAxis: turnAxis,
                 placements: scenario.placements, traps: scenario.traps, reveal: &reveal)
 
-        if let idx = board.doors.firstIndex(where: { $0.coord == door.coord }) {
+        if opening, let idx = board.doors.firstIndex(where: { $0.coord == door.coord }) {
             board.doors[idx].isOpen = true
         }
         recomputeBounds(board)

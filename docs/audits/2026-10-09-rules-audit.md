@@ -170,7 +170,7 @@ the ones the re-audit found wrong or newly missing.
 | S2-9 | #25, #33, #37, #60, #71 | The last character exhausted on an exit hex, with the others exhausted on exits, should win (FAQ); it is an all-exhausted defeat | fixed — `testAnEscapeIsCompleteWithEveryoneExhaustedOnTheExit` |
 | — | #27 | Hail takes no turn, so her Wound never hurts her (FAQ: initiative 99) | fixed — `testHailsWoundHurtsHerOnHerTurn` |
 | — | #34, #35, #36, #39, #51, #73 | Obstacles the scenario says can't be destroyed can be | fixed — `testWhatTheScenarioSaysCantBeDestroyedIsnt`, `testNoAbilityDestroysADarkPit` |
-| — | #35 | The City Archers are set up beside the party instead of on the battlements | open — their hexes are on tiles the game only lays out when the gate falls |
+| — | #35 | The City Archers are set up beside the party instead of on the battlements | fixed: the tiles behind the gate are laid out from the start (`laidOut`), the archers of (a) and (b) stand on the battlements and shoot over the wall sections, and the rest are set up when the gate is destroyed or a character or ally gets over the wall (`BattlementsTests`) |
 | — | #49, #78 | Missing immunity to forced movement (Siege Cannon, Cultists (b)) | fixed — `testTheCarriersAndTheCannonCantBeForcedToMove` |
 | — | #66, #69, #76, #85, #88, #90, #95 | Smaller printed rules not enforced (door 1's timing, entering a hex beside the well, discarding three cards, Sun-Blessed, −1 Move, the Night Demon, boulders with hit points) | fixed for #66, #69, #85, #88, #90 (`ScenarioReauditTests`); open for #76 (discarding three cards) and #95 (boulders with hit points) |
 
