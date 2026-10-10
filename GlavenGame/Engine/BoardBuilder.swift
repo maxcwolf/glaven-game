@@ -241,6 +241,15 @@ enum BoardBuilder {
         guard !reveal.visited.contains(path) else { return }
         reveal.visited.insert(path)
 
+        // A tile reached by two connectors is in the map data twice, and only one copy carries
+        // its overlays, monsters and onward connectors. Entered by the other one, it is that
+        // copy which is laid out (the room was revealed empty: #7's F1b from D2b, #53's J2a).
+        if let full = fullCopy(of: tileData, path: path, axis: turnAxis, in: root) {
+            addRoom(full.tile, path: full.path, root: root, to: board, turnAxis: full.axis,
+                    placements: placements, traps: traps, reveal: &reveal)
+            return
+        }
+
         let refPoint = turnAxis?.refPoint ?? (0, 0)
         let origin = turnAxis?.origin ?? (0, 0)
         board.visibleRooms.insert(tileData.ref)
@@ -392,7 +401,11 @@ enum BoardBuilder {
             }
         }
 
-        // 6. Connector back to the parent tile, when this tile was revealed before its parent.
+        // 6. Connectors from tiles that hold only an empty copy of this one.
+        addConnectorsFromEmptyCopies(of: tileData, path: path, axis: turnAxis, root: root, to: board,
+                                     placements: placements, traps: traps, reveal: &reveal)
+
+        // 7. Connector back to the parent tile, when this tile was revealed before its parent.
         if let last = path.last, let parent = tile(at: Array(path.dropLast()), in: root),
            last < parent.doors.count {
             let parentPath = Array(path.dropLast())
@@ -406,6 +419,63 @@ enum BoardBuilder {
                 let parentAxis = parentPlacement.axis ?? (refPoint: (0, 0), origin: (0, 0))
                 recordDoor(at: doorCoord, subType: door.subType, leadingTo: parent.ref, from: tileData.ref,
                            path: parentPath, axis: parentAxis, on: board)
+            }
+        }
+    }
+
+    /// The hexes a tile covers on the board, placed by `axis`.
+    private static func cellSet(of tile: VGBMapTileData, axis: TurnAxis?) -> Set<HexCoord> {
+        var cells = Set<HexCoord>()
+        for (y, row) in TileGrids.grid(for: tile.ref).enumerated() {
+            for (x, exists) in row.enumerated() where exists {
+                let global = HexMath.normaliseAndRotatePoint(
+                    turns: tile.turns, refPoint: axis?.refPoint ?? (0, 0), origin: axis?.origin ?? (0, 0), tileCoord: (x, y)
+                )
+                cells.insert(HexCoord(global.0, global.1))
+            }
+        }
+        return cells
+    }
+
+    /// For an empty copy of a tile (one reached through an extra connector), the copy of the
+    /// same tile, on the same hexes, that carries its content.
+    private static func fullCopy(of tile: VGBMapTileData, path: [Int], axis: TurnAxis?, in root: VGBMapTileData)
+        -> (path: [Int], tile: VGBMapTileData, axis: TurnAxis?)? {
+        guard !hasContent(tile) else { return nil }
+        let cells = cellSet(of: tile, axis: axis)
+        return findPlacements(in: root).first {
+            $0.path != path && $0.tile.ref == tile.ref && hasContent($0.tile) && cellSet(of: $0.tile, axis: $0.axis) == cells
+        }
+    }
+
+    /// Connectors that reach this tile from tiles holding only an empty copy of it: from this
+    /// side they exist too — a door to open, or a corridor that makes the other tile part of
+    /// this room.
+    private static func addConnectorsFromEmptyCopies(of tileData: VGBMapTileData, path: [Int], axis: TurnAxis?,
+                                                     root: VGBMapTileData, to board: BoardState,
+                                                     placements: ScenarioPlacements?, traps: ScenarioTraps?,
+                                                     reveal: inout Reveal) {
+        let cells = cellSet(of: tileData, axis: axis)
+        for placement in findPlacements(in: root) where placement.path != path {
+            for (index, door) in placement.tile.doors.enumerated()
+            where door.mapTileData.ref == tileData.ref && !hasContent(door.mapTileData) && placement.path + [index] != path {
+                let copyAxis = childAxis(of: door, in: placement.tile, parentAxis: placement.axis)
+                guard cellSet(of: door.mapTileData, axis: copyAxis) == cells else { continue }
+                let doorCoord = doorCoordinate(door, in: placement.tile, axis: placement.axis)
+                if door.subType == "corridor" {
+                    if board.cells[doorCoord] == nil {
+                        board.cells[doorCoord] = HexCell(coord: doorCoord, tileRef: tileData.ref, passable: true)
+                    }
+                    addRoom(placement.tile, path: placement.path, root: root, to: board, turnAxis: placement.axis,
+                            placements: placements, traps: traps, reveal: &reveal)
+                } else if !reveal.visited.contains(placement.path),
+                          !cellSet(of: placement.tile, axis: placement.axis).isSubset(of: Set(board.cells.keys)) {
+                    if board.cells[doorCoord] == nil {
+                        board.cells[doorCoord] = HexCell(coord: doorCoord, tileRef: tileData.ref, passable: true)
+                    }
+                    recordDoor(at: doorCoord, subType: door.subType, leadingTo: placement.tile.ref, from: tileData.ref,
+                               path: placement.path, axis: placement.axis ?? (refPoint: (0, 0), origin: (0, 0)), on: board)
+                }
             }
         }
     }

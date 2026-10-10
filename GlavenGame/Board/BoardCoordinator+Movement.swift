@@ -62,7 +62,13 @@ extension BoardCoordinator {
     /// Returns false if the figure can do no more this turn: it died (or became exhausted)
     /// along the way, or a trap stunned it in the middle of its own move.
     @discardableResult
-    @MainActor func moveAlong(_ pieceID: PieceID, path: [HexCoord], style: MovementStyle) async -> Bool {
+    /// `movementLeft`: what the move has left once `path` is walked — a character who opens a door
+    /// on its last hex with movement left goes on (`moveGoesOnPastDoor`), and what the move does
+    /// as it ends waits for that. `continuing`: this path is such a second leg of one move.
+    @MainActor func moveAlong(_ pieceID: PieceID, path: [HexCoord], style: MovementStyle,
+                              movementLeft: Int = 0, continuing: Bool = false) async -> Bool {
+        moveGoesOnPastDoor = false
+        var openedDoor = false
         guard path.count > 1 else {
             // Move 0: the character stays put, and what the move prints still happens
             // (Rumbling Advance's "all adjacent allies and enemies suffer 1 damage").
@@ -73,8 +79,9 @@ extension BoardCoordinator {
         // The acting character's own movement, for the items that count it.
         if style != .forced, case .character(let id) = pieceID, activePlayerTurn?.characterID == id {
             activePlayerTurn?.hexesMoved += path.count - 1
-            activePlayerTurn?.lastMoveLength = path.count - 1
-            activePlayerTurn?.hexesPassed.append(contentsOf: path.dropFirst().dropLast())
+            activePlayerTurn?.lastMoveLength = (continuing ? activePlayerTurn?.lastMoveLength ?? 0 : 0) + path.count - 1
+            // The doorway a move went on from was passed through, not ended on.
+            activePlayerTurn?.hexesPassed.append(contentsOf: (continuing ? path : Array(path.dropFirst())).dropLast())
         }
         let hazardProof = (entity(for: pieceID) as? GameCharacter).map { PassiveItems.ignoresHazards($0.carriedItems) } ?? false
         // Characters open doors by walking into them; so does an escort sent somewhere.
@@ -147,11 +154,19 @@ extension BoardCoordinator {
             }
             if opensDoor {
                 openDoor(at: hex)
+                openedDoor = true
             }
         }
         // A door held open by a pressure plate opens or shuts as a character steps on or off.
         if case .character = pieceID { updateLocks() }
         noteGoalHexesEntered(by: pieceID, along: path)
+        // The acting character opened a door with movement to spare: the move isn't over.
+        if openedDoor, movementLeft > 0, style != .forced, case .character(let id) = pieceID,
+           activePlayerTurn?.characterID == id, isOnBoard(pieceID),
+           !isConditionActive(.immobilize, on: pieceID), !isConditionActive(.stun, on: pieceID) {
+            moveGoesOnPastDoor = true
+            return true
+        }
         await afterOwnMove(pieceID, path: path, style: style)
         return isOnBoard(pieceID)
     }

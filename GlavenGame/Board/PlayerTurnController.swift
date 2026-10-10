@@ -506,6 +506,11 @@ final class PlayerTurnController {
     /// cancelled; an attack that is already resolving must finish first.
     func skipRemainingActions() {
         guard let coordinator else { return }
+        // A move going on past a door ends in the doorway first (what it does as it ends happens).
+        if coordinator.continuedMove != nil {
+            coordinator.stopContinuedMove()
+            return
+        }
         if defaultAttackPending || awaitingAsync {
             switch coordinator.interactionMode {
             case .idle, .watchingMonsterTurn, .selectingPushPullHex:
@@ -559,6 +564,11 @@ final class PlayerTurnController {
         // A push or pull not yet begun is turned down whole; the attack it follows stands.
         if coordinator.pushPullDeclinable {
             coordinator.declinePushPull()
+            return
+        }
+        // A move going on past a door it opened: skipping the rest stops in the doorway.
+        if coordinator.continuedMove != nil {
+            coordinator.stopContinuedMove()
             return
         }
         if defaultAttackPending {

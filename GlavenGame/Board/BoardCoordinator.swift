@@ -316,6 +316,11 @@ final class BoardCoordinator {
 
     /// Non-nil when a monster push/pull is in progress and the async caller is suspended.
     private var pendingPushPullContinuation: CheckedContinuation<Void, Never>?
+    /// The acting character's move that is going on past a door it opened, while the player
+    /// chooses where the movement left takes them.
+    private(set) var continuedMove: (piece: PieceID, mode: MoveMode)?
+    /// Set by `moveAlong` when a character opened a door with movement left and can go on.
+    var moveGoesOnPastDoor = false
     /// Hexes the figure being pushed or pulled has passed through without stopping (they hold
     /// figures it may pass), since the last hex it stood on.
     private var pushPullVia: [HexCoord] = []
@@ -1963,8 +1968,13 @@ final class BoardCoordinator {
         let style: MovementStyle = mode == .jump ? .jump : (mode == .fly ? .fly : .normal)
         let turn = activePlayerTurn
         let generation = boardGeneration
+        // Movement left once this path is walked: a character who opens a door on the way sees
+        // the room beyond and goes on with it (GH p.14).
+        let left = range - movementSpent(on: path, mode: mode)
+        let continuing = continuedMove?.piece == pieceID
+        continuedMove = nil
         Task { @MainActor in
-            await self.moveAlong(pieceID, path: path, style: style)
+            await self.moveAlong(pieceID, path: path, style: style, movementLeft: left, continuing: continuing)
             guard self.isCurrentBoard(generation) else { return }
             // The move may end early (a trap that immobilizes, or one that exhausts the figure).
             if let end = self.boardState.piecePositions[pieceID] {
@@ -1972,8 +1982,60 @@ final class BoardCoordinator {
                 self.log("\(self.name(pieceID)) moves \(steps) hex\(steps == 1 ? "" : "es")", category: .move, trace: "to \(end)")
             }
             self.checkVictoryDefeat()
+            if self.scenarioResult == nil, self.moveGoesOnPastDoor, self.offerRestOfMove(pieceID: pieceID, left: left, mode: mode) {
+                return
+            }
             turn?.advanceAfterAsyncAction()
         }
+    }
+
+    /// Movement points a path takes: 2 for a hex of difficult terrain (for a jump, only its last
+    /// hex; never for a flight), 1 for any other.
+    private func movementSpent(on path: [HexCoord], mode: MoveMode) -> Int {
+        var spent = 0
+        for (index, hex) in path.enumerated().dropFirst() {
+            let difficult = boardState.cells[hex]?.isDifficultTerrain == true
+            switch mode {
+            case .fly: spent += 1
+            case .jump: spent += index == path.count - 1 && difficult ? 2 : 1
+            case .normal: spent += difficult ? 2 : 1
+            }
+        }
+        return spent
+    }
+
+    /// The acting character's move going on from a door it has just opened: the hexes the
+    /// movement left reaches now that the room beyond is on the board. False when there is
+    /// nowhere further to go (the move is over).
+    private func offerRestOfMove(pieceID: PieceID, left: Int, mode: MoveMode) -> Bool {
+        moveGoesOnPastDoor = false
+        guard left > 0, let pos = boardState.piecePositions[pieceID], isOnBoard(pieceID) else { return false }
+        let (enemies, allies) = movementSets(for: pieceID)
+        let reachable = Pathfinder.reachableHexes(
+            board: boardState, from: pos, range: left, mode: mode,
+            avoidTraps: false, canOpenDoors: opensDoors(pieceID),
+            occupiedByEnemy: enemies, occupiedByAlly: allies
+        )
+        var validHexes = Set(reachable.keys).subtracting([pos])
+        guard !validHexes.isEmpty else {
+            // Nowhere to go on to: what the move prints as it ends happens here.
+            continuedMove = (pieceID, mode)
+            executeMove(pieceID: pieceID, to: pos, range: left, mode: mode)
+            return true
+        }
+        validHexes.insert(pos)   // or stop in the doorway
+        continuedMove = (pieceID, mode)
+        interactionMode = .selectingMove(pieceID: pieceID, range: left, validHexes: validHexes, mode: mode)
+        let style: HighlightStyle = mode == .jump ? .jump : (mode == .fly ? .fly : .move)
+        boardScene?.highlightHexes(validHexes, style: style, offsetCol: offsetCol, offsetRow: offsetRow)
+        return true
+    }
+
+    /// End a move that is going on past a door where the character stands (Skip, on the banner).
+    func stopContinuedMove() {
+        guard let move = continuedMove, case .selectingMove(let mover, let range, _, false, let mode) = interactionMode,
+              mover == move.piece, let pos = boardState.piecePositions[mover] else { return }
+        executeMove(pieceID: mover, to: pos, range: range, mode: mode)
     }
 
     /// Where the board's grid starts in the scene (see `HexMath.gridOrigin`).
