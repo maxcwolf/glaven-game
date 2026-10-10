@@ -60,6 +60,27 @@ Monsters focus on the gate (#35, #36) or the crystal (#84) whenever they can get
 cleanses (Shield 2 against Oozes, no Poison); #46's Winged Horror lays and hatches its eggs.
 #77's City Guards march for the alarm plates (and lose the scenario on one), opening door 1, and
 one arrives with each treasure looted.
+Then, after a second audit against the book and the official FAQ: an escape is complete when
+every character was exhausted on an exit hex (#25, #33, #37, #60, #71), and never undoes a loss
+(#41: an exhaustion in the last room loses even after someone has left); #2's side rooms hold
+what their tiles print (the data had A3b and A4b swapped); #83's first altar rules end when the
+Cultists are dead; rule damage as a turn starts (#42's fourth chord, #83) is suffered before the
+turn is played; #58's bone piles each heal the Harvester on their own; #92's City Guards and
+Archer are set up at the far end of the first room; #78's carrying Cultists and #49's Siege Cannon
+can't be pushed or pulled; #82's two conclusions give their rewards and its chest is handed back
+on a loss; #56's brief says all three captives must die; the obstacles a scenario says can't be
+destroyed can't be (#34, #35, #36, #39, #51, #52's centre room, #73), nor can an obstacle that is
+an objective; #27's Hail takes her turn at 99 and a Wound hurts her; #66's first door opens as a
+turn ends on its plate, and a character caught in a closing door (#66, #67) may lose cards to
+negate the damage; #69 is won by entering a hex beside the well, and its two traps appear when
+door 1 opens; #85 starts every round with Light strong and Dark inert for a Sun-Blessed party;
+#88's Move abilities are one less; #90's Night Demon comes as an even round ends with the
+right-hand room empty.
+Still open from that audit: #70's Living Spirits are still hurt by a Wound (monster wound damage
+bypasses the board; `ScenarioReauditTests.testAWoundDoesNotHurtALivingSpirit` is an expected
+failure until it doesn't); #35's battlement archers aren't on the battlements; #76's three
+discarded cards and #95's boulders' hit points; and scenario rules of the round's start are
+still applied after the cards are chosen.
 Later fixes are listed in `TODO.md`.
 
 ### 1 · Black Barrow

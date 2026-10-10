@@ -6,7 +6,13 @@
   "count": 6,
   "standeeShare": "cultist",
   "baseStat": {
-    "type": "normal"
+    "type": "normal",
+    "immunities": [
+      "immobilize",
+      "stun",
+      "pull",
+      "push"
+    ]
   },
   "stats": [
     {

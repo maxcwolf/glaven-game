@@ -452,7 +452,7 @@ extension BoardCoordinator {
             case .destroyObstacleForAttack(let n):
                 // "When possible": a melee attack with an obstacle beside the character.
                 guard let attackerPos = boardState.piecePositions[attacker], attackerPos.distance(to: targetPos) <= 1,
-                      let obstacle = attackerPos.neighbors.sorted().first(where: { boardState.cells[$0]?.overlay == .obstacle })
+                      let obstacle = attackerPos.neighbors.sorted().first(where: isDestructibleObstacle)
                 else { break }
                 boardState.removeObstacle(at: obstacle)
                 boardScene?.removeOverlaySprite(at: obstacle, offsetCol: offsetCol, offsetRow: offsetRow)

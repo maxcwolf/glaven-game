@@ -27,6 +27,9 @@ struct BoardSnapshot: Codable {
     var heldMonsterSlots: [MonsterSlot]? = nil
     var cycleSteps: [String: Int]? = nil
     var cleansed: [String]? = nil
+    var exhaustedOnExit: [String]? = nil
+    var conclusion: String? = nil
+    var goalReached: Bool? = nil
 
     struct CharacterTrap: Codable, Equatable {
         let hex: HexCoord
@@ -56,7 +59,9 @@ struct BoardSnapshot: Codable {
             lockedDoors: board.lockedDoors, shutDoors: board.shutDoors, releasedLocks: board.releasedLocks,
             goalTreasuresLooted: board.goalTreasuresLooted, eliteKills: board.eliteKills,
             heldMonsterSlots: board.heldMonsterSlots, cycleSteps: board.cycleSteps,
-            cleansed: board.cleansed
+            cleansed: board.cleansed,
+            exhaustedOnExit: board.exhaustedOnExit,
+            conclusion: board.conclusion, goalReached: board.goalReached
         )
     }
 
@@ -85,6 +90,9 @@ struct BoardSnapshot: Codable {
         board.heldMonsterSlots = heldMonsterSlots ?? []
         board.cycleSteps = cycleSteps ?? [:]
         board.cleansed = cleansed ?? []
+        board.exhaustedOnExit = exhaustedOnExit ?? []
+        board.conclusion = conclusion
+        board.goalReached = goalReached ?? false
     }
 }
 

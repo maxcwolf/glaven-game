@@ -97,7 +97,8 @@ final class ScenarioFramingTests: XCTestCase {
         XCTAssertEqual(try brief("27").goal, "Survive until the end of round 10.")
         XCTAssertEqual(try brief("3").rules, ["More Inox Guards arrive every odd round."])
         XCTAssertTrue(try brief("31").rules.contains("More Night Demons arrive every round."))
-        XCTAssertEqual(try brief("56").defeat.last, "Captive Orchid is destroyed.")
+        // Bandit's Wood is lost only when all three captives die, and the brief says so.
+        XCTAssertEqual(try brief("56").defeat.last, "All 3 Captive Orchids are killed.")
         XCTAssertEqual(try brief("60").defeat.last, "Round 12 ends before the goal is met.")
         XCTAssertTrue(try brief("22").rules.contains { $0.hasPrefix("For each altar that isn't destroyed") },
                       "the scenario's printed rules")

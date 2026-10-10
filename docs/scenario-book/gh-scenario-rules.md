@@ -8,7 +8,8 @@ the map marks. Story text, requirements, rewards and unlocks are left out (the s
 
 These are notes written from the book (second printing), not its text: every number, formula,
 monster name and marker is as printed, the wording is ours. **L** is the scenario level, **C** the
-number of characters. "(p.N)" is the page of the scenario book.
+number of characters. "(p.N)" is the page of the scenario book. Where the official FAQ corrects or
+settles what the book prints, the note says so ("FAQ:").
 
 See [README.md](README.md) for what the game does with each of these today, and how hex
 positions for the map letters are written.
@@ -23,7 +24,7 @@ positions for the map letters are written.
 - **Setup:** Each character adds 3 Curse cards to their attack modifier deck (scenario effect).
 - **Special rules:**
   - Doors a, b, c and d are locked; only the Bandit Commander can open them.
-- **Boss specials:** Special 1: the Bandit Commander immediately jumps to a door hex, however far away, and opens it, revealing the room behind it; doors are taken in the order a, b, c, d, then back to a. Special 2: the Bandit Commander summons 1 normal Living Bones (2 characters) or 1 elite Living Bones (3–4 characters).
+- **Boss specials:** Special 1: the Bandit Commander immediately jumps to a door hex, however far away, and opens it, revealing the room behind it; doors are taken in the order a, b, c, d, then back to a (FAQ: a door already open and occupied sends him to the nearest unoccupied hex to it). Special 2: the Bandit Commander summons 1 normal Living Bones (2 characters) or 1 elite Living Bones (3–4 characters).
 - **Map letters:** 1 = door from the start room (B3b) into the main crypt (M1a), section is story only; a = locked door M1a→A1a (right side room); b = locked door M1a→A4b (lower-right side room, holds the treasure tile); c = locked door M1a→A2a (lower-left side room); d = locked door M1a→A3b (left side room).
 - **Maps:** B3b, M1a, A1a, A2a, A3b, A4b
 
@@ -139,12 +140,12 @@ positions for the map letters are written.
 
 ### 21 · Infernal Throne (p.28–29)
 - **Goal:** Kill the Prime Demon.
-- **Objectives:** Altar: shares hit points, initiative and immunities with the Prime Demon.
+- **Objectives:** Altar: shares hit points and initiative with the Prime Demon (FAQ: it is an ordinary obstacle with hit points, so immune to every negative condition; the printed "and immunities" is redundant).
 - **Section 1** (a door marked 1 opened, into the Prime Demon's room): story only.
 - **Special rules:**
   - The Prime Demon cannot be damaged in any way; damage has to be dealt to the altar instead.
-- **Boss specials:** Special 1: (1) the altar jumps to the next hex in the cycle a → b → c → d → e → f → a; a figure or overlay tile on the destination hex is moved to the nearest unoccupied hex; if the destination is in an unrevealed room, that room is revealed at once and every door between it and other revealed rooms opens. (2) The altar summons one demon — normal (2 characters) or elite (3–4) — of the type tied to its new location: a Frost Demon, b Wind Demon, c Night Demon, d Earth Demon, e Flame Demon, f Sun Demon. (3) The Prime Demon performs "Move+2, Attack-1". Special 2: same as Special 1, but the summoned demon is normal for 2–3 characters and elite for 4.
-- **Map letters:** a–f = the six altar hexes (a, b on the lower J tile; c, d on the upper J tile; e on D2a; f on D1a). The rules text labels the altar "a", but the map draws the altar overlay on hex f (directly below the Prime Demon, in the room behind the doors marked 1); hex a is drawn as an empty hex. 1 = the two doors into the D1a room holding the Prime Demon.
+- **Boss specials:** Special 1: (1) the altar jumps to the next hex in the cycle a → b → c → d → e → f → a; a figure or overlay tile on the destination hex is moved to the nearest unoccupied hex; if the destination is in an unrevealed room, that room is revealed at once and every door between it and other revealed rooms opens. (2) The altar summons one demon — normal (2 characters) or elite (3–4) — of the type tied to its new location. As printed: a Frost Demon, b Wind Demon, c Night Demon, d Earth Demon, e Flame Demon, f Sun Demon; FAQ erratum, since the altar starts on f: a Wind Demon, b Night Demon, c Earth Demon, d Flame Demon, e Sun Demon, f Frost Demon. (3) The Prime Demon performs "Move+2, Attack-1". Special 2: same as Special 1, but the summoned demon is normal for 2–3 characters and elite for 4.
+- **Map letters:** a–f = the six altar hexes (a, b on the lower J tile; c, d on the upper J tile; e on D2a; f on D1a). The rules text labels the altar "a", but the map draws the altar overlay on hex f (directly below the Prime Demon, in the room behind the doors marked 1); hex a is drawn as an empty hex. FAQ: the map is right — the altar starts on f (so by the printed cycle its first jump is to a). 1 = the two doors into the D1a room holding the Prime Demon.
 - **Maps:** E1a, J1a, J2a, D1a, D2a
 
 ### 22 · Temple of the Elements (p.29–30)
@@ -193,7 +194,7 @@ positions for the map letters are written.
 ### 27 · Ruinous Rift (p.37)
 - **Goal:** Protect Hail (a) for ten rounds.
 - **Lose:** Hail is killed.
-- **Objectives:** Hail (a), a numbered token: 4+(2×L) HP; ally, enemy of all monster types; initiative 99 for monster focus purposes only.
+- **Objectives:** Hail (a), a numbered token: 4+(2×L) HP; ally, enemy of all monster types; initiative 99, printed as for monster focus purposes only. FAQ: she takes a turn at initiative 99 in which she does nothing — but a Wound damages her then, as it would anyone.
 - **Special rules:**
   - End of round 1: one demon spawns on hex b.
   - End of round 2: one demon spawns on hex c.
@@ -255,13 +256,13 @@ positions for the map letters are written.
 
 ### 34 · Scorched Summit (p.45)
 - **Goal:** Kill the Elder Drake.
-- **Objectives:** Zephyrs (numbered tokens, summoned by the boss): cannot be damaged in any way; each round, immediately before the Elder Drake's turn, they perform "Move 2, Attack C".
+- **Objectives:** Zephyrs (numbered tokens, summoned by the boss): cannot be damaged in any way; each round, immediately before the Elder Drake's turn, they perform "Move 2, Attack C". FAQ: no ability affects them at all, and summons don't focus on them.
 - **Special rules:**
   - The Elder Drake occupies all three hexes of the obstacle it sits on.
   - A figure that can target any one of those hexes can target the Elder Drake; the Elder Drake may use any of its hexes to work out what it can target.
   - The Elder Drake cannot be forced to move or have its position changed in any way.
   - The huge boulder obstacles cannot be destroyed.
-- **Boss specials:** Special 1: nothing printed in the scenario book. Special 2: the Elder Drake summons two Zephyrs, then flies to the next boulder perch in the cycle a → b → c → a.
+- **Boss specials:** Special 1: nothing printed in the scenario book. Special 2: the Elder Drake summons two Zephyrs, then flies to the next boulder perch in the cycle a → b → c → a (FAQ: summon first, then move — the reverse of the stat card).
 - **Map letters:** a = huge-boulder perch on the right; b = huge-boulder perch on the left; c = huge-boulder perch at the top centre, where the Elder Drake is drawn at setup.
 - **Maps:** L2a, L3b
 
@@ -274,6 +275,7 @@ positions for the map letters are written.
   - Door 1 is locked and opens when it is destroyed.
   - All demons are allies of the characters and enemies of all other monster types; they still act normally from a monster ability card each round.
   - On a demon's turn, if it can move to within range to attack the door, it focuses on the door and takes its turn normally; otherwise it picks its focus by the normal rules.
+  - FAQ: the wall section obstacles cannot be destroyed.
 - **Map letters:** a = group of two City Archers on the left battlement; b = group of two City Archers on the right battlement; 1 = the gate door between the outside tiles (L1b, L3a) and the inside tiles (I1b on the left, B2b on the right).
 - **Maps:** L1b, L3a, I1b, B2b
 
@@ -368,7 +370,7 @@ positions for the map letters are written.
 ### 45 · Rebel Swamp (p.60)
 - **Goal:** Destroy all totems (a).
 - **Setup:** Each character adds 2 "-1" cards to their attack modifier deck (scenario effect).
-- **Objectives:** Six totems (a): each has 1+C+L HP.
+- **Objectives:** Six totems (a): each has 1+C+L HP. FAQ: they are obstacles no ability destroys (only damage does), though effects on obstacles that deal no damage still work on them.
 - **Special rules:**
   - Any monster within two hexes of a totem performs Heal 2, Self at the start of its turn.
 - **Map letters:** a = totems: 1 on G1a (the starting tile), 2 on M1b, 2 on F1b, 1 on D1b.
@@ -377,7 +379,7 @@ positions for the map letters are written.
 ### 46 · Nightmare Peak (p.61)
 - **Goal:** Kill the Winged Horror.
 - **Section 1** (door 1 opened): reveals the Winged Horror's room; story text only, the boss specials below apply.
-- **Boss specials:** Special 1: after the Winged Horror attacks, every egg currently on the map is destroyed and each one spawns one normal Night Demon in the hex it occupied. Special 2: after the Winged Horror performs the attacks listed on its stat card, it summons C eggs. Each egg is a numbered token with 2+(L/2) HP, rounded up, and has initiative 99 for the purpose of summon focusing.
+- **Boss specials:** Special 1: after the Winged Horror attacks, every egg currently on the map is destroyed and each one spawns one normal Night Demon in the hex it occupied. Special 2: after the Winged Horror performs the attacks listed on its stat card, it summons C eggs (FAQ: the order is move, one attack, then the summon). Each egg is a numbered token with 2+(L/2) HP, rounded up, and has initiative 99 for the purpose of summon focusing.
 - **Map letters:** 1 = door between K2a and I2a (the boss room). Characters start on J1b.
 - **Maps:** J1b, K2a, I2a
 
@@ -402,7 +404,7 @@ positions for the map letters are written.
 ### 49 · Rebel's Stand (p.64)
 - **Goal:** Kill the Siege Cannon.
 - **Section 1** (door 1 opened): the rules below take effect.
-- **Objectives:** The Siege Cannon is the Ancient Artillery: it does not act, has initiative 99 for the purposes of summon focusing, and has H×2 HP, where H is an elite Ancient Artillery's regular hit point value.
+- **Objectives:** The Siege Cannon is the Ancient Artillery: it does not act, has initiative 99 for the purposes of summon focusing, and has H×2 HP, where H is an elite Ancient Artillery's regular hit point value. FAQ: it is immune to forced movement (push, pull, swap).
 - **Special rules:**
   - Each round, the City Archer closest to the artillery (on a tie, the one that acts first) does not act normally; instead it performs Move 3 toward a hex adjacent to the artillery that is not labelled b.
   - If that archer is then adjacent to the artillery, the cannon fires: every character and character summon in the b hexes and in the columns above those hexes (including all of the G tile) suffers damage equal to an elite Ancient Artillery's Attack value.
@@ -431,7 +433,7 @@ positions for the map letters are written.
 ### 52 · Noxious Cellar (p.68–69)
 - **Goal:** All characters must loot one treasure tile.
 - **Lose:** Any character becomes exhausted before they have looted a treasure tile.
-- **Setup:** Each character adds 2 Curse cards to their attack modifier deck (scenario effect). Characters may only start in sections of the center room that contain monsters.
+- **Setup:** Each character adds 2 Curse cards to their attack modifier deck (scenario effect; printed on p.69 — the "3" on that page is #53's). Characters may only start in sections of the center room that contain monsters.
 - **Special rules:**
   - The obstacles in the center room cannot be destroyed or moved through in any way, and they also block line of sight for ranged abilities.
   - The treasure tiles can only be looted with a Loot action, or by a character adjacent to a treasure tile forgoing a bottom action (discarding one card instead). They cannot be looted by normal end-of-turn looting.
@@ -487,7 +489,7 @@ positions for the map letters are written.
 - **Goal:** Kill the Harvester.
 - **Setup:** There are two starting rooms; at most half the characters (rounded up) may start in the same one.
 - **Section 1** (either door 1 opened, middle room): only the character on the "Vengeance" quest may loot the treasure tile; looting it gives that character the Occult Dagger (not an item, but used in this scenario).
-- **Section 2** (door 2 opened, back room): the City Guard here is one level above the scenario level (maximum 7) and is the Harvester. Each bone pile (a) has L+(2×C) HP. For each bone pile still on the map the Harvester gains Shield 1 and, at the end of each round, heals C−1 HP. The character holding the Occult Dagger adds PIERCE 4 to all their attacks that target the Harvester.
+- **Section 2** (door 2 opened, back room): the City Guard here is one level above the scenario level (maximum 7) and is the Harvester. Each bone pile (a) has L+(2×C) HP. For each bone pile still on the map the Harvester gains Shield 1 and, at the end of each round, heals C−1 HP (FAQ: each pile is a heal of its own — Poison stops only the first — and the Harvester is healed even while stunned). The character holding the Occult Dagger adds PIERCE 4 to all their attacks that target the Harvester.
 - **Map letters:** a = the four bone piles (nest overlays) in the back room (B1a); 1 = the two doors from the starting rooms into the middle room (G2b); 2 = door from the middle room into the back room; "Goal" treasure tile (middle room) = the Occult Dagger.
 - **Maps:** C2a, D1b, G2b, B1a
 
@@ -578,7 +580,7 @@ positions for the map letters are written.
 - **Maps:** C2a, G1a, B1b, M1b
 
 ### 69 · Well of the Unfortunate (p.88)
-- **Goal:** Bring the doll to the well (a) — complete when the doll is brought to a hex adjacent to the well.
+- **Goal:** Bring the doll to the well (a) — complete when the doll is brought to a hex adjacent to the well (FAQ: entering such a hex is enough; the holder needn't end their movement there).
 - **Setup:** Choose one character to hold the doll (a treasure tile placed on that character's mat).
 - **Special rules:**
   - The doll changes hands only when another character performs a Loot action with the doll's holder within the loot range.
@@ -680,7 +682,7 @@ positions for the map letters are written.
 - **Special rules:**
   - The two Cultists (b) do not act normally. They perform "Move+0" simultaneously to carry the victim (a) to the altars (d): first they move to a hex adjacent to the victim, then toward (c) or the nearest hex adjacent to the altar.
   - After the Cultists move, the victim moves the same number of hexes so as to be adjacent to them, preferring the hex left of the right-hand Cultist and right of the left-hand Cultist.
-  - The two Cultists (b) and the victim (a) are immune to forced movement, IMMOBILIZE and STUN, and can open doors.
+  - The two Cultists (b) and the victim (a) are immune to forced movement (push and pull included), IMMOBILIZE and STUN, and can open doors.
 - **Map letters:** a = victim's start (centre of M1a); b = the two special Cultists (M1a); c = two hexes on I1b in front of the altar (the Cultists' destination); d = the altar (two altar hexes, bottom of I1b); 1 = door between F1a (start room) and M1a. The three door hexes between M1a and I1b are unnumbered.
 - **Maps:** F1a, M1a, I1b
 
@@ -720,7 +722,7 @@ positions for the map letters are written.
 
 ### 82 · Burning Mountain (p.104)
 - **Goal:** Sacrifice one artifact, or escape with all artifacts.
-- **Section 1** (door c opens): once the treasure tile has been looted, the character holding its items may end their turn on (g) and remove one of those items from the game to complete the scenario (Conclusion A). Alternatively, after the chest is looted, the scenario is completed if all characters return to an entrance hex before becoming exhausted (Conclusion B). If the scenario is lost, the treasure tile is reset (not kept).
+- **Section 1** (door c opens): once the treasure tile has been looted, the character holding its items may end their turn on (g) and remove one of those items from the game to complete the scenario (Conclusion A). Alternatively, after the chest is looted, the scenario is completed if all characters return to an entrance hex before becoming exhausted (Conclusion B). If the scenario is lost, the treasure tile is reset (not kept). FAQ: the scenario is lost if the character holding the items becomes exhausted, and the items go back into the treasure tile for the next attempt.
 - **Special rules:**
   - All doors are locked. Each time one elite monster is killed, one door opens automatically, in the order a, b, c, d, e, and finally f.
 - **Map letters:** a = door K1a→C1a; b = door K1a→D1a; c = door C1a→I1b; d = door D1a→B2b; e = door on the C1a side of hex g; f = door on the D1a side of hex g; g = the single corridor hex between doors e and f (sacrifice hex). Treasure tile 62 sits on the corridor hexes joining I1b and B2b; entrance (start) hexes are on K1a.
@@ -729,7 +731,7 @@ positions for the map letters are written.
 ### 83 · Shadows Within (p.105)
 - **Goal:** Kill all enemies.
 - **Section 1** (door 1 opened): characters and character summons within two hexes of the altar (a) suffer 1 damage at the start of each of their turns; monsters within two hexes of the altar heal 1 at the start of each of their turns. The Flame Demons are not set up until all Cultists are dead; when that happens, read Section 2.
-- **Section 2** (all Cultists dead): set up the Flame Demons. All characters and character summons suffer 2 damage at the start of each of their turns (no distance condition printed). At the start of every round, set Fire to Strong. (The book does not say whether this replaces the Section 1 altar damage.)
+- **Section 2** (all Cultists dead): set up the Flame Demons. All characters and character summons suffer 2 damage at the start of each of their turns (no distance condition printed). At the start of every round, set Fire to Strong. FAQ: Section 1's special rules end here and these replace them — no more altar damage or healing; and the altar has no hit points and cannot be destroyed.
 - **Map letters:** a = altar (centre of M1a; the Flame Demons are printed on either side of it); 1 = door between I1b and M1a. The H1b→I1b door is unnumbered; start hexes are on H1b.
 - **Maps:** H1b, I1b, M1a
 
@@ -749,7 +751,7 @@ positions for the map letters are written.
 ### 85 · Sun Temple (p.107–108)
 - **Goal:** Kill all enemies.
 - **Setup:** There are two starting rooms; no more than half the characters (rounded up) may enter the scenario from the same room.
-- **Section 1** (a door 1 opened): all Sun Demons are enemies to both the characters and all other monster types.
+- **Section 1** (a door 1 opened): all Sun Demons are enemies to both the characters and all other monster types. FAQ: for four characters the book asks for eight demons where there are six standees; the Night Demon and the Sun Demon of the last room that are marked for four characters only are not placed (the scenario data already has six of each).
 - **Special rules:**
   - If the party has the "Sun-Blessed" achievement: at the start of every round, set Light to Strong and Dark to Inert.
 - **Map letters:** 1 = two doors, both leading into the joined D tiles (the altar room): I1b→D2a and F1a→D1a. Starting rooms are C2b (leads to I1b) and C1a (leads to F1a); those two doors are unnumbered. D2a and D1a are joined by corridor hexes.

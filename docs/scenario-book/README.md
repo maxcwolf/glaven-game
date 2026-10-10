@@ -50,9 +50,17 @@ ends up on the board:
     escorts have arrived), `{"lock": 0}` (that lock of `locks`, from 0, has been released),
     `{"looted": "goal"}` (every goal treasure tile; a tile ref for the goal treasure on it; a
     treasure's number), `{"unrevealed": 2}` (that room isn't revealed yet), `{"occupied": {"markers": ["a"], "more":
-    {"3": ["b"]}}}` (every pressure plate in play for this many characters has a figure on it). A rule with `"always": true` fires at once; without it, as the round ends
+    {"3": ["b"]}}}` (every pressure plate in play for this many characters has a figure on it),
+    `{"partyAchievement": "sun-blessed"}` (the party has it), `{"noCharacterOn": ["d1b", "c2a"]}`
+    (no character stands on those tiles). A rule with `"always": true` fires at once; without it, as the round ends
     ("at the end of the round in which…").
   - `setUp` — monster types held back by `later` are set up now, where the map prints them.
+  - `traps` — letters whose hexes get a damage trap; a figure on foot standing on one springs it
+    at once (#69).
+  - in a figure effect: `"times": "F"` — the effect happens that many times, each on its own (a
+    heal for every bone pile, of which Poison stops only the first: #58).
+  - in a spawn's `count`: `N`, how many times the rule has applied, this time included
+    (`"N % 2"`: every second spawn, #90).
   - in a figure's `identifier`: `"tile": "j1a"` (only figures standing on that tile) and
     `"near": {"marker": "a", "range": 2}` or `{"objective": "Totem", "range": 2}`.
   - `"alwaysApplyTurn": "turn"` rules reach monsters and summons as their own turns start, and
@@ -65,7 +73,8 @@ ends up on the board:
 - `effects`: what the scenario does to attacks and Shields for as long as it holds
   (`ScenarioPlacements.Effect`): `on` — `"monsters"`, `"party"` (characters and their summons) or
   one monster type; `whileStanding` — only while that objective stands; then any of `attack` (added
-  to each of their attacks), `advantage`, `disadvantage` and `shield` (a number or a formula over
+  to each of their attacks), `move` (added to each of their Move abilities: #88's −1),
+  `advantage`, `disadvantage` and `shield` (a number or a formula over
   X, C and L, added to their Shield, which never falls below none). X is what `per` counts:
   `{"objective": 1}` or `{"monster": "living-bones"}` on the board, or
   `{"tokens": 4, "lostWith": "ooze"}` — tokens of which one goes each time such a monster dies.
@@ -109,6 +118,13 @@ ends up on the board:
   the same and more ("Chord 1, while it stands: …").
 - `whenDestroyed`: what appears where an objective stood when it is destroyed, by objective
   (`{"1": {"name": "living-corpse", "player2": "normal", …}}`): a Living Corpse from each grave.
+- `indestructible`: obstacles no ability destroys — `subTypes` (the map data's overlay sub-types:
+  `"dark-pit"`, `"wall-section"`, `"boulder-3"`) or every obstacle of some `tiles` (#52's centre
+  room). An obstacle that is an objective (a totem, an altar) is never destroyed by an ability.
+- `resetOnLoss`: numbered treasure handed back when the scenario is lost — its items leave the
+  looter and the tile can be looted again (#82's chest).
+- `passiveTurns`: escorts that do nothing but still take a turn at their initiative, in which
+  their conditions act — Wound hurts (#27's Hail, at 99).
 - `goal`: the scenario's goal and losses as the book prints them (`ScenarioPlacements.Goal`).
   Everything under "to win" must hold at once; any loss loses.
   - `text` — the goal in the book's words, for the scenario brief.
@@ -119,7 +135,11 @@ ends up on the board:
     `escape` (`{"marker": "a"}`, `{"tile": "b1a"}` or `{"start": true}`; `"leave": true` when
     characters leave one by one as rounds end), `occupy` (pressure plates by letter, with `more`
     by character count), `reach` (a character ends a turn on a letter, or beside it with
-    `"adjacent": true`), `either` (any one of several goals as well).
+    `"adjacent": true`; with `"enter": true` entering the hex at any point of a move is enough),
+    `either` (any one of several goals as well; an alternative's `conclusion` — `"82-A"` — is the
+    conclusion section read when the scenario is won that way, whose rewards are applied).
+    An escape where all must stand on the exit at once is also complete when every character
+    was exhausted while standing on an exit hex (with the rest of the goal done).
   - lost: `lostAt` (objective → how many killed), `lostIfExhausted` (`"any"`, `"offExit"`,
     `"beforeLoot"`; `lostIfExhaustedOnceRevealed` delays it until a tile is revealed),
     `lostIfKilled` (monster types).
@@ -135,7 +155,9 @@ ends up on the board:
   - `afterRound` — the round has ended ("at the start of round 2" is `1`);
   - `looted` — that many goal treasure tiles looted; `eliteKills` — that many elites killed;
   - `held` — open only while a character stands on one of these plates; it shuts again when they
-    step off (whoever is in the doorway suffers trap damage and is put out of it);
+    step off (whoever is in the doorway is put out of it and suffers trap damage — a character
+    may lose cards to negate it, like any damage); with `"firstAtTurnEnd": true` it opens the
+    first time only as a turn ends on its plate (#66's door 1);
   - no key — only a scenario rule or a monster's ability opens it (#2, #79).
   `"unlocksOnly": true` leaves the door for a character to open; otherwise the key opens it and
   reveals the room. `note` is what the player is told when asking about the door.
@@ -178,10 +200,10 @@ its map, every door objective is on a door and every objective number exists.
 | 45 Rebel Swamp | 6 totems | — | win: destroy all | — |
 | 56 Bandit's Wood | 3 captive Orchids | — | lost when all three die (scenario rule) | — |
 | 57 Investigation | — | a | win: kill the Infiltrator | he appears near other monsters, not where the guard fell |
-| 58 Bloody Shack | 4 bone piles | — | win: kill the Harvester | the bone piles' Shield and healing aren't modelled |
+| 58 Bloody Shack | 4 bone piles | — | win: kill the Harvester | the Occult Dagger (who may loot it, its Pierce 4) isn't modelled |
 | 62 Pit of Souls | — | a, b, c | win: kill the Hungry Soul (appears at c after ten kills) | its extra Shield isn't modelled |
 | 68 Toxic Moor | the tree (sheltered) | — | lost if it is destroyed | a poisoned summon doesn't yet avoid water as it would a trap |
-| 69 Well of the Unfortunate | — | a–d | win: a character beside the well | the doll isn't carried |
+| 69 Well of the Unfortunate | — | a–d (traps appear at d when door 1 opens) | win: a character enters a hex beside the well | the doll isn't carried |
 | 70 Chained Isle | — | a, b | — | — |
 | 72 Oozing Grove | 3 trees | — (oozes rise beside their tree) | win: destroy all trees, kill all Oozes | — |
 | 74 Merchant Ship | — | a–e | — | water tiles aren't modelled |
@@ -189,7 +211,8 @@ its map, every door objective is on a door and every objective number exists.
 | 79 Lost Temple | Fish | a, b, c (pressure plates) | win: kill the Betrayer; lost if Fish is killed | the Betrayer's two specials (forced moves, mind control) aren't modelled |
 | 84 Crystalline Cave | the crystal | — | lost if it is destroyed | protected, no ally; losing a card to spare it isn't modelled |
 | 86 Harried Village | 11 villagers | b–f | win: 7 reach the docks; lost at 5 killed | — |
-| 90 Demonic Rift | — | b, c (the Living Spirits, once every demon is dead) | win: every Living Spirit killed | the altar crossing and the losses for leaving a room aren't modelled |
+| 90 Demonic Rift | — | b, c (the Living Spirits, once every demon is dead; a Night Demon at b as an even round ends with no one in the right-hand room) | win: every Living Spirit killed | the altar crossing and the losses for leaving a room aren't modelled |
+| 92 Back Alley Brawl | — | a, b, c (where the City Archer and the two City Guards are set up; not the book's letters) | win: every non-city enemy killed; lost if a guard or the archer is killed | — |
 
 ### Locked doors written
 
@@ -200,7 +223,7 @@ its map, every door objective is on a door and every objective number exists.
 | 33 Savvas Armory | door 1 | every character on a plate (c) |
 | 41 Timeworn Tomb | door 2 | plate (b) unlocks it (and wakes the room's golems and artilleries) |
 | 53 Crypt Basement | all six | as rounds 2, 4, 6 and 8 begin |
-| 66 Clockwork Cove | doors 1, f, g, h; the two side rooms | held open by plates a–d; plate (d) |
+| 66 Clockwork Cove | doors 1, f, g, h; the two side rooms | door 1 opens the first time as a turn ends on plate (a); then all four are held open by plates a–d; plate (d) |
 | 67 Arcane Library | door 2 | held open by a plate (a) |
 | 69 Well of the Unfortunate | door 1 | plate (b) |
 | 71 Windswept Highlands | doors b, c, d | the first, second and third treasure tile looted |
@@ -210,11 +233,13 @@ its map, every door objective is on a door and every objective number exists.
 | 84 Crystalline Cave | the three cave walls | as rounds 4, 6 and 9 begin |
 
 Not locked yet: #95's door 1 (its key is the six numbered tokens, which aren't modelled).
-In #66 door 1 opens as a character steps onto plate (a) rather than as their turn ends, and
-trap damage from a closing door can't be negated by losing cards.
 
 Letters written only for a rule: #41 c–g (where the middle room's artilleries and golems are
-set up; not the book's letters), #83 the altar (a).
+set up; not the book's letters), #83 the altar (a), #92 a–c (the city's men; not the book's letters).
+
+Not placed yet: #35's four City Archers of the first room stand on the battlements (a) and (b),
+which are hexes of the I and B tiles — tiles the game reveals only when the gate falls. Until a
+tile can be laid out without its room being revealed they are set up beside the party instead.
 
 Letters written only for a goal: #23 and #40 pressure plates; #25, #37, #41 and #71 exits; #66
 plates a–e; #82 the altar hex g; #88 the crystal.
@@ -361,7 +386,7 @@ goals are checked; the notes say what around a goal is still missing.
 | 66 | Clockwork Cove | Occupy pressure plate (e) — a character occupies it at the end of their turn. | yes | — | — |
 | 67 | Arcane Library | Kill the Arcane Golem. | yes — the Stone Golem in the library | — | — |
 | 68 | Toxic Moor | Kill all enemies and protect the tree (a). | yes | The tree is destroyed. | yes |
-| 69 | Well of the Unfortunate | Bring the doll to the well (a) — complete when the doll is brought to a hex adjacent to the well. | approximately — any character ending a turn beside the well (the doll isn't carried) | — | — |
+| 69 | Well of the Unfortunate | Bring the doll to the well (a) — complete when the doll is brought to a hex adjacent to the well. | approximately — any character entering a hex beside the well (the doll isn't carried) | — | — |
 | 70 | Chained Isle | Kill all demons. | yes | — | — |
 | 71 | Windswept Highlands | Loot all treasure tiles, then all characters must escape through the exit (a). | yes | Any character becomes exhausted while not occupying an exit hex (a). | yes |
 | 72 | Oozing Grove | Destroy all trees and kill all Oozes. | yes | — | — |
@@ -374,7 +399,7 @@ goals are checked; the notes say what around a goal is still missing.
 | 79 | Lost Temple | Kill the Betrayer. | yes | Fish is killed. | yes |
 | 80 | Vigil Keep | Every character must loot one treasure tile, and then all characters must reach the B tile (escape). | yes | Any character becomes exhausted while not occupying the B tile. | yes |
 | 81 | Temple of the Eclipse | Kill the Colorless. | yes | — | — |
-| 82 | Burning Mountain | Sacrifice one artifact, or escape with all artifacts. | approximately — with the treasure looted, a character on the altar hex or everyone at the entrance (no artifact is removed) | — | — |
+| 82 | Burning Mountain | Sacrifice one artifact, or escape with all artifacts. | approximately — with the treasure looted, a character on the altar hex (Conclusion A's rewards) or everyone at the entrance (Conclusion B's); no artifact is removed, and who holds them isn't tracked. Lost, the chest is handed back | — | — |
 | 83 | Shadows Within | Kill all enemies. | yes | — | — |
 | 84 | Crystalline Cave | Kill all enemies and protect the crystal (a). | yes | The crystal is destroyed. | yes |
 | 85 | Sun Temple | Kill all enemies. | yes | — | — |
@@ -395,9 +420,11 @@ Noted while reading; the notes record what is printed and don't resolve these:
 
 - **#12** — the "1" is printed on the door from the start room, but its section text reads as if
   it were about reaching Jekserah at the far end.
-- **#21** — the rules call the altar "a", the map draws it on hex f.
+- **#21** — the rules call the altar "a", the map draws it on hex f. (The FAQ settles it: f, and
+  it reorders which demon belongs to which letter — see the notes.)
 - **#34, #48, #51** — only Boss Special 2 is printed.
 - **#81** — no heal amount is printed for Boss Special 2, and it isn't said whether treasure tile
   68 counts as the first or second tile looted.
-- **#83** — it isn't said whether Section 2's damage replaces Section 1's altar damage.
+- **#83** — it isn't said whether Section 2's damage replaces Section 1's altar damage. (The FAQ
+  settles it: Section 2's rules replace Section 1's, and that is what the game does.)
 - **#87** — the map doesn't show which half of the main room is L2a and which L3b.

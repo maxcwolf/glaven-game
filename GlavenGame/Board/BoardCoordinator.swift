@@ -1006,6 +1006,7 @@ final class BoardCoordinator {
             self?.spawnFromScenarioRule(name: name, type: type, marker: marker, health: health, placed: placed) ?? false
         }
         gameManager?.scenarioRulesManager.boardFactHolds = { [weak self] fact in self?.boardFactHolds(fact) ?? false }
+        attachScenarioEffects()
         gameManager?.scenarioRulesManager.standsWhere = { [weak self] entity, identifier in
             self?.stands(entity, where: identifier) ?? false
         }
@@ -1523,6 +1524,7 @@ final class BoardCoordinator {
                     }
                 }
             } else {
+                takePassiveTurn(of: container)
                 advanceToNextFigure()
             }
         }
@@ -1580,14 +1582,28 @@ final class BoardCoordinator {
     private func deferWoundDamage(of entity: any Entity) -> Bool {
         // A resting character too: the wound's damage comes first and can be negated like any
         // other; the rest's heal, which removes the wound, follows it (FAQ).
-        guard let character = entity as? GameCharacter, isOnBoard(.character(character.id)) else { return false }
+        guard let character = entity as? GameCharacter else {
+            // What the scenario says can't be damaged in any way isn't hurt by a wound either
+            // (#70's Living Spirits).
+            return boardState.piecePositions.keys.contains { self.entity(for: $0) === entity && isUndamageable($0) }
+        }
+        guard isOnBoard(.character(character.id)) else { return false }
         woundDue.insert(character.id)
         return true
     }
 
-    private func continueCharacterTurn(_ character: GameCharacter, entry: TurnOrderEntry) {
+    private func continueCharacterTurn(_ character: GameCharacter, entry: TurnOrderEntry, rulesApplied: Bool = false) {
         guard let gameManager = gameManager else { return }
-        gameManager.scenarioRulesManager.evaluateTurnRules(.turnStart, for: character)
+        if !rulesApplied {
+            gameManager.scenarioRulesManager.evaluateTurnRules(.turnStart, for: character)
+            // Damage a rule deals as a turn starts (a vocal chord, an altar) is suffered now,
+            // before the turn is played — not when it is over.
+            if !ruleDamageDue.isEmpty {
+                interactionMode = .idle
+                afterRuleDamage { [weak self] in self?.continueCharacterTurn(character, entry: entry, rulesApplied: true) }
+                return
+            }
+        }
         sweepDeadFigures()
         if scenarioResult != nil { return }
         guard !character.exhausted, isOnBoard(.character(character.id)) else {
@@ -1860,6 +1876,8 @@ final class BoardCoordinator {
             return
         }
 
+        // What the scenario does to every Move ability (Plane of Water: −1).
+        let moveRange = max(0, moveRange + scenarioMoveBonus(of: pieceID))
         let (enemies, allies) = movementSets(for: pieceID)
         let reachable = Pathfinder.reachableHexes(
             board: boardState, from: pos, range: moveRange, mode: mode,
@@ -2362,7 +2380,8 @@ final class BoardCoordinator {
         }
         func open(_ hex: HexCoord) -> Bool {
             guard let cell = boardState.cells[hex], cell.overlay != .wall, !boardState.isClosedDoor(hex) else { return false }
-            return cell.passable || (cell.overlay == .obstacle && (flying || intoObstacles))
+            // (An obstacle the scenario says can't be destroyed stops Heaving Swing too.)
+            return cell.passable || (cell.overlay == .obstacle && (flying || (intoObstacles && isDestructibleObstacle(hex))))
         }
         func canStop(_ hex: HexCoord) -> Bool {
             open(hex) && (boardState.piece(at: hex) == nil || boardState.piece(at: hex) == target)

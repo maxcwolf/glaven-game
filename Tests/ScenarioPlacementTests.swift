@@ -173,7 +173,7 @@ final class ScenarioPlacementTests: XCTestCase {
             for effect in placements.effects ?? [] {
                 XCTAssertTrue(["monsters", "party"].contains(effect.on) || monsters.contains(effect.on), "\(index): no \(effect.on)")
                 XCTAssertTrue(effect.attack != nil || effect.advantage != nil || effect.disadvantage != nil || effect.shield != nil
-                              || effect.noItems != nil, "\(index): an effect that does nothing")
+                              || effect.noItems != nil || effect.move != nil, "\(index): an effect that does nothing")
                 if effect.untilLooted == true { XCTAssertEqual(placements.goal?.loot, "each", "\(index): no treasure for each to loot") }
                 for objective in [effect.whileStanding, effect.per?.objective].compactMap({ $0 }) {
                     XCTAssertTrue((1...(data.objectives?.count ?? 0)).contains(objective), "\(index): no objective \(objective)")
@@ -187,9 +187,31 @@ final class ScenarioPlacementTests: XCTestCase {
                     XCTAssertEqual(effect.per?.tokens != nil, effect.per?.lostWith != nil, "\(index): tokens are lost with something")
                 }
             }
+            // What can't be destroyed is on the map; a conclusion is a section; a treasure handed
+            // back is one of the scenario's; a passive escort is one of its objectives.
+            if let barred = placements.indestructible {
+                let found = Set(BoardBuilder.findPlacements(in: map.mapTileData)
+                    .flatMap { $0.tile.overlays.filter { $0.ref.type == "obstacle" }.compactMap(\.ref.subType) })
+                XCTAssertFalse((barred.subTypes ?? []).isEmpty && (barred.tiles ?? []).isEmpty, "\(index): nothing indestructible")
+                for subType in barred.subTypes ?? [] { XCTAssertTrue(found.contains(subType), "\(index): no \(subType) obstacle") }
+                for tile in barred.tiles ?? [] { XCTAssertTrue(tiles.contains(tile), "\(index): no tile \(tile)") }
+            }
+            for conclusion in (placements.goal?.either ?? []).compactMap(\.conclusion) + [placements.goal?.conclusion].compactMap({ $0 }) {
+                let section = gm.editionStore.sectionData(index: conclusion, edition: "gh")
+                XCTAssertEqual(section?.isConclusion, true, "\(index): no conclusion \(conclusion)")
+            }
+            for id in placements.resetOnLoss ?? [] { XCTAssertTrue(treasure.contains(id), "\(index): no treasure \(id)") }
+            for objective in placements.passiveTurns ?? [] {
+                XCTAssertEqual(data.objectives?.indices.contains(objective - 1), true, "\(index): no objective \(objective)")
+                XCTAssertEqual(data.objectives?[objective - 1].escort, true, "\(index): objective \(objective) takes no turn")
+            }
             for rule in rules {
                 checked += 1
+                for letter in rule.traps ?? [] { XCTAssertTrue(letters.contains(letter), "\(index): no hex lettered \(letter)") }
                 for spawn in rule.spawns ?? [] {
+                    if let count = spawn.count, case .string(let text) = count {
+                        XCTAssertNotNil(ScenarioExpression.integerValue(text, variables: ["C": 2, "L": 1, "R": 1, "F": 1, "N": 1]), "\(index): \(text)")
+                    }
                     XCTAssertTrue(monsters.contains(MonsterNameSpec(spawn.monster.name).name), "\(index): no monster \(spawn.monster.name)")
                     // A letter on the map, or one a monster of the scenario carries (it appears where that one fell).
                     let carried = Set((data.rooms ?? []).flatMap { ($0.monster ?? []).compactMap(\.marker) })
@@ -206,7 +228,14 @@ final class ScenarioPlacementTests: XCTestCase {
                 }
                 for fact in rule.when ?? [] {
                     XCTAssertTrue(fact.saved != nil || fact.lock != nil || fact.looted != nil || fact.unrevealed != nil
-                                  || fact.occupied != nil, "\(index): an empty fact")
+                                  || fact.occupied != nil || fact.partyAchievement != nil || fact.noCharacterOn != nil,
+                                  "\(index): an empty fact")
+                    for tile in fact.noCharacterOn ?? [] { XCTAssertTrue(tiles.contains(tile), "\(index): no tile \(tile)") }
+                    if let achievement = fact.partyAchievement {
+                        XCTAssertNotNil(gm.editionStore.resolveLabel(key: "partyAchievements.\(achievement)", edition: "gh")
+                                        ?? gm.editionStore.resolveLabel(key: "data.partyAchievements.\(achievement)", edition: "gh"),
+                                        "\(index): no party achievement \(achievement)")
+                    }
                     for letter in fact.occupied.map({ $0.markers + ($0.more ?? [:]).values.flatMap { $0 } }) ?? [] {
                         XCTAssertTrue(letters.contains(letter), "\(index): no plate \(letter)")
                     }

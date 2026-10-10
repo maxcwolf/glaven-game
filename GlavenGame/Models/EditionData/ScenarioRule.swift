@@ -64,6 +64,9 @@ struct ScenarioRule: Codable, Hashable {
     /// Monster types the placements hold back (`later`) that are set up now, where the map
     /// prints them.
     var setUp: [String]?
+    /// Letters whose hexes get a damage trap when the rule applies; a figure on foot standing
+    /// on one springs it at once (placements' rules only).
+    var traps: [String]?
 
     var isAlways: Bool { always ?? false }
     var isOnce: Bool { once ?? false }
@@ -74,7 +77,7 @@ struct ScenarioRule: Codable, Hashable {
         case requiredRooms, requiredRules, disablingRules, requiredScenarios
         case note, noteTop, rooms, sections, figures, spawns, objectiveSpawns
         case elements, elementTrigger, treasures, disableRules, randomDungeon
-        case statEffects, finish, when, setUp
+        case statEffects, finish, when, setUp, traps
     }
 
     init(from decoder: Decoder) throws {
@@ -101,6 +104,7 @@ struct ScenarioRule: Codable, Hashable {
         finish = try c.decodeIfPresent(String.self, forKey: .finish)
         when = try c.decodeIfPresent([BoardFact].self, forKey: .when)
         setUp = try c.decodeIfPresent([String].self, forKey: .setUp)
+        traps = try c.decodeIfPresent([String].self, forKey: .traps)
         // Bool fields that can appear as strings "true"/"false" in JSON
         start = Self.decodeBool(c, key: .start)
         always = Self.decodeBool(c, key: .always)
@@ -130,6 +134,10 @@ struct BoardFact: Codable, Hashable {
     var unrevealed: Int?
     /// Every pressure plate in play (by the number of characters) has a figure standing on it.
     var occupied: ScenarioPlacements.Plates?
+    /// The party has this party achievement ("Sun-Blessed").
+    var partyAchievement: String?
+    /// No character stands on any of these map tiles (the right-hand room of Demonic Rift).
+    var noCharacterOn: [String]?
 }
 
 // MARK: - Rule Identifier
@@ -148,6 +156,9 @@ struct ScenarioFigureRule: Codable, Hashable {
     var type: String?               // "amAdd", "present", "dead", "damage", "heal", "setHp", "remove", etc.
     var value: IntOrString?
     var scenarioEffect: Bool?
+    /// The effect happens this many times, each on its own (placements' rules only): one heal
+    /// for every bone pile ("F"), of which Poison stops only the first.
+    var times: IntOrString?
 }
 
 struct ScenarioFigureRuleIdentifier: Codable, Hashable {

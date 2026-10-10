@@ -89,7 +89,8 @@ extension BoardCoordinator {
                 locked.insert(door.coord)
                 let held = plateHexes(letters).contains(where: standing.contains)
                 if held, !door.isOpen {
-                    opening.append(door.coord)
+                    // Clockwork Cove's first door opens the first time only as a turn ends on its plate.
+                    if lock.firstAtTurnEnd != true || turnEnded { opening.append(door.coord) }
                 } else if held, boardState.shutDoors.contains(door.coord) {
                     boardState.shutDoors.remove(door.coord)
                     log("A door opens", category: .door)
@@ -116,14 +117,21 @@ extension BoardCoordinator {
     }
 
     /// A held door closes: whoever stands in the doorway suffers trap damage and is moved to the
-    /// nearest empty hex. The room behind stays revealed.
+    /// nearest empty hex. The room behind stays revealed. A character's damage is taken like
+    /// any other a scenario deals (`ruleDamageDue`), so cards may be lost to negate it (p.22).
     private func shutDoor(at hex: HexCoord) {
         boardState.shutDoors.insert(hex)
         log("A door closes", category: .door)
         for piece in boardState.pieces(at: hex).sorted() {
             let damage = gameManager?.levelManager.trap() ?? 2
-            log("\(name(piece)) is caught in the doorway and suffers \(damage) damage", category: .damage)
-            guard !sufferDamage(damage, to: piece), let free = nearestEmptyHex(to: hex) else { continue }
+            if case .character(let id) = piece {
+                log("\(name(piece)) is caught in the doorway", category: .damage)
+                ruleDamageDue.append((id, damage))
+            } else {
+                log("\(name(piece)) is caught in the doorway and suffers \(damage) damage", category: .damage)
+                guard !sufferDamage(damage, to: piece) else { continue }
+            }
+            guard let free = nearestEmptyHex(to: hex) else { continue }
             boardState.removePiece(piece)
             boardState.placePiece(piece, at: free)
             boardScene?.finishMove(id: piece, at: free, offsetCol: offsetCol, offsetRow: offsetRow)

@@ -241,6 +241,13 @@ final class ScenarioLockTests: XCTestCase {
         XCTAssertTrue(coord.boardState.isClosedDoor(door.coord), "shut again")
         XCTAssertTrue(coord.boardState.isLockedDoor(door.coord))
         XCTAssertTrue(revealed(sim, "m1a"), "the room stays revealed")
+        // Caught in the doorway: trap damage, taken like any the scenario deals (it can be
+        // negated by losing cards — ScenarioReauditTests.testDamageFromAClosingDoorCanBeNegated).
+        XCTAssertEqual(coord.ruleDamageDue.map(\.characterID), [spellweaver.id])
+        XCTAssertEqual(coord.ruleDamageDue.first?.amount, sim.gm.levelManager.trap())
+        let taken = expectation(description: "the doorway's damage")
+        coord.afterRuleDamage { taken.fulfill() }
+        await fulfillment(of: [taken], timeout: 5)
         XCTAssertEqual(spellweaver.health, health - sim.gm.levelManager.trap(), "caught in the doorway")
         XCTAssertNotEqual(coord.boardState.piecePositions[character(sim, 1)], door.coord)
         XCTAssertNil(way(sim, 0, to: door.coord), "and no way through while it is shut")

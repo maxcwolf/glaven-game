@@ -7,6 +7,9 @@ final class ScenarioManager {
     private let monsterManager: MonsterManager
     private let levelManager: LevelManager
     var onBeforeMutate: (() -> Void)?
+    /// Called as a scenario finishes (won or lost, abandoned too), before its rewards: the board
+    /// settles what the way it ended changes — a conclusion section's rewards, a chest handed back.
+    var onFinishing: ((_ success: Bool) -> Void)?
     var scenarioStatsManager: ScenarioStatsManager?
 
     init(game: GameState, editionStore: EditionDataStore,
@@ -95,6 +98,7 @@ final class ScenarioManager {
         // Experience gained in the scenario itself, before the success bonus (for battle goals).
         let xpGained = scenarioXPGained()
         recordCampaign(success: success, data: data)
+        onFinishing?(success)
 
         if success {
             // Record completion

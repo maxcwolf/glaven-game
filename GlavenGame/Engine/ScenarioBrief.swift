@@ -45,7 +45,9 @@ struct ScenarioBrief: Equatable {
             title: "#\(scenario.index) \(name)",
             goal: written?.text ?? goal(rules.filter { $0.finish == "won" }, edition: scenario.edition, labels: labels),
             defeat: ["Every character is exhausted."] + losses + exhaustion + killed + stands
-                + rules.filter { $0.finish == "lost" }.map { lossText($0, labels: labels, edition: scenario.edition) },
+                + rules.filter { $0.finish == "lost" }.map {
+                    lossText($0, labels: labels, edition: scenario.edition, objectives: scenario.objectives ?? [])
+                },
             rules: specialRules(scenario, labels: labels),
             monsters: monsterKeys(scenario.monsters ?? []),
             map: mapLine(scenario.rooms ?? []),
@@ -123,11 +125,17 @@ struct ScenarioBrief: Equatable {
         return "Complete the scenario's goal."
     }
 
-    private static func lossText(_ rule: ScenarioRule, labels: EditionDataStore?, edition: String) -> String {
+    private static func lossText(_ rule: ScenarioRule, labels: EditionDataStore?, edition: String,
+                                 objectives: [ObjectiveData] = []) -> String {
         if let note = text(rule.note, labels: labels, edition: edition) { return note }
         if let figure = rule.figures?.first, let who = figure.identifier, who.type == "objective",
            let name = who.name, figure.type == "dead" {
-            return "\(name) is destroyed."
+            // "Dead" waits for every one of them: with three captives, all three must die.
+            let objective = objectives.first { $0.name == name }
+            let count = objectives.filter { $0.name == name }.reduce(0) { $0 + ($1.resolvedCount) }
+            let verb = objective?.isEscort == true ? "killed" : "destroyed"
+            if count > 1 { return "All \(count) \(plural(name, count)) are \(verb)." }
+            return "\(name) is \(verb)."
         }
         if let round = rule.round, let n = roundNumber(round) {
             return "Round \(n) ends before the goal is met."

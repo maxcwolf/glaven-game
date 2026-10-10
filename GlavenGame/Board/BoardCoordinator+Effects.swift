@@ -134,9 +134,65 @@ extension BoardCoordinator {
         removePieceFromBoard(gone)
     }
 
+    // MARK: - Traps that appear
+
+    /// Hand the board what scenario rules do to it besides spawning (called as it attaches).
+    func attachScenarioEffects() {
+        gameManager?.scenarioRulesManager.onPlaceTraps = { [weak self] letters in self?.placeScenarioTraps(at: letters) }
+        // However the scenario ends — won, lost or abandoned — the board has its say first.
+        gameManager?.scenarioManager.onFinishing = { [weak self] success in self?.settleScenarioEnd(victory: success) }
+    }
+
+    /// A rule puts damage traps on the hexes of some letters (Well of the Unfortunate, once its
+    /// door opens). A figure on foot standing on one springs it at once: the trap is gone and
+    /// the figure suffers its damage — a character as any damage a scenario deals, so cards may
+    /// be lost to negate it.
+    func placeScenarioTraps(at letters: [String]) {
+        guard let gameManager, !boardState.cells.isEmpty else { return }
+        let damage = gameManager.levelManager.trap()
+        for hex in letters.flatMap({ boardState.markerHexes[$0] ?? [] }).sorted() {
+            guard let cell = boardState.cells[hex], cell.overlay == nil else { continue }
+            if let piece = boardState.pieces(at: hex).sorted().first(where: { !flies($0) }) {
+                boardScene?.play(.trap)
+                log("A trap appears under \(name(piece)), who springs it", category: .damage)
+                if case .character(let id) = piece {
+                    ruleDamageDue.append((id, damage))
+                } else {
+                    log("\(name(piece)) suffers \(damage) damage", category: .damage)
+                    sufferDamage(damage, to: piece)
+                }
+                continue
+            }
+            boardState.placeTrap(at: hex, damage: damage)
+            boardScene?.addOverlaySprite(imageName: PlacedToken.trap(damage: damage, subType: nil, experience: 0).imageName,
+                                         at: hex, offsetCol: offsetCol, offsetRow: offsetRow)
+            log("A trap appears", category: .info, trace: "at \(hex)")
+        }
+    }
+
+    // MARK: - Obstacles that can't be destroyed
+
+    /// Whether the obstacle on a hex is one an ability may destroy (Rock Tunnel, Stone Pummel,
+    /// Heaving Swing): not one the scenario says can't be (a dark pit, a wall section), and not
+    /// one that stands for an objective (a totem, an altar), which only falls as that objective.
+    func isDestructibleObstacle(_ hex: HexCoord) -> Bool {
+        guard let cell = boardState.cells[hex], cell.overlay == .obstacle else { return false }
+        if boardState.objectiveSites.values.contains(where: { $0.cells.contains(hex) })
+            || boardState.openObjectiveSlots.contains(where: { $0.cells.contains(hex) }) { return false }
+        guard let barred = scenarioData?.placements?.indestructible else { return true }
+        if let subType = cell.overlaySubType, barred.subTypes?.contains(subType) == true { return false }
+        if barred.tiles?.contains(cell.tileRef.lowercased()) == true { return false }
+        return true
+    }
+
     /// What the scenario adds to each of a figure's attacks.
     func scenarioAttackBonus(of pieceID: PieceID) -> Int {
         scenarioEffects(on: pieceID).reduce(0) { $0 + ($1.attack ?? 0) }
+    }
+
+    /// What the scenario adds to each of a figure's Move abilities (never below a Move of 0).
+    func scenarioMoveBonus(of pieceID: PieceID) -> Int {
+        scenarioEffects(on: pieceID).reduce(0) { $0 + ($1.move ?? 0) }
     }
 
     func scenarioGivesAdvantage(to pieceID: PieceID) -> Bool {

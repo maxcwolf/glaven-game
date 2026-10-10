@@ -151,6 +151,7 @@ extension BoardCoordinator {
         }
         // A door held open by a pressure plate opens or shuts as a character steps on or off.
         if case .character = pieceID { updateLocks() }
+        noteGoalHexesEntered(by: pieceID, along: path)
         await afterOwnMove(pieceID, path: path, style: style)
         return isOnBoard(pieceID)
     }
@@ -320,7 +321,7 @@ extension BoardCoordinator {
     func beginPlacingTokens(_ token: PlacedToken, count: Int, by pieceID: PieceID) -> Bool {
         guard count > 0, let position = boardState.piecePositions[pieceID] else { return false }
         let hexes = Set(position.neighbors.filter { hex in
-            token == .destroyObstacle ? boardState.cells[hex]?.overlay == .obstacle : isEmptyHex(hex)
+            token == .destroyObstacle ? isDestructibleObstacle(hex) : isEmptyHex(hex)
         })
         guard !hexes.isEmpty else {
             log(token == .destroyObstacle ? "\(name(pieceID)) has no obstacle beside them"

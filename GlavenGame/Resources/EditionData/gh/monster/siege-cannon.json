@@ -7,7 +7,11 @@
   "count": 1,
   "standeeShare": "ancient-artillery",
   "baseStat": {
-    "type": "boss"
+    "type": "boss",
+    "immunities": [
+      "pull",
+      "push"
+    ]
   },
   "stats": [
     {

@@ -142,7 +142,8 @@ final class ScenarioDataExpressionTests: XCTestCase {
                     for spawn in rule.spawns ?? [] {
                         if case .string(let s) = spawn.count {
                             checked += 1
-                            XCTAssertNotNil(ScenarioExpression.integerValue(s, variables: ["C": 2, "L": 1, "R": 1, "F": 1]),
+                            // (N: how many times the rule has applied — "every second spawn is elite".)
+                            XCTAssertNotNil(ScenarioExpression.integerValue(s, variables: ["C": 2, "L": 1, "R": 1, "F": 1, "N": 1]),
                                             "\(label): spawn count '\(s)' does not evaluate")
                         }
                     }

@@ -51,6 +51,8 @@ final class ScenarioRulesManager {
     /// Damage a rule deals a character, offered to the board (true: the board takes it, so the
     /// character may lose cards to negate it, p.22).
     var takesCharacterDamage: ((_ character: GameCharacter, _ amount: Int) -> Bool)?
+    /// Puts damage traps on the hexes of these letters (a rule's `traps`). Wired from the board.
+    var onPlaceTraps: (([String]) -> Void)?
 
     /// Re-entrancy guard: effects (e.g. `onOpenRooms`) may cause callers to request another
     /// evaluation while one is running; that request is folded into a follow-up pass.
@@ -175,6 +177,7 @@ final class ScenarioRulesManager {
             || !(rule.elements ?? []).isEmpty
             || !(rule.rooms ?? []).isEmpty
             || !(rule.setUp ?? []).isEmpty
+            || !(rule.traps ?? []).isEmpty
             || !(rule.disableRules ?? []).isEmpty
             || rule.finish != nil
         return !hasOtherEffects
@@ -300,6 +303,10 @@ final class ScenarioRulesManager {
 
         let edition = scenario.data.edition
         let playerCount = scenarioPlayerCount
+        // N in a count: how many times the rule has applied, this time included ("every second
+        // spawn is elite").
+        appliedTimes = rule.isOnce ? 1 : scenario.appliedRules.filter { $0.hasPrefix(ruleKey + "@r") }.count
+        defer { appliedTimes = nil }
 
         // Spawn monsters
         if let spawns = rule.spawns, !spawns.isEmpty {
@@ -344,6 +351,11 @@ final class ScenarioRulesManager {
         // Monsters held back until now are set up
         if let names = rule.setUp, !names.isEmpty {
             onSetUpMonsters?(names)
+        }
+
+        // Traps that appear
+        if let letters = rule.traps, !letters.isEmpty {
+            onPlaceTraps?(letters)
         }
 
         // Reveal rooms as an effect
@@ -391,10 +403,13 @@ final class ScenarioRulesManager {
     /// GHS entity-value formulas.
     /// F while a rule is being applied: how many figures its triggers count.
     @ObservationIgnored private var appliedFigureCount: Int?
+    /// N while a rule is being applied: how many times it has applied so far.
+    @ObservationIgnored private var appliedTimes: Int?
 
     private func valueVariables(figureCount: Int? = nil) -> [String: Int] {
         var variables = ["C": scenarioPlayerCount, "L": game.level, "R": game.round]
         if let figureCount = figureCount ?? appliedFigureCount { variables["F"] = figureCount }
+        if let appliedTimes { variables["N"] = appliedTimes }
         return variables
     }
 
@@ -540,13 +555,17 @@ final class ScenarioRulesManager {
         guard let identifier = figureRule.identifier else { return }
 
         let targets = findTargets(identifier: identifier)
+        // "For each bone pile": so many effects, each on its own.
+        let times = figureRule.times.map { min(max(integerValue($0, default: 1), 0), 20) } ?? 1
         for target in targets {
             // "Ignore negative scenario effects" perk.
             if figureRule.scenarioEffect == true, let character = target as? GameCharacter,
                character.hasCustomPerk("ignoreNegativeScenario") {
                 continue
             }
-            applyFigureEffect(ruleType, value: figureRule.value, to: target)
+            for _ in 0..<times {
+                applyFigureEffect(ruleType, value: figureRule.value, to: target)
+            }
         }
     }
 

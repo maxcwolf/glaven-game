@@ -89,6 +89,17 @@ final class BoardState {
     /// Characters (by id) who left the scenario through an exit.
     var escapedCharacters: [String] = []
 
+    /// Characters (by id) who were exhausted while standing on an exit hex: an escape is
+    /// complete without them.
+    var exhaustedOnExit: [String] = []
+
+    /// The conclusion section the scenario was won by, where its goal has more than one way
+    /// (`ScenarioPlacements.Goal.conclusion`).
+    var conclusion: String?
+
+    /// A character has entered the hex the goal asks someone to reach (`Reach.enter`).
+    var goalReached = false
+
     // MARK: - Derived
 
     /// Reverse lookup: which piece is at a given coordinate.

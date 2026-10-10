@@ -108,11 +108,12 @@ enum SummonAI {
         summon: GameSummon,
         ownerCharacterID: String,
         board: BoardState,
-        gameState: GameState
+        gameState: GameState,
+        moveBonus: Int = 0   // what a scenario adds to every Move (Plane of Water: −1)
     ) -> SummonTurnResult {
         let pieceID = PieceID.summon(id: summon.id)
         let attack = attackSpec(for: summon)
-        let plan = PlayerSideAI.plan(pieceID: pieceID, entity: summon, move: summon.movement, attack: attack,
+        let plan = PlayerSideAI.plan(pieceID: pieceID, entity: summon, move: max(0, summon.movement + moveBonus), attack: attack,
                                      flying: summon.flying, board: board, gameState: gameState)
         return SummonTurnResult(
             summonPieceID: pieceID,

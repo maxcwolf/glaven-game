@@ -65,6 +65,15 @@ struct ScenarioPlacements: Codable, Equatable {
     /// What appears where an objective stood when it is destroyed, by objective (1-based): a
     /// Living Corpse from each grave dug up.
     var whenDestroyed: [String: MonsterStandeeData]?
+    /// Obstacles no ability destroys (the dark pits, the battlements' wall sections).
+    var indestructible: Indestructible?
+    /// Numbered treasure whose reward is handed back when the scenario is lost, the tile being
+    /// reset for the next attempt (Burning Mountain's chest).
+    var resetOnLoss: [String]?
+    /// Escorts (1-based objectives) that do nothing but still take a turn at their initiative,
+    /// in which their conditions act: Wound hurts, and what lasts a turn runs out (Hail of
+    /// Ruinous Rift, at 99).
+    var passiveTurns: [Int]?
 
     /// What wins and loses a scenario. Everything set under "to win" must hold at once; any one
     /// of the losses loses. With nothing to win set, the goal is the default: every enemy dead
@@ -103,6 +112,9 @@ struct ScenarioPlacements: Codable, Equatable {
         var occupy: Plates?
         /// A hex some character must end a turn on or beside.
         var reach: Reach?
+        /// The conclusion section read when the scenario is won this way ("82-A"): its rewards
+        /// are applied with the scenario's own. Set on the alternatives of `either`.
+        var conclusion: String?
 
         // MARK: Lost
 
@@ -176,6 +188,9 @@ struct ScenarioPlacements: Codable, Equatable {
         var marker: String
         /// Whether ending a turn next to the lettered hex is enough (a well can't be stood on).
         var adjacent: Bool?
+        /// Entering such a hex is enough: the character needn't end the turn (or even the
+        /// move) there.
+        var enter: Bool?
     }
 
     /// A locked door (or the doors) between two tiles. Walking into it doesn't open it; one of
@@ -200,6 +215,9 @@ struct ScenarioPlacements: Codable, Equatable {
         var held: [String]?
         /// The key unlocks it rather than opening it: a character still has to walk in.
         var unlocksOnly: Bool?
+        /// A held door that opens for the first time only as a turn ends with a character on
+        /// its plate; once it has, it opens and shuts with the plates like any held door.
+        var firstAtTurnEnd: Bool?
     }
 
     struct Tile: Codable, Equatable {
@@ -279,6 +297,13 @@ extension ScenarioPlacements {
         }
     }
 
+    /// Obstacles that can't be destroyed: by overlay sub-type ("dark-pit", "wall-section") or
+    /// every obstacle of a map tile (Noxious Cellar's centre room).
+    struct Indestructible: Codable, Equatable {
+        var subTypes: [String]?
+        var tiles: [String]?
+    }
+
     /// For every death of one of `killed`, one of `removes` leaves the map (Chained Isle: a
     /// Living Spirit for every demon).
     struct Reprieve: Codable, Equatable {
@@ -302,6 +327,8 @@ extension ScenarioPlacements {
         var noItems: Bool?
         /// Added to each of their attacks.
         var attack: Int?
+        /// Added to each of their Move abilities (Plane of Water: −1).
+        var move: Int?
         var advantage: Bool?
         var disadvantage: Bool?
         /// Added to their Shield (which never falls below none): a number, or a formula over X

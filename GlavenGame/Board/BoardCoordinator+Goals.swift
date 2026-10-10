@@ -109,18 +109,39 @@ extension BoardCoordinator {
         }
     }
 
-    /// Whether everyone has left through the exit (which, with everyone gone, is a win).
+    /// Whether the escape is complete with no one left standing: everyone has left through the
+    /// exit, or — where all must be on the exit at once — every character was exhausted while
+    /// standing on an exit hex, with the rest of the goal done. An escape never undoes a loss
+    /// already incurred (a character exhausted where that loses the scenario).
     var everyoneEscaped: Bool {
-        // Someone exhausted on the way (where that doesn't lose the scenario) isn't waited for.
-        guard scenarioGoal?.escape?.leave == true, party.contains(where: { boardState.escapedCharacters.contains($0.id) })
-        else { return false }
-        return party.allSatisfy { boardState.escapedCharacters.contains($0.id) || $0.exhausted }
+        guard let goal = scenarioGoal, let exit = goal.escape, pendingResult != .defeat, !party.isEmpty else { return false }
+        if exit.leave == true {
+            // Someone exhausted on the way (where that didn't lose the scenario) isn't waited for.
+            return party.contains(where: { boardState.escapedCharacters.contains($0.id) })
+                && party.allSatisfy { boardState.escapedCharacters.contains($0.id) || $0.exhausted }
+        }
+        guard party.allSatisfy({ $0.exhausted && boardState.exhaustedOnExit.contains($0.id) }) else { return false }
+        var rest = goal
+        rest.escape = nil
+        return goalMet(rest)
     }
 
-    /// A character is exhausted at `hex`: the reason that loses the scenario, if it does.
+    /// A character is exhausted at `hex`: the reason that loses the scenario, if it does. One
+    /// exhausted on an exit hex is remembered, since an escape is complete without them.
     func exhaustionLoss(of character: GameCharacter, at hex: HexCoord?) -> String? {
-        guard let goal = scenarioGoal, let ways = goal.lostIfExhausted, !boardState.escapedCharacters.contains(character.id)
-        else { return nil }
+        guard let goal = scenarioGoal, !boardState.escapedCharacters.contains(character.id) else { return nil }
+        let onExit = goal.escape.map { exit in hex.map(exitHexes(exit).contains) ?? false } ?? false
+        guard let loss = exhaustionLoss(of: character, onExit: onExit, goal: goal) else {
+            if onExit, goal.escape?.leave != true, !boardState.exhaustedOnExit.contains(character.id) {
+                boardState.exhaustedOnExit.append(character.id)
+            }
+            return nil
+        }
+        return loss
+    }
+
+    private func exhaustionLoss(of character: GameCharacter, onExit: Bool, goal: ScenarioPlacements.Goal) -> String? {
+        guard let ways = goal.lostIfExhausted else { return nil }
         if let tile = goal.lostIfExhaustedOnceRevealed?.lowercased(),
            !boardState.visibleRooms.contains(where: { $0.lowercased() == tile }) { return nil }
         let who = characterName(character.id)
@@ -129,9 +150,8 @@ extension BoardCoordinator {
             let done = goal.loot == "each" ? boardState.goalLooters.contains(character.id) : goalTreasureIsLooted
             if !done { return "\(who) is exhausted before the treasure is looted." }
         }
-        if ways.contains("offExit"), let exit = goal.escape {
-            let onExit = hex.map(exitHexes(exit).contains) ?? false
-            if !onExit { return "\(who) is exhausted away from the exit." }
+        if ways.contains("offExit"), goal.escape != nil, !onExit {
+            return "\(who) is exhausted away from the exit."
         }
         return nil
     }
@@ -217,13 +237,22 @@ extension BoardCoordinator {
             else { return false }
         }
 
-        if let alternatives = goal.either {
-            guard alternatives.contains(where: { goalMet($0, turnEnded: turnEnded) }) else { return false }
+        let standing = party.filter { !$0.exhausted }.compactMap { boardState.piecePositions[.character($0.id)] }
+        // A hex it is enough to enter: someone has, or stands there as a turn ends.
+        var endsTurnAtReach = goal.reach
+        if let reach = goal.reach, reach.enter == true {
+            endsTurnAtReach = nil
+            guard boardState.goalReached || (turnEnded && standing.contains(where: { isAt(reach, $0) })) else { return false }
         }
 
-        guard goal.escape != nil || goal.occupy != nil || goal.reach != nil else { return true }
+        if let alternatives = goal.either {
+            guard let met = alternatives.first(where: { goalMet($0, turnEnded: turnEnded) }) else { return false }
+            // Which way it is won decides the conclusion that is read.
+            if boardState.conclusion != met.conclusion { boardState.conclusion = met.conclusion }
+        }
+
+        guard goal.escape != nil || goal.occupy != nil || endsTurnAtReach != nil else { return true }
         guard turnEnded else { return false }
-        let standing = party.filter { !$0.exhausted }.compactMap { boardState.piecePositions[.character($0.id)] }
         if let exit = goal.escape {
             if exit.leave == true {
                 guard everyoneEscaped else { return false }
@@ -236,13 +265,76 @@ extension BoardCoordinator {
             let hexes = platesInPlay(plates).flatMap(allHexes(lettered:))
             guard !hexes.isEmpty, hexes.allSatisfy(standing.contains) else { return false }
         }
-        if let reach = goal.reach {
-            let hexes = allHexes(lettered: reach.marker).filter { boardState.cells[$0] != nil }
-            guard standing.contains(where: { at in
-                hexes.contains(at) || (reach.adjacent == true && hexes.contains { $0.distance(to: at) == 1 })
-            }) else { return false }
+        if let reach = endsTurnAtReach {
+            guard standing.contains(where: { isAt(reach, $0) }) else { return false }
         }
         return true
+    }
+
+    /// Whether a hex is the one the goal asks someone to reach (or beside it, where that counts).
+    private func isAt(_ reach: ScenarioPlacements.Reach, _ at: HexCoord) -> Bool {
+        let hexes = allHexes(lettered: reach.marker).filter { boardState.cells[$0] != nil }
+        return hexes.contains(at) || (reach.adjacent == true && hexes.contains { $0.distance(to: at) == 1 })
+    }
+
+    /// A character has moved along `path`: where the goal is a hex it is enough to enter (beside
+    /// the well of the Unfortunate), entering it on the way counts.
+    func noteGoalHexesEntered(by pieceID: PieceID, along path: [HexCoord]) {
+        guard case .character = pieceID, let reach = scenarioGoal?.reach, reach.enter == true, !boardState.goalReached,
+              path.dropFirst().contains(where: { isAt(reach, $0) }) else { return }
+        boardState.goalReached = true
+        log("\(name(pieceID)) reaches the goal", category: .round)
+        checkVictoryDefeat()
+    }
+
+    /// The turn of an escort that does nothing (Hail of Ruinous Rift, at initiative 99): its
+    /// conditions still act as on any turn — Wound hurts, and what lasts a turn runs out.
+    func takePassiveTurn(of container: GameObjectiveContainer) {
+        guard let gameManager, let index = container.objectiveIndex,
+              scenarioData?.placements?.passiveTurns?.contains(index) == true else { return }
+        for entity in container.entities where !entity.dead && entity.health > 0 && !entity.off {
+            let piece = PieceID.objective(id: entity.number)
+            guard isOnBoard(piece) else { continue }
+            let before = entity.health
+            gameManager.entityManager.restoreConditions(entity)
+            gameManager.entityManager.applyConditionsTurn(entity)
+            if entity.health < before {
+                log("\(name(piece)) suffers \(before - entity.health) damage from a wound", category: .damage)
+            }
+            gameManager.entityManager.expireConditions(entity)
+            boardScene?.refreshStatus(of: piece)
+        }
+    }
+
+    // MARK: - As the scenario ends
+
+    /// What the way a scenario ended changes besides its printed rewards, as the result is
+    /// confirmed: won by one of several ways, that way's conclusion is read (its rewards apply);
+    /// lost, a treasure the book resets is handed back.
+    func settleScenarioEnd(victory: Bool) {
+        guard let gameManager, let scenario = gameManager.game.scenario else { return }
+        if victory {
+            if let conclusion = boardState.conclusion { gameManager.scenarioManager.addSection(conclusion) }
+            return
+        }
+        let edition = scenario.data.edition
+        for id in scenarioData?.placements?.resetOnLoss ?? [] {
+            // Only one really looted in this attempt: the tile is gone from the board, the
+            // campaign has it down as looted, and someone's tally for the scenario shows it.
+            guard let number = Int(id), let key = gameManager.scenarioManager.treasureKey(id),
+                  gameManager.game.lootedTreasures.contains(key), treasureIsLooted(id),
+                  let looter = party.first(where: { gameManager.scenarioStatsManager.stats(for: $0.name).treasuresLooted > 0 }),
+                  let reward = gameManager.editionStore.treasureReward(index: number, edition: edition) else { continue }
+            gameManager.game.lootedTreasures.remove(key)
+            for part in reward.split(separator: "|") where part.hasPrefix("item:") {
+                for item in part.dropFirst("item:".count).split(separator: "+").compactMap({ Int($0) }) {
+                    let itemKey = "\(edition)-\(item)"
+                    looter.items.removeAll { $0 == itemKey }
+                    looter.itemsLeftBehind.removeAll { $0 == itemKey }
+                }
+            }
+            log("Treasure \(id) is left behind: it can be looted again", category: .loot)
+        }
     }
 
     // MARK: - What rules ask of the board
@@ -263,6 +355,12 @@ extension BoardCoordinator {
             guard !hexes.isEmpty, hexes.allSatisfy(boardState.isOccupied) else { return false }
         }
         if let room = fact.unrevealed, gameManager?.game.scenario?.revealedRooms.contains(room) != false { return false }
+        if let achievement = fact.partyAchievement, gameManager?.game.partyAchievements.contains(achievement) != true { return false }
+        if let tiles = fact.noCharacterOn?.map({ $0.lowercased() }) {
+            let stoodOn = party.filter { !$0.exhausted }.compactMap { boardState.piecePositions[.character($0.id)] }
+                .compactMap { boardState.cells[$0]?.tileRef.lowercased() }
+            guard !stoodOn.contains(where: tiles.contains) else { return false }
+        }
         if let looted = fact.looted {
             if looted == Self.goalTreasureID {
                 guard treasureIsLooted(looted) else { return false }
