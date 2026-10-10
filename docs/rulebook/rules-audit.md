@@ -12,8 +12,9 @@ Each finding has an id, the rule it breaks, what the game did, and its state:
 - **open** — confirmed by reading the code, not yet corrected;
 - **question** — the rule itself needs a decision.
 
-Counts when the audit was written: about 120 findings; 26 fixed in the first batch (below), the
-rest open. Scenario-specific rules have their own table in
+About 125 findings. As of 2026-10-10 about 85 are fixed and 8 partly (five commits: the turn engine, trap
+legends, the campaign, scenario rules, monster turns) and the rest are open; the largest open ones
+are the walls beside doors (C2), doors ending a move (C3) and rooms with two doors (N1). Scenario-specific rules have their own table in
 [../scenario-book/rules-audit.md](../scenario-book/rules-audit.md); the scenario findings here are
 the ones the re-audit found wrong or newly missing.
 
@@ -54,7 +55,7 @@ the ones the re-audit found wrong or newly missing.
 | Id | Rule | What the game did | State |
 |---|---|---|---|
 | B2 | ELE-2: an element already strong or waning can be infused and consumed in the same turn, in either order, and ends strong (FAQ) | Infusing a waning element made it unconsumable that turn; infusing a strong one and then consuming it left it inert | fixed — `ElementRuleTests` |
-| T7 / B9 / D6 | ELE-4: a monster doesn't consume an element for an ability it doesn't perform (FAQ) | Every consume on the card is paid when the first monster of the type starts, even if none can perform the ability (seen: Night Demons, one disarmed and one dead of its wound, still consumed Dark). Savvas Icestorm's "Air: Push 4 instead" is paid and ignored | open |
+| T7 / B9 / D6 | ELE-4: a monster doesn't consume an element for an ability it doesn't perform (FAQ) | Every consume on the card is paid when the first monster of the type starts, even if none can perform the ability (seen: Night Demons, one disarmed and one dead of its wound, still consumed Dark). Savvas Icestorm's "Air: Push 4 instead" is paid and ignored | fixed — `MonsterTurnRulesTests` (`testADisarmedMonsterConsumesNothingForItsAttack`, `testTheFirstMonsterToAttackConsumesForThoseAfterIt`, `testAnIcestormsAirPushIsFourInstead`) |
 | B13 | ELE-2 | A "any element" consume picks the element itself; Crackling Air and Foul Wind consume Air without asking | open |
 
 ## Attacks, modifiers, line of sight
@@ -74,13 +75,13 @@ the ones the re-audit found wrong or newly missing.
 | A10 | ATK-10: the player places and may mirror an area | The game picks the placement covering most enemies; patterns are never mirrored (one chiral card, Scroll of Blizzards) | open |
 | A11 | RND-9 | A deck that runs out and reshuffles mid-round forgets the ×2 or Null drawn earlier, so it isn't reshuffled at the end of the round | open |
 | A12 | ATK-7 | "Further" and "closer" are plain distance, not counted around walls | open (low) |
-| T11 | — | The turn log doesn't say when an attack had Advantage or Disadvantage, so a transcript can't be checked for it | open |
+| T11 | — | The turn log doesn't say when an attack had Advantage or Disadvantage, so a transcript can't be checked for it | fixed — the log line reads "attacks … with advantage / with disadvantage" |
 
 ## Movement, traps, doors, loot
 
 | Id | Rule | What the game did | State |
 |---|---|---|---|
-| C1 | MOV-5: a trap does what the scenario's legend says | Effects come from the tile art in the map data (spike / bear / poison), always with 2+L damage. #2's two Stun traps deal damage and Immobilize; #31's Curse traps only damage; #44's Immobilize-and-Poison traps deal damage; about two thirds of the 75 scenarios with traps differ. A Stun trap should also end the move | open |
+| C1 | MOV-5: a trap does what the scenario's legend says | Effects come from the tile art in the map data (spike / bear / poison), always with 2+L damage. #2's two Stun traps deal damage and Immobilize; #31's Curse traps only damage; #44's Immobilize-and-Poison traps deal damage; about two thirds of the 75 scenarios with traps differ. A Stun trap should also end the move | fixed — `placements/gh-traps.json` holds all 75 legends; `TrapConditionTests` (traps sprung on the real boards of #1, #2, #15, #31, #44), `TrapLegendTests` |
 | C3 | MOV-8: a character who opens a door keeps the rest of the move | The move ends on the door hex (the room beyond doesn't exist until revealed, and the leftover movement isn't offered) | open |
 | — | MOV-8: a closed door is a wall to monsters | Parasitic Influence could walk an enemy onto a closed door without opening it (found by a playthrough once the fixes above changed its course) | fixed — `testAnEnemyMovedByACardCannotEnterAClosedDoor` |
 | C8 | ATK-11: allied monsters drop no money (FAQ) | They do (#11, #12, #35, #36, #91). Bosses drop none, which no rule says | open |
@@ -93,91 +94,105 @@ the ones the re-audit found wrong or newly missing.
 | Id | Rule | What the game did | State |
 |---|---|---|---|
 | T5 / E6 / C7 | SET-2: standees are placed at random | Always the lowest free number, elites first — so within a type the same monster always acted first | fixed — `SetupRulesTests` (and a reused standee no longer keeps a dead elite's mark) |
-| D1 | MON-8: an ability card's Shield and Retaliate start when the monster acts, and a stunned monster doesn't gain them (FAQ) | On for every monster of the type from the moment the card is drawn, stunned or not, and for monsters summoned that round | open |
-| D2 | MON-1 | Wind Demon card 648 never attacks (its attack is inside a group the executor doesn't open), though it consumes Air | open |
-| D3 | MON-9 | Heals that affect several figures heal one: Shaman/Necromancer "all adjacent allies", Captain of the Guard "self and all allies", Sun Demon with Light, Savvas Lavaflow with Earth | open |
-| D4 | MON-5: a disarmed monster moves as if for a melee attack (FAQ) | It still positions for its ranged attack | open |
-| D5 | MON-6: a muddled ranged monster doesn't step back from its focus (FAQ) | It does | open |
-| D7 | MON-8 | Savvas Icestorm's "Shield 1, self and all allies within Range 2" goes to every Icestorm anywhere and no one else | open |
-| D8 | MON-1 | Savvas Lavaflow's paid "Wound / Disarm all enemies" reaches adjacent enemies only | open |
-| D10 | RND-5: one ability deck per deck name — Bandit, City and Inox Guards share the Guard deck and act on one card | Each type draws from its own copy (#62, #67, #75, #78, #87, #88, #92) | open (rule to confirm against the rulebook) |
-| D11 | MON-6: among attack hexes, least Disadvantage on the additional targets | Not weighed | open |
-| D12 | MON-7 | "One adjacent enemy" abilities (Living Corpse's Muddle and Immobilize) take the first adjacent enemy, not the focus | open |
-| T8 | MON-1 | Night Demon's "All adjacent enemies and allies suffer 1 damage" hurts allies only (the code matches the words in the other order) | open |
-| S1-3 | MON-11 | The Captain of the Guard's "all allies +1 Attack this round" reaches monsters on the other side and gives the Captain himself +2 | open |
-| D13 | MON-2, MON-9 | Low: focus ties by plain distance; two characters on the same initiative aren't ordered by their second card; monster Loot ignores line of sight | open |
+| D1 | MON-8: an ability card's Shield and Retaliate start when the monster acts, and a stunned monster doesn't gain them (FAQ) | On for every monster of the type from the moment the card is drawn, stunned or not, and for monsters summoned that round | fixed — `testAGuardsCardShieldStartsWithItsTurnAndLastsTheRound`, `testAStunnedMonsterKeepsOnlyItsStatCardsShield`, `testAMonsterSummonedThisRoundHasNoCardShield` |
+| D2 | MON-1 | Wind Demon card 648 never attacks (its attack is inside a group the executor doesn't open), though it consumes Air | fixed — `testAWindDemonAttacksWithTheCardThatPrintsItsAttackInAGrid`; `MonsterDataTests.testEveryMonsterCardActionIsOneTheTurnPerforms` checks every card |
+| D3 | MON-9 | Heals that affect several figures heal one: Shaman/Necromancer "all adjacent allies", Captain of the Guard "self and all allies", Sun Demon with Light, Savvas Lavaflow with Earth | fixed — `testAShamansHealReachesEveryAdjacentAlly`, `testTheCaptainsHealReachesHimselfAndEveryAlly`, `testASunDemonsLightHealReachesEveryAllyInRange`, `testALavaflowsEarthHealReachesThree` |
+| D4 | MON-5: a disarmed monster moves as if for a melee attack (FAQ) | It still positions for its ranged attack | fixed — `testADisarmedArcherClosesInOnItsFocus`, `testADisarmedRangedSummonClosesInOnItsFocus` |
+| D5 | MON-6: a muddled ranged monster doesn't step back from its focus (FAQ) | It does | fixed — `testAMuddledArcherDoesNotStepAwayFromItsFocus` |
+| D7 | MON-8 | Savvas Icestorm's "Shield 1, self and all allies within Range 2" goes to every Icestorm anywhere and no one else | fixed — `testAnIcestormShieldsItselfAndTheAlliesWithinTwo` |
+| D8 | MON-1 | Savvas Lavaflow's paid "Wound / Disarm all enemies" reaches adjacent enemies only | fixed — `testALavaflowWoundsAndDisarmsEveryEnemy` |
+| D10 | RND-5: one ability deck per deck name — Bandit, City and Inox Guards share the Guard deck and act on one card | Each type draws from its own copy (#62, #67, #75, #78, #87, #88, #92) | fixed — `MonsterDeckRulesTests` (`testGuardsOfTwoTypesActOnOneCardEveryRound` and five more). Taken from the FAQ's entry on types sharing a deck and the single printed Guard deck |
+| D11 | MON-6: among attack hexes, least Disadvantage on the additional targets | Not weighed | fixed — `testAShamanAvoidsDisadvantageOnItsSecondTarget` |
+| D12 | MON-7 | "One adjacent enemy" abilities (Living Corpse's Muddle and Immobilize) take the first adjacent enemy, not the focus | fixed — `testALivingCorpseGrabsItsFocus` |
+| T8 | MON-1 | Night Demon's "All adjacent enemies and allies suffer 1 damage" hurts allies only (the code matches the words in the other order) | fixed — `testANightDemonHurtsEnemiesAndAlliesBesideIt`, `testPrintedDamageHurtsWhomTheWordsName` (every card text with "suffer") |
+| S1-3 | MON-11 | The Captain of the Guard's "all allies +1 Attack this round" reaches monsters on the other side and gives the Captain himself +2 | fixed — `testTheCaptainsOrderIsForHisAlliesOnly` |
+| D13 | MON-2, MON-9 | Low: focus ties by plain distance; two characters on the same initiative aren't ordered by their second card; monster Loot ignores line of sight | open (low): two characters on the same initiative aren't ordered by their second card; focus ties by plain distance |
 
 ## Setup, the round, resting, ending
 
 | Id | Rule | What the game did | State |
 |---|---|---|---|
-| E5 / B5 | RND-4: the long rest is a turn; its Wound damage comes first and can be negated; the Heal 2 is optional (FAQ) | A resting character's Wound damage couldn't be negated and could exhaust them before the heal; the heal was forced | fixed in code (tests being written) |
-| B6 | ACT-8: an item with uses left isn't spent, and a rest doesn't give its uses back (FAQ) | A long rest reset partly used items (Hide Armor) | fixed in code (test being written) |
-| B8 | TRN-7: items may be used on a long-rest turn (FAQ) | Not possible; "start/end of your next turns" bonuses (Lumbering Bash, Auto Turret) also do nothing on a rest turn | partly fixed (the turn exists; the rest panel doesn't offer items yet) |
-| E13 | — | A turn spent stunned or resting didn't count for pressure plates, turn-end rules or goals judged as a turn ends | fixed in code (test being written) |
-| E3 | RND-3: a short rest may be taken in the scenario's last round (FAQ) | Not offered once the scenario was decided (matters for battle goals); `testNoShortRestOnceTheScenarioIsDecided` asserts the old behaviour | fixed in code (test being corrected) |
-| E9 | RND-3: the 1 damage for losing a different card can be negated (FAQ) | It couldn't | fixed in code (test being written) |
-| E10 | RND-6: a long rest goes after a character on initiative 99 (FAQ) | Before | fixed in code (test being written) |
+| E5 / B5 | RND-4: the long rest is a turn; its Wound damage comes first and can be negated; the Heal 2 is optional (FAQ) | A resting character's Wound damage couldn't be negated and could exhaust them before the heal; the heal was forced | fixed — `RestRuleTests` (`testARestingCharactersWoundCanBeNegatedBeforeTheRestHeals`, `testTheRestsHealMayBeDeclined`, `testPoisonTakesTheRestsHeal`) |
+| B6 | ACT-8: an item with uses left isn't spent, and a rest doesn't give its uses back (FAQ) | A long rest reset partly used items (Hide Armor) | partly fixed — uses kept through a rest (`testALongRestLosesOneDiscardTakesBackTheRestHealsTwoAndRefreshesSpentItems`); a multi-use item is still offered each time rather than used whenever it applies |
+| B8 | TRN-7: items may be used on a long-rest turn (FAQ) | Not possible; "start/end of your next turns" bonuses (Lumbering Bash, Auto Turret) also do nothing on a rest turn | partly fixed — items are offered on the rest panel (`testItemsCanBeUsedOnALongRestTurnUnlessStunned`); "start/end of your next turns" bonus steps still do nothing on a rest turn |
+| E13 | — | A turn spent stunned or resting didn't count for pressure plates, turn-end rules or goals judged as a turn ends | fixed — `testARestTurnEndsWithLooting`; the stunned and resting turn ends share the normal one |
+| E3 | RND-3: a short rest may be taken in the scenario's last round (FAQ) | Not offered once the scenario was decided (matters for battle goals); `testNoShortRestOnceTheScenarioIsDecided` asserts the old behaviour | fixed — `testAShortRestIsOfferedInTheScenariosLastRound` |
+| E9 | RND-3: the 1 damage for losing a different card can be negated (FAQ) | It couldn't | fixed — `testTheRedrawsDamageCanBeNegated` |
+| E10 | RND-6: a long rest goes after a character on initiative 99 (FAQ) | Before | fixed — `testALongRestGoesAfterACharacterOnNinetyNine` |
 | E7 | SET-3: solo play is one level higher | Not applied; the setup also offers a "story" difficulty (−2) the rulebook doesn't have | open |
 | E12 / S1-5 | — | A character who escapes through the exit is recorded as exhausted (personal quests, Protector, Streamliner) | open |
 | B7 | CND-4: a stunned character uses no items | Defence items, Boots of Speed, Dampening Ring and Heart of the Betrayer are still offered | open |
-| B10 | TRN-7: items at any time in the turn | Not once both halves are done, before End Turn | open |
-| B12 | ATK-14: any damage may be negated by losing cards | Not for item costs, the Berserker's "suffer up to N", a printed "suffer damage" step, or a door shutting on a figure | open |
+| B10 | TRN-7: items at any time in the turn | Not once both halves are done, before End Turn | fixed — "turn" items stay usable until the turn is ended |
+| B12 | ATK-14: any damage may be negated by losing cards | Not for item costs, the Berserker's "suffer up to N", a printed "suffer damage" step, or a door shutting on a figure | partly fixed — the short-rest redraw and a closing door now offer the choice; item costs and the Berserker's "suffer up to N" still don't |
 | S-gen | — | "Start of round" scenario rules run after cards are chosen (#5's Disarm, #48's Muddle, #31/#39's elements) | open |
 
 ## Campaign and town
 
 | Id | Rule | What the game did | State |
 |---|---|---|---|
-| F1 | CMP-9 | #51 The Void can never be played: it needs "End of Corruption" three times, and the count is lost | open |
-| F2 | CMP-7 | The five personal-quest scenario chains (#52, #55, #57, #59, #61) never unlock; quest 510 would complete after #52 alone | open |
-| F3 | CMP-9 | A met requirement is treated as an unlock, so scenarios open early (#20 after #8, #28 after #6, #35/#36 after #10, and more) | open |
-| F4 | CMP-9 | #92 can never be played (achievement id misspelt); two more misspelt ids in #36 and #50 | open |
-| F5 | CMP-9 | Achievements of one type don't replace each other (City Rule, Artifact, The Drake); the starting City Rule: Militaristic is never set | open |
-| F6 | CMP-6 | Six enhancement prices are second-edition values (+1 Target, Jump, Immobilize, Curse, Strengthen, Bless); Regenerate is sold | open |
-| F7 | CMP-6 | The +75 for an earlier sticker counts the whole card, not the same action | open |
-| F8 | CMP-6 | Elements can't go on attack slots; Jump can never be bought; summon enhancements are missing | open |
-| F9 | CMP-6 | No limit on enhanced cards by prosperity | open |
-| F10 | CMP-6 | Enhancements belong to the character, not the class's cards | open |
-| F11 | CMP-7 | No extra perk after a retirement; an already-unlocked class gives nothing; the retiree's quest is dealt again | open |
-| F12 | CMP-2 | A sold unique item is gone for good; a duplicate from a treasure pays nothing | open |
-| F13 | CMP-8 | City event 15, option B does nothing | open |
-| F14 | END-4, CMP-4 | Losing checkmarks or prosperity can cross a perk or prosperity threshold | open |
-| F15 | CMP-3 | Two pending level-up choices can both take the top level | open |
-| F16 | MOV-10 | Treasure 49 (unlock #17) does nothing | open |
-| E4 / F17 | END-3 | Purist is judged from item state a long rest clears | open |
-| E8 / F23 | SET-6 | The "ignore negative item effects" perk also cancels Second Skin | open |
-| F18 | CMP-1 | Reputation milestones (+10, −10) unlock nothing | question |
+| F1 | CMP-9 | #51 The Void can never be played: it needs "End of Corruption" three times, and the count is lost | fixed — `CampaignRulesTests.testTheVoidOpensAfterThreeEndsOfCorruption` |
+| F2 | CMP-7 | The five personal-quest scenario chains (#52, #55, #57, #59, #61) never unlock; quest 510 would complete after #52 alone | fixed — `testAQuestUnlocksItsScenarioAndEndsWithTheChain`, `testEveryQuestChainEndsWhereTheStoryDoes` |
+| F3 | CMP-9 | A met requirement is treated as an unlock, so scenarios open early (#20 after #8, #28 after #6, #35/#36 after #10, and more) | fixed — `testPrerequisitesAloneOpenNothing`, `testWinningAPrerequisiteDoesntPutAScenarioOnTheMap` |
+| F4 | CMP-9 | #92 can never be played (achievement id misspelt); two more misspelt ids in #36 and #50 | fixed — `testEveryAchievementAScenarioNamesCanBeEarned`, `testRefusingTheDebtCollectorsOpensTheBackAlleyBrawl` |
+| F5 | CMP-9 | Achievements of one type don't replace each other (City Rule, Artifact, The Drake); the starting City Rule: Militaristic is never set | fixed — `testANewAchievementOfATypeReplacesTheOld` (City Rule and Artifact are the typed ones) |
+| F6 | CMP-6 | Six enhancement prices are second-edition values (+1 Target, Jump, Immobilize, Curse, Strengthen, Bless); Regenerate is sold | fixed — `EnhancementTests.testEveryPriceOnTheEnhancerChart` |
+| F7 | CMP-6 | The +75 for an earlier sticker counts the whole card, not the same action | fixed — `testEarlierEnhancementsCountOnTheSameActionOnly` |
+| F8 | CMP-6 | Elements can't go on attack slots; Jump can never be bought; summon enhancements are missing | partly fixed — elements on attack slots, Jump on every Move, a second condition on lines that reach everyone they name (`testJumpIsSoldOnEveryMoveAndNothingFromFrosthaven`, `testAConditionLineTakesAnotherCondition`); summon stat enhancements and single-target condition lines are still not sold |
+| F9 | CMP-6 | No limit on enhanced cards by prosperity | fixed — `testEnhancedCardsAreLimitedByProsperity` |
+| F10 | CMP-6 | Enhancements belong to the character, not the class's cards | fixed — `testANewCharacterOfTheClassKeepsItsEnhancements` |
+| F11 | CMP-7 | No extra perk after a retirement; an already-unlocked class gives nothing; the retiree's quest is dealt again | fixed — `testOnlyAFulfilledQuestRetires`, `testARetirementGivesTheNextCharacterAnExtraPerk`, `testAnAlreadyUnlockedClassBringsADesignAndAScenario`, `testARetiredCharactersQuestIsNeverDealtAgain` |
+| F12 | CMP-2 | A sold unique item is gone for good; a duplicate from a treasure pays nothing | fixed — `testAUniqueItemSoldBackIsInTheShop`, `testADuplicateTreasureItemPaysItsSalePrice` |
+| F13 | CMP-8 | City event 15, option B does nothing | fixed — `EventCardTests.testDisposingOfTheBodiesCostsGoldOrACheckmark` |
+| F14 | END-4, CMP-4 | Losing checkmarks or prosperity can cross a perk or prosperity threshold | fixed — `testLosingACheckmarkStopsAtAPerkEarned`, `testLosingProsperityStopsAtTheLevelReached` |
+| F15 | CMP-3 | Two pending level-up choices can both take the top level | fixed — `CardPoolTests.testAHigherLevelRecruitChoosesALevelAtATime` |
+| F16 | MOV-10 | Treasure 49 (unlock #17) does nothing | fixed — `testATreasureMapUnlocksItsScenario` |
+| E4 / F17 | END-3 | Purist is judged from item state a long rest clears | fixed — `BoardItemTests.testAnItemUsedBeforeALongRestStillBreaksPurist` |
+| E8 / F23 | SET-6 | The "ignore negative item effects" perk also cancels Second Skin | fixed — `AttackModifierRulesTests.testSecondSkinStillWorksWithThePerk` |
+| F18 | CMP-1 | Reputation milestones (+10, −10) unlock nothing | fixed — +10 and −10 open the Sunkeeper and the Nightshroud, ±20 add their events (rulebook p.49); `testReputationStopsAtTwentyAndBringsItsEvents` |
 | F19 | CMP-8 | The party always returns to town: a linked scenario or an immediate retry still draws a road event; the city event is forced | open |
 | F20 | CMP-8 | Collective results aren't the players' to split | open |
-| F21 | CMP-7 | Quest 514 counts the character's own exhaustion (FAQ: only others'); 519 counts checkmarks that aren't battle goals; 532 counts retirements before the character joined | open |
-| F22 | — | The character sheet lets checkmarks and perks be changed freely | open (low) |
+| F21 | CMP-7 | Quest 514 counts the character's own exhaustion (FAQ: only others'); 519 counts checkmarks that aren't battle goals; 532 counts retirements before the character joined | fixed — `testAStudyOfAnatomyCountsOnlyTheOthers`, `testBattleLegendCountsOnlyBattleGoals`, `testAHelpingHandCountsRetirementsWhileInTheParty` |
+| F22 | — | The character sheet lets checkmarks and perks be changed freely | fixed — checkmarks are display-only, a perk once taken stays, recruits are held to the prosperity level |
 
 ## Scenarios (found wrong by the re-audit)
 
 | Id | Scenario | What the game did | State |
 |---|---|---|---|
-| S1-1 | #41 | Can be won after a loss: an exhaustion after another character has left through the exit turns into a victory | open |
-| S1-2 | #2 | The treasure room and the room opposite have each other's monsters (room refs swapped in the data) — to verify against the book | open |
-| S1-4 | #42 | Chord 4's damage lands at the end of a character's turn, not the start | open |
-| S2-1 | #83 | The first set of special rules keeps firing after Section 2 replaces it | open |
-| S2-2 | #70 | Wound still damages the Living Spirits, which "cannot be damaged in any way" | open |
-| S2-3 | #58 | The bone piles heal the Harvester in one heal, so Poison cancels all of it (FAQ: each pile is its own heal) | open |
-| S2-4 | #81 | The Colorless's special 2 never gains its Shield 1 | open |
-| S2-5 | #92 | The city's men appear beside a bandit, not behind the party, and as spawned (no money) | open |
-| S2-6 | #82 | The chest's items are kept after a lost attempt; the conclusion's rewards are never applied | open |
-| S2-9 | #25, #33, #37, #60, #71 | The last character exhausted on an exit hex, with the others exhausted on exits, should win (FAQ); it is an all-exhausted defeat | open (low) |
-| — | #27 | Hail takes no turn, so her Wound never hurts her (FAQ: initiative 99) | open |
-| — | #34, #35, #36, #39, #51, #73 | Obstacles the scenario says can't be destroyed can be | open |
-| — | #35 | The City Archers are set up beside the party instead of on the battlements | open |
-| — | #49, #78 | Missing immunity to forced movement (Siege Cannon, Cultists (b)) | open |
-| — | #66, #69, #76, #85, #88, #90, #95 | Smaller printed rules not enforced (door 1's timing, entering a hex beside the well, discarding three cards, Sun-Blessed, −1 Move, the Night Demon, boulders with hit points) | open |
+| S1-1 | #41 | Can be won after a loss: an exhaustion after another character has left through the exit turns into a victory | fixed — `ScenarioReauditTests.testTheTombIsLostByExhaustionAfterAnotherHasLeft` |
+| S1-2 | #2 | The treasure room and the room opposite have each other's monsters (room refs swapped in the data) — to verify against the book | fixed (the scenario data was wrong; book p.4) — `testTheBarrowsSideRoomsHoldWhatTheBookPrints` |
+| S1-4 | #42 | Chord 4's damage lands at the end of a character's turn, not the start | fixed — `testTheFourthChordHurtsAsTheTurnStarts` |
+| S2-1 | #83 | The first set of special rules keeps firing after Section 2 replaces it | fixed — `testTheAltarsFirstRulesEndWithTheCultists` |
+| S2-2 | #70 | Wound still damages the Living Spirits, which "cannot be damaged in any way" | fixed — `testAWoundDoesNotHurtALivingSpirit` |
+| S2-3 | #58 | The bone piles heal the Harvester in one heal, so Poison cancels all of it (FAQ: each pile is its own heal) | fixed — `testEachBonePileHealsTheHarvesterOnItsOwn` |
+| S2-4 | #81 | The Colorless's special 2 never gains its Shield 1 | fixed — `testABossSpecialsShieldIsGainedWhenItIsPerformed` |
+| S2-5 | #92 | The city's men appear beside a bandit, not behind the party, and as spawned (no money) | fixed (book p.115) — `testTheCitysMenAreSetUpBehindTheParty` |
+| S2-6 | #82 | The chest's items are kept after a lost attempt; the conclusion's rewards are never applied | fixed — `testSacrificingOnTheMountainIsConclusionA`, `testEscapingTheMountainIsConclusionB`, `testTheMountainsChestIsResetOnALoss`. Who holds the artifacts still isn't tracked (holder exhausted should lose) |
+| S2-9 | #25, #33, #37, #60, #71 | The last character exhausted on an exit hex, with the others exhausted on exits, should win (FAQ); it is an all-exhausted defeat | fixed — `testAnEscapeIsCompleteWithEveryoneExhaustedOnTheExit` |
+| — | #27 | Hail takes no turn, so her Wound never hurts her (FAQ: initiative 99) | fixed — `testHailsWoundHurtsHerOnHerTurn` |
+| — | #34, #35, #36, #39, #51, #73 | Obstacles the scenario says can't be destroyed can be | fixed — `testWhatTheScenarioSaysCantBeDestroyedIsnt`, `testNoAbilityDestroysADarkPit` |
+| — | #35 | The City Archers are set up beside the party instead of on the battlements | open — their hexes are on tiles the game only lays out when the gate falls |
+| — | #49, #78 | Missing immunity to forced movement (Siege Cannon, Cultists (b)) | fixed — `testTheCarriersAndTheCannonCantBeForcedToMove` |
+| — | #66, #69, #76, #85, #88, #90, #95 | Smaller printed rules not enforced (door 1's timing, entering a hex beside the well, discarding three cards, Sun-Blessed, −1 Move, the Night Demon, boulders with hit points) | fixed for #66, #69, #85, #88, #90 (`ScenarioReauditTests`); open for #76 (discarding three cards) and #95 (boulders with hit points) |
 
 Larger mechanics still not built are listed in `TODO.md` ("Scenario special rules… not built").
+
+## Found while fixing
+
+| Id | Rule | What the game does | State |
+|---|---|---|---|
+| N1 | MOV-9 | A room with two doors can be revealed empty: the map data holds a copy of the tile for each door and only one copy has the overlays, monsters and onward doors. Entered by the other door, the room has no traps, treasure or monsters (#7's F1b from D2b; #53's J2a). Maps affected: #6, #7, #15, #21, #24, #32, #43, #53, #76, #78, #82, #84, #94 | open |
+| N2 | SET-1 | In nine rooms the map data's monster places disagree with the book (the scenario data, which decides who appears, is right): #3 B1a, #6 M1a, #10 L1b/L3a, #11 L2b, #12 H1b, #17 B4a, #26 C1a, #31 L2a, #44 M1b. A monster with no place of its own is put on a fallback hex | open |
+| N3 | CMP-9 | Nothing in the data unlocks #72, #73, #76 or #77 (pinned by `testEveryScenarioCanBeUnlocked`) | question |
+| N4 | CMP-6 | The FAQ's special cases for the doubled cost aren't followed (an element on a multi-target ability and a multi-figure summon are priced as single-target) | open |
+| N5 | — | "All allies in the same room as you suffer 2 damage" hurts adjacent allies only | open |
+| N6 | CMP-8 | Travelling on without returning to Gloomhaven, a linked scenario or a retry skipping the road event, and the city event being optional all need town-screen changes (F19) | open |
 
 ## Tests that don't prove what they say
 
 Found while auditing; each needs rewriting to go through the code real play uses, or deleting.
+The monster and campaign ones below were strengthened or corrected with their fixes (`RulebookTests`
+focus and movement tests, `E2EGameTests` 248–882, `EnhancementTests`, `TownTests`,
+`PersonalQuestAutotrackTests`, `TrapConditionTests`); the rest are still as described.
 
 - **Assert fields nothing reads:** `RulebookTests` lines 78–97 and 182–194, `E2EGameTests` 370 and
   388 check `AttackResult.retaliateDamage` / `appliedConditions`, which `performAttack` never uses.
