@@ -103,6 +103,21 @@ final class BoardOverlayTests: XCTestCase {
         XCTAssertEqual(BoardScene.overlayPieceName("obstacle-altar", index: 1), "obstacle-altar")
     }
 
+    /// The wall lines between tiles that touch beside a door are drawn, one bar for each.
+    func testWallLinesBetweenTilesAreDrawn() throws {
+        let coord = try boardWithAllRooms("1")
+        let scene = try XCTUnwrap(coord.boardScene)
+        XCTAssertEqual(coord.boardState.wallEdges.count, 2)
+        XCTAssertEqual(scene["//wall_*"].count, 2, "a bar either side of door 1")
+        for edge in coord.boardState.wallEdges {
+            let bar = try XCTUnwrap(scene["//wall_\(edge.a.col)_\(edge.a.row)_\(edge.b.col)_\(edge.b.row)"].first)
+            let (a, b) = (scene.sceneCenter(of: edge.a), scene.sceneCenter(of: edge.b))
+            let frame = bar.calculateAccumulatedFrame()
+            XCTAssertEqual(frame.midX, (a.x + b.x) / 2, accuracy: 1, "midway between the two hexes")
+            XCTAssertEqual(frame.midY, (a.y + b.y) / 2, accuracy: 1)
+        }
+    }
+
     /// Renders a scenario's whole map to a PNG for visual review:
     /// `BOARD_RENDER=32 BOARD_RENDER_OUT=/tmp/s32.png swift test --filter testRenderScenarioMap`
     func testRenderScenarioMap() throws {

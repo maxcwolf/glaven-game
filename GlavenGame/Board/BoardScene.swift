@@ -45,6 +45,7 @@ class BoardScene: SKScene {
     private(set) var drawnRooms: Set<String> = []
     /// The hexes whose overlays have been drawn.
     private var overlaysDrawn: Set<HexCoord> = []
+    private var wallLinesDrawn: Set<HexEdge> = []
     /// The HUD's panels over the board (view points, y down); the board is framed around them.
     private(set) var hudObstacles: [CGRect] = []
     private var hudReported = false
@@ -173,6 +174,7 @@ class BoardScene: SKScene {
         highlightNodes.removeAll()
         drawnRooms = []
         overlaysDrawn = []
+        wallLinesDrawn = []
         lockedHexes = []
         plateHexes = []
         self.storedAppearances = characterAppearances
@@ -225,6 +227,15 @@ class BoardScene: SKScene {
         }
         overlaysDrawn.formUnion(visibleCoords)
 
+        // The wall lines between tiles that touch beside a door: drawn, so it is plain why the
+        // figure across one can't be struck or walked to.
+        for edge in board.wallEdges.subtracting(wallLinesDrawn).sorted(by: { ($0.a, $0.b) < ($1.a, $1.b) }) {
+            let line = wallLineNode(between: edge.a, and: edge.b)
+            overlayLayer.addChild(line)
+            added.append(line)
+        }
+        wallLinesDrawn.formUnion(board.wallEdges)
+
         for (pieceID, coord) in board.piecePositions.sorted(by: { $0.key < $1.key }) where pieceNodes[pieceID] == nil {
             addPieceSprite(id: pieceID, at: coord, offsetCol: offsetCol, offsetRow: offsetRow)
             if let node = pieceNodes[pieceID] { added.append(node) }
@@ -235,6 +246,32 @@ class BoardScene: SKScene {
             if let node = lootLayer.childNode(withName: "loot_\(coord.col)_\(coord.row)") { added.append(node) }
         }
         return added
+    }
+
+    /// A wall along the side two hexes share: a dark bar with a pale stone edge.
+    private func wallLineNode(between a: HexCoord, and b: HexCoord) -> SKNode {
+        let (ca, cb) = (sceneCenter(of: a), sceneCenter(of: b))
+        let middle = CGPoint(x: (ca.x + cb.x) / 2, y: (ca.y + cb.y) / 2)
+        let (dx, dy) = (cb.x - ca.x, cb.y - ca.y)
+        let length = max(1, hypot(dx, dy))
+        // The side is square to the line between the centres, and 1/√3 of it long.
+        let half = length / (2 * 3.0.squareRoot())
+        let (ux, uy) = (-dy / length * half, dx / length * half)
+        let path = CGMutablePath()
+        path.move(to: CGPoint(x: middle.x - ux, y: middle.y - uy))
+        path.addLine(to: CGPoint(x: middle.x + ux, y: middle.y + uy))
+        let node = SKNode()
+        node.name = "wall_\(a.col)_\(a.row)_\(b.col)_\(b.row)"
+        node.zPosition = 0.4
+        for (width, color) in [(CGFloat(9), SKColor(red: 0.07, green: 0.06, blue: 0.05, alpha: 0.95)),
+                               (CGFloat(3), SKColor(red: 0.55, green: 0.50, blue: 0.44, alpha: 0.9))] {
+            let stroke = SKShapeNode(path: path)
+            stroke.strokeColor = color
+            stroke.lineWidth = width
+            stroke.lineCap = .round
+            node.addChild(stroke)
+        }
+        return node
     }
 
     /// Every revealed hex, edge to edge, in scene units.
