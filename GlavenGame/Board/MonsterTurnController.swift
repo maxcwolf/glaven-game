@@ -177,6 +177,8 @@ final class MonsterTurnController {
 
         for action in actions {
             guard stillHere(), coordinator.scenarioResult == nil else { return }
+            // Stunned in the middle of its turn (a Stun trap on its way): no more abilities (p.22).
+            if MonsterAI.isActive(.stun, on: entity) { return }
 
             switch action.type {
             case .move:
@@ -195,6 +197,7 @@ final class MonsterTurnController {
                     coordinator.noteWhyMove(steps)
                     await coordinator.moveAlong(pieceID, path: plan.movementPath, style: style)
                     state.hexesMoved += plan.movementPath.count - 1
+                    if MonsterAI.isActive(.stun, on: entity) { continue }
                 }
                 // Text printed with the move happens whether or not it moved.
                 if !isStale { await performPrintedText(texts(in: action, monster: monster), pieceID: pieceID) }

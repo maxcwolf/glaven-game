@@ -10,6 +10,8 @@ struct VGBScenario: Codable {
     let additionalMonsters: [String]?
     /// Where objectives stand and spawn markers are; not in the map data, added when loaded.
     var placements: ScenarioPlacements? = nil
+    /// What the scenario's traps do, from its map legend in the scenario book; added when loaded.
+    var traps: ScenarioTraps? = nil
 }
 
 struct VGBMapTileData: Codable {

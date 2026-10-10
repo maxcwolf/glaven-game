@@ -50,13 +50,13 @@ enum BoardBuilder {
         var reveal = Reveal()
         let start = startingPlacement(in: scenario.mapTileData, initialRoomRefs: initialRoomRefs)
         addRoom(start.tile, path: start.path, root: scenario.mapTileData, to: board,
-                turnAxis: start.axis, placements: scenario.placements, reveal: &reveal)
+                turnAxis: start.axis, placements: scenario.placements, traps: scenario.traps, reveal: &reveal)
         // Some scenarios split the party between separate starting tiles (e.g. GH 50, 58, 85: the
         // scenario's first room covers both). Every tile with starting hexes is revealed at setup.
         for placement in findPlacements(in: scenario.mapTileData)
         where hasStartingLocations(placement.tile) && !reveal.visited.contains(placement.path) {
             addRoom(placement.tile, path: placement.path, root: scenario.mapTileData, to: board,
-                    turnAxis: placement.axis, placements: scenario.placements, reveal: &reveal)
+                    turnAxis: placement.axis, placements: scenario.placements, traps: scenario.traps, reveal: &reveal)
         }
         recomputeBounds(board)
         return (board, reveal)
@@ -101,7 +101,7 @@ enum BoardBuilder {
             : (refPoint: (door.refPoint.col, door.refPoint.row), origin: (door.origin.col, door.origin.row))
         var reveal = Reveal(preexisting: Set(board.cells.keys))
         addRoom(tile, path: path, root: root, to: board, turnAxis: turnAxis,
-                placements: scenario.placements, reveal: &reveal)
+                placements: scenario.placements, traps: scenario.traps, reveal: &reveal)
 
         if let idx = board.doors.firstIndex(where: { $0.coord == door.coord }) {
             board.doors[idx].isOpen = true
@@ -235,6 +235,7 @@ enum BoardBuilder {
         to board: BoardState,
         turnAxis: TurnAxis?,
         placements: ScenarioPlacements?,
+        traps: ScenarioTraps?,
         reveal: inout Reveal
     ) {
         guard !reveal.visited.contains(path) else { return }
@@ -294,7 +295,10 @@ enum BoardBuilder {
                 case .trap:
                     board.cells[coord]?.overlay = .trap
                     board.cells[coord]?.overlaySubType = overlay.ref.subType
-                    // Damage (2 + L) is computed from the scenario level when the trap springs.
+                    // What it does is what the scenario book's legend says of it, not what its
+                    // art suggests (a "Stun Trap" drawn as a bear trap deals no damage). Damage
+                    // (2 + L) is computed from the scenario level when the trap springs.
+                    board.cells[coord]?.trapEffect = traps?.kind(tile: tileData.ref, cell: cell, art: overlay.ref.subType)?.effect
 
                 case .hazard:
                     board.cells[coord]?.overlay = .hazard
@@ -355,7 +359,7 @@ enum BoardBuilder {
             if door.subType == "corridor" {
                 // No door: the connected tile is part of this room.
                 addRoom(door.mapTileData, path: path + [index], root: root, to: board, turnAxis: axis,
-                        placements: placements, reveal: &reveal)
+                        placements: placements, traps: traps, reveal: &reveal)
                 continue
             }
             recordDoor(at: doorCoord, subType: door.subType, leadingTo: door.mapTileData.ref, from: tileData.ref,
@@ -397,7 +401,7 @@ enum BoardBuilder {
             let doorCoord = doorCoordinate(door, in: parent, axis: parentPlacement.axis)
             if door.subType == "corridor" {
                 addRoom(parent, path: parentPath, root: root, to: board, turnAxis: parentPlacement.axis,
-                        placements: placements, reveal: &reveal)
+                        placements: placements, traps: traps, reveal: &reveal)
             } else if !board.visibleRooms.contains(parent.ref) || !reveal.visited.contains(parentPath) {
                 let parentAxis = parentPlacement.axis ?? (refPoint: (0, 0), origin: (0, 0))
                 recordDoor(at: doorCoord, subType: door.subType, leadingTo: parent.ref, from: tileData.ref,

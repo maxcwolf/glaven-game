@@ -367,6 +367,7 @@ final class PlayerTurnController {
             phase = .turnComplete
             return
         }
+        if endIfStunned() { return }
 
         let actions: [ActionModel]
         switch phase {
@@ -750,6 +751,7 @@ final class PlayerTurnController {
             endForExhaustion()
             return
         }
+        if endIfStunned() { return }
         guard canUseDefaultAction else { return }
         finishedHalf = nil
         checkpoint = makeCheckpoint()
@@ -792,6 +794,21 @@ final class PlayerTurnController {
         defaultAttackPending = false
         awaitingAsync = false
         phase = .turnComplete
+    }
+
+    /// The character was stunned in the middle of its own turn (a Stun trap sprung on the way):
+    /// it performs no more abilities this turn (GH p.22). What is left of both halves is passed
+    /// over and the cards are put away as played; the Stun lasts to the end of its next turn.
+    /// True when the turn was ended.
+    private func endIfStunned() -> Bool {
+        var performing: Bool { phase == .executeTopAction || phase == .executeBottomAction || phase == .executeExtraHalf }
+        guard let coordinator, performing, coordinator.isConditionActive(.stun, on: .character(characterID)) else { return false }
+        coordinator.log("\(who) is stunned and can do nothing more this turn", category: .condition)
+        defaultAttackPending = false
+        awaitingAsync = false
+        // An extra half first, then what is left of the turn's two.
+        for _ in 0..<3 where performing { advancePhase() }
+        return true
     }
 
     // MARK: - Queries
@@ -1670,7 +1687,7 @@ final class PlayerTurnController {
             let nextLine = half.dropFirst(currentActionIndex + 1).first.flatMap { $0.value }
                 .flatMap { gameManager?.editionStore.resolveCustomText($0.stringValue, edition: character.edition) }?.lowercased() ?? following
             let xp = nextLine.contains("trap is sprung") ? (nextLine.firstMatch(of: #/xp \+(\d+)/#).flatMap { Int($0.1) } ?? 0) : 0
-            let trap = PlacedToken.trap(damage: Self.damageAmount(in: text), subType: text.contains("poison") ? "poison" : nil,
+            let trap = PlacedToken.trap(damage: Self.damageAmount(in: text), subType: PlacedToken.trapCondition(in: text),
                                         experience: xp)
             return coordinator.beginPlacingTokens(trap, count: 1, by: me)
         } else if text.contains("destroy one adjacent obstacle") {

@@ -11,6 +11,8 @@ goal is**. Those come from the scenario book, and this folder is where what was 
   missing, and where.
 - `GlavenGame/Resources/ScenarioMaps/placements/gh.json` — the hexes, and the goals the game
   enforces for objectives (below).
+- `GlavenGame/Resources/ScenarioMaps/placements/gh-traps.json` — what each scenario's traps do,
+  from its map legend ([Traps](#traps-what-each-scenarios-traps-do), below).
 
 The book itself (Scenario Book, second printing) isn't kept in the repository — the PDF is 319 MB.
 It can be read online at <https://kirsanova.relfbo.qapubl.club/view/145446/2/>; page numbers in
@@ -220,6 +222,67 @@ plates a–e; #82 the altar hex g; #88 the crystal.
 Objectives an obstacle or a door already draws on the map (altars, totems, trees, graves, the
 crystal, barred doors) were taken from the map data and checked against the book; escorts,
 tokens and letters were read from the book's maps.
+
+## Traps: what each scenario's traps do
+
+The map data draws every trap with one of three pieces of art (its overlay sub-type: `spike`, a
+spike pit; `bear`, a wooden spring trap; `poison`, a green cloud), and the art says nothing about
+what the trap does. Each scenario's map legend does: a "Damage Trap" deals 2 + L, a "Stun Trap"
+only stuns, a "Poison and Damage Trap" does both, an "Immobilize and Poison Trap" deals no damage.
+The same bear-trap art is a Stun trap in #2, a plain damage trap in #66, Immobilize and Poison in
+#44 and Poison and Damage in #15. `placements/gh-traps.json` has every legend, by scenario number
+(`ScenarioTraps`, loaded by `ScenarioTrapStore` beside the placements):
+
+```json
+"15": {"page": 21, "kinds": [{"damage": true, "conditions": ["poison"], "count": 4, "art": "bear"},
+                             {"damage": true, "conditions": ["wound"], "count": 4, "art": "spike"}]},
+"69": {"page": 88, "kinds": [{"damage": true, "conditions": [], "count": 4, "art": "bear", "legend": 6}]}
+```
+
+- `page` — the page of the book the legend is on.
+- a kind's `damage` — whether it deals trap damage (2 + L); `conditions` — what it gives the
+  figure that springs it, in the legend's order (a Curse is a card into that figure's deck).
+- `count` — how many of that kind the map sets up; `legend` — the number the legend prints, where
+  that is more because a rule places the rest during play (#69's two traps at (d), which the game
+  doesn't place yet).
+- which of the map's traps are that kind: `art`, those the map data draws with that art, or
+  `tiles`, those on these hexes (by tile, in tile coordinates, as in the placements:
+  `{"h3b": [[1, 0], [1, 1]]}`), for a scenario whose two kinds share their art. A kind with
+  neither takes every trap no other kind claims. In the 95 scenarios the art always separates the
+  kinds, so none needs `tiles`; where the map data's art isn't the book's (#11, #70, #71) only the
+  drawing differs.
+
+`BoardBuilder` gives each trap its legend's effect as its room is revealed (`HexCell.trapEffect`,
+a `TrapEffect`), and springing it (`springTrap`) deals damage only if the legend says so and gives
+exactly its conditions. A trap that stuns ends the move it was sprung on and the rest of that
+figure's turn; one that immobilizes ends only the move. Traps a card or a monster makes carry
+what is printed for them ("2 damage Poison trap", "Stun trap"). A trap nothing describes — a
+scenario map without a legend here (the solo scenarios and Forgotten Circles aren't read yet), a
+game saved before this — is still guessed from its art: `bear` Immobilize and damage, `poison`
+Poison and damage, anything else damage.
+
+75 of the 95 scenarios have traps on their maps. `testEveryScenarioWithATrapHasALegendThatCountsItsTraps`
+fails when a map with a trap has no legend, a trap of the map is none of its legend's kinds, or a
+kind's `count` isn't the number of such traps on the map; `testTheBoardGivesEveryTrapItsLegendEffect`
+checks the built board. To read a legend, find the scenario's map page (the notes give it) and
+look for the red-bordered trap hexes in the legend; the name under each is what goes here.
+
+| Legend | Scenarios |
+|---|---|
+| Damage | 1, 3, 4, 5, 8, 10, 16, 17, 19, 23, 33, 38, 57, 62, 64, 65, 66, 69, 70, 71, 84, 85, 90, 92, 94; one of two kinds in 40, 79, 89, 95 |
+| Stun (no damage) | 2, 9, 11, 12, 14, 18, 20, 24, 26, 43, 46, 58, 75, 76 |
+| Stun and Damage | 25, 35, 36, 61, 67, 73, 77, 93 |
+| Poison and Damage | 6, 41, 45, 52; one of two kinds in 15, 32, 54 |
+| Wound and Damage | 82, 91; one of two kinds in 15, 32 |
+| Immobilize and Damage | 30, 37, 39, 59, 80 |
+| Muddle and Damage | 13, 88 |
+| Curse and Damage | 31 |
+| Disarm and Damage | 50 |
+| Poison and Stun (no damage) | 7; one of two kinds in 40, 95 |
+| Immobilize and Poison (no damage) | 44, 53, 81, 87; one of two kinds in 79 |
+| Immobilize and Muddle (no damage) | 60 |
+| Immobilize and Disarm (no damage) | one of two kinds in 54 |
+| Poison (no damage) | one of two kinds in 89 |
 
 ## Every scenario's goal, and whether the game checks it
 

@@ -366,3 +366,69 @@ final class ScenarioPlacementStore {
         return loaded
     }
 }
+
+/// What a scenario's traps do, as the map legend in the scenario book names them: "Damage
+/// Trap", "Stun Trap" (no damage), "Poison and Damage Trap", "Immobilize and Poison Trap". The
+/// map data only has the art each trap is drawn with, which doesn't say; these are written by
+/// hand into `Resources/ScenarioMaps/placements/<edition>-traps.json`.
+struct ScenarioTraps: Codable, Equatable {
+    /// The page of the scenario book the legend is on.
+    var page: Int?
+    /// Each kind of trap the legend lists.
+    var kinds: [Kind]
+
+    struct Kind: Codable, Equatable {
+        /// Whether springing it deals trap damage (2 + L).
+        var damage: Bool
+        /// The conditions it gives the figure that springs it, in the legend's order.
+        var conditions: [ConditionName]
+        /// How many of them the map sets up.
+        var count: Int
+        /// How many the legend counts, where that is more: the rest are placed by a rule
+        /// during play (Well of the Unfortunate).
+        var legend: Int?
+        /// Which of the map's traps are this kind: those the map data draws with this art (its
+        /// overlay sub-type: "spike", "bear" or "poison")…
+        var art: String?
+        /// …or those on these hexes, by tile in tile coordinates, where the art doesn't tell
+        /// two kinds apart. With neither, every trap no other kind claims.
+        var tiles: [String: [[Int]]]?
+
+        var effect: TrapEffect { TrapEffect(damage: damage, conditions: conditions) }
+    }
+
+    /// The kind of the trap the map data has on `cell` of `tile`, drawn with `art`: one written
+    /// for that hex, else one written for that art, else the kind written for all the rest.
+    func kind(tile: String, cell: [Int], art: String?) -> Kind? {
+        let ref = tile.lowercased()
+        let hex = Array(cell.prefix(2))
+        return kinds.first { $0.tiles?[ref]?.contains(hex) == true }
+            ?? kinds.first { $0.tiles == nil && $0.art != nil && $0.art == art }
+            ?? kinds.first { $0.tiles == nil && $0.art == nil }
+    }
+}
+
+/// Loads the hand-written trap legends shipped with the app.
+final class ScenarioTrapStore {
+    static let shared = ScenarioTrapStore()
+
+    private var cache: [String: [String: ScenarioTraps]] = [:]
+
+    private init() {}
+
+    /// The traps of a scenario by its map index ("15"), nil when its legend isn't written.
+    func traps(for index: String, edition: String = "gh") -> ScenarioTraps? {
+        all(edition: edition)[index]
+    }
+
+    /// Every scenario's traps, by map index.
+    func all(edition: String = "gh") -> [String: ScenarioTraps] {
+        if let loaded = cache[edition] { return loaded }
+        let url = appResourceBundle.url(forResource: "\(edition)-traps", withExtension: "json",
+                                        subdirectory: "ScenarioMaps/placements")
+        let data = url.flatMap { try? Data(contentsOf: $0) }
+        let loaded = data.flatMap { try? JSONDecoder().decode([String: ScenarioTraps].self, from: $0) } ?? [:]
+        cache[edition] = loaded
+        return loaded
+    }
+}

@@ -499,8 +499,15 @@ extension BoardCoordinator {
             switch cell.overlay {
             case .trap:
                 title = "Trap"
-                let damage = cell.trapDamage ?? gameManager?.levelManager.trap() ?? 0
-                paragraphs.append("It springs on the first figure to enter it: \(damage) damage. Then it's gone. Monsters walk around traps when they can.")
+                // What this trap does, as the scenario's legend (or the card that made it) says.
+                let effect = cell.resolvedTrapEffect
+                let does = trapDescription(at: hex) ?? "damage"
+                paragraphs.append("It springs on the first figure to enter it: \(does). Then it's gone. Monsters walk around traps when they can.")
+                if effect.conditions.contains(.stun) {
+                    paragraphs.append("A figure it stuns stops there and can do nothing more that turn; the Stun lasts to the end of its next turn.")
+                } else if effect.conditions.contains(.immobilize) {
+                    paragraphs.append("A figure it immobilizes stops there; it can still do the rest of its turn.")
+                }
             case .hazard:
                 title = "Hazardous terrain"
                 paragraphs.append("A figure entering it suffers damage, each time it enters. Monsters avoid it when they can; flying and jumping pass over it.")

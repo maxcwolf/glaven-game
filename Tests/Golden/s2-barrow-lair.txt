@@ -193,27 +193,24 @@ Turn order: Scoundrel 10, Bandit Commander 11, Spellweaver 20, Living Bones 20, 
 Scoundrel’s turn: Throwing Knives and Quick Hands
 Scoundrel takes the top half from Quick Hands and the bottom half from Throwing Knives
 Scoundrel: Move 2
-Scoundrel springs a trap and suffers 3 damage [bear]
-Scoundrel loses 2 discarded cards to prevent 3 damage
-Scoundrel gains Immobilize
-Scoundrel is immobilized and stops
+Scoundrel springs a Stun trap [bear]
+Scoundrel gains Stun
+Scoundrel is stunned and stops
 Scoundrel moves 1 hex [to (-3,-1)]
-Scoundrel: Attack 2, Range 1
-Scoundrel has no target within range 1
-Scoundrel: Loot 2
-Scoundrel loots 2 money tokens (4 gold)
+Scoundrel is stunned and can do nothing more this turn
 Scoundrel ends the turn
 Bandit Commander’s turn: ability card (11)
 Bandit Commander 1 uses special ability 2
 Bandit Commander 1 summons Living Bones 3
 Spellweaver’s turn: Frost Armor and Reviving Ether
 Spellweaver: Jump 4
-Spellweaver moves 1 hex [to (-2,-3)]
+Spellweaver moves 3 hexes [to (-3,0)]
 Spellweaver consumes Earth
 Spellweaver: Attack 3, Range 3
 Spellweaver gains 1 XP
 Spellweaver attacks Bandit Archer 2: 3 − 2 = 1 damage [3 -2(mod) = 1]
 Spellweaver ends the turn
+Spellweaver loots 1 money token (2 gold)
 Living Bones’s turn: ability card (20)
 Living Bones 4 moves 2 hexes [to (-2,3)]
 Living Bones 4 can’t reach its focus

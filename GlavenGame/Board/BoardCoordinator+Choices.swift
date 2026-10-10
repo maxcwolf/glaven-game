@@ -125,7 +125,7 @@ extension BoardCoordinator {
         }
         if let cell = boardState.cells[hex] {
             switch cell.overlay {
-            case .trap: parts.append("trap")
+            case .trap: parts.append(trapDescription(at: hex).map { "trap (\($0))" } ?? "trap")
             case .hazard: parts.append("hazardous terrain")
             case .difficultTerrain: parts.append("difficult terrain")
             case .treasure: parts.append("treasure")

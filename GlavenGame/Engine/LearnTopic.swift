@@ -172,7 +172,7 @@ struct LearnTopic: Identifiable, Equatable {
            onTheBoard: "Your panel counts your hand and lost cards; a rest brings the discard pile back."),
         LearnTopic(id: .moving, chapter: .turn, title: "Moving", paragraphs: [
             "Move up to the number shown, one hex at a time. You may pass through allies but not enemies or obstacles, and you can't end on another figure.",
-            "**Difficult terrain** costs two movement. A **trap** springs when you step on it; **hazardous terrain** hurts each time you enter. A Jump ignores everything but where you land, and flying ignores terrain altogether.",
+            "**Difficult terrain** costs two movement. A **trap** springs when you step on it and is then gone: most deal damage, and some give a condition as well or instead, as the scenario says of its own traps. **Hazardous terrain** hurts each time you enter. A Jump ignores everything but where you land, and flying ignores terrain altogether.",
         ], art: .diagram(.moving),
            onTheBoard: "The hexes you can reach light up; tap one to move there."),
         LearnTopic(id: .doors, chapter: .turn, title: "Doors and rooms", paragraphs: [

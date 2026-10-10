@@ -175,6 +175,7 @@ final class BoardState {
         cells[coord]?.overlayImageName = nil
         cells[coord]?.overlaySubType = nil
         cells[coord]?.trapDamage = nil
+        cells[coord]?.trapEffect = nil
     }
 
     /// Place loot tokens at a hex (monsters drop these when killed).
@@ -206,12 +207,15 @@ final class BoardState {
         cells[coord]?.passable = true
     }
 
-    /// Place a trap at a hex.
-    func placeTrap(at coord: HexCoord, damage: Int, subType: String? = nil) {
+    /// Place a trap at a hex. `effect` is what it does as the card or ability that makes it
+    /// prints (`damage` is then the amount it deals, if it deals any); without one it is
+    /// guessed from `subType`, the art it is drawn with.
+    func placeTrap(at coord: HexCoord, damage: Int, subType: String? = nil, effect: TrapEffect? = nil) {
         guard cells[coord] != nil else { return }
         cells[coord]?.overlay = .trap
         cells[coord]?.overlaySubType = subType
         cells[coord]?.trapDamage = damage
+        cells[coord]?.trapEffect = effect
     }
 
     /// Place hazardous terrain at a hex.
