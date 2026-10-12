@@ -28,17 +28,16 @@ question, how a piece of work is done from start to finish, and what to do next.
 
 `main` has everything up to merge `aec9e30`. The branch adds, each committed and proved by
 mutations: tests for the three rules no test caught; mutations for the audit fixes that were only
-read and for the scenario mechanisms (`scripts/mutate.py` now has 96, each noticed); the golden
-transcripts read against the rules; N17 (Scroll of Recall's Pull) and N13 (Unending Chant, charges
-marked only when an action is performed) fixed.
+read and for the scenario mechanisms (`scripts/mutate.py` now has 97, each noticed); the golden
+transcripts read against the rules; N17 (Scroll of Recall's Pull), N13 (Unending Chant, charges marked
+only when an action is performed) and N19 (#36 hanging at the start of round 9) fixed.
 
 To pick it up:
 
-1. **The branch is verified but for one thing.** At `3c37708`: `swift test` 1,539 tests, none
-   failing; the four-seed all-scenarios playthrough without a violation. The veteran playthrough
-   fails on **#36, which stalls in round 8 inside a monster's turn** (N19) — on `main` at `aec9e30`
-   as well, so it is older than this branch. Start there:
-   `SIM_ALL=1 SIM_FROM=36 SIM_TO=36 swift test --filter testVeteranPartiesWinMostScenarios`.
+1. **The branch is verified** at its head on 2026-10-12: `swift test` 1,540 tests, none failing;
+   the four-seed all-scenarios playthrough without a violation; the veteran playthrough passing
+   (55 and 59 of 94 won). It also fixes a hang that is on `main`: #36 never went on past the
+   start of round 9 (N19). It is not merged — merging is the owner's call.
 2. **N18, the next fix** (`TODO.md` → Cards, first item): an ability the data nests inside a Move
    is never performed. Add a pass beside `PlayerTurnController.attachingForcedMoveRange` that
    turns a Move's nested Condition, Shield, Push or Pull into the step after it — not where the
@@ -52,7 +51,7 @@ To pick it up:
    `RuleBoard`, a mutation that skips the pass.
 3. Then the rest of group 1 in `TODO.md` (#9's scouts, N12; the interface and what scenario rules
    draw, on the iPad simulator), then group 2, the scenario rules that need a player prompt.
-4. When a batch is verified: merge to `main` with `git merge --no-ff -m "merge: …"` and push.
+4. Merging to `main` (`git merge --no-ff -m "merge: …"`, then push) is done when the owner asks.
 
 ## Which document answers what
 
@@ -151,7 +150,7 @@ The task list is `TODO.md` → "Missing Gloomhaven Rules" → "Open, in order"; 
 ordered like this:
 
 1. **Tests and checks, before building on top.** A look at the new interface and at what
-   scenario rules draw, on a device. (`scripts/mutate.py` has 96 mutations, 36 of them scenario
+   scenario rules draw, on a device. (`scripts/mutate.py` has 97 mutations, 36 of them scenario
    rules — `--scenario` — and each is noticed by a test: add one with every new mechanism.)
 2. **Scenario rules** — 94 printed rules in 28 scenarios, in this order because each group is one
    mechanism used several times:
