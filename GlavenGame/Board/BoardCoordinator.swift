@@ -2826,9 +2826,13 @@ final class BoardCoordinator {
     /// Set up the room behind a door: its tiles (if not yet laid out), monsters and objectives.
     private func revealRoom(behind door: DoorInfo, opening: Bool) {
         guard let scenario = scenarioData, let gameManager else { return }
+        // A door mostly opens in a turn, but a scenario rule may open one as a round starts
+        // (Gloomhaven Battlements B's gate, round 9), while cards are being chosen: the phase the
+        // reveal interrupts is the phase it goes back to.
+        let interrupted = boardPhase
         boardPhase = .roomReveal
         guard var reveal = BoardBuilder.revealRoomSlots(door: door, scenario: scenario, board: boardState, opening: opening) else {
-            boardPhase = .execution
+            boardPhase = interrupted
             return
         }
         // A room laid out earlier: its monster places have been waiting since then.
@@ -2864,7 +2868,7 @@ final class BoardCoordinator {
         syncPieceVisuals()
         boardScene?.fitCamera(animated: true)
 
-        boardPhase = .execution
+        boardPhase = interrupted
         log(opening ? "A door opens and a new room is revealed" : "The defenders beyond the wall are roused", category: .door,
             trace: door.childTileRef)
         for piece in placed {

@@ -79,6 +79,7 @@ M={
  "rangedChargeBeforeTheTarget": ("GlavenGame/Board/PlayerTurnController.swift", "                actionCharges.append(backup.cardId)\n", "                if let character { coordinator.useCharge(backup.cardId, of: character) }\n"),
  "actionChargesNeverMarked": ("GlavenGame/Board/PlayerTurnController.swift", "                if let character { for cardId in actionCharges { coordinator.useCharge(cardId, of: character) } }\n", ""),
  "healChargeBeforeTheTarget": ("GlavenGame/Board/PlayerTurnController.swift", "            func markHealCharge() {\n                if let potent, let character { coordinator.useCharge(potent.cardId, of: character) }\n            }\n", "            func markHealCharge() {\n            }\n            if let potent, let character { coordinator.useCharge(potent.cardId, of: character) }\n"),
+ "revealAlwaysResumesTurns": ("GlavenGame/Board/BoardCoordinator.swift", "        boardPhase = interrupted\n        log(opening", "        boardPhase = .execution\n        log(opening"),
 }
 # Scenario rules (the mechanisms of placements/gh.json): run against the scenario tests.
 SCENARIO_FILTER=("ScenarioSpecialRuleTests|ScenarioReauditTests|ScenarioEnforcedRuleTests|ScenarioLockTests|ScenarioGoalTests|"

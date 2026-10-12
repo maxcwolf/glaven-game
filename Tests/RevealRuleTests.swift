@@ -191,6 +191,23 @@ final class RevealRuleTests: XCTestCase {
         XCTAssertEqual(room, try secondRoom(exhausting: nil), "who stands where")
     }
 
+    /// A door a scenario rule opens as a round starts (Gloomhaven Battlements B: the gate falls
+    /// in round 9) opens while cards are being chosen, and they are still being chosen once the
+    /// room is set up: a reveal goes back to what it interrupted. It used to leave the round's
+    /// turns "in progress" with no one to act — the veteran playthrough of #36 never ended.
+    func testARoomRevealedWhileCardsAreChosenLeavesThemBeingChosen() throws {
+        try start()
+        XCTAssertEqual(coord.boardPhase, .cardSelection)
+        coord.openDoor(at: try XCTUnwrap(coord.boardState.doors.first { !$0.isOpen }).coord)
+        XCTAssertEqual(game.scenario?.revealedRooms.sorted(), [1, 2])
+        XCTAssertEqual(coord.boardPhase, .cardSelection)
+        let brute = try character("brute"), tinkerer = try character("tinkerer")
+        coord.chooseCards(for: brute.id, leading: try card("Overwhelming Assault", of: brute), other: try card("Grab and Go", of: brute))
+        coord.chooseCards(for: tinkerer.id, leading: try card("Harmless Contraption", of: tinkerer), other: try card("Restorative Mist", of: tinkerer))
+        XCTAssertEqual(coord.boardPhase, .execution, "and with every card chosen the round's turns begin")
+        XCTAssertFalse(coord.turnOrder.isEmpty)
+    }
+
     // MARK: - MOV-9: cards and turns for the revealed
 
     /// MOV-9 (p.32): the Guards drew a 30 at the start of the round and have acted; the Brute, on
