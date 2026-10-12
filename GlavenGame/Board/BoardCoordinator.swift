@@ -1724,15 +1724,14 @@ final class BoardCoordinator {
 
     /// Insert monsters that entered play during the last turn into this round's turn order.
     /// A type that hasn't acted yet just acts at its initiative; a type whose initiative already
-    /// passed acts right after the turn in which it was revealed (p.32).
+    /// passed acts right after the turn in which it was revealed (p.32). Both are one rule here:
+    /// before the first figure still to act on a higher initiative. Every figure still to act is
+    /// on a higher initiative than the one that just did, so a type whose place has passed lands
+    /// right after it, the lowest initiative first.
     private func scheduleRevealedMonsters() {
         guard let gameManager, !pendingRevealedStandees.isEmpty else { return }
         let revealed = pendingRevealedStandees
         pendingRevealedStandees = [:]
-
-        let currentInitiative = (currentTurnIndex >= 0 && currentTurnIndex < turnOrder.count)
-            ? turnOrder[currentTurnIndex].initiative : -1
-        var immediate: [TurnOrderEntry] = []
 
         for (name, standees) in revealed.sorted(by: { $0.key < $1.key }) {
             guard let monster = gameManager.game.monsters.first(where: { $0.name == name }),
@@ -1746,16 +1745,10 @@ final class BoardCoordinator {
             if pendingIndex != nil { continue } // its whole type still acts later this round
 
             let entry = TurnOrderEntry(figure: .monster(monster), initiative: initiative, onlyStandees: standees)
-            if initiative < currentInitiative {
-                immediate.append(entry)
-            } else {
-                let insertAt = turnOrder.indices.first { $0 > currentTurnIndex && turnOrder[$0].initiative > initiative }
-                    ?? turnOrder.count
-                turnOrder.insert(entry, at: insertAt)
-            }
+            let insertAt = turnOrder.indices.first { $0 > currentTurnIndex && turnOrder[$0].initiative > initiative }
+                ?? turnOrder.count
+            turnOrder.insert(entry, at: insertAt)
         }
-        immediate.sort { $0.initiative < $1.initiative }
-        turnOrder.insert(contentsOf: immediate, at: min(currentTurnIndex + 1, turnOrder.count))
     }
 
     /// Create the PlayerTurnController after summon turns complete.
@@ -2859,7 +2852,7 @@ final class BoardCoordinator {
 
         // Monsters come from the scenario's room data, counted for every character in the
         // scenario including exhausted ones (p.17); the map supplies their positions.
-        let playerCount = max(2, gameManager.game.characters.filter { !$0.absent }.count)
+        let playerCount = gameManager.game.characterCount
         let refs = Set(reveal.tileRefs.map { $0.lowercased() })
         let rooms = (gameManager.game.scenario?.data.rooms ?? []).filter { room in
             refs.contains((room.ref ?? "").lowercased())
@@ -2918,7 +2911,7 @@ final class BoardCoordinator {
                 openDoor(at: door.coord)
             } else {
                 gameManager.scenarioManager.openRoom(room)
-                let playerCount = max(2, gameManager.game.characters.filter { !$0.absent }.count)
+                let playerCount = gameManager.game.characterCount
                 let placed = placeRevealedMonsters(slots: [], newEntities: unplacedMonsterEntities(),
                                                    playerCount: playerCount)
                 placeRevealedObjectives()
@@ -2960,7 +2953,7 @@ final class BoardCoordinator {
         guard let gameManager else { return }
         let slots = boardState.heldMonsterSlots.filter { names.contains($0.name) }
         boardState.heldMonsterSlots.removeAll { names.contains($0.name) }
-        let playerCount = max(2, gameManager.game.characters.filter { !$0.absent }.count)
+        let playerCount = gameManager.game.characterCount
         var placed = placeRevealedMonsters(slots: slots, newEntities: unplacedMonsterEntities().filter { names.contains($0.0.name) },
                                            playerCount: playerCount)
         // Monsters that stood inactive wake where they are, as if just revealed.

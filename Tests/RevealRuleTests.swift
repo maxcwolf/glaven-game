@@ -166,16 +166,29 @@ final class RevealRuleTests: XCTestCase {
     }
 
     /// SET-1 (FAQ): a room revealed later is set up for the characters the scenario began with,
-    /// exhausted ones included. Three began: an elite and two normal Archers and an elite Guard.
+    /// exhausted ones included. Three began: an elite and two normal Archers and an elite Guard,
+    /// each where the map puts a monster of its rank for three — the room as it is set up when
+    /// no one has fallen.
     func testARoomIsSetUpForTheCharactersTheScenarioBeganWith() throws {
-        try start(["brute", "tinkerer", "scoundrel"])
-        killEveryMonsterOnTheBoard()
-        coord.sufferDamage(999, to: .character(try character("scoundrel").id))
-        XCTAssertTrue(try character("scoundrel").exhausted)
-        let (door, _) = try firstDoor()
-        coord.openDoor(at: door)
+        func secondRoom(exhausting fallen: String?) throws -> [String] {
+            try start(["brute", "tinkerer", "scoundrel"])
+            killEveryMonsterOnTheBoard()
+            if let fallen {
+                coord.sufferDamage(999, to: .character(try character(fallen).id))
+                XCTAssertTrue(try character(fallen).exhausted)
+            }
+            let (door, _) = try firstDoor()
+            coord.openDoor(at: door)
+            return coord.boardState.piecePositions.compactMap { piece, hex -> String? in
+                guard case .monster(let name, let standee) = piece,
+                      let rank = coord.monsterEntity(name: name, standee: standee)?.type else { return nil }
+                return "\(rank.rawValue) \(name) at \(hex)"
+            }.sorted()
+        }
+        let room = try secondRoom(exhausting: "scoundrel")
         XCTAssertEqual(ranks(of: "bandit-archer"), [.elite, .normal, .normal].sorted { $0.rawValue < $1.rawValue })
         XCTAssertEqual(ranks(of: "bandit-guard"), [.elite])
+        XCTAssertEqual(room, try secondRoom(exhausting: nil), "who stands where")
     }
 
     // MARK: - MOV-9: cards and turns for the revealed

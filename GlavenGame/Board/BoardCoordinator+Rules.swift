@@ -439,7 +439,7 @@ extension BoardCoordinator {
             clearObjectiveSite(number)
             // What the scenario has appear in its place (a Living Corpse from a dug-up grave).
             if let stood, let index, let risen = scenarioData?.placements?.whenDestroyed?[String(index)],
-               let type = risen.monsterType(forPlayerCount: max(2, gameManager.game.characters.filter { !$0.absent }.count)),
+               let type = risen.monsterType(forPlayerCount: gameManager.game.characterCount),
                let piece = spawnMonster(name: risen.name, type: type, at: stood, origin: .spawned) {
                 log("\(name(piece)) appears", category: .setup, trace: "at \(stood)")
             }

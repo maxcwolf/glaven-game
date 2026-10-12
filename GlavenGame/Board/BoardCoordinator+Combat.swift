@@ -343,7 +343,7 @@ extension BoardCoordinator {
             let death = pendingDeathAttacks.removeFirst()
             guard let gameManager, let monster = gameManager.game.monsters.first(where: { $0.name == death.monster }) else { continue }
             let game = gameManager.game
-            let characterCount = max(2, game.characters.filter { !$0.absent }.count)
+            let characterCount = game.characterCount
             let stat = monster.attackStat(for: death.type)
             let base = stat?.attackValue(characterCount: characterCount, level: monster.level,
                                          variables: MonsterAI.attackVariables(for: monster, gameState: game)) ?? 0

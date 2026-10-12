@@ -69,7 +69,7 @@ extension BoardCoordinator {
     func waterDamageAtTurnEnd(for pieceID: PieceID) -> Int? {
         guard let formula = scenarioData?.placements?.water?.endOfTurn, let game = gameManager?.game,
               let hex = boardState.piecePositions[pieceID], isWater(hex) else { return nil }
-        let variables = ["C": max(2, game.characters.filter { !$0.absent }.count), "L": game.level]
+        let variables = ["C": game.characterCount, "L": game.level]
         return ScenarioExpression.integerValue(formula, variables: variables).flatMap { $0 > 0 ? $0 : nil }
     }
 
@@ -219,7 +219,7 @@ extension BoardCoordinator {
             if let tokens = effect.per?.tokens {
                 counted += max(0, tokens - (effect.per?.lostWith.flatMap { game.scenario?.killCounts[$0] } ?? 0))
             }
-            let variables = ["X": counted, "C": max(2, game.characters.filter { !$0.absent }.count), "L": game.level]
+            let variables = ["X": counted, "C": game.characterCount, "L": game.level]
             return total + (ScenarioExpression.integerValue(formula, variables: variables) ?? 0)
         }
     }

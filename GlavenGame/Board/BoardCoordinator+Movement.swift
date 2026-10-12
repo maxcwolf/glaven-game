@@ -311,7 +311,7 @@ extension BoardCoordinator {
             return
         }
         let stat = monster.attackStat(for: forcedEntity.type)
-        let characterCount = max(2, (gameManager?.game.characters.filter { !$0.absent }.count) ?? 2)
+        let characterCount = gameManager?.game.characterCount ?? 2
         let baseRange = stat?.rangeValue(characterCount: characterCount, level: monster.level) ?? 0
         let baseAttack = stat?.attackValue(characterCount: characterCount, level: monster.level) ?? 0
         var forced = action

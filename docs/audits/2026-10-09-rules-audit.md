@@ -236,14 +236,19 @@ opposite of A2 now assert the rule ("line grazing a wall corner is blocked", "a 
 hides the row beyond it"). The `RulebookTests` pipeline tests call `CombatResolver` with its inputs supplied:
 they prove the arithmetic, and `AttackRuleTests` proves the board supplies the right inputs.
 
-**Mutations.** `scripts/mutate.py` breaks one rule at a time in the game code (35 named
+**Mutations.** `scripts/mutate.py` breaks one rule at a time in the game code (36 named
 mutations: poison adding 0, Retaliate reduced by Shield, no Disadvantage for a ranged attack on an
 adjacent enemy, effects on a killed target, a summon drawing from the monster deck, no reshuffle
 at the end of the round, a jump landing free on a trap, the gold rate, turn order reversed…), runs
 the rule tests and names the tests that noticed; `--all` lists the mutations no test caught. A
 mutation nothing catches is a rule without a test: write that test. The full run of 2026-10-10: 32 of the 35 were
 noticed by a test; not caught were `lootIgnoresSight`, `revealedWaitForTheirPlace` and
-`roomForFourAlways` (open in `TODO.md`). For the fixes of the turn-and-items batch (C8, E7, E12,
+`roomForFourAlways`. All three were closed on 2026-10-12, and each taught something about
+mutations: the loot test's hidden token was out of range as well as out of sight (now a token in
+range of a Loot 3 and behind a wall hex); the reveal mutation broke a branch that did nothing the
+other branch didn't (the code is now one rule, with `revealedActLast` and `revealedMissTheirPlace`
+in its place); and the room mutation broke one of twenty copies of the character count (now
+`GameState.characterCount`, broken by `exhaustedDontCount`). 36 mutations, each noticed. For the fixes of the turn-and-items batch (C8, E7, E12,
 B7, B6, B12, B11, B4, B8, start-of-round rules) the failing-before half was confirmed by running
 only for A11; add a mutation for each when touching them.
 

@@ -86,8 +86,8 @@ final class LootRuleTests: XCTestCase {
     // MARK: - ACT-7, LOS-2: Loot X
 
     /// ACT-7 (p.28): Loot X takes "all money tokens … within range X" — under a monster's feet
-    /// or beyond an obstacle too — but nothing further away, and (LOS-2, FAQ) nothing out of
-    /// sight. Hook Gun's bottom, Loot 2.
+    /// or beyond an obstacle too — but nothing further away, and nothing walled in (range isn't
+    /// counted through a wall). Hook Gun's bottom, Loot 2.
     func testALootAbilityTakesEveryTokenInRangeAndSightWhateverIsInTheWay() throws {
         let tinkerer = board.character("tinkerer", at: here)
         let underAMonster = HexCoord(3, 5), beyondAnObstacle = HexCoord(5, 3), tooFar = HexCoord(5, 8), walledIn = HexCoord(7, 5)
@@ -99,12 +99,12 @@ final class LootRuleTests: XCTestCase {
         try board.monster(at: underAMonster)
         try board.monster("bandit-archer", at: HexCoord(4, 5))
         for hex in beyondAnObstacle.neighbors where hex.distance(to: here) == 1 { coord.boardState.placeObstacle(at: hex) }
-        // A token in a cell with a wall on every side: within two hexes, and out of sight.
+        // A token in a cell with a wall on every side: two hexes off, and no way to count to it.
         for hex in walledIn.neighbors {
             coord.boardState.cells[hex]?.passable = false
             coord.boardState.cells[hex]?.overlay = .wall
         }
-        XCTAssertFalse(LineOfSight.hasLOS(from: here, to: walledIn, board: coord.boardState))
+        XCTAssertFalse(coord.boardState.isWithin(2, from: here, to: walledIn))
         let gold = tinkerer.loot
 
         let hook = try board.card("Hook Gun", of: "tinkerer"), other = try board.card("Stun Shot", of: "tinkerer")
@@ -116,9 +116,34 @@ final class LootRuleTests: XCTestCase {
 
         XCTAssertEqual([here, underAMonster, beyondAnObstacle].map(tokens(at:)), [0, 0, 0], "everything in range and sight")
         XCTAssertEqual(tokens(at: tooFar), 1, "three hexes away: out of range")
-        XCTAssertEqual(tokens(at: walledIn), 1, "behind walls: out of sight")
+        XCTAssertEqual(tokens(at: walledIn), 1, "walled in: out of range")
         XCTAssertEqual(tinkerer.loot, gold + 6, "three tokens")
         XCTAssertEqual(tinkerer.experience, 1, "the Loot was performed: its experience")
+    }
+
+    /// LOS-2 (FAQ): a Loot ability needs line of sight like any other ranged ability. A token
+    /// two hexes off with a wall hex between is three hexes away counted round the wall — within
+    /// Loot 3 — and can't be seen: it stays. Bag of Holding's top, Loot 3.
+    func testALootAbilityLeavesATokenItCannotSee() throws {
+        let quartermaster = board.character("three-spears", at: here)
+        let wall = HexCoord(6, 5), behindTheWall = HexCoord(7, 5), inTheOpen = HexCoord(2, 5)
+        coord.boardState.cells[wall]?.passable = false
+        coord.boardState.cells[wall]?.overlay = .wall
+        for hex in [behindTheWall, inTheOpen] { coord.boardState.placeLoot(at: hex) }
+        XCTAssertEqual(coord.boardState.range(from: here, to: behindTheWall), 3, "three hexes, round the wall")
+        XCTAssertFalse(LineOfSight.hasLOS(from: here, to: behindTheWall, board: coord.boardState))
+        XCTAssertEqual(coord.boardState.range(from: here, to: inTheOpen), 3)
+        XCTAssertTrue(LineOfSight.hasLOS(from: here, to: inTheOpen, board: coord.boardState))
+        let gold = quartermaster.loot
+
+        let bag = try board.card("Bag of Holding", of: "three-spears"), other = try board.card("Restock", of: "three-spears")
+        board.play(bag, other, for: quartermaster)
+        board.startTurns([TurnOrderEntry(figure: .character(quartermaster), initiative: 91)])
+        try XCTUnwrap(coord.activePlayerTurn).executeCurrentAction()
+
+        XCTAssertEqual(tokens(at: inTheOpen), 0, "in range and in sight: taken")
+        XCTAssertEqual(tokens(at: behindTheWall), 1, "in range, out of sight: left")
+        XCTAssertEqual(quartermaster.loot, gold + 2, "one token")
     }
 
     // MARK: - SET-4: what a token is worth
