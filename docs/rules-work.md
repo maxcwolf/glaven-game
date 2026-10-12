@@ -121,7 +121,7 @@ The task list is `TODO.md` → "Missing Gloomhaven Rules" → "Open, in order"; 
 ordered like this:
 
 1. **Tests and checks, before building on top.** A look at the new interface and at what
-   scenario rules draw, on a device. (`scripts/mutate.py` has 87 mutations, 36 of them scenario
+   scenario rules draw, on a device. (`scripts/mutate.py` has 96 mutations, 36 of them scenario
    rules — `--scenario` — and each is noticed by a test: add one with every new mechanism.)
 2. **Scenario rules** — 94 printed rules in 28 scenarios, in this order because each group is one
    mechanism used several times:
@@ -140,10 +140,10 @@ ordered like this:
    - *bosses still played from their stat cards*: #21, #34, #79;
    - *walls and obstacles with hit points*: #76, #95, #52;
    - a few small ones, and #55, a random dungeon with no map, which is a project of its own.
-3. **Engine rules** still open, each with an id in the engine audit: a Push printed as its own
-   ability ignoring immunity (N17), element choices, placing an area by hand, the rest of
-   negating damage, standees that run out.
-4. **Cards**, **town and campaign**, and what isn't Gloomhaven.
+3. **Engine rules** still open, each with an id in the engine audit: element choices, placing
+   an area by hand, the rest of negating damage, standees that run out.
+4. **Cards** — first the abilities printed under a Move that are never performed (N18: nine
+   cards, one fix where steps are built) — then **town and campaign**, and what isn't Gloomhaven.
 
 ## History, briefly
 
