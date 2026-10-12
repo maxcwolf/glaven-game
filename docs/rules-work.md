@@ -24,6 +24,36 @@ question, how a piece of work is done from start to finish, and what to do next.
   inactive monsters, eggs). Reading the golden transcripts' diffs against the rulebook is the
   other check a merge of this size deserves.
 
+### Work in progress (2026-10-12, branch `feat/scenario-rules-3`, pushed)
+
+`main` has everything up to merge `aec9e30`. The branch adds, each committed and proved by
+mutations: tests for the three rules no test caught; mutations for the audit fixes that were only
+read and for the scenario mechanisms (`scripts/mutate.py` now has 96, each noticed); the golden
+transcripts read against the rules; N17 (Scroll of Recall's Pull) and N13 (Unending Chant, charges
+marked only when an action is performed) fixed.
+
+To pick it up:
+
+1. **Verify the branch first** — the full run after the last two fixes was started and not read:
+   `swift test`, then `SIM_ALL=1 SIM_SEEDS=4 swift test --filter testAllScenariosPlayToALegitimateEnd`,
+   then `SIM_ALL=1 swift test --filter testVeteranPartiesWinMostScenarios`. If a golden transcript
+   differs, read the diff against the rules before re-recording (a charge marked later, a Curse
+   doubled, are the changes to expect).
+2. **N18, the next fix** (`TODO.md` → Cards, first item): an ability the data nests inside a Move
+   is never performed. Add a pass beside `PlayerTurnController.attachingForcedMoveRange` that
+   turns a Move's nested Condition, Shield, Push or Pull into the step after it — not where the
+   Move has text or a target of its own (Feedback Loop, Sinister Opportunity, Hook and Chain,
+   which have their own code). The scans were read: Tuning the Outcome 351 (Curse, Range 3),
+   Power Ballad 348 (Strengthen, all adjacent allies), Warding Dagger 353 (Shield 2, all adjacent
+   allies, round), Unending Chant 358 bottom (Shield 1, all adjacent allies, round), Crushing
+   Hammer 214 (Shield 1, self, round), Maul 484 (Shield 1, one adjacent ally, round), Natural
+   Remedy 503 (Strengthen, one adjacent ally), Forceful Swipe 485 and Lash Out 502 (Push 2; both
+   are Commands, which the game has the Beast Tyrant perform himself). A test a card on
+   `RuleBoard`, a mutation that skips the pass.
+3. Then the rest of group 1 in `TODO.md` (#9's scouts, N12; the interface and what scenario rules
+   draw, on the iPad simulator), then group 2, the scenario rules that need a player prompt.
+4. When a batch is verified: merge to `main` with `git merge --no-ff -m "merge: …"` and push.
+
 ## Which document answers what
 
 | Question | Document | Kept current by |
