@@ -2351,7 +2351,7 @@ final class BoardCoordinator {
     /// Apply a condition to all enemies within range from the acting piece (auto, no target selection).
     func applyConditionToAllEnemies(from pieceID: PieceID, condition: ConditionName, range: Int) {
         let targets = targetableEnemies(of: pieceID, range: range)
-        for target in targets { applyCondition(condition, to: target) }
+        for target in targets.sorted() { applyCondition(condition, to: target, by: pieceID) }
         if targets.isEmpty {
             log("\(name(pieceID)) has no enemy within range \(range) for \(GameText.conditionName(condition))", category: .condition)
             activePlayerTurn?.abilityDidNothing()
@@ -3266,9 +3266,9 @@ final class BoardCoordinator {
         case .selectingConditionTarget(let attackerID, let condition, let validTargets):
             if validTargets.contains(piece) {
                 log("\(name(attackerID)) applies \(GameText.conditionName(condition)) to \(name(piece))", category: .condition)
-                applyCondition(condition, to: piece)
+                applyCondition(condition, to: piece, by: attackerID)
                 // Pendant of the Plague: Poison and Curse on the one target.
-                for extra in pendingExtraConditions { applyCondition(extra, to: piece) }
+                for extra in pendingExtraConditions { applyCondition(extra, to: piece, by: attackerID) }
                 pendingExtraConditions = []
                 boardScene?.clearHighlights()
                 interactionMode = .idle

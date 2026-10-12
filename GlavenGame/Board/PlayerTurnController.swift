@@ -1235,13 +1235,19 @@ final class PlayerTurnController {
             }
             // Mindthief augments shape every melee attack.
             if range <= 1 { applyAugments(coordinator: coordinator) }
-            // Charged bonuses: Backup Ammunition (one more target on a ranged attack), Crackling Air.
-            if range > 1, coordinator.useFirstCharge(of: pieceID, where: { $0 == .extraTargetOnRanged }) != nil {
+            // Bonuses counted in Attack actions — Backup Ammunition (one more target on a ranged
+            // attack), Angelic Ascension, Grim Bargain's doubling — are counted in here, and their
+            // charge is marked once the attack is made (`applyPerformedEffects`): an Attack
+            // action that finds no target isn't one of "your next four".
+            var actionCharges: [Int] = []
+            if range > 1, let backup = coordinator.firstCharge(of: pieceID, where: { $0 == .extraTargetOnRanged }) {
+                actionCharges.append(backup.cardId)
                 targetCount += 1
                 coordinator.log("\(who): one more target", category: .attack)
             }
-            if case .attackPackage(let bonus, let conditions, let advantage)? = coordinator.useFirstCharge(of: pieceID, where: {
-                if case .attackPackage = $0 { return true }; return false }) {
+            if let package = coordinator.firstCharge(of: pieceID, where: { if case .attackPackage = $0 { return true }; return false }),
+               case .attackPackage(let bonus, let conditions, let advantage) = package.bonus {
+                actionCharges.append(package.cardId)
                 pendingAttackValue += bonus
                 pendingConditions.append(contentsOf: conditions)
                 pendingAdvantage = pendingAdvantage || advantage
@@ -1296,7 +1302,8 @@ final class PlayerTurnController {
                 }
             }
             // Grim Bargain's bottom: this round's next attack is doubled (after every other bonus).
-            if coordinator.useFirstCharge(of: pieceID, where: { $0 == .doubleNextAttack }) != nil {
+            if let doubling = coordinator.firstCharge(of: pieceID, where: { $0 == .doubleNextAttack }) {
+                actionCharges.append(doubling.cardId)
                 pendingAttackValue *= 2
                 coordinator.log("\(who)\u{2019}s attack is doubled", category: .attack)
             }
@@ -1305,6 +1312,7 @@ final class PlayerTurnController {
             func applyPerformedEffects() {
                 grantBonusExperience(bonus)
                 applyPrintedEffects(of: action, coordinator: coordinator)
+                if let character { for cardId in actionCharges { coordinator.useCharge(cardId, of: character) } }
             }
 
             if roomWide {
@@ -1364,10 +1372,12 @@ final class PlayerTurnController {
                 }
             }
             grantBonusExperience(bonus)
-            // Potent Potables: +2 on the next heal actions.
-            if case .healBonus(let extra)? = coordinator.useFirstCharge(of: pieceID, where: {
-                if case .healBonus = $0 { return true }; return false }) {
-                healValue += extra
+            // Potent Potables: +2 on the next Heal actions — a charge for each one performed,
+            // not for one with no one to heal.
+            let potent = coordinator.firstCharge(of: pieceID, where: { if case .healBonus = $0 { return true }; return false })
+            if case .healBonus(let extra)? = potent?.bonus { healValue += extra }
+            func markHealCharge() {
+                if let potent, let character { coordinator.useCharge(potent.cardId, of: character) }
             }
             // "All adjacent allies", "self and all allies", "one adjacent ally": who it heals.
             if let reach = allyReach(of: action, coordinator: coordinator) {
@@ -1379,12 +1389,14 @@ final class PlayerTurnController {
                         return false
                     }
                     coordinator.log("\(who): Heal \(healValue). Choose the ally", category: .heal)
+                    markHealCharge()
                     coordinator.beginHealAction(pieceID: pieceID, healValue: healValue, range: 1, conditions: conditions)
                     if case .selectingHealTarget(let healer, let value, _) = coordinator.interactionMode {
                         coordinator.interactionMode = .selectingHealTarget(pieceID: healer, healValue: value, validTargets: Set(reach.pieces))
                     }
                     return true
                 }
+                if !reach.pieces.isEmpty { markHealCharge() }
                 for figure in reach.pieces {
                     let healed = coordinator.heal(figure, amount: healValue, source: pieceID)
                     for cond in conditions { coordinator.applyCondition(cond, to: figure) }
@@ -1394,10 +1406,12 @@ final class PlayerTurnController {
             }
             if range > 0 {
                 coordinator.log("\(who): Heal \(healValue), Range \(range). Choose who to heal", category: .heal)
+                markHealCharge()
                 applyPrintedEffects(of: action, coordinator: coordinator)
                 coordinator.beginHealAction(pieceID: pieceID, healValue: healValue, range: range, conditions: conditions)
                 return true
             }
+            markHealCharge()
             let healed = coordinator.heal(pieceID, amount: healValue, source: pieceID)
             if !hasSpecialTargetSelf(action) {
                 for cond in conditions { coordinator.applyCondition(cond, to: pieceID) }

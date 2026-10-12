@@ -406,7 +406,7 @@ extension BoardCoordinator {
         let targets = boardState.piecePositions
             .filter { passed.contains($0.value) && areEnemies(pieceID, $0.key) && !isConditionActive(.invisible, on: $0.key) }
             .map(\.key).sorted()
-        for target in targets { applyCondition(condition, to: target) }
+        for target in targets { applyCondition(condition, to: target, by: pieceID) }
         log(targets.isEmpty ? "\(name(pieceID)) moved through no enemy"
                             : "\(name(pieceID)) gives \(GameText.list(targets.map(name))) \(GameText.conditionName(condition))",
             category: .condition)
