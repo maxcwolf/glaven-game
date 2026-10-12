@@ -17,7 +17,7 @@ os.makedirs(SCR, exist_ok=True)
 FILTER=("AttackRuleTests|ConditionRuleTests|RoundRuleTests|LootRuleTests|MovementRuleTests|RevealRuleTests|ScenarioEndRuleTests|"
         "ScenarioLevelRuleTests|ForcedMovementTests|RB_|PlayLedgerTests|PlaythroughTests|RestRuleTests|BoardRulesRegressionTests|"
         "JumpFlyMovementTests|HealAndConsumeRuleTests|CombatEffectsTests|TurnFlowTests|E2E|AttackModifier|BoardSimulationTests|MonsterTurnRulesTests|ScenarioFinishEdgeCaseTests|DynamicObstacleTests|FeatureTests|EscortAITests|TeleportTests|HexCoordTests|"
-        "MoneyTokenTests|SetupRulesTests|ItemUseRuleTests|ChargedBonusTests|ActionPerformedTests|ScenarioEnforcedRuleTests|ScenarioReauditTests|ModifierDeckRoundEndTests")
+        "MoneyTokenTests|SetupRulesTests|ItemUseRuleTests|ChargedBonusTests|ActionPerformedTests|ScenarioEnforcedRuleTests|ScenarioReauditTests|ModifierDeckRoundEndTests|MoveThenAbilityTests")
 M={
  "poison0": ("GlavenGame/Engine/CombatResolver.swift", "        if isPoisoned {\n            attackValue += 1\n        }", "        if isPoisoned {\n            attackValue += 0\n        }"),
  "retaliateShielded": ("GlavenGame/Board/BoardCoordinator+Combat.swift", "            await sufferDamageWithMitigation(retaliate, to: attacker,", "            await sufferDamageWithMitigation(max(0, retaliate - self.shield(of: attacker)), to: attacker,"),
@@ -80,6 +80,7 @@ M={
  "actionChargesNeverMarked": ("GlavenGame/Board/PlayerTurnController.swift", "                if let character { for cardId in actionCharges { coordinator.useCharge(cardId, of: character) } }\n", ""),
  "healChargeBeforeTheTarget": ("GlavenGame/Board/PlayerTurnController.swift", "            func markHealCharge() {\n                if let potent, let character { coordinator.useCharge(potent.cardId, of: character) }\n            }\n", "            func markHealCharge() {\n            }\n            if let potent, let character { coordinator.useCharge(potent.cardId, of: character) }\n"),
  "revealAlwaysResumesTurns": ("GlavenGame/Board/BoardCoordinator.swift", "        boardPhase = interrupted\n        log(opening", "        boardPhase = .execution\n        log(opening"),
+ "abilitiesUnderMovesSkipped": ("GlavenGame/Board/PlayerTurnController.swift", "            guard subs.contains(where: isAbility) else { return [step] }", "            guard subs.contains(where: isAbility), false else { return [step] }"),
 }
 # Scenario rules (the mechanisms of placements/gh.json): run against the scenario tests.
 SCENARIO_FILTER=("ScenarioSpecialRuleTests|ScenarioReauditTests|ScenarioEnforcedRuleTests|ScenarioLockTests|ScenarioGoalTests|"

@@ -2094,8 +2094,27 @@ final class PlayerTurnController {
     /// opened up, so a move or a target choice inside them is a step of its own and the turn
     /// waits for it. Augments stay whole: they aren't performed.
     static func steps(_ actions: [ActionModel], labels: EditionDataStore? = nil, edition: String = "gh") -> [ActionModel] {
-        attachingModifierConsumes(attachingForcedMoveRange(flatSteps(actions, labels: labels, edition: edition))
+        attachingModifierConsumes(attachingForcedMoveRange(abilitiesUnderMovesAsSteps(flatSteps(actions, labels: labels, edition: edition)))
             .map(hoistingGroupedEffects))
+    }
+
+    /// An ability printed under a Move — "Move 3" and below it "Curse, Range 3" (Tuning the
+    /// Outcome), "Shield 2, affect all adjacent allies" (Warding Dagger), "Push 2, target all
+    /// adjacent enemies" (Lash Out) — which the data has inside the Move: it is an ability of
+    /// its own, performed after the Move. Not where the Move carries text or a target, which say
+    /// what the nested ability is for (Feedback Loop, Sinister Opportunity, Hook and Chain).
+    static func abilitiesUnderMovesAsSteps(_ steps: [ActionModel]) -> [ActionModel] {
+        steps.flatMap { step -> [ActionModel] in
+            guard step.type == .move, let subs = step.subActions,
+                  !subs.contains(where: { $0.type == .custom || $0.type == .specialTarget }) else { return [step] }
+            func isAbility(_ sub: ActionModel) -> Bool {
+                [.condition, .shield, .retaliate, .push, .pull].contains(sub.type) && ![.add, .addition, .plus].contains(sub.valueType)
+            }
+            guard subs.contains(where: isAbility) else { return [step] }
+            var move = step
+            move.subActions = subs.filter { !isAbility($0) }
+            return [move] + subs.filter(isAbility)
+        }
     }
 
     /// A Push or Pull printed with its range on the line below it (Scroll of Recall's "Pull 1,
