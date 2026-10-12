@@ -70,6 +70,9 @@ M={
  "noItemsOnARestTurn": ("GlavenGame/Board/BoardCoordinator+Items.swift", "            return turn.phase != .selectTopCard\n", "            return turn.phase != .selectTopCard && !turn.isLongRest\n"),
  "restTurnSkipsBonuses": ("GlavenGame/Board/PlayerTurnController.swift", "        guard isLongRest, phase == .turnComplete, !steps.isEmpty, !(character?.exhausted ?? true) else { return done() }", "        guard isLongRest, phase == .turnComplete, steps.isEmpty, !steps.isEmpty, !(character?.exhausted ?? true) else { return done() }"),
  "roundStartRulesWaitForTheCards": ("GlavenGame/Board/BoardCoordinator.swift", "        gameManager.scenarioRulesManager.evaluateRulesForTheRoundToCome()\n", ""),
+ "pullTakesOneTargetOnly": ("GlavenGame/Board/BoardCoordinator.swift", "        forcedMoveLeft = (count, range, [])", "        forcedMoveLeft = (min(count, 1), range, [])"),
+ "rangeLineLeftOnItsOwn": ("GlavenGame/Board/PlayerTurnController.swift", "            if step.type == .range, var host = result.last, host.type == .push || host.type == .pull,", "            if false, step.type == .range, var host = result.last, host.type == .push || host.type == .pull,"),
+ "forcedMoveIgnoresImmunity": ("GlavenGame/Board/BoardCoordinator.swift", "        if entity(for: target)?.immunities.contains(isPush ? .push : .pull) == true {", "        if false, entity(for: target)?.immunities.contains(isPush ? .push : .pull) == true {"),
 }
 # Scenario rules (the mechanisms of placements/gh.json): run against the scenario tests.
 SCENARIO_FILTER=("ScenarioSpecialRuleTests|ScenarioReauditTests|ScenarioEnforcedRuleTests|ScenarioLockTests|ScenarioGoalTests|"

@@ -193,6 +193,60 @@ final class ForcedMovementTests: XCTestCase {
         XCTAssertEqual(position(target.piece)?.distance(to: attackerHex), 3)
     }
 
+    /// A Pull printed with its range and targets on the lines below it — Scroll of Recall's
+    /// "Pull 1, Range 3, Target 3" — is the player's to aim: three enemies within three hexes,
+    /// one after another, each once. One that can't be pulled (the Elder Drake, the Sightless
+    /// Eye) may be chosen and stays where it is (ATK-6).
+    func testAPullWithItsOwnRangeAndTargetsPullsEachEnemyChosen() async throws {
+        let board = try RuleBoard()
+        let here = HexCoord(5, 5)
+        let quartermaster = board.character("three-spears", at: here)
+        let near = try board.monster(at: HexCoord(7, 5)), far = try board.monster(at: HexCoord(2, 5))
+        let rooted = try board.monster(at: HexCoord(5, 7)), fourth = try board.monster(at: HexCoord(5, 3))
+        let beyond = try board.monster(at: HexCoord(9, 5))
+        rooted.entity.immunities = [.pull]
+        func steps(_ piece: PieceID) -> Int? { board.hex(piece).flatMap { board.coord.boardState.range(from: here, to: $0) } }
+        XCTAssertEqual([near, far, rooted, fourth, beyond].map { steps($0.piece) }, [2, 3, 2, 2, 4])
+
+        board.play(try board.card("Restock", of: "three-spears"), try board.card("Scroll of Recall", of: "three-spears"),
+                   for: quartermaster)
+        board.startTurns([TurnOrderEntry(figure: .character(quartermaster), initiative: 73)])
+        let turn = try XCTUnwrap(board.coord.activePlayerTurn)
+        turn.setBottomFirst(true)
+        turn.executeCurrentAction()
+
+        /// The enemies offered for the next pull, once the last one is done.
+        func offered(without chosen: PieceID? = nil) async -> Set<PieceID>? {
+            await board.settle {
+                if case .selectingForcedMoveTarget(_, _, _, let options) = board.coord.interactionMode {
+                    return chosen.map { !options.contains($0) } ?? true
+                }
+                return !turn.isWaiting
+            }
+            if case .selectingForcedMoveTarget(_, 1, false, let options) = board.coord.interactionMode { return options }
+            return nil
+        }
+        var options = await offered()
+        XCTAssertEqual(options, [near.piece, far.piece, rooted.piece, fourth.piece], "every enemy within three hexes")
+        board.coord.handlePieceTap(near.piece)
+        options = await offered(without: near.piece)
+        XCTAssertEqual(steps(near.piece), 1, "pulled a hex nearer")
+        XCTAssertEqual(options, [far.piece, rooted.piece, fourth.piece], "each enemy once")
+
+        board.coord.handlePieceTap(rooted.piece)
+        options = await offered(without: rooted.piece)
+        XCTAssertEqual(board.hex(rooted.piece), HexCoord(5, 7), "one that can't be pulled stays")
+        XCTAssertEqual(options, [far.piece, fourth.piece])
+
+        board.coord.handlePieceTap(far.piece)
+        options = await offered(without: far.piece)
+        XCTAssertEqual(steps(far.piece), 2)
+        XCTAssertNil(options, "three targets, and the ability is over")
+        XCTAssertFalse(turn.isWaiting)
+        XCTAssertEqual(steps(fourth.piece), 2, "the fourth enemy is left alone")
+        XCTAssertEqual(turn.performedHalves.count, 1, "the half was performed")
+    }
+
     // MARK: - Retaliate
 
     private func retaliate(_ value: Int, range: Int? = nil) -> ActionModel {

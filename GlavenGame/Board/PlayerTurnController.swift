@@ -1494,14 +1494,16 @@ final class PlayerTurnController {
             let steps = action.value?.intValue ?? 1
             let isPush = action.type == .push
             let spec = action.subActions?.first { $0.type == .specialTarget }?.value?.stringValue.lowercased()
-            let range = action.subActions?.first { $0.type == .range }?.value?.intValue
+            let rangeAction = action.subActions?.first { $0.type == .range }
+            let targets = ((action.subActions ?? []) + (rangeAction?.subActions ?? [])).first { $0.type == .target }?.value?.intValue ?? 1
             coordinator.log("\(who): \(isPush ? "Push" : "Pull") \(steps)", category: .move)
             if spec?.hasPrefix("enemiesadjacent") == true {
                 coordinator.forceMoveAllEnemies(from: pieceID, within: 1, steps: steps, isPush: isPush)
-            } else if spec?.hasPrefix("enemyadjacent") == true || range != nil {
-                coordinator.beginForcedMoveTarget(pieceID: pieceID, range: range ?? 1, steps: steps, isPush: isPush)
             } else {
-                coordinator.beginStandalonePushPull(steps: steps, isPush: isPush)
+                // One enemy, or as many as its Target says, within its range — an adjacent one
+                // where no range is printed.
+                coordinator.beginForcedMoveTarget(pieceID: pieceID, range: rangeAction?.value?.intValue ?? 1, steps: steps,
+                                                  isPush: isPush, targets: targets)
             }
             return true
 
@@ -2078,7 +2080,24 @@ final class PlayerTurnController {
     /// opened up, so a move or a target choice inside them is a step of its own and the turn
     /// waits for it. Augments stay whole: they aren't performed.
     static func steps(_ actions: [ActionModel], labels: EditionDataStore? = nil, edition: String = "gh") -> [ActionModel] {
-        attachingModifierConsumes(flatSteps(actions, labels: labels, edition: edition).map(hoistingGroupedEffects))
+        attachingModifierConsumes(attachingForcedMoveRange(flatSteps(actions, labels: labels, edition: edition))
+            .map(hoistingGroupedEffects))
+    }
+
+    /// A Push or Pull printed with its range on the line below it (Scroll of Recall's "Pull 1,
+    /// Range 3, Target 3"): the data has that line as an action of its own, and it is the pull's.
+    static func attachingForcedMoveRange(_ steps: [ActionModel]) -> [ActionModel] {
+        var result: [ActionModel] = []
+        for step in steps {
+            if step.type == .range, var host = result.last, host.type == .push || host.type == .pull,
+               !(host.subActions ?? []).contains(where: { $0.type == .range || $0.type == .specialTarget }) {
+                host.subActions = (host.subActions ?? []) + [step]
+                result[result.count - 1] = host
+            } else {
+                result.append(step)
+            }
+        }
+        return result
     }
 
     /// What is printed in a group beside an ability and only qualifies it — XP, infusions and

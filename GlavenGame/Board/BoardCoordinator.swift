@@ -200,11 +200,9 @@ final class BoardCoordinator {
     /// The active player turn controller (nil when monster/no turn).
     var activePlayerTurn: PlayerTurnController?
 
-    /// The last target hit by a player attack (used for standalone push/pull actions).
-    var lastAttackTarget: PieceID?
-
-    /// The attacker's position at time of last attack (used for standalone push/pull direction).
-    var lastAttackerPos: HexCoord?
+    /// What is left of a Push or Pull that chooses its targets: how many more may be chosen,
+    /// within what range, and who has been chosen already (each enemy once).
+    private var forcedMoveLeft: (targets: Int, range: Int, chosen: Set<PieceID>)?
 
     /// The summon turn controller.
     var summonTurnController: SummonTurnController?
@@ -968,8 +966,6 @@ final class BoardCoordinator {
         endReason = nil
         pendingRevealedStandees = [:]
         currentTurnToggled = false
-        lastAttackTarget = nil
-        lastAttackerPos = nil
         lastModifierReveal = nil   // the last scenario's draw isn't this one's
         lastDrawnModifier = nil
         characterTraps = [:]
@@ -1761,9 +1757,6 @@ final class BoardCoordinator {
             gameManager: gameManager
         )
         activePlayerTurn = ptc
-        // A standalone push/pull can only follow an attack made this turn.
-        lastAttackTarget = nil
-        lastAttackerPos = nil
 
         // Feed in the cards selected during card selection phase
         if let pair = selectedCardPairs[character.id] {
@@ -2379,8 +2372,6 @@ final class BoardCoordinator {
         let turn = activePlayerTurn
         let generation = boardGeneration
         abilityTargets.insert(target)
-        lastAttackTarget = target
-        lastAttackerPos = boardState.piecePositions[attacker]
         boardScene?.clearHighlights()
 
         let targetHex = boardState.piecePositions[target]
@@ -2464,33 +2455,31 @@ final class BoardCoordinator {
         }
     }
 
-    /// "Push/Pull X" on one enemy within range: the player picks the target.
-    func beginForcedMoveTarget(pieceID: PieceID, range: Int, steps: Int, isPush: Bool) {
-        let targets = targetableEnemies(of: pieceID, range: range)
-        guard !targets.isEmpty else {
-            log("\(name(pieceID)) has no enemy within range \(range) to \(isPush ? "push" : "pull")", category: .move)
-            activePlayerTurn?.abilityDidNothing()
+    /// "Push/Pull X" printed as an ability of its own, on one enemy within range or on as many
+    /// as its Target says (Scroll of Recall's "Pull 1, Range 3, Target 3"): the player picks
+    /// them one after another, each enemy once, and each is moved before the next is chosen.
+    func beginForcedMoveTarget(pieceID: PieceID, range: Int, steps: Int, isPush: Bool, targets count: Int = 1) {
+        forcedMoveLeft = (count, range, [])
+        chooseForcedMoveTarget(pieceID: pieceID, steps: steps, isPush: isPush)
+    }
+
+    /// Ask for the next target of a chosen Push or Pull, or end the ability when it has had
+    /// them all (or there is no one left to choose).
+    private func chooseForcedMoveTarget(pieceID: PieceID, steps: Int, isPush: Bool) {
+        guard let left = forcedMoveLeft else { return }
+        let targets = targetableEnemies(of: pieceID, range: left.range).subtracting(left.chosen)
+        guard left.targets > 0, !targets.isEmpty else {
+            forcedMoveLeft = nil
+            if left.chosen.isEmpty {
+                log("\(name(pieceID)) has no enemy within range \(left.range) to \(isPush ? "push" : "pull")", category: .move)
+                activePlayerTurn?.abilityDidNothing()
+            }
             activePlayerTurn?.advanceAfterAsyncAction()
             return
         }
         interactionMode = .selectingForcedMoveTarget(pieceID: pieceID, steps: steps, isPush: isPush, validTargets: targets)
         let hexes = Set(targets.compactMap { boardState.piecePositions[$0] })
         boardScene?.highlightHexes(hexes, style: .forcedMove, offsetCol: offsetCol, offsetRow: offsetRow)
-    }
-
-    /// Begin a standalone push/pull action (top-level action, not attack sub-action).
-    /// Applies to the target of the attack just made this turn.
-    func beginStandalonePushPull(steps: Int, isPush: Bool) {
-        guard let target = lastAttackTarget,
-              let attackerPos = lastAttackerPos,
-              boardState.piecePositions[target] != nil else {
-            let label = isPush ? "Push" : "Pull"
-            log("No target to \(label)", category: .move)
-            activePlayerTurn?.abilityDidNothing()
-            activePlayerTurn?.advanceAfterAsyncAction()
-            return
-        }
-        beginPushPull(target: target, attackerPos: attackerPos, remainingSteps: steps, isPush: isPush, first: true)
     }
 
     /// Start the interactive push/pull flow for a target. `first`: nothing of it has happened yet.
@@ -3290,11 +3279,13 @@ final class BoardCoordinator {
             if validTargets.contains(piece), let origin = boardState.piecePositions[moverID] {
                 boardScene?.clearHighlights()
                 interactionMode = .idle
-                let turn = activePlayerTurn, generation = boardGeneration
+                forcedMoveLeft?.targets -= 1
+                forcedMoveLeft?.chosen.insert(piece)
+                let generation = boardGeneration
                 Task { @MainActor in
                     await self.performPushPull(target: piece, attackerPos: origin, steps: steps, isPush: isPush)
                     guard self.isCurrentBoard(generation) else { return }
-                    turn?.advanceAfterAsyncAction()
+                    self.chooseForcedMoveTarget(pieceID: moverID, steps: steps, isPush: isPush)
                 }
             }
 
