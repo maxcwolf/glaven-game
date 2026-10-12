@@ -61,7 +61,10 @@ was found enforced wrongly has a row in both (ids S1…, S2… in the engine aud
 4. **Prove the test.** Take the fix out and see the test fail: `git stash push <file>`, run the
    test, `git stash pop` (never `git checkout` a file with uncommitted work). For standing
    rules `scripts/mutate.py <name>` does it: it breaks one rule, runs the rule tests and says
-   which noticed. A fix whose test doesn't fail without it isn't done.
+   which noticed. A fix whose test doesn't fail without it isn't done. A mutation nothing
+   notices has three possible causes, all met in practice: the test's set-up makes the rule
+   moot (a token out of sight that is also out of range), the mutated line is one of several
+   copies of the rule, or the line does nothing another line doesn't — then the code goes.
 5. **Verify the batch:**
    ```sh
    swift test
@@ -117,10 +120,9 @@ use it to find a rule and the page image to read it.
 The task list is `TODO.md` → "Missing Gloomhaven Rules" → "Open, in order"; it is grouped and
 ordered like this:
 
-1. **Tests and checks, before building on top.** Mutations for the scenario mechanisms (none of
-   `scripts/mutate.py`'s 51 is a scenario rule — each scenario batch was mutation-checked by hand
-   when it was written); a look at the new interface and at what scenario rules draw, on a
-   device.
+1. **Tests and checks, before building on top.** A look at the new interface and at what
+   scenario rules draw, on a device. (`scripts/mutate.py` has 87 mutations, 36 of them scenario
+   rules — `--scenario` — and each is noticed by a test: add one with every new mechanism.)
 2. **Scenario rules** — 94 printed rules in 28 scenarios, in this order because each group is one
    mechanism used several times:
    - *a prompt for a choice the player can't make yet*: losing a card to spare a captive or the

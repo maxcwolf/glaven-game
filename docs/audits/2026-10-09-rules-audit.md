@@ -236,7 +236,7 @@ opposite of A2 now assert the rule ("line grazing a wall corner is blocked", "a 
 hides the row beyond it"). The `RulebookTests` pipeline tests call `CombatResolver` with its inputs supplied:
 they prove the arithmetic, and `AttackRuleTests` proves the board supplies the right inputs.
 
-**Mutations.** `scripts/mutate.py` breaks one rule at a time in the game code (51 named
+**Mutations.** `scripts/mutate.py` breaks one rule at a time in the game code (87 named
 mutations: poison adding 0, Retaliate reduced by Shield, no Disadvantage for a ranged attack on an
 adjacent enemy, effects on a killed target, a summon drawing from the monster deck, no reshuffle
 at the end of the round, a jump landing free on a trap, the gold rate, turn order reversed…), runs
@@ -253,7 +253,9 @@ batch (C8, E7, E12, B7, B6, B12, B11, B4, B8, start-of-round rules), whose faili
 only been read, have fifteen mutations of their own since the same day; three of their tests
 could not see the rule broken and were changed (solo play at a level where its gold differs, the
 scenario summary of an escape, a stunned character's offers answered instead of waited on).
-51 mutations, each noticed by a test.
+The scenario mechanisms have 36 more (`scripts/mutate.py --scenario`: the `when` facts, standing
+effects, water, inactive monsters, sides, boss cycles, marching, locks, monsters set up late…),
+run against the scenario tests. 87 mutations, each noticed by a test.
 
 **The simulator** (`Tests/Support/ScenarioSimulator`, `PlayLedger`, `PlayerPolicies`). It now
 also checks, of every playthrough: each attack within its attack's range (read from the card and

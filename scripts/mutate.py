@@ -5,6 +5,7 @@ say which tests noticed. A mutation no test fails for is a rule without a test.
     scripts/mutate.py --list            the mutations
     scripts/mutate.py <name> [filter]   apply one, run the tests (optionally only `filter`), restore
     scripts/mutate.py --all             every mutation in turn (slow: a build and a test run each)
+    scripts/mutate.py --scenario        only the scenario-rule mutations (S), against the scenario tests
 
 The file is restored with `git checkout`, so the script refuses to touch a file with uncommitted
 changes. A pattern "found 0 times" means the game code has moved on: update the mutation.
@@ -70,6 +71,48 @@ M={
  "restTurnSkipsBonuses": ("GlavenGame/Board/PlayerTurnController.swift", "        guard isLongRest, phase == .turnComplete, !steps.isEmpty, !(character?.exhausted ?? true) else { return done() }", "        guard isLongRest, phase == .turnComplete, steps.isEmpty, !steps.isEmpty, !(character?.exhausted ?? true) else { return done() }"),
  "roundStartRulesWaitForTheCards": ("GlavenGame/Board/BoardCoordinator.swift", "        gameManager.scenarioRulesManager.evaluateRulesForTheRoundToCome()\n", ""),
 }
+# Scenario rules (the mechanisms of placements/gh.json): run against the scenario tests.
+SCENARIO_FILTER=("ScenarioSpecialRuleTests|ScenarioReauditTests|ScenarioEnforcedRuleTests|ScenarioLockTests|ScenarioGoalTests|"
+                 "ScenarioSpawnTests|DemonicRiftTests|BattlementsTests|MonsterTextTests|MonsterSummonTests")
+S={
+ "factSavedIgnored": ("GlavenGame/Board/BoardCoordinator+Goals.swift", "            guard arrived >= saved else { return false }", "            guard arrived >= 0 * saved else { return false }"),
+ "factLockIgnored": ("GlavenGame/Board/BoardCoordinator+Goals.swift", "        if let lock = fact.lock, !boardState.releasedLocks.contains(lock) { return false }", "        if let lock = fact.lock, lock < 0 { return false }"),
+ "factUnrevealedIgnored": ("GlavenGame/Board/BoardCoordinator+Goals.swift", "        if let room = fact.unrevealed, gameManager?.game.scenario?.revealedRooms.contains(room) != false { return false }", "        if let room = fact.unrevealed, room < 0 { return false }"),
+ "factOccupiedIgnored": ("GlavenGame/Board/BoardCoordinator+Goals.swift", "            guard !hexes.isEmpty, hexes.allSatisfy(boardState.isOccupied) else { return false }", "            guard !hexes.isEmpty else { return false }"),
+ "factLootedIgnored": ("GlavenGame/Board/BoardCoordinator+Goals.swift", "            if looted == Self.goalTreasureID {\n                guard treasureIsLooted(looted) else { return false }", "            if looted == Self.goalTreasureID {\n                guard treasureIsLooted(looted) || true else { return false }"),
+ "standingLosesNothing": ("GlavenGame/Board/BoardCoordinator+Goals.swift", "                if case .monster(let name, _)? = boardState.piece(at: hex), stands.monsters.contains(name) {", "                if case .monster(let name, _)? = boardState.piece(at: hex), stands.monsters.contains(name), false {"),
+ "lootActionNotNeeded": ("GlavenGame/Board/BoardCoordinator+Goals.swift", "    var goalTreasureNeedsLootAction: Bool { scenarioData?.placements?.lootActionOnly == true }", "    var goalTreasureNeedsLootAction: Bool { false }"),
+ "scenarioAttackIgnored": ("GlavenGame/Board/BoardCoordinator+Effects.swift", "        scenarioEffects(on: pieceID).reduce(0) { $0 + ($1.attack ?? 0) }", "        scenarioEffects(on: pieceID).reduce(0) { $0 + 0 * ($1.attack ?? 0) }"),
+ "scenarioAdvantageIgnored": ("GlavenGame/Board/BoardCoordinator+Effects.swift", "        scenarioEffects(on: pieceID).contains { $0.advantage == true }", "        scenarioEffects(on: pieceID).contains { $0.advantage == true && false }"),
+ "scenarioDisadvantageIgnored": ("GlavenGame/Board/BoardCoordinator+Effects.swift", "        scenarioEffects(on: pieceID).contains { $0.disadvantage == true }", "        scenarioEffects(on: pieceID).contains { $0.disadvantage == true && false }"),
+ "scenarioShieldIgnored": ("GlavenGame/Board/BoardCoordinator+Effects.swift", "            return total + (ScenarioExpression.integerValue(formula, variables: variables) ?? 0)", "            return total + 0 * (ScenarioExpression.integerValue(formula, variables: variables) ?? 0)"),
+ "itemsNotBarred": ("GlavenGame/Board/BoardCoordinator+Effects.swift", "contains { $0.noItems == true }", "contains { $0.noItems == true && false }"),
+ "effectLastsAfterLooting": ("GlavenGame/Board/BoardCoordinator+Effects.swift", "            guard case .character(let id) = pieceID, !boardState.goalLooters.contains(id) else { return false }", "            guard case .character = pieceID else { return false }"),
+ "waterSparesThePoisoned": ("GlavenGame/Board/BoardCoordinator+Effects.swift", "        case .character, .summon: return isConditionActive(.poison, on: pieceID)", "        case .character, .summon: return false && isConditionActive(.poison, on: pieceID)"),
+ "waterHarmlessAtTurnEnd": ("GlavenGame/Board/BoardCoordinator+Effects.swift", "        return ScenarioExpression.integerValue(formula, variables: variables).flatMap { $0 > 0 ? $0 : nil }", "        return ScenarioExpression.integerValue(formula, variables: variables).flatMap { $0 > 9999 ? $0 : nil }"),
+ "cleansedNotShielded": ("GlavenGame/Board/BoardCoordinator+Effects.swift", "        return cleansing.shield\n", "        return 0 * cleansing.shield\n"),
+ "cleansedStillPoisoned": ("GlavenGame/Board/BoardCoordinator+Effects.swift", "        return boardState.cleansed.contains(id)\n    }\n\n    // MARK: - Those that can't be damaged", "        return false && boardState.cleansed.contains(id)\n    }\n\n    // MARK: - Those that can't be damaged"),
+ "undamageableDamaged": ("GlavenGame/Board/BoardCoordinator+Effects.swift", "        return scenarioData?.placements?.undamageable?.contains(name) == true", "        return false && scenarioData?.placements?.undamageable?.contains(name) == true"),
+ "noReprieve": ("GlavenGame/Board/BoardCoordinator+Effects.swift", "reprieve.killed.contains(name) else { return }", "reprieve.killed.contains(name), false else { return }"),
+ "inactiveCanBeAttacked": ("GlavenGame/Board/BoardCoordinator+Rules.swift", "        return MonsterAI.inactiveMonsters(game).contains(name)\n    }", "        return false && MonsterAI.inactiveMonsters(game).contains(name)\n    }"),
+ "shelteredCanBeAttacked": ("GlavenGame/Board/BoardCoordinator+Rules.swift", "        if objectiveContainer(of: pieceID)?.isSheltered == true || isInactive(pieceID) { return true }", "        if isInactive(pieceID) { return true }"),
+ "inactiveMonstersAct": ("GlavenGame/Engine/MonsterAI.swift", "              written.inactive != nil else { return [] }", "              written.inactive != nil, false else { return [] }"),
+ "apartSideIsMonsters": ("GlavenGame/Engine/MonsterAI.swift", "        monster.isAlly ? .party : monster.standsApart ? .apart : .monsters", "        monster.isAlly ? .party : .monsters"),
+ "focusFirstIgnored": ("GlavenGame/Engine/MonsterAI.swift", "        return candidates.filter(isFirst) + candidates.filter { !isFirst($0) }", "        return candidates.filter { _ in _ = isFirst; return true }"),
+ "cycleStandsStill": ("GlavenGame/Board/BoardCoordinator+Bosses.swift", "            boardState.cycleSteps[name] = step + offset + 1\n", "            boardState.cycleSteps[name] = step + offset\n"),
+ "bossStaysAfterMelee": ("GlavenGame/Board/BoardCoordinator+Bosses.swift", "        log(\"\\(self.name(pieceID)) vanishes\", category: .move)\n        removePieceFromBoard(pieceID)", "        log(\"\\(self.name(pieceID)) vanishes\", category: .move)"),
+ "bossNeverAppears": ("GlavenGame/Board/BoardCoordinator+Bosses.swift", "        guard case .monster(let name, let standee) = pieceID, comesAndGoes(name),", "        guard case .monster(let name, let standee) = pieceID, comesAndGoes(name), false,"),
+ "commanderDoorsStayShut": ("GlavenGame/Board/BoardCoordinator+Bosses.swift", "        if !door.isOpen { openDoor(at: door.coord) }\n        guard isOnBoard(pieceID) else { return true }", "        guard isOnBoard(pieceID) else { return true }"),
+ "eggsNeverHatch": ("GlavenGame/Board/BoardCoordinator+Bosses.swift", "        for egg in eggs {\n            guard let hex = boardState.piecePositions[egg] else { continue }\n            (entity(for: egg) as? GameObjectiveEntity)?.dead = true", "        for egg in eggs.prefix(0) {\n            guard let hex = boardState.piecePositions[egg] else { continue }\n            (entity(for: egg) as? GameObjectiveEntity)?.dead = true"),
+ "marchersStandStill": ("GlavenGame/Board/BoardCoordinator+March.swift", "        var budget = march.move\n", "        var budget = 0 * march.move\n"),
+ "keysNeverTurn": ("GlavenGame/Board/BoardCoordinator+Locks.swift", "            if keyTurned(lock, turnEnded: turnEnded, roundEnded: roundEnded) { boardState.releasedLocks.insert(index) }", "            if false, keyTurned(lock, turnEnded: turnEnded, roundEnded: roundEnded) { boardState.releasedLocks.insert(index) }"),
+ "heldDoorsStayOpen": ("GlavenGame/Board/BoardCoordinator+Locks.swift", "                } else if !held, door.isOpen, !boardState.shutDoors.contains(door.coord) {", "                } else if false, !held, door.isOpen, !boardState.shutDoors.contains(door.coord) {"),
+ "lockedDoorsWalkable": ("GlavenGame/Engine/Pathfinder.swift", "            self.closedDoors = canOpenDoors ? (opensLockedDoors ? [] : closed.intersection(board.lockedDoors)) : closed", "            self.closedDoors = canOpenDoors ? [] : closed"),
+ "heldMonstersSetUpWithTheRoom": ("GlavenGame/Managers/ScenarioManager.swift", "        setUpMonsters(of: room, playerCount: playerCount, edition: edition) { !held.contains($0) }", "        setUpMonsters(of: room, playerCount: playerCount, edition: edition) { _ in _ = held; return true }"),
+ "risenFromTheDestroyedStayDown": ("GlavenGame/Board/BoardCoordinator+Rules.swift", "            if let stood, let index, let risen = scenarioData?.placements?.whenDestroyed?[String(index)],", "            if false, let stood, let index, let risen = scenarioData?.placements?.whenDestroyed?[String(index)],"),
+ "scenarioSpecialsIgnored": ("GlavenGame/Board/MonsterTurnController.swift", "                guard let special = coordinator.scenarioData?.placements?.specials?[monster.name] ?? stat?.special,", "                guard let special = stat?.special,"),
+}
+M.update(S)
 def run(name, flt=None):
     path,old,new=M[name]
     full=os.path.join(WT,path)
@@ -81,7 +124,7 @@ def run(name, flt=None):
     open(full,"w").write(src.replace(old,new))
     try:
         log=os.path.join(SCR,f"{name}.log")
-        p=subprocess.Popen(["swift","test","--filter",flt or FILTER],cwd=WT,stdout=open(log,"w"),stderr=subprocess.STDOUT)
+        p=subprocess.Popen(["swift","test","--filter",flt or (SCENARIO_FILTER if name in S else FILTER)],cwd=WT,stdout=open(log,"w"),stderr=subprocess.STDOUT)
         try: p.wait(timeout=600)
         except subprocess.TimeoutExpired:
             # A hung test (a prompt nobody answers) is the mutation showing, but not a failure.
@@ -99,8 +142,8 @@ def run(name, flt=None):
 
 if len(sys.argv)<2 or sys.argv[1]=="--list":
     for name,(path,_,_) in M.items(): print(f"{name:32} {path}")
-elif sys.argv[1]=="--all":
-    missed=[name for name in M if run(name)==1]
+elif sys.argv[1] in ("--all","--scenario"):
+    missed=[name for name in (S if sys.argv[1]=="--scenario" else M) if run(name)==1]
     print("NOT CAUGHT:", ", ".join(missed) or "none")
 else:
     sys.exit(run(sys.argv[1], sys.argv[2] if len(sys.argv)>2 else None))
