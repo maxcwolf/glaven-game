@@ -8,11 +8,16 @@ goal is**. Those come from the scenario book, and this folder is where what was 
 - [gh-scenario-rules.md](gh-scenario-rules.md) — the rules of all 95 scenarios as short notes:
   goal, losses, objectives, sections, special rules, boss specials, map letters.
 - [rules-audit.md](rules-audit.md) — every one of those rules against the game: done, partial or
-  missing, and where.
+  missing, and where; and, at its top, what is still open by the kind of work it needs.
 - `GlavenGame/Resources/ScenarioMaps/placements/gh.json` — the hexes, and the goals the game
   enforces for objectives (below).
 - `GlavenGame/Resources/ScenarioMaps/placements/gh-traps.json` — what each scenario's traps do,
   from its map legend ([Traps](#traps-what-each-scenarios-traps-do), below).
+
+How the work on these rules is done from start to finish, and what to do next, is in
+[../rules-work.md](../rules-work.md); the helpers for reading the book
+(`scripts/scenario-book/`: a page of the PDF as a picture, its text, and a tool that merges what
+was read into `gh.json` keeping the file's layout) are described there.
 
 The book itself (Scenario Book, second printing) isn't kept in the repository — the PDF is 319 MB.
 It can be read online at <https://kirsanova.relfbo.qapubl.club/view/145446/2/>; page numbers in
@@ -192,22 +197,22 @@ its map, every door objective is on a door and every objective number exists.
 | 3 Inox Encampment | — | a | win: 5×C kills | — |
 | 19 Forgotten Crypt | Hail | b–e | win when Hail ends beside the altar; lost if she dies | — |
 | 22 Temple of the Elements | 4 altars | — | win: destroy all altars | — |
-| 26 Ancient Cistern | water pumps | — (imps spawn beside their pump) | — | cleansing a pump isn't modelled, so the goal isn't |
+| 26 Ancient Cistern | water pumps | — (imps spawn beside their pump) | — | cleansing a pump isn't modelled, so the goal isn't (it plays as "kill all enemies") |
 | 27 Ruinous Rift | Hail | b–e | lost if Hail dies (win at round 10 is a scenario rule) | — |
 | 29 Sanctuary of Gloom | 3 barred doors | — | — | — |
 | 31 Plane of Night | rock column | b, c | win: destroy the column | — |
 | 33 Savvas Armory | barred door | a (exits), c, d | win: loot all, then everyone on the exit; lost if exhausted off it | — |
-| 35 Gloomhaven Battlements A | barred door | — | — | — |
-| 36 Gloomhaven Battlements B | the gate (protected) | a–e | — | — |
+| 35 Gloomhaven Battlements A | barred door | a, b (the battlements, where the first room's archers stand) | win: destroy the door, kill the Captain of the Guard | — |
+| 36 Gloomhaven Battlements B | the gate (protected) | a–e | win: kill the Prime Demon (it arrives at e when the gate falls) | — |
 | 38 Slave Pens | the Orchid | — | lost if he dies | he heads for the nearest enemy, not the shaman on the D tile |
 | 39 Treacherous Divide | altar | — | win: destroy the altar | — |
 | 42 Realm of the Voice | 6 vocal chords | — | win: destroy all | — |
 | 44 Tribal Assault | Redthorn, 9 captives (protected) | — | — | losing a card to save a captive, and freeing one, aren't modelled — so a captive's death doesn't lose yet |
 | 45 Rebel Swamp | 6 totems | — | win: destroy all | — |
 | 56 Bandit's Wood | 3 captive Orchids | — | lost when all three die (scenario rule) | — |
-| 57 Investigation | — | a | win: kill the Infiltrator | he appears near other monsters, not where the guard fell |
+| 57 Investigation | — | a | win: kill the Infiltrator (he appears where the marked guard fell) | — |
 | 58 Bloody Shack | 4 bone piles | — | win: kill the Harvester | the Occult Dagger (who may loot it, its Pierce 4) isn't modelled |
-| 62 Pit of Souls | — | a, b, c | win: kill the Hungry Soul (appears at c after ten kills) | its extra Shield isn't modelled |
+| 62 Pit of Souls | — | a, b, c | win: kill the Hungry Soul (appears at c after ten kills) | — |
 | 68 Toxic Moor | the tree (sheltered) | — | lost if it is destroyed | a poisoned summon doesn't yet avoid water as it would a trap |
 | 69 Well of the Unfortunate | — | a–d (traps appear at d when door 1 opens) | win: a character enters a hex beside the well | the doll isn't carried |
 | 70 Chained Isle | — | a, b | — | — |
@@ -243,9 +248,8 @@ Not locked yet: #95's door 1 (its key is the six numbered tokens, which aren't m
 Letters written only for a rule: #41 c–g (where the middle room's artilleries and golems are
 set up; not the book's letters), #83 the altar (a), #92 a–c (the city's men; not the book's letters).
 
-Not placed yet: #35's four City Archers of the first room stand on the battlements (a) and (b),
-which are hexes of the I and B tiles — tiles the game reveals only when the gate falls. Until a
-tile can be laid out without its room being revealed they are set up beside the party instead.
+#35's yard behind the gate is laid out from the start without being revealed (`laidOut`), so the
+first room's four City Archers stand on the battlements (a) and (b) as the book sets them up.
 
 Letters written only for a goal: #23 and #40 pressure plates; #25, #37, #41 and #71 exits; #66
 plates a–e; #82 the altar hex g; #88 the crystal.
@@ -385,7 +389,7 @@ goals are checked; the notes say what around a goal is still missing.
 | 59 | Forgotten Grove | Kill all enemies and loot the treasure tile. | yes | — | — |
 | 60 | Alchemy Lab | Loot all treasure tiles, then all characters must escape through the entrance. | yes | The scenario is not complete by the end of the twelfth round. Any character becomes exhausted before all treasure tiles are looted, or while not occupying an entrance hex. | yes (round 12 by scenario rule; exhaustion by goal) |
 | 61 | Fading Lighthouse | Loot all treasure tiles. | yes | — | — |
-| 62 | Pit of Souls | Kill the Hungry Soul. | yes — the Hungry Soul appears at (c) after ten Living Bones are killed (its extra Shield isn't modelled) | — | — |
+| 62 | Pit of Souls | Kill the Hungry Soul. | yes — the Hungry Soul appears at (c) after ten Living Bones are killed | — | — |
 | 63 | Magma Pit | Kill all enemies. | yes | — | — |
 | 64 | Underwater Lagoon | Kill all enemies. | yes | — | — |
 | 65 | Sulfur Mine | Kill all enemies and loot all treasure tiles. | yes | — | — |

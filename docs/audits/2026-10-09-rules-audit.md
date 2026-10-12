@@ -16,7 +16,8 @@ About 130 findings. As of 2026-10-10 about 110 are fixed and 6 partly (the turn 
 legends, the campaign, scenario rules, monster turns, rooms with two doors and doors mid-move, the
 walls between tiles with range and line of sight, areas, items, bonuses, solo play, round starts
 and the maps' monster places) and the rest are open — listed with where to start on each in
-`TODO.md` under "Rules audit 2026-10-09". Scenario-specific rules have their own table in
+`TODO.md` under "Missing Gloomhaven Rules" → "Open, in order". It was merged to `main` on
+2026-10-10 (merge `236fb2d`); [../rules-work.md](../rules-work.md) says how to carry on. Scenario-specific rules have their own table in
 [../scenario-book/rules-audit.md](../scenario-book/rules-audit.md); the scenario findings here are
 the ones the re-audit found wrong or newly missing.
 
@@ -176,7 +177,9 @@ the ones the re-audit found wrong or newly missing.
 | — | #49, #78 | Missing immunity to forced movement (Siege Cannon, Cultists (b)) | fixed — `testTheCarriersAndTheCannonCantBeForcedToMove` |
 | — | #66, #69, #76, #85, #88, #90, #95 | Smaller printed rules not enforced (door 1's timing, entering a hex beside the well, discarding three cards, Sun-Blessed, −1 Move, the Night Demon, boulders with hit points) | fixed for #66, #69, #85, #88, #90 (`ScenarioReauditTests`); open for #76 (discarding three cards) and #95 (boulders with hit points) |
 
-Larger mechanics still not built are listed in `TODO.md` ("Scenario special rules… not built").
+Scenario rules still not built are listed, by the kind of work they need, in
+[../scenario-book/rules-audit.md](../scenario-book/rules-audit.md) ("What is still open") and as
+tasks in `TODO.md` ("Open, in order", group 2).
 
 ## Found while fixing
 
@@ -198,6 +201,7 @@ Larger mechanics still not built are listed in `TODO.md` ("Scenario special rule
 | N14 | CND-5 | A Cultist's attack as it dies reached an invisible character (found by the veteran playthroughs) | fixed (`ConditionRuleTests.testADyingCultistsAttackDoesNotReachAnInvisibleCharacter`) |
 | N15 | LOS-2 | Impaling Eruption attacked an enemy on the way to its target without line of sight to it (found by the all-scenarios run once a wall's corner blocks sight) | fixed (the all-scenarios playthrough, #57 seed 4) |
 | N16 | — | Interface added for these rules and not yet looked at on a device or in a rendered screen: the Solo switch on the setup screen, the rows of cards in play with "End This Bonus" in the party panel (28-point rows: check the tap size), the damage sheet's "Let <card> take it" line, the long-rest sheet's heal toggle and items, the wall lines drawn between tiles | open (review) |
+| N17 | ATK-6 | A Push or Pull printed as its own ability (performed after the attack, `PlayerTurnController` → `beginStandalonePushPull` → `beginPushPull`) makes none of the checks `performPushPull` makes: the target's push/pull immunity (#47 the Sightless Eye, #34 the Elder Drake, #49 the Siege Cannon, #78's Cultists), an objective on the map, Heavy Greaves. Found on 2026-10-10 by reading, while the scenario rule table was re-checked; not reproduced with a card | open |
 
 ## Tests that don't prove what they say
 
