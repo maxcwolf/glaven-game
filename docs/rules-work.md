@@ -28,30 +28,25 @@ question, how a piece of work is done from start to finish, and what to do next.
 
 `main` has everything up to merge `aec9e30`. The branch adds, each committed and proved by
 mutations: tests for the three rules no test caught; mutations for the audit fixes that were only
-read and for the scenario mechanisms (`scripts/mutate.py` now has 97, each noticed); the golden
+read and for the scenario mechanisms (`scripts/mutate.py` now has 98, each noticed); the golden
 transcripts read against the rules; N17 (Scroll of Recall's Pull), N13 (Unending Chant, charges marked
-only when an action is performed) and N19 (#36 hanging at the start of round 9) fixed.
+only when an action is performed), N19 (#36 hanging at the start of round 9) and N18 (an
+ability printed under a Move was never performed: nine cards) fixed.
 
 To pick it up:
 
-1. **The branch is verified** at its head on 2026-10-12: `swift test` 1,540 tests, none failing;
+1. **The branch is verified** at its head on 2026-10-12: `swift test` 1,545 tests, none failing;
    the four-seed all-scenarios playthrough without a violation; the veteran playthrough passing
-   (55 and 59 of 94 won). It also fixes a hang that is on `main`: #36 never went on past the
-   start of round 9 (N19). It is not merged — merging is the owner's call.
-2. **N18, the next fix** (`TODO.md` → Cards, first item): an ability the data nests inside a Move
-   is never performed. Add a pass beside `PlayerTurnController.attachingForcedMoveRange` that
-   turns a Move's nested Condition, Shield, Push or Pull into the step after it — not where the
-   Move has text or a target of its own (Feedback Loop, Sinister Opportunity, Hook and Chain,
-   which have their own code). The scans were read: Tuning the Outcome 351 (Curse, Range 3),
-   Power Ballad 348 (Strengthen, all adjacent allies), Warding Dagger 353 (Shield 2, all adjacent
-   allies, round), Unending Chant 358 bottom (Shield 1, all adjacent allies, round), Crushing
-   Hammer 214 (Shield 1, self, round), Maul 484 (Shield 1, one adjacent ally, round), Natural
-   Remedy 503 (Strengthen, one adjacent ally), Forceful Swipe 485 and Lash Out 502 (Push 2; both
-   are Commands, which the game has the Beast Tyrant perform himself). A test a card on
-   `RuleBoard`, a mutation that skips the pass.
-3. Then the rest of group 1 in `TODO.md` (#9's scouts, N12; the interface and what scenario rules
-   draw, on the iPad simulator), then group 2, the scenario rules that need a player prompt.
-4. Merging to `main` (`git merge --no-ff -m "merge: …"`, then push) is done when the owner asks.
+   (55 and 59 of 94 won; run before the last fix, N18, which touches none of its four classes).
+   The branch also fixes a hang that is on `main`: #36 never went on past the start of round 9
+   (N19). It is not merged — merging is the owner's call.
+2. **Next**, from `TODO.md` → "Open, in order": #9's scouts attacking twice (N12) — play
+   `SIM_SCENARIO=9 SIM_SEED=2 SIM_VETERAN=1 SIM_OUT=/tmp/s9.log swift test --filter testDebugPlaythrough`
+   and read the round the Overseer has them act again; then the look at the new interface and
+   at what scenario rules draw, on the iPad simulator (`xcodegen generate` first); then group 2,
+   the scenario rules that need a player prompt. Under Cards: Singing Arrow's Curse has an area
+   the game ignores, and Commands are performed by the Beast Tyrant instead of the bear.
+3. Merging to `main` (`git merge --no-ff -m "merge: …"`, then push) is done when the owner asks.
 
 ## Which document answers what
 
@@ -150,7 +145,7 @@ The task list is `TODO.md` → "Missing Gloomhaven Rules" → "Open, in order"; 
 ordered like this:
 
 1. **Tests and checks, before building on top.** A look at the new interface and at what
-   scenario rules draw, on a device. (`scripts/mutate.py` has 97 mutations, 36 of them scenario
+   scenario rules draw, on a device. (`scripts/mutate.py` has 98 mutations, 36 of them scenario
    rules — `--scenario` — and each is noticed by a test: add one with every new mechanism.)
 2. **Scenario rules** — 94 printed rules in 28 scenarios, in this order because each group is one
    mechanism used several times:
@@ -171,8 +166,7 @@ ordered like this:
    - a few small ones, and #55, a random dungeon with no map, which is a project of its own.
 3. **Engine rules** still open, each with an id in the engine audit: element choices, placing
    an area by hand, the rest of negating damage, standees that run out.
-4. **Cards** — first the abilities printed under a Move that are never performed (N18: nine
-   cards, one fix where steps are built) — then **town and campaign**, and what isn't Gloomhaven.
+4. **Cards**, **town and campaign**, and what isn't Gloomhaven.
 
 ## History, briefly
 

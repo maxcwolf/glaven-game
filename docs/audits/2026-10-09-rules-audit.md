@@ -202,7 +202,7 @@ tasks in `TODO.md` ("Open, in order", group 2).
 | N15 | LOS-2 | Impaling Eruption attacked an enemy on the way to its target without line of sight to it (found by the all-scenarios run once a wall's corner blocks sight) | fixed (the all-scenarios playthrough, #57 seed 4) |
 | N16 | — | Interface added for these rules and not yet looked at on a device or in a rendered screen: the Solo switch on the setup screen, the rows of cards in play with "End This Bonus" in the party panel (28-point rows: check the tap size), the damage sheet's "Let <card> take it" line, the long-rest sheet's heal toggle and items, the wall lines drawn between tiles | open (review) |
 | N17 | ATK-6 | A Push or Pull printed as its own ability (performed after the attack, `PlayerTurnController` → `beginStandalonePushPull` → `beginPushPull`) makes none of the checks `performPushPull` makes: the target's push/pull immunity (#47 the Sightless Eye, #34 the Elder Drake, #49 the Siege Cannon, #78's Cultists), an objective on the map, Heavy Greaves. Found on 2026-10-10 by reading, while the scenario rule table was re-checked | fixed 2026-10-12 — reproduced with the one card that takes that path, Scroll of Recall ("Pull 1, Range 3, Target 3", its range line an action of its own in the data): the Pull did nothing, or after an attack pulled that attack's target from anywhere. The range line is attached to its Pull (`attachingForcedMoveRange`), a chosen Push or Pull takes as many targets as printed, each through `performPushPull`, and `beginStandalonePushPull` is removed. `ForcedMovementTests.testAPullWithItsOwnRangeAndTargetsPullsEachEnemyChosen`; mutations `pullTakesOneTargetOnly`, `rangeLineLeftOnItsOwn`, `forcedMoveIgnoresImmunity` |
-| N18 | ACT | Found 2026-10-12 by playing the cards on a test board: an ability the data nests inside a Move (Tuning the Outcome's "Curse, Range 3", Power Ballad's Strengthen, Warding Dagger's and Crushing Hammer's Shield, Forceful Swipe's and Lash Out's Push, Maul, Natural Remedy, Unending Chant's bottom) is never performed — only the Move is. Singing Arrow's Curse ignores its three-hex area | open (`TODO.md`, Cards) |
+| N18 | ACT | Found 2026-10-12 by playing the cards on a test board: an ability the data nests inside a Move (Tuning the Outcome's "Curse, Range 3", Power Ballad's Strengthen, Warding Dagger's and Crushing Hammer's Shield, Forceful Swipe's and Lash Out's Push, Maul, Natural Remedy, Unending Chant's bottom) is never performed — only the Move is. Singing Arrow's Curse ignores its three-hex area | fixed 2026-10-12 for the nine cards — the nested ability becomes the step after the Move (`abilitiesUnderMovesAsSteps`); `MoveThenAbilityTests`, mutation `abilitiesUnderMovesSkipped`. Open: Singing Arrow's area, and the two Commands are performed by the Beast Tyrant, not the bear (`TODO.md`, Cards) |
 | N19 | — | Found 2026-10-12 by the veteran playthrough: #36 stalls as round 9 starts and the scenario never ends (seed 1, both veteran parties; on `main` at `aec9e30` too). A scenario rule opens the gate at the start of the round, while cards are being chosen, and `revealRoom` left the board in the turn phase | fixed 2026-10-12 — a reveal returns to the phase it interrupted; `RevealRuleTests.testARoomRevealedWhileCardsAreChosenLeavesThemBeingChosen`, mutation `revealAlwaysResumesTurns` |
 
 ## Tests that don't prove what they say
@@ -238,7 +238,7 @@ opposite of A2 now assert the rule ("line grazing a wall corner is blocked", "a 
 hides the row beyond it"). The `RulebookTests` pipeline tests call `CombatResolver` with its inputs supplied:
 they prove the arithmetic, and `AttackRuleTests` proves the board supplies the right inputs.
 
-**Mutations.** `scripts/mutate.py` breaks one rule at a time in the game code (97 named
+**Mutations.** `scripts/mutate.py` breaks one rule at a time in the game code (98 named
 mutations: poison adding 0, Retaliate reduced by Shield, no Disadvantage for a ranged attack on an
 adjacent enemy, effects on a killed target, a summon drawing from the monster deck, no reshuffle
 at the end of the round, a jump landing free on a trap, the gold rate, turn order reversed…), runs
@@ -257,7 +257,7 @@ could not see the rule broken and were changed (solo play at a level where its g
 scenario summary of an escape, a stunned character's offers answered instead of waited on).
 The scenario mechanisms have 36 more (`scripts/mutate.py --scenario`: the `when` facts, standing
 effects, water, inactive monsters, sides, boss cycles, marching, locks, monsters set up late…),
-run against the scenario tests. 97 mutations, each noticed by a test (ten more came with the fixes of N13, N17 and N19).
+run against the scenario tests. 98 mutations, each noticed by a test (eleven more came with the fixes of N13, N17, N18 and N19).
 
 **The simulator** (`Tests/Support/ScenarioSimulator`, `PlayLedger`, `PlayerPolicies`). It now
 also checks, of every playthrough: each attack within its attack's range (read from the card and
