@@ -34,11 +34,11 @@ marked only when an action is performed) fixed.
 
 To pick it up:
 
-1. **Verify the branch first** — the full run after the last two fixes was started and not read:
-   `swift test`, then `SIM_ALL=1 SIM_SEEDS=4 swift test --filter testAllScenariosPlayToALegitimateEnd`,
-   then `SIM_ALL=1 swift test --filter testVeteranPartiesWinMostScenarios`. If a golden transcript
-   differs, read the diff against the rules before re-recording (a charge marked later, a Curse
-   doubled, are the changes to expect).
+1. **The branch is verified but for one thing.** At `3c37708`: `swift test` 1,539 tests, none
+   failing; the four-seed all-scenarios playthrough without a violation. The veteran playthrough
+   fails on **#36, which stalls in round 8 inside a monster's turn** (N19) — on `main` at `aec9e30`
+   as well, so it is older than this branch. Start there:
+   `SIM_ALL=1 SIM_FROM=36 SIM_TO=36 swift test --filter testVeteranPartiesWinMostScenarios`.
 2. **N18, the next fix** (`TODO.md` → Cards, first item): an ability the data nests inside a Move
    is never performed. Add a pass beside `PlayerTurnController.attachingForcedMoveRange` that
    turns a Move's nested Condition, Shield, Push or Pull into the step after it — not where the
