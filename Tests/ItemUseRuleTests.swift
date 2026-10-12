@@ -57,6 +57,28 @@ final class ItemUseRuleTests: XCTestCase {
         brute.entityConditions = [EntityCondition(name: .stun, state: .normal)]
     }
 
+    private final class Flag { var over = false }
+
+    /// What `work` comes to, when it is over without an item being offered. Should one be
+    /// offered all the same, that fails the test and the offer is declined — so a rule that has
+    /// stopped holding shows as a failure, not as a test waiting for an answer for ever.
+    private func unasked<T>(_ work: @escaping @MainActor () async -> T,
+                            file: StaticString = #filePath, line: UInt = #line) async -> T {
+        let flag = Flag()
+        let task = Task { @MainActor () -> T in
+            let result = await work()
+            flag.over = true
+            return result
+        }
+        var offers = 0
+        while await waitUntil({ flag.over || self.coord.pendingItemUse != nil }), !flag.over, offers < 10 {
+            offers += 1
+            coord.resolvePendingItemUse(false)
+        }
+        XCTAssertEqual(offers, 0, "an item is offered", file: file, line: line)
+        return await task.value
+    }
+
     private func card(_ name: String, of deck: String = "brute") throws -> AbilityModel {
         try XCTUnwrap(gm.editionStore.abilities(forDeck: deck, edition: "gh").first { $0.name == name }, name)
     }
@@ -176,13 +198,13 @@ final class ItemUseRuleTests: XCTestCase {
         XCTAssertEqual(brute.health, health - 3)
 
         stun()
-        _ = await attack(from: piece).value
+        _ = await unasked { await self.attack(from: piece).value }
         XCTAssertNil(coord.pendingItemUse)
         XCTAssertEqual(brute.health, health - 6, "stunned: nothing was offered")
         XCTAssertFalse(brute.spentItems.contains("gh-8"))
 
         brute.items = ["gh-8", "gh-3"]
-        _ = await attack(from: piece).value
+        _ = await unasked { await self.attack(from: piece).value }
         XCTAssertEqual(brute.health, health - 8, "the Hide Armor's Shield 1 all the same")
         XCTAssertEqual(brute.itemSlotsUsed["gh-3"], 1)
     }
@@ -201,12 +223,12 @@ final class ItemUseRuleTests: XCTestCase {
 
         stun()
         XCTAssertTrue(coord.initiativeItemOffers().isEmpty, "Boots of Speed")
-        let dampened = await coord.dampenedConsume([.fire], by: piece)
+        let dampened = await unasked { await self.coord.dampenedConsume([.fire], by: piece) }
         XCTAssertFalse(dampened, "Dampening Ring")
         XCTAssertNil(coord.pendingItemUse)
 
         let health = brute.health
-        _ = await attack(from: piece).value
+        _ = await unasked { await self.attack(from: piece).value }
         XCTAssertNil(coord.pendingItemUse, "neither Heart of the Betrayer nor Leather Armor")
         XCTAssertEqual(brute.health, health - 3)
         XCTAssertTrue(brute.spentItems.isEmpty && brute.consumedItems.isEmpty)

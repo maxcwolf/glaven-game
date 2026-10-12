@@ -15,7 +15,8 @@ SCR=os.path.join(WT, ".build", "mutations")
 os.makedirs(SCR, exist_ok=True)
 FILTER=("AttackRuleTests|ConditionRuleTests|RoundRuleTests|LootRuleTests|MovementRuleTests|RevealRuleTests|ScenarioEndRuleTests|"
         "ScenarioLevelRuleTests|ForcedMovementTests|RB_|PlayLedgerTests|PlaythroughTests|RestRuleTests|BoardRulesRegressionTests|"
-        "JumpFlyMovementTests|HealAndConsumeRuleTests|CombatEffectsTests|TurnFlowTests|E2E|AttackModifier|BoardSimulationTests|MonsterTurnRulesTests|ScenarioFinishEdgeCaseTests|DynamicObstacleTests|FeatureTests|EscortAITests|TeleportTests|HexCoordTests")
+        "JumpFlyMovementTests|HealAndConsumeRuleTests|CombatEffectsTests|TurnFlowTests|E2E|AttackModifier|BoardSimulationTests|MonsterTurnRulesTests|ScenarioFinishEdgeCaseTests|DynamicObstacleTests|FeatureTests|EscortAITests|TeleportTests|HexCoordTests|"
+        "MoneyTokenTests|SetupRulesTests|ItemUseRuleTests|ChargedBonusTests|ActionPerformedTests|ScenarioEnforcedRuleTests|ScenarioReauditTests|ModifierDeckRoundEndTests")
 M={
  "poison0": ("GlavenGame/Engine/CombatResolver.swift", "        if isPoisoned {\n            attackValue += 1\n        }", "        if isPoisoned {\n            attackValue += 0\n        }"),
  "retaliateShielded": ("GlavenGame/Board/BoardCoordinator+Combat.swift", "            await sufferDamageWithMitigation(retaliate, to: attacker,", "            await sufferDamageWithMitigation(max(0, retaliate - self.shield(of: attacker)), to: attacker,"),
@@ -53,6 +54,21 @@ M={
  "exhaustedDontCount": ("GlavenGame/Models/GameState.swift", "        max(2, characters.filter { !$0.absent }.count)", "        max(2, characters.filter { !$0.absent && !$0.exhausted }.count)"),
  "invisibleIsFocused": ("GlavenGame/Engine/MonsterAI.swift", "                return includeInvisible || !isActive(.invisible, on: char)", "                return true"),
  "longRestNoDiscardCheck": ("GlavenGame/Board/BoardCoordinator.swift", "              character.discardedCards.count >= 2 else { return }\n        character.initiative = 99", "              character.discardedCards.count >= 0 else { return }\n        character.initiative = 99"),
+ "alliedMonstersDropMoney": ("GlavenGame/Board/BoardCoordinator+Rules.swift", "            if entity.summonState == nil && !MonsterAI.isAllyFaction(monster) {", "            if entity.summonState == nil {"),
+ "bossesDropNoMoney": ("GlavenGame/Board/BoardCoordinator+Rules.swift", "            if entity.summonState == nil && !MonsterAI.isAllyFaction(monster) {", "            if entity.summonState == nil && entity.type != .boss && !MonsterAI.isAllyFaction(monster) {"),
+ "soloChangesNothing": ("GlavenGame/Models/GameState.swift", "    var monsterLevel: Int { min(7, level + (solo ? 1 : 0)) }", "    var monsterLevel: Int { level }"),
+ "soloRaisesGold": ("GlavenGame/Managers/LevelManager.swift", "        let table = [2, 2, 3, 3, 4, 4, 5, 6]\n", "        let table = [2, 2, 3, 3, 4, 4, 5, 6]\n        if game.solo { return table[max(0, min(7, game.monsterLevel))] }\n"),
+ "escapeIsExhaustion": ("GlavenGame/Board/BoardCoordinator+Outcome.swift", "                exhausted: character.exhausted && !boardState.escapedCharacters.contains(character.id),", "                exhausted: character.exhausted,"),
+ "stunnedUseItems": ("GlavenGame/Board/BoardCoordinator+Items.swift", "        !isConditionActive(.stun, on: .character(character.id))\n    }", "        true || !isConditionActive(.stun, on: .character(character.id))\n    }"),
+ "restGivesUsesBack": ("GlavenGame/Board/BoardCoordinator.swift", "        for key in character.spentItems { character.itemSlotsUsed[key] = nil }\n", "        character.itemSlotsUsed.removeAll()\n"),
+ "armourWaitsToBeAsked": ("GlavenGame/Board/BoardCoordinator+Items.swift", "        holder(of: item, attacked: target).map { $0.data.slots > 1 } ?? false", "        holder(of: item, attacked: target).map { $0.data.slots > 99 } ?? false"),
+ "ownDamageNotNegated": ("GlavenGame/Board/BoardCoordinator+Rules.swift", "        guard amount > 0, !autoResolvePrompts,\n              let character = gameManager?.game.characters.first(where: { $0.id == characterID }),", "        guard amount > 0, !autoResolvePrompts, amount < 0,\n              let character = gameManager?.game.characters.first(where: { $0.id == characterID }),"),
+ "chargePerFigureHealed": ("GlavenGame/Board/BoardCoordinator+Bonuses.swift", "        if let decided = turn.healActionCleanses { return decided }\n", ""),
+ "attackBonusMarksNoCharge": ("GlavenGame/Board/BoardCoordinator+Bonuses.swift", "                result += turn?.bonusPerAttack ?? n\n                useFirstCharge(of: attacker) { $0 == bonus }", "                result += turn?.bonusPerAttack ?? n"),
+ "endedBonusStillActs": ("GlavenGame/Board/BoardCoordinator+Bonuses.swift", "            turn.persistentCardsThisTurn.removeAll { $0 == cardId }\n            turn.roundCardsThisTurn.removeAll { $0 == cardId }", "            _ = turn"),
+ "noItemsOnARestTurn": ("GlavenGame/Board/BoardCoordinator+Items.swift", "            return turn.phase != .selectTopCard\n", "            return turn.phase != .selectTopCard && !turn.isLongRest\n"),
+ "restTurnSkipsBonuses": ("GlavenGame/Board/PlayerTurnController.swift", "        guard isLongRest, phase == .turnComplete, !steps.isEmpty, !(character?.exhausted ?? true) else { return done() }", "        guard isLongRest, phase == .turnComplete, steps.isEmpty, !steps.isEmpty, !(character?.exhausted ?? true) else { return done() }"),
+ "roundStartRulesWaitForTheCards": ("GlavenGame/Board/BoardCoordinator.swift", "        gameManager.scenarioRulesManager.evaluateRulesForTheRoundToCome()\n", ""),
 }
 def run(name, flt=None):
     path,old,new=M[name]
@@ -74,7 +90,7 @@ def run(name, flt=None):
         if "error:" in out and "Test Case" not in out:
             print(f"MUTATION {name}: BUILD FAILED"); print("\n".join(l for l in out.splitlines() if "error:" in l)[:800]); return 2
         failed=sorted(set(re.findall(r"Test Case '-\[GlavenGameTests\.(\w+ \w+)\]' failed", out)))
-        total=re.findall(r"Executed (\d+) tests?, with (?:\d+ tests? skipped and )?(\d+) failures", out)
+        total=re.findall(r"Executed (\d+) tests?, with (?:\d+ tests? skipped and )?(\d+) failures?", out)
         print(f"MUTATION {name}: {len(failed)} test(s) failed" + (f" of {total[-1][0]}" if total else " (no summary: crash?)"))
         for f in failed[:14]: print("   ", f.replace(" ", "."))
         return 0 if failed else 1

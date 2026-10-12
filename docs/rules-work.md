@@ -117,11 +117,10 @@ use it to find a rule and the page image to read it.
 The task list is `TODO.md` → "Missing Gloomhaven Rules" → "Open, in order"; it is grouped and
 ordered like this:
 
-1. **Tests and checks, before building on top.** Mutations for the fixes that were only read
-   and for the scenario mechanisms (none of `scripts/mutate.py`'s 36 is a scenario rule — each
-   scenario batch was mutation-checked by hand when it was written); a look at the new interface
-   and at what scenario rules draw, on a device; a read of the golden transcripts the audit
-   changed.
+1. **Tests and checks, before building on top.** Mutations for the scenario mechanisms (none of
+   `scripts/mutate.py`'s 51 is a scenario rule — each scenario batch was mutation-checked by hand
+   when it was written); a look at the new interface and at what scenario rules draw, on a
+   device.
 2. **Scenario rules** — 94 printed rules in 28 scenarios, in this order because each group is one
    mechanism used several times:
    - *a prompt for a choice the player can't make yet*: losing a card to spare a captive or the
