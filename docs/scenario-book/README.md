@@ -188,6 +188,10 @@ ends up on the board:
   enemy; a summon or anything else acting by itself leaves it alone. Destroyed, it is a corridor:
   its room is revealed — and any other tile its hex touches — and every enemy beside it gains
   `condition`. The default goal then needs every room revealed, not every wall down.
+- `discardAtStart`: how many ability cards each character discards "at the start of the scenario
+  as a scenario effect" (#76: `3`, `BoardCoordinator+StartDiscard`). Each character in turn chooses
+  them from their hand (`StartDiscardPicker`) before anyone chooses cards for the first round;
+  played without prompts, the last cards of the hand go.
 - `drift`: what moves the party one hex as each round ends, before the round's other end-of-round
   rules (`BoardCoordinator+Drift`): `{"name": "wind", "directions": [["NW", "NE"], ["E"], ["SW", "SE"],
   ["W"]]}` (#71: the sides of a hex — NE, E, SE, SW, W, NW as the map lies in the game — by round,

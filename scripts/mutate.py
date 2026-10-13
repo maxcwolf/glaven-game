@@ -87,7 +87,7 @@ M={
 }
 # Scenario rules (the mechanisms of placements/gh.json): run against the scenario tests.
 SCENARIO_FILTER=("ScenarioSpecialRuleTests|ScenarioReauditTests|ScenarioEnforcedRuleTests|ScenarioLockTests|ScenarioGoalTests|"
-                 "ScenarioSpawnTests|DemonicRiftTests|BattlementsTests|MonsterTextTests|MonsterSummonTests|CarriedThingTests|DriftTests|RollingBoulderTests|RisingWaterTests|SleepingMonsterTests|BarredDoorTests|BatteryTests|CarrierTests|ThroneTests|PerchTests|SwayTests|WallTests")
+                 "ScenarioSpawnTests|DemonicRiftTests|BattlementsTests|MonsterTextTests|MonsterSummonTests|CarriedThingTests|DriftTests|RollingBoulderTests|RisingWaterTests|SleepingMonsterTests|BarredDoorTests|BatteryTests|CarrierTests|ThroneTests|PerchTests|SwayTests|WallTests|StartDiscardTests")
 S={
  "factSavedIgnored": ("GlavenGame/Board/BoardCoordinator+Goals.swift", "            guard arrived >= saved else { return false }", "            guard arrived >= 0 * saved else { return false }"),
  "factLockIgnored": ("GlavenGame/Board/BoardCoordinator+Goals.swift", "        if let lock = fact.lock, !boardState.releasedLocks.contains(lock) { return false }", "        if let lock = fact.lock, lock < 0 { return false }"),
@@ -299,6 +299,15 @@ S={
  "brokenWallRedrawnAsAWall": ("GlavenGame/Board/BoardScene.swift", "board.doors.contains(where: { $0.coord == overlayCoord && $0.isOpen }) {", "false {"),
  "brokenWallStillCalledAWall": ("GlavenGame/Board/BoardCoordinator+Learning.swift", "$0.coord == hex && $0.isOpen && $0.subType == BoardBuilder.breakableWallSubType }) {", "$0.coord == hex && false }) {"),
  "wallDoesNotComeDown": ("GlavenGame/Board/BoardCoordinator+Spawning.swift", "            if wasWall { wallComesDown(at: site.coord) }\n", ""),
+ "noCardsDiscardedAtTheStart": ("GlavenGame/Board/BoardCoordinator.swift", "            self.discardAtTheStart { [weak self] in", "            ({ (go: @escaping () -> Void) in go() }) { [weak self] in"),
+ "startDiscardsAreLost": ("GlavenGame/Board/BoardCoordinator+StartDiscard.swift", "character.discardedCards.append(character.handCards.remove(at: index))", "character.lostCards.append(character.handCards.remove(at: index))"),
+ "anyNumberDiscardedAtTheStart": ("GlavenGame/Board/BoardCoordinator+StartDiscard.swift", "cards.count == pending.count, Set(cards).count == cards.count,", "Set(cards).count == cards.count,"),
+ "sameCardDiscardedTwice": ("GlavenGame/Board/BoardCoordinator+StartDiscard.swift", "cards.count == pending.count, Set(cards).count == cards.count,", "cards.count == pending.count,"),
+ "cardsNotInHandDiscarded": ("GlavenGame/Board/BoardCoordinator+StartDiscard.swift", "              cards.allSatisfy(character.handCards.contains) else { return }", "              true else { return }"),
+ "onlyTheFirstCharacterDiscards": ("GlavenGame/Board/BoardCoordinator+StartDiscard.swift", "        discardAtTheStart(then: proceed ?? {})", "        (proceed ?? {})()"),
+ "discardedAgainEveryRound": ("GlavenGame/Board/BoardCoordinator+StartDiscard.swift", "let count = scenarioData?.placements?.discardAtStart, gameManager?.game.round == 0,", "let count = scenarioData?.placements?.discardAtStart,"),
+ "exhaustedDiscardToo": ("GlavenGame/Board/BoardCoordinator+StartDiscard.swift", "              !character.absent, !character.exhausted else { return 0 }", "              !character.absent else { return 0 }"),
+ "cardsChosenBeforeTheDiscard": ("GlavenGame/Board/BoardCoordinator+StartDiscard.swift", "            afterStartDiscards = proceed\n", "            afterStartDiscards = nil; proceed()\n"),
  "noOneIsAskedWhoHolds": ("GlavenGame/Board/BoardCoordinator+Carried.swift", "            } else if autoResolvePrompts {\n                give(thing.name, to: first.id, how: \"holds\")", "            } else if true {\n                give(thing.name, to: first.id, how: \"holds\")"),
  "lyingThingNotPickedUp": ("GlavenGame/Board/BoardCoordinator+Carried.swift", "            if let lying = boardState.carriedLying[name] { return hexes.contains(lying) }", "            if boardState.carriedLying[name] != nil { return false }"),
  "anyoneLootsTheQuestTile": ("GlavenGame/Board/BoardCoordinator+Carried.swift", "        return party.first { $0.id == characterID }?.personalQuest == quest", "        return party.first { $0.id == characterID }?.personalQuest == quest || true"),

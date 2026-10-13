@@ -74,6 +74,9 @@ struct ScenarioPlacements: Codable, Equatable {
     var sway: Sway?
     /// Walls broken down by damage instead of doors that open (#76's hive).
     var walls: Walls?
+    /// "Each character discards three ability cards at the start of the scenario as a scenario
+    /// effect" (#76): how many, chosen by each character before the first round's cards.
+    var discardAtStart: Int?
     /// Monster types set up asleep (#71's Spitting Drakes): each does nothing until a character or
     /// a character's summon attacks it, damages it, gives it a negative condition or ends a
     /// movement beside it; then it acts as a monster just spawned does.

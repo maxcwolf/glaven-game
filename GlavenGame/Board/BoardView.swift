@@ -132,6 +132,14 @@ struct BoardView: View {
                     .transition(.opacity)
             }
 
+            // Cards discarded before the scenario begins (Harrower Hive)
+            if let pending = coordinator.pendingStartDiscard,
+               let character = gameManager.game.characters.first(where: { $0.id == pending.characterID }) {
+                StartDiscardPicker(pending: pending, character: character, coordinator: coordinator)
+                    .id(pending.id)
+                    .transition(.opacity)
+            }
+
             // A card to play for an item (Ring of Haste, Second Chance Ring)
             if let pending = coordinator.pendingCardPlay,
                let character = gameManager.game.characters.first(where: { $0.id == pending.characterID }) {

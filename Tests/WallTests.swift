@@ -278,3 +278,96 @@ final class WallTests: XCTestCase {
         XCTAssertTrue(coord.standingWalls.isEmpty)
     }
 }
+
+/// "Each character discards three ability cards at the start of the scenario as a scenario
+/// effect" (`ScenarioPlacements.discardAtStart`, `BoardCoordinator+StartDiscard`): the Harrower
+/// Hive (#76).
+@MainActor
+final class StartDiscardTests: XCTestCase {
+
+    private func simulator(_ index: String = "76", asking: Bool) throws -> ScenarioSimulator {
+        try ScenarioSimulator(scenario: index, options: .init(characters: ["brute", "spellweaver"], seed: 1, autoResolvePrompts: !asking))
+    }
+
+    /// Each character is asked in turn, before anyone chooses cards for the first round, and
+    /// must name exactly three cards of their hand.
+    func testEachCharacterChoosesThreeCardsToDiscardBeforeTheFirstRound() throws {
+        let sim = try simulator(asking: true)
+        let coord = sim.coord
+        let brute = sim.gm.game.characters[0], weaver = sim.gm.game.characters[1]
+        let bruteHand = brute.handCards, weaverHand = weaver.handCards
+        XCTAssertEqual(coord.pendingStartDiscard?.characterID, brute.id)
+        XCTAssertEqual(coord.pendingStartDiscard?.count, 3)
+        XCTAssertNil(coord.cardSelectingCharacterID, "no one chooses cards yet")
+        XCTAssertEqual(coord.startDiscardOwed(by: weaver), 3)
+
+        // Too few, a card twice, a card that isn't in the hand: none is an answer.
+        coord.resolveStartDiscard(Array(bruteHand.prefix(2)))
+        coord.resolveStartDiscard([bruteHand[0], bruteHand[0], bruteHand[1]])
+        coord.resolveStartDiscard([bruteHand[0], bruteHand[1], -7])
+        coord.resolveStartDiscard(Array(bruteHand.prefix(4)))
+        XCTAssertEqual(coord.pendingStartDiscard?.characterID, brute.id)
+        XCTAssertEqual(brute.handCards, bruteHand)
+        XCTAssertTrue(brute.discardedCards.isEmpty)
+
+        let chosen = [bruteHand[1], bruteHand[4], bruteHand[0]]
+        coord.resolveStartDiscard(chosen)
+        XCTAssertEqual(brute.discardedCards, chosen, "discarded, not lost")
+        XCTAssertTrue(brute.lostCards.isEmpty)
+        XCTAssertEqual(brute.handCards, bruteHand.filter { !chosen.contains($0) })
+        XCTAssertEqual(coord.pendingStartDiscard?.characterID, weaver.id, "then the next character")
+        XCTAssertNil(coord.cardSelectingCharacterID)
+
+        coord.resolveStartDiscard(Array(weaverHand.suffix(3)))
+        XCTAssertNil(coord.pendingStartDiscard)
+        XCTAssertEqual(weaver.handCards.count, weaverHand.count - 3)
+        XCTAssertEqual(weaver.discardedCards.count, 3)
+        XCTAssertNotNil(coord.cardSelectingCharacterID, "and then the first round's cards are chosen")
+        XCTAssertTrue(sim.gm.game.characters.allSatisfy { coord.startDiscardOwed(by: $0) == 0 }, "no one is asked twice")
+    }
+
+    /// Played without prompts the cards go all the same; and the whole scenario plays on from there.
+    func testWithoutPromptsTheCardsAreDiscardedAllTheSame() throws {
+        let sim = try simulator(asking: false)
+        for character in sim.gm.game.characters {
+            XCTAssertEqual(character.discardedCards.count, 3, character.name)
+            XCTAssertTrue(character.lostCards.isEmpty)
+        }
+        XCTAssertNil(sim.coord.pendingStartDiscard)
+        XCTAssertNotNil(sim.coord.cardSelectingCharacterID)
+    }
+
+    /// Only at the start, and only where the scenario says so.
+    func testNothingIsDiscardedLaterOrElsewhere() throws {
+        let sim = try simulator(asking: false)
+        let character = sim.gm.game.characters[0]
+        sim.gm.game.round = 1
+        character.handCards += character.discardedCards
+        character.discardedCards = []
+        XCTAssertEqual(sim.coord.startDiscardOwed(by: character), 0, "the first round has begun")
+        sim.gm.game.round = 0
+        XCTAssertEqual(sim.coord.startDiscardOwed(by: character), 3)
+        character.exhausted = true
+        XCTAssertEqual(sim.coord.startDiscardOwed(by: character), 0)
+
+        let other = try simulator("1", asking: true)
+        XCTAssertNil(other.coord.pendingStartDiscard)
+        XCTAssertTrue(other.gm.game.characters.allSatisfy { $0.discardedCards.isEmpty })
+        XCTAssertNotNil(other.coord.cardSelectingCharacterID)
+    }
+
+    /// A party playing the scenario through its policies answers the prompt and plays on.
+    func testAPolicyPartyDiscardsAndPlays() async throws {
+        let sim = try ScenarioSimulator(scenario: "76", options: .init(characters: ["brute", "spellweaver"], seed: 3))
+        let hands = sim.gm.game.characters.map(\.handCards.count)
+        XCTAssertNotNil(sim.coord.pendingStartDiscard)
+        await sim.play(rounds: 1)
+        XCTAssertNil(sim.coord.pendingStartDiscard)
+        for (character, hand) in zip(sim.gm.game.characters, hands) {
+            let held = character.handCards.count + character.discardedCards.count + character.lostCards.count + character.activeCards.count
+            XCTAssertGreaterThanOrEqual(character.discardedCards.count + character.lostCards.count + character.activeCards.count, 3, character.name)
+            XCTAssertEqual(held, hand, "no card has gone anywhere else")
+        }
+        XCTAssertTrue(sim.violations.isEmpty, "\(sim.violations)")
+    }
+}

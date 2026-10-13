@@ -441,6 +441,11 @@ final class BoardCoordinator {
     /// Non-nil while a character picks discarded cards to recover (Minor Stamina Potion).
     var pendingRecovery: PendingRecovery?
 
+    /// Cards a character discards before the scenario begins (Harrower Hive), and what goes on
+    /// once every character has.
+    var pendingStartDiscard: PendingStartDiscard?
+    @ObservationIgnored var afterStartDiscards: (() -> Void)?
+
     /// Non-nil while a character picks a card to play for an item (Ring of Haste).
     var pendingCardPlay: PendingCardPlay?
 
@@ -1055,6 +1060,8 @@ final class BoardCoordinator {
         pendingSummonPlacement = nil
         woundDue = []
         pendingRecovery = nil
+        pendingStartDiscard = nil
+        afterStartDiscards = nil
         pendingCardPlay = nil
         pendingActionChoice = nil
         initiativeOffers = []
@@ -1330,11 +1337,15 @@ final class BoardCoordinator {
             self.sweepDeadFigures()
             if self.scenarioResult != nil { return }
 
-            // No turn is half-played here: save the round so Continue can resume from it.
-            gameManager.checkpointRound()
+            // What the scenario has discarded before it begins is chosen first of all.
+            self.discardAtTheStart { [weak self] in
+                guard let self, let gameManager = self.gameManager else { return }
+                // No turn is half-played here: save the round so Continue can resume from it.
+                gameManager.checkpointRound()
 
-            // Process exhaustion and auto-rests, then find the first character needing manual selection
-            self.advanceToNextCardSelection()
+                // Process exhaustion and auto-rests, then find the first character needing manual selection
+                self.advanceToNextCardSelection()
+            }
         }
     }
 
