@@ -182,6 +182,20 @@ final class PlaythroughTests: XCTestCase {
         XCTAssertNotEqual(first, other, "different seed, different game")
     }
 
+    /// Diamond Mine, where the Merciless Overseer has every Scout act again (MON-11): a Scout
+    /// that attacks on the turn the Overseer gives it and again on its own has made two attacks
+    /// with two abilities, also when it is the only Scout to act on either turn. (The ledger
+    /// counted them as one ability attacking twice: audit N12, seeds 2 and 3.)
+    func testAScoutsExtraTurnIsATurnOfItsOwn() async throws {
+        for seed in [UInt64(2), 3] {
+            let sim = try ScenarioSimulator(scenario: "9", options: .veteranParty(ScenarioSimulator.Options.veterans, seed: seed, scenarioLevel: 0),
+                                            policy: VeteranPolicy())
+            _ = await sim.play(rounds: 30)
+            XCTAssertTrue(sim.transcript.contains { $0.hasSuffix("act again") }, "seed \(seed): the Overseer's special was played")
+            XCTAssertTrue(sim.violations.isEmpty, "seed \(seed): " + sim.violations.joined(separator: "\n"))
+        }
+    }
+
     /// Print a seeded playthrough: SIM_SCENARIO=<index> [SIM_SEED=n] [SIM_DIFFICULTY=easy] [SIM_ROUNDS=n] [SIM_PARTY=a,b]
     /// [SIM_VETERAN=1 for the ninth-level party at scenario level 0]
     /// [SIM_OUT=path to write the transcript to instead of printing it].

@@ -674,9 +674,14 @@ final class ScenarioSimulator {
         // A boss's special that has its minions act again (GH #9): each gets one more turn,
         // taken when the boss says, not at its initiative.
         while actAgainCursor < coord.turnLog.count {
-            if coord.turnLog[actAgainCursor].message.hasSuffix("act again") {
+            let message = coord.turnLog[actAgainCursor].message
+            if message.hasSuffix("act again") {
                 actAgainRound = round
                 lastActor = nil   // whoever acted last starts afresh too
+            } else if message.contains("\u{2019}s turn: ") {
+                // A new turn: the one standee that acted last on the turn before (the only Scout
+                // in reach, on the Overseer's turn and again on its own) is starting afresh.
+                lastActor = nil
             }
             actAgainCursor += 1
         }
