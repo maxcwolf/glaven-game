@@ -128,7 +128,8 @@ S={
  "savesNeverOffered": ("GlavenGame/Board/BoardCoordinator+Saves.swift", "        guard damage > 0, let rule = save(for: piece), let entity = entity(for: piece), entity.health > 0 else { return false }", "        guard damage > 0, false, let rule = save(for: piece), let entity = entity(for: piece), entity.health > 0 else { return false }"),
  "savesNeverCounted": ("GlavenGame/Board/BoardCoordinator+Saves.swift", "        boardState.savesUsed[rule.objective, default: 0] += 1", "        boardState.savesUsed[rule.objective, default: 0] += 0"),
  "savesAskEmptyHands": ("GlavenGame/Board/BoardCoordinator+Saves.swift", "            .filter { !$0.1.isEmpty }", "            .filter { _ in true }"),
- "headlessSavesNothing": ("GlavenGame/Board/BoardCoordinator+Saves.swift", "            choice = damage >= entity.health ? fullest.flatMap", "            choice = false ? fullest.flatMap"),
+ "headlessSavesNothing": ("GlavenGame/Board/BoardCoordinator+Saves.swift", "            choice = damage >= entity.health && losesTheScenario(with: rule.objective)", "            choice = false && losesTheScenario(with: rule.objective)"),
+ "savesWhateverIsAtStake": ("GlavenGame/Board/BoardCoordinator+Saves.swift", "              let container = gameManager?.game.objectives.first(where: { $0.objectiveIndex == objective }) else { return false }\n        return container.entities.filter", "              let container = gameManager?.game.objectives.first(where: { $0.objectiveIndex == objective }) else { return true }\n        return container.entities.filter"),
 }
 M.update(S)
 def run(name, flt=None):

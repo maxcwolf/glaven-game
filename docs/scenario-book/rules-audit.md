@@ -12,8 +12,8 @@ means the data and code that enforce the rule were found, and usually a test tha
 that the scenario was played through. Keep it current: when a rule is built, rewrite its row in
 the same commit (see [../rules-work.md](../rules-work.md)).
 
-**447 rules: 353 done, 21 partial, 73 missing.**
-67 of 95 scenarios have every printed rule done. The other 28: #55 (6 missing, 1 partial), #88 (6 missing, 1 partial), #34 (4 missing, 2 partial), #76 (4 missing, 2 partial), #44 (4 missing, 1 partial), #71 (5 missing, 0 partial), #73 (5 missing, 0 partial), #78 (5 missing, 0 partial), #95 (5 missing, 0 partial), #21 (2 missing, 2 partial), #49 (4 missing, 0 partial), #54 (4 missing, 0 partial), #69 (3 missing, 1 partial), #74 (4 missing, 0 partial), #52 (1 missing, 2 partial), #58 (3 missing, 0 partial), #26 (2 missing, 0 partial), #68 (1 missing, 1 partial), #79 (1 missing, 1 partial), #81 (2 missing, 0 partial), #82 (0 missing, 2 partial), #38 (0 missing, 1 partial), #47 (0 missing, 1 partial), #56 (0 missing, 1 partial), #67 (1 missing, 0 partial), #70 (0 missing, 1 partial), #75 (0 missing, 1 partial), #84 (1 missing, 0 partial).
+**447 rules: 355 done, 21 partial, 71 missing.**
+68 of 95 scenarios have every printed rule done. The other 27: #55 (6 missing, 1 partial), #88 (6 missing, 1 partial), #34 (4 missing, 2 partial), #76 (4 missing, 2 partial), #44 (3 missing, 1 partial), #71 (5 missing, 0 partial), #73 (5 missing, 0 partial), #78 (5 missing, 0 partial), #95 (5 missing, 0 partial), #21 (2 missing, 2 partial), #49 (4 missing, 0 partial), #54 (4 missing, 0 partial), #69 (3 missing, 1 partial), #74 (4 missing, 0 partial), #52 (1 missing, 2 partial), #58 (3 missing, 0 partial), #26 (2 missing, 0 partial), #68 (1 missing, 1 partial), #79 (1 missing, 1 partial), #81 (2 missing, 0 partial), #82 (0 missing, 2 partial), #38 (0 missing, 1 partial), #47 (0 missing, 1 partial), #56 (0 missing, 1 partial), #67 (1 missing, 0 partial), #70 (0 missing, 1 partial), #75 (0 missing, 1 partial).
 
 Rules that were enforced wrongly, as against not at all, are findings of the engine audit
 ([../audits/2026-10-09-rules-audit.md](../audits/2026-10-09-rules-audit.md), rows S1-…, S2-…),
@@ -25,8 +25,8 @@ each with the test that pins its fix. How the data behind these rows is written 
 By the kind of work it needs, which is also the order it is best done in (`TODO.md`, "Open, in
 order", has the same list as tasks). The rows below say what the game does today for each.
 
-- **A choice the player has no way to make yet.** Losing a card from hand to negate damage to
-  something else: #44's captives, #84's crystal (twice). Giving up an action or part of a move to
+- **A choice the player has no way to make yet.** (Losing a card from hand to negate damage to
+  something else — #44's captives, #84's crystal — is built: `saves`.) Giving up an action or part of a move to
   do something: #26 cleansing a pump (which is its goal), #44 freeing a captive, #52 looting an
   adjacent tile, #75 digging a grave with movement. Choosing: which Living Spirit goes (#70),
   whose attack modifier deck an escort draws from (#44, #56). With these, #44's loss ("a captive
@@ -398,7 +398,7 @@ order", has the same list as tasks). The rows below say what the game does today
 | Captives cannot be healed | done | placements `protect: [2]` → not an escort, so `isScenery`: `areAllies` is false and no heal can target them |
 | Captives are not allies of the characters; enemies of all monsters | done | `isProtected` → player side for `areEnemies`, in `MonsterAI.gatherEnemies` (`container.isProtected && maxHealth > 0`) |
 | Captives: initiative 99 for monster focusing | done | `MonsterAI.enemyInitiative` returns 99.5 for a non-escort objective |
-| A character may lose one card from hand to negate one source of damage to a captive | missing | no code: damage to a captive goes straight through `sufferDamage`. Needs a player prompt offered to any character, like the one for a character's own damage (`TODO.md`: "A prompt for a choice the player can't make yet") |
+| A character may lose one card from hand to negate one source of damage to a captive | done | placements `saves: [{"objective": 2}]` → `BoardCoordinator.promptSave` in `resolveDamage`: as a captive is about to suffer, the party is asked on `SaveChoiceSheet` and a card from any hand spares it, as often as there are cards; `ScenarioSpecialRuleTests.testACaptiveIsSparedAsOftenAsThereAreCards` |
 | A character adjacent to a captive may forgo an action (discard a card) to free it | missing | no code: captives stay on the board until killed or the scenario ends. Needs a new player action (give up a half, discarding its card) for a character beside a captive, which removes the captive |
 
 ### 45 · Rebel Swamp
@@ -779,7 +779,7 @@ order", has the same list as tasks). The rows below say what the game does today
 | Objective: crystal (a) with 4+C+(2×L) HP | done | `objectives[0].health: "4+C+(2xL)"`, placed on placements `l2a [0,3]` (the map's crystal obstacle) |
 | The crystal cannot be healed and is not an ally of the characters | done | placements `protect: [1]` → `GameObjectiveContainer.isProtected`: `areAllies` is false, `alliesInRange` leaves it out so no heal or ally ability reaches it, and monsters still target it (`gatherEnemies`); `ScenarioSpecialRuleTests.testWhatIsProtectedIsNoAlly` |
 | Monster focus: a monster that can move within range to attack the crystal focuses on it, otherwise normal focus | done | placements `focusFirst: [1]` → `MonsterAI.prioritized` puts the crystal first among the focus candidates whenever its path cost is within this turn's move, else the normal order; `testMonstersGoForTheCrystalWhenTheyCanReachIt` |
-| Twice, when the crystal would suffer damage, a character may lose a hand card to negate it | missing | the crystal takes all its damage; the lose-a-card prompt is offered only for a character's own damage (README: "losing a card to spare it isn't modelled"; `TODO.md`: "A prompt for a choice the player can't make yet"). Needs a prompt to any character when the crystal is damaged and a count of two uses |
+| Twice, when the crystal would suffer damage, a character may lose a hand card to negate it | done | placements `saves: [{"objective": 1, "times": 2}]` → `promptSave`; the uses are counted in `BoardState.savesUsed` (saved with the board) and the sheet says how many are left; `ScenarioSpecialRuleTests.testACardFromAnyHandSparesTheCrystalTwice` |
 | Start of round 4: corridor on (b), reveal the adjacent room | done | placements lock `l2a–a3a` with `afterRound: 3` → `keyTurned`/`updateLocks(roundEnded:)`: a wall no one can walk through until round 3 ends, then it opens and A3a is revealed (the map's door stands in for the corridor tile); `testTheCaveWallsComeDownByTheRound` |
 | Start of round 6: corridor on (c), reveal the adjacent room | done | placements lock `l2a–a2b` with `afterRound: 5` — opens and reveals A2b as round 5 ends; `testTheCaveWallsComeDownByTheRound` |
 | Start of round 9: corridor at (d), reveal the adjacent room | done | placements lock `l2a–e1b` with `afterRound: 8` — opens and reveals E1b as round 8 ends; `testTheCaveWallsComeDownByTheRound` |

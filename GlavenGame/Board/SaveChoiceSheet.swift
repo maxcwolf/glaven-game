@@ -77,7 +77,8 @@ struct SaveChoiceSheet: View {
                     .foregroundStyle(.white.opacity(0.85))
             }
             if pending.destroys {
-                Label("This destroys \(pending.name)", systemImage: "exclamationmark.triangle.fill")
+                Label(pending.losesTheScenario ? "This destroys \(pending.name): the scenario is lost"
+                                               : "This destroys \(pending.name)", systemImage: "exclamationmark.triangle.fill")
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(Color(red: 1.0, green: 0.55, blue: 0.48))
             }

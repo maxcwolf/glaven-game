@@ -21,8 +21,13 @@ extension BoardCoordinator {
         let hands: [(characterID: String, cards: [Int])]
         var continuation: CheckedContinuation<(characterID: String, cardId: Int)?, Never>?
 
+        /// Whether the scenario is lost with this objective.
+        var losesTheScenario = false
+
         /// Whether the damage would destroy the objective.
         var destroys: Bool { damage >= health }
+        /// Whether a card is plainly worth it: without one the scenario is lost here and now.
+        var isDecisive: Bool { destroys && losesTheScenario }
     }
 
     /// The rule that lets `piece` be spared, and how many times are left of it.
@@ -42,7 +47,8 @@ extension BoardCoordinator {
 
     /// Ask whether a card is lost to spare `piece` this damage; true when one was. Without a
     /// rule for it, a use left or a card to lose, nothing is asked. Headless, a card is lost
-    /// only when the damage would destroy what is protected: from the fullest hand.
+    /// only when the damage would destroy what is protected and lose the scenario with it: from
+    /// the fullest hand.
     @MainActor func promptSave(of piece: PieceID, damage: Int, source: String) async -> Bool {
         guard damage > 0, let rule = save(for: piece), let entity = entity(for: piece), entity.health > 0 else { return false }
         let hands = savingHands()
@@ -50,12 +56,14 @@ extension BoardCoordinator {
         let choice: (characterID: String, cardId: Int)?
         if autoResolvePrompts {
             let fullest = hands.max { ($0.cards.count, $1.characterID) < ($1.cards.count, $0.characterID) }
-            choice = damage >= entity.health ? fullest.flatMap { hand in hand.cards.last.map { (hand.characterID, $0) } } : nil
+            choice = damage >= entity.health && losesTheScenario(with: rule.objective)
+                ? fullest.flatMap { hand in hand.cards.last.map { (hand.characterID, $0) } } : nil
         } else {
             let generation = boardGeneration
             choice = await withCheckedContinuation { continuation in
                 pendingSave = PendingSave(objective: piece, name: name(piece), damage: damage, sourceDescription: source,
-                                          health: entity.health, left: rule.left, hands: hands, continuation: continuation)
+                                          health: entity.health, left: rule.left, hands: hands, continuation: continuation,
+                                          losesTheScenario: losesTheScenario(with: rule.objective))
             }
             // The board was left while the party chose: nothing is lost and no damage is taken.
             guard isCurrentBoard(generation) else { return true }
@@ -71,6 +79,13 @@ extension BoardCoordinator {
         log("\(characterName(character.id)) loses a card from hand to spare \(name(piece)) \(damage) damage"
             + (leftNow.map { " (\($0 == 0 ? "the last time" : "\($0) more time\($0 == 1 ? "" : "s")"))" } ?? ""), category: .damage)
         return true
+    }
+
+    /// Whether one more of this objective destroyed loses the scenario (the goal's `lostAt`).
+    func losesTheScenario(with objective: Int) -> Bool {
+        guard let limit = scenarioGoal?.lostAt?[String(objective)],
+              let container = gameManager?.game.objectives.first(where: { $0.objectiveIndex == objective }) else { return false }
+        return container.entities.filter(\.dead).count + 1 >= limit
     }
 
     /// The party's answer: who loses which card, or no one (nil).

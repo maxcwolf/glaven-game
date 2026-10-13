@@ -114,7 +114,7 @@ final class SoakDriver {
         if coord.pendingDamage != nil { coord.resolvePendingDamage(choice: .takeDamage); return }
         if let save = coord.pendingSave {
             // Only what would be destroyed is worth a card.
-            let hand = save.destroys ? save.hands.max { $0.cards.count < $1.cards.count } : nil
+            let hand = save.isDecisive ? save.hands.max { $0.cards.count < $1.cards.count } : nil
             coord.resolvePendingSave(by: hand?.characterID, losing: hand?.cards.last)
             return
         }

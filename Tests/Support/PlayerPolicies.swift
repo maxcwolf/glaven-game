@@ -91,9 +91,9 @@ extension PlayerPolicy {
         .takeDamage
     }
 
-    /// Only what would be destroyed is worth a card: from the fullest hand, its last card.
+    /// A card only where the scenario would be lost without it: from the fullest hand, its last card.
     func spare(_ pending: BoardCoordinator.PendingSave, sim: ScenarioSimulator) -> (characterID: String, cardId: Int)? {
-        guard pending.destroys,
+        guard pending.isDecisive,
               let hand = pending.hands.max(by: { ($0.cards.count, $1.characterID) < ($1.cards.count, $0.characterID) }),
               let card = hand.cards.last else { return nil }
         return (hand.characterID, card)

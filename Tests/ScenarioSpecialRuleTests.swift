@@ -1911,13 +1911,39 @@ final class ScenarioSpecialRuleTests: XCTestCase {
         XCTAssertEqual(entity.health, 12)
         XCTAssertEqual(brute.lostCards.count, 3)
 
-        // Headless: 2 damage to a captive with 12 hit points isn't worth a card; a blow that kills is.
-        coord.autoResolvePrompts = true
-        await coord.performAttack(attacker: guardian, target: captive, attack: AttackParameters(value: 2), drawCard: { AttackModifier(type: .plus0) })
-        XCTAssertEqual(entity.health, 10)
-        XCTAssertEqual(brute.lostCards.count, 3)
-        await coord.performAttack(attacker: guardian, target: captive, attack: AttackParameters(value: 20), drawCard: { AttackModifier(type: .plus0) })
-        XCTAssertEqual(entity.health, 10, "spared the killing blow")
-        XCTAssertEqual(brute.lostCards.count, 4)
+        // The sheet says what is at stake: a captive's death doesn't lose this scenario (yet).
+        let (attack, asked) = await attackUntilAsked(sim, by: guardian, on: captive, value: 20)
+        XCTAssertEqual(asked?.destroys, true)
+        XCTAssertEqual(asked?.losesTheScenario, false)
+        XCTAssertEqual(asked?.isDecisive, false)
+        coord.resolvePendingSave(by: nil, losing: nil)
+        await attack.value
+        XCTAssertEqual(entity.health, 0)
+    }
+
+    /// With no one to ask (a headless game) a card is lost only where the scenario would be lost
+    /// without it: not for a scratch on the crystal, but for the blow that destroys it — from
+    /// the fullest hand.
+    func testHeadlessACardGoesOnlyToSaveTheScenario() async throws {
+        let sim = try simulator("84")
+        let coord = sim.coord
+        XCTAssertTrue(coord.autoResolvePrompts)
+        for piece in pieces(sim) { coord.boardState.removePiece(piece) }
+        let crystal = try XCTUnwrap(objectives(sim).first)
+        let entity = try XCTUnwrap(coord.entity(for: crystal))
+        let place = try XCTUnwrap(coord.boardState.piecePositions[crystal])
+        let demon = try XCTUnwrap(coord.spawnMonster(name: "frost-demon", type: .normal,
+                                                     at: try XCTUnwrap(place.neighbors.sorted().first(where: coord.isEmptyHex)), origin: .placed))
+        let brute = sim.gm.game.characters[0], spellweaver = sim.gm.game.characters[1]
+        XCTAssertGreaterThan(brute.handCards.count, spellweaver.handCards.count)
+        let health = entity.health
+        await coord.performAttack(attacker: demon, target: crystal, attack: AttackParameters(value: 1), drawCard: { AttackModifier(type: .plus0) })
+        XCTAssertEqual(entity.health, health - 1, "a scratch: suffered")
+        XCTAssertTrue(brute.lostCards.isEmpty && spellweaver.lostCards.isEmpty)
+        await coord.performAttack(attacker: demon, target: crystal, attack: AttackParameters(value: 99), drawCard: { AttackModifier(type: .plus0) })
+        XCTAssertEqual(entity.health, health - 1, "the blow that would destroy it: spared")
+        XCTAssertEqual(brute.lostCards.count, 1, "by the fuller hand")
+        XCTAssertNil(coord.scenarioResult)
+        XCTAssertEqual(coord.boardState.savesUsed, [1: 1])
     }
 }
