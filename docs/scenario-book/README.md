@@ -354,9 +354,10 @@ its map, every door objective is on a door and every objective number exists.
 | 69 Well of the Unfortunate | — | a–d (traps appear at d when door 1 opens) | win: the doll's holder enters a hex beside the well | the doll is `carried`: chosen at set-up, passed by a Loot action, dropped where its holder is exhausted |
 | 70 Chained Isle | — | a, b | — | — |
 | 72 Oozing Grove | 3 trees | — (oozes rise beside their tree) | win: destroy all trees, kill all Oozes | — |
-| 74 Merchant Ship | — | a–e | — | water tiles aren't modelled |
+| 74 Merchant Ship | — | a–e | lost when the hold has no hex left for a water tile | the water rises as rounds end and is bailed (`flood`) |
 | 75 Overgrown Graveyard | 9 graves | — (what rises, rises where the grave was) | win: all graves and the Bloated Regent | graves are dug up with movement spent beside them (`dig`), never attacked |
-| 79 Lost Temple | Fish | a, b, c (pressure plates) | win: kill the Betrayer; lost if Fish is killed | the Betrayer's two specials (forced moves, mind control) aren't modelled |
+| 76 Harrower Hive | 23 walls, made as they come into sight (the objective is added to `76.json`; no hexes are written) | — | win: every room revealed and every enemy dead | `walls`, `discardAtStart` |
+| 79 Lost Temple | Fish | a, b, c (pressure plates) | win: kill the Betrayer; lost if Fish is killed | the Betrayer's specials drive the party off and turn one of them (`sway`); of the mind-controlled top action only the attacks are made |
 | 84 Crystalline Cave | the crystal | — | lost if it is destroyed | protected, no ally; twice a card may be lost to spare it (`saves`) |
 | 86 Harried Village | 11 villagers | b–f | win: 7 reach the docks; lost at 5 killed | — |
 | 90 Demonic Rift | — | b, c (the Living Spirits, once every demon is dead; a Night Demon at b as an even round ends with no one in the right-hand room) | win: every Living Spirit killed | — (`DemonicRiftTests`: both rooms set up, characters cross by the altars for 1 movement, the losses for an empty room) |
@@ -488,7 +489,7 @@ goals are checked; the notes say what around a goal is still missing.
 | 18 | Abandoned Sewers | Kill all enemies. | yes | — | — |
 | 19 | Forgotten Crypt | Protect Hail (a) until she reaches the altar (b); the scenario is complete when she ends her turn in a hex adjacent to the altar. | yes | Hail is killed. | yes |
 | 20 | Necromancer's Sanctum | Kill Jekserah. | yes | — | — |
-| 21 | Infernal Throne | Kill the Prime Demon. | yes — kill the Prime Demon (the altar that takes its damage isn't modelled, so it is attacked directly) | — | — |
+| 21 | Infernal Throne | Kill the Prime Demon. | yes — the altar is its hit points (`throne`): it falls when the altar is destroyed | — | — |
 | 22 | Temple of the Elements | Destroy all altars (a). | yes | — | — |
 | 23 | Deep Ruins | Occupy all pressure plates simultaneously. | yes | — | — |
 | 24 | Echo Chamber | Open all doors (fog tiles). | yes | — | — |
@@ -541,9 +542,9 @@ goals are checked; the notes say what around a goal is still missing.
 | 71 | Windswept Highlands | Loot all treasure tiles, then all characters must escape through the exit (a). | yes | Any character becomes exhausted while not occupying an exit hex (a). | yes |
 | 72 | Oozing Grove | Destroy all trees and kill all Oozes. | yes | — | — |
 | 73 | Rockslide Ridge | Kill all enemies and loot all treasure tiles. | yes | — | — |
-| 74 | Merchant Ship | Kill all enemies and keep the ship afloat. | kill all enemies: yes; the water isn't modelled | A water tile has to be added but cannot be placed because the B tile is full. | **no** |
+| 74 | Merchant Ship | Kill all enemies and keep the ship afloat. | yes | A water tile has to be added but cannot be placed because the B tile is full. | yes (`flood`) |
 | 75 | Overgrown Graveyard | Dig up all graves and kill the Bloated Regent. | yes | — | — |
-| 76 | Harrower Hive | Reveal all rooms and kill all enemies. | **no** — destructible walls aren't modelled; plays as "kill all enemies" | — | — |
+| 76 | Harrower Hive | Reveal all rooms and kill all enemies. | yes — every room, not every wall (`walls`) | — | — |
 | 77 | Vault of Secrets | Loot all treasure tiles and kill all City Guards before the alarm is raised. | yes | Any City Guard occupies a pressure plate (a). | yes |
 | 78 | Sacrifice Pit | Kill all enemies and stop the sacrifice. | yes | The victim is sacrificed: a Cultist (b) starts its turn adjacent to the altars (d) while the victim is also adjacent to the altars. | yes (`carry`) |
 | 79 | Lost Temple | Kill the Betrayer. | yes | Fish is killed. | yes |

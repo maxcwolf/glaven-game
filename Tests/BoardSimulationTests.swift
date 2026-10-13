@@ -145,6 +145,35 @@ final class BoardReviewRegressionTests: XCTestCase {
         XCTAssertTrue(coord.boardState.visibleRooms.contains("e1a"))
     }
 
+    /// Every door stands on a hex of the board, from whichever side it is first seen: a room
+    /// revealed before its parent in the map data (Gloomhaven Warehouse… any map rooted away from
+    /// its first room) shows the door back to that parent, and a door with no hex under it can't
+    /// be walked into, so its room is never revealed.
+    func testEveryDoorOfEveryScenarioStandsOnAHex() throws {
+        let gm = try makeGame()
+        var doors = 0
+        for scenario in gm.editionStore.scenarios(for: "gh") where scenario.solo == nil {
+            guard ScenarioMapStore.shared.scenarioMap(for: scenario.index) != nil else { continue }
+            let coord = try start(scenario.index, gm: gm)
+            for _ in 0..<40 {
+                for door in coord.boardState.doors {
+                    doors += 1
+                    XCTAssertEqual(coord.boardState.cells[door.coord]?.overlay, .door,
+                                   "scenario \(scenario.index): the door at \(door.coord) into \(door.childTileRef) has no hex")
+                }
+                guard let next = coord.boardState.doors.first(where: { !$0.isOpen }) else { break }
+                coord.boardState.lockedDoors = []
+                if let barring = coord.boardState.piece(at: next.coord) {
+                    coord.sufferDamage(999, to: barring, killer: .character(gm.game.characters[0].id))
+                } else {
+                    coord.openDoor(at: next.coord)
+                }
+                guard coord.boardState.doors.first(where: { $0.coord == next.coord })?.isOpen == true else { break }
+            }
+        }
+        XCTAssertGreaterThan(doors, 300)
+    }
+
     /// Opening every door in turn reveals the real room (with its onward doors and monsters), never
     /// an empty copy, and puts every revealed monster on the board.
     func testOpeningDoorsRevealsWholeMap() throws {
@@ -153,7 +182,12 @@ final class BoardReviewRegressionTests: XCTestCase {
             let coord = try start(index, gm: gm)
             var opened = 0
             while let door = coord.boardState.doors.first(where: { !$0.isOpen }), opened < 30 {
-                coord.openDoor(at: door.coord)
+                // (Harrower Hive has walls for doors: one is opened by destroying it.)
+                if let wall = coord.boardState.piece(at: door.coord), coord.boardState.isStandingWall(door.coord) {
+                    coord.sufferDamage(999, to: wall, killer: .character(gm.game.characters[0].id))
+                } else {
+                    coord.openDoor(at: door.coord)
+                }
                 opened += 1
                 XCTAssertTrue(coord.unplacedMonsterEntities().isEmpty, "scenario \(index): revealed monsters are placed")
             }

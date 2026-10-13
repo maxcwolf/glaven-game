@@ -26,8 +26,8 @@ question, how a piece of work is done from start to finish, and what to do next.
 
 ### Work in progress (2026-10-13)
 
-`main` has everything up to merge `9cad118` (a board that moves; monsters that don't act as
-their cards say). The work since — the bosses — is on `feat/cards-4`, not merged (merging is the owner's call).
+`main` has everything up to merge `8de8ea0` (the bosses). The work since — walls and obstacles
+with hit points — is on `feat/cards-4`, not merged (merging is the owner's call).
 The branches:
 
 - **`feat/scenario-rules-3`** (2026-10-12): tests for the three rules no test caught; mutations
@@ -41,7 +41,7 @@ The branches:
   second session had the main checkout. It adds: Singing Arrow's Curse over its area; the
   play ledger no longer miscounting #9's Scouts (N12); the audit's new screens rendered and
   looked at (N16) with the cards in play made finger-sized; a door two hexes wide opening as
-  one (N21). `scripts/mutate.py` has 281 mutations, each noticed by a test. Group 2 is begun: a card lost
+  one (N21). `scripts/mutate.py` has 312 mutations, each noticed by a test. Group 2 is begun: a card lost
   from any hand spares the crystal (#84) or a captive (#44) — `saves`, `SaveChoiceSheet` — and a
   character beside a captive gives up an action to free it (`forgo`), with #44's loss switched on.
 
@@ -75,8 +75,13 @@ fast-forward):
    bosses, is done but for one clause: `throne` (#21's altar that is the Prime Demon's hit points
    and jumps), `perch` (#34's Elder Drake on three hexes — `BoardState.bodies` — its flight and
    its Zephyrs) and `sway` (#79's Betrayer: the party driven off, drawn in, and one of them
-   mind controlled — of the top action played for them only the attacks are made). Next: walls
-   and obstacles with hit points (#76, #52), then the small ones and #55. Under Cards the large open item is the Beast Tyrant, who has no bear (N20).
+   mind controlled — of the top action played for them only the attacks are made). The sixth,
+   walls and obstacles with hit points, is done: `walls` (#76's 23 walls, each an objective on a
+   shut `breakable-wall` connector; the Stun, the rooms behind, summons leaving them alone) with
+   `discardAtStart` (its three cards, `StartDiscardPicker`), and `indestructible.solid` with
+   `startAmongMonsters` (#52's boulders that nothing jumps, flies over or sees past — `HexCell.solid`
+   — and its starting sections). Next: the small ones (#38's Orchid, #68's tree and poisoned
+   summons, #79's mind-controlled top action), then #55, which needs random dungeons. Under Cards the large open item is the Beast Tyrant, who has no bear (N20).
 3. Merging to `main` (`git merge --no-ff -m "merge: …"`, then push) is done when the owner asks.
 
 ## Which document answers what
@@ -176,7 +181,7 @@ The task list is `TODO.md` → "Missing Gloomhaven Rules" → "Open, in order"; 
 ordered like this:
 
 1. **Tests and checks, before building on top.** Done but for a glance on the iPad at what the
-   off-screen renderer can't draw. (`scripts/mutate.py` has 281 mutations, 216 of them scenario
+   off-screen renderer can't draw. (`scripts/mutate.py` has 312 mutations, 247 of them scenario
    rules — `--scenario` — and each is noticed by a test: add one with every new mechanism.)
 2. **Scenario rules** — 94 printed rules in 28 scenarios, in this order because each group is one
    mechanism used several times:
@@ -194,7 +199,8 @@ ordered like this:
      cannon and archer, #78's carriers and their victim, #67's and #73's barred doors;
    - *bosses still played from their stat cards* (done 2026-10-13; #79's mind-controlled top
      action is attacks only): #21, #34, #79;
-   - *walls and obstacles with hit points*: #76, #52 (#95's boulders are done);
+   - *walls and obstacles with hit points* (done 2026-10-13): #76's walls and discarded cards,
+     #52's boulders and starting sections, #95's boulders;
    - a few small ones, and #55, a random dungeon with no map, which is a project of its own.
 3. **Engine rules** still open, each with an id in the engine audit: element choices, placing
    an area by hand, the rest of negating damage, standees that run out.
