@@ -12,8 +12,8 @@ means the data and code that enforce the rule were found, and usually a test tha
 that the scenario was played through. Keep it current: when a rule is built, rewrite its row in
 the same commit (see [../rules-work.md](../rules-work.md)).
 
-**447 rules: 399 done, 14 partial, 34 missing.**
-80 of 95 scenarios have every printed rule done. The other 15: #55 (6 missing, 1 partial), #34 (4 missing, 2 partial), #76 (4 missing, 2 partial), #71 (4 missing, 0 partial), #73 (1 missing, 0 partial), #78 (5 missing, 0 partial), #21 (2 missing, 2 partial), #49 (4 missing, 0 partial), #52 (1 missing, 1 partial), #68 (1 missing, 1 partial), #79 (1 missing, 1 partial), #82 (0 missing, 2 partial), #38 (0 missing, 1 partial), #47 (0 missing, 1 partial), #67 (1 missing, 0 partial).
+**447 rules: 405 done, 14 partial, 28 missing.**
+83 of 95 scenarios have every printed rule done. The other 12: #55 (6 missing, 1 partial), #34 (4 missing, 2 partial), #76 (4 missing, 2 partial), #78 (5 missing, 0 partial), #21 (2 missing, 2 partial), #49 (4 missing, 0 partial), #52 (1 missing, 1 partial), #68 (1 missing, 1 partial), #79 (1 missing, 1 partial), #82 (0 missing, 2 partial), #38 (0 missing, 1 partial), #47 (0 missing, 1 partial).
 
 Rules that were enforced wrongly, as against not at all, are findings of the engine audit
 ([../audits/2026-10-09-rules-audit.md](../audits/2026-10-09-rules-audit.md), rows S1-…, S2-…),
@@ -602,7 +602,7 @@ order", has the same list as tasks). The rows below say what the game does today
 | A figure in the door as it closes suffers trap damage and moves to the nearest unoccupied hex | done | `shutDoor` as in #66: trap damage (a character may lose cards to negate it, through `ruleDamageDue`) and out to the nearest empty hex; `testADoorHeldOpenByAPlate`, `testDamageFromAClosingDoorCanBeNegated` |
 | Section 2: the elite Stone Golem is one level above the scenario level (max 7) and is the Arcane Golem | done | room 3 `stone-golem:+1` elite; rule 0 statEffect `name: "arcane-golem"` |
 | It has H×C HP (H = an elite Stone Golem's regular HP) | done | rule 0 statEffect `health: "HxC"`, `requiredRooms: [3]` (`applyScenarioStatEffect`) |
-| It cannot enter or pass through door 2 | missing | still only in the scenario rule's note text. Shut, the door stops it like anyone; held open by a plate, nothing in `MonsterAI` / `Pathfinder` keeps the golem from walking through, nor a push or pull from moving it there. Needs a hex barred to one monster type |
+| It cannot enter or pass through door 2 | done | placements `barred: [{monsters: ["stone-golem"], between: [a2a, m1a], from: "m1a"}]` → `BoardState.barredDoors` (`barDoors`): the doorway is a blocked hex to it in `MonsterAI` and `movementSets`, and no push or pull takes it there (`forcedMoveSteps`). `BarredDoorTests.testTheArcaneGolemNeverGoesThroughTheLibraryDoor` |
 
 ### 68 · Toxic Moor
 | Rule (from the book) | Status | Where / what's missing |
@@ -643,10 +643,10 @@ order", has the same list as tasks). The rows below say what the game does today
 | Goal: loot all treasure tiles, then every character on an exit hex (a) | done | placements goal `loot: "goal"`, `escape: {"marker": "a"}` (four hexes on `g2a`) |
 | Lose: a character exhausted while not on an exit hex | done | placements `lostIfExhausted: ["offExit"]` |
 | Wind: at the end of every round every character and summon is forced one hex (left, up, right, down in turn), in initiative order | done | placements `drift: {name: "wind", directions: [[NW, NE], [E], [SW, SE], [W]]}` (the book prints this map a quarter turn round: its left is up on ours) → `BoardCoordinator+Drift`: `driftToCome` as the round's turns are over, `driftAsTheRoundEnds` moves each character, a summon before its owner, by `moveAlong(.forced)` (a trap is sprung); with two hexes open the players tap one (`chooseHex`), with one of the two shut they may stay instead (FAQ); nowhere to go, no move. `DriftTests.testTheWindTurnsWithTheRounds`, `testThePlayersChooseBetweenTwoHexes`, `testTheWindGoesInInitiativeOrderAndIsStoppedByWhatIsInTheWay`, `testTheWindBlowsAFigureIntoATrap`, `testTheWindBlowsAsARoundOfPlayEnds`. (Waking a drake by ending this move beside it belongs to the rows below) |
-| Spitting Drakes start asleep and do not act until woken | missing | no sleeping state is set (placements has no `inactive` entry for #71): the drakes act from round 1 |
-| A drake wakes when attacked, damaged, given a negative condition, or when a character or summon ends a move adjacent to it | missing | no code; nothing is asleep to wake |
-| Summons do not attack a sleeping drake unless directly controlled | missing | no code; summons focus on drakes like any enemy |
-| A drake that wakes follows the rules for a newly spawned monster | missing | no code; nothing is asleep to wake |
+| Spitting Drakes start asleep and do not act until woken | done | placements `asleep: ["spitting-drake"]` → `BoardCoordinator+Sleep`: each drake of the map (set up or revealed with its room) is in `BoardState.asleep`, shown by a z beside its number, and is passed over in its type's turn (`executeMonsterGroup`). `SleepingMonsterTests.testTheDrakesOfTheMapAreAsleepAndDoNothing` |
+| A drake wakes when attacked, damaged, given a negative condition, or when a character or summon ends a move adjacent to it | done | `wake` from `performAttack` (hit or miss), `sufferDamage`, `applyCondition` (negative ones) and, as any movement of a character or summon ends — the wind's forced move too — `wakeSleepers(beside:)` in `moveAlong`. `testWhatWakesADrake` |
+| Summons do not attack a sleeping drake unless directly controlled | done | `PlayerSideAI.hostileMonsters` leaves sleepers out of what a summon may focus on (they still block its way); a target a player picks is theirs to pick. `testASummonLeavesASleepingDrakeAlone` |
+| A drake that wakes follows the rules for a newly spawned monster | done | `wake` queues it like a monster revealed mid-round (`pendingRevealedStandees`): it acts with its type, or right after the turn it woke in when that place has gone by. `testAWokenDrakeActsInTheRoundItWakes` |
 | Doors b, c, d are locked and open on the first, second and third treasure tile looted | done | locks `h2b–a2b` `looted: 1`, `l3a–a3a` `looted: 2`, `h2b–g2a` `looted: 3` (`boardState.goalTreasuresLooted`; `testLootedTreasureOpensDoors`) |
 | Escape is complete when every character stands on an exit hex or was exhausted on one | done | `goalMet` judges the characters still standing; exhaustion on an exit hex doesn't lose (`exhaustionLoss`) |
 
@@ -667,7 +667,7 @@ order", has the same list as tasks). The rows below say what the game does today
 | A figure a boulder moves onto suffers trap damage; if the boulder stops there the figure is forced one hex left | done | `roll`: trap damage for the level to any character, summon or monster in a hex entered (a character may negate it with cards); the figure it stops on is moved one hex left by forced movement (to the nearest empty hex if that one is shut — the book doesn't say). `testABoulderHarmsWhoeverItRollsOverAndPushesWhoeverItStopsOn` |
 | A boulder reaching the leftmost hex re-enters at (b) and keeps moving | done | `rollerRows`: a row runs from (b) to the last hex of the map on the left — across the slope and the tile the party starts on (11, 10 and 11 hexes); `rollPath` enters that last hex and (b) in one step. Our reading of "the leftmost hex of its row": were the row the slope tile alone, the boulders at (a) would start on it. `testABoulderAtTheEndOfItsRowComesBackInAtB` |
 | Dark pit obstacles cannot be destroyed | done | placements `indestructible: {"subTypes": ["dark-pit"]}` → `isDestructibleObstacle` (asked by every destroy-obstacle ability); `testWhatTheScenarioSaysCantBeDestroyedIsnt` (#73's pits), `testNoAbilityDestroysADarkPit` |
-| Section 1: the Inox on tile E cannot enter or pass through door 1 | missing | no movement restriction in placements or code: once door 1 is open the Inox of `e1b` walk through it like any monster. It would need a door (or tile) a monster type can't cross |
+| Section 1: the Inox on tile E cannot enter or pass through door 1 | done | placements `barred` with the three Inox types, `between: [m1b, e1b]`, `from: "e1b"`: shut to an Inox standing in the cave, not to the archers of the slope. `BarredDoorTests.testTheInoxOfTheCaveStayInIt` |
 
 ### 74 · Merchant Ship
 | Rule (from the book) | Status | Where / what's missing |

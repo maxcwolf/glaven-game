@@ -139,6 +139,14 @@ ends up on the board:
   bearing that item (#54's Staff of Xorn is the Seeker's). `"soleHarmTo": ["harrower-infester"]`
   makes its holder the only one who damages that monster type, each point of that damage
   charging it up to `"charge": "2xCx(L+1)"`; a `reach` with `"charged": true` waits for it full.
+- `asleep`: monster types set up asleep, `["spitting-drake"]` (#71, `BoardCoordinator+Sleep`). Unlike
+  an `inactive` monster a sleeper is there to be attacked: it does nothing until a character or a
+  character's summon attacks it, damages it, gives it a negative condition or ends any movement
+  beside it, and then acts that round like a monster just spawned. Summons leave sleepers alone.
+- `barred`: doorways shut to some monsters, open or not — `{"monsters": ["stone-golem"], "between":
+  ["a2a", "m1a"], "from": "m1a"}` (#67, #73): no monster of those types standing on tile `from`
+  (any, without it) enters or passes through the door between the two tiles, by its own move or a
+  push or pull.
 - `drift`: what moves the party one hex as each round ends, before the round's other end-of-round
   rules (`BoardCoordinator+Drift`): `{"name": "wind", "directions": [["NW", "NE"], ["E"], ["SW", "SE"],
   ["W"]]}` (#71: the sides of a hex — NE, E, SE, SW, W, NW as the map lies in the game — by round,

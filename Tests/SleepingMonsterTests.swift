@@ -122,9 +122,9 @@ final class SleepingMonsterTests: XCTestCase {
         stand(sim, brute, on: passing)
         let on = try XCTUnwrap(coord.boardState.neighbors(of: passing).sorted()
             .first { coord.boardState.isPassable($0) && coord.boardState.piece(at: $0) == nil && !coord.boardState.areAdjacent($0, hex) && $0 != hex })
-        _ = await coord.moveAlong(brute, path: [passing, on], style: .normal)
-        XCTAssertTrue(coord.isAsleep(drake), "not beside it")
-        stand(sim, brute, on: passing)
+        stand(sim, brute, on: on)
+        _ = await coord.moveAlong(brute, path: [on, passing], style: .normal)
+        XCTAssertTrue(coord.isAsleep(drake), "two hexes off isn't beside it")
         _ = await coord.moveAlong(brute, path: [passing, beside[0]], style: .normal)
         XCTAssertFalse(coord.isAsleep(drake), "a move ended beside it")
         // The wind's forced movement too.
