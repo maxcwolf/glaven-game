@@ -26,8 +26,8 @@ question, how a piece of work is done from start to finish, and what to do next.
 
 ### Work in progress (2026-10-13)
 
-`main` has everything up to merge `c616b0e` (things that are carried). The work since — a board
-that moves as the round ends, and monsters that don't act as their cards say — is on `feat/cards-4`, not merged (merging is the owner's call).
+`main` has everything up to merge `9cad118` (a board that moves; monsters that don't act as
+their cards say). The work since — the bosses — is on `feat/cards-4`, not merged (merging is the owner's call).
 The branches:
 
 - **`feat/scenario-rules-3`** (2026-10-12): tests for the three rules no test caught; mutations
@@ -41,19 +41,19 @@ The branches:
   second session had the main checkout. It adds: Singing Arrow's Curse over its area; the
   play ledger no longer miscounting #9's Scouts (N12); the audit's new screens rendered and
   looked at (N16) with the cards in play made finger-sized; a door two hexes wide opening as
-  one (N21). `scripts/mutate.py` has 236 mutations, each noticed by a test. Group 2 is begun: a card lost
+  one (N21). `scripts/mutate.py` has 281 mutations, each noticed by a test. Group 2 is begun: a card lost
   from any hand spares the crystal (#84) or a captive (#44) — `saves`, `SaveChoiceSheet` — and a
   character beside a captive gives up an action to free it (`forgo`), with #44's loss switched on.
 
 To pick it up, work on `feat/cards-4` (or merge it into `feat/scenario-rules-3` first — it is a
 fast-forward):
 
-1. **Verified** at the head of `feat/cards-4` on 2026-10-13: `swift test` 1,608 tests, none
-   failing; the four-seed all-scenarios playthrough without a violation; the veteran playthrough
-   passing (53 and 56 of 94 won: #74 and #88 are lost since their water rises and their current
-   flows — see `TODO.md`, "The simulator"). `main` has the branch up to merge `c616b0e`; the board
-   that moves and the monsters that don't act as their cards say came after and are on the branch
-   (the veterans win #49 and #78 with their new rules).
+1. **Verified** at the head of `feat/cards-4` on 2026-10-13: `swift test` 1,621 tests, none
+   failing; the four-seed all-scenarios playthrough (376 runs) without a violation; the veteran
+   playthrough passing (52 and 55 of 94 won: #21 is lost since its altar jumps, as #74 and #88
+   are since their water rises and their current flows — see `TODO.md`, "The simulator"; the
+   veterans win #34 with its perches and Zephyrs, and #49 and #78 with their rules). `main` has
+   the branch up to merge `9cad118`; the bosses (#21, #34, #79) came after and are on the branch.
 2. **Next**, from `TODO.md` → "Open, in order": group 1 is done but for a glance at two things
    on the iPad (the Solo switch as a switch; the scrolling card lists in the damage and rest
    sheets) and the drawings that need a game in progress (#46's eggs, #48's Dark Rider, the
@@ -71,9 +71,12 @@ fast-forward):
    round's other end-of-round rules, with two new prompts — `chooseHex` (tap one of a few hexes)
    and `chooseOption` (an answer in words). The fourth, monsters that don't act as their cards
    say, is done too: `asleep` (#71's drakes), `barred` (#67's golem, #73's Inox), `battery` (#49's
-   Siege Cannon and its crew) and `carry` (#78's Cultists and their victim). Next: the bosses
-   still played from their stat cards (#21, #34, #79), then walls and obstacles with hit points
-   (#76, #52). Under Cards the large open item is the Beast Tyrant, who has no bear (N20).
+   Siege Cannon and its crew) and `carry` (#78's Cultists and their victim). The fifth, the
+   bosses, is done but for one clause: `throne` (#21's altar that is the Prime Demon's hit points
+   and jumps), `perch` (#34's Elder Drake on three hexes — `BoardState.bodies` — its flight and
+   its Zephyrs) and `sway` (#79's Betrayer: the party driven off, drawn in, and one of them
+   mind controlled — of the top action played for them only the attacks are made). Next: walls
+   and obstacles with hit points (#76, #52), then the small ones and #55. Under Cards the large open item is the Beast Tyrant, who has no bear (N20).
 3. Merging to `main` (`git merge --no-ff -m "merge: …"`, then push) is done when the owner asks.
 
 ## Which document answers what
@@ -173,7 +176,7 @@ The task list is `TODO.md` → "Missing Gloomhaven Rules" → "Open, in order"; 
 ordered like this:
 
 1. **Tests and checks, before building on top.** Done but for a glance on the iPad at what the
-   off-screen renderer can't draw. (`scripts/mutate.py` has 236 mutations, 171 of them scenario
+   off-screen renderer can't draw. (`scripts/mutate.py` has 281 mutations, 216 of them scenario
    rules — `--scenario` — and each is noticed by a test: add one with every new mechanism.)
 2. **Scenario rules** — 94 printed rules in 28 scenarios, in this order because each group is one
    mechanism used several times:
@@ -189,7 +192,8 @@ ordered like this:
      boulders, #74's rising water;
    - *monsters that don't act as their cards say* (done 2026-10-13): #71's sleeping drakes, #49's
      cannon and archer, #78's carriers and their victim, #67's and #73's barred doors;
-   - *bosses still played from their stat cards*: #21, #34, #79;
+   - *bosses still played from their stat cards* (done 2026-10-13; #79's mind-controlled top
+     action is attacks only): #21, #34, #79;
    - *walls and obstacles with hit points*: #76, #52 (#95's boulders are done);
    - a few small ones, and #55, a random dungeon with no map, which is a project of its own.
 3. **Engine rules** still open, each with an id in the engine audit: element choices, placing
