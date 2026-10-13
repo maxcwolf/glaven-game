@@ -145,6 +145,8 @@ S={
  "diggingIsFree": ("GlavenGame/Board/BoardCoordinator+Forgo.swift", "        continueMove(of: mover, left: range - 1, mode: mode)", "        continueMove(of: mover, left: range, mode: mode)"),
  "diggingFromAfar": ("GlavenGame/Board/BoardCoordinator+Forgo.swift", "        return boardState.neighbors(of: here).compactMap { boardState.piece(at: $0) }\n            .filter { isDug($0)", "        _ = here\n        return boardState.piecePositions.keys\n            .filter { isDug($0)"),
  "diggingDigsNothing": ("GlavenGame/Board/BoardCoordinator+Forgo.swift", "        sufferDamage(1, to: grave, killer: mover)", "        sufferDamage(0, to: grave, killer: mover)"),
+ "spiritsGoUnasked": ("GlavenGame/Board/BoardCoordinator+Effects.swift", "        if autoResolvePrompts {\n            if let nearest = reprieveCandidates(nearest: killer).first { banish(nearest) }", "        if true {\n            if let nearest = reprieveCandidates(nearest: killer).first { banish(nearest) }"),
+ "reprieveNotAskedAfterTheBlow": ("GlavenGame/Board/BoardCoordinator+Combat.swift", "        await resolveDeathAttacks()\n        await resolveReprieves()\n", "        await resolveDeathAttacks()\n"),
 }
 M.update(S)
 def run(name, flt=None):

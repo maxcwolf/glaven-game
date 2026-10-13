@@ -1662,6 +1662,60 @@ final class ScenarioSpecialRuleTests: XCTestCase {
 
     /// Living Spirits can't be damaged in any way, though conditions still take hold; each
     /// demon's death banishes one of them, the nearest to the killer.
+    /// "Each time a demon dies, the players may remove any one Living Spirit from the map": they
+    /// are asked which — the nearest to the killer offered first — and may leave them all.
+    func testThePlayersChooseWhichLivingSpiritGoes() async throws {
+        let sim = try simulator("70")
+        let coord = sim.coord
+        coord.autoResolvePrompts = false
+        let stood = try XCTUnwrap(coord.boardState.piecePositions[character(sim, 0)])
+        let free = coord.boardState.cells.keys.filter(coord.isEmptyHex).sorted { ($0.distance(to: stood), $0) < ($1.distance(to: stood), $1) }
+        let near = try XCTUnwrap(coord.spawnMonster(name: "living-spirit", type: .normal, at: free[0], origin: .spawned))
+        let far = try XCTUnwrap(coord.spawnMonster(name: "living-spirit", type: .normal, at: try XCTUnwrap(free.last), origin: .spawned))
+        let demons = pieces(sim, named: "night-demon") + pieces(sim, named: "wind-demon")
+        XCTAssertGreaterThanOrEqual(demons.count, 2)
+        func asked() async -> BoardCoordinator.PendingFigureChoice? {
+            let deadline = Date().addingTimeInterval(3)
+            while coord.pendingFigureChoice == nil, Date() < deadline {
+                // The character's own draw for the attack, when one is waited for.
+                if let draw = coord.pendingModifierDraw {
+                    coord.completeModifierDraw(selectedCards: CombatResolver.drawModifiers(
+                        advantage: draw.advantage, disadvantage: draw.disadvantage, baseAttack: draw.comparedAttack, draw: draw.drawCard))
+                }
+                try? await Task.sleep(nanoseconds: 1_000_000)
+            }
+            return coord.pendingFigureChoice
+        }
+
+        // A demon killed by an attack: the question comes once the blow is settled.
+        let attack = Task { @MainActor in
+            await coord.performAttack(attacker: self.character(sim, 0), target: demons[0], attack: AttackParameters(value: 99),
+                                      drawCard: { AttackModifier(type: .plus0) })
+        }
+        var answer = await asked()
+        var choice = try XCTUnwrap(answer, "the players are asked")
+        XCTAssertFalse(coord.isOnBoard(demons[0]))
+        XCTAssertEqual(choice.options, [near, far], "the nearest first")
+        XCTAssertEqual(choice.declineTitle, "Leave Them")
+        coord.resolveFigureChoice(far)
+        _ = await attack.value
+        XCTAssertFalse(coord.isOnBoard(far), "the one they chose, not the nearest")
+        XCTAssertTrue(coord.isOnBoard(near))
+        XCTAssertEqual(sim.gm.game.scenario?.killCounts["living-spirit"], nil, "banished, not killed")
+
+        // A demon dead by other means (a wound, a trap): asked before the next turn — and they may decline.
+        coord.handleDeath(of: demons[1])
+        XCTAssertEqual(coord.pendingReprieves.count, 1)
+        let asking = Task { @MainActor in await coord.resolveReprieves() }
+        answer = await asked()
+        choice = try XCTUnwrap(answer)
+        XCTAssertEqual(choice.options, [near])
+        coord.resolveFigureChoice(nil)
+        await asking.value
+        XCTAssertTrue(coord.isOnBoard(near), "left where it is")
+        XCTAssertTrue(coord.pendingReprieves.isEmpty)
+    }
+
     func testLivingSpiritsCantBeDamagedAndGoWithTheDemons() async throws {
         let sim = try simulator("70")
         let coord = sim.coord

@@ -300,8 +300,9 @@ final class ScenarioSimulator {
             coord.resolveActionChoice(nil)
             return
         }
-        if coord.pendingFigureChoice != nil {
-            coord.resolveFigureChoice(nil)
+        if let choice = coord.pendingFigureChoice {
+            // A Living Spirit to remove for a demon's death: the nearest (the first offered).
+            coord.resolveFigureChoice(choice.title == BoardCoordinator.reprieveTitle ? choice.options.first : nil)
             return
         }
         if coord.pendingItemUse != nil {

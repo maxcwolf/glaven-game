@@ -488,6 +488,9 @@ final class BoardCoordinator {
         let action: ActionModel
     }
     var pendingDeathAttacks: [DeathAttack] = []
+    /// Deaths for which the players may still remove a figure from the map (Chained Isle: a
+    /// Living Spirit for each demon), with who killed; asked once the blow is settled.
+    var pendingReprieves: [PieceID?] = []
     /// The fallen monster making its "on death" attack right now, and the hex it fell on.
     var deathAttackInProgress: DeathAttack?
 
@@ -1023,6 +1026,7 @@ final class BoardCoordinator {
         pendingItemRefresh = nil
         pendingConditionRemoval = nil
         pendingDeathAttacks = []
+        pendingReprieves = []
         deathAttackInProgress = nil
         pendingExtraConditions = []
         pendingForcedAttack = nil
@@ -1455,9 +1459,10 @@ final class BoardCoordinator {
     func advanceToNextFigure() {
         guard let gameManager = gameManager else { return }
         // Doomed enemies that died this turn (to a trap, a wound…) resolve their dooms first.
-        if !pendingDoomDeaths.isEmpty || !pendingDamageAttacks.isEmpty {
+        if !pendingDoomDeaths.isEmpty || !pendingDamageAttacks.isEmpty || !pendingReprieves.isEmpty {
             let generation = boardGeneration
             Task { @MainActor in
+                await self.resolveReprieves()
                 await self.resolveDoomDeaths()
                 guard self.isCurrentBoard(generation), self.scenarioResult == nil else { return }
                 self.advanceToNextFigure()

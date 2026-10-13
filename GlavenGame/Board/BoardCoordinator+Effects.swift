@@ -118,17 +118,52 @@ extension BoardCoordinator {
         return scenarioData?.placements?.undamageable?.contains(name) == true
     }
 
-    /// A monster of `name` has died: where the scenario gives a reprieve for it, one of another
-    /// type leaves the map — the one nearest the killer, or nearest any character.
+    /// A monster of `name` has died: where the scenario gives a reprieve for it, "the players
+    /// may remove any one" of another type from the map (Chained Isle's Living Spirits). They
+    /// are asked which, or none, once the blow is settled (`resolveReprieves`); with no one to
+    /// ask, the one nearest the killer goes at once.
     func grantReprieve(forDeathOf name: String, killer: PieceID?) {
         guard let reprieve = scenarioData?.placements?.reprieve, reprieve.killed.contains(name) else { return }
+        if autoResolvePrompts {
+            if let nearest = reprieveCandidates(nearest: killer).first { banish(nearest) }
+        } else {
+            pendingReprieves.append(killer)
+        }
+    }
+
+    /// What may be removed for a reprieve, nearest the killer (or any character) first.
+    func reprieveCandidates(nearest killer: PieceID?) -> [PieceID] {
+        guard let reprieve = scenarioData?.placements?.reprieve else { return [] }
         let from = (killer.flatMap { boardState.piecePositions[$0] }).map { [$0] }
             ?? (gameManager?.game.characters ?? []).compactMap { boardState.piecePositions[.character($0.id)] }
         let candidates = boardState.piecePositions.filter { if case .monster(reprieve.removes, _) = $0.key { return true }; return false }
-        guard let gone = candidates.min(by: { a, b in
+        return candidates.sorted { a, b in
             let da = from.map { boardState.steps(from: $0, to: a.value) }.min() ?? 0, db = from.map { boardState.steps(from: $0, to: b.value) }.min() ?? 0
             return (da, a.key) < (db, b.key)
-        })?.key, case .monster(let removed, let standee) = gone else { return }
+        }.map(\.key)
+    }
+
+    static let reprieveTitle = "A demon is dead"
+
+    /// Ask, for each death that gives one, which figure leaves the map — or none.
+    @MainActor func resolveReprieves() async {
+        let generation = boardGeneration
+        while !pendingReprieves.isEmpty, isCurrentBoard(generation) {
+            let killer = pendingReprieves.removeFirst()
+            let candidates = reprieveCandidates(nearest: killer)
+            guard let first = candidates.first, scenarioResult == nil else { continue }
+            let kind = monsterTypeName({ if case .monster(let name, _) = first { return name }; return "" }())
+            let chosen = await chooseFigure(candidates, title: Self.reprieveTitle,
+                                            question: "You may remove one \(kind) from the map. Which?",
+                                            declineTitle: "Leave Them")
+            guard isCurrentBoard(generation), let chosen, isOnBoard(chosen) else { continue }
+            banish(chosen)
+        }
+    }
+
+    /// The figure leaves the map: gone, not killed (no money, no count of kills).
+    private func banish(_ gone: PieceID) {
+        guard case .monster(let removed, let standee) = gone else { return }
         log("\(self.name(gone)) is banished with the demon\u{2019}s death", category: .death)
         monsterEntity(name: removed, standee: standee)?.dead = true
         removePieceFromBoard(gone)
