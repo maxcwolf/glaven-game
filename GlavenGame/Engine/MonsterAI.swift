@@ -150,6 +150,8 @@ enum MonsterAI {
         // Focus candidates exclude invisible figures, but every enemy figure blocks movement.
         let enemies = gatherEnemies(board: board, monster: monster, gameState: gameState)
         let blockingPositions = movementBlockers(board: board, monster: monster, gameState: gameState)
+            // A doorway the scenario shuts to it is as good as a wall.
+            .union(board.barredHexes(for: pieceID))
         let allyPositions = gatherAllyPositions(board: board, monster: monster, excluding: pieceID)
 
         candidates = focusCandidates(

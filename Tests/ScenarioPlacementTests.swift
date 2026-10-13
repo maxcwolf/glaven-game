@@ -207,6 +207,12 @@ final class ScenarioPlacementTests: XCTestCase {
                 XCTAssertEqual(section?.isConclusion, true, "\(index): no conclusion \(conclusion)")
             }
             for id in placements.resetOnLoss ?? [] { XCTAssertTrue(treasure.contains(id), "\(index): no treasure \(id)") }
+            for name in placements.asleep ?? [] { XCTAssertTrue(monsters.contains(name), "\(index): no monster \(name) to sleep") }
+            for rule in placements.barred ?? [] {
+                XCTAssertEqual(rule.between.count, 2, index)
+                for tile in rule.between + [rule.from].compactMap({ $0 }) { XCTAssertTrue(tiles.contains(tile), "\(index): no tile \(tile)") }
+                for name in rule.monsters { XCTAssertTrue(monsters.contains(name), "\(index): no monster \(name)") }
+            }
             if let drift = placements.drift {
                 let sides = (drift.directions ?? []).flatMap { $0 } + (drift.byInitiative.map { $0.even + $0.odd } ?? [])
                 XCTAssertFalse(sides.isEmpty, "\(index): the \(drift.name) goes nowhere")

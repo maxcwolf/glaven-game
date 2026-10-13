@@ -60,6 +60,12 @@ struct ScenarioPlacements: Codable, Equatable {
     var rolling: Rolling?
     /// Water that rises on a tile as rounds end, and is bailed (#74's hold).
     var flood: Flood?
+    /// Doors some monsters can't enter or pass through (#67's Arcane Golem, #73's Inox).
+    var barred: [Barred]?
+    /// Monster types set up asleep (#71's Spitting Drakes): each does nothing until a character or
+    /// a character's summon attacks it, damages it, gives it a negative condition or ends a
+    /// movement beside it; then it acts as a monster just spawned does.
+    var asleep: [String]?
     /// Escorts (objectives, 1-based) whose attacks draw "from whichever attack modifier deck the
     /// players choose": a character's, asked as the escort attacks (Redthorn; the captive
     /// Orchids of Bandit's Wood).
@@ -363,6 +369,15 @@ extension ScenarioPlacements {
     struct Save: Codable, Hashable {
         let objective: Int
         var times: Int?
+    }
+
+    /// "It cannot enter or pass through door 2" (#67); "The Inox on tile E cannot enter or pass
+    /// through door 1" (#73): the door between two tiles, the monster types it is shut to, and —
+    /// where the book speaks of the monsters of one tile — the tile they stand on.
+    struct Barred: Codable, Hashable {
+        let monsters: [String]
+        let between: [String]
+        var from: String?
     }
 
     /// "At the end of every even round for two characters or every round for three or four

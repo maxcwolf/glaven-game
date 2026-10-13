@@ -100,6 +100,8 @@ enum PlayerSideAI {
             }
             guard let (group, entity) = MonsterAI.monsterEntity(id, gameState: gameState),
                   !MonsterAI.isAllyFaction(group), !inactive.contains(group.name) else { return false }
+            // A summon leaves a sleeping monster alone unless a character directs it (it is in the way all the same).
+            if !includeInvisible, board.asleep.contains(id) { return false }
             return includeInvisible || !MonsterAI.isActive(.invisible, on: entity)
         }
     }

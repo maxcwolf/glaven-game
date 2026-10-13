@@ -44,6 +44,8 @@ extension BoardCoordinator {
     @MainActor func performAttack(attacker: PieceID, target aimedAt: PieceID, attack printedAttack: AttackParameters,
                        drawCard: (() -> AttackModifier?)? = nil, from origin: HexCoord? = nil) async -> Bool {
         var attack = printedAttack
+        // An attack wakes a sleeper, hit or not.
+        wake(aimedAt)
         // Every await below may come back to a board that was left or restarted meanwhile.
         let generation = boardGeneration
         let target = await attackTarget(of: attacker, aimingAt: aimedAt, range: attack.range)

@@ -87,7 +87,7 @@ M={
 }
 # Scenario rules (the mechanisms of placements/gh.json): run against the scenario tests.
 SCENARIO_FILTER=("ScenarioSpecialRuleTests|ScenarioReauditTests|ScenarioEnforcedRuleTests|ScenarioLockTests|ScenarioGoalTests|"
-                 "ScenarioSpawnTests|DemonicRiftTests|BattlementsTests|MonsterTextTests|MonsterSummonTests|CarriedThingTests|DriftTests|RollingBoulderTests|RisingWaterTests")
+                 "ScenarioSpawnTests|DemonicRiftTests|BattlementsTests|MonsterTextTests|MonsterSummonTests|CarriedThingTests|DriftTests|RollingBoulderTests|RisingWaterTests|SleepingMonsterTests|BarredDoorTests")
 S={
  "factSavedIgnored": ("GlavenGame/Board/BoardCoordinator+Goals.swift", "            guard arrived >= saved else { return false }", "            guard arrived >= 0 * saved else { return false }"),
  "factLockIgnored": ("GlavenGame/Board/BoardCoordinator+Goals.swift", "        if let lock = fact.lock, !boardState.releasedLocks.contains(lock) { return false }", "        if let lock = fact.lock, lock < 0 { return false }"),
@@ -200,6 +200,23 @@ S={
  "noWaterRemovedForThree": ("GlavenGame/Board/BoardCoordinator+Flood.swift", "guard let dry = flood.dry, gameManager.game.characterCount == dry.characters else { return }", "guard let dry = flood.dry, false, gameManager.game.characterCount == dry.characters else { return }"),
  "lootActionMissesWater": ("GlavenGame/Board/BoardCoordinator.swift", " || isFloodWater(coord)\n", "\n"),
  "corridorCountsAsTheHold": ("GlavenGame/Board/BoardCoordinator+Flood.swift", " && boardState.neighbors(of: $0).allSatisfy { boardState.cells[$0] == nil || onTheTile($0) } }.sorted()", " }.sorted()"),
+ "sleepersAct": ("GlavenGame/Board/MonsterTurnController.swift", "            .filter { !coordinator.isAsleep(.monster(name: monster.name, standee: $0.number)) }\n", ""),
+ "noOneSetUpAsleep": ("GlavenGame/Board/BoardCoordinator.swift", "            setUpAsleep(pieceID, ofTheMap: true)\n", ""),
+ "attacksDontWake": ("GlavenGame/Board/BoardCoordinator+Combat.swift", "        wake(aimedAt)\n", ""),
+ "damageDoesntWake": ("GlavenGame/Board/BoardCoordinator+Rules.swift", "        guard amount > 0, let gameManager, let entity = entity(for: pieceID) else { return false }\n        wake(pieceID)\n", "        guard amount > 0, let gameManager, let entity = entity(for: pieceID) else { return false }\n"),
+ "conditionsDontWake": ("GlavenGame/Board/BoardCoordinator+Rules.swift", "        if condition.isNegative { wake(pieceID) }\n", ""),
+ "anyConditionWakes": ("GlavenGame/Board/BoardCoordinator+Rules.swift", "        if condition.isNegative { wake(pieceID) }\n", "        wake(pieceID)\n"),
+ "footstepsDontWake": ("GlavenGame/Board/BoardCoordinator+Movement.swift", "        defer { wakeSleepers(beside: pieceID) }\n", ""),
+ "monstersWakeSleepers": ("GlavenGame/Board/BoardCoordinator+Sleep.swift", "        switch mover {\n        case .character, .summon: break\n        default: return\n        }\n", ""),
+ "passingByWakes": ("GlavenGame/Board/BoardCoordinator+Sleep.swift", "guard let hex = boardState.piecePositions[sleeper], boardState.areAdjacent(here, hex) else { continue }", "guard let hex = boardState.piecePositions[sleeper], boardState.steps(from: here, to: hex) <= 2 else { continue }"),
+ "summonsAttackSleepers": ("GlavenGame/Engine/SummonAI.swift", "            if !includeInvisible, board.asleep.contains(id) { return false }\n", ""),
+ "sleepersLetSummonsThrough": ("GlavenGame/Engine/SummonAI.swift", "if !includeInvisible, board.asleep.contains(id) { return false }", "if board.asleep.contains(id) { return false }"),
+ "wokenWaitsForNextRound": ("GlavenGame/Board/BoardCoordinator+Sleep.swift", "            pendingRevealedStandees[type, default: []].insert(standee)\n", ""),
+ "barredDoorOpenToAll": ("GlavenGame/Engine/MonsterAI.swift", "            .union(board.barredHexes(for: pieceID))\n", ""),
+ "barredMonstersPulledThrough": ("GlavenGame/Board/BoardCoordinator.swift", ", !barred.contains(hex) else { return false }", " else { return false }"),
+ "barredWhereverTheyStand": ("GlavenGame/Engine/BoardState.swift", "($0.from == nil || $0.from == tile)", "($0.from == nil || $0.from != nil)"),
+ "noDoorsBarred": ("GlavenGame/Board/BoardCoordinator+Locks.swift", "        layNumberedTokens()\n        barDoors()\n", "        layNumberedTokens()\n"),
+ "movementSetsForgetBarred": ("GlavenGame/Board/BoardCoordinator.swift", "        enemies.formUnion(boardState.barredHexes(for: pieceID))\n", ""),
  "noOneIsAskedWhoHolds": ("GlavenGame/Board/BoardCoordinator+Carried.swift", "            } else if autoResolvePrompts {\n                give(thing.name, to: first.id, how: \"holds\")", "            } else if true {\n                give(thing.name, to: first.id, how: \"holds\")"),
  "lyingThingNotPickedUp": ("GlavenGame/Board/BoardCoordinator+Carried.swift", "            if let lying = boardState.carriedLying[name] { return hexes.contains(lying) }", "            if boardState.carriedLying[name] != nil { return false }"),
  "anyoneLootsTheQuestTile": ("GlavenGame/Board/BoardCoordinator+Carried.swift", "        return party.first { $0.id == characterID }?.personalQuest == quest", "        return party.first { $0.id == characterID }?.personalQuest == quest || true"),

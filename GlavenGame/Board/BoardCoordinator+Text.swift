@@ -291,6 +291,8 @@ extension BoardCoordinator {
         }
         // A monster sitting the round out is drawn hollow, like something that isn't quite there.
         if isInactive(piece) { appearance.isHollow = true }
+        // One asleep says so beside its number.
+        if isAsleep(piece) { appearance.badge = (appearance.badge ?? "") + "z" }
         return appearance
     }
 

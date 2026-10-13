@@ -76,6 +76,8 @@ extension BoardCoordinator {
             return isOnBoard(pieceID)
         }
         moveObserver?(pieceID, path, style)
+        // However the movement ends, whoever sleeps beside where it ends is woken.
+        defer { wakeSleepers(beside: pieceID) }
         // The acting character's own movement, for the items that count it.
         if style != .forced, case .character(let id) = pieceID, activePlayerTurn?.characterID == id {
             activePlayerTurn?.hexesMoved += path.count - 1

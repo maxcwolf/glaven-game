@@ -52,6 +52,8 @@ final class MonsterTurnController {
 
         let sortedEntities = monster.aliveEntities
             .filter { only?.contains($0.number) ?? true }
+            // One still asleep does nothing (Windswept Highlands).
+            .filter { !coordinator.isAsleep(.monster(name: monster.name, standee: $0.number)) }
             // Monsters summoned this round don't act until the next round (p.31).
             .filter { $0.summonState != .new }
             .sorted { a, b in

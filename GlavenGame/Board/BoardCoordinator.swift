@@ -1966,6 +1966,8 @@ final class BoardCoordinator {
         for (id, coord) in boardState.piecePositions where id != pieceID {
             if areEnemies(pieceID, id) { enemies.insert(coord) } else { allies.insert(coord) }
         }
+        // A doorway the scenario shuts to this monster: never entered, never passed through.
+        enemies.formUnion(boardState.barredHexes(for: pieceID))
         return (enemies, allies)
     }
 
@@ -2606,8 +2608,9 @@ final class BoardCoordinator {
             (isPush ? hex.pushCandidates(awayFrom: attackerPos) : hex.pullCandidates(toward: attackerPos))
                 .filter { !boardState.isWalled(hex, $0) }
         }
+        let barred = boardState.barredHexes(for: target)
         func open(_ hex: HexCoord) -> Bool {
-            guard let cell = boardState.cells[hex], cell.overlay != .wall, !boardState.isClosedDoor(hex) else { return false }
+            guard let cell = boardState.cells[hex], cell.overlay != .wall, !boardState.isClosedDoor(hex), !barred.contains(hex) else { return false }
             // (An obstacle the scenario says can't be destroyed stops Heaving Swing too.)
             return cell.passable || (cell.overlay == .obstacle && (flying || (intoObstacles && isDestructibleObstacle(hex))))
         }
@@ -3131,6 +3134,7 @@ final class BoardCoordinator {
             boardState.placePiece(pieceID, at: destination)
             // A standee number is reused once its monster is dead: the mark follows the newcomer.
             if entity.type == .elite { boardState.eliteStandees.insert(pieceID) } else { boardState.eliteStandees.remove(pieceID) }
+            setUpAsleep(pieceID, ofTheMap: true)
             boardScene?.addPieceSprite(id: pieceID, at: destination, offsetCol: offsetCol, offsetRow: offsetRow)
             placed.append((monster.name, entity.number))
         }

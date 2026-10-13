@@ -47,6 +47,9 @@ final class BoardState {
     /// Monster standees that are elite (for visual distinction).
     var eliteStandees: Set<PieceID> = []
 
+    /// Monsters still asleep (Windswept Highlands' Spitting Drakes).
+    var asleep: Set<PieceID> = []
+
     /// Loot tokens on the board (dropped when monsters die). Value = token count at that hex.
     var lootTokens: [HexCoord: Int] = [:]
 
@@ -62,6 +65,22 @@ final class BoardState {
 
     /// Doors a scenario rule keeps locked: walking into one doesn't open it.
     var lockedDoors: Set<HexCoord> = []
+
+    /// A doorway some monster types can't enter or pass through, open or not (those standing on
+    /// the tile `from`, where one is named).
+    struct BarredDoor: Hashable {
+        var hex: HexCoord
+        var monsters: Set<String>
+        var from: String?
+    }
+    var barredDoors: [BarredDoor] = []
+
+    /// The hexes `piece` can't enter or pass through, by its own movement or anyone's push.
+    func barredHexes(for piece: PieceID) -> Set<HexCoord> {
+        guard !barredDoors.isEmpty, case .monster(let name, _) = piece else { return [] }
+        let tile = piecePositions[piece].flatMap { cells[$0]?.tileRef.lowercased() }
+        return Set(barredDoors.filter { $0.monsters.contains(name) && ($0.from == nil || $0.from == tile) }.map(\.hex))
+    }
 
     /// Doors of revealed rooms that have shut again (held open only while a pressure plate is
     /// stood on). The room behind stays revealed.
