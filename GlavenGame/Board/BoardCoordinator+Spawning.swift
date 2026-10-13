@@ -63,6 +63,7 @@ extension BoardCoordinator {
         boardState.placePiece(pieceID, at: destination)
         // A standee number is reused once its monster is dead: the mark follows the newcomer.
         if entity.type == .elite { boardState.eliteStandees.insert(pieceID) } else { boardState.eliteStandees.remove(pieceID) }
+        setUpAsleep(pieceID, ofTheMap: origin == .placed)
         boardScene?.addPieceSprite(id: pieceID, at: destination, offsetCol: offsetCol, offsetRow: offsetRow)
         // A room's monsters arrive with its door; one spawned or summoned later announces itself.
         if origin != .placed { boardScene?.play(.summon) }

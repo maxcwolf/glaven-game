@@ -15,6 +15,18 @@ extension BoardCoordinator {
         return scenarioLocks.firstIndex { Set($0.between.map { $0.lowercased() }) == sides }
     }
 
+    /// Tell the board which doorways the scenario shuts to which monsters.
+    func barDoors() {
+        guard let barred = scenarioData?.placements?.barred else { return }
+        boardState.barredDoors = barred.flatMap { rule -> [BoardState.BarredDoor] in
+            let sides = Set(rule.between.map { $0.lowercased() })
+            return boardState.doors.filter { door in
+                guard let from = (door.fromTileRef ?? boardState.cells[door.coord]?.tileRef)?.lowercased() else { return false }
+                return Set([from, door.childTileRef.lowercased()]) == sides
+            }.map { BoardState.BarredDoor(hex: $0.coord, monsters: Set(rule.monsters), from: rule.from?.lowercased()) }
+        }
+    }
+
     /// The lock on the door at a hex, while it is locked.
     func lock(at hex: HexCoord) -> ScenarioPlacements.Lock? {
         guard boardState.isLockedDoor(hex), let door = boardState.doors.first(where: { $0.coord == hex }) else { return nil }
@@ -73,6 +85,7 @@ extension BoardCoordinator {
     /// figure moved, treasure looted, an elite killed.
     func updateLocks(turnEnded: Bool = false, roundEnded: Bool = false) {
         layNumberedTokens()
+        barDoors()
         let locks = scenarioLocks
         guard !locks.isEmpty else { return }
         let released = boardState.releasedLocks

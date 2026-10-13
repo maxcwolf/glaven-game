@@ -139,6 +139,52 @@ ends up on the board:
   bearing that item (#54's Staff of Xorn is the Seeker's). `"soleHarmTo": ["harrower-infester"]`
   makes its holder the only one who damages that monster type, each point of that damage
   charging it up to `"charge": "2xCx(L+1)"`; a `reach` with `"charged": true` waits for it full.
+- `asleep`: monster types set up asleep, `["spitting-drake"]` (#71, `BoardCoordinator+Sleep`). Unlike
+  an `inactive` monster a sleeper is there to be attacked: it does nothing until a character or a
+  character's summon attacks it, damages it, gives it a negative condition or ends any movement
+  beside it, and then acts that round like a monster just spawned. Summons leave sleepers alone.
+- `barred`: doorways shut to some monsters, open or not — `{"monsters": ["stone-golem"], "between":
+  ["a2a", "m1a"], "from": "m1a"}` (#67, #73): no monster of those types standing on tile `from`
+  (any, without it) enters or passes through the door between the two tiles, by its own move or a
+  push or pull.
+- `battery`: a gun that takes no turn and is fired by its crew — `{"gun": "siege-cannon", "crew":
+  "city-archer", "move": 3, "line": "b", "side": "W", "tiles": ["g1a"]}` (#49,
+  `BoardCoordinator+Battery`). Each round the crew member nearest the gun moves `move` toward a hex
+  beside it that isn't lettered `line` instead of acting, and beside it fires: every character and
+  summon on a `line` hex, in the row of one on `side` of it (W or E), or on one of `tiles` suffers
+  the gun's stat-card Attack as damage.
+- `carry`: monsters that carry an objective somewhere instead of acting — `{"carriers":
+  "cultist-scenario-78", "objective": 1, "toward": "c", "altar": "d", "lost": "…"}` (#78,
+  `BoardCoordinator+Carry`). Each carrier moves its stat-card Move: to the objective's side, then
+  toward the hexes lettered `toward` (the nearest hex beside `altar` when they are taken), opening
+  doors; the objective then follows as far as it was carried. A carrier starting its turn beside
+  an `altar` hex with the objective beside one too loses the scenario for the reason written.
+- `drift`: what moves the party one hex as each round ends, before the round's other end-of-round
+  rules (`BoardCoordinator+Drift`): `{"name": "wind", "directions": [["NW", "NE"], ["E"], ["SW", "SE"],
+  ["W"]]}` (#71: the sides of a hex — NE, E, SE, SW, W, NW as the map lies in the game — by round,
+  round and round; with two the players tap one, and may stay if one is shut) or `"byInitiative":
+  {"monster": "lurker", "even": ["NW"], "odd": ["NE"]}` (#88: by this round's card of that
+  monster type). `tiles` keeps it to figures on those tiles, `"sheltered": true` leaves alone a
+  figure with an obstacle or wall on the side it comes from, `"blocked": 3` is the damage for one
+  that can't be moved, and `"order": "top"` goes from the top of the map down instead of in
+  initiative order. Characters and their summons are moved (a summon before its owner); the move
+  is forced movement, so traps are sprung. Check which way the book prints the map before writing
+  the sides.
+- `rolling`: obstacles that roll along their rows as each round ends, after any `drift` —
+  `{"subType": "boulder-1", "side": "W", "reenter": "b", "steps": [1, 2, 3]}` (#73,
+  `BoardCoordinator+Rolling`). The obstacles with that art are the rollers; a row runs from each hex
+  lettered `reenter` to the last hex of the map on that side, and a roller that gets there comes
+  back in at the letter. The players choose which row rolls how far (each a different one of
+  `steps`); a roller destroys an obstacle in its way, lies on traps and terrain without changing
+  them, deals trap damage to a figure whose hex it enters and pushes the one it stops on a hex on.
+  List the art under `indestructible` too, so no ability removes one.
+- `flood`: water that rises on a tile, after any `drift` and `rolling` —
+  `{"tile": "b1a", "every": "R % 2 == 0 || C > 2", "bail": "e", "dry": {"marker": "d",
+  "characters": 3}, "lost": "…"}` (#74, `BoardCoordinator+Flood`): as a round for which `every`
+  holds ends, the players tap a dry hex of the tile beside the water and it becomes water; with
+  none left the scenario is lost for the reason written. A character looting a water hex of the
+  tile picks the tile up (one at a time) and is rid of it as a turn ends on a hex lettered `bail`.
+  `dry` takes the water off the lettered hexes at setup for that many characters.
 - `tokens`: numbered tokens lying face down, `{"marker": "a", "count": 6}` (#95): the numbers 1 to
   `count` are shuffled with the game's seed and one is laid on each hex lettered `marker` as its
   room is revealed (`layNumberedTokens`; `BoardState.tokenHexes`, drawn as "?"). They are looted
@@ -460,7 +506,7 @@ goals are checked; the notes say what around a goal is still missing.
 | 75 | Overgrown Graveyard | Dig up all graves and kill the Bloated Regent. | yes | — | — |
 | 76 | Harrower Hive | Reveal all rooms and kill all enemies. | **no** — destructible walls aren't modelled; plays as "kill all enemies" | — | — |
 | 77 | Vault of Secrets | Loot all treasure tiles and kill all City Guards before the alarm is raised. | yes | Any City Guard occupies a pressure plate (a). | yes |
-| 78 | Sacrifice Pit | Kill all enemies and stop the sacrifice. | kill all enemies: yes; the sacrifice isn't modelled | The victim is sacrificed: a Cultist (b) starts its turn adjacent to the altars (d) while the victim is also adjacent to the altars. | **no** |
+| 78 | Sacrifice Pit | Kill all enemies and stop the sacrifice. | yes | The victim is sacrificed: a Cultist (b) starts its turn adjacent to the altars (d) while the victim is also adjacent to the altars. | yes (`carry`) |
 | 79 | Lost Temple | Kill the Betrayer. | yes | Fish is killed. | yes |
 | 80 | Vigil Keep | Every character must loot one treasure tile, and then all characters must reach the B tile (escape). | yes | Any character becomes exhausted while not occupying the B tile. | yes |
 | 81 | Temple of the Eclipse | Kill the Colorless. | yes | — | — |

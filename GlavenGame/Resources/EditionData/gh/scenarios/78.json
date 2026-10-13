@@ -21,6 +21,13 @@
     "cultist-scenario-78",
     "living-bones"
   ],
+  "objectives": [
+    {
+      "name": "Victim",
+      "health": 0,
+      "marker": "a"
+    }
+  ],
   "rules": [
     {
       "round": "true",
@@ -145,6 +152,9 @@
           "type": "elite",
           "marker": "b"
         }
+      ],
+      "objectives": [
+        1
       ]
     },
     {

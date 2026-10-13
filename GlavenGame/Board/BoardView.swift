@@ -149,6 +149,11 @@ struct BoardView: View {
                     .id(pending.id)
                     .transition(.opacity)
             }
+            if let pending = coordinator.pendingOptionChoice {
+                OptionChoicePrompt(pending: pending, coordinator: coordinator)
+                    .id(pending.id)
+                    .transition(.opacity)
+            }
 
             // Elements to infuse, a condition to remove (Mana Potions, Minor Cure Potion)
             if let pending = coordinator.pendingElementChoice {
@@ -738,6 +743,12 @@ struct BoardView: View {
         let held = coordinator.carried(by: character.id)
         VStack(alignment: .leading, spacing: 4) {
             characterSummary(character)
+            if coordinator.boardState.waterHeld.contains(character.id) {
+                Label("Holds a water tile", systemImage: "drop.fill")
+                    .font(BoardTheme.font(size: 11, weight: .semibold))
+                    .foregroundStyle(BoardTheme.brass)
+                    .accessibilityLabel("\(GameText.characterName(character, labels: gameManager.editionStore)) holds a water tile")
+            }
             // What they carry for the scenario (the doll, the claw).
             ForEach(held, id: \.name) { thing in
                 Label("Holds the \(thing.name)" + (thing.move.map { " \u{00B7} Move \($0 > 0 ? "+" : "\u{2212}")\(abs($0))" } ?? "")

@@ -300,6 +300,11 @@ final class ScenarioSimulator {
             coord.resolveActionChoice(nil)
             return
         }
+        if let option = coord.pendingOptionChoice {
+            // How far each row of boulders rolls: what the game suggests (the least harm to the party).
+            coord.resolveOptionChoice(option.suggested)
+            return
+        }
         if let choice = coord.pendingFigureChoice {
             // A Living Spirit to remove for a demon's death: the nearest (the first offered).
             // A relic to discard beside the altar for damage to the boss: always.
@@ -437,6 +442,9 @@ final class ScenarioSimulator {
             if let piece = candidates.sorted().first { coord.handlePieceTap(piece) }
         case .placingToken(_, _, _, let hexes):
             // Policies don't plan traps: the first free hex, in map order.
+            if let hex = hexes.sorted().first { coord.handleHexTap(hex) }
+        case .choosingHex(_, _, _, let hexes):
+            // Where the wind blows someone: the first hex, in map order.
             if let hex = hexes.sorted().first { coord.handleHexTap(hex) }
         case .placingSummon(_, let owner, let hexes):
             if let hex = policy.summonHex(for: owner, options: hexes, sim: self) {

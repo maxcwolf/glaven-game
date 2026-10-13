@@ -110,6 +110,7 @@ final class SoakDriver {
         if coord.pendingCardPlay != nil { coord.resolveCardPlay([]); return }
         if coord.pendingActionChoice != nil { coord.resolveActionChoice(nil); return }
         if coord.pendingFigureChoice != nil { coord.resolveFigureChoice(nil); return }
+        if let option = coord.pendingOptionChoice { coord.resolveOptionChoice(option.suggested); return }
         if coord.pendingItemUse != nil { coord.resolvePendingItemUse(true); return }
         if coord.pendingDamage != nil { coord.resolvePendingDamage(choice: .takeDamage); return }
         if let save = coord.pendingSave {
@@ -171,6 +172,8 @@ final class SoakDriver {
         case .placingSummon(_, _, let hexes):
             if let hex = hexes.sorted().first { coord.handleHexTap(hex) }
         case .selectingPushPullHex(_, _, let hexes, _, _):
+            if let hex = hexes.sorted().first { coord.handleHexTap(hex) }
+        case .choosingHex(_, _, _, let hexes):
             if let hex = hexes.sorted().first { coord.handleHexTap(hex) }
         case .selectingForcedMoveTarget(_, _, _, let targets):
             if let target = targets.sorted().first { coord.handlePieceTap(target) }

@@ -551,9 +551,17 @@ struct VeteranPolicy: PlayerPolicy {
         let all: [(piece: PieceID, hex: HexCoord, health: Int)] = sim.enemies(of: piece).compactMap { id in
             sim.position(id).map { (id, $0, sim.health(id).current) }
         }
-        // One of the party goes for the tokens and fights only what stands in the way.
-        guard fetchesTokens(piece, sim), let here = sim.position(piece) else { return all }
+        // One of the party goes for the tokens, or bails, and fights only what stands in the way.
+        guard fetchesTokens(piece, sim) || bails(piece, sim), let here = sim.position(piece) else { return all }
         return all.filter { $0.hex.distance(to: here) <= 2 }
+    }
+
+    /// Merchant Ship: the hold fills a tile a round (or every other round, for two), so half the
+    /// party — the last of those standing — carries water to the bailing hexes while the rest fight.
+    private func bails(_ piece: PieceID, _ sim: ScenarioSimulator) -> Bool {
+        guard case .character(let id) = piece, sim.coord.scenarioFlood != nil else { return false }
+        let standing = sim.gm.game.characters.filter { !$0.exhausted && !$0.absent }
+        return standing.suffix(max(1, standing.count / 2)).contains { $0.id == id }
     }
 
     /// Payment Due: a demon arrives every round until tokens 1 to 4 are found, so a party that
@@ -655,6 +663,13 @@ struct VeteranPolicy: PlayerPolicy {
                 let free = sim.coord.exitHexes(exit).filter { !taken.contains($0) }
                 if !free.isEmpty { return (free.sorted(), false) }
             }
+        }
+        // Water to carry off the ship: a tile of the hold to pick up, then a bailing hex.
+        if case .character(let id) = piece, let flood = sim.coord.scenarioFlood {
+            let errand = board.waterHeld.contains(id)
+                ? (board.markerHexes[flood.bail] ?? []).filter { !taken.contains($0) }
+                : sim.coord.floodHexes().filter { sim.coord.isFloodWater($0) && !taken.contains($0) }
+            if !errand.isEmpty { return (errand.sorted(), false) }
         }
         // Numbered tokens lying face down (Payment Due's, which unlock its last door).
         if !board.tokenHexes.isEmpty { return (board.tokenHexes.keys.sorted(), false) }

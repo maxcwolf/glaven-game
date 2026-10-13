@@ -207,6 +207,30 @@ final class ScenarioPlacementTests: XCTestCase {
                 XCTAssertEqual(section?.isConclusion, true, "\(index): no conclusion \(conclusion)")
             }
             for id in placements.resetOnLoss ?? [] { XCTAssertTrue(treasure.contains(id), "\(index): no treasure \(id)") }
+            for name in placements.asleep ?? [] { XCTAssertTrue(monsters.contains(name), "\(index): no monster \(name) to sleep") }
+            for rule in placements.barred ?? [] {
+                XCTAssertEqual(rule.between.count, 2, index)
+                for tile in rule.between + [rule.from].compactMap({ $0 }) { XCTAssertTrue(tiles.contains(tile), "\(index): no tile \(tile)") }
+                for name in rule.monsters { XCTAssertTrue(monsters.contains(name), "\(index): no monster \(name)") }
+            }
+            if let carry = placements.carry {
+                XCTAssertTrue(monsters.contains(carry.carriers), "\(index): no monster \(carry.carriers)")
+                XCTAssertEqual(data.objectives?.indices.contains(carry.objective - 1), true, "\(index): no objective \(carry.objective)")
+                for letter in [carry.toward, carry.altar] { XCTAssertTrue(letters.contains(letter), "\(index): no hex lettered \(letter)") }
+            }
+            if let battery = placements.battery {
+                for name in [battery.gun, battery.crew] { XCTAssertTrue(monsters.contains(name), "\(index): no monster \(name)") }
+                XCTAssertTrue(letters.contains(battery.line), "\(index): no hex lettered \(battery.line)")
+                XCTAssertTrue(["W", "E"].contains(battery.side), "\(index): the gun fires along a row, W or E")
+                for tile in battery.tiles ?? [] { XCTAssertTrue(tiles.contains(tile), "\(index): no tile \(tile)") }
+            }
+            if let drift = placements.drift {
+                let sides = (drift.directions ?? []).flatMap { $0 } + (drift.byInitiative.map { $0.even + $0.odd } ?? [])
+                XCTAssertFalse(sides.isEmpty, "\(index): the \(drift.name) goes nowhere")
+                for side in sides { XCTAssertTrue(BoardCoordinator.hexSides.contains(side), "\(index): no side \(side)") }
+                for tile in drift.tiles ?? [] { XCTAssertTrue(tiles.contains(tile), "\(index): no tile \(tile)") }
+                if let by = drift.byInitiative { XCTAssertTrue(monsters.contains(by.monster), "\(index): no monster \(by.monster)") }
+            }
             for objective in placements.passiveTurns ?? [] {
                 XCTAssertEqual(data.objectives?.indices.contains(objective - 1), true, "\(index): no objective \(objective)")
                 XCTAssertEqual(data.objectives?[objective - 1].escort, true, "\(index): objective \(objective) takes no turn")

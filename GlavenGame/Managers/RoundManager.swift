@@ -53,7 +53,7 @@ final class RoundManager {
         // Draw monster abilities — one card for each deck, whichever types share it — and apply
         // the stat cards' effects; a card's own Shield and Retaliate wait for each monster's turn.
         // (Not for a type that sits this round out.)
-        let inactive = MonsterAI.inactiveMonsters(game)
+        let inactive = MonsterAI.inactiveMonsters(game).union(MonsterAI.idleMonsters(game))
         for monster in game.monsters where !monster.off && monster.aliveEntities.count > 0 && !inactive.contains(monster.name) {
             monsterManager.drawAbility(for: monster)
             monsterManager.applyStatEffects(for: monster)

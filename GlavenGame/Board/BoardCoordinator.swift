@@ -35,6 +35,9 @@ enum InteractionMode {
     case selectingHealTarget(pieceID: PieceID, healValue: Int, validTargets: Set<PieceID>)
     /// Player selects an enemy to push or pull.
     case selectingForcedMoveTarget(pieceID: PieceID, steps: Int, isPush: Bool, validTargets: Set<PieceID>)
+    /// The players choose one of a few hexes for something that isn't a turn's action (which of
+    /// two hexes the wind blows `piece` into).
+    case choosingHex(piece: PieceID?, title: String, detail: String, validHexes: Set<HexCoord>)
     case watchingMonsterTurn
 }
 
@@ -446,6 +449,12 @@ final class BoardCoordinator {
 
     /// Non-nil while the player picks a figure from a list mid-turn (Heart of the Betrayer).
     var pendingFigureChoice: PendingFigureChoice?
+    /// A hex the players are choosing outside a turn's action (the wind's two ways).
+    @ObservationIgnored var pendingHexChoice: PendingHexChoice?
+    /// How far each carrier has gone this turn of theirs, and whether it had hold of what they carry (Sacrifice Pit).
+    @ObservationIgnored var carrierSteps: [PieceID: (steps: Int, carrying: Bool)] = [:]
+    /// One of a few answers the players are choosing between (how far each row of boulders rolls).
+    var pendingOptionChoice: PendingOptionChoice?
 
     // MARK: Learning mode
 
@@ -778,9 +787,27 @@ final class BoardCoordinator {
 
     /// Continue with end-of-round cleanup after all short rests are resolved.
     private func proceedAfterShortRests() {
-        guard let gameManager = gameManager else { return }
-
         longRestedCharacterIDs = []
+        // What moves the board first: the wind or the current (decided while the round's cards
+        // still lie drawn), then the boulders.
+        let coming = pendingResult == nil ? driftToCome() : nil
+        let rolls = pendingResult == nil && scenarioRolling != nil
+        let floods = pendingResult == nil && waterRisesThisRound
+        guard coming != nil || rolls || floods else { return finishTheRound() }
+        let generation = boardGeneration
+        Task { @MainActor in
+            if let coming { await self.driftAsTheRoundEnds(coming) }
+            guard self.isCurrentBoard(generation), self.scenarioResult == nil else { return }
+            if rolls { await self.rollAsTheRoundEnds() }
+            guard self.isCurrentBoard(generation), self.scenarioResult == nil else { return }
+            if floods { await self.waterRisesAsTheRoundEnds() }
+            guard self.isCurrentBoard(generation), self.scenarioResult == nil else { return }
+            self.finishTheRound()
+        }
+    }
+
+    private func finishTheRound() {
+        guard let gameManager = gameManager else { return }
 
         // End-of-round cleanup (end-of-round scenario rules, elements wane, decks reshuffle)
         let game = gameManager.game
@@ -1001,6 +1028,12 @@ final class BoardCoordinator {
         let figure = pendingFigureChoice
         pendingFigureChoice = nil
         figure?.continuation?.resume(returning: nil)
+        let hex = pendingHexChoice
+        pendingHexChoice = nil
+        hex?.continuation?.resume(returning: nil)
+        let option = pendingOptionChoice
+        pendingOptionChoice = nil
+        option?.continuation?.resume(returning: nil)
         pendingModifierDraw = nil
         pendingDamage = nil
         pendingItemUse = nil
@@ -1267,6 +1300,7 @@ final class BoardCoordinator {
         boardScene?.clearHighlights()
         interactionMode = .idle
         assignCarriedAtSetup()
+        setUpTheFlood()
         beginCardSelection()
     }
 
@@ -1418,7 +1452,7 @@ final class BoardCoordinator {
     func buildTurnOrderAndStart() {
         guard let gameManager = gameManager else { return }
         teach(.initiative, at: .turnRail)
-        let inactive = MonsterAI.inactiveMonsters(gameManager.game)
+        let inactive = MonsterAI.inactiveMonsters(gameManager.game).union(MonsterAI.idleMonsters(gameManager.game))
         // Build turn order from sorted figures
         turnOrder = gameManager.game.figures.compactMap { figure in
             switch figure {
@@ -1805,6 +1839,8 @@ final class BoardCoordinator {
         if let pos = boardState.piecePositions[pieceID] {
             lootHexes(for: pieceID, coords: [pos])
         }
+        // A water tile held goes overboard from a bailing hex (Merchant Ship).
+        bailWater(characterID)
     }
 
     // MARK: - End of Round
@@ -1932,6 +1968,8 @@ final class BoardCoordinator {
         for (id, coord) in boardState.piecePositions where id != pieceID {
             if areEnemies(pieceID, id) { enemies.insert(coord) } else { allies.insert(coord) }
         }
+        // A doorway the scenario shuts to this monster: never entered, never passed through.
+        enemies.formUnion(boardState.barredHexes(for: pieceID))
         return (enemies, allies)
     }
 
@@ -2572,8 +2610,9 @@ final class BoardCoordinator {
             (isPush ? hex.pushCandidates(awayFrom: attackerPos) : hex.pullCandidates(toward: attackerPos))
                 .filter { !boardState.isWalled(hex, $0) }
         }
+        let barred = boardState.barredHexes(for: target)
         func open(_ hex: HexCoord) -> Bool {
-            guard let cell = boardState.cells[hex], cell.overlay != .wall, !boardState.isClosedDoor(hex) else { return false }
+            guard let cell = boardState.cells[hex], cell.overlay != .wall, !boardState.isClosedDoor(hex), !barred.contains(hex) else { return false }
             // (An obstacle the scenario says can't be destroyed stops Heaving Swing too.)
             return cell.passable || (cell.overlay == .obstacle && (flying || (intoObstacles && isDestructibleObstacle(hex))))
         }
@@ -2743,7 +2782,7 @@ final class BoardCoordinator {
     /// Whether a hex holds a money token or an unlooted treasure tile.
     func hasLoot(at coord: HexCoord) -> Bool {
         (boardState.lootTokens[coord] ?? 0) > 0 || boardState.cells[coord]?.overlay == .treasure
-            || boardState.tokenHexes[coord] != nil
+            || boardState.tokenHexes[coord] != nil || isFloodWater(coord)
     }
 
     /// Loot every money token and treasure tile in `coords` for a character. Money tokens are
@@ -2765,6 +2804,8 @@ final class BoardCoordinator {
         for coord in coords {
             // A numbered token lying face down (Payment Due)
             lootNumberedToken(at: coord, by: charID)
+            // A water tile of the hold (Merchant Ship)
+            pickUpWater(at: coord, by: charID)
             // Money tokens dropped by monsters
             let dropped = boardState.takeLoot(at: coord)
             if dropped > 0 {
@@ -3095,6 +3136,7 @@ final class BoardCoordinator {
             boardState.placePiece(pieceID, at: destination)
             // A standee number is reused once its monster is dead: the mark follows the newcomer.
             if entity.type == .elite { boardState.eliteStandees.insert(pieceID) } else { boardState.eliteStandees.remove(pieceID) }
+            setUpAsleep(pieceID, ofTheMap: true)
             boardScene?.addPieceSprite(id: pieceID, at: destination, offsetCol: offsetCol, offsetRow: offsetRow)
             placed.append((monster.name, entity.number))
         }
@@ -3176,6 +3218,9 @@ final class BoardCoordinator {
                 executePushPullStep(target: target, to: coord, attackerPos: attackerPos, remainingSteps: remaining, isPush: isPush)
             }
 
+        case .choosingHex:
+            resolveHexChoice(coord)
+
         default:
             // Doors open only when a character enters the door hex during its movement (p.17).
             break
@@ -3191,6 +3236,10 @@ final class BoardCoordinator {
             soundPieceTap(asked: askedMode, accepted: accepted)
         }
         switch interactionMode {
+        case .choosingHex:
+            // A figure's hex is among those offered (its own: it stays where it is).
+            if let hex = boardState.piecePositions[piece] { resolveHexChoice(hex) }
+
         case .selectingMove(let mover, let range, let validHexes, false, let mode):
             // Move 0: the character taps themselves.
             if piece == mover, let pos = boardState.piecePositions[mover], validHexes.contains(pos) {

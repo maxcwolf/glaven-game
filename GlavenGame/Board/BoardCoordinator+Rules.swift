@@ -173,6 +173,7 @@ extension BoardCoordinator {
     /// their owner's deck; allied monsters use the ally deck).
     func applyCondition(_ condition: ConditionName, to pieceID: PieceID) {
         guard let gameManager, let entity = entity(for: pieceID) else { return }
+        if condition.isNegative { wake(pieceID) }
         // An objective on the map (an altar, a door) is immune to every condition.
         guard !isScenery(pieceID) else {
             boardScene?.floatText("Immune", over: pieceID, style: .info)
@@ -231,6 +232,9 @@ extension BoardCoordinator {
     @discardableResult
     func sufferDamage(_ amount: Int, to pieceID: PieceID, killer: PieceID? = nil) -> Bool {
         guard amount > 0, let gameManager, let entity = entity(for: pieceID) else { return false }
+        wake(pieceID)
+        // A thing of the map without hit points (a water pump, the pit's victim) has none to lose.
+        if isScenery(pieceID), entity.maxHealth <= 0 { return false }
         // What the scenario lets nothing damage (Chained Isle's Living Spirits).
         if isUndamageable(pieceID) {
             log("\(name(pieceID)) can\u{2019}t be damaged", category: .damage)
@@ -557,6 +561,7 @@ extension BoardCoordinator {
 
     func removePieceFromBoard(_ pieceID: PieceID) {
         boardState.removePiece(pieceID)
+        boardState.asleep.remove(pieceID)
         boardScene?.removePieceSprite(id: pieceID)
     }
 

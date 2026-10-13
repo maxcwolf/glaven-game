@@ -39,6 +39,11 @@ struct BoardSnapshot: Codable {
     var tokenHexes: [HexCoord: Int]? = nil
     var tokensLooted: [Int]? = nil
     var tokenHexesLooted: Set<HexCoord>? = nil
+    var rollers: [HexCoord]? = nil
+    var underRollers: [HexCoord: HexCell]? = nil
+    var waterHeld: Set<String>? = nil
+    var asleep: Set<PieceIDCodable>? = nil
+    var floodSetUp: Bool? = nil
     /// Wall lines between tiles and the ends of a crossing. Optional: older saves have none
     /// (the coordinator draws them again from the map).
     var wallEdges: [HexEdge]? = nil
@@ -79,6 +84,8 @@ struct BoardSnapshot: Codable {
             carriedCharge: board.carriedCharge,
             tokenDeck: board.tokenDeck, tokenHexes: board.tokenHexes, tokensLooted: board.tokensLooted,
             tokenHexesLooted: board.tokenHexesLooted,
+            rollers: board.rollers, underRollers: board.underRollers,
+            waterHeld: board.waterHeld, asleep: Set(board.asleep.map { PieceIDCodable($0) }), floodSetUp: board.floodSetUp,
             wallEdges: board.wallEdges.sorted { ($0.a, $0.b) < ($1.a, $1.b) }, crossings: board.crossings
         )
     }
@@ -120,6 +127,11 @@ struct BoardSnapshot: Codable {
         board.tokenHexes = tokenHexes ?? [:]
         board.tokensLooted = tokensLooted ?? []
         board.tokenHexesLooted = tokenHexesLooted ?? []
+        board.rollers = rollers ?? []
+        board.waterHeld = waterHeld ?? []
+        board.asleep = Set((asleep ?? []).map { $0.pieceID })
+        board.floodSetUp = floodSetUp ?? false
+        board.underRollers = underRollers ?? [:]
         if let wallEdges { board.wallEdges = Set(wallEdges) }
         if let crossings { board.crossings = crossings }
     }

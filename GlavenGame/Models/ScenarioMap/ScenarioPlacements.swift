@@ -54,6 +54,22 @@ struct ScenarioPlacements: Codable, Equatable {
     var carried: [Carried]?
     /// Numbered tokens lying face down on lettered hexes, to be looted (Payment Due).
     var tokens: Tokens?
+    /// What moves the party as each round ends (the wind of #71, the current of #88).
+    var drift: Drift?
+    /// Obstacles that roll along their rows as each round ends (#73's boulders).
+    var rolling: Rolling?
+    /// Water that rises on a tile as rounds end, and is bailed (#74's hold).
+    var flood: Flood?
+    /// Doors some monsters can't enter or pass through (#67's Arcane Golem, #73's Inox).
+    var barred: [Barred]?
+    /// A gun that never acts and is fired by its crew (#49's Siege Cannon and the City Archers).
+    var battery: Battery?
+    /// Monsters that carry an objective somewhere instead of acting (#78's Cultists and their victim).
+    var carry: Carry?
+    /// Monster types set up asleep (#71's Spitting Drakes): each does nothing until a character or
+    /// a character's summon attacks it, damages it, gives it a negative condition or ends a
+    /// movement beside it; then it acts as a monster just spawned does.
+    var asleep: [String]?
     /// Escorts (objectives, 1-based) whose attacks draw "from whichever attack modifier deck the
     /// players choose": a character's, asked as the escort attacks (Redthorn; the captive
     /// Orchids of Bandit's Wood).
@@ -357,6 +373,122 @@ extension ScenarioPlacements {
     struct Save: Codable, Hashable {
         let objective: Int
         var times: Int?
+    }
+
+    /// "The Ancient Artillery does not act … Each round, instead of acting normally, the City
+    /// Archer who is closest to the artillery (or the one who acts first in the case of a tie)
+    /// performs 'Move 3' toward a hex adjacent to the artillery that is not labeled b. If the
+    /// archer is then adjacent to the artillery, it fires, causing damage equal to the elite
+    /// artillery's Attack value on all characters and character summons in hexes b and the
+    /// columns above those hexes (including all of the G tile)." (#49)
+    struct Battery: Codable, Hashable {
+        /// The monster that is the gun: it takes no turn.
+        let gun: String
+        /// The monster type that serves it.
+        let crew: String
+        /// How far the one serving it moves toward it.
+        let move: Int
+        /// The letter of the hexes before the gun: the crew keeps off them, and the gun fires
+        /// along the row of each, on `side` of it ("W" or "E", as the map lies in the game).
+        let line: String
+        let side: String
+        /// Tiles the shot covers entirely.
+        var tiles: [String]?
+    }
+
+    /// "The two Cultists b do not act normally but instead perform 'Move+0' simultaneously to
+    /// bring the victim a … to the altars d and sacrifice him. The Cultists will first move to a
+    /// hex adjacent to the victim, then move to c or the nearest hex adjacent to the altar. After
+    /// the cultists move, the victim … will then move the same number of hexes to be adjacent to
+    /// them … If a Cultist starts its turn adjacent to the altars d, and the victim is also
+    /// adjacent to the altars, the victim is sacrificed and the scenario is lost." (#78)
+    struct Carry: Codable, Hashable {
+        /// The monster type that carries.
+        let carriers: String
+        /// The objective carried (1-based, as the scenario lists its objectives).
+        let objective: Int
+        /// The letter of the hexes the carriers make for with it.
+        let toward: String
+        /// The letter of the altar's hexes.
+        let altar: String
+        /// What the players read when the sacrifice is made.
+        let lost: String
+    }
+
+    /// "It cannot enter or pass through door 2" (#67); "The Inox on tile E cannot enter or pass
+    /// through door 1" (#73): the door between two tiles, the monster types it is shut to, and —
+    /// where the book speaks of the monsters of one tile — the tile they stand on.
+    struct Barred: Codable, Hashable {
+        let monsters: [String]
+        let between: [String]
+        var from: String?
+    }
+
+    /// "At the end of every even round for two characters or every round for three or four
+    /// characters, one water tile is added to the B tile adjacent to any existing water tile. If a
+    /// water tile cannot be placed because the B tile is full, the scenario is lost. Characters
+    /// may pick up any water tile through normal looting and then get rid of it by ending their
+    /// turn in one of the hexes e. Each character can only hold one water tile at a time." (#74)
+    struct Flood: Codable, Hashable {
+        /// The tile that fills.
+        let tile: String
+        /// The rounds at whose end a water tile is added, as a rule's `round` is written.
+        let every: String
+        /// The letter of the hexes a held water tile is got rid of on.
+        let bail: String
+        /// "Remove water tiles d for three characters": the letter, and for how many characters.
+        var dry: Dry?
+        /// What the players read when the tile is full.
+        let lost: String
+
+        struct Dry: Codable, Hashable {
+            let marker: String
+            let characters: Int
+        }
+    }
+
+    /// "At the end of every round, both boulders in each row will move one, two, or three hexes
+    /// to the left. The players choose the number of hexes moved, but … each row of boulders
+    /// must move a different number of hexes" (#73). A row runs from the hex lettered `reenter`
+    /// to the last hex of the map on the side the boulders roll toward: one that gets there is
+    /// "immediately placed at b in its row and continues".
+    struct Rolling: Codable, Hashable {
+        /// The obstacles that roll, by the name of their art: "boulder-1".
+        let subType: String
+        /// The side they roll toward ("W").
+        let side: String
+        /// The letter of the hex of each row a boulder comes back in at.
+        let reenter: String
+        /// How far a row may roll: each row a different one of these.
+        let steps: [Int]
+    }
+
+    /// "Strong winds will force characters and character summons to move one hex … at the end of
+    /// every round" (#71); "all characters and character summons are forced to move one hex in
+    /// the direction of the current at the end of each round" (#88). Sides of a hex are named as
+    /// the map lies in the game: "NE", "E", "SE", "SW", "W", "NW".
+    struct Drift: Codable, Hashable {
+        /// What it is called: "wind", "current".
+        let name: String
+        /// The sides a figure may be moved toward in round 1, 2, 3… and round again: where two
+        /// are written the players choose between those that are open.
+        var directions: [[String]]?
+        /// Or the sides by this round's initiative of a monster type's ability card.
+        var byInitiative: ByInitiative?
+        /// Only figures standing on these tiles are moved.
+        var tiles: [String]?
+        /// A figure directly behind an obstacle or wall hex (the hex the drift comes from) stays.
+        var sheltered: Bool?
+        /// Damage a figure suffers instead when another figure, an obstacle or a wall is in its way.
+        var blocked: Int?
+        /// "top": from the top of the map to the bottom; otherwise in initiative order.
+        var order: String?
+
+        struct ByInitiative: Codable, Hashable {
+            let monster: String
+            let even: [String]
+            let odd: [String]
+        }
     }
 
     /// "Shuffle numbered tokens 1–6 and place them face down on hexes (a). These tokens can be
