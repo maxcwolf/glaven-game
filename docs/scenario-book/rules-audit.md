@@ -12,8 +12,8 @@ means the data and code that enforce the rule were found, and usually a test tha
 that the scenario was played through. Keep it current: when a rule is built, rewrite its row in
 the same commit (see [../rules-work.md](../rules-work.md)).
 
-**447 rules: 358 done, 21 partial, 68 missing.**
-68 of 95 scenarios have every printed rule done. The other 27: #55 (6 missing, 1 partial), #88 (6 missing, 1 partial), #34 (4 missing, 2 partial), #76 (4 missing, 2 partial), #44 (0 missing, 1 partial), #71 (5 missing, 0 partial), #73 (5 missing, 0 partial), #78 (5 missing, 0 partial), #95 (5 missing, 0 partial), #21 (2 missing, 2 partial), #49 (4 missing, 0 partial), #54 (4 missing, 0 partial), #69 (3 missing, 1 partial), #74 (4 missing, 0 partial), #52 (1 missing, 2 partial), #58 (3 missing, 0 partial), #26 (2 missing, 0 partial), #68 (1 missing, 1 partial), #79 (1 missing, 1 partial), #81 (2 missing, 0 partial), #82 (0 missing, 2 partial), #38 (0 missing, 1 partial), #47 (0 missing, 1 partial), #56 (0 missing, 1 partial), #67 (1 missing, 0 partial), #70 (0 missing, 1 partial), #75 (0 missing, 1 partial).
+**447 rules: 360 done, 21 partial, 66 missing.**
+69 of 95 scenarios have every printed rule done. The other 26: #55 (6 missing, 1 partial), #88 (6 missing, 1 partial), #34 (4 missing, 2 partial), #76 (4 missing, 2 partial), #44 (0 missing, 1 partial), #71 (5 missing, 0 partial), #73 (5 missing, 0 partial), #78 (5 missing, 0 partial), #95 (5 missing, 0 partial), #21 (2 missing, 2 partial), #49 (4 missing, 0 partial), #54 (4 missing, 0 partial), #69 (3 missing, 1 partial), #74 (4 missing, 0 partial), #52 (1 missing, 2 partial), #58 (3 missing, 0 partial), #68 (1 missing, 1 partial), #79 (1 missing, 1 partial), #81 (2 missing, 0 partial), #82 (0 missing, 2 partial), #38 (0 missing, 1 partial), #47 (0 missing, 1 partial), #56 (0 missing, 1 partial), #67 (1 missing, 0 partial), #70 (0 missing, 1 partial), #75 (0 missing, 1 partial).
 
 Rules that were enforced wrongly, as against not at all, are findings of the engine audit
 ([../audits/2026-10-09-rules-audit.md](../audits/2026-10-09-rules-audit.md), rows S1-…, S2-…),
@@ -27,7 +27,7 @@ order", has the same list as tasks). The rows below say what the game does today
 
 - **A choice the player has no way to make yet.** (Losing a card from hand to negate damage to
   something else — #44's captives, #84's crystal — is built: `saves`.) Giving up an action or part of a move to
-  do something (built for #44's captives: `forgo`; the others still to do): #26 cleansing a pump (which is its goal), #44 freeing a captive, #52 looting an
+  do something (built for #44's captives and #26's pumps: `forgo`; the others still to do): #26 cleansing a pump (which is its goal), #44 freeing a captive, #52 looting an
   adjacent tile, #75 digging a grave with movement. Choosing: which Living Spirit goes (#70),
   whose attack modifier deck an escort draws from (#44, #56). With these, #44's loss ("a captive
   dies") and Redthorn's +1 Attack for each captive freed can be switched on.
@@ -223,10 +223,10 @@ order", has the same list as tasks). The rows below say what the game does today
 ### 26 · Ancient Cistern
 | Rule (from the book) | Status | Where / what's missing |
 |---|---|---|
-| Goal: cleanse all water pumps | missing | No goal is written (placements #26 has `notes` and the pumps' hexes only), so it plays as the default — every enemy dead with every room revealed, the imps that keep coming included. Needs the cleanse action below first, then a goal on the pumps being gone |
+| Goal: cleanse all water pumps | done | placements goal `freed: [1, 2, 3]` → `goalMet`: every pump set up (two, three or four by the party's size) cleansed, with every room revealed; the imps needn't die. `ScenarioSpecialRuleTests.testAPumpIsCleansedForABottomActionAndTheCisternIsWon` |
 | Setup: each character adds 3 Curse cards | done | rule 0 `amAdd curse:3` |
 | Number of pumps = C: a (2), a+b (3), a+b+c (4) | done | `rooms[2].objectives: [1, 1, "2:C > 2", "3:C > 3"]` (`spawnObjectiveByReference`); placed on l1a by placements; health 0 makes them untouchable scenery (`isUntouchable`) |
-| A character adjacent to a pump may give up a bottom action to cleanse it | missing | No such action. Nothing lets a character forgo a bottom action beside a pump, and a pump (health 0, untouchable scenery) is never removed. Needs a player prompt: discard the bottom card unplayed, next to a pump, to remove it (`TODO.md`: "A prompt for a choice the player can't make yet") |
+| A character adjacent to a pump may give up a bottom action to cleanse it | done | placements `forgo` with `does: "cleanse"`, `bottom: true` for the three pump objectives → the button "Cleanse Water Pump" beside the basic Move, for a bottom action not yet begun (never a top one); the card is discarded and the pump leaves the map, after which it summons no imp (an objective off the map is no longer `present` to a rule). Same test |
 | End of each round: every uncleansed pump summons one normal Black Imp | done | rules 1–3 (round end, a pump with that letter `present`) spawn `count: "F"` normal Black Imps — one for each pump carrying the letter — and `spawnHex(forMarker:)` puts each beside the pump with the fewest monsters next to it, so the two (a) pumps get one each. `ScenarioSpecialRuleTests.testEachPumpGetsItsOwnImp`. A pump that is gone would stop summoning, but none can be cleansed yet (row above), so in play it never stops |
 
 ### 27 · Ruinous Rift

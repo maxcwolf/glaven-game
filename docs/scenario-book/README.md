@@ -122,6 +122,10 @@ ends up on the board:
   attacks for 1 more with each one freed (#44's captives and Redthorn). Offered beside the basic
   action for a half none of whose abilities has been performed; the half's card is discarded as
   after a basic action. The simulator's policies free a captive whenever one is beside them.
+  With `"does": "cleanse"` the button and the log say so, and with `"bottom": true` only a bottom
+  action may be given up (#26's water pumps). The goal key `freed: [1, 2, 3]` is "every one of
+  these objectives freed or cleansed" (as many as the party's size sets up, every room revealed).
+  An objective that has left the map this way is no longer `present` to a scenario rule.
 - `splitStart`: there are two starting rooms and no more than half the party (rounded up) may
   start in the same one (#50, #58, #85).
 - `water`: what water hexes do — `hurtsThePoisoned` (a poisoned character or summon walking in
@@ -208,7 +212,7 @@ its map, every door objective is on a door and every objective number exists.
 | 3 Inox Encampment | — | a | win: 5×C kills | — |
 | 19 Forgotten Crypt | Hail | b–e | win when Hail ends beside the altar; lost if she dies | — |
 | 22 Temple of the Elements | 4 altars | — | win: destroy all altars | — |
-| 26 Ancient Cistern | water pumps | — (imps spawn beside their pump) | — | cleansing a pump isn't modelled, so the goal isn't (it plays as "kill all enemies") |
+| 26 Ancient Cistern | water pumps | — (imps spawn beside their pump) | — | a character beside a pump gives up a bottom action to cleanse it (`forgo`); the goal is every pump cleansed (`freed`) |
 | 27 Ruinous Rift | Hail | b–e | lost if Hail dies (win at round 10 is a scenario rule) | — |
 | 29 Sanctuary of Gloom | 3 barred doors | — | — | — |
 | 31 Plane of Night | rock column | b, c | win: destroy the column | — |
@@ -364,7 +368,7 @@ goals are checked; the notes say what around a goal is still missing.
 | 23 | Deep Ruins | Occupy all pressure plates simultaneously. | yes | — | — |
 | 24 | Echo Chamber | Open all doors (fog tiles). | yes | — | — |
 | 25 | Icecrag Ascent | All characters must escape through the exit (a). | yes | Any character becomes exhausted while not standing on an exit hex (a). | yes |
-| 26 | Ancient Cistern | Cleanse all water pumps. | **no** — cleansing a pump isn't modelled; plays as "kill all enemies" | — | — |
+| 26 | Ancient Cistern | Cleanse all water pumps. | yes | — | — |
 | 27 | Ruinous Rift | Protect Hail (a) for ten rounds. | yes (scenario rule) | Hail is killed. | yes |
 | 28 | Outer Ritual Chamber | Kill all enemies. | yes | — | — |
 | 29 | Sanctuary of Gloom | Kill all enemies. | yes | — | — |
