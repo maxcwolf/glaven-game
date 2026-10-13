@@ -50,9 +50,13 @@ enum PlayerSideAI {
             .reduce(0) { $0 + max(1, $1.value) }
         let totalMove = immobilized ? 0 : max(0, move - chill)
 
-        let enemies = hostileMonsters(board: board, gameState: gameState, includeInvisible: false)
-        let blockers = Set(hostileMonsters(board: board, gameState: gameState, includeInvisible: true)
-            .compactMap { board.piecePositions[$0] })
+        // Mind controlled, it "treats enemies as allies and allies as enemies" for the round.
+        let turned = board.turned.contains(pieceID)
+        let enemies = turned ? formerAllies(of: pieceID, board: board, gameState: gameState, includeInvisible: false)
+            : hostileMonsters(board: board, gameState: gameState, includeInvisible: false)
+        let blockers = Set((turned ? formerAllies(of: pieceID, board: board, gameState: gameState, includeInvisible: true)
+            : hostileMonsters(board: board, gameState: gameState, includeInvisible: true))
+            .flatMap { board.hexes(of: $0) })
         let allies = Set(board.piecePositions.compactMap { id, coord in
             id != pieceID && !blockers.contains(coord) ? coord : nil
         })
@@ -68,7 +72,7 @@ enum PlayerSideAI {
                                                    isRanged: isRanged, enemyPositions: blockers, gameState: gameState,
                                                    mode: mode)
         guard let focus = candidates.first?.pieceID,
-              let focusPos = board.piecePositions[focus] else { return Plan() }
+              let focusPos = board.nearestHex(of: focus, to: position) else { return Plan() }
 
         var path: [HexCoord] = []
         if totalMove > 0 {
@@ -89,11 +93,30 @@ enum PlayerSideAI {
         return Plan(focus: focus, path: path, targets: targets, candidates: candidates)
     }
 
+    /// Whom a mind-controlled character or summon turns on: the characters and summons still on
+    /// the party's side.
+    static func formerAllies(of piece: PieceID, board: BoardState, gameState: GameState, includeInvisible: Bool) -> [PieceID] {
+        board.piecePositions.keys.sorted().filter { id in
+            guard id != piece, !board.turned.contains(id) else { return false }
+            switch id {
+            case .character(let characterID):
+                guard let character = gameState.characters.first(where: { $0.id == characterID }), !character.exhausted else { return false }
+                return includeInvisible || !MonsterAI.isActive(.invisible, on: character)
+            case .summon(let summonID):
+                guard let summon = gameState.characters.flatMap(\.summons).first(where: { $0.id == summonID }), !summon.dead else { return false }
+                return includeInvisible || !MonsterAI.isActive(.invisible, on: summon)
+            default:
+                return false
+            }
+        }
+    }
+
     /// The players' side's enemies on the board: hostile (non-allied) monsters — invisible ones
     /// only when asked (they can't be focused or targeted, but still block movement) — and
     /// objectives to destroy (an altar, a barred door), which are enemies like any other.
     static func hostileMonsters(board: BoardState, gameState: GameState, includeInvisible: Bool) -> [PieceID] {
         let inactive = MonsterAI.inactiveMonsters(gameState)
+        let intangible = MonsterAI.intangibleMonsters(gameState)
         return board.piecePositions.keys.sorted().filter { id in
             if let (container, entity) = MonsterAI.objectiveEntity(id, gameState: gameState) {
                 return !container.escort && !container.isProtected && entity.maxHealth > 0
@@ -102,6 +125,7 @@ enum PlayerSideAI {
                   !MonsterAI.isAllyFaction(group), !inactive.contains(group.name) else { return false }
             // A summon leaves a sleeping monster alone unless a character directs it (it is in the way all the same).
             if !includeInvisible, board.asleep.contains(id) { return false }
+            if !includeInvisible, intangible.contains(group.name) { return false }
             return includeInvisible || !MonsterAI.isActive(.invisible, on: entity)
         }
     }

@@ -218,6 +218,24 @@ final class ScenarioPlacementTests: XCTestCase {
                 XCTAssertEqual(data.objectives?.indices.contains(carry.objective - 1), true, "\(index): no objective \(carry.objective)")
                 for letter in [carry.toward, carry.altar] { XCTAssertTrue(letters.contains(letter), "\(index): no hex lettered \(letter)") }
             }
+            if let throne = placements.throne {
+                XCTAssertTrue(monsters.contains(throne.boss), "\(index): no monster \(throne.boss)")
+                XCTAssertEqual(data.objectives?.indices.contains(throne.objective - 1), true, "\(index): no objective \(throne.objective)")
+                XCTAssertEqual(throne.eliteFrom.count, 2, "\(index): one for each special")
+                for letter in throne.cycle {
+                    XCTAssertTrue(letters.contains(letter), "\(index): no hex lettered \(letter)")
+                    XCTAssertTrue(throne.summons[letter].map(monsters.contains) ?? false, "\(index): nothing to summon at \(letter)")
+                }
+            }
+            if let perch = placements.perch {
+                for name in [perch.monster, perch.summons].compactMap({ $0 }) { XCTAssertTrue(monsters.contains(name), "\(index): no monster \(name)") }
+                for letter in perch.cycle { XCTAssertTrue(letters.contains(letter), "\(index): no hex lettered \(letter)") }
+                XCTAssertTrue(perch.cycle.contains(perch.start), "\(index): it starts on a perch of its round")
+            }
+            if let sway = placements.sway {
+                XCTAssertTrue(monsters.contains(sway.boss), "\(index): no monster \(sway.boss)")
+                XCTAssertGreaterThan(sway.flee, 0, index)
+            }
             if let battery = placements.battery {
                 for name in [battery.gun, battery.crew] { XCTAssertTrue(monsters.contains(name), "\(index): no monster \(name)") }
                 XCTAssertTrue(letters.contains(battery.line), "\(index): no hex lettered \(battery.line)")

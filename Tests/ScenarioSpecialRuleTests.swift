@@ -1487,7 +1487,8 @@ final class ScenarioSpecialRuleTests: XCTestCase {
         let throne = try simulator("21")
         revealAll(throne)
         try await perform(special: 1, of: "prime-demon", in: throne)
-        XCTAssertTrue(throne.coord.turnLog.contains { $0.message.contains("as printed on its stat card") }, "the stat card's own")
+        XCTAssertFalse(throne.coord.turnLog.contains { $0.message.contains("as printed on its stat card") }, "the altar's jump is played (ThroneTests)")
+        XCTAssertTrue(throne.coord.turnLog.contains { $0.message.contains("The altar jumps") })
     }
 
     // MARK: - Two starting rooms

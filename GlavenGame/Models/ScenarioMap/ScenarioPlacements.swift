@@ -66,6 +66,12 @@ struct ScenarioPlacements: Codable, Equatable {
     var battery: Battery?
     /// Monsters that carry an objective somewhere instead of acting (#78's Cultists and their victim).
     var carry: Carry?
+    /// An objective that is a boss's hit points and jumps about the map (#21's altar).
+    var throne: Throne?
+    /// A boss that sits on all the hexes of an obstacle and flies from one to the next (#34's Elder Drake).
+    var perch: Perch?
+    /// A boss whose specials drive the party off and draw it in to turn one of them (#79's Betrayer).
+    var sway: Sway?
     /// Monster types set up asleep (#71's Spitting Drakes): each does nothing until a character or
     /// a character's summon attacks it, damages it, gives it a negative condition or ends a
     /// movement beside it; then it acts as a monster just spawned does.
@@ -413,6 +419,57 @@ extension ScenarioPlacements {
         let altar: String
         /// What the players read when the sacrifice is made.
         let lost: String
+    }
+
+    /// "The Prime Demon and the altar share hit points, initiative, and immunities. The Prime
+    /// Demon cannot be damaged in any way. Instead, damage must be done to the altar." With a
+    /// special of the boss "the altar jumps to the next hex in the order of a, b, c, d, e, f, and
+    /// then back to a … The altar then summons one normal demon for two characters or one elite
+    /// demon for three or four characters. The type depends on the location." (#21)
+    struct Throne: Codable, Hashable {
+        /// The boss whose hit points the objective is.
+        let boss: String
+        /// The objective (1-based, as the scenario lists its objectives).
+        let objective: Int
+        /// The lettered hexes it jumps round, in order; it starts on one of them.
+        let cycle: [String]
+        /// What it summons on each.
+        let summons: [String: String]
+        /// From how many characters the summoned monster is elite, for the boss's first special
+        /// and its second.
+        let eliteFrom: [Int]
+    }
+
+    /// "The Elder Drake occupies all three hexes of the obstacle it is on. If a figure can target
+    /// any one of these hexes, they can target the Elder Drake, and the Elder Drake can use any of
+    /// its hexes to determine what it can target." With its second special it "summons two
+    /// Zephyrs …, then flies to the next perch of boulders in the order of a, b, c, and then back
+    /// to a. Zephyrs cannot be damaged in any way. They perform 'Move 2, Attack C' immediately
+    /// before the Elder Drake's turn every round." (#34)
+    struct Perch: Codable, Hashable {
+        /// The boss.
+        let monster: String
+        /// The letters of the perches in order: each marks every hex of one obstacle.
+        let cycle: [String]
+        /// The letter of the perch it is set up on.
+        let start: String
+        /// The monster type its special summons, and how many.
+        var summons: String?
+        var count: Int?
+    }
+
+    /// Special 1: "all characters and character summons are forced to perform 'Move 4' in
+    /// initiative order such that they end the movement as far away from the Betrayer as
+    /// possible." Special 2: "All characters and character summons are forced to move to the
+    /// closest hex adjacent to the Betrayer. The character who will play two cards latest in
+    /// the turn order is mind controlled for this round … On their turn, they will perform a
+    /// 'Move 2' and then the top action of their leading-initiative card." (#79)
+    struct Sway: Codable, Hashable {
+        let boss: String
+        /// The Move the party is made to take away from it, after its first special.
+        let flee: Int
+        /// The Move a mind-controlled character takes before the top of their leading card.
+        let controlled: Int
     }
 
     /// "It cannot enter or pass through door 2" (#67); "The Inox on tile E cannot enter or pass

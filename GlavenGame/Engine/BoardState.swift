@@ -50,6 +50,13 @@ final class BoardState {
     /// Monsters still asleep (Windswept Highlands' Spitting Drakes).
     var asleep: Set<PieceID> = []
 
+    /// Characters and their summons who fight for the other side this round (mind control).
+    var turned: Set<PieceID> = []
+
+    /// The hexes of a figure that stands on more than one (the Elder Drake on its perch); its
+    /// position is one of them.
+    var bodies: [PieceID: [HexCoord]] = [:]
+
     /// Loot tokens on the board (dropped when monsters die). Value = token count at that hex.
     var lootTokens: [HexCoord: Int] = [:]
 
@@ -153,6 +160,26 @@ final class BoardState {
     /// Reverse lookup: which piece is at a given coordinate.
     func piece(at coord: HexCoord) -> PieceID? {
         piecePositions.first(where: { $0.value == coord })?.key
+            ?? bodies.first(where: { $0.value.contains(coord) && piecePositions[$0.key] != nil })?.key
+    }
+
+    /// Every hex a figure stands on: its own, or all of its body's.
+    func hexes(of piece: PieceID) -> [HexCoord] {
+        guard let position = piecePositions[piece] else { return [] }
+        return bodies[piece] ?? [position]
+    }
+
+    /// The hex of `piece` an attack from `from` is measured to: of a figure on several hexes
+    /// the nearest in sight ("if a figure can target any one of these hexes, they can target"
+    /// it), else its one hex.
+    func nearestHex(of piece: PieceID, to from: HexCoord) -> HexCoord? {
+        guard let position = piecePositions[piece] else { return nil }
+        guard let body = bodies[piece], body.count > 1 else { return position }
+        return body.min { a, b in
+            let ka = (LineOfSight.hasLOS(from: from, to: a, board: self) ? 0 : 1, range(from: from, to: a) ?? 99, a)
+            let kb = (LineOfSight.hasLOS(from: from, to: b, board: self) ? 0 : 1, range(from: from, to: b) ?? 99, b)
+            return ka < kb
+        }
     }
 
     /// All pieces at a given coordinate (normally 0 or 1, but summons can stack).

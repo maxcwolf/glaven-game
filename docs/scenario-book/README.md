@@ -159,6 +159,27 @@ ends up on the board:
   toward the hexes lettered `toward` (the nearest hex beside `altar` when they are taken), opening
   doors; the objective then follows as far as it was carried. A carrier starting its turn beside
   an `altar` hex with the objective beside one too loses the scenario for the reason written.
+- `throne`: an objective that is a boss's hit points and jumps about the map — `{"boss":
+  "prime-demon", "objective": 1, "cycle": ["a", …, "f"], "summons": {"a": "wind-demon", …},
+  "eliteFrom": [3, 4]}` (#21, `BoardCoordinator+Throne`). Nothing damages the boss; the objective
+  has its hit points and the boss falls with it. A special of the boss whose text is "Throne
+  moves" sends the objective (and the obstacle it stands on) to the next lettered hex of `cycle`,
+  moving aside who stands there and revealing the room, and summons `summons[letter]` there —
+  elite from `eliteFrom[0]` characters on the first special, `eliteFrom[1]` on the second.
+- `perch`: a boss that sits on every hex of an obstacle and flies from one to the next —
+  `{"monster": "elder-drake", "cycle": ["a", "b", "c"], "start": "c", "summons": "zephyr",
+  "count": 2}` (#34, `BoardCoordinator+Perch`). Write each letter on all the hexes of its obstacle.
+  The boss is attacked through whichever of its hexes is nearest and attacks from the best of them
+  (`BoardState.bodies`); a special whose text is "Fly to next perch…" summons `count` of `summons`
+  beside it and takes it to the next letter. What it summons is untouchable — nothing damages or
+  affects it and no summon focuses on it — and performs "Move 2, Attack C" as the boss's turn
+  starts instead of having a turn of its own.
+- `sway`: a boss whose specials move and turn the party — `{"boss": "the-betrayer", "flee": 4,
+  "controlled": 2}` (#79, `BoardCoordinator+Sway`). After its first special each character and
+  summon moves `flee` to end as far from it as they can; a special whose text is "Mind Control"
+  draws them all to its side and turns the character last to play two cards this round, with
+  their summons: that turn is a Move of `controlled` and the attacks of the top of the leading
+  card, made on the party, with both cards discarded.
 - `drift`: what moves the party one hex as each round ends, before the round's other end-of-round
   rules (`BoardCoordinator+Drift`): `{"name": "wind", "directions": [["NW", "NE"], ["E"], ["SW", "SE"],
   ["W"]]}` (#71: the sides of a hex — NE, E, SE, SW, W, NW as the map lies in the game — by round,

@@ -608,7 +608,7 @@ final class BoardCoordinator {
     /// The end of a character's turn, however it was spent (two cards, a long rest, stunned):
     /// what the turn's items and active bonuses do as it ends, loot in the character's hex, and
     /// everything that is judged by where figures stand as a turn ends (pressure plates, goals).
-    private func endCharacterTurn(_ characterID: String) {
+    func endCharacterTurn(_ characterID: String) {
         if let turn = activePlayerTurn, turn.characterID == characterID {
             applyEndOfTurnItems(turn)
             applyEndOfTurnBonuses(turn)
@@ -808,6 +808,8 @@ final class BoardCoordinator {
 
     private func finishTheRound() {
         guard let gameManager = gameManager else { return }
+        // Mind control lasts the round.
+        boardState.turned = []
 
         // End-of-round cleanup (end-of-round scenario rules, elements wane, decks reshuffle)
         let game = gameManager.game
@@ -1730,6 +1732,18 @@ final class BoardCoordinator {
             return
         }
 
+        // Mind controlled: the turn is the Betrayer's to play — unless Stun takes it altogether.
+        if !stunned, boardState.turned.contains(.character(character.id)) {
+            interactionMode = .idle
+            let generation = boardGeneration
+            Task { @MainActor in
+                await self.mindControlledTurn(of: character)
+                guard self.isCurrentBoard(generation), self.scenarioResult == nil else { return }
+                self.endCharacterTurn(character.id)
+            }
+            return
+        }
+
         // Stun: no abilities and no items; the two played cards are simply discarded (p.22).
         if stunned {
             if let pair = selectedCardPairs[character.id] {
@@ -1966,7 +1980,9 @@ final class BoardCoordinator {
         var enemies = Set<HexCoord>()
         var allies = Set<HexCoord>()
         for (id, coord) in boardState.piecePositions where id != pieceID {
-            if areEnemies(pieceID, id) { enemies.insert(coord) } else { allies.insert(coord) }
+            // (Every hex of a figure that stands on several.)
+            let hexes = boardState.bodies[id] ?? [coord]
+            if areEnemies(pieceID, id) { enemies.formUnion(hexes) } else { allies.formUnion(hexes) }
         }
         // A doorway the scenario shuts to this monster: never entered, never passed through.
         enemies.formUnion(boardState.barredHexes(for: pieceID))
@@ -2183,8 +2199,10 @@ final class BoardCoordinator {
         var targets = Set<PieceID>()
         // Eyes of the Night: invisible enemies can be targeted.
         let seesInvisible = chargedBonuses(of: pieceID).contains { $0.bonus == .advantageAndSeeInvisible }
-        for (id, coord) in boardState.piecePositions where id != pieceID && areEnemies(pieceID, id) {
+        for (id, position) in boardState.piecePositions where id != pieceID && areEnemies(pieceID, id) {
             guard entity(for: id) != nil, seesInvisible || !isConditionActive(.invisible, on: id) else { continue }
+            // (Of a figure on several hexes, whichever is nearest and in sight.)
+            let coord = boardState.nearestHex(of: id, to: pos) ?? position
             guard boardState.isWithin(max(1, range), from: pos, to: coord),
                   LineOfSight.hasLOS(from: pos, to: coord, board: boardState) else { continue }
             targets.insert(id)
@@ -2602,6 +2620,8 @@ final class BoardCoordinator {
     /// the way to a hex it can stop on within the steps left. A flying figure is forced over
     /// obstacles and any figure. Difficult terrain doesn't matter.
     func forcedMoveSteps(for target: PieceID, from: HexCoord, attackerPos: HexCoord, stepsLeft: Int, isPush: Bool) -> [HexCoord] {
+        // Some can't be forced to move, however the push or pull comes (the Sightless Eye, the Elder Drake).
+        if entity(for: target)?.immunities.contains(isPush ? .push : .pull) == true { return [] }
         let flying = flies(target)
         // Heaving Swing: "You may push the target into hexes containing obstacles."
         let intoObstacles = isPush && pushesIntoObstacles
@@ -3137,6 +3157,7 @@ final class BoardCoordinator {
             // A standee number is reused once its monster is dead: the mark follows the newcomer.
             if entity.type == .elite { boardState.eliteStandees.insert(pieceID) } else { boardState.eliteStandees.remove(pieceID) }
             setUpAsleep(pieceID, ofTheMap: true)
+            takeItsPerch(pieceID)
             boardScene?.addPieceSprite(id: pieceID, at: destination, offsetCol: offsetCol, offsetRow: offsetRow)
             placed.append((monster.name, entity.number))
         }
