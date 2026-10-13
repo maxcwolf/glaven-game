@@ -204,6 +204,10 @@ extension BoardCoordinator {
             let all = objectiveEntities(index)
             guard !all.isEmpty, all.allSatisfy(\.dead), allRoomsRevealed else { return false }
         }
+        if let indices = goal.freed {
+            let all = indices.flatMap(objectiveEntities)
+            guard !all.isEmpty, allRoomsRevealed, all.allSatisfy({ $0.tags.contains(Self.freedTag) }) else { return false }
+        }
         for name in goal.kill ?? [] {
             // Every room of the map the scenario puts one in must be revealed, so none is still
             // to come.

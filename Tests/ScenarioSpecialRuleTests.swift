@@ -214,6 +214,48 @@ final class ScenarioSpecialRuleTests: XCTestCase {
         }
     }
 
+    /// "A character adjacent to a pump may give up a bottom action (discarding that card
+    /// instead) to cleanse it" — a bottom action, not a top one. A cleansed pump is gone and
+    /// summons no more imps; with every pump cleansed the Cistern is won, whatever imps remain.
+    func testAPumpIsCleansedForABottomActionAndTheCisternIsWon() throws {
+        let sim = try simulator("26")
+        revealAll(sim)
+        let coord = sim.coord
+        sim.gm.game.state = .next
+        let brute = sim.gm.game.characters[0]
+        let pumps = objectives(sim)
+        XCTAssertEqual(pumps.count, 2)
+        let place = try XCTUnwrap(coord.boardState.piecePositions[pumps[0]])
+        for piece in pieces(sim) where (coord.boardState.piecePositions[piece]?.distance(to: place) ?? 9) <= 1 { coord.boardState.removePiece(piece) }
+        stand(sim, 0, on: try XCTUnwrap(coord.boardState.neighbors(of: place).sorted().first { coord.boardState.isPassable($0) && coord.boardState.piece(at: $0) == nil }))
+
+        let deck = sim.gm.editionStore.abilities(forDeck: "brute", edition: "gh")
+        brute.handCards = [deck[0].cardId, deck[1].cardId].compactMap { $0 }
+        let turn = PlayerTurnController(characterID: brute.id, coordinator: coord, gameManager: sim.gm)
+        coord.activePlayerTurn = turn
+        turn.selectCards(top: deck[0], bottom: deck[1])
+        XCTAssertEqual(turn.phase, .executeTopAction)
+        XCTAssertTrue(turn.forgoTargets.isEmpty, "not for a top action")
+        turn.setBottomFirst(true)
+        XCTAssertEqual(turn.phase, .executeBottomAction)
+        XCTAssertEqual(turn.forgoTargets, [pumps[0]])
+        XCTAssertEqual(turn.forgoTitle(pumps[0]), "Cleanse \(coord.name(pumps[0]))")
+        turn.forgoAction(toFree: pumps[0])
+        XCTAssertFalse(coord.isOnBoard(pumps[0]), "the pump is gone")
+        XCTAssertEqual(turn.phase, .executeTopAction, "the bottom action given up, the top one still to come")
+        XCTAssertNil(coord.scenarioResult ?? coord.pendingResult, "one pump is still foul")
+
+        // The round ends: the pump left summons its imp, the cleansed one none.
+        let imps = pieces(sim, named: "black-imp").count
+        sim.gm.scenarioRulesManager.evaluateRules(phase: .roundEnd)
+        XCTAssertEqual(pieces(sim, named: "black-imp").count, imps + 1)
+
+        coord.free(pumps[1], by: brute.id)
+        coord.checkVictoryDefeat()
+        XCTAssertEqual(coord.scenarioResult ?? coord.pendingResult, .victory, "every pump cleansed")
+        XCTAssertFalse(pieces(sim, named: "black-imp").isEmpty, "the imps needn't die")
+    }
+
     // MARK: - Hit points that round up
 
     /// The Hungry Soul and the Bloated Regent have half an elite's hit points times the number

@@ -135,6 +135,9 @@ S={
  "redthornNoStronger": ("GlavenGame/Board/BoardCoordinator+Forgo.swift", "(ally.escortActions[attack].value?.intValue ?? 0) + 1)", "(ally.escortActions[attack].value?.intValue ?? 0) + 0)"),
  "captivesFreedFromAfar": ("GlavenGame/Board/BoardCoordinator+Forgo.swift", "        return boardState.neighbors(of: here).compactMap { boardState.piece(at: $0) }.filter { piece in", "        _ = here\n        return boardState.piecePositions.keys.filter { piece in"),
  "freedCountsAsKilled": ("GlavenGame/Board/BoardCoordinator+Forgo.swift", "        entity.off = true\n        entity.tags.append(Self.freedTag)", "        entity.off = true\n        entity.dead = true\n        entity.tags.append(Self.freedTag)"),
+ "pumpsCleansedForAnyAction": ("GlavenGame/Board/BoardCoordinator+Forgo.swift", "            return rule.bottom != true || bottomAction", "            return rule.bottom != true || bottomAction || true"),
+ "goneObjectivesStillPresent": ("GlavenGame/Managers/ScenarioRulesManager.swift", "where entity.dead != alive && !entity.off {", "where entity.dead != alive {"),
+ "wonWithPumpsStanding": ("GlavenGame/Board/BoardCoordinator+Goals.swift", "            guard !all.isEmpty, allRoomsRevealed, all.allSatisfy({ $0.tags.contains(Self.freedTag) }) else { return false }", "            guard !all.isEmpty, allRoomsRevealed else { return false }"),
 }
 M.update(S)
 def run(name, flt=None):

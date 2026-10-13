@@ -806,11 +806,13 @@ final class PlayerTurnController {
     /// What the scenario lets this character do instead of the half's abilities, where the basic
     /// action could still be used: the captives beside them, to free.
     var forgoTargets: [PieceID] {
-        canUseDefaultAction ? (coordinator?.forgoTargets(for: characterID) ?? []) : []
+        canUseDefaultAction ? (coordinator?.forgoTargets(for: characterID, bottomAction: phase == .executeBottomAction) ?? []) : []
     }
 
     /// The button that frees `target`: "Free Captive Orchid 3".
-    func forgoTitle(_ target: PieceID) -> String { "Free \(coordinator?.name(target) ?? "the captive")" }
+    func forgoTitle(_ target: PieceID) -> String {
+        "\((coordinator?.forgoRule(for: target)?.verb ?? "free").capitalized) \(coordinator?.name(target) ?? "it")"
+    }
 
     /// Give up the half to free `target`: its abilities are passed over and the card is
     /// discarded, as after a basic action (no experience, no lost icon).

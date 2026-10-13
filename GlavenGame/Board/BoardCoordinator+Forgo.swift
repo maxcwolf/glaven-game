@@ -12,13 +12,21 @@ extension BoardCoordinator {
 
     /// What `characterID` could free now by giving up an action: the objectives beside them
     /// that the scenario lets a character free.
-    func forgoTargets(for characterID: String) -> [PieceID] {
-        guard let rules = scenarioData?.placements?.forgo, !rules.isEmpty,
+    /// `bottomAction`: the action that would be given up is a bottom one (a pump is cleansed
+    /// only for a bottom action).
+    func forgoTargets(for characterID: String, bottomAction: Bool) -> [PieceID] {
+        guard scenarioData?.placements?.forgo?.isEmpty == false,
               let here = boardState.piecePositions[.character(characterID)] else { return [] }
         return boardState.neighbors(of: here).compactMap { boardState.piece(at: $0) }.filter { piece in
-            guard let index = objectiveContainer(of: piece)?.objectiveIndex else { return false }
-            return rules.contains { $0.objective == index }
+            guard let rule = forgoRule(for: piece) else { return false }
+            return rule.bottom != true || bottomAction
         }.sorted()
+    }
+
+    /// The rule that lets an action be given up for `piece`.
+    func forgoRule(for piece: PieceID) -> ScenarioPlacements.Forgo? {
+        guard let index = objectiveContainer(of: piece)?.objectiveIndex else { return nil }
+        return scenarioData?.placements?.forgo?.first { $0.objective == index }
     }
 
     /// How many of an objective have been freed.
@@ -30,7 +38,7 @@ extension BoardCoordinator {
     /// scenario says grows stronger for it does (Redthorn: +1 Attack for each captive freed).
     func free(_ piece: PieceID, by characterID: String) {
         guard let container = objectiveContainer(of: piece), let index = container.objectiveIndex,
-              let rule = scenarioData?.placements?.forgo?.first(where: { $0.objective == index }),
+              let rule = forgoRule(for: piece),
               let entity = entity(for: piece) as? GameObjectiveEntity, isOnBoard(piece) else { return }
         gameManager?.characterManager.onBeforeMutate?()
         let who = name(piece)
@@ -38,7 +46,7 @@ extension BoardCoordinator {
         entity.tags.append(Self.freedTag)
         removePieceFromBoard(piece)
         boardState.objectiveSites[entity.number] = nil
-        log("\(characterName(characterID)) gives up an action to free \(who) (\(freedCount(index)) freed)", category: .round)
+        log("\(characterName(characterID)) gives up an action to \(rule.verb) \(who) (\(freedCount(index)) \(rule.verb)d)", category: .round)
         if let stronger = rule.strengthens,
            let ally = gameManager?.game.objectives.first(where: { $0.objectiveIndex == stronger }),
            let attack = ally.escortActions.firstIndex(where: { $0.type == .attack }) {

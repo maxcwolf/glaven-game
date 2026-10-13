@@ -46,7 +46,7 @@
   "25": {"goal": {"text": "All characters must escape through the exit.", "escape": {"marker": "a"}, "lostIfExhausted": ["offExit"]}, "tiles": {
     "g2a": {"markers": {"a": [[7, 2], [6, 2], [6, 1], [7, 0], [6, 0]]}}
   }},
-  "26": {"notes": ["Each water pump summons a normal Black Imp beside it as every round ends."], "tiles": {
+  "26": {"notes": ["Each water pump summons a normal Black Imp beside it as every round ends.", "A character beside a pump may give up a bottom action to cleanse it: the card is discarded and the pump is gone."], "forgo": [{"objective": 1, "does": "cleanse", "bottom": true}, {"objective": 2, "does": "cleanse", "bottom": true}, {"objective": 3, "does": "cleanse", "bottom": true}], "goal": {"text": "Cleanse all water pumps.", "freed": [1, 2, 3]}, "tiles": {
     "l1a": {"objectives": [{"objective": 1, "cells": [[0, 5]]}, {"objective": 1, "cells": [[3, 5]]}, {"objective": 2, "cells": [[0, 1]]}, {"objective": 3, "cells": [[3, 1]]}]}
   }},
   "27": {"goal": {"lostAt": {"1": 1}}, "notes": ["Hail does nothing, but takes a turn at initiative 99: a Wound hurts her then like anyone.", "Demons arrive in the corners as rounds end: one after each of the first two rounds, then two a round — Night, Wind, Frost, Sun, Earth, Flame, and round again."], "passiveTurns": [1], "tiles": {
