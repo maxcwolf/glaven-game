@@ -814,13 +814,32 @@ final class PlayerTurnController {
         "\((coordinator?.forgoRule(for: target)?.verb ?? "free").capitalized) \(coordinator?.name(target) ?? "it")"
     }
 
+    /// The goal treasure tiles beside the character that the half could be given up to loot.
+    var forgoLootHexes: [HexCoord] {
+        canUseDefaultAction ? (coordinator?.forgoLootHexes(for: characterID, bottomAction: phase == .executeBottomAction) ?? []) : []
+    }
+
     /// Give up the half to free `target`: its abilities are passed over and the card is
     /// discarded, as after a basic action (no experience, no lost icon).
     func forgoAction(toFree target: PieceID) {
-        guard let coordinator, forgoTargets.contains(target) else { return }
-        if endIfStunned() { return }
+        guard let coordinator, forgoTargets.contains(target), giveUpTheHalf() else { return }
+        coordinator.free(target, by: characterID)
+        finishHalfAfterBasicAction()
+    }
+
+    /// Give up the half to loot the treasure tile on `hex`, beside the character.
+    func forgoAction(toLoot hex: HexCoord) {
+        guard let coordinator, forgoLootHexes.contains(hex), giveUpTheHalf() else { return }
+        coordinator.lootForAnActionGivenUp(hex, by: characterID)
+        finishHalfAfterBasicAction()
+    }
+
+    /// The half's abilities are passed over and its card will be discarded; false when the
+    /// character can do nothing (stunned).
+    private func giveUpTheHalf() -> Bool {
+        if endIfStunned() { return false }
         finishedHalf = nil
-        checkpoint = nil   // freeing a captive isn't taken back
+        checkpoint = nil   // what the action is given up for isn't taken back
         hasActed = true
         let steps = currentSteps
         let kept = Array(steps.prefix(currentActionIndex)) + steps.dropFirst(currentActionIndex).filter { Self.bonusCard(of: $0) != nil }
@@ -831,8 +850,7 @@ final class PlayerTurnController {
             bottomActions = kept
             bottomUsedAsDefault = true
         }
-        coordinator.free(target, by: characterID)
-        finishHalfAfterBasicAction()
+        return true
     }
 
     /// After a basic action the half's printed abilities are done, but the turn's bonus steps in

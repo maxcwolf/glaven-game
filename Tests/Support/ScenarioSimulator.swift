@@ -381,6 +381,11 @@ final class ScenarioSimulator {
                 turn.forgoAction(toFree: target)
                 return
             }
+            // A goal treasure beside a character who has yet to loot one: always worth the action.
+            if let treasure = turn.forgoLootHexes.first {
+                turn.forgoAction(toLoot: treasure)
+                return
+            }
             if policy.useDefaultAction(turn, sim: self) {
                 turn.useDefaultAction()
                 return

@@ -345,8 +345,11 @@ extension ScenarioPlacements {
     /// (1-based) that is freed, and the objective whose attacks gain +1 for each one freed
     /// (Redthorn). `does` names it where it isn't freeing ("cleanse": the water pumps of the
     /// Ancient Cistern), and `bottom` is for what only a bottom action may be given up for.
+    /// With `treasure` instead of an objective it is the goal treasure tile beside the
+    /// character that the action is given up for: it is looted (Noxious Cellar).
     struct Forgo: Codable, Hashable {
-        let objective: Int
+        var objective: Int?
+        var treasure: Bool?
         var strengthens: Int?
         var does: String?
         var bottom: Bool?

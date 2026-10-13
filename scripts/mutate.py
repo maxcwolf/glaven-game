@@ -138,6 +138,9 @@ S={
  "pumpsCleansedForAnyAction": ("GlavenGame/Board/BoardCoordinator+Forgo.swift", "            return rule.bottom != true || bottomAction", "            return rule.bottom != true || bottomAction || true"),
  "goneObjectivesStillPresent": ("GlavenGame/Managers/ScenarioRulesManager.swift", "where entity.dead != alive && !entity.off {", "where entity.dead != alive {"),
  "wonWithPumpsStanding": ("GlavenGame/Board/BoardCoordinator+Goals.swift", "            guard !all.isEmpty, allRoomsRevealed, all.allSatisfy({ $0.tags.contains(Self.freedTag) }) else { return false }", "            guard !all.isEmpty, allRoomsRevealed else { return false }"),
+ "treasureLootedForAnyAction": ("GlavenGame/Board/BoardCoordinator+Forgo.swift", "              rule.bottom != true || bottomAction, mayLootGoalTreasure(characterID),", "              mayLootGoalTreasure(characterID),"),
+ "secondTreasureOffered": ("GlavenGame/Board/BoardCoordinator+Forgo.swift", "              rule.bottom != true || bottomAction, mayLootGoalTreasure(characterID),", "              rule.bottom != true || bottomAction,"),
+ "treasureGivenUpForNothing": ("GlavenGame/Board/BoardCoordinator+Forgo.swift", "        lootHexes(for: .character(characterID), coords: [hex], byLootAction: true)", "        lootHexes(for: .character(characterID), coords: [hex], byLootAction: false)"),
 }
 M.update(S)
 def run(name, flt=None):

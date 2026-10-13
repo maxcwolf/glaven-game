@@ -131,7 +131,7 @@
     "d2a": {"markers": {"a": [[2, 1]]}},
     "m1a": {"markers": {"c": [[2, 3]]}}
   }},
-  "52": {"goal": {"text": "All characters must loot one treasure tile.", "loot": "each", "lostIfExhausted": ["beforeLoot"]}, "lootActionOnly": true, "notes": ["The obstacles of the centre room can't be destroyed."], "indestructible": {"tiles": ["m1a"]}, "tiles": {
+  "52": {"goal": {"text": "All characters must loot one treasure tile.", "loot": "each", "lostIfExhausted": ["beforeLoot"]}, "lootActionOnly": true, "notes": ["The obstacles of the centre room can't be destroyed.", "A treasure tile is looted only by a Loot action, or by a character beside it who gives up a bottom action (the card is discarded)."], "indestructible": {"tiles": ["m1a"]}, "forgo": [{"treasure": true, "bottom": true, "does": "loot"}], "tiles": {
   }},
   "53": {"notes": ["The doors are locked and open by themselves, two more rooms as each of rounds 2, 4, 6 and 8 begins."], "locks": [{"between": ["m1a", "j1a"], "afterRound": 1, "note": "Locked: it opens at the start of round 2."}, {"between": ["m1a", "j2a"], "afterRound": 3, "note": "Locked: it opens at the start of round 4."}, {"between": ["m1a", "d2a"], "afterRound": 5, "note": "Locked: it opens at the start of round 6."}, {"between": ["m1a", "d1a"], "afterRound": 7, "note": "Locked: it opens at the start of round 8."}], "tiles": {
   }},

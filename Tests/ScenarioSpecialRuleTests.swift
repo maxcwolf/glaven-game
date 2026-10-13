@@ -256,6 +256,61 @@ final class ScenarioSpecialRuleTests: XCTestCase {
         XCTAssertFalse(pieces(sim, named: "black-imp").isEmpty, "the imps needn't die")
     }
 
+    // MARK: - #52 Noxious Cellar
+
+    /// The treasure tiles "can only be looted with a Loot action, or by a character adjacent to a
+    /// treasure tile forgoing a bottom action (discarding one card instead)": beside a goal tile
+    /// the bottom action — not the top one — may be given up to loot it. Each character loots
+    /// one: who has theirs is offered no other.
+    func testATreasureBesideACharacterIsLootedForABottomActionGivenUp() throws {
+        let sim = try simulator("52")
+        revealAll(sim)
+        let coord = sim.coord
+        sim.gm.game.state = .next
+        for piece in pieces(sim) { coord.boardState.removePiece(piece) }
+        func goals() -> [HexCoord] {
+            coord.boardState.cells.filter { $0.value.overlay == .treasure && $0.value.treasureID == BoardCoordinator.goalTreasureID }.map(\.key).sorted()
+        }
+        let tiles = goals()
+        XCTAssertEqual(tiles.count, 4)
+        func beside(_ tile: HexCoord) throws -> HexCoord {
+            try XCTUnwrap(coord.boardState.neighbors(of: tile).sorted().first { coord.isEmptyHex($0) && !tiles.contains($0) }, "a hex beside the tile")
+        }
+        func bottomAction(of index: Int) throws -> PlayerTurnController {
+            let character = sim.gm.game.characters[index]
+            let deck = sim.gm.editionStore.abilities(forDeck: character.name, edition: "gh")
+            character.handCards = [deck[0].cardId, deck[1].cardId].compactMap { $0 }
+            let turn = PlayerTurnController(characterID: character.id, coordinator: coord, gameManager: sim.gm)
+            coord.activePlayerTurn = turn
+            turn.selectCards(top: deck[0], bottom: deck[1])
+            return turn
+        }
+        let brute = sim.gm.game.characters[0]
+        stand(sim, 0, on: try beside(tiles[0]))
+        var turn = try bottomAction(of: 0)
+        XCTAssertTrue(turn.forgoLootHexes.isEmpty, "not for a top action")
+        turn.setBottomFirst(true)
+        XCTAssertEqual(turn.forgoLootHexes, [tiles[0]])
+        turn.forgoAction(toLoot: tiles[0])
+        XCTAssertEqual(goals(), Array(tiles.dropFirst()), "the tile is looted")
+        XCTAssertEqual(coord.boardState.goalLooters, [brute.id])
+        XCTAssertEqual(turn.phase, .executeTopAction, "the bottom action is given up")
+
+        // The Brute has his: beside another tile nothing is offered him — but the Spellweaver is.
+        stand(sim, 0, on: try beside(tiles[1]))
+        turn = try bottomAction(of: 0)
+        turn.setBottomFirst(true)
+        XCTAssertTrue(turn.forgoLootHexes.isEmpty)
+        stand(sim, 0, on: try beside(tiles[3]))
+        stand(sim, 1, on: try beside(tiles[1]))
+        turn = try bottomAction(of: 1)
+        turn.setBottomFirst(true)
+        XCTAssertEqual(turn.forgoLootHexes, [tiles[1]])
+        turn.forgoAction(toLoot: tiles[1])
+        coord.checkVictoryDefeat()
+        XCTAssertEqual(coord.scenarioResult ?? coord.pendingResult, .victory, "every character has looted one")
+    }
+
     // MARK: - Hit points that round up
 
     /// The Hungry Soul and the Bloated Regent have half an elite's hit points times the number

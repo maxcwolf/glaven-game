@@ -18,7 +18,7 @@ extension BoardCoordinator {
         guard scenarioData?.placements?.forgo?.isEmpty == false,
               let here = boardState.piecePositions[.character(characterID)] else { return [] }
         return boardState.neighbors(of: here).compactMap { boardState.piece(at: $0) }.filter { piece in
-            guard let rule = forgoRule(for: piece) else { return false }
+            guard let rule = forgoRule(for: piece), isOnBoard(piece) else { return false }
             return rule.bottom != true || bottomAction
         }.sorted()
     }
@@ -27,6 +27,24 @@ extension BoardCoordinator {
     func forgoRule(for piece: PieceID) -> ScenarioPlacements.Forgo? {
         guard let index = objectiveContainer(of: piece)?.objectiveIndex else { return nil }
         return scenarioData?.placements?.forgo?.first { $0.objective == index }
+    }
+
+    /// The goal treasure tiles beside `characterID` that they could loot now by giving up an
+    /// action: where the scenario offers that, and the character may still loot one.
+    func forgoLootHexes(for characterID: String, bottomAction: Bool) -> [HexCoord] {
+        guard let rule = scenarioData?.placements?.forgo?.first(where: { $0.treasure == true }),
+              rule.bottom != true || bottomAction, mayLootGoalTreasure(characterID),
+              let here = boardState.piecePositions[.character(characterID)] else { return [] }
+        return boardState.neighbors(of: here).filter { hex in
+            boardState.cells[hex]?.overlay == .treasure && boardState.cells[hex]?.treasureID == Self.goalTreasureID
+        }.sorted()
+    }
+
+    /// The treasure tile beside the character is looted for the action given up, as a Loot
+    /// action would loot it.
+    func lootForAnActionGivenUp(_ hex: HexCoord, by characterID: String) {
+        log("\(characterName(characterID)) gives up an action to loot the treasure beside them", category: .loot)
+        lootHexes(for: .character(characterID), coords: [hex], byLootAction: true)
     }
 
     /// How many of an objective have been freed.
