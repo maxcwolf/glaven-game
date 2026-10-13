@@ -574,6 +574,15 @@ enum MonsterAI {
     /// Monster types that are inactive right now: they don't act, nothing affects them, and
     /// figures move through their hexes (`ScenarioPlacements.inactive`). Between rounds it is the
     /// round about to be played that counts.
+    /// Monster types that never take a turn, though they are there to be attacked: a scenario's
+    /// gun (`ScenarioPlacements.battery`).
+    static func idleMonsters(_ gameState: GameState) -> Set<String> {
+        guard let scenario = gameState.scenario, scenario.data.solo == nil,
+              let gun = ScenarioPlacementStore.shared.placements(for: scenario.data.index, edition: scenario.data.edition)?.battery?.gun
+        else { return [] }
+        return [gun]
+    }
+
     static func inactiveMonsters(_ gameState: GameState) -> Set<String> {
         guard let scenario = gameState.scenario, scenario.data.solo == nil,
               let written = ScenarioPlacementStore.shared.placements(for: scenario.data.index, edition: scenario.data.edition),

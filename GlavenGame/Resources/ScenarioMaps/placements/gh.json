@@ -122,7 +122,8 @@
     "l1b": {"markers": {"b": [[2, 6]], "d": [[0, 3]], "f": [[2, 0]]}},
     "l3a": {"markers": {"a": [[0, 3]], "c": [[2, 6]], "e": [[2, 0]]}}
   }},
-  "49": {"goal": {"text": "Kill the Siege Cannon.", "kill": ["siege-cannon"]}, "tiles": {
+  "49": {"goal": {"text": "Kill the Siege Cannon.", "kill": ["siege-cannon"]}, "battery": {"gun": "siege-cannon", "crew": "city-archer", "move": 3, "line": "b", "side": "W", "tiles": ["g1a"]}, "rules": [{"round": "true", "requiredRooms": [2], "figures": [{"identifier": {"type": "monster", "edition": "gh", "name": "city-archer"}, "type": "dead"}], "spawns": [{"monster": {"name": "city-archer", "type": "normal"}, "marker": "a"}]}], "notes": ["The Siege Cannon takes no turn. Each round the City Archer nearest it doesn’t act as its card says: it moves 3 toward a hex beside the cannon (not one of the three before its muzzle) and, beside it, fires it — every character and summon before the muzzle, in the three rows running from there back across the field, or anywhere on the first tile suffers an elite Ancient Artillery’s Attack as damage.", "If no City Archer is left as a round ends, one arrives in the far corner."], "tiles": {
+    "l3a": {"markers": {"a": [[0, 6]], "b": [[2, 4], [2, 3], [2, 2]]}}
   }},
   "50": {"goal": {"text": "Loot all treasure tiles.", "loot": "goal"}, "notes": ["There are two starting rooms: no more than half the party (rounded up) may start in the same one."], "lootActionOnly": true, "splitStart": true, "tiles": {
   }},

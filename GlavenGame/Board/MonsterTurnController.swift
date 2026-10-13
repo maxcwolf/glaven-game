@@ -29,7 +29,8 @@ final class MonsterTurnController {
     @MainActor func executeMonsterGroup(_ monster: GameMonster, only: Set<Int>? = nil) async {
         guard let coordinator, let gameManager else { return }
         guard !monster.off, !monster.aliveEntities.isEmpty,
-              !MonsterAI.inactiveMonsters(gameManager.game).contains(monster.name) else { return }
+              !MonsterAI.inactiveMonsters(gameManager.game).contains(monster.name),
+              !MonsterAI.idleMonsters(gameManager.game).contains(monster.name) else { return }
         coordinator.teach(.monstersAct, at: .monsterCard(monster.name))
 
         guard let ability = gameManager.monsterManager.currentAbility(for: monster) else {
@@ -61,6 +62,8 @@ final class MonsterTurnController {
                 return a.number < b.number
             }
 
+        // The one of them who serves the scenario's gun this round instead of acting (Rebel's Stand).
+        let gunner = coordinator.gunner(ofType: monster.name)
         var anyActed = false
         for entity in sortedEntities {
             guard !isStale else { return }
@@ -85,7 +88,10 @@ final class MonsterTurnController {
             } else {
                 anyActed = true
                 var turn = MonsterTurnState()
-                if coordinator.march(of: monster.name) != nil {
+                if pieceID == gunner {
+                    await coordinator.serveTheGun(pieceID)
+                    guard !isStale else { return }
+                } else if coordinator.march(of: monster.name) != nil {
                     // It marches where the scenario sends it, then does the rest of its card.
                     await coordinator.marchStep(pieceID)
                     guard !isStale else { return }

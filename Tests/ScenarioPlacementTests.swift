@@ -213,6 +213,12 @@ final class ScenarioPlacementTests: XCTestCase {
                 for tile in rule.between + [rule.from].compactMap({ $0 }) { XCTAssertTrue(tiles.contains(tile), "\(index): no tile \(tile)") }
                 for name in rule.monsters { XCTAssertTrue(monsters.contains(name), "\(index): no monster \(name)") }
             }
+            if let battery = placements.battery {
+                for name in [battery.gun, battery.crew] { XCTAssertTrue(monsters.contains(name), "\(index): no monster \(name)") }
+                XCTAssertTrue(letters.contains(battery.line), "\(index): no hex lettered \(battery.line)")
+                XCTAssertTrue(["W", "E"].contains(battery.side), "\(index): the gun fires along a row, W or E")
+                for tile in battery.tiles ?? [] { XCTAssertTrue(tiles.contains(tile), "\(index): no tile \(tile)") }
+            }
             if let drift = placements.drift {
                 let sides = (drift.directions ?? []).flatMap { $0 } + (drift.byInitiative.map { $0.even + $0.odd } ?? [])
                 XCTAssertFalse(sides.isEmpty, "\(index): the \(drift.name) goes nowhere")

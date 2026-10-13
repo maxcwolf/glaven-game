@@ -62,6 +62,8 @@ struct ScenarioPlacements: Codable, Equatable {
     var flood: Flood?
     /// Doors some monsters can't enter or pass through (#67's Arcane Golem, #73's Inox).
     var barred: [Barred]?
+    /// A gun that never acts and is fired by its crew (#49's Siege Cannon and the City Archers).
+    var battery: Battery?
     /// Monster types set up asleep (#71's Spitting Drakes): each does nothing until a character or
     /// a character's summon attacks it, damages it, gives it a negative condition or ends a
     /// movement beside it; then it acts as a monster just spawned does.
@@ -369,6 +371,27 @@ extension ScenarioPlacements {
     struct Save: Codable, Hashable {
         let objective: Int
         var times: Int?
+    }
+
+    /// "The Ancient Artillery does not act … Each round, instead of acting normally, the City
+    /// Archer who is closest to the artillery (or the one who acts first in the case of a tie)
+    /// performs 'Move 3' toward a hex adjacent to the artillery that is not labeled b. If the
+    /// archer is then adjacent to the artillery, it fires, causing damage equal to the elite
+    /// artillery's Attack value on all characters and character summons in hexes b and the
+    /// columns above those hexes (including all of the G tile)." (#49)
+    struct Battery: Codable, Hashable {
+        /// The monster that is the gun: it takes no turn.
+        let gun: String
+        /// The monster type that serves it.
+        let crew: String
+        /// How far the one serving it moves toward it.
+        let move: Int
+        /// The letter of the hexes before the gun: the crew keeps off them, and the gun fires
+        /// along the row of each, on `side` of it ("W" or "E", as the map lies in the game).
+        let line: String
+        let side: String
+        /// Tiles the shot covers entirely.
+        var tiles: [String]?
     }
 
     /// "It cannot enter or pass through door 2" (#67); "The Inox on tile E cannot enter or pass

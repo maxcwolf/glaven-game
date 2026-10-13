@@ -87,7 +87,7 @@ M={
 }
 # Scenario rules (the mechanisms of placements/gh.json): run against the scenario tests.
 SCENARIO_FILTER=("ScenarioSpecialRuleTests|ScenarioReauditTests|ScenarioEnforcedRuleTests|ScenarioLockTests|ScenarioGoalTests|"
-                 "ScenarioSpawnTests|DemonicRiftTests|BattlementsTests|MonsterTextTests|MonsterSummonTests|CarriedThingTests|DriftTests|RollingBoulderTests|RisingWaterTests|SleepingMonsterTests|BarredDoorTests")
+                 "ScenarioSpawnTests|DemonicRiftTests|BattlementsTests|MonsterTextTests|MonsterSummonTests|CarriedThingTests|DriftTests|RollingBoulderTests|RisingWaterTests|SleepingMonsterTests|BarredDoorTests|BatteryTests")
 S={
  "factSavedIgnored": ("GlavenGame/Board/BoardCoordinator+Goals.swift", "            guard arrived >= saved else { return false }", "            guard arrived >= 0 * saved else { return false }"),
  "factLockIgnored": ("GlavenGame/Board/BoardCoordinator+Goals.swift", "        if let lock = fact.lock, !boardState.releasedLocks.contains(lock) { return false }", "        if let lock = fact.lock, lock < 0 { return false }"),
@@ -217,6 +217,16 @@ S={
  "barredWhereverTheyStand": ("GlavenGame/Engine/BoardState.swift", "($0.from == nil || $0.from == tile)", "($0.from == nil || $0.from != nil)"),
  "noDoorsBarred": ("GlavenGame/Board/BoardCoordinator+Locks.swift", "        layNumberedTokens()\n        barDoors()\n", "        layNumberedTokens()\n"),
  "movementSetsForgetBarred": ("GlavenGame/Board/BoardCoordinator.swift", "        enemies.formUnion(boardState.barredHexes(for: pieceID))\n", ""),
+ "cannonTakesItsTurn": ("GlavenGame/Board/MonsterTurnController.swift", ",\n              !MonsterAI.idleMonsters(gameManager.game).contains(monster.name) else { return }", " else { return }"),
+ "cannonDrawsACard": ("GlavenGame/Managers/RoundManager.swift", "MonsterAI.inactiveMonsters(game).union(MonsterAI.idleMonsters(game))", "MonsterAI.inactiveMonsters(game)"),
+ "anyArcherServes": ("GlavenGame/Board/BoardCoordinator+Battery.swift", "return crew.min { ($0.far, $0.late) < ($1.far, $1.late) }?.piece", "return crew.min { $0.late < $1.late }?.piece"),
+ "tieGoesToTheLastToAct": ("GlavenGame/Board/BoardCoordinator+Battery.swift", "return crew.min { ($0.far, $0.late) < ($1.far, $1.late) }?.piece", "return crew.min { ($0.far, -$0.late) < ($1.far, -$1.late) }?.piece"),
+ "gunnerActsOnItsCard": ("GlavenGame/Board/MonsterTurnController.swift", "                if pieceID == gunner {", "                if false, pieceID == gunner {"),
+ "gunnerStandsBeforeTheMuzzle": ("GlavenGame/Board/BoardCoordinator+Battery.swift", "boardState.neighbors(of: gun.hex).filter { boardState.isPassable($0) && !line.contains($0) }.sorted()", "boardState.neighbors(of: gun.hex).filter { boardState.isPassable($0) }.sorted()"),
+ "gunnerRunsAllTheWay": ("GlavenGame/Board/BoardCoordinator+Battery.swift", "<= battery.move } ?? 0", "<= 99 } ?? 0"),
+ "cannonFiredFromAfar": ("GlavenGame/Board/BoardCoordinator+Battery.swift", "              boardState.areAdjacent(here, gun.hex), let gameManager,", "              let gameManager,"),
+ "shotCoversBothWays": ("GlavenGame/Board/BoardCoordinator+Battery.swift", "(battery.side == \"W\" ? cell.coord.col <= start.col : cell.coord.col >= start.col)", "(battery.side == \"W\" || cell.coord.col >= start.col)"),
+ "shotSparesSummons": ("GlavenGame/Board/BoardCoordinator+Battery.swift", "            case .character, .summon: return boardState.piecePositions[piece].map(line.contains) ?? false", "            case .character: return boardState.piecePositions[piece].map(line.contains) ?? false"),
  "noOneIsAskedWhoHolds": ("GlavenGame/Board/BoardCoordinator+Carried.swift", "            } else if autoResolvePrompts {\n                give(thing.name, to: first.id, how: \"holds\")", "            } else if true {\n                give(thing.name, to: first.id, how: \"holds\")"),
  "lyingThingNotPickedUp": ("GlavenGame/Board/BoardCoordinator+Carried.swift", "            if let lying = boardState.carriedLying[name] { return hexes.contains(lying) }", "            if boardState.carriedLying[name] != nil { return false }"),
  "anyoneLootsTheQuestTile": ("GlavenGame/Board/BoardCoordinator+Carried.swift", "        return party.first { $0.id == characterID }?.personalQuest == quest", "        return party.first { $0.id == characterID }?.personalQuest == quest || true"),

@@ -1450,7 +1450,7 @@ final class BoardCoordinator {
     func buildTurnOrderAndStart() {
         guard let gameManager = gameManager else { return }
         teach(.initiative, at: .turnRail)
-        let inactive = MonsterAI.inactiveMonsters(gameManager.game)
+        let inactive = MonsterAI.inactiveMonsters(gameManager.game).union(MonsterAI.idleMonsters(gameManager.game))
         // Build turn order from sorted figures
         turnOrder = gameManager.game.figures.compactMap { figure in
             switch figure {
