@@ -166,6 +166,14 @@ ends up on the board:
   moves" sends the objective (and the obstacle it stands on) to the next lettered hex of `cycle`,
   moving aside who stands there and revealing the room, and summons `summons[letter]` there —
   elite from `eliteFrom[0]` characters on the first special, `eliteFrom[1]` on the second.
+- `perch`: a boss that sits on every hex of an obstacle and flies from one to the next —
+  `{"monster": "elder-drake", "cycle": ["a", "b", "c"], "start": "c", "summons": "zephyr",
+  "count": 2}` (#34, `BoardCoordinator+Perch`). Write each letter on all the hexes of its obstacle.
+  The boss is attacked through whichever of its hexes is nearest and attacks from the best of them
+  (`BoardState.bodies`); a special whose text is "Fly to next perch…" summons `count` of `summons`
+  beside it and takes it to the next letter. What it summons is untouchable — nothing damages or
+  affects it and no summon focuses on it — and performs "Move 2, Attack C" as the boss's turn
+  starts instead of having a turn of its own.
 - `drift`: what moves the party one hex as each round ends, before the round's other end-of-round
   rules (`BoardCoordinator+Drift`): `{"name": "wind", "directions": [["NW", "NE"], ["E"], ["SW", "SE"],
   ["W"]]}` (#71: the sides of a hex — NE, E, SE, SW, W, NW as the map lies in the game — by round,
