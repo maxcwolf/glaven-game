@@ -147,6 +147,12 @@ ends up on the board:
   ["a2a", "m1a"], "from": "m1a"}` (#67, #73): no monster of those types standing on tile `from`
   (any, without it) enters or passes through the door between the two tiles, by its own move or a
   push or pull.
+- `battery`: a gun that takes no turn and is fired by its crew — `{"gun": "siege-cannon", "crew":
+  "city-archer", "move": 3, "line": "b", "side": "W", "tiles": ["g1a"]}` (#49,
+  `BoardCoordinator+Battery`). Each round the crew member nearest the gun moves `move` toward a hex
+  beside it that isn't lettered `line` instead of acting, and beside it fires: every character and
+  summon on a `line` hex, in the row of one on `side` of it (W or E), or on one of `tiles` suffers
+  the gun's stat-card Attack as damage.
 - `drift`: what moves the party one hex as each round ends, before the round's other end-of-round
   rules (`BoardCoordinator+Drift`): `{"name": "wind", "directions": [["NW", "NE"], ["E"], ["SW", "SE"],
   ["W"]]}` (#71: the sides of a hex — NE, E, SE, SW, W, NW as the map lies in the game — by round,

@@ -12,8 +12,8 @@ means the data and code that enforce the rule were found, and usually a test tha
 that the scenario was played through. Keep it current: when a rule is built, rewrite its row in
 the same commit (see [../rules-work.md](../rules-work.md)).
 
-**447 rules: 405 done, 14 partial, 28 missing.**
-83 of 95 scenarios have every printed rule done. The other 12: #55 (6 missing, 1 partial), #34 (4 missing, 2 partial), #76 (4 missing, 2 partial), #78 (5 missing, 0 partial), #21 (2 missing, 2 partial), #49 (4 missing, 0 partial), #52 (1 missing, 1 partial), #68 (1 missing, 1 partial), #79 (1 missing, 1 partial), #82 (0 missing, 2 partial), #38 (0 missing, 1 partial), #47 (0 missing, 1 partial).
+**447 rules: 409 done, 14 partial, 24 missing.**
+84 of 95 scenarios have every printed rule done. The other 11: #55 (6 missing, 1 partial), #34 (4 missing, 2 partial), #76 (4 missing, 2 partial), #78 (5 missing, 0 partial), #21 (2 missing, 2 partial), #52 (1 missing, 1 partial), #68 (1 missing, 1 partial), #79 (1 missing, 1 partial), #82 (0 missing, 2 partial), #38 (0 missing, 1 partial), #47 (0 missing, 1 partial).
 
 Rules that were enforced wrongly, as against not at all, are findings of the engine audit
 ([../audits/2026-10-09-rules-audit.md](../audits/2026-10-09-rules-audit.md), rows S1-…, S2-…),
@@ -441,10 +441,10 @@ order", has the same list as tasks). The rows below say what the game does today
 |---|---|---|
 | Goal: kill the Siege Cannon | done | placements `goal.kill: ["siege-cannon"]`; it stands on the map's Ancient Artillery position in L3a |
 | Siege Cannon has H×2 HP (H = elite Ancient Artillery's hit points) | done | `siege-cannon.json` health per level is exactly twice the elite artillery's (14/18/…/40 against 7/9/…/20) |
-| Siege Cannon does not act; initiative 99 for summon focusing | missing | unchanged: it is an ordinary boss with `deck: "ancient-artillery"`, so it draws Ancient Artillery cards, acts at their initiative and shoots (Attack 3–5, Range 5–7), and is focused at that initiative. Only the FAQ's immunity to push and pull is in (`siege-cannon.json` `immunities`; `ScenarioReauditTests.testTheCarriersAndTheCannonCantBeForcedToMove`). `TODO.md`: "Monsters that don't act as their cards say" |
-| Each round the City Archer closest to the artillery does not act but performs Move 3 toward a non-b hex beside it | missing | the scenario JSON has no `rules` and #49's placements have only the goal; no code; archers take their normal turns. Needs the b letters and a turn override for the nearest archer (something like `march`) |
-| If that archer is then adjacent, the cannon fires: characters and summons in the b hexes, the columns above them and all of G suffer an elite artillery's Attack | missing | no rule, no code, no b letters in placements (`"49"` has empty `tiles`) |
-| No City Archers on the map at the end of a round: one normal City Archer spawns at (a) | missing | no rule in the scenario data or the placements, and no letter a written; could be a placements rule (round end, no City Archer present, spawn at a) once the hex is written |
+| Siege Cannon does not act; initiative 99 for summon focusing | done | placements `battery.gun: "siege-cannon"` → `MonsterAI.idleMonsters`: no card is drawn for it (`RoundManager`), it has no place in the turn order and `executeMonsterGroup` passes it over; with no card its initiative for focus is 99 (`MonsterAI.enemyInitiative`). It can be attacked like any monster. `BatteryTests.testTheSiegeCannonTakesNoTurn`; immune to push and pull as before (`ScenarioReauditTests.testTheCarriersAndTheCannonCantBeForcedToMove`) |
+| Each round the City Archer closest to the artillery does not act but performs Move 3 toward a non-b hex beside it | done | `BoardCoordinator+Battery`: `gunner(ofType:)` — the archer nearest the cannon, of several as near the elite, then the lowest number — is taken out of its type's turn (`MonsterTurnController`) and `serveTheGun` moves it up to 3 toward the nearest free hex beside the cannon that isn't lettered b (l3a b: the three hexes before the muzzle). `testTheNearestArcherMakesForTheCannon` |
+| If that archer is then adjacent, the cannon fires: characters and summons in the b hexes, the columns above them and all of G suffer an elite artillery's Attack | done | `serveTheGun` → `batteryLine`: the b hexes, the row of each away from the cannon (`side: "W"` — the book's columns are our rows, the map lying a quarter turn round) and all of `g1a`; each character and summon there suffers the cannon's stat-card Attack, which is the elite Ancient Artillery's at every level (a character may negate it with cards). `testBesideTheCannonTheArcherFiresItDownItsLine` |
+| No City Archers on the map at the end of a round: one normal City Archer spawns at (a) | done | placements rule: round end, room 2 revealed, `figures: [{city-archer, type: "dead"}]` (none on the board) → spawn a normal City Archer at a (l3a's far corner). `testAnArcherArrivesWhenNoneIsLeft` |
 
 ### 50 · Ghost Fortress
 | Rule (from the book) | Status | Where / what's missing |
