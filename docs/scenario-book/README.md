@@ -126,6 +126,9 @@ ends up on the board:
   action may be given up (#26's water pumps). The goal key `freed: [1, 2, 3]` is "every one of
   these objectives freed or cleansed" (as many as the party's size sets up, every room revealed).
   An objective that has left the map this way is no longer `present` to a scenario rule.
+  `{"treasure": true, "bottom": true}` is the goal treasure tile beside the character, looted for
+  the action given up as a Loot action would loot it (#52), once for each character where each
+  must loot one.
 - `splitStart`: there are two starting rooms and no more than half the party (rounded up) may
   start in the same one (#50, #58, #85).
 - `water`: what water hexes do — `hurtsThePoisoned` (a poisoned character or summon walking in

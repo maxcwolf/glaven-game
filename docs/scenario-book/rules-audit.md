@@ -12,8 +12,8 @@ means the data and code that enforce the rule were found, and usually a test tha
 that the scenario was played through. Keep it current: when a rule is built, rewrite its row in
 the same commit (see [../rules-work.md](../rules-work.md)).
 
-**447 rules: 360 done, 21 partial, 66 missing.**
-69 of 95 scenarios have every printed rule done. The other 26: #55 (6 missing, 1 partial), #88 (6 missing, 1 partial), #34 (4 missing, 2 partial), #76 (4 missing, 2 partial), #44 (0 missing, 1 partial), #71 (5 missing, 0 partial), #73 (5 missing, 0 partial), #78 (5 missing, 0 partial), #95 (5 missing, 0 partial), #21 (2 missing, 2 partial), #49 (4 missing, 0 partial), #54 (4 missing, 0 partial), #69 (3 missing, 1 partial), #74 (4 missing, 0 partial), #52 (1 missing, 2 partial), #58 (3 missing, 0 partial), #68 (1 missing, 1 partial), #79 (1 missing, 1 partial), #81 (2 missing, 0 partial), #82 (0 missing, 2 partial), #38 (0 missing, 1 partial), #47 (0 missing, 1 partial), #56 (0 missing, 1 partial), #67 (1 missing, 0 partial), #70 (0 missing, 1 partial), #75 (0 missing, 1 partial).
+**447 rules: 361 done, 20 partial, 66 missing.**
+69 of 95 scenarios have every printed rule done. The other 26: #55 (6 missing, 1 partial), #88 (6 missing, 1 partial), #34 (4 missing, 2 partial), #76 (4 missing, 2 partial), #44 (0 missing, 1 partial), #71 (5 missing, 0 partial), #73 (5 missing, 0 partial), #78 (5 missing, 0 partial), #95 (5 missing, 0 partial), #21 (2 missing, 2 partial), #49 (4 missing, 0 partial), #54 (4 missing, 0 partial), #69 (3 missing, 1 partial), #74 (4 missing, 0 partial), #52 (1 missing, 1 partial), #58 (3 missing, 0 partial), #68 (1 missing, 1 partial), #79 (1 missing, 1 partial), #81 (2 missing, 0 partial), #82 (0 missing, 2 partial), #38 (0 missing, 1 partial), #47 (0 missing, 1 partial), #56 (0 missing, 1 partial), #67 (1 missing, 0 partial), #70 (0 missing, 1 partial), #75 (0 missing, 1 partial).
 
 Rules that were enforced wrongly, as against not at all, are findings of the engine audit
 ([../audits/2026-10-09-rules-audit.md](../audits/2026-10-09-rules-audit.md), rows S1-…, S2-…),
@@ -27,7 +27,7 @@ order", has the same list as tasks). The rows below say what the game does today
 
 - **A choice the player has no way to make yet.** (Losing a card from hand to negate damage to
   something else — #44's captives, #84's crystal — is built: `saves`.) Giving up an action or part of a move to
-  do something (built for #44's captives and #26's pumps: `forgo`; the others still to do): #26 cleansing a pump (which is its goal), #44 freeing a captive, #52 looting an
+  do something (built for #44's captives, #26's pumps and #52's treasure: `forgo`; #75's graves still to do): #26 cleansing a pump (which is its goal), #44 freeing a captive, #52 looting an
   adjacent tile, #75 digging a grave with movement. Choosing: which Living Spirit goes (#70),
   whose attack modifier deck an escort draws from (#44, #56). With these, #44's loss ("a captive
   dies") and Redthorn's +1 Attack for each captive freed can be switched on.
@@ -470,7 +470,7 @@ order", has the same list as tasks). The rows below say what the game does today
 | Setup: each character adds 2 Curse cards | done | scenario `rules[0]`: `amAdd` `curse:2` at `R == 1`, `start` → `ScenarioRulesManager.applyAmAdd` (the data's three was corrected to the book's two); `ScenarioSpecialRuleTests.testSetupCardCountsAreTheBooks` |
 | Setup: characters may only start in sections of the center room that contain monsters | missing | unchanged: the four starting hexes of M1a are all offered whatever the character count (`freeStartingHexes` only knows `splitStart`); nothing ties a starting hex to monsters being in its section. Needs the sections written as data |
 | Center-room obstacles cannot be destroyed or moved through in any way, and block line of sight for ranged abilities | partial | can't be destroyed: placements `indestructible.tiles: ["m1a"]` → `isDestructibleObstacle` (`ScenarioReauditTests.testWhatTheScenarioSaysCantBeDestroyedIsnt`). Not enforced: a jumping or flying figure still crosses them as it does any obstacle (`Pathfinder`), and they don't block line of sight (`LineOfSight` counts only walls) |
-| Treasure tiles are looted only by a Loot action, or by an adjacent character forgoing a bottom action; never at end of turn | partial | placements `lootActionOnly: true` → a goal tile is taken only by a Loot ability (`lootHexes` with `byLootAction`), never by ending a turn on it or walking over it (`ScenarioGoalTests.testGoalTreasureThatNeedsALootAction`, played on #30 with the same flag). Missing: an adjacent character giving up a bottom action (discarding the card) to loot the tile — needs a new player action |
+| Treasure tiles are looted only by a Loot action, or by an adjacent character forgoing a bottom action; never at end of turn | done | placements `lootActionOnly: true` → a goal tile is taken only by a Loot ability (`lootHexes` with `byLootAction`), never by ending a turn on it or walking over it (`ScenarioGoalTests.testGoalTreasureThatNeedsALootAction`); placements `forgo: [{"treasure": true, "bottom": true}]` → "Loot the Treasure" beside the basic Move for a character next to a goal tile who has yet to loot one: the bottom action is given up, its card discarded, the tile looted (`ScenarioSpecialRuleTests.testATreasureBesideACharacterIsLootedForABottomActionGivenUp`) |
 
 ### 53 · Crypt Basement
 | Rule (from the book) | Status | Where / what's missing |
