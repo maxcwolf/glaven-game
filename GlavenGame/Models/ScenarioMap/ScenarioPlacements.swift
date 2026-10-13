@@ -72,6 +72,10 @@ struct ScenarioPlacements: Codable, Equatable {
     var perch: Perch?
     /// A boss whose specials drive the party off and draw it in to turn one of them (#79's Betrayer).
     var sway: Sway?
+    /// "Characters can only start in sections of the center room that contain monsters" (#52):
+    /// a starting hex is offered only if the part of its room it stands in — what can be walked
+    /// to without leaving the tile — holds a monster.
+    var startAmongMonsters: Bool?
     /// Walls broken down by damage instead of doors that open (#76's hive).
     var walls: Walls?
     /// "Each character discards three ability cards at the start of the scenario as a scenario
@@ -376,6 +380,9 @@ extension ScenarioPlacements {
     struct Indestructible: Codable, Equatable {
         var subTypes: [String]?
         var tiles: [String]?
+        /// "…or moved through in any way. They also block line of sight for ranged abilities":
+        /// the obstacles of `tiles` stop jumping and flying figures too, and sight with them.
+        var solid: Bool?
     }
 
     /// "Any character may lose one card from their hand to negate any one source of damage" to

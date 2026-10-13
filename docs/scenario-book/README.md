@@ -257,6 +257,12 @@ ends up on the board:
 - `indestructible`: obstacles no ability destroys — `subTypes` (the map data's overlay sub-types:
   `"dark-pit"`, `"wall-section"`, `"boulder-3"`) or every obstacle of some `tiles` (#52's centre
   room). An obstacle that is an objective (a totem, an altar) is never destroyed by an ability.
+  With `"solid": true` the obstacles of `tiles` also can't be "moved through in any way" and
+  "block line of sight" (#52): a jump or a flight stops at them, a flier isn't pushed onto one,
+  and sight is blocked as by a wall (`HexCell.solid`). Range is still counted across them.
+- `startAmongMonsters`: a starting hex is offered only if its section of the room — what can be
+  walked to from it without leaving the tile, obstacles in the way — holds a monster (#52:
+  "Characters can only start in sections of the center room that contain monsters").
 - `resetOnLoss`: numbered treasure handed back when the scenario is lost — its items leave the
   looter and the tile can be looted again (#82's chest).
 - `passiveTurns`: escorts that do nothing but still take a turn at their initiative, in which

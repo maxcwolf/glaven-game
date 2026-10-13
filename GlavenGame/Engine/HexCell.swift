@@ -64,6 +64,10 @@ struct HexCell: Codable, Sendable, Equatable {
     /// nothing describes (a map without a written legend, an old save), which is guessed from
     /// the art it is drawn with.
     var trapEffect: TrapEffect?
+    /// An obstacle nothing gets past or sees past: jumping and flying figures are stopped by it
+    /// as walkers are, and it blocks line of sight as a wall does (Noxious Cellar's centre room).
+    /// Range is still counted across it.
+    var solid: Bool? = nil
     /// Treasure ID for treasure chests/coins.
     var treasureID: String?
     /// Treasure coin amount (for coin tokens).

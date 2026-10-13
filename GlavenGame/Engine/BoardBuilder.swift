@@ -310,6 +310,10 @@ enum BoardBuilder {
                     board.cells[coord]?.passable = false
                     board.cells[coord]?.overlay = overlayType
                     board.cells[coord]?.overlaySubType = overlay.ref.subType
+                    if overlayType == .obstacle, let rule = placements?.indestructible, rule.solid == true,
+                       rule.tiles?.contains(tileData.ref.lowercased()) == true {
+                        board.cells[coord]?.solid = true
+                    }
 
                 case .trap:
                     board.cells[coord]?.overlay = .trap

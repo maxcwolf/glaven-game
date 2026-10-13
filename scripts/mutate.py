@@ -87,7 +87,7 @@ M={
 }
 # Scenario rules (the mechanisms of placements/gh.json): run against the scenario tests.
 SCENARIO_FILTER=("ScenarioSpecialRuleTests|ScenarioReauditTests|ScenarioEnforcedRuleTests|ScenarioLockTests|ScenarioGoalTests|"
-                 "ScenarioSpawnTests|DemonicRiftTests|BattlementsTests|MonsterTextTests|MonsterSummonTests|CarriedThingTests|DriftTests|RollingBoulderTests|RisingWaterTests|SleepingMonsterTests|BarredDoorTests|BatteryTests|CarrierTests|ThroneTests|PerchTests|SwayTests|WallTests|StartDiscardTests")
+                 "ScenarioSpawnTests|DemonicRiftTests|BattlementsTests|MonsterTextTests|MonsterSummonTests|CarriedThingTests|DriftTests|RollingBoulderTests|RisingWaterTests|SleepingMonsterTests|BarredDoorTests|BatteryTests|CarrierTests|ThroneTests|PerchTests|SwayTests|WallTests|StartDiscardTests|SolidObstacleTests")
 S={
  "factSavedIgnored": ("GlavenGame/Board/BoardCoordinator+Goals.swift", "            guard arrived >= saved else { return false }", "            guard arrived >= 0 * saved else { return false }"),
  "factLockIgnored": ("GlavenGame/Board/BoardCoordinator+Goals.swift", "        if let lock = fact.lock, !boardState.releasedLocks.contains(lock) { return false }", "        if let lock = fact.lock, lock < 0 { return false }"),
@@ -308,6 +308,13 @@ S={
  "discardedAgainEveryRound": ("GlavenGame/Board/BoardCoordinator+StartDiscard.swift", "let count = scenarioData?.placements?.discardAtStart, gameManager?.game.round == 0,", "let count = scenarioData?.placements?.discardAtStart,"),
  "exhaustedDiscardToo": ("GlavenGame/Board/BoardCoordinator+StartDiscard.swift", "              !character.absent, !character.exhausted else { return 0 }", "              !character.absent else { return 0 }"),
  "cardsChosenBeforeTheDiscard": ("GlavenGame/Board/BoardCoordinator+StartDiscard.swift", "            afterStartDiscards = proceed\n", "            afterStartDiscards = nil; proceed()\n"),
+ "bouldersJumpedAndFlownOver": ("GlavenGame/Engine/Pathfinder.swift", "guard let cell = cells[hex], cell.overlay != .wall, cell.solid != true,", "guard let cell = cells[hex], cell.overlay != .wall,"),
+ "bouldersSeenPast": ("GlavenGame/Engine/LineOfSight.swift", "return cell.overlay == .wall || cell.solid == true || board.isClosedDoor(coord)", "return cell.overlay == .wall || board.isClosedDoor(coord)"),
+ "fliersPushedOntoBoulders": ("GlavenGame/Board/BoardCoordinator.swift", "cell.overlay != .wall, cell.solid != true, !boardState.isClosedDoor(hex),", "cell.overlay != .wall, !boardState.isClosedDoor(hex),"),
+ "noBoulderIsSolid": ("GlavenGame/Engine/BoardBuilder.swift", "let rule = placements?.indestructible, rule.solid == true,", "let rule = placements?.indestructible, false,"),
+ "everyObstacleIsSolid": ("GlavenGame/Engine/BoardBuilder.swift", "                       rule.tiles?.contains(tileData.ref.lowercased()) == true {\n                        board.cells[coord]?.solid = true", "                       true {\n                        board.cells[coord]?.solid = true"),
+ "startInAnySection": ("GlavenGame/Board/BoardCoordinator.swift", "        if scenarioData?.placements?.startAmongMonsters == true {\n            // (Were", "        if false {\n            // (Were"),
+ "sectionsRunThroughBoulders": ("GlavenGame/Board/BoardCoordinator.swift", "cell.tileRef == tile, cell.overlay != .obstacle, cell.overlay != .wall,", "cell.tileRef == tile, cell.overlay != .wall,"),
  "noOneIsAskedWhoHolds": ("GlavenGame/Board/BoardCoordinator+Carried.swift", "            } else if autoResolvePrompts {\n                give(thing.name, to: first.id, how: \"holds\")", "            } else if true {\n                give(thing.name, to: first.id, how: \"holds\")"),
  "lyingThingNotPickedUp": ("GlavenGame/Board/BoardCoordinator+Carried.swift", "            if let lying = boardState.carriedLying[name] { return hexes.contains(lying) }", "            if boardState.carriedLying[name] != nil { return false }"),
  "anyoneLootsTheQuestTile": ("GlavenGame/Board/BoardCoordinator+Carried.swift", "        return party.first { $0.id == characterID }?.personalQuest == quest", "        return party.first { $0.id == characterID }?.personalQuest == quest || true"),

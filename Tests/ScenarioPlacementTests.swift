@@ -236,6 +236,9 @@ final class ScenarioPlacementTests: XCTestCase {
                 XCTAssertTrue(monsters.contains(sway.boss), "\(index): no monster \(sway.boss)")
                 XCTAssertGreaterThan(sway.flee, 0, index)
             }
+            if placements.indestructible?.solid == true {
+                XCTAssertFalse(placements.indestructible?.tiles?.isEmpty ?? true, "\(index): solid obstacles are those of a tile")
+            }
             if let count = placements.discardAtStart { XCTAssertTrue((1...5).contains(count), "\(index): a few cards, not \(count)") }
             if let walls = placements.walls {
                 XCTAssertEqual(data.objectives?.indices.contains(walls.objective - 1), true, "\(index): no objective \(walls.objective)")

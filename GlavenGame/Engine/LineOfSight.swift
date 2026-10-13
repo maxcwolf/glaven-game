@@ -70,10 +70,11 @@ enum LineOfSight {
 
     /// Whether a hex acts as a wall for line of sight: it is not part of the revealed map
     /// (void / gap between tiles / partial edge hex), it carries a `.wall` overlay, or it is a
-    /// closed door. Obstacles and every other overlay are transparent.
+    /// closed door. Obstacles and every other overlay are transparent, but for an obstacle the
+    /// scenario makes `solid`.
     static func blocksLineOfSight(_ coord: HexCoord, board: BoardState) -> Bool {
         guard let cell = board.cells[coord] else { return true }
-        return cell.overlay == .wall || board.isClosedDoor(coord)
+        return cell.overlay == .wall || cell.solid == true || board.isClosedDoor(coord)
     }
 
     // MARK: - Lattice Geometry

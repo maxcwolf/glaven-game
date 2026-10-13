@@ -416,7 +416,7 @@ enum Pathfinder {
         /// The cell at `hex` if it can be moved through at all in any mode:
         /// it exists, isn't a wall, and isn't a closed door the figure can't open.
         func space(_ hex: HexCoord) -> HexCell? {
-            guard let cell = cells[hex], cell.overlay != .wall,
+            guard let cell = cells[hex], cell.overlay != .wall, cell.solid != true,
                   !closedDoors.contains(hex) else { return nil }
             return cell
         }
