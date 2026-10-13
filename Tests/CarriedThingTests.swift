@@ -242,15 +242,27 @@ final class CarriedThingTests: XCTestCase {
         stand(sim, 1, on: chest)
         coord.lootAtEndOfTurn(sim.gm.game.characters[1].id)
         XCTAssertEqual(coord.holder(of: "artifacts")?.id, sim.gm.game.characters[1].id)
-        coord.collectLootInRange(pieceID: piece(sim, 0), range: 99)
+        // A Loot that reaches the holder's hex (a coin lies under her) takes the coin, not the artifacts.
+        coord.boardState.placeLoot(at: chest)
+        XCTAssertTrue(coord.collectLootInRange(pieceID: piece(sim, 0), range: 99))
+        XCTAssertEqual(coord.boardState.lootTokens[chest] ?? 0, 0)
         XCTAssertEqual(coord.holder(of: "artifacts")?.id, sim.gm.game.characters[1].id, "they stay with their holder")
 
-        coord.sufferDamage(999, to: piece(sim, 0))
-        coord.checkVictoryDefeat(turnEnded: true)
-        XCTAssertNil(coord.scenarioResult ?? coord.pendingResult, "the Brute exhausted: the artifacts aren't his")
+        // Their holder exhausted, with the Brute still standing: lost, and nothing left to pick up.
         coord.sufferDamage(999, to: piece(sim, 1))
         XCTAssertTrue(coord.boardState.carriedLying.isEmpty, "they don't lie to be picked up")
+        XCTAssertFalse(sim.gm.game.characters[0].exhausted)
         coord.checkVictoryDefeat(turnEnded: true)
         XCTAssertEqual(coord.scenarioResult ?? coord.pendingResult, .defeat)
+
+        // Anyone else's exhaustion loses nothing.
+        let other = try simulator("82")
+        revealAll(other)
+        let tile = try XCTUnwrap(other.coord.boardState.cells.values.first { $0.treasureID == "62" }?.coord)
+        stand(other, 1, on: tile)
+        other.coord.lootAtEndOfTurn(other.gm.game.characters[1].id)
+        other.coord.sufferDamage(999, to: piece(other, 0))
+        other.coord.checkVictoryDefeat(turnEnded: true)
+        XCTAssertNil(other.coord.scenarioResult ?? other.coord.pendingResult)
     }
 }
