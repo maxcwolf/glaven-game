@@ -3212,6 +3212,10 @@ final class BoardCoordinator {
             soundPieceTap(asked: askedMode, accepted: accepted)
         }
         switch interactionMode {
+        case .choosingHex:
+            // The figure's own hex is among those offered: it stays where it is.
+            if let hex = boardState.piecePositions[piece] { resolveHexChoice(hex) }
+
         case .selectingMove(let mover, let range, let validHexes, false, let mode):
             // Move 0: the character taps themselves.
             if piece == mover, let pos = boardState.piecePositions[mover], validHexes.contains(pos) {

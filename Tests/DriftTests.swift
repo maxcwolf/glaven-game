@@ -135,11 +135,39 @@ final class DriftTests: XCTestCase {
         XCTAssertEqual(hex(sim, brute), chosen)
         if case .idle = coord.interactionMode {} else { XCTFail("the prompt is gone: \(coord.interactionMode)") }
 
-        // One of the two taken: the other, unasked.
-        stand(sim, brute, on: start)
+        // One of the two shut (FAQ): "the player may choose to either be blocked (not move) or
+        // move to the open hex."
+        func blownWithOneWayShut(answer: (Set<HexCoord>) -> Void) async throws -> Set<HexCoord> {
+            stand(sim, brute, on: start)
+            let coming = try XCTUnwrap(coord.driftToCome())
+            let blowing = Task { @MainActor in await coord.driftAsTheRoundEnds(coming) }
+            let deadline = Date().addingTimeInterval(3)
+            while coord.pendingHexChoice == nil, Date() < deadline { try? await Task.sleep(nanoseconds: 1_000_000) }
+            guard case .choosingHex(_, _, _, let offered) = coord.interactionMode else {
+                blowing.cancel()
+                XCTFail("asked whether to stay: \(coord.interactionMode)")
+                return []
+            }
+            answer(offered)
+            // (Whatever was offered, the question is answered: nothing is left waiting.)
+            if let pending = coord.pendingHexChoice { coord.resolveHexChoice(pending.options[0]) }
+            await blowing.value
+            return offered
+        }
+        coord.boardState.cells[side(start, "NE")]?.overlay = .obstacle
+        coord.boardState.cells[side(start, "NE")]?.passable = false
+        var offered = try await blownWithOneWayShut { _ in coord.handlePieceTap(brute) }
+        XCTAssertEqual(offered, [side(start, "NW"), start], "the open hex, or their own to stay")
+        XCTAssertEqual(hex(sim, brute), start, "tapping the figure: it stays")
+        offered = try await blownWithOneWayShut { _ in coord.handleHexTap(self.side(start, "NW")) }
+        XCTAssertEqual(hex(sim, brute), side(start, "NW"))
+        // Another figure in one of the two is in the way just the same.
+        coord.boardState.cells[side(start, "NE")]?.overlay = nil
+        coord.boardState.cells[side(start, "NE")]?.passable = true
         stand(sim, weaver, on: side(start, "NE"))
         coord.gameManager?.game.characters[1].exhausted = true   // (stands there, but isn't blown about)
-        await coord.driftAsTheRoundEnds(try XCTUnwrap(coord.driftToCome()))
+        offered = try await blownWithOneWayShut { _ in coord.handleHexTap(self.side(start, "NW")) }
+        XCTAssertEqual(offered, [side(start, "NW"), start])
         XCTAssertEqual(hex(sim, brute), side(start, "NW"))
         XCTAssertNil(coord.pendingHexChoice)
     }

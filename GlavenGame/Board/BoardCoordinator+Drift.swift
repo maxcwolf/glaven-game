@@ -116,11 +116,18 @@ extension BoardCoordinator {
                 }
                 continue
             }
+            // Of two ways with one shut, the players may have the figure stopped instead (FAQ, #71).
+            let mayStay = coming.sides.count > 1 && open.count < coming.sides.count
             var destination = open[0]
-            if open.count > 1 {
-                destination = await chooseHex(open, for: piece, title: "The \(drift.name)",
-                                              detail: "Tap the hex \(name(piece)) is moved into") ?? open[0]
+            if open.count > 1 || mayStay {
+                destination = await chooseHex(open + (mayStay ? [here] : []), for: piece, title: "The \(drift.name)",
+                                              detail: "Tap the hex \(name(piece)) is moved into"
+                                                  + (mayStay ? ", or \(name(piece)) to stay" : "")) ?? open[0]
                 guard isCurrentBoard(generation) else { return }
+            }
+            guard destination != here else {
+                log("\(name(piece)) stands against the \(drift.name)", category: .move)
+                continue
             }
             log("The \(drift.name) moves \(name(piece)) [to \(destination)]", category: .move)
             await moveAlong(piece, path: [here, destination], style: .forced)
@@ -143,15 +150,14 @@ extension BoardCoordinator {
         var continuation: CheckedContinuation<HexCoord?, Never>?
     }
 
-    /// Ask the players which of `options`; headless play takes the first in map order. Nil if
-    /// the board was left meanwhile.
+    /// Ask the players which of `options` (the hex `piece` stands on may be one: tap the
+    /// figure); headless play takes the first. Nil if the board was left meanwhile.
     @MainActor func chooseHex(_ options: [HexCoord], for piece: PieceID, title: String, detail: String) async -> HexCoord? {
-        let sorted = options.sorted()
-        guard !autoResolvePrompts, sorted.count > 1 else { return sorted.first }
+        guard !autoResolvePrompts, options.count > 1 else { return options.first }
         return await withCheckedContinuation { continuation in
-            pendingHexChoice = PendingHexChoice(options: sorted, continuation: continuation)
-            interactionMode = .choosingHex(piece: piece, title: title, detail: detail, validHexes: Set(sorted))
-            boardScene?.highlightHexes(Set(sorted), style: .forcedMove, offsetCol: offsetCol, offsetRow: offsetRow)
+            pendingHexChoice = PendingHexChoice(options: options, continuation: continuation)
+            interactionMode = .choosingHex(piece: piece, title: title, detail: detail, validHexes: Set(options))
+            boardScene?.highlightHexes(Set(options), style: .forcedMove, offsetCol: offsetCol, offsetRow: offsetRow)
         }
     }
 
