@@ -244,7 +244,8 @@ final class CarriedThingTests: XCTestCase {
         XCTAssertEqual(coord.holder(of: "artifacts")?.id, sim.gm.game.characters[1].id)
         // A Loot that reaches the holder's hex (a coin lies under her) takes the coin, not the artifacts.
         coord.boardState.placeLoot(at: chest)
-        XCTAssertTrue(coord.collectLootInRange(pieceID: piece(sim, 0), range: 99))
+        stand(sim, 0, on: try XCTUnwrap(coord.boardState.neighbors(of: chest).sorted().first(where: coord.isEmptyHex)))
+        XCTAssertTrue(coord.collectLootInRange(pieceID: piece(sim, 0), range: 1))
         XCTAssertEqual(coord.boardState.lootTokens[chest] ?? 0, 0)
         XCTAssertEqual(coord.holder(of: "artifacts")?.id, sim.gm.game.characters[1].id, "they stay with their holder")
 
