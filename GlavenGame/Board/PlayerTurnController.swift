@@ -1423,7 +1423,8 @@ final class PlayerTurnController {
                   let cond = ConditionName(rawValue: condName) else { break }
             switch conditionTargetSpec(action) {
             case .singleEnemy(let range):
-                coordinator.beginConditionAction(pieceID: pieceID, condition: cond, range: range)
+                let area = action.subActions?.first { $0.type == .area }?.value?.stringValue
+                coordinator.beginConditionAction(pieceID: pieceID, condition: cond, range: range, area: area)
                 coordinator.log("\(who): \(GameText.conditionName(cond)). Choose a target", category: .condition)
                 return true
             case .allEnemies(let range):
@@ -2094,8 +2095,25 @@ final class PlayerTurnController {
     /// opened up, so a move or a target choice inside them is a step of its own and the turn
     /// waits for it. Augments stay whole: they aren't performed.
     static func steps(_ actions: [ActionModel], labels: EditionDataStore? = nil, edition: String = "gh") -> [ActionModel] {
-        attachingModifierConsumes(attachingForcedMoveRange(abilitiesUnderMovesAsSteps(flatSteps(actions, labels: labels, edition: edition)))
-            .map(hoistingGroupedEffects))
+        attachingModifierConsumes(attachingForcedMoveRange(attachingConditionArea(abilitiesUnderMovesAsSteps(
+            flatSteps(actions, labels: labels, edition: edition)))).map(hoistingGroupedEffects))
+    }
+
+    /// A condition printed beside an area (Singing Arrow's "Curse, Range 3" and three red
+    /// hexes): the data has the area as an action of its own, after a spacer; it is the
+    /// condition's.
+    static func attachingConditionArea(_ steps: [ActionModel]) -> [ActionModel] {
+        var result: [ActionModel] = []
+        for step in steps {
+            if step.type == .area,
+               let host = result.lastIndex(where: { $0.type != .concatenationSpacer }), result[host].type == .condition,
+               !(result[host].subActions ?? []).contains(where: { $0.type == .area }) {
+                result[host].subActions = (result[host].subActions ?? []) + [step]
+            } else {
+                result.append(step)
+            }
+        }
+        return result
     }
 
     /// An ability printed under a Move — "Move 3" and below it "Curse, Range 3" (Tuning the

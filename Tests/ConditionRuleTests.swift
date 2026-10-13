@@ -423,4 +423,32 @@ final class ConditionRuleTests: XCTestCase {
         coord.applyCondition(.curse, to: .character(tinkerer.id))
         XCTAssertEqual(count(.curse, in: tinkerer.attackModifierDeck), 5)
     }
+
+    // MARK: - A condition with an area
+
+    /// Singing Arrow: "Curse, Range 3" printed beside three hexes. It is aimed like an area
+    /// attack — any enemy the area can cover may be chosen — and every enemy in the area as it
+    /// is placed is cursed; one outside it is not.
+    func testAConditionPrintedWithAnAreaGoesToEveryEnemyInIt() async throws {
+        let centre = HexCoord(5, 5)
+        let singer = board.character("music-note", at: centre)
+        let cluster = try [HexCoord(7, 5), HexCoord(8, 5), HexCoord(8, 6)].map { try board.monster(at: $0) }
+        let apart = try board.monster(at: HexCoord(5, 3))
+        for (a, b) in [(0, 1), (1, 2), (0, 2)] {
+            XCTAssertTrue(coord.boardState.areAdjacent(board.hex(cluster[a].piece)!, board.hex(cluster[b].piece)!), "three hexes in a triangle")
+        }
+        let curses = board.game.monsterAttackModifierDeck.undrawnCount(of: .curse)
+        board.play(try board.card("Singing Arrow", of: "music-note"), try board.card("Tuning the Outcome", of: "music-note"), for: singer)
+        board.startTurns([TurnOrderEntry(figure: .character(singer), initiative: 89)])
+        let turn = try XCTUnwrap(coord.activePlayerTurn)
+        turn.executeCurrentAction()
+        guard case .selectingConditionTarget(_, .curse, let options) = coord.interactionMode else {
+            return XCTFail("a Curse to aim: \(coord.interactionMode)")
+        }
+        XCTAssertEqual(options, Set(cluster.map(\.piece) + [apart.piece]), "every enemy the area can reach")
+        coord.handlePieceTap(cluster[0].piece)
+        await board.settle { !turn.isWaiting }
+        XCTAssertEqual(board.game.monsterAttackModifierDeck.undrawnCount(of: .curse), curses + 3, "the three in the area, not the fourth")
+        XCTAssertFalse(turn.topActions.contains { $0.type == .area }, "the area is the Curse's, not a step of its own")
+    }
 }

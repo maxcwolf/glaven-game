@@ -200,6 +200,9 @@ final class BoardCoordinator {
     /// The active player turn controller (nil when monster/no turn).
     var activePlayerTurn: PlayerTurnController?
 
+    /// The area a condition being aimed covers, and its range (Singing Arrow).
+    private var conditionArea: (pattern: String, range: Int)?
+
     /// What is left of a Push or Pull that chooses its targets: how many more may be chosen,
     /// within what range, and who has been chosen already (each enemy once).
     private var forcedMoveLeft: (targets: Int, range: Int, chosen: Set<PieceID>)?
@@ -2320,9 +2323,19 @@ final class BoardCoordinator {
     /// Choose who gets a condition: an enemy, or (`onAllies`) an ally. Returns false when no one
     /// is in range (the action is over).
     @discardableResult
-    func beginConditionAction(pieceID: PieceID, condition: ConditionName, range: Int, onAllies: Bool = false) -> Bool {
-        let validTargets = onAllies ? alliesInRange(of: pieceID, range: range, includeSelf: false)
+    func beginConditionAction(pieceID: PieceID, condition: ConditionName, range: Int, onAllies: Bool = false,
+                              area: String? = nil) -> Bool {
+        // A condition printed with an area (Singing Arrow's "Curse, Range 3" over three hexes) is
+        // aimed like an area attack: any enemy the area can cover may be chosen, and everyone
+        // in the area as it is then placed gets the condition.
+        conditionArea = area.map { ($0, range) }
+        var validTargets = onAllies ? alliesInRange(of: pieceID, range: range, includeSelf: false)
                                     : targetableEnemies(of: pieceID, range: range)
+        if let area, !onAllies {
+            validTargets = Set(boardState.piecePositions.keys.filter { id in
+                areEnemies(pieceID, id) && !areaTargets(pattern: area, attacker: pieceID, primary: id, range: range).isEmpty
+            })
+        }
         if validTargets.isEmpty {
             log("\(name(pieceID)) has no \(onAllies ? "ally" : "target") within range \(range) for \(GameText.conditionName(condition))",
                 category: .condition)
@@ -3269,7 +3282,11 @@ final class BoardCoordinator {
 
         case .selectingConditionTarget(let attackerID, let condition, let validTargets):
             if validTargets.contains(piece) {
-                log("\(name(attackerID)) applies \(GameText.conditionName(condition)) to \(name(piece))", category: .condition)
+                let inArea = conditionArea.map { areaTargets(pattern: $0.pattern, attacker: attackerID, primary: piece, range: $0.range) }
+                conditionArea = nil
+                let cursed = inArea ?? [piece]
+                log("\(name(attackerID)) applies \(GameText.conditionName(condition)) to \(GameText.list(cursed.map(name)))", category: .condition)
+                for other in cursed where other != piece { applyCondition(condition, to: other, by: attackerID) }
                 applyCondition(condition, to: piece, by: attackerID)
                 // Pendant of the Plague: Poison and Curse on the one target.
                 for extra in pendingExtraConditions { applyCondition(extra, to: piece, by: attackerID) }

@@ -81,6 +81,8 @@ M={
  "healChargeBeforeTheTarget": ("GlavenGame/Board/PlayerTurnController.swift", "            func markHealCharge() {\n                if let potent, let character { coordinator.useCharge(potent.cardId, of: character) }\n            }\n", "            func markHealCharge() {\n            }\n            if let potent, let character { coordinator.useCharge(potent.cardId, of: character) }\n"),
  "revealAlwaysResumesTurns": ("GlavenGame/Board/BoardCoordinator.swift", "        boardPhase = interrupted\n        log(opening", "        boardPhase = .execution\n        log(opening"),
  "abilitiesUnderMovesSkipped": ("GlavenGame/Board/PlayerTurnController.swift", "            guard subs.contains(where: isAbility) else { return [step] }", "            guard subs.contains(where: isAbility), false else { return [step] }"),
+ "areaLeftOutOfItsCondition": ("GlavenGame/Board/PlayerTurnController.swift", "            if step.type == .area,\n               let host = result.lastIndex(where: { $0.type != .concatenationSpacer }), result[host].type == .condition,", "            if false, step.type == .area,\n               let host = result.lastIndex(where: { $0.type != .concatenationSpacer }), result[host].type == .condition,"),
+ "areaConditionOnOneEnemy": ("GlavenGame/Board/BoardCoordinator.swift", "                let cursed = inArea ?? [piece]", "                let cursed = inArea == nil ? [piece] : [piece]"),
 }
 # Scenario rules (the mechanisms of placements/gh.json): run against the scenario tests.
 SCENARIO_FILTER=("ScenarioSpecialRuleTests|ScenarioReauditTests|ScenarioEnforcedRuleTests|ScenarioLockTests|ScenarioGoalTests|"
