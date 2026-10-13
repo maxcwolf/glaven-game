@@ -159,6 +159,13 @@ ends up on the board:
   toward the hexes lettered `toward` (the nearest hex beside `altar` when they are taken), opening
   doors; the objective then follows as far as it was carried. A carrier starting its turn beside
   an `altar` hex with the objective beside one too loses the scenario for the reason written.
+- `throne`: an objective that is a boss's hit points and jumps about the map — `{"boss":
+  "prime-demon", "objective": 1, "cycle": ["a", …, "f"], "summons": {"a": "wind-demon", …},
+  "eliteFrom": [3, 4]}` (#21, `BoardCoordinator+Throne`). Nothing damages the boss; the objective
+  has its hit points and the boss falls with it. A special of the boss whose text is "Throne
+  moves" sends the objective (and the obstacle it stands on) to the next lettered hex of `cycle`,
+  moving aside who stands there and revealing the room, and summons `summons[letter]` there —
+  elite from `eliteFrom[0]` characters on the first special, `eliteFrom[1]` on the second.
 - `drift`: what moves the party one hex as each round ends, before the round's other end-of-round
   rules (`BoardCoordinator+Drift`): `{"name": "wind", "directions": [["NW", "NE"], ["E"], ["SW", "SE"],
   ["W"]]}` (#71: the sides of a hex — NE, E, SE, SW, W, NW as the map lies in the game — by round,

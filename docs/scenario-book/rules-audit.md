@@ -12,8 +12,8 @@ means the data and code that enforce the rule were found, and usually a test tha
 that the scenario was played through. Keep it current: when a rule is built, rewrite its row in
 the same commit (see [../rules-work.md](../rules-work.md)).
 
-**447 rules: 414 done, 14 partial, 19 missing.**
-85 of 95 scenarios have every printed rule done. The other 10: #55 (6 missing, 1 partial), #34 (4 missing, 2 partial), #76 (4 missing, 2 partial), #21 (2 missing, 2 partial), #52 (1 missing, 1 partial), #68 (1 missing, 1 partial), #79 (1 missing, 1 partial), #82 (0 missing, 2 partial), #38 (0 missing, 1 partial), #47 (0 missing, 1 partial).
+**447 rules: 418 done, 12 partial, 17 missing.**
+86 of 95 scenarios have every printed rule done. The other 9: #55 (6 missing, 1 partial), #34 (4 missing, 2 partial), #76 (4 missing, 2 partial), #52 (1 missing, 1 partial), #68 (1 missing, 1 partial), #79 (1 missing, 1 partial), #82 (0 missing, 2 partial), #38 (0 missing, 1 partial), #47 (0 missing, 1 partial).
 
 Rules that were enforced wrongly, as against not at all, are findings of the engine audit
 ([../audits/2026-10-09-rules-audit.md](../audits/2026-10-09-rules-audit.md), rows S1-…, S2-…),
@@ -187,10 +187,10 @@ order", has the same list as tasks). The rows below say what the game does today
 | Rule (from the book) | Status | Where / what's missing |
 |---|---|---|
 | Goal: kill the Prime Demon | done | placements goal `kill: ["prime-demon"]` — but it is killed by attacking it directly (see below) |
-| Objective: Altar shares hit points, initiative and immunities with the Prime Demon | missing | `21.json` has no `objectives` and no `rules`, and placements #21 holds only the goal (`tiles` is empty). No altar piece exists. Needs an objective that shares the boss's hit points and turn, and the hexes a–f written (`TODO.md`: "Bosses still played from their stat cards") |
-| The Prime Demon cannot be damaged; damage is dealt to the altar instead | missing | The Prime Demon is an ordinary boss — attacks and damage land on it directly, and killing it wins (`goal.kill`). Needs the altar above, with all damage sent to it |
-| Boss Special 1: altar jumps a→b→…→f (displacing figures, revealing the room and opening doors); altar summons a demon by location (normal for 2, elite for 3–4); Prime Demon "Move+2, Attack−1" | partial | Of `monster/prime-demon.json` special 1 only the trailing Move +2, Attack −1 is performed (`MonsterTurnController` `.special` → `executeCard`). The `custom` "Throne moves" matches nothing and is logged ("Resolve the boss's special ability 1 as printed on its stat card" — asserted for #21 in `ScenarioSpecialRuleTests.testThePrimeDemonsSpecialsAtTheBattlements`); the `summon` has `value: "demon"` and no `valueObject`, so `performSummon` summons nothing (a gap named in `MonsterDataTests.testEveryBossSpecialActionIsPerformedOrKnownNotToBe`). No altar jump, no room revealed, no demon by location; letters a–f are not written |
-| Boss Special 2: same, demon normal for 2–3, elite for 4 | partial | Special 2 is identical data with the same result — Move +2, Attack −1 only, the rest left to the players by a log line |
+| Objective: Altar shares hit points, initiative and immunities with the Prime Demon | done | `21.json` lists an objective "Altar" in room 5 and the placements stand it on the altar's stone (d1a, lettered f); placements `throne: {boss: "prime-demon", objective: 1, …}` → `BoardCoordinator+Throne`: `shareThroneHealth` gives it the boss's hit points as both come on the board; as a thing of the map it takes no condition, and with no card of its own it is focused on at the boss's side. `ThroneTests.testTheAltarIsThePrimeDemonsHitPoints` |
+| The Prime Demon cannot be damaged; damage is dealt to the altar instead | done | `isUndamageable` is true of the throne's boss; `sufferDamage` on the altar ends in `shareThroneDamage`: the boss has what the altar has left and falls with it (which is the goal, `kill: ["prime-demon"]`). Same test |
+| Boss Special 1: altar jumps a→b→…→f (displacing figures, revealing the room and opening doors); altar summons a demon by location (normal for 2, elite for 3–4); Prime Demon "Move+2, Attack−1" | done | the special's "Throne moves" → `throneMoves(special:)`: the altar and its stone jump to the next lettered hex (a, b on j1a; c, d on j2a; e the centre of d2a; f where it starts) — a figure there goes to the nearest empty hex, a room out of sight is revealed with every door between it and the rooms already seen — and summon the demon of the place (`summons`, as the FAQ corrects the list: Wind, Night, Earth, Flame, Sun, Frost), elite from three characters (`eliteFrom[0]`); then the stat card's Move +2, Attack −1. `ThroneTests.testTheAltarJumpsRoundItsSixPlacesSummoningAsItLands`, `testTheAltarMovesWhoeverStandsThereAndRevealsItsRoom` |
+| Boss Special 2: same, demon normal for 2–3, elite for 4 | done | the same `throneMoves` with `eliteFrom[1]` = 4. `ThroneTests.testHowManyCharactersMakeTheSummonedDemonElite` |
 
 ### 22 · Temple of the Elements
 | Rule (from the book) | Status | Where / what's missing |
