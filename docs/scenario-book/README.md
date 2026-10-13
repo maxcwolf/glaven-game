@@ -117,6 +117,10 @@ ends up on the board:
   (`SaveChoiceSheet`): let it suffer, or pick a card from any hand. The sheet says when
   the scenario is lost with the objective; headless play and the simulator's policies give a card
   only then.
+- `dig`: objectives dug up with movement, not attacked (#75's graves): during a Move a tap on one
+  beside the mover spends a point of the move on it — a hit point, so `health: "1+C"` is the
+  movement it takes — in as many moves as it needs; dug up, it is destroyed as any objective is
+  (`whenDestroyed`, the goal's `destroy`).
 - `forgo`: what a character beside an objective may give up an action for —
   `{"objective": 2, "strengthens": 1}`: the objective is freed and leaves the map, and objective 1
   attacks for 1 more with each one freed (#44's captives and Redthorn). Offered beside the basic
@@ -236,7 +240,7 @@ its map, every door objective is on a door and every objective number exists.
 | 70 Chained Isle | — | a, b | — | — |
 | 72 Oozing Grove | 3 trees | — (oozes rise beside their tree) | win: destroy all trees, kill all Oozes | — |
 | 74 Merchant Ship | — | a–e | — | water tiles aren't modelled |
-| 75 Overgrown Graveyard | 9 graves | — (what rises, rises where the grave was) | win: all graves and the Bloated Regent | graves are attacked rather than dug up with movement |
+| 75 Overgrown Graveyard | 9 graves | — (what rises, rises where the grave was) | win: all graves and the Bloated Regent | graves are dug up with movement spent beside them (`dig`), never attacked |
 | 79 Lost Temple | Fish | a, b, c (pressure plates) | win: kill the Betrayer; lost if Fish is killed | the Betrayer's two specials (forced moves, mind control) aren't modelled |
 | 84 Crystalline Cave | the crystal | — | lost if it is destroyed | protected, no ally; twice a card may be lost to spare it (`saves`) |
 | 86 Harried Village | 11 villagers | b–f | win: 7 reach the docks; lost at 5 killed | — |

@@ -12,8 +12,8 @@ means the data and code that enforce the rule were found, and usually a test tha
 that the scenario was played through. Keep it current: when a rule is built, rewrite its row in
 the same commit (see [../rules-work.md](../rules-work.md)).
 
-**447 rules: 361 done, 20 partial, 66 missing.**
-69 of 95 scenarios have every printed rule done. The other 26: #55 (6 missing, 1 partial), #88 (6 missing, 1 partial), #34 (4 missing, 2 partial), #76 (4 missing, 2 partial), #44 (0 missing, 1 partial), #71 (5 missing, 0 partial), #73 (5 missing, 0 partial), #78 (5 missing, 0 partial), #95 (5 missing, 0 partial), #21 (2 missing, 2 partial), #49 (4 missing, 0 partial), #54 (4 missing, 0 partial), #69 (3 missing, 1 partial), #74 (4 missing, 0 partial), #52 (1 missing, 1 partial), #58 (3 missing, 0 partial), #68 (1 missing, 1 partial), #79 (1 missing, 1 partial), #81 (2 missing, 0 partial), #82 (0 missing, 2 partial), #38 (0 missing, 1 partial), #47 (0 missing, 1 partial), #56 (0 missing, 1 partial), #67 (1 missing, 0 partial), #70 (0 missing, 1 partial), #75 (0 missing, 1 partial).
+**447 rules: 362 done, 19 partial, 66 missing.**
+70 of 95 scenarios have every printed rule done. The other 25: #55 (6 missing, 1 partial), #88 (6 missing, 1 partial), #34 (4 missing, 2 partial), #76 (4 missing, 2 partial), #44 (0 missing, 1 partial), #71 (5 missing, 0 partial), #73 (5 missing, 0 partial), #78 (5 missing, 0 partial), #95 (5 missing, 0 partial), #21 (2 missing, 2 partial), #49 (4 missing, 0 partial), #54 (4 missing, 0 partial), #69 (3 missing, 1 partial), #74 (4 missing, 0 partial), #52 (1 missing, 1 partial), #58 (3 missing, 0 partial), #68 (1 missing, 1 partial), #79 (1 missing, 1 partial), #81 (2 missing, 0 partial), #82 (0 missing, 2 partial), #38 (0 missing, 1 partial), #47 (0 missing, 1 partial), #56 (0 missing, 1 partial), #67 (1 missing, 0 partial), #70 (0 missing, 1 partial).
 
 Rules that were enforced wrongly, as against not at all, are findings of the engine audit
 ([../audits/2026-10-09-rules-audit.md](../audits/2026-10-09-rules-audit.md), rows S1-…, S2-…),
@@ -27,7 +27,7 @@ order", has the same list as tasks). The rows below say what the game does today
 
 - **A choice the player has no way to make yet.** (Losing a card from hand to negate damage to
   something else — #44's captives, #84's crystal — is built: `saves`.) Giving up an action or part of a move to
-  do something (built for #44's captives, #26's pumps and #52's treasure: `forgo`; #75's graves still to do): #26 cleansing a pump (which is its goal), #44 freeing a captive, #52 looting an
+  do something (built: `forgo` for #44's captives, #26's pumps and #52's treasure, `dig` for #75's graves): #26 cleansing a pump (which is its goal), #44 freeing a captive, #52 looting an
   adjacent tile, #75 digging a grave with movement. Choosing: which Living Spirit goes (#70),
   whose attack modifier deck an escort draws from (#44, #56). With these, #44's loss ("a captive
   dies") and Redthorn's +1 Attack for each captive freed can be switched on.
@@ -685,7 +685,7 @@ order", has the same list as tasks). The rows below say what the game does today
 | Rule (from the book) | Status | Where / what's missing |
 |---|---|---|
 | Goal: dig up all graves and kill the Bloated Regent | done | placements goal `destroy: [1,2,3]`, `kill: ["bloated-regent"]` |
-| A character digs up a grave by spending 1+C movement while adjacent (not all at once) | partial | graves are objectives with `health: "1+C"` that are attacked: 1+C damage instead of 1+C movement (the brief says "attack it"); spending movement on a grave isn't possible |
+| A character digs up a grave by spending 1+C movement while adjacent (not all at once) | done | placements `dig: [1, 2, 3]` → during a Move a tap on a grave beside the mover spends one point on it (`BoardCoordinator.dig`), the grave's hit points (1+C) being what is left to dig, kept from turn to turn; the move goes on with the rest. Graves are no longer attacked (`isDug` → `isUntouchable`). `ScenarioSpecialRuleTests.testAGraveIsDugWithMovementSpentBesideIt` |
 | A dug-up grave spawns a Living Corpse in the nearest empty hex: normal (2); normal for (a), elite for (b) (3); elite (4) | done | placements `dropRules: [0, 1]` (the data's once-only rules) and `whenDestroyed` — objective 1 (a) normal / normal / elite, objective 2 (b) normal / elite / elite → `handleDeath` spawns each grave's own corpse on the hex the grave stood on (the grave is taken off the map, so that hex is the empty one); `testEveryGraveLetsOutItsCorpse`, `testWhatAGraveLetsOutAppearsWhereItStood` |
 | Section 1: grave (c) is dug up like the others and spawns an elite Living Corpse, the Bloated Regent | done | rule 2 `requiredRooms: [3]`, grave c `dead` → `bloated-regent` (boss, elite Living Corpse's stats) at marker c |
 | The Regent has (H×C)/2 HP rounded up | done | `monster/bloated-regent.json` health `[(10xC)/2{$math.ceil}]` … `[(25xC)/2{$math.ceil}]` (H = the elite Living Corpse's hit points at each level); `MonsterDataTests.testHalvedBossHealth_roundsUp` (20 for three characters at level 3) |

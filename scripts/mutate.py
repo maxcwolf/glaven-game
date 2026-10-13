@@ -109,7 +109,7 @@ S={
  "undamageableDamaged": ("GlavenGame/Board/BoardCoordinator+Effects.swift", "        return scenarioData?.placements?.undamageable?.contains(name) == true", "        return false && scenarioData?.placements?.undamageable?.contains(name) == true"),
  "noReprieve": ("GlavenGame/Board/BoardCoordinator+Effects.swift", "reprieve.killed.contains(name) else { return }", "reprieve.killed.contains(name), false else { return }"),
  "inactiveCanBeAttacked": ("GlavenGame/Board/BoardCoordinator+Rules.swift", "        return MonsterAI.inactiveMonsters(game).contains(name)\n    }", "        return false && MonsterAI.inactiveMonsters(game).contains(name)\n    }"),
- "shelteredCanBeAttacked": ("GlavenGame/Board/BoardCoordinator+Rules.swift", "        if objectiveContainer(of: pieceID)?.isSheltered == true || isInactive(pieceID) { return true }", "        if isInactive(pieceID) { return true }"),
+ "shelteredCanBeAttacked": ("GlavenGame/Board/BoardCoordinator+Rules.swift", "        if objectiveContainer(of: pieceID)?.isSheltered == true || isInactive(pieceID) || isDug(pieceID) { return true }", "        if isInactive(pieceID) || isDug(pieceID) { return true }"),
  "inactiveMonstersAct": ("GlavenGame/Engine/MonsterAI.swift", "              written.inactive != nil else { return [] }", "              written.inactive != nil, false else { return [] }"),
  "apartSideIsMonsters": ("GlavenGame/Engine/MonsterAI.swift", "        monster.isAlly ? .party : monster.standsApart ? .apart : .monsters", "        monster.isAlly ? .party : .monsters"),
  "focusFirstIgnored": ("GlavenGame/Engine/MonsterAI.swift", "        return candidates.filter(isFirst) + candidates.filter { !isFirst($0) }", "        return candidates.filter { _ in _ = isFirst; return true }"),
