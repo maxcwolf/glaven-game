@@ -83,6 +83,18 @@ final class CarrierTests: XCTestCase {
         XCTAssertEqual(brute.health, health, "they don't attack")
         XCTAssertEqual(coord.boardState.piecePositions[victim.piece], victim.hex, "no one has hold of him yet")
         XCTAssertNil(coord.pendingResult)
+
+        // From further off than one Move brings them to his side, he doesn't come to meet them.
+        let distant = coord.boardState.cells.keys.sorted().filter { hex in
+            coord.boardState.isPassable(hex) && coord.boardState.piece(at: hex) == nil && coord.boardState.range(from: hex, to: victim.hex) == reach + 3
+        }
+        XCTAssertGreaterThanOrEqual(distant.count, 2)
+        for (carrier, hex) in zip(carriers, distant) { stand(sim, carrier, on: hex) }
+        try await carriersTurn(sim)
+        for carrier in carriers {
+            XCTAssertEqual(coord.boardState.range(from: try XCTUnwrap(coord.boardState.piecePositions[carrier]), to: victim.hex), 3)
+        }
+        XCTAssertEqual(coord.boardState.piecePositions[victim.piece], victim.hex)
     }
 
     /// "…then move to c or the nearest hex adjacent to the altar. After the cultists move, the

@@ -12,8 +12,8 @@ means the data and code that enforce the rule were found, and usually a test tha
 that the scenario was played through. Keep it current: when a rule is built, rewrite its row in
 the same commit (see [../rules-work.md](../rules-work.md)).
 
-**447 rules: 409 done, 14 partial, 24 missing.**
-84 of 95 scenarios have every printed rule done. The other 11: #55 (6 missing, 1 partial), #34 (4 missing, 2 partial), #76 (4 missing, 2 partial), #78 (5 missing, 0 partial), #21 (2 missing, 2 partial), #52 (1 missing, 1 partial), #68 (1 missing, 1 partial), #79 (1 missing, 1 partial), #82 (0 missing, 2 partial), #38 (0 missing, 1 partial), #47 (0 missing, 1 partial).
+**447 rules: 414 done, 14 partial, 19 missing.**
+85 of 95 scenarios have every printed rule done. The other 10: #55 (6 missing, 1 partial), #34 (4 missing, 2 partial), #76 (4 missing, 2 partial), #21 (2 missing, 2 partial), #52 (1 missing, 1 partial), #68 (1 missing, 1 partial), #79 (1 missing, 1 partial), #82 (0 missing, 2 partial), #38 (0 missing, 1 partial), #47 (0 missing, 1 partial).
 
 Rules that were enforced wrongly, as against not at all, are findings of the engine audit
 ([../audits/2026-10-09-rules-audit.md](../audits/2026-10-09-rules-audit.md), rows S1-…, S2-…),
@@ -714,13 +714,13 @@ order", has the same list as tasks). The rows below say what the game does today
 | Rule (from the book) | Status | Where / what's missing |
 |---|---|---|
 | Goal: kill all enemies (and stop the sacrifice) | done | default goal in `checkVictoryDefeat` (all hostile dead, all doors open); no placements entry for 78 |
-| Lose: a Cultist (b) starts its turn adjacent to the altars (d) while the victim is adjacent too | missing | still no placements entry for 78: no goal, no (c)/(d) markers, no victim, so nothing can lose it (README goal table: "the sacrifice isn't modelled"; `TODO.md`: "Monsters that don't act as their cards say"). Needs the victim and the carrying first |
-| Objective: Victim (a), a token with no HP, immune to forced movement/IMMOBILIZE/STUN, moves only as described | missing | 78.json has no `objectives` and there is no placements entry; nothing stands at (a) (`TODO.md`: "Monsters that don't act as their cards say") |
-| The two Cultists (b) don't act normally: "Move+0" together to carry the victim to (c)/the altar | missing | they are `cultist-scenario-78` (elite, deck `cultist`) and take ordinary Cultist turns from the shared Cultist deck; rule 0's two `custom` actions are labels only. Needs a mechanic like placements `march` (toward (c)) plus the victim |
-| After the Cultists move, the victim moves the same number of hexes to stay adjacent to them | missing | no victim |
+| Lose: a Cultist (b) starts its turn adjacent to the altars (d) while the victim is adjacent too | done | placements `carry` → `carrierStep`: as a carrier's turn starts, `sacrificeIsMade(by:)` (it and the victim each beside an altar hex, d) sets the defeat with "The victim is sacrificed." One carrier is enough; with both dead nothing can lose it. `CarrierTests.testTheVictimIsCarriedToTheAltarAndSacrificed`, `testTheSacrificeNeedsACarrier` |
+| Objective: Victim (a), a token with no HP, immune to forced movement/IMMOBILIZE/STUN, moves only as described | done | `78.json` lists an objective "Victim" (health 0) in room 2, the placements stand it on m1a's centre hex: a thing of the map without hit points — no one's enemy, never pushed or pulled, takes no condition, and (`sufferDamage`) nothing damages it. The win stays "every enemy dead". `testTheVictimKneelsInTheMiddleOfTheRoom` |
+| The two Cultists (b) don't act normally: "Move+0" together to carry the victim to (c)/the altar | done | `carry: {carriers: "cultist-scenario-78", objective: 1, toward: "c", altar: "d"}` → `MonsterTurnController` gives each carrier `carrierStep` in place of its card: its stat-card Move toward a hex beside the victim, then — beside him — toward a free (c) hex, or with those taken the nearest hex beside the altar (`walk`, the march code made general). `testTheCarriersGoToTheVictimFirst`, `testTheVictimIsCarriedToTheAltarAndSacrificed` |
+| After the Cultists move, the victim moves the same number of hexes to stay adjacent to them | done | `carriedFollows` once the carriers have all moved: as far as the carrier that had hold of him went, to the hex beside the most of them he can reach — between the two before the altar (m1a/i1b letters c, d). Our reading: he isn't moved before a Cultist is beside him. Same tests |
 | Cultists (b) are immune to IMMOBILIZE and STUN | done | rule 0 (`requiredRooms: [2]`, persistent `statEffects`) → `immunities: ["immobilize","stun"]` → `MonsterManager.applyScenarioStatEffect` → `applyCondition` refuses them. (Victim: n/a, not in the game) |
 | Cultists (b) and the victim are immune to forced movement | done | `monster/cultist-scenario-78.json` `baseStat.immunities` now has `"push"`, `"pull"` (and immobilize, stun) → `performPushPull` returns for an immune target; `ScenarioReauditTests.testTheCarriersAndTheCannonCantBeForcedToMove`. (Victim: n/a, not in the game) |
-| Cultists (b) and the victim can open doors | missing | label "Can open doors" only (`custom` action in the stat effect); `opensDoors` is true for characters only and `MonsterAI` paths with `canOpenDoors: false`, so a closed door is a wall to them (only `march` monsters, #77, and the Bandit Commander open doors) |
+| Cultists (b) and the victim can open doors | done | `carrierStep` walks with `opensDoors: true`: a carrier beside a closed door with movement left opens it (revealing the altar room) and goes on; the victim follows through the open door. `testTheVictimIsCarriedToTheAltarAndSacrificed` |
 
 ### 79 · Lost Temple
 | Rule (from the book) | Status | Where / what's missing |
