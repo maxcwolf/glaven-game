@@ -33,6 +33,19 @@ final class BoardLayoutTests: XCTestCase {
         XCTAssertGreaterThan(checked.count, 1)
     }
 
+    /// A card in play is tapped to see it and has a button to end its bonus: both are a finger's
+    /// size (44 points; the end button was 32 by 28), and a party of four with two cards in play
+    /// each still fits both screens.
+    func testCardsInPlayAreFingerSizedAndStillFit() throws {
+        XCTAssertGreaterThanOrEqual(BoardView.activeCardRowHeight, 44)
+        let sim = try ScenarioSimulator(scenario: "1", options: .init(characters: ["brute", "spellweaver", "tinkerer", "cragheart"], seed: 2))
+        sim.coord.briefPresentation = nil
+        let inPlay: [String: [Int]] = ["brute": [7, 16], "spellweaver": [66, 69], "tinkerer": [44, 31], "cragheart": [121, 116]]
+        for character in sim.gm.game.characters { character.activeCards = inPlay[character.name] ?? [] }
+        XCTAssertEqual(sim.gm.game.characters.map { sim.coord.activeCards(of: $0).count }, [2, 2, 2, 2], "two rows each")
+        assertFits(sim.gm, "four characters, two cards in play each")
+    }
+
     /// Regression: the turn panel showed the whole 240 pt card while one half of it was being
     /// played, so the panel took a third of the screen and the board shrank to fit above it. The
     /// two played cards stay small, with the half being performed lit.

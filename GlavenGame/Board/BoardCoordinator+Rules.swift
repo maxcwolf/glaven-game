@@ -158,6 +158,16 @@ extension BoardCoordinator {
 
     // MARK: - Conditions
 
+    /// A condition one figure gives another with an ability of its own. Unending Chant: "the
+    /// next five times you Curse an enemy, Curse them an additional time" — by an attack or by
+    /// any other ability, a charge for each enemy cursed.
+    func applyCondition(_ condition: ConditionName, to target: PieceID, by source: PieceID) {
+        applyCondition(condition, to: target)
+        if condition == .curse, areEnemies(source, target), useFirstCharge(of: source, where: { $0 == .doubleCurses }) != nil {
+            applyCondition(.curse, to: target)
+        }
+    }
+
     /// Apply a condition to a figure. Curse and Bless shuffle a card into the figure's attack
     /// modifier deck instead of placing a token (monsters share the monster deck; summons use
     /// their owner's deck; allied monsters use the ally deck).
@@ -287,6 +297,11 @@ extension BoardCoordinator {
            await promptDamageMitigation(character: character, damage: amount, source: source,
                                         absorbedBy: negatingBonusName(pieceID, amount: amount)) {
             if isOnBoard(pieceID) { boardScene?.floatText("Prevented", over: pieceID, style: .info) }
+            return (false, true)
+        }
+        // What the party protects: a card lost from a hand spares it this source of damage.
+        if await promptSave(of: pieceID, damage: amount, source: source) {
+            if isOnBoard(pieceID) { boardScene?.floatText("Spared", over: pieceID, style: .info) }
             return (false, true)
         }
         return (sufferDamage(amount, to: pieceID, killer: killer), false)
@@ -439,7 +454,7 @@ extension BoardCoordinator {
             clearObjectiveSite(number)
             // What the scenario has appear in its place (a Living Corpse from a dug-up grave).
             if let stood, let index, let risen = scenarioData?.placements?.whenDestroyed?[String(index)],
-               let type = risen.monsterType(forPlayerCount: max(2, gameManager.game.characters.filter { !$0.absent }.count)),
+               let type = risen.monsterType(forPlayerCount: gameManager.game.characterCount),
                let piece = spawnMonster(name: risen.name, type: type, at: stood, origin: .spawned) {
                 log("\(name(piece)) appears", category: .setup, trace: "at \(stood)")
             }

@@ -111,6 +111,17 @@ ends up on the board:
   the second is banished — the nearest to the killer, where the book lets the players choose (#70).
 - `focusFirst`: objectives the monsters that attack them go for first — one that can get within
   range this turn focuses on it, whoever is nearer (#35 and #36 the gate, #84 the crystal).
+- `saves`: objectives a character may spare a source of damage by losing a card from their hand —
+  `{"objective": 2}` as often as there are cards (#44's captives), `{"objective": 1, "times": 2}`
+  twice a scenario (#84's crystal). As the damage is about to be suffered the party is asked
+  (`SaveChoiceSheet`): let it suffer, or pick a card from any hand. The sheet says when
+  the scenario is lost with the objective; headless play and the simulator's policies give a card
+  only then.
+- `forgo`: what a character beside an objective may give up an action for —
+  `{"objective": 2, "strengthens": 1}`: the objective is freed and leaves the map, and objective 1
+  attacks for 1 more with each one freed (#44's captives and Redthorn). Offered beside the basic
+  action for a half none of whose abilities has been performed; the half's card is discarded as
+  after a basic action. The simulator's policies free a captive whenever one is beside them.
 - `splitStart`: there are two starting rooms and no more than half the party (rounded up) may
   start in the same one (#50, #58, #85).
 - `water`: what water hexes do — `hurtsThePoisoned` (a poisoned character or summon walking in
@@ -207,7 +218,7 @@ its map, every door objective is on a door and every objective number exists.
 | 38 Slave Pens | the Orchid | — | lost if he dies | he heads for the nearest enemy, not the shaman on the D tile |
 | 39 Treacherous Divide | altar | — | win: destroy the altar | — |
 | 42 Realm of the Voice | 6 vocal chords | — | win: destroy all | — |
-| 44 Tribal Assault | Redthorn, 9 captives (protected) | — | — | losing a card to save a captive, and freeing one, aren't modelled — so a captive's death doesn't lose yet |
+| 44 Tribal Assault | Redthorn, 9 captives (protected) | — | lost if a captive is killed | a card may be lost to spare a captive (`saves`); a character beside one may give up an action to free it (`forgo`) |
 | 45 Rebel Swamp | 6 totems | — | win: destroy all | — |
 | 56 Bandit's Wood | 3 captive Orchids | — | lost when all three die (scenario rule) | — |
 | 57 Investigation | — | a | win: kill the Infiltrator (he appears where the marked guard fell) | — |
@@ -220,7 +231,7 @@ its map, every door objective is on a door and every objective number exists.
 | 74 Merchant Ship | — | a–e | — | water tiles aren't modelled |
 | 75 Overgrown Graveyard | 9 graves | — (what rises, rises where the grave was) | win: all graves and the Bloated Regent | graves are attacked rather than dug up with movement |
 | 79 Lost Temple | Fish | a, b, c (pressure plates) | win: kill the Betrayer; lost if Fish is killed | the Betrayer's two specials (forced moves, mind control) aren't modelled |
-| 84 Crystalline Cave | the crystal | — | lost if it is destroyed | protected, no ally; losing a card to spare it isn't modelled |
+| 84 Crystalline Cave | the crystal | — | lost if it is destroyed | protected, no ally; twice a card may be lost to spare it (`saves`) |
 | 86 Harried Village | 11 villagers | b–f | win: 7 reach the docks; lost at 5 killed | — |
 | 90 Demonic Rift | — | b, c (the Living Spirits, once every demon is dead; a Night Demon at b as an even round ends with no one in the right-hand room) | win: every Living Spirit killed | — (`DemonicRiftTests`: both rooms set up, characters cross by the altars for 1 movement, the losses for an empty room) |
 | 92 Back Alley Brawl | — | a, b, c (where the City Archer and the two City Guards are set up; not the book's letters) | win: every non-city enemy killed; lost if a guard or the archer is killed | — |
@@ -371,7 +382,7 @@ goals are checked; the notes say what around a goal is still missing.
 | 41 | Timeworn Tomb | All characters must escape through the exit (a). | yes | Any character becomes exhausted (printed under Section 2). | yes |
 | 42 | Realm of the Voice | Destroy all vocal chords. | yes | — | — |
 | 43 | Drake Nest | Kill a number of drakes equal to 4×C. | yes | — | — |
-| 44 | Tribal Assault | Kill all enemies and protect all captive Orchids (a). | yes | Any captive Orchid is killed. | **no** — needs the card-to-save rule first |
+| 44 | Tribal Assault | Kill all enemies and protect all captive Orchids (a). | yes | Any captive Orchid is killed. | yes |
 | 45 | Rebel Swamp | Destroy all totems (a). | yes | — | — |
 | 46 | Nightmare Peak | Kill the Winged Horror. | yes | — | — |
 | 47 | Lair of the Unseeing Eye | Kill the Sightless Eye. | yes | — | — |

@@ -244,11 +244,7 @@ extension BoardCoordinator {
         // Added effects apply even when no damage was dealt, but not to a dead target (p.19).
         if !died && isOnBoard(target) {
             for condition in result.allConditions {
-                applyCondition(condition, to: target)
-                // Unending Chant: a Curse the character gives is given twice.
-                if condition == .curse, useFirstCharge(of: attacker, where: { $0 == .doubleCurses }) != nil {
-                    applyCondition(.curse, to: target)
-                }
+                applyCondition(condition, to: target, by: attacker)
                 if let credited = creditedCharacter(for: attacker) {
                     gameManager?.scenarioStatsManager.recordConditionApplied(by: credited.name)
                 }
@@ -343,7 +339,7 @@ extension BoardCoordinator {
             let death = pendingDeathAttacks.removeFirst()
             guard let gameManager, let monster = gameManager.game.monsters.first(where: { $0.name == death.monster }) else { continue }
             let game = gameManager.game
-            let characterCount = max(2, game.characters.filter { !$0.absent }.count)
+            let characterCount = game.characterCount
             let stat = monster.attackStat(for: death.type)
             let base = stat?.attackValue(characterCount: characterCount, level: monster.level,
                                          variables: MonsterAI.attackVariables(for: monster, gameState: game)) ?? 0

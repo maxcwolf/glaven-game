@@ -803,6 +803,36 @@ final class PlayerTurnController {
             : "Use Basic Move \(PassiveItems.defaultMove(for: items))"
     }
 
+    /// What the scenario lets this character do instead of the half's abilities, where the basic
+    /// action could still be used: the captives beside them, to free.
+    var forgoTargets: [PieceID] {
+        canUseDefaultAction ? (coordinator?.forgoTargets(for: characterID) ?? []) : []
+    }
+
+    /// The button that frees `target`: "Free Captive Orchid 3".
+    func forgoTitle(_ target: PieceID) -> String { "Free \(coordinator?.name(target) ?? "the captive")" }
+
+    /// Give up the half to free `target`: its abilities are passed over and the card is
+    /// discarded, as after a basic action (no experience, no lost icon).
+    func forgoAction(toFree target: PieceID) {
+        guard let coordinator, forgoTargets.contains(target) else { return }
+        if endIfStunned() { return }
+        finishedHalf = nil
+        checkpoint = nil   // freeing a captive isn't taken back
+        hasActed = true
+        let steps = currentSteps
+        let kept = Array(steps.prefix(currentActionIndex)) + steps.dropFirst(currentActionIndex).filter { Self.bonusCard(of: $0) != nil }
+        if phase == .executeTopAction {
+            topActions = kept
+            topUsedAsDefault = true
+        } else {
+            bottomActions = kept
+            bottomUsedAsDefault = true
+        }
+        coordinator.free(target, by: characterID)
+        finishHalfAfterBasicAction()
+    }
+
     /// After a basic action the half's printed abilities are done, but the turn's bonus steps in
     /// it still come (Auto Turret's attack at the end of the turn).
     private func finishHalfAfterBasicAction() {
@@ -1235,13 +1265,19 @@ final class PlayerTurnController {
             }
             // Mindthief augments shape every melee attack.
             if range <= 1 { applyAugments(coordinator: coordinator) }
-            // Charged bonuses: Backup Ammunition (one more target on a ranged attack), Crackling Air.
-            if range > 1, coordinator.useFirstCharge(of: pieceID, where: { $0 == .extraTargetOnRanged }) != nil {
+            // Bonuses counted in Attack actions — Backup Ammunition (one more target on a ranged
+            // attack), Angelic Ascension, Grim Bargain's doubling — are counted in here, and their
+            // charge is marked once the attack is made (`applyPerformedEffects`): an Attack
+            // action that finds no target isn't one of "your next four".
+            var actionCharges: [Int] = []
+            if range > 1, let backup = coordinator.firstCharge(of: pieceID, where: { $0 == .extraTargetOnRanged }) {
+                actionCharges.append(backup.cardId)
                 targetCount += 1
                 coordinator.log("\(who): one more target", category: .attack)
             }
-            if case .attackPackage(let bonus, let conditions, let advantage)? = coordinator.useFirstCharge(of: pieceID, where: {
-                if case .attackPackage = $0 { return true }; return false }) {
+            if let package = coordinator.firstCharge(of: pieceID, where: { if case .attackPackage = $0 { return true }; return false }),
+               case .attackPackage(let bonus, let conditions, let advantage) = package.bonus {
+                actionCharges.append(package.cardId)
                 pendingAttackValue += bonus
                 pendingConditions.append(contentsOf: conditions)
                 pendingAdvantage = pendingAdvantage || advantage
@@ -1296,7 +1332,8 @@ final class PlayerTurnController {
                 }
             }
             // Grim Bargain's bottom: this round's next attack is doubled (after every other bonus).
-            if coordinator.useFirstCharge(of: pieceID, where: { $0 == .doubleNextAttack }) != nil {
+            if let doubling = coordinator.firstCharge(of: pieceID, where: { $0 == .doubleNextAttack }) {
+                actionCharges.append(doubling.cardId)
                 pendingAttackValue *= 2
                 coordinator.log("\(who)\u{2019}s attack is doubled", category: .attack)
             }
@@ -1305,6 +1342,7 @@ final class PlayerTurnController {
             func applyPerformedEffects() {
                 grantBonusExperience(bonus)
                 applyPrintedEffects(of: action, coordinator: coordinator)
+                if let character { for cardId in actionCharges { coordinator.useCharge(cardId, of: character) } }
             }
 
             if roomWide {
@@ -1364,10 +1402,12 @@ final class PlayerTurnController {
                 }
             }
             grantBonusExperience(bonus)
-            // Potent Potables: +2 on the next heal actions.
-            if case .healBonus(let extra)? = coordinator.useFirstCharge(of: pieceID, where: {
-                if case .healBonus = $0 { return true }; return false }) {
-                healValue += extra
+            // Potent Potables: +2 on the next Heal actions — a charge for each one performed,
+            // not for one with no one to heal.
+            let potent = coordinator.firstCharge(of: pieceID, where: { if case .healBonus = $0 { return true }; return false })
+            if case .healBonus(let extra)? = potent?.bonus { healValue += extra }
+            func markHealCharge() {
+                if let potent, let character { coordinator.useCharge(potent.cardId, of: character) }
             }
             // "All adjacent allies", "self and all allies", "one adjacent ally": who it heals.
             if let reach = allyReach(of: action, coordinator: coordinator) {
@@ -1379,12 +1419,14 @@ final class PlayerTurnController {
                         return false
                     }
                     coordinator.log("\(who): Heal \(healValue). Choose the ally", category: .heal)
+                    markHealCharge()
                     coordinator.beginHealAction(pieceID: pieceID, healValue: healValue, range: 1, conditions: conditions)
                     if case .selectingHealTarget(let healer, let value, _) = coordinator.interactionMode {
                         coordinator.interactionMode = .selectingHealTarget(pieceID: healer, healValue: value, validTargets: Set(reach.pieces))
                     }
                     return true
                 }
+                if !reach.pieces.isEmpty { markHealCharge() }
                 for figure in reach.pieces {
                     let healed = coordinator.heal(figure, amount: healValue, source: pieceID)
                     for cond in conditions { coordinator.applyCondition(cond, to: figure) }
@@ -1394,10 +1436,12 @@ final class PlayerTurnController {
             }
             if range > 0 {
                 coordinator.log("\(who): Heal \(healValue), Range \(range). Choose who to heal", category: .heal)
+                markHealCharge()
                 applyPrintedEffects(of: action, coordinator: coordinator)
                 coordinator.beginHealAction(pieceID: pieceID, healValue: healValue, range: range, conditions: conditions)
                 return true
             }
+            markHealCharge()
             let healed = coordinator.heal(pieceID, amount: healValue, source: pieceID)
             if !hasSpecialTargetSelf(action) {
                 for cond in conditions { coordinator.applyCondition(cond, to: pieceID) }
@@ -1409,7 +1453,8 @@ final class PlayerTurnController {
                   let cond = ConditionName(rawValue: condName) else { break }
             switch conditionTargetSpec(action) {
             case .singleEnemy(let range):
-                coordinator.beginConditionAction(pieceID: pieceID, condition: cond, range: range)
+                let area = action.subActions?.first { $0.type == .area }?.value?.stringValue
+                coordinator.beginConditionAction(pieceID: pieceID, condition: cond, range: range, area: area)
                 coordinator.log("\(who): \(GameText.conditionName(cond)). Choose a target", category: .condition)
                 return true
             case .allEnemies(let range):
@@ -1494,14 +1539,16 @@ final class PlayerTurnController {
             let steps = action.value?.intValue ?? 1
             let isPush = action.type == .push
             let spec = action.subActions?.first { $0.type == .specialTarget }?.value?.stringValue.lowercased()
-            let range = action.subActions?.first { $0.type == .range }?.value?.intValue
+            let rangeAction = action.subActions?.first { $0.type == .range }
+            let targets = ((action.subActions ?? []) + (rangeAction?.subActions ?? [])).first { $0.type == .target }?.value?.intValue ?? 1
             coordinator.log("\(who): \(isPush ? "Push" : "Pull") \(steps)", category: .move)
             if spec?.hasPrefix("enemiesadjacent") == true {
                 coordinator.forceMoveAllEnemies(from: pieceID, within: 1, steps: steps, isPush: isPush)
-            } else if spec?.hasPrefix("enemyadjacent") == true || range != nil {
-                coordinator.beginForcedMoveTarget(pieceID: pieceID, range: range ?? 1, steps: steps, isPush: isPush)
             } else {
-                coordinator.beginStandalonePushPull(steps: steps, isPush: isPush)
+                // One enemy, or as many as its Target says, within its range — an adjacent one
+                // where no range is printed.
+                coordinator.beginForcedMoveTarget(pieceID: pieceID, range: rangeAction?.value?.intValue ?? 1, steps: steps,
+                                                  isPush: isPush, targets: targets)
             }
             return true
 
@@ -2078,7 +2125,60 @@ final class PlayerTurnController {
     /// opened up, so a move or a target choice inside them is a step of its own and the turn
     /// waits for it. Augments stay whole: they aren't performed.
     static func steps(_ actions: [ActionModel], labels: EditionDataStore? = nil, edition: String = "gh") -> [ActionModel] {
-        attachingModifierConsumes(flatSteps(actions, labels: labels, edition: edition).map(hoistingGroupedEffects))
+        attachingModifierConsumes(attachingForcedMoveRange(attachingConditionArea(abilitiesUnderMovesAsSteps(
+            flatSteps(actions, labels: labels, edition: edition)))).map(hoistingGroupedEffects))
+    }
+
+    /// A condition printed beside an area (Singing Arrow's "Curse, Range 3" and three red
+    /// hexes): the data has the area as an action of its own, after a spacer; it is the
+    /// condition's.
+    static func attachingConditionArea(_ steps: [ActionModel]) -> [ActionModel] {
+        var result: [ActionModel] = []
+        for step in steps {
+            if step.type == .area,
+               let host = result.lastIndex(where: { $0.type != .concatenationSpacer }), result[host].type == .condition,
+               !(result[host].subActions ?? []).contains(where: { $0.type == .area }) {
+                result[host].subActions = (result[host].subActions ?? []) + [step]
+            } else {
+                result.append(step)
+            }
+        }
+        return result
+    }
+
+    /// An ability printed under a Move — "Move 3" and below it "Curse, Range 3" (Tuning the
+    /// Outcome), "Shield 2, affect all adjacent allies" (Warding Dagger), "Push 2, target all
+    /// adjacent enemies" (Lash Out) — which the data has inside the Move: it is an ability of
+    /// its own, performed after the Move. Not where the Move carries text or a target, which say
+    /// what the nested ability is for (Feedback Loop, Sinister Opportunity, Hook and Chain).
+    static func abilitiesUnderMovesAsSteps(_ steps: [ActionModel]) -> [ActionModel] {
+        steps.flatMap { step -> [ActionModel] in
+            guard step.type == .move, let subs = step.subActions,
+                  !subs.contains(where: { $0.type == .custom || $0.type == .specialTarget }) else { return [step] }
+            func isAbility(_ sub: ActionModel) -> Bool {
+                [.condition, .shield, .retaliate, .push, .pull].contains(sub.type) && ![.add, .addition, .plus].contains(sub.valueType)
+            }
+            guard subs.contains(where: isAbility) else { return [step] }
+            var move = step
+            move.subActions = subs.filter { !isAbility($0) }
+            return [move] + subs.filter(isAbility)
+        }
+    }
+
+    /// A Push or Pull printed with its range on the line below it (Scroll of Recall's "Pull 1,
+    /// Range 3, Target 3"): the data has that line as an action of its own, and it is the pull's.
+    static func attachingForcedMoveRange(_ steps: [ActionModel]) -> [ActionModel] {
+        var result: [ActionModel] = []
+        for step in steps {
+            if step.type == .range, var host = result.last, host.type == .push || host.type == .pull,
+               !(host.subActions ?? []).contains(where: { $0.type == .range || $0.type == .specialTarget }) {
+                host.subActions = (host.subActions ?? []) + [step]
+                result[result.count - 1] = host
+            } else {
+                result.append(step)
+            }
+        }
+        return result
     }
 
     /// What is printed in a group beside an ability and only qualifies it — XP, infusions and

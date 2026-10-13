@@ -302,6 +302,15 @@ extension BoardCoordinator {
         }
     }
 
+    /// The first bonus matching `matches`, with its card — for a bonus on "your next N Attack
+    /// (Heal) actions", which is counted in at the start of the action and whose charge is marked
+    /// only once the action is performed (`useCharge`): an action with no target marks none.
+    func firstCharge(of piece: PieceID, where matches: (ChargedBonus) -> Bool) -> (cardId: Int, bonus: ChargedBonus)? {
+        guard case .character(let id) = piece,
+              let character = gameManager?.game.characters.first(where: { $0.id == id }) else { return nil }
+        return chargedBonuses(of: character).first(where: { matches($0.bonus) })
+    }
+
     /// Mark a charge of the first bonus matching `matches`, returning it.
     @discardableResult
     func useFirstCharge(of piece: PieceID, where matches: (ChargedBonus) -> Bool) -> ChargedBonus? {

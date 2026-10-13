@@ -301,7 +301,9 @@ final class AttackRuleTests: XCTestCase {
         XCTAssertEqual(curses(in: board.game.monsterAttackModifierDeck), 1)
         XCTAssertTrue(board.has(.poison, survivor.entity))
 
-        // A character exhausted by an attack gains nothing from it either.
+        // A character exhausted by an attack gains nothing from it either. (A fresh deck for the
+        // monsters: the Curse just shuffled into theirs would, one time in 31, be the card drawn.)
+        board.game.monsterAttackModifierDeck = RuleBoard.deck(of: .plus0)
         await coord.performAttack(attacker: survivor.piece, target: .character(brute.id),
                                   attack: AttackParameters(value: 3, conditions: [.curse, .wound]))
         XCTAssertTrue(brute.exhausted)

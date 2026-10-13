@@ -109,8 +109,11 @@ enum BoardBuilder {
         addRoom(tile, path: path, root: root, to: board, turnAxis: turnAxis,
                 placements: scenario.placements, traps: scenario.traps, reveal: &reveal)
 
-        if opening, let idx = board.doors.firstIndex(where: { $0.coord == door.coord }) {
-            board.doors[idx].isOpen = true
+        if opening {
+            // A door two or three hexes wide is one door: all of it opens.
+            for coord in doorHexes(ofTheDoorAt: door.coord, on: board) {
+                if let idx = board.doors.firstIndex(where: { $0.coord == coord }) { board.doors[idx].isOpen = true }
+            }
         }
         recomputeBounds(board)
         board.wallEdges = wallEdges(in: scenario, among: Set(board.cells.keys))
@@ -543,6 +546,27 @@ enum BoardBuilder {
             }
         }
     }
+
+    /// The hexes of the door a hex belongs to: a wide door (Shrine of Strength's are two hexes,
+    /// Sacrifice Pit's three) is drawn as door hexes side by side between the same two tiles, and
+    /// is one door. A wall to break down (Harrower Hive) is its own hex, whatever stands beside it.
+    static func doorHexes(ofTheDoorAt coord: HexCoord, on board: BoardState) -> [HexCoord] {
+        guard let door = board.doors.first(where: { $0.coord == coord }) else { return [] }
+        guard door.subType != breakableWallSubType else { return [coord] }
+        var found: [HexCoord] = [coord]
+        var frontier = [coord]
+        while let hex = frontier.popLast() {
+            for other in board.doors where !found.contains(other.coord) && hex.neighbors.contains(other.coord)
+                && other.subType == door.subType && other.childTileRef == door.childTileRef && other.fromTileRef == door.fromTileRef {
+                found.append(other.coord)
+                frontier.append(other.coord)
+            }
+        }
+        return found.sorted()
+    }
+
+    /// The connector that is a wall with hit points, not a door.
+    static let breakableWallSubType = "breakable-wall"
 
     /// Record a closed door (once per hex).
     private static func recordDoor(at coord: HexCoord, subType: String, leadingTo ref: String, from: String,

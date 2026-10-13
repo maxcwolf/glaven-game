@@ -440,7 +440,7 @@ extension BoardCoordinator {
     /// "Move 1 · Attack 3, range 2" for this round, from the stat card and the ability card.
     private func monsterStatsThisRound(_ monster: GameMonster, type: MonsterType) -> (value: String, note: String)? {
         guard let game = gameManager?.game, let stat = monster.attackStat(for: type) else { return nil }
-        let characterCount = max(2, game.characters.filter { !$0.absent }.count)
+        let characterCount = game.characterCount
         func value(_ v: IntOrString?) -> Int {
             v.map { evaluateEntityValue($0, level: monster.level, characterCount: characterCount) } ?? 0
         }

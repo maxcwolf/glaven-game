@@ -315,6 +315,11 @@ final class ScenarioSimulator {
                 ? .takeDamage : policy.negateDamage(pending.damage, character: character, sim: self))
             return
         }
+        if let save = coord.pendingSave {
+            let answer = policy.spare(save, sim: self)
+            coord.resolvePendingSave(by: answer?.characterID, losing: answer?.cardId)
+            return
+        }
         if let rest = coord.pendingShortRest, let character = character(rest.characterID) {
             if !rest.committed, let problem = PlayLedger.restProblem(character.name, rest: "short", discards: character.discardedCards.count) {
                 violation(problem)
@@ -371,6 +376,11 @@ final class ScenarioSimulator {
         let half = "\(turn.phase)"
         if turn.currentActionIndex == 0, !defaultDecided.contains(half) {
             defaultDecided.insert(half)
+            let offered = turn.forgoTargets
+            if !offered.isEmpty, let target = policy.forgo(turn, options: offered, sim: self) {
+                turn.forgoAction(toFree: target)
+                return
+            }
             if policy.useDefaultAction(turn, sim: self) {
                 turn.useDefaultAction()
                 return
@@ -444,7 +454,7 @@ final class ScenarioSimulator {
         return [
             "\(gm.game.round)", "\(coord.boardPhase)", "\(coord.currentTurnIndex)", "\(coord.turnLog.count)",
             "\(coord.interactionMode)", turn ?? "-",
-            "\(coord.pendingDamage != nil)\(coord.pendingModifierDraw != nil)\(coord.pendingShortRest != nil)\(coord.pendingLongRest != nil)\(coord.pendingItemUse != nil)",
+            "\(coord.pendingDamage != nil)\(coord.pendingModifierDraw != nil)\(coord.pendingShortRest != nil)\(coord.pendingLongRest != nil)\(coord.pendingItemUse != nil)\(coord.pendingSave != nil)",
         ].joined(separator: " ")
     }
 
@@ -674,9 +684,14 @@ final class ScenarioSimulator {
         // A boss's special that has its minions act again (GH #9): each gets one more turn,
         // taken when the boss says, not at its initiative.
         while actAgainCursor < coord.turnLog.count {
-            if coord.turnLog[actAgainCursor].message.hasSuffix("act again") {
+            let message = coord.turnLog[actAgainCursor].message
+            if message.hasSuffix("act again") {
                 actAgainRound = round
                 lastActor = nil   // whoever acted last starts afresh too
+            } else if message.contains("\u{2019}s turn: ") {
+                // A new turn: the one standee that acted last on the turn before (the only Scout
+                // in reach, on the Overseer's turn and again on its own) is starting afresh.
+                lastActor = nil
             }
             actAgainCursor += 1
         }

@@ -166,16 +166,66 @@ final class RevealRuleTests: XCTestCase {
     }
 
     /// SET-1 (FAQ): a room revealed later is set up for the characters the scenario began with,
-    /// exhausted ones included. Three began: an elite and two normal Archers and an elite Guard.
+    /// exhausted ones included. Three began: an elite and two normal Archers and an elite Guard,
+    /// each where the map puts a monster of its rank for three — the room as it is set up when
+    /// no one has fallen.
     func testARoomIsSetUpForTheCharactersTheScenarioBeganWith() throws {
-        try start(["brute", "tinkerer", "scoundrel"])
-        killEveryMonsterOnTheBoard()
-        coord.sufferDamage(999, to: .character(try character("scoundrel").id))
-        XCTAssertTrue(try character("scoundrel").exhausted)
-        let (door, _) = try firstDoor()
-        coord.openDoor(at: door)
+        func secondRoom(exhausting fallen: String?) throws -> [String] {
+            try start(["brute", "tinkerer", "scoundrel"])
+            killEveryMonsterOnTheBoard()
+            if let fallen {
+                coord.sufferDamage(999, to: .character(try character(fallen).id))
+                XCTAssertTrue(try character(fallen).exhausted)
+            }
+            let (door, _) = try firstDoor()
+            coord.openDoor(at: door)
+            return coord.boardState.piecePositions.compactMap { piece, hex -> String? in
+                guard case .monster(let name, let standee) = piece,
+                      let rank = coord.monsterEntity(name: name, standee: standee)?.type else { return nil }
+                return "\(rank.rawValue) \(name) at \(hex)"
+            }.sorted()
+        }
+        let room = try secondRoom(exhausting: "scoundrel")
         XCTAssertEqual(ranks(of: "bandit-archer"), [.elite, .normal, .normal].sorted { $0.rawValue < $1.rawValue })
         XCTAssertEqual(ranks(of: "bandit-guard"), [.elite])
+        XCTAssertEqual(room, try secondRoom(exhausting: nil), "who stands where")
+    }
+
+    /// A door a scenario rule opens as a round starts (Gloomhaven Battlements B: the gate falls
+    /// in round 9) opens while cards are being chosen, and they are still being chosen once the
+    /// room is set up: a reveal goes back to what it interrupted. It used to leave the round's
+    /// turns "in progress" with no one to act — the veteran playthrough of #36 never ended.
+    func testARoomRevealedWhileCardsAreChosenLeavesThemBeingChosen() throws {
+        try start()
+        XCTAssertEqual(coord.boardPhase, .cardSelection)
+        coord.openDoor(at: try XCTUnwrap(coord.boardState.doors.first { !$0.isOpen }).coord)
+        XCTAssertEqual(game.scenario?.revealedRooms.sorted(), [1, 2])
+        XCTAssertEqual(coord.boardPhase, .cardSelection)
+        let brute = try character("brute"), tinkerer = try character("tinkerer")
+        coord.chooseCards(for: brute.id, leading: try card("Overwhelming Assault", of: brute), other: try card("Grab and Go", of: brute))
+        coord.chooseCards(for: tinkerer.id, leading: try card("Harmless Contraption", of: tinkerer), other: try card("Restorative Mist", of: tinkerer))
+        XCTAssertEqual(coord.boardPhase, .execution, "and with every card chosen the round's turns begin")
+        XCTAssertFalse(coord.turnOrder.isEmpty)
+    }
+
+    /// MOV-8: a door two hexes wide is one door. Shrine of Strength's first door is two hexes
+    /// side by side: opened by either, both are open — the other half isn't a second door left
+    /// shut (a wall to monsters, and a room "not yet revealed" to the scenario's end). A wall
+    /// to break down (Harrower Hive's, each with its own hit points) stays a hex of its own.
+    func testADoorTwoHexesWideOpensAsOne() throws {
+        sim = try ScenarioSimulator(scenario: "15", options: .init(seed: 1, autoResolvePrompts: true))
+        let halves = coord.boardState.doors.filter { !$0.isOpen }.map(\.coord).sorted()
+        XCTAssertEqual(halves.count, 2)
+        XCTAssertTrue(halves[0].neighbors.contains(halves[1]), "two door hexes side by side")
+        coord.openDoor(at: halves[1])
+        XCTAssertEqual(coord.boardState.doors.filter { halves.contains($0.coord) }.map(\.isOpen), [true, true])
+
+        sim = try ScenarioSimulator(scenario: "76", options: .init(seed: 1, autoResolvePrompts: true))
+        coord.openScenarioRooms((game.scenario?.data.rooms ?? []).map(\.roomNumber))   // the whole map, to find two together
+        let walls = coord.boardState.doors
+        let wall = try XCTUnwrap(walls.first { a in walls.contains { $0.coord != a.coord && a.coord.neighbors.contains($0.coord) } },
+                                 "two walls side by side")
+        XCTAssertEqual(BoardBuilder.doorHexes(ofTheDoorAt: wall.coord, on: coord.boardState), [wall.coord])
     }
 
     // MARK: - MOV-9: cards and turns for the revealed

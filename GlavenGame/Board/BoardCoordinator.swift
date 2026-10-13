@@ -200,11 +200,12 @@ final class BoardCoordinator {
     /// The active player turn controller (nil when monster/no turn).
     var activePlayerTurn: PlayerTurnController?
 
-    /// The last target hit by a player attack (used for standalone push/pull actions).
-    var lastAttackTarget: PieceID?
+    /// The area a condition being aimed covers, and its range (Singing Arrow).
+    private var conditionArea: (pattern: String, range: Int)?
 
-    /// The attacker's position at time of last attack (used for standalone push/pull direction).
-    var lastAttackerPos: HexCoord?
+    /// What is left of a Push or Pull that chooses its targets: how many more may be chosen,
+    /// within what range, and who has been chosen already (each enemy once).
+    private var forcedMoveLeft: (targets: Int, range: Int, chosen: Set<PieceID>)?
 
     /// The summon turn controller.
     var summonTurnController: SummonTurnController?
@@ -427,6 +428,9 @@ final class BoardCoordinator {
 
     /// Non-nil when a character is being attacked and needs to choose mitigation.
     var pendingDamage: PendingDamage?
+
+    /// Non-nil while the party decides whether to lose a card to spare an objective its damage.
+    var pendingSave: PendingSave?
 
     /// Non-nil while a character being attacked is offered a defence item.
     var pendingItemUse: PendingItemUse?
@@ -968,8 +972,6 @@ final class BoardCoordinator {
         endReason = nil
         pendingRevealedStandees = [:]
         currentTurnToggled = false
-        lastAttackTarget = nil
-        lastAttackerPos = nil
         lastModifierReveal = nil   // the last scenario's draw isn't this one's
         lastDrawnModifier = nil
         characterTraps = [:]
@@ -1724,15 +1726,14 @@ final class BoardCoordinator {
 
     /// Insert monsters that entered play during the last turn into this round's turn order.
     /// A type that hasn't acted yet just acts at its initiative; a type whose initiative already
-    /// passed acts right after the turn in which it was revealed (p.32).
+    /// passed acts right after the turn in which it was revealed (p.32). Both are one rule here:
+    /// before the first figure still to act on a higher initiative. Every figure still to act is
+    /// on a higher initiative than the one that just did, so a type whose place has passed lands
+    /// right after it, the lowest initiative first.
     private func scheduleRevealedMonsters() {
         guard let gameManager, !pendingRevealedStandees.isEmpty else { return }
         let revealed = pendingRevealedStandees
         pendingRevealedStandees = [:]
-
-        let currentInitiative = (currentTurnIndex >= 0 && currentTurnIndex < turnOrder.count)
-            ? turnOrder[currentTurnIndex].initiative : -1
-        var immediate: [TurnOrderEntry] = []
 
         for (name, standees) in revealed.sorted(by: { $0.key < $1.key }) {
             guard let monster = gameManager.game.monsters.first(where: { $0.name == name }),
@@ -1746,16 +1747,10 @@ final class BoardCoordinator {
             if pendingIndex != nil { continue } // its whole type still acts later this round
 
             let entry = TurnOrderEntry(figure: .monster(monster), initiative: initiative, onlyStandees: standees)
-            if initiative < currentInitiative {
-                immediate.append(entry)
-            } else {
-                let insertAt = turnOrder.indices.first { $0 > currentTurnIndex && turnOrder[$0].initiative > initiative }
-                    ?? turnOrder.count
-                turnOrder.insert(entry, at: insertAt)
-            }
+            let insertAt = turnOrder.indices.first { $0 > currentTurnIndex && turnOrder[$0].initiative > initiative }
+                ?? turnOrder.count
+            turnOrder.insert(entry, at: insertAt)
         }
-        immediate.sort { $0.initiative < $1.initiative }
-        turnOrder.insert(contentsOf: immediate, at: min(currentTurnIndex + 1, turnOrder.count))
     }
 
     /// Create the PlayerTurnController after summon turns complete.
@@ -1768,9 +1763,6 @@ final class BoardCoordinator {
             gameManager: gameManager
         )
         activePlayerTurn = ptc
-        // A standalone push/pull can only follow an attack made this turn.
-        lastAttackTarget = nil
-        lastAttackerPos = nil
 
         // Feed in the cards selected during card selection phase
         if let pair = selectedCardPairs[character.id] {
@@ -2334,9 +2326,19 @@ final class BoardCoordinator {
     /// Choose who gets a condition: an enemy, or (`onAllies`) an ally. Returns false when no one
     /// is in range (the action is over).
     @discardableResult
-    func beginConditionAction(pieceID: PieceID, condition: ConditionName, range: Int, onAllies: Bool = false) -> Bool {
-        let validTargets = onAllies ? alliesInRange(of: pieceID, range: range, includeSelf: false)
+    func beginConditionAction(pieceID: PieceID, condition: ConditionName, range: Int, onAllies: Bool = false,
+                              area: String? = nil) -> Bool {
+        // A condition printed with an area (Singing Arrow's "Curse, Range 3" over three hexes) is
+        // aimed like an area attack: any enemy the area can cover may be chosen, and everyone
+        // in the area as it is then placed gets the condition.
+        conditionArea = area.map { ($0, range) }
+        var validTargets = onAllies ? alliesInRange(of: pieceID, range: range, includeSelf: false)
                                     : targetableEnemies(of: pieceID, range: range)
+        if let area, !onAllies {
+            validTargets = Set(boardState.piecePositions.keys.filter { id in
+                areEnemies(pieceID, id) && !areaTargets(pattern: area, attacker: pieceID, primary: id, range: range).isEmpty
+            })
+        }
         if validTargets.isEmpty {
             log("\(name(pieceID)) has no \(onAllies ? "ally" : "target") within range \(range) for \(GameText.conditionName(condition))",
                 category: .condition)
@@ -2365,7 +2367,7 @@ final class BoardCoordinator {
     /// Apply a condition to all enemies within range from the acting piece (auto, no target selection).
     func applyConditionToAllEnemies(from pieceID: PieceID, condition: ConditionName, range: Int) {
         let targets = targetableEnemies(of: pieceID, range: range)
-        for target in targets { applyCondition(condition, to: target) }
+        for target in targets.sorted() { applyCondition(condition, to: target, by: pieceID) }
         if targets.isEmpty {
             log("\(name(pieceID)) has no enemy within range \(range) for \(GameText.conditionName(condition))", category: .condition)
             activePlayerTurn?.abilityDidNothing()
@@ -2386,8 +2388,6 @@ final class BoardCoordinator {
         let turn = activePlayerTurn
         let generation = boardGeneration
         abilityTargets.insert(target)
-        lastAttackTarget = target
-        lastAttackerPos = boardState.piecePositions[attacker]
         boardScene?.clearHighlights()
 
         let targetHex = boardState.piecePositions[target]
@@ -2471,33 +2471,31 @@ final class BoardCoordinator {
         }
     }
 
-    /// "Push/Pull X" on one enemy within range: the player picks the target.
-    func beginForcedMoveTarget(pieceID: PieceID, range: Int, steps: Int, isPush: Bool) {
-        let targets = targetableEnemies(of: pieceID, range: range)
-        guard !targets.isEmpty else {
-            log("\(name(pieceID)) has no enemy within range \(range) to \(isPush ? "push" : "pull")", category: .move)
-            activePlayerTurn?.abilityDidNothing()
+    /// "Push/Pull X" printed as an ability of its own, on one enemy within range or on as many
+    /// as its Target says (Scroll of Recall's "Pull 1, Range 3, Target 3"): the player picks
+    /// them one after another, each enemy once, and each is moved before the next is chosen.
+    func beginForcedMoveTarget(pieceID: PieceID, range: Int, steps: Int, isPush: Bool, targets count: Int = 1) {
+        forcedMoveLeft = (count, range, [])
+        chooseForcedMoveTarget(pieceID: pieceID, steps: steps, isPush: isPush)
+    }
+
+    /// Ask for the next target of a chosen Push or Pull, or end the ability when it has had
+    /// them all (or there is no one left to choose).
+    private func chooseForcedMoveTarget(pieceID: PieceID, steps: Int, isPush: Bool) {
+        guard let left = forcedMoveLeft else { return }
+        let targets = targetableEnemies(of: pieceID, range: left.range).subtracting(left.chosen)
+        guard left.targets > 0, !targets.isEmpty else {
+            forcedMoveLeft = nil
+            if left.chosen.isEmpty {
+                log("\(name(pieceID)) has no enemy within range \(left.range) to \(isPush ? "push" : "pull")", category: .move)
+                activePlayerTurn?.abilityDidNothing()
+            }
             activePlayerTurn?.advanceAfterAsyncAction()
             return
         }
         interactionMode = .selectingForcedMoveTarget(pieceID: pieceID, steps: steps, isPush: isPush, validTargets: targets)
         let hexes = Set(targets.compactMap { boardState.piecePositions[$0] })
         boardScene?.highlightHexes(hexes, style: .forcedMove, offsetCol: offsetCol, offsetRow: offsetRow)
-    }
-
-    /// Begin a standalone push/pull action (top-level action, not attack sub-action).
-    /// Applies to the target of the attack just made this turn.
-    func beginStandalonePushPull(steps: Int, isPush: Bool) {
-        guard let target = lastAttackTarget,
-              let attackerPos = lastAttackerPos,
-              boardState.piecePositions[target] != nil else {
-            let label = isPush ? "Push" : "Pull"
-            log("No target to \(label)", category: .move)
-            activePlayerTurn?.abilityDidNothing()
-            activePlayerTurn?.advanceAfterAsyncAction()
-            return
-        }
-        beginPushPull(target: target, attackerPos: attackerPos, remainingSteps: steps, isPush: isPush, first: true)
     }
 
     /// Start the interactive push/pull flow for a target. `first`: nothing of it has happened yet.
@@ -2844,9 +2842,13 @@ final class BoardCoordinator {
     /// Set up the room behind a door: its tiles (if not yet laid out), monsters and objectives.
     private func revealRoom(behind door: DoorInfo, opening: Bool) {
         guard let scenario = scenarioData, let gameManager else { return }
+        // A door mostly opens in a turn, but a scenario rule may open one as a round starts
+        // (Gloomhaven Battlements B's gate, round 9), while cards are being chosen: the phase the
+        // reveal interrupts is the phase it goes back to.
+        let interrupted = boardPhase
         boardPhase = .roomReveal
         guard var reveal = BoardBuilder.revealRoomSlots(door: door, scenario: scenario, board: boardState, opening: opening) else {
-            boardPhase = .execution
+            boardPhase = interrupted
             return
         }
         // A room laid out earlier: its monster places have been waiting since then.
@@ -2859,7 +2861,7 @@ final class BoardCoordinator {
 
         // Monsters come from the scenario's room data, counted for every character in the
         // scenario including exhausted ones (p.17); the map supplies their positions.
-        let playerCount = max(2, gameManager.game.characters.filter { !$0.absent }.count)
+        let playerCount = gameManager.game.characterCount
         let refs = Set(reveal.tileRefs.map { $0.lowercased() })
         let rooms = (gameManager.game.scenario?.data.rooms ?? []).filter { room in
             refs.contains((room.ref ?? "").lowercased())
@@ -2882,7 +2884,7 @@ final class BoardCoordinator {
         syncPieceVisuals()
         boardScene?.fitCamera(animated: true)
 
-        boardPhase = .execution
+        boardPhase = interrupted
         log(opening ? "A door opens and a new room is revealed" : "The defenders beyond the wall are roused", category: .door,
             trace: door.childTileRef)
         for piece in placed {
@@ -2918,7 +2920,7 @@ final class BoardCoordinator {
                 openDoor(at: door.coord)
             } else {
                 gameManager.scenarioManager.openRoom(room)
-                let playerCount = max(2, gameManager.game.characters.filter { !$0.absent }.count)
+                let playerCount = gameManager.game.characterCount
                 let placed = placeRevealedMonsters(slots: [], newEntities: unplacedMonsterEntities(),
                                                    playerCount: playerCount)
                 placeRevealedObjectives()
@@ -2960,7 +2962,7 @@ final class BoardCoordinator {
         guard let gameManager else { return }
         let slots = boardState.heldMonsterSlots.filter { names.contains($0.name) }
         boardState.heldMonsterSlots.removeAll { names.contains($0.name) }
-        let playerCount = max(2, gameManager.game.characters.filter { !$0.absent }.count)
+        let playerCount = gameManager.game.characterCount
         var placed = placeRevealedMonsters(slots: slots, newEntities: unplacedMonsterEntities().filter { names.contains($0.0.name) },
                                            playerCount: playerCount)
         // Monsters that stood inactive wake where they are, as if just revealed.
@@ -3283,10 +3285,14 @@ final class BoardCoordinator {
 
         case .selectingConditionTarget(let attackerID, let condition, let validTargets):
             if validTargets.contains(piece) {
-                log("\(name(attackerID)) applies \(GameText.conditionName(condition)) to \(name(piece))", category: .condition)
-                applyCondition(condition, to: piece)
+                let inArea = conditionArea.map { areaTargets(pattern: $0.pattern, attacker: attackerID, primary: piece, range: $0.range) }
+                conditionArea = nil
+                let cursed = inArea ?? [piece]
+                log("\(name(attackerID)) applies \(GameText.conditionName(condition)) to \(GameText.list(cursed.map(name)))", category: .condition)
+                for other in cursed where other != piece { applyCondition(condition, to: other, by: attackerID) }
+                applyCondition(condition, to: piece, by: attackerID)
                 // Pendant of the Plague: Poison and Curse on the one target.
-                for extra in pendingExtraConditions { applyCondition(extra, to: piece) }
+                for extra in pendingExtraConditions { applyCondition(extra, to: piece, by: attackerID) }
                 pendingExtraConditions = []
                 boardScene?.clearHighlights()
                 interactionMode = .idle
@@ -3297,11 +3303,13 @@ final class BoardCoordinator {
             if validTargets.contains(piece), let origin = boardState.piecePositions[moverID] {
                 boardScene?.clearHighlights()
                 interactionMode = .idle
-                let turn = activePlayerTurn, generation = boardGeneration
+                forcedMoveLeft?.targets -= 1
+                forcedMoveLeft?.chosen.insert(piece)
+                let generation = boardGeneration
                 Task { @MainActor in
                     await self.performPushPull(target: piece, attackerPos: origin, steps: steps, isPush: isPush)
                     guard self.isCurrentBoard(generation) else { return }
-                    turn?.advanceAfterAsyncAction()
+                    self.chooseForcedMoveTarget(pieceID: moverID, steps: steps, isPush: isPush)
                 }
             }
 

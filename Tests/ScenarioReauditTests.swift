@@ -107,6 +107,9 @@ final class ScenarioReauditTests: XCTestCase {
                                                       scenarioXPGained: [:], battleGoalData: sim.gm.editionStore.battleGoals(for: "gh"))
         XCTAssertEqual(results[spellweaver.id]?.achieved, true, "Streamliner")
         XCTAssertEqual(results[brute.id]?.achieved, true, "Protector")
+        if sim.coord.scenarioResult == nil { sim.coord.scenarioResult = .victory }
+        XCTAssertEqual(sim.coord.scenarioOutcome()?.heroes.map(\.exhausted), [false, false],
+                       "nor does the scenario's summary call them exhausted")
 
         sim.gm.scenarioManager.finishScenario(success: true)
         for character in [brute, spellweaver] {

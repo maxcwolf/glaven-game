@@ -227,7 +227,7 @@ final class ScenarioManager {
         // Player count for monster scaling is fixed at scenario setup by the number of
         // participating (non-absent) characters; it must NOT shrink when a character is
         // exhausted mid-scenario (which is what activeCharacters would do).
-        let playerCount = max(2, game.characters.filter { !$0.absent }.count)
+        let playerCount = game.characterCount
 
         // Spawn monsters from room — elites first so they get lowest standee numbers. Those the
         // scenario sets up later wait for their rule.
@@ -261,7 +261,7 @@ final class ScenarioManager {
         guard !waiting.isEmpty || !asleep.isEmpty else { return }
         onBeforeMutate?()
         scenario.releasedMonsters.formUnion(waiting.union(asleep))
-        let playerCount = max(2, game.characters.filter { !$0.absent }.count)
+        let playerCount = game.characterCount
         for room in scenario.data.rooms ?? [] where scenario.revealedRooms.contains(room.roomNumber) {
             setUpMonsters(of: room, playerCount: playerCount, edition: scenario.data.edition) { waiting.contains($0) }
         }
@@ -433,7 +433,7 @@ final class ScenarioManager {
                     // Player count for monster scaling is fixed at scenario setup by the number of
         // participating (non-absent) characters; it must NOT shrink when a character is
         // exhausted mid-scenario (which is what activeCharacters would do).
-        let playerCount = max(2, game.characters.filter { !$0.absent }.count)
+        let playerCount = game.characterCount
                     scenario.revealedRooms.append(room.roomNumber)
                     if let standees = room.monster {
                         let activeStandees = standees.compactMap { standee -> (MonsterStandeeData, MonsterType)? in
@@ -538,7 +538,7 @@ final class ScenarioManager {
         guard let objectives = scenario.data.objectives else { return }
         let (index, condition) = Self.objectiveReference(ref)
         guard index > 0, index <= objectives.count else { return }
-        let characters = max(2, game.characters.filter { !$0.absent }.count)
+        let characters = game.characterCount
         if let condition,
            ScenarioExpression.condition(condition, variables: ["C": characters, "L": game.level]) != true { return }
         addObjectiveEntity(objectives[index - 1], index: index, edition: scenario.data.edition)

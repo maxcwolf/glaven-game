@@ -124,6 +124,13 @@ final class GameState {
         characters.filter { !$0.absent && !$0.exhausted }
     }
 
+    /// The number of characters a scenario is set up for (the C of the rules): everyone taking
+    /// part, the exhausted included — a room revealed late is set up for those who began (p.17)
+    /// — and never fewer than two.
+    var characterCount: Int {
+        max(2, characters.filter { !$0.absent }.count)
+    }
+
     var monsters: [GameMonster] {
         figures.compactMap { $0.asMonster }
     }

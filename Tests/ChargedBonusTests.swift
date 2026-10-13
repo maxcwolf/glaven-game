@@ -459,6 +459,76 @@ final class ChargedBonusTests: XCTestCase {
         XCTAssertEqual(soothsinger.bonusChargesUsed[358], 1)
     }
 
+    /// Unending Chant: "The next five times you Curse an enemy, Curse them an additional time" —
+    /// whatever ability the Curse comes from. Disorienting Dirge's bottom Curses every enemy
+    /// within three hexes without attacking: two enemies, two Curses each, two charges.
+    func testUnendingChantDoublesACurseThatIsNoAttack() throws {
+        let soothsinger = add("music-note", at: HexCoord(3, 3))
+        soothsinger.activeCards = [358]
+        _ = try bandit(at: HexCoord(4, 3))
+        _ = try bandit(at: HexCoord(6, 3))
+        let curses = gm.game.monsterAttackModifierDeck.undrawnCount(of: .curse)
+        let turn = try startTurn(soothsinger, top: 351, bottom: 364)   // Tuning the Outcome; Disorienting Dirge
+        turn.setBottomFirst(true)
+        turn.executeCurrentAction()
+        XCTAssertEqual(gm.game.monsterAttackModifierDeck.undrawnCount(of: .curse), curses + 4)
+        XCTAssertEqual(soothsinger.bonusChargesUsed[358], 2)
+    }
+
+    /// Angelic Ascension: "On your next four Attack actions…" and Backup Ammunition: "On your
+    /// next four ranged Attack actions…" — an Attack action that finds no target isn't
+    /// performed and marks no charge; one that is made marks one, however many it targets.
+    func testAnAttackActionWithNoTargetMarksNoCharge() throws {
+        let sun = add("sun", at: HexCoord(3, 3))
+        sun.activeCards = [203]
+        var turn = try startTurn(sun, top: 182, bottom: 183)   // Holy Strike: Attack 2
+        turn.executeCurrentAction()
+        XCTAssertNil(sun.bonusChargesUsed[203], "no one to attack: not one of the four")
+        _ = try bandit(at: HexCoord(4, 3))
+        turn = try startTurn(sun, top: 182, bottom: 183)
+        turn.executeCurrentAction()
+        XCTAssertEqual(turn.currentAttackValue(), 2 + 3)
+        XCTAssertEqual(sun.bonusChargesUsed[203], 1, "the attack is made: a charge")
+
+        let cragheart = add("cragheart", at: HexCoord(3, 8))
+        cragheart.activeCards = [121]
+        turn = try startTurn(cragheart, top: 120, bottom: 126)   // Massive Boulder: Attack 3, Range 3
+        turn.executeCurrentAction()
+        XCTAssertNil(cragheart.bonusChargesUsed[121], "no enemy within range")
+        _ = try bandit(at: HexCoord(5, 8))
+        _ = try bandit(at: HexCoord(6, 8))
+        turn = try startTurn(cragheart, top: 120, bottom: 126)
+        turn.executeCurrentAction()
+        guard case .selectingMultiAttackTargets(_, _, _, 2, _) = coord.interactionMode else {
+            return XCTFail("one more target: \(coord.interactionMode)")
+        }
+        XCTAssertEqual(cragheart.bonusChargesUsed[121], 1)
+    }
+
+    /// Potent Potables: "On your next four Heal actions, add +2 Heal." Restorative Mist's bottom
+    /// heals every adjacent ally: with none there is no Heal action and no charge; with one,
+    /// they are healed 1 + 2 and a charge is marked.
+    func testAHealActionWithNoOneToHealMarksNoCharge() throws {
+        let tinkerer = add("tinkerer", at: HexCoord(3, 3))
+        tinkerer.activeCards = [44]
+        func healAdjacentAllies() throws {
+            let turn = try startTurn(tinkerer, top: 36, bottom: 38)   // Stun Shot; Restorative Mist
+            turn.setBottomFirst(true)
+            turn.executeCurrentAction()   // Move 2
+            turn.skipCurrentAction()
+            if turn.phase == .executeBottomAction, turn.currentActionIndex == 1 { turn.executeCurrentAction() }
+        }
+        try healAdjacentAllies()
+        XCTAssertNil(tinkerer.bonusChargesUsed[44], "no ally beside the Tinkerer")
+
+        let brute = add("brute", at: HexCoord(4, 3))
+        brute.maxHealth = 10
+        brute.health = 4
+        try healAdjacentAllies()
+        XCTAssertEqual(brute.health, 4 + 1 + 2)
+        XCTAssertEqual(tinkerer.bonusChargesUsed[44], 1)
+    }
+
     /// Stone Pummel: a melee attack with an obstacle beside the Cragheart destroys it for +3 and
     /// marks a charge; with no obstacle, nothing happens and no charge is used.
     func testStonePummelDestroysAnObstacleForThree() throws {

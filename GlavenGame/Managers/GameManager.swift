@@ -232,7 +232,7 @@ final class GameManager {
             character.handCards = characterManager.nextHand(for: character)
         }
 
-        let playerCount = max(2, game.characters.filter { !$0.absent }.count)
+        let playerCount = game.characterCount
         boardCoordinator.startScenario(scenario: vgbScenario, playerCount: playerCount)
         applyEventEffectsAtScenarioStart()
         appPhase = .board

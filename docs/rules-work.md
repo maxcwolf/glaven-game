@@ -24,6 +24,44 @@ question, how a piece of work is done from start to finish, and what to do next.
   inactive monsters, eggs). Reading the golden transcripts' diffs against the rulebook is the
   other check a merge of this size deserves.
 
+### Work in progress (2026-10-13)
+
+`main` has everything up to merge `aec9e30`. Two branches carry on from it, neither merged
+(merging is the owner's call):
+
+- **`feat/scenario-rules-3`** (2026-10-12): tests for the three rules no test caught; mutations
+  for the audit fixes that were only read and for the scenario mechanisms; the golden
+  transcripts read against the rules; fixes N17 (Scroll of Recall's Pull), N13 (Unending Chant;
+  charges marked only when an action is performed), N19 (#36 hanging at the start of round 9 —
+  a hang that is on `main`) and N18 (an ability printed under a Move was never performed: nine
+  cards).
+- **`feat/cards-4`** (2026-10-13), which starts from the head of `feat/scenario-rules-3` and so
+  holds all of the above too. It was made in a worktree (`.claude/worktrees/cards-4`) while a
+  second session had the main checkout. It adds: Singing Arrow's Curse over its area; the
+  play ledger no longer miscounting #9's Scouts (N12); the audit's new screens rendered and
+  looked at (N16) with the cards in play made finger-sized; a door two hexes wide opening as
+  one (N21). `scripts/mutate.py` has 111 mutations, each noticed by a test. Group 2 is begun: a card lost
+  from any hand spares the crystal (#84) or a captive (#44) — `saves`, `SaveChoiceSheet` — and a
+  character beside a captive gives up an action to free it (`forgo`), with #44's loss switched on.
+
+To pick it up, work on `feat/cards-4` (or merge it into `feat/scenario-rules-3` first — it is a
+fast-forward):
+
+1. **Verified** at the head of `feat/cards-4` on 2026-10-13: `swift test` 1,555 tests, none
+   failing; the four-seed all-scenarios playthrough without a violation; the veteran playthrough
+   passing (54 and 58 of 94 won — #44 is now lost by both parties, who exhaust themselves
+   sparing captives: with its loss switched on it wants a policy that frees them first).
+2. **Next**, from `TODO.md` → "Open, in order": group 1 is done but for a glance at two things
+   on the iPad (the Solo switch as a switch; the scrolling card lists in the damage and rest
+   sheets) and the drawings that need a game in progress (#46's eggs, #48's Dark Rider, the
+   bosses' jumps). Then the rest of group 2. Built so far: the card that spares an objective
+   (`saves`: #84, #44) and the action given up to free a captive (`forgo`: #44, with its loss).
+   Next on the same pattern (`BoardCoordinator+Forgo`, the button beside the basic action):
+   cleansing a pump (#26, which is its goal), looting an adjacent tile (#52), digging a grave
+   with movement (#75); then choosing which Living Spirit goes (#70) and whose deck Redthorn
+   draws from (#44, #56). Under Cards the large open item is the Beast Tyrant, who has no bear (N20).
+3. Merging to `main` (`git merge --no-ff -m "merge: …"`, then push) is done when the owner asks.
+
 ## Which document answers what
 
 | Question | Document | Kept current by |
@@ -61,7 +99,10 @@ was found enforced wrongly has a row in both (ids S1…, S2… in the engine aud
 4. **Prove the test.** Take the fix out and see the test fail: `git stash push <file>`, run the
    test, `git stash pop` (never `git checkout` a file with uncommitted work). For standing
    rules `scripts/mutate.py <name>` does it: it breaks one rule, runs the rule tests and says
-   which noticed. A fix whose test doesn't fail without it isn't done.
+   which noticed. A fix whose test doesn't fail without it isn't done. A mutation nothing
+   notices has three possible causes, all met in practice: the test's set-up makes the rule
+   moot (a token out of sight that is also out of range), the mutated line is one of several
+   copies of the rule, or the line does nothing another line doesn't — then the code goes.
 5. **Verify the batch:**
    ```sh
    swift test
@@ -117,11 +158,9 @@ use it to find a rule and the page image to read it.
 The task list is `TODO.md` → "Missing Gloomhaven Rules" → "Open, in order"; it is grouped and
 ordered like this:
 
-1. **Tests and checks, before building on top.** Three rules the mutation run found no test for;
-   mutations for the fixes that were only read and for the scenario mechanisms (none of
-   `scripts/mutate.py`'s 35 is a scenario rule — each scenario batch was mutation-checked by hand
-   when it was written); a look at the new interface and at what scenario rules draw, on a device;
-   a read of the golden transcripts the audit changed.
+1. **Tests and checks, before building on top.** Done but for a glance on the iPad at what the
+   off-screen renderer can't draw. (`scripts/mutate.py` has 111 mutations, 46 of them scenario
+   rules — `--scenario` — and each is noticed by a test: add one with every new mechanism.)
 2. **Scenario rules** — 94 printed rules in 28 scenarios, in this order because each group is one
    mechanism used several times:
    - *a prompt for a choice the player can't make yet*: losing a card to spare a captive or the
@@ -139,9 +178,8 @@ ordered like this:
    - *bosses still played from their stat cards*: #21, #34, #79;
    - *walls and obstacles with hit points*: #76, #95, #52;
    - a few small ones, and #55, a random dungeon with no map, which is a project of its own.
-3. **Engine rules** still open, each with an id in the engine audit: a Push printed as its own
-   ability ignoring immunity (N17), element choices, placing an area by hand, the rest of
-   negating damage, standees that run out.
+3. **Engine rules** still open, each with an id in the engine audit: element choices, placing
+   an area by hand, the rest of negating damage, standees that run out.
 4. **Cards**, **town and campaign**, and what isn't Gloomhaven.
 
 ## History, briefly

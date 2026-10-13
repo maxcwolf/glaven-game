@@ -416,7 +416,7 @@ final class ScenarioRulesManager {
 
     /// Player count used for monster-type selection (minimum 2).
     private var scenarioPlayerCount: Int {
-        max(2, scenarioCharacterCount)
+        game.characterCount
     }
 
     /// Variables for value expressions (damage, hit points, counts). C is at least 2, as in

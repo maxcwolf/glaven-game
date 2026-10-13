@@ -110,6 +110,13 @@ struct BoardView: View {
                     .transition(.move(edge: .bottom).combined(with: .opacity))
             }
 
+            // A card to spare what the party protects (the crystal, a captive)
+            if let pending = coordinator.pendingSave {
+                SaveChoiceSheet(pending: pending, coordinator: coordinator)
+                    .id(pending.id)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+            }
+
             // A defence item offered while an enemy attacks
             if let pending = coordinator.pendingItemUse {
                 ItemUsePrompt(pending: pending, coordinator: coordinator)
@@ -640,7 +647,7 @@ struct BoardView: View {
                         .lineLimit(1)
                     Spacer(minLength: 0)
                 }
-                .frame(minHeight: 28)
+                .frame(minHeight: Self.activeCardRowHeight)
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
@@ -650,7 +657,7 @@ struct BoardView: View {
                 Image(systemName: "xmark.circle")
                     .font(BoardTheme.font(size: 13))
                     .foregroundStyle(BoardTheme.secondaryText)
-                    .frame(width: 32, height: 28)
+                    .frame(width: Self.activeCardRowHeight, height: Self.activeCardRowHeight)
                     .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
@@ -662,6 +669,10 @@ struct BoardView: View {
 
     /// The side columns' width.
     static let sidePanelWidth: CGFloat = 240
+
+    /// A card in play is a row to tap (to see the card) with a button at its end (to end the
+    /// bonus): both a finger's size.
+    static let activeCardRowHeight: CGFloat = 44
 
     /// A party member: portrait, hit points, and their hand and lost cards.
     @ViewBuilder

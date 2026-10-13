@@ -14,7 +14,7 @@ extension BoardCoordinator {
     // MARK: - Lookups
 
     /// The objectives of the scenario's objective `index` (1-based) in play.
-    private func objectiveEntities(_ index: Int) -> [GameObjectiveEntity] {
+    func objectiveEntities(_ index: Int) -> [GameObjectiveEntity] {
         gameManager?.game.objectives.filter { $0.objectiveIndex == index }.flatMap(\.entities) ?? []
     }
 

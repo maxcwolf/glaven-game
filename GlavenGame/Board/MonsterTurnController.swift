@@ -174,7 +174,7 @@ final class MonsterTurnController {
         let game = gameManager.game
         let actions = MonsterAbility.flattened(actions)
         let stat = monster.attackStat(for: entity.type)
-        let characterCount = max(2, game.characters.filter { !$0.absent }.count)
+        let characterCount = game.characterCount
         let baseRange = stat?.rangeValue(characterCount: characterCount, level: monster.level) ?? 0
         func baseAttack() -> Int {
             stat?.attackValue(characterCount: characterCount, level: monster.level,
@@ -480,7 +480,7 @@ final class MonsterTurnController {
             coordinator.log("\(coordinator.name(pieceID)) is immobilized and can\u{2019}t move", category: .condition)
             return
         }
-        let characterCount = max(2, game.characters.filter { !$0.absent }.count)
+        let characterCount = game.characterCount
         let movement = monster.stat(for: entity.type)?.movementValue(characterCount: characterCount, level: monster.level) ?? 0
         let (enemies, allies) = coordinator.movementSets(for: pieceID)
         let paths = coordinator.boardState.doors.filter { !$0.isOpen }.compactMap { door in
@@ -744,7 +744,7 @@ final class MonsterTurnController {
     private func performSummon(_ action: ActionModel, pieceID: PieceID, summoner: GameMonsterEntity, monster: GameMonster) {
         guard let coordinator, let game = gameManager?.game,
               let specs = action.monsterSummons else { return }
-        let characterCount = max(2, game.characters.filter { !$0.absent }.count)
+        let characterCount = game.characterCount
         for spec in specs {
           for type in spec.summoned(forPlayerCount: characterCount) {
             let before = Set(game.monsters.first { $0.name == spec.name }?.aliveEntities.map(\.number) ?? [])

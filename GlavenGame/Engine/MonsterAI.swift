@@ -111,7 +111,7 @@ enum MonsterAI {
 
         // Stat card values (expressions such as "1+C" are evaluated).
         let stat = monster.attackStat(for: entity.type)
-        let characterCount = max(2, gameState.characters.filter { !$0.absent }.count)
+        let characterCount = gameState.characterCount
         func statValue(_ value: IntOrString?) -> Int {
             guard let value else { return 0 }
             return evaluateEntityValue(value, level: monster.level, characterCount: characterCount)

@@ -48,7 +48,7 @@ extension BoardCoordinator {
         gameManager.monsterManager.addEntity(type: type, to: monster, number: number)
         guard let entity = monster.entities.last(where: { $0.number == number && !$0.dead }) else { return nil }
         if let health {
-            let characterCount = max(2, game.characters.filter { !$0.absent }.count)
+            let characterCount = game.characterCount
             let hp = evaluateEntityValue(health, level: monster.level, characterCount: characterCount)
             if hp > 0 { entity.health = hp; entity.maxHealth = hp }
         }

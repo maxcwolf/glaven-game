@@ -84,27 +84,28 @@ final class SetupRulesTests: XCTestCase {
     }
 
     /// Solo play (GH p.15): "increase the monster level and trap damage by 1 … without increasing
-    /// gold conversion and bonus experience". A level 3 and a level 4 character are scenario
-    /// level 2; one player running both meets level 3 monsters and traps, for level 2's rewards.
+    /// gold conversion and bonus experience". A level 5 and a level 6 character are scenario
+    /// level 3; one player running both meets level 4 monsters and traps, for level 3's rewards
+    /// (a money token is worth 3 gold at level 3 and 4 at level 4, so the two can be told apart).
     func testSoloPlayRaisesMonstersAndTrapsButNotGoldOrExperience() throws {
-        let gm = try party(levels: [3, 4], solo: true)
+        let gm = try party(levels: [5, 6], solo: true)
         let scenario = try XCTUnwrap(gm.editionStore.scenarios(for: "gh").first { $0.index == "1" && $0.solo == nil })
         gm.startScenarioOnBoard(scenario)
-        XCTAssertEqual(gm.game.level, 2, "the scenario level is the party's")
+        XCTAssertEqual(gm.game.level, 3, "the scenario level is the party's")
         let guards = try XCTUnwrap(gm.game.monsters.first { $0.name == "bandit-guard" })
-        XCTAssertEqual(guards.level, 3, "monsters are set up a level higher")
-        XCTAssertEqual(gm.levelManager.trap(), 2 + 3, "trap damage with them")
-        XCTAssertEqual(gm.levelManager.terrain(), 2, "and hazardous terrain, half a trap")
-        XCTAssertEqual(gm.levelManager.loot(), 3, "a money token is worth what it is at level 2")
-        XCTAssertEqual(gm.levelManager.experience(), 4 + 2 * 2, "and so is the bonus experience")
+        XCTAssertEqual(guards.level, 4, "monsters are set up a level higher")
+        XCTAssertEqual(gm.levelManager.trap(), 2 + 4, "trap damage with them")
+        XCTAssertEqual(gm.levelManager.terrain(), 3, "and hazardous terrain, half a trap")
+        XCTAssertEqual(gm.levelManager.loot(), 3, "a money token is worth what it is at level 3")
+        XCTAssertEqual(gm.levelManager.experience(), 4 + 2 * 3, "and so is the bonus experience")
         // A monster arriving later in the scenario is of the same level.
         gm.boardCoordinator.spawnMonster(name: "living-bones", type: .normal, at: HexCoord(0, 0), origin: .spawned)
-        XCTAssertEqual(gm.game.monsters.first { $0.name == "living-bones" }?.level, 3)
+        XCTAssertEqual(gm.game.monsters.first { $0.name == "living-bones" }?.level, 4)
 
-        let together = try party(levels: [3, 4])
+        let together = try party(levels: [5, 6])
         together.startScenarioOnBoard(scenario)
-        XCTAssertEqual(together.game.monsters.first { $0.name == "bandit-guard" }?.level, 2, "a table of players meets level 2")
-        XCTAssertEqual(together.levelManager.trap(), 2 + 2)
+        XCTAssertEqual(together.game.monsters.first { $0.name == "bandit-guard" }?.level, 3, "a table of players meets level 3")
+        XCTAssertEqual(together.levelManager.trap(), 2 + 3)
     }
 
     /// Monsters have no level above 7: solo play at scenario level 7 changes nothing.

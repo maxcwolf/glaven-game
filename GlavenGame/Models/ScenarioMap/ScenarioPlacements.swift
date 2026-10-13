@@ -44,6 +44,12 @@ struct ScenarioPlacements: Codable, Equatable {
     /// Objectives (1-based) the monsters that attack them go for first: one that can get
     /// within range to attack it this turn focuses on it, whoever is nearer (a gate, the crystal).
     var focusFirst: [Int]?
+    /// Objectives a character may spare a source of damage by losing a card from their hand
+    /// (the captive Orchids; the crystal, twice a scenario).
+    var saves: [Save]?
+    /// What a character beside an objective may give up an action for (the captive Orchids,
+    /// freed).
+    var forgo: [Forgo]?
     /// Monster types that can't be damaged in any way; conditions and other effects of an
     /// attack still apply (the Living Spirits of Chained Isle).
     var undamageable: [String]?
@@ -321,6 +327,23 @@ extension ScenarioPlacements {
     struct Indestructible: Codable, Equatable {
         var subTypes: [String]?
         var tiles: [String]?
+    }
+
+    /// "Any character may lose one card from their hand to negate any one source of damage" to
+    /// an objective: which objective (1-based), and how many times in the scenario (nil: as
+    /// often as there are cards to lose).
+    struct Save: Codable, Hashable {
+        let objective: Int
+        var times: Int?
+    }
+
+    /// "A character adjacent to a captive Orchid may forgo an action (discarding one card
+    /// instead) to free that captive, which is removed from the map immediately": the objective
+    /// (1-based) that is freed, and the objective whose attacks gain +1 for each one freed
+    /// (Redthorn).
+    struct Forgo: Codable, Hashable {
+        let objective: Int
+        var strengthens: Int?
     }
 
     /// For every death of one of `killed`, one of `removes` leaves the map (Chained Isle: a

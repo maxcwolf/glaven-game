@@ -311,7 +311,7 @@ extension BoardCoordinator {
             return
         }
         let stat = monster.attackStat(for: forcedEntity.type)
-        let characterCount = max(2, (gameManager?.game.characters.filter { !$0.absent }.count) ?? 2)
+        let characterCount = gameManager?.game.characterCount ?? 2
         let baseRange = stat?.rangeValue(characterCount: characterCount, level: monster.level) ?? 0
         let baseAttack = stat?.attackValue(characterCount: characterCount, level: monster.level) ?? 0
         var forced = action
@@ -406,7 +406,7 @@ extension BoardCoordinator {
         let targets = boardState.piecePositions
             .filter { passed.contains($0.value) && areEnemies(pieceID, $0.key) && !isConditionActive(.invisible, on: $0.key) }
             .map(\.key).sorted()
-        for target in targets { applyCondition(condition, to: target) }
+        for target in targets { applyCondition(condition, to: target, by: pieceID) }
         log(targets.isEmpty ? "\(name(pieceID)) moved through no enemy"
                             : "\(name(pieceID)) gives \(GameText.list(targets.map(name))) \(GameText.conditionName(condition))",
             category: .condition)
