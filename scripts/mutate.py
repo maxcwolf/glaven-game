@@ -267,6 +267,7 @@ S={
  "zephyrsSitIdle": ("GlavenGame/Board/MonsterTurnController.swift", "            await zephyrsAct(before: monster, card: card, payments: payments)\n", ""),
  "newZephyrsActAtOnce": ("GlavenGame/Board/MonsterTurnController.swift", "zephyrs.aliveEntities.filter({ $0.summonState != .new })", "zephyrs.aliveEntities.filter({ _ in true })"),
  "zephyrsTakeTurnsOfTheirOwn": ("GlavenGame/Engine/MonsterAI.swift", "Set([written.battery?.gun, written.perch?.summons].compactMap { $0 })", "Set([written.battery?.gun].compactMap { $0 })"),
+ "immovableMovedByAChosenPush": ("GlavenGame/Board/BoardCoordinator.swift", "        if entity(for: target)?.immunities.contains(isPush ? .push : .pull) == true { return [] }\n", ""),
  "noOneIsAskedWhoHolds": ("GlavenGame/Board/BoardCoordinator+Carried.swift", "            } else if autoResolvePrompts {\n                give(thing.name, to: first.id, how: \"holds\")", "            } else if true {\n                give(thing.name, to: first.id, how: \"holds\")"),
  "lyingThingNotPickedUp": ("GlavenGame/Board/BoardCoordinator+Carried.swift", "            if let lying = boardState.carriedLying[name] { return hexes.contains(lying) }", "            if boardState.carriedLying[name] != nil { return false }"),
  "anyoneLootsTheQuestTile": ("GlavenGame/Board/BoardCoordinator+Carried.swift", "        return party.first { $0.id == characterID }?.personalQuest == quest", "        return party.first { $0.id == characterID }?.personalQuest == quest || true"),

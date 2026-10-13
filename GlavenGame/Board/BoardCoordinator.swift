@@ -2604,6 +2604,8 @@ final class BoardCoordinator {
     /// the way to a hex it can stop on within the steps left. A flying figure is forced over
     /// obstacles and any figure. Difficult terrain doesn't matter.
     func forcedMoveSteps(for target: PieceID, from: HexCoord, attackerPos: HexCoord, stepsLeft: Int, isPush: Bool) -> [HexCoord] {
+        // Some can't be forced to move, however the push or pull comes (the Sightless Eye, the Elder Drake).
+        if entity(for: target)?.immunities.contains(isPush ? .push : .pull) == true { return [] }
         let flying = flies(target)
         // Heaving Swing: "You may push the target into hexes containing obstacles."
         let intoObstacles = isPush && pushesIntoObstacles

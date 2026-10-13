@@ -79,6 +79,15 @@ final class PerchTests: XCTestCase {
         stand(sim, brute, on: try floor(sim) { place in perch.allSatisfy { coord.boardState.range(from: place, to: $0) == 2 } || perch.map { coord.boardState.range(from: place, to: $0) ?? 9 }.min() == 2 })
         XCTAssertFalse(coord.targetableEnemies(of: brute, range: 1).contains(boss))
 
+        // "The Elder Drake cannot be forced to move or change positions in any way": a push on an
+        // attack or one chosen by itself finds nowhere to send it.
+        let here = try XCTUnwrap(coord.boardState.piecePositions[boss])
+        let from = try XCTUnwrap(coord.boardState.piecePositions[brute])
+        XCTAssertTrue(coord.forcedMoveSteps(for: boss, from: here, attackerPos: from, stepsLeft: 2, isPush: true).isEmpty)
+        XCTAssertTrue(coord.forcedMoveSteps(for: boss, from: here, attackerPos: from, stepsLeft: 2, isPush: false).isEmpty)
+        await coord.performPushPull(target: boss, attackerPos: from, steps: 2, isPush: true)
+        XCTAssertEqual(Set(coord.boardState.hexes(of: boss)), perch)
+
         let restored = BoardState()
         try JSONDecoder().decode(BoardSnapshot.self, from: JSONEncoder().encode(BoardSnapshot.from(coord.boardState))).restore(to: restored)
         XCTAssertEqual(restored.bodies, coord.boardState.bodies)
@@ -177,7 +186,7 @@ final class PerchTests: XCTestCase {
         let boss = try drake(sim)
         try await play(sim, card: special(2))
         let zephyrs = coord.boardState.piecePositions.keys.filter { if case .monster("zephyr", _) = $0 { return true }; return false }.sorted()
-        XCTAssertEqual(zephyrs.count, 2)
+        guard zephyrs.count == 2 else { return XCTFail("two Zephyrs summoned: \(zephyrs)") }
         XCTAssertTrue(MonsterAI.idleMonsters(sim.gm.game).contains("zephyr"), "no turn or card of their own")
         let brute = sim.gm.game.characters[0]
         let zephyr = zephyrs[0]
@@ -188,6 +197,7 @@ final class PerchTests: XCTestCase {
         XCTAssertFalse(coord.sufferDamage(9, to: zephyr))
         XCTAssertNotNil(coord.boardState.piecePositions[zephyr])
         coord.applyCondition(.stun, to: zephyr)
+        coord.applyCondition(.strengthen, to: zephyr)   // (nothing at all: not a boon either)
         XCTAssertTrue(coord.entity(for: zephyr)?.entityConditions.isEmpty ?? false)
         XCTAssertFalse(PlayerSideAI.hostileMonsters(board: coord.boardState, gameState: sim.gm.game, includeInvisible: false).contains(zephyr))
         XCTAssertTrue(PlayerSideAI.hostileMonsters(board: coord.boardState, gameState: sim.gm.game, includeInvisible: false).contains(boss))
