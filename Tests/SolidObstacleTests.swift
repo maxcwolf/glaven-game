@@ -45,7 +45,7 @@ final class SolidObstacleTests: XCTestCase {
                 }
             }
         }
-        throw XCTSkip("no boulder with floor on two opposite sides")
+        return try XCTUnwrap(nil as (from: HexCoord, boulder: HexCoord, to: HexCoord)?, "no solid boulder with floor on two opposite sides")
     }
 
     /// The boulders cut the centre room into four sections with a starting hex in each; the
