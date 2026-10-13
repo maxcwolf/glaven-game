@@ -96,7 +96,8 @@ final class SwayTests: XCTestCase {
         coord.boardState.removePiece(.character(weaver.id))
         coord.boardState.removePiece(.summon(id: ally.id))
         brute.summons.removeAll()
-        for start in three.prefix(3) {
+        // (From every side of it: the lowest-numbered hex in reach is the farthest only on one.)
+        for start in three {
             for piece in coord.boardState.piecePositions.keys.sorted() { if case .monster("giant-viper", _) = piece { coord.sufferDamage(999, to: piece) } }
             stand(sim, .character(brute.id), on: start)
             let best = try farthest(.character(brute.id))
