@@ -12,8 +12,8 @@ means the data and code that enforce the rule were found, and usually a test tha
 that the scenario was played through. Keep it current: when a rule is built, rewrite its row in
 the same commit (see [../rules-work.md](../rules-work.md)).
 
-**447 rules: 363 done, 18 partial, 66 missing.**
-71 of 95 scenarios have every printed rule done. The other 24: #55 (6 missing, 1 partial), #88 (6 missing, 1 partial), #34 (4 missing, 2 partial), #76 (4 missing, 2 partial), #44 (0 missing, 1 partial), #71 (5 missing, 0 partial), #73 (5 missing, 0 partial), #78 (5 missing, 0 partial), #95 (5 missing, 0 partial), #21 (2 missing, 2 partial), #49 (4 missing, 0 partial), #54 (4 missing, 0 partial), #69 (3 missing, 1 partial), #74 (4 missing, 0 partial), #52 (1 missing, 1 partial), #58 (3 missing, 0 partial), #68 (1 missing, 1 partial), #79 (1 missing, 1 partial), #81 (2 missing, 0 partial), #82 (0 missing, 2 partial), #38 (0 missing, 1 partial), #47 (0 missing, 1 partial), #56 (0 missing, 1 partial), #67 (1 missing, 0 partial).
+**447 rules: 365 done, 16 partial, 66 missing.**
+73 of 95 scenarios have every printed rule done. The other 22: #55 (6 missing, 1 partial), #88 (6 missing, 1 partial), #34 (4 missing, 2 partial), #76 (4 missing, 2 partial), #71 (5 missing, 0 partial), #73 (5 missing, 0 partial), #78 (5 missing, 0 partial), #95 (5 missing, 0 partial), #21 (2 missing, 2 partial), #49 (4 missing, 0 partial), #54 (4 missing, 0 partial), #69 (3 missing, 1 partial), #74 (4 missing, 0 partial), #52 (1 missing, 1 partial), #58 (3 missing, 0 partial), #68 (1 missing, 1 partial), #79 (1 missing, 1 partial), #81 (2 missing, 0 partial), #82 (0 missing, 2 partial), #38 (0 missing, 1 partial), #47 (0 missing, 1 partial), #67 (1 missing, 0 partial).
 
 Rules that were enforced wrongly, as against not at all, are findings of the engine audit
 ([../audits/2026-10-09-rules-audit.md](../audits/2026-10-09-rules-audit.md), rows S1-…, S2-…),
@@ -392,7 +392,7 @@ order", has the same list as tasks). The rows below say what the game does today
 | Redthorn (b): 6+(3×L) HP | done | `objectives[0].health` `"6+(3xL)"`; placed on `b1b` [0,2] |
 | Redthorn: ally of the characters, enemy of all monsters | done | `escort: true` → player side in `isPlayerSide`; in `MonsterAI.gatherEnemies` |
 | Redthorn acts on initiative 01: Move 3, Attack 3, Range 3 | done | `objectives[0]` `initiative: 1`, `actions` move 3 / attack 3 with range 3 → `EscortTurnController` / `EscortAI` |
-| Redthorn draws from whichever attack modifier deck the players choose | partial | always the ally deck: `objectives[0].allyDeck: true` → `EscortTurnController` draws with `drawAllyCard`; the players are never asked which deck (would need a prompt) |
+| Redthorn draws from whichever attack modifier deck the players choose | done | placements `drawsFromACharacter: [1]` → as he attacks, `EscortTurnController` asks whose deck (`chooseFigure`, the characters on the board) and draws from it; headless play takes the first character's. `ScenarioSpecialRuleTests.testRedthornDrawsFromTheDeckThePlayersChoose` |
 | Redthorn adds +1 Attack for each captive freed | done | placements `forgo: [{"objective": 2, "strengthens": 1}]` → `BoardCoordinator.free` raises his Attack by 1 with each captive freed; `testACharacterBesideACaptiveGivesUpAnActionToFreeIt` |
 | Captive Orchids (a): nine, 4+(2×L) HP each | done | `objectives[1]` `"4+(2xL)"`; rooms list 5+1+2+1 = 9; placed on `m1b` ×5, `l1b`, `b4a` ×2, `b3a` |
 | Captives cannot be healed | done | placements `protect: [2]` → not an escort, so `isScenery`: `areAllies` is false and no heal can target them |
@@ -507,7 +507,7 @@ order", has the same list as tasks). The rows below say what the game does today
 | Captive Orchids (a): three, 4+(2×L) HP each | done | `objectives[0]` `"4+(2xL)"`; room 4 lists three; placed on `m1b` [0,1], [1,0], [2,0] |
 | Captives are allies of the characters and enemies of all monsters | done | `escort: true` → player side; monsters focus them (`MonsterAI.gatherEnemies`) |
 | Captives act on initiative 50: Move 3, Attack 3 | done | `initiative: 50`, `actions` move 3 / attack 3 → `EscortTurnController` (each living Orchid in turn) |
-| Captives draw from whichever character attack modifier deck the players choose | partial | always the ally deck: `allyDeck: true` → `EscortTurnController` draws with `drawAllyCard()`. The players are never asked for a character's deck; needs a prompt |
+| Captives draw from whichever character attack modifier deck the players choose | done | placements `drawsFromACharacter: [1]` → asked as each Orchid attacks, as for Redthorn (#44); the same code and test |
 
 ### 57 · Investigation
 | Rule (from the book) | Status | Where / what's missing |

@@ -118,6 +118,9 @@ ends up on the board:
   (`SaveChoiceSheet`): let it suffer, or pick a card from any hand. The sheet says when
   the scenario is lost with the objective; headless play and the simulator's policies give a card
   only then.
+- `drawsFromACharacter`: escorts whose attacks draw "from whichever attack modifier deck the
+  players choose" (#44 Redthorn, #56 the captive Orchids): as one attacks the players are asked
+  whose deck, and the card is drawn from that character's.
 - `dig`: objectives dug up with movement, not attacked (#75's graves): during a Move a tap on one
   beside the mover spends a point of the move on it — a hit point, so `health: "1+C"` is the
   movement it takes — in as many moves as it needs; dug up, it is destroyed as any objective is
