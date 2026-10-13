@@ -40,8 +40,9 @@ question, how a piece of work is done from start to finish, and what to do next.
   second session had the main checkout. It adds: Singing Arrow's Curse over its area; the
   play ledger no longer miscounting #9's Scouts (N12); the audit's new screens rendered and
   looked at (N16) with the cards in play made finger-sized; a door two hexes wide opening as
-  one (N21). `scripts/mutate.py` has 106 mutations, each noticed by a test. Group 2 is begun: a card lost
-  from any hand spares the crystal (#84) or a captive (#44) — `saves`, `SaveChoiceSheet`.
+  one (N21). `scripts/mutate.py` has 111 mutations, each noticed by a test. Group 2 is begun: a card lost
+  from any hand spares the crystal (#84) or a captive (#44) — `saves`, `SaveChoiceSheet` — and a
+  character beside a captive gives up an action to free it (`forgo`), with #44's loss switched on.
 
 To pick it up, work on `feat/cards-4` (or merge it into `feat/scenario-rules-3` first — it is a
 fast-forward):
@@ -52,10 +53,12 @@ fast-forward):
 2. **Next**, from `TODO.md` → "Open, in order": group 1 is done but for a glance at two things
    on the iPad (the Solo switch as a switch; the scrolling card lists in the damage and rest
    sheets) and the drawings that need a game in progress (#46's eggs, #48's Dark Rider, the
-   bosses' jumps). Then the rest of group 2: the next prompt is giving up an action — free a captive
-   (#44: then switch on its loss, `lostAt` for objective 2, and Redthorn's +1 Attack for each
-   captive freed), cleanse a pump (#26), loot an adjacent tile (#52), dig a grave (#75).
-   `BoardCoordinator+Saves` and `SaveChoiceSheet` show the pattern. Under Cards the large open item is the Beast Tyrant, who has no bear (N20).
+   bosses' jumps). Then the rest of group 2. Built so far: the card that spares an objective
+   (`saves`: #84, #44) and the action given up to free a captive (`forgo`: #44, with its loss).
+   Next on the same pattern (`BoardCoordinator+Forgo`, the button beside the basic action):
+   cleansing a pump (#26, which is its goal), looting an adjacent tile (#52), digging a grave
+   with movement (#75); then choosing which Living Spirit goes (#70) and whose deck Redthorn
+   draws from (#44, #56). Under Cards the large open item is the Beast Tyrant, who has no bear (N20).
 3. Merging to `main` (`git merge --no-ff -m "merge: …"`, then push) is done when the owner asks.
 
 ## Which document answers what
@@ -155,7 +158,7 @@ The task list is `TODO.md` → "Missing Gloomhaven Rules" → "Open, in order"; 
 ordered like this:
 
 1. **Tests and checks, before building on top.** Done but for a glance on the iPad at what the
-   off-screen renderer can't draw. (`scripts/mutate.py` has 106 mutations, 41 of them scenario
+   off-screen renderer can't draw. (`scripts/mutate.py` has 111 mutations, 46 of them scenario
    rules — `--scenario` — and each is noticed by a test: add one with every new mechanism.)
 2. **Scenario rules** — 94 printed rules in 28 scenarios, in this order because each group is one
    mechanism used several times:

@@ -240,7 +240,7 @@ opposite of A2 now assert the rule ("line grazing a wall corner is blocked", "a 
 hides the row beyond it"). The `RulebookTests` pipeline tests call `CombatResolver` with its inputs supplied:
 they prove the arithmetic, and `AttackRuleTests` proves the board supplies the right inputs.
 
-**Mutations.** `scripts/mutate.py` breaks one rule at a time in the game code (106 named
+**Mutations.** `scripts/mutate.py` breaks one rule at a time in the game code (111 named
 mutations: poison adding 0, Retaliate reduced by Shield, no Disadvantage for a ranged attack on an
 adjacent enemy, effects on a killed target, a summon drawing from the monster deck, no reshuffle
 at the end of the round, a jump landing free on a trap, the gold rate, turn order reversed…), runs
@@ -257,9 +257,9 @@ batch (C8, E7, E12, B7, B6, B12, B11, B4, B8, start-of-round rules), whose faili
 only been read, have fifteen mutations of their own since the same day; three of their tests
 could not see the rule broken and were changed (solo play at a level where its gold differs, the
 scenario summary of an escape, a stunned character's offers answered instead of waited on).
-The scenario mechanisms have 41 more (`scripts/mutate.py --scenario`: the `when` facts, standing
+The scenario mechanisms have 46 more (`scripts/mutate.py --scenario`: the `when` facts, standing
 effects, water, inactive monsters, sides, boss cycles, marching, locks, monsters set up late…),
-run against the scenario tests. 106 mutations, each noticed by a test (fourteen more came with the fixes of N13, N17 to N19 and N21, five with the card that spares the crystal).
+run against the scenario tests. 111 mutations, each noticed by a test (fourteen more came with the fixes of N13, N17 to N19 and N21, ten with the card that spares an objective and the action given up to free a captive).
 
 **The simulator** (`Tests/Support/ScenarioSimulator`, `PlayLedger`, `PlayerPolicies`). It now
 also checks, of every playthrough: each attack within its attack's range (read from the card and

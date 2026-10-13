@@ -117,6 +117,11 @@ ends up on the board:
   (`SaveChoiceSheet`): let it suffer, or pick a card from any hand. The sheet says when
   the scenario is lost with the objective; headless play and the simulator's policies give a card
   only then.
+- `forgo`: what a character beside an objective may give up an action for —
+  `{"objective": 2, "strengthens": 1}`: the objective is freed and leaves the map, and objective 1
+  attacks for 1 more with each one freed (#44's captives and Redthorn). Offered beside the basic
+  action for a half none of whose abilities has been performed; the half's card is discarded as
+  after a basic action. The simulator's policies free a captive whenever one is beside them.
 - `splitStart`: there are two starting rooms and no more than half the party (rounded up) may
   start in the same one (#50, #58, #85).
 - `water`: what water hexes do — `hurtsThePoisoned` (a poisoned character or summon walking in
@@ -213,7 +218,7 @@ its map, every door objective is on a door and every objective number exists.
 | 38 Slave Pens | the Orchid | — | lost if he dies | he heads for the nearest enemy, not the shaman on the D tile |
 | 39 Treacherous Divide | altar | — | win: destroy the altar | — |
 | 42 Realm of the Voice | 6 vocal chords | — | win: destroy all | — |
-| 44 Tribal Assault | Redthorn, 9 captives (protected) | — | — | a card may be lost to spare a captive (`saves`); freeing one isn't modelled — so a captive's death doesn't lose yet |
+| 44 Tribal Assault | Redthorn, 9 captives (protected) | — | lost if a captive is killed | a card may be lost to spare a captive (`saves`); a character beside one may give up an action to free it (`forgo`) |
 | 45 Rebel Swamp | 6 totems | — | win: destroy all | — |
 | 56 Bandit's Wood | 3 captive Orchids | — | lost when all three die (scenario rule) | — |
 | 57 Investigation | — | a | win: kill the Infiltrator (he appears where the marked guard fell) | — |
@@ -377,7 +382,7 @@ goals are checked; the notes say what around a goal is still missing.
 | 41 | Timeworn Tomb | All characters must escape through the exit (a). | yes | Any character becomes exhausted (printed under Section 2). | yes |
 | 42 | Realm of the Voice | Destroy all vocal chords. | yes | — | — |
 | 43 | Drake Nest | Kill a number of drakes equal to 4×C. | yes | — | — |
-| 44 | Tribal Assault | Kill all enemies and protect all captive Orchids (a). | yes | Any captive Orchid is killed. | **no** — the card-to-save rule is in; needs freeing a captive first |
+| 44 | Tribal Assault | Kill all enemies and protect all captive Orchids (a). | yes | Any captive Orchid is killed. | yes |
 | 45 | Rebel Swamp | Destroy all totems (a). | yes | — | — |
 | 46 | Nightmare Peak | Kill the Winged Horror. | yes | — | — |
 | 47 | Lair of the Unseeing Eye | Kill the Sightless Eye. | yes | — | — |

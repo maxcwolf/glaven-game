@@ -12,8 +12,8 @@ means the data and code that enforce the rule were found, and usually a test tha
 that the scenario was played through. Keep it current: when a rule is built, rewrite its row in
 the same commit (see [../rules-work.md](../rules-work.md)).
 
-**447 rules: 355 done, 21 partial, 71 missing.**
-68 of 95 scenarios have every printed rule done. The other 27: #55 (6 missing, 1 partial), #88 (6 missing, 1 partial), #34 (4 missing, 2 partial), #76 (4 missing, 2 partial), #44 (3 missing, 1 partial), #71 (5 missing, 0 partial), #73 (5 missing, 0 partial), #78 (5 missing, 0 partial), #95 (5 missing, 0 partial), #21 (2 missing, 2 partial), #49 (4 missing, 0 partial), #54 (4 missing, 0 partial), #69 (3 missing, 1 partial), #74 (4 missing, 0 partial), #52 (1 missing, 2 partial), #58 (3 missing, 0 partial), #26 (2 missing, 0 partial), #68 (1 missing, 1 partial), #79 (1 missing, 1 partial), #81 (2 missing, 0 partial), #82 (0 missing, 2 partial), #38 (0 missing, 1 partial), #47 (0 missing, 1 partial), #56 (0 missing, 1 partial), #67 (1 missing, 0 partial), #70 (0 missing, 1 partial), #75 (0 missing, 1 partial).
+**447 rules: 358 done, 21 partial, 68 missing.**
+68 of 95 scenarios have every printed rule done. The other 27: #55 (6 missing, 1 partial), #88 (6 missing, 1 partial), #34 (4 missing, 2 partial), #76 (4 missing, 2 partial), #44 (0 missing, 1 partial), #71 (5 missing, 0 partial), #73 (5 missing, 0 partial), #78 (5 missing, 0 partial), #95 (5 missing, 0 partial), #21 (2 missing, 2 partial), #49 (4 missing, 0 partial), #54 (4 missing, 0 partial), #69 (3 missing, 1 partial), #74 (4 missing, 0 partial), #52 (1 missing, 2 partial), #58 (3 missing, 0 partial), #26 (2 missing, 0 partial), #68 (1 missing, 1 partial), #79 (1 missing, 1 partial), #81 (2 missing, 0 partial), #82 (0 missing, 2 partial), #38 (0 missing, 1 partial), #47 (0 missing, 1 partial), #56 (0 missing, 1 partial), #67 (1 missing, 0 partial), #70 (0 missing, 1 partial), #75 (0 missing, 1 partial).
 
 Rules that were enforced wrongly, as against not at all, are findings of the engine audit
 ([../audits/2026-10-09-rules-audit.md](../audits/2026-10-09-rules-audit.md), rows S1-…, S2-…),
@@ -27,7 +27,7 @@ order", has the same list as tasks). The rows below say what the game does today
 
 - **A choice the player has no way to make yet.** (Losing a card from hand to negate damage to
   something else — #44's captives, #84's crystal — is built: `saves`.) Giving up an action or part of a move to
-  do something: #26 cleansing a pump (which is its goal), #44 freeing a captive, #52 looting an
+  do something (built for #44's captives: `forgo`; the others still to do): #26 cleansing a pump (which is its goal), #44 freeing a captive, #52 looting an
   adjacent tile, #75 digging a grave with movement. Choosing: which Living Spirit goes (#70),
   whose attack modifier deck an escort draws from (#44, #56). With these, #44's loss ("a captive
   dies") and Redthorn's +1 Attack for each captive freed can be switched on.
@@ -388,18 +388,18 @@ order", has the same list as tasks). The rows below say what the game does today
 | Rule (from the book) | Status | Where / what's missing |
 |---|---|---|
 | Goal: kill all enemies (and protect the captives) | done | placements goal has only `text`, so the default in `checkVictoryDefeat` applies: every enemy dead, every room revealed |
-| Lose: any captive Orchid is killed | missing | still not checked: #44's placements `goal` has only `text` — no `lostAt` for objective 2, though the mechanism exists (`goalLost`, used for #38 and #84) — left out on purpose until a card can be lost to save a captive (README goal table, `TODO.md`: "A prompt for a choice the player can't make yet"); a captive's death changes nothing |
+| Lose: any captive Orchid is killed | done | placements goal `lostAt: {"2": 1}` → `goalLost`; a captive freed is not one killed (`BoardCoordinator.freedTag`); `ScenarioSpecialRuleTests.testACaptiveKilledLosesTribalAssaultAndOneFreedDoesNot` |
 | Redthorn (b): 6+(3×L) HP | done | `objectives[0].health` `"6+(3xL)"`; placed on `b1b` [0,2] |
 | Redthorn: ally of the characters, enemy of all monsters | done | `escort: true` → player side in `isPlayerSide`; in `MonsterAI.gatherEnemies` |
 | Redthorn acts on initiative 01: Move 3, Attack 3, Range 3 | done | `objectives[0]` `initiative: 1`, `actions` move 3 / attack 3 with range 3 → `EscortTurnController` / `EscortAI` |
 | Redthorn draws from whichever attack modifier deck the players choose | partial | always the ally deck: `objectives[0].allyDeck: true` → `EscortTurnController` draws with `drawAllyCard`; the players are never asked which deck (would need a prompt) |
-| Redthorn adds +1 Attack for each captive freed | missing | freeing a captive isn't modelled, so nothing counts freed captives or raises his Attack 3 (`ScenarioEnforcedRuleTests.testRedthornTakesHisTurn` covers only his turn at initiative 01) |
+| Redthorn adds +1 Attack for each captive freed | done | placements `forgo: [{"objective": 2, "strengthens": 1}]` → `BoardCoordinator.free` raises his Attack by 1 with each captive freed; `testACharacterBesideACaptiveGivesUpAnActionToFreeIt` |
 | Captive Orchids (a): nine, 4+(2×L) HP each | done | `objectives[1]` `"4+(2xL)"`; rooms list 5+1+2+1 = 9; placed on `m1b` ×5, `l1b`, `b4a` ×2, `b3a` |
 | Captives cannot be healed | done | placements `protect: [2]` → not an escort, so `isScenery`: `areAllies` is false and no heal can target them |
 | Captives are not allies of the characters; enemies of all monsters | done | `isProtected` → player side for `areEnemies`, in `MonsterAI.gatherEnemies` (`container.isProtected && maxHealth > 0`) |
 | Captives: initiative 99 for monster focusing | done | `MonsterAI.enemyInitiative` returns 99.5 for a non-escort objective |
 | A character may lose one card from hand to negate one source of damage to a captive | done | placements `saves: [{"objective": 2}]` → `BoardCoordinator.promptSave` in `resolveDamage`: as a captive is about to suffer, the party is asked on `SaveChoiceSheet` and a card from any hand spares it, as often as there are cards; `ScenarioSpecialRuleTests.testACaptiveIsSparedAsOftenAsThereAreCards` |
-| A character adjacent to a captive may forgo an action (discard a card) to free it | missing | no code: captives stay on the board until killed or the scenario ends. Needs a new player action (give up a half, discarding its card) for a character beside a captive, which removes the captive |
+| A character adjacent to a captive may forgo an action (discard a card) to free it | done | placements `forgo` → `PlayerTurnController.forgoTargets` / `forgoAction(toFree:)`: offered beside the basic action ("Free Captive Orchid 3") for a half not yet begun; the half's abilities are passed over, its card discarded (never lost, no experience) and the captive leaves the map; `testACharacterBesideACaptiveGivesUpAnActionToFreeIt` |
 
 ### 45 · Rebel Swamp
 | Rule (from the book) | Status | Where / what's missing |
