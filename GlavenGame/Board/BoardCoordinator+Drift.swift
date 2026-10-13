@@ -142,7 +142,7 @@ extension BoardCoordinator {
 
     /// Ask the players which of `options` (the hex `piece` stands on may be one: tap the
     /// figure); headless play takes the first. Nil if the board was left meanwhile.
-    @MainActor func chooseHex(_ options: [HexCoord], for piece: PieceID, title: String, detail: String) async -> HexCoord? {
+    @MainActor func chooseHex(_ options: [HexCoord], for piece: PieceID?, title: String, detail: String) async -> HexCoord? {
         guard !autoResolvePrompts, options.count > 1 else { return options.first }
         return await withCheckedContinuation { continuation in
             pendingHexChoice = PendingHexChoice(options: options, continuation: continuation)

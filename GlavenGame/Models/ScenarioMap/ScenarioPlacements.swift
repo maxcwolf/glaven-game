@@ -58,6 +58,8 @@ struct ScenarioPlacements: Codable, Equatable {
     var drift: Drift?
     /// Obstacles that roll along their rows as each round ends (#73's boulders).
     var rolling: Rolling?
+    /// Water that rises on a tile as rounds end, and is bailed (#74's hold).
+    var flood: Flood?
     /// Escorts (objectives, 1-based) whose attacks draw "from whichever attack modifier deck the
     /// players choose": a character's, asked as the escort attacks (Redthorn; the captive
     /// Orchids of Bandit's Wood).
@@ -361,6 +363,29 @@ extension ScenarioPlacements {
     struct Save: Codable, Hashable {
         let objective: Int
         var times: Int?
+    }
+
+    /// "At the end of every even round for two characters or every round for three or four
+    /// characters, one water tile is added to the B tile adjacent to any existing water tile. If a
+    /// water tile cannot be placed because the B tile is full, the scenario is lost. Characters
+    /// may pick up any water tile through normal looting and then get rid of it by ending their
+    /// turn in one of the hexes e. Each character can only hold one water tile at a time." (#74)
+    struct Flood: Codable, Hashable {
+        /// The tile that fills.
+        let tile: String
+        /// The rounds at whose end a water tile is added, as a rule's `round` is written.
+        let every: String
+        /// The letter of the hexes a held water tile is got rid of on.
+        let bail: String
+        /// "Remove water tiles d for three characters": the letter, and for how many characters.
+        var dry: Dry?
+        /// What the players read when the tile is full.
+        let lost: String
+
+        struct Dry: Codable, Hashable {
+            let marker: String
+            let characters: Int
+        }
     }
 
     /// "At the end of every round, both boulders in each row will move one, two, or three hexes

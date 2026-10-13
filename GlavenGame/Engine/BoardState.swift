@@ -120,6 +120,10 @@ final class BoardState {
     var tokensLooted: [Int] = []
     /// The hexes whose token has been looted (none is laid there again).
     var tokenHexesLooted: Set<HexCoord> = []
+    /// The characters holding a water tile they looted (Merchant Ship).
+    var waterHeld: Set<String> = []
+    /// The water the scenario has taken off the map for this party's size.
+    var floodSetUp = false
     /// Where the obstacles that roll as rounds end lie (Rockslide Ridge's boulders).
     var rollers: [HexCoord] = []
     /// What a rolling obstacle lies on (a trap, rubble): put back as it rolls on.

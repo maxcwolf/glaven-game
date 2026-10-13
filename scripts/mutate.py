@@ -87,7 +87,7 @@ M={
 }
 # Scenario rules (the mechanisms of placements/gh.json): run against the scenario tests.
 SCENARIO_FILTER=("ScenarioSpecialRuleTests|ScenarioReauditTests|ScenarioEnforcedRuleTests|ScenarioLockTests|ScenarioGoalTests|"
-                 "ScenarioSpawnTests|DemonicRiftTests|BattlementsTests|MonsterTextTests|MonsterSummonTests|CarriedThingTests|DriftTests|RollingBoulderTests")
+                 "ScenarioSpawnTests|DemonicRiftTests|BattlementsTests|MonsterTextTests|MonsterSummonTests|CarriedThingTests|DriftTests|RollingBoulderTests|RisingWaterTests")
 S={
  "factSavedIgnored": ("GlavenGame/Board/BoardCoordinator+Goals.swift", "            guard arrived >= saved else { return false }", "            guard arrived >= 0 * saved else { return false }"),
  "factLockIgnored": ("GlavenGame/Board/BoardCoordinator+Goals.swift", "        if let lock = fact.lock, !boardState.releasedLocks.contains(lock) { return false }", "        if let lock = fact.lock, lock < 0 { return false }"),
@@ -189,6 +189,17 @@ S={
  "noChoiceOfRolls": ("GlavenGame/Board/BoardCoordinator+Rolling.swift", "guard !autoResolvePrompts, options.count > 1 else { return suggested }", "guard false else { return suggested }"),
  "firstRollSuggested": ("GlavenGame/Board/BoardCoordinator+Rolling.swift", "return choices.indices.min { harm(choices[$0]) < harm(choices[$1]) } ?? 0", "return harm(choices[0]).0 < 0 ? 1 : 0"),
  "rollChoiceIgnored": ("GlavenGame/Board/BoardCoordinator+Rolling.swift", "await rollBoulders(by: choices[chosen])", "await rollBoulders(by: choices[suggested])"),
+ "waterNeverRises": ("GlavenGame/Board/BoardCoordinator.swift", "if floods { await self.waterRisesAsTheRoundEnds() }", "if false { await self.waterRisesAsTheRoundEnds() }"),
+ "waterRisesEveryRound": ("GlavenGame/Board/BoardCoordinator+Flood.swift", "return ScenarioExpression.condition(flood.every, variables: variables) ?? false", "_ = variables\n        return flood.every.isEmpty == false"),
+ "fullHoldStaysAfloat": ("GlavenGame/Board/BoardCoordinator+Flood.swift", "            pendingResult = .defeat\n            endReason = .ruleLost(flood.lost)\n", "            endReason = .ruleLost(flood.lost)\n"),
+ "waterRisesAnywhere": ("GlavenGame/Board/BoardCoordinator+Flood.swift", "return dry.filter { hex in boardState.neighbors(of: hex).contains(where: wet.contains) }", "return dry"),
+ "waterHeldByTheArmful": ("GlavenGame/Board/BoardCoordinator+Flood.swift", "guard isFloodWater(hex), !boardState.waterHeld.contains(characterID) else { return }", "guard isFloodWater(hex) else { return }"),
+ "lootedWaterStaysOnTheMap": ("GlavenGame/Board/BoardCoordinator+Flood.swift", "        boardState.waterHeld.insert(characterID)\n        setWater(hex, false)\n", "        boardState.waterHeld.insert(characterID)\n"),
+ "waterBailedAnywhere": ("GlavenGame/Board/BoardCoordinator+Flood.swift", "boardState.markerHexes[flood.bail]?.contains(hex) == true else { return }", "boardState.markerHexes[flood.bail]?.contains(hex) != nil else { return }"),
+ "waterNeverBailed": ("GlavenGame/Board/BoardCoordinator.swift", "        bailWater(characterID)\n    }\n", "    }\n"),
+ "noWaterRemovedForThree": ("GlavenGame/Board/BoardCoordinator+Flood.swift", "guard let dry = flood.dry, gameManager.game.characterCount == dry.characters else { return }", "guard let dry = flood.dry, false, gameManager.game.characterCount == dry.characters else { return }"),
+ "lootActionMissesWater": ("GlavenGame/Board/BoardCoordinator.swift", " || isFloodWater(coord)\n", "\n"),
+ "corridorCountsAsTheHold": ("GlavenGame/Board/BoardCoordinator+Flood.swift", " && boardState.neighbors(of: $0).allSatisfy { boardState.cells[$0] == nil || onTheTile($0) } }.sorted()", " }.sorted()"),
  "noOneIsAskedWhoHolds": ("GlavenGame/Board/BoardCoordinator+Carried.swift", "            } else if autoResolvePrompts {\n                give(thing.name, to: first.id, how: \"holds\")", "            } else if true {\n                give(thing.name, to: first.id, how: \"holds\")"),
  "lyingThingNotPickedUp": ("GlavenGame/Board/BoardCoordinator+Carried.swift", "            if let lying = boardState.carriedLying[name] { return hexes.contains(lying) }", "            if boardState.carriedLying[name] != nil { return false }"),
  "anyoneLootsTheQuestTile": ("GlavenGame/Board/BoardCoordinator+Carried.swift", "        return party.first { $0.id == characterID }?.personalQuest == quest", "        return party.first { $0.id == characterID }?.personalQuest == quest || true"),

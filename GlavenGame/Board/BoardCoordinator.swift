@@ -37,7 +37,7 @@ enum InteractionMode {
     case selectingForcedMoveTarget(pieceID: PieceID, steps: Int, isPush: Bool, validTargets: Set<PieceID>)
     /// The players choose one of a few hexes for something that isn't a turn's action (which of
     /// two hexes the wind blows `piece` into).
-    case choosingHex(piece: PieceID, title: String, detail: String, validHexes: Set<HexCoord>)
+    case choosingHex(piece: PieceID?, title: String, detail: String, validHexes: Set<HexCoord>)
     case watchingMonsterTurn
 }
 
@@ -790,12 +790,15 @@ final class BoardCoordinator {
         // still lie drawn), then the boulders.
         let coming = pendingResult == nil ? driftToCome() : nil
         let rolls = pendingResult == nil && scenarioRolling != nil
-        guard coming != nil || rolls else { return finishTheRound() }
+        let floods = pendingResult == nil && waterRisesThisRound
+        guard coming != nil || rolls || floods else { return finishTheRound() }
         let generation = boardGeneration
         Task { @MainActor in
             if let coming { await self.driftAsTheRoundEnds(coming) }
             guard self.isCurrentBoard(generation), self.scenarioResult == nil else { return }
             if rolls { await self.rollAsTheRoundEnds() }
+            guard self.isCurrentBoard(generation), self.scenarioResult == nil else { return }
+            if floods { await self.waterRisesAsTheRoundEnds() }
             guard self.isCurrentBoard(generation), self.scenarioResult == nil else { return }
             self.finishTheRound()
         }
@@ -1295,6 +1298,7 @@ final class BoardCoordinator {
         boardScene?.clearHighlights()
         interactionMode = .idle
         assignCarriedAtSetup()
+        setUpTheFlood()
         beginCardSelection()
     }
 
@@ -1833,6 +1837,8 @@ final class BoardCoordinator {
         if let pos = boardState.piecePositions[pieceID] {
             lootHexes(for: pieceID, coords: [pos])
         }
+        // A water tile held goes overboard from a bailing hex (Merchant Ship).
+        bailWater(characterID)
     }
 
     // MARK: - End of Round
@@ -2771,7 +2777,7 @@ final class BoardCoordinator {
     /// Whether a hex holds a money token or an unlooted treasure tile.
     func hasLoot(at coord: HexCoord) -> Bool {
         (boardState.lootTokens[coord] ?? 0) > 0 || boardState.cells[coord]?.overlay == .treasure
-            || boardState.tokenHexes[coord] != nil
+            || boardState.tokenHexes[coord] != nil || isFloodWater(coord)
     }
 
     /// Loot every money token and treasure tile in `coords` for a character. Money tokens are
@@ -2793,6 +2799,8 @@ final class BoardCoordinator {
         for coord in coords {
             // A numbered token lying face down (Payment Due)
             lootNumberedToken(at: coord, by: charID)
+            // A water tile of the hold (Merchant Ship)
+            pickUpWater(at: coord, by: charID)
             // Money tokens dropped by monsters
             let dropped = boardState.takeLoot(at: coord)
             if dropped > 0 {
@@ -3223,7 +3231,7 @@ final class BoardCoordinator {
         }
         switch interactionMode {
         case .choosingHex:
-            // The figure's own hex is among those offered: it stays where it is.
+            // A figure's hex is among those offered (its own: it stays where it is).
             if let hex = boardState.piecePositions[piece] { resolveHexChoice(hex) }
 
         case .selectingMove(let mover, let range, let validHexes, false, let mode):

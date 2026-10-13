@@ -41,6 +41,8 @@ struct BoardSnapshot: Codable {
     var tokenHexesLooted: Set<HexCoord>? = nil
     var rollers: [HexCoord]? = nil
     var underRollers: [HexCoord: HexCell]? = nil
+    var waterHeld: Set<String>? = nil
+    var floodSetUp: Bool? = nil
     /// Wall lines between tiles and the ends of a crossing. Optional: older saves have none
     /// (the coordinator draws them again from the map).
     var wallEdges: [HexEdge]? = nil
@@ -82,6 +84,7 @@ struct BoardSnapshot: Codable {
             tokenDeck: board.tokenDeck, tokenHexes: board.tokenHexes, tokensLooted: board.tokensLooted,
             tokenHexesLooted: board.tokenHexesLooted,
             rollers: board.rollers, underRollers: board.underRollers,
+            waterHeld: board.waterHeld, floodSetUp: board.floodSetUp,
             wallEdges: board.wallEdges.sorted { ($0.a, $0.b) < ($1.a, $1.b) }, crossings: board.crossings
         )
     }
@@ -124,6 +127,8 @@ struct BoardSnapshot: Codable {
         board.tokensLooted = tokensLooted ?? []
         board.tokenHexesLooted = tokenHexesLooted ?? []
         board.rollers = rollers ?? []
+        board.waterHeld = waterHeld ?? []
+        board.floodSetUp = floodSetUp ?? false
         board.underRollers = underRollers ?? [:]
         if let wallEdges { board.wallEdges = Set(wallEdges) }
         if let crossings { board.crossings = crossings }

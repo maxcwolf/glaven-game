@@ -590,3 +590,143 @@ final class RollingBoulderTests: XCTestCase {
         XCTAssertTrue(sim.violations.isEmpty, "\(sim.violations)")
     }
 }
+
+/// Water that rises as rounds end and is bailed (`ScenarioPlacements.Flood`,
+/// `BoardCoordinator+Flood`): the hold of the Merchant Ship (#74).
+@MainActor
+final class RisingWaterTests: XCTestCase {
+
+    private func simulator(_ characters: [String] = ["brute", "spellweaver"], prompts: Bool = false) throws -> ScenarioSimulator {
+        let sim = try ScenarioSimulator(scenario: "74", options: .init(characters: characters, seed: 1, autoResolvePrompts: !prompts))
+        sim.gm.game.round = 1
+        return sim
+    }
+
+    private func stand(_ sim: ScenarioSimulator, _ index: Int, on hex: HexCoord) {
+        let piece = PieceID.character(sim.gm.game.characters[index].id)
+        if let other = sim.coord.boardState.piece(at: hex), other != piece { sim.coord.boardState.removePiece(other) }
+        sim.coord.boardState.removePiece(piece)
+        sim.coord.boardState.placePiece(piece, at: hex)
+    }
+
+    private func wet(_ sim: ScenarioSimulator) -> [HexCoord] { sim.coord.floodHexes().filter(sim.coord.isFloodWater) }
+    private func dry(_ sim: ScenarioSimulator) -> [HexCoord] { sim.coord.floodHexes().filter { !sim.coord.isFloodWater($0) } }
+
+    /// "Remove water tiles d for three characters": the hold has fourteen hexes, twelve of them
+    /// under water for two or four characters and ten for three.
+    func testTheHoldStartsWithTwoDryHexesOrFourForThree() throws {
+        let two = try simulator()
+        XCTAssertEqual(two.coord.floodHexes().count, 14)
+        XCTAssertEqual(wet(two).count, 12)
+        XCTAssertEqual(Set(dry(two)), Set(two.coord.boardState.startingLocations.filter(two.coord.floodHexes().contains)))
+        let three = try simulator(["brute", "spellweaver", "tinkerer"])
+        XCTAssertEqual(wet(three).count, 10)
+        XCTAssertTrue((three.coord.boardState.markerHexes["d"] ?? []).allSatisfy { !three.coord.isFloodWater($0) })
+        let four = try simulator(["brute", "spellweaver", "tinkerer", "scoundrel"])
+        XCTAssertEqual(wet(four).count, 12)
+    }
+
+    /// "At the end of every even round for two characters or every round for three or four
+    /// characters, one water tile is added to the B tile adjacent to any existing water tile. If a
+    /// water tile cannot be placed because the B tile is full, the scenario is lost."
+    func testTheWaterRisesUntilTheHoldIsFullAndTheShipIsLost() async throws {
+        let sim = try simulator()
+        let coord = sim.coord
+        sim.gm.game.round = 1
+        XCTAssertFalse(coord.waterRisesThisRound, "an odd round, with two")
+        sim.gm.game.round = 2
+        XCTAssertTrue(coord.waterRisesThisRound)
+        let three = try simulator(["brute", "spellweaver", "tinkerer"])
+        three.gm.game.round = 1
+        XCTAssertTrue(three.coord.waterRisesThisRound, "every round, with three")
+
+        await coord.waterRisesAsTheRoundEnds()
+        XCTAssertEqual(wet(sim).count, 13)
+        XCTAssertNil(coord.pendingResult)
+        await coord.waterRisesAsTheRoundEnds()
+        XCTAssertEqual(wet(sim).count, 14)
+        XCTAssertNil(coord.pendingResult, "full, but none had to be added yet")
+        await coord.waterRisesAsTheRoundEnds()
+        XCTAssertEqual(coord.pendingResult, .defeat)
+        if case .ruleLost(let why) = coord.endReason { XCTAssertTrue(why.contains("hold is full"), why) } else { XCTFail("\(String(describing: coord.endReason))") }
+    }
+
+    /// "…adjacent to any existing water tile": the players are asked where, among the dry hexes
+    /// beside the water.
+    func testThePlayersChooseWhereTheWaterRises() async throws {
+        let sim = try simulator(prompts: true)
+        let coord = sim.coord
+        // Bail the hold out but for one corner: only its dry neighbours can take the next tile.
+        let corner = try XCTUnwrap(wet(sim).first)
+        for hex in wet(sim) where hex != corner {
+            coord.boardState.cells[hex]?.overlay = nil
+            coord.boardState.cells[hex]?.overlaySubType = nil
+        }
+        let beside = Set(coord.boardState.neighbors(of: corner)).intersection(coord.floodHexes())
+        XCTAssertEqual(Set(coord.risingWaterHexes()), beside)
+        XCTAssertLessThan(beside.count, 13)
+        let rising = Task { @MainActor in await coord.waterRisesAsTheRoundEnds() }
+        let deadline = Date().addingTimeInterval(3)
+        while coord.pendingHexChoice == nil, Date() < deadline { try? await Task.sleep(nanoseconds: 1_000_000) }
+        guard case .choosingHex(nil, _, _, let offered) = coord.interactionMode else {
+            rising.cancel()
+            return XCTFail("asked where: \(coord.interactionMode)")
+        }
+        XCTAssertEqual(offered, beside)
+        let chosen = try XCTUnwrap(beside.sorted().last)
+        coord.handleHexTap(chosen)
+        await rising.value
+        XCTAssertTrue(coord.isFloodWater(chosen))
+        XCTAssertEqual(wet(sim).count, 2)
+        XCTAssertTrue(coord.boardState.cells[chosen]?.isDifficultTerrain ?? false, "water is difficult terrain")
+    }
+
+    /// "Characters may pick up any water tile through normal looting and then get rid of it by
+    /// ending their turn in one of the hexes e. Each character can only hold one water tile at a time."
+    func testAWaterTileIsLootedOneAtATimeAndBailedOnTheDeck() throws {
+        let sim = try simulator()
+        let coord = sim.coord
+        let brute = sim.gm.game.characters[0]
+        let water = wet(sim)
+        stand(sim, 0, on: water[0])
+        coord.lootAtEndOfTurn(brute.id)
+        XCTAssertTrue(coord.boardState.waterHeld.contains(brute.id))
+        XCTAssertFalse(coord.isFloodWater(water[0]), "the tile is off the map")
+        XCTAssertNil(coord.boardState.cells[water[0]]?.overlay)
+        XCTAssertEqual(wet(sim).count, 11)
+        // Holding one, they pick up no other — by ending a turn on water or by a Loot action.
+        stand(sim, 0, on: water[1])
+        coord.lootAtEndOfTurn(brute.id)
+        _ = coord.collectLootInRange(pieceID: .character(brute.id), range: 1)
+        XCTAssertEqual(wet(sim).count, 11)
+        // Ending a turn anywhere else keeps it; on a bailing hex it goes overboard.
+        XCTAssertTrue(coord.boardState.waterHeld.contains(brute.id))
+        let bailing = try XCTUnwrap(coord.boardState.markerHexes["e"]?.sorted().first)
+        stand(sim, 0, on: bailing)
+        coord.lootAtEndOfTurn(brute.id)
+        XCTAssertFalse(coord.boardState.waterHeld.contains(brute.id))
+        XCTAssertEqual(wet(sim).count, 11, "it doesn't come back")
+        // A Loot action takes one tile within its range, not all of them.
+        stand(sim, 0, on: water[0])
+        XCTAssertTrue(coord.collectLootInRange(pieceID: .character(brute.id), range: 1))
+        XCTAssertTrue(coord.boardState.waterHeld.contains(brute.id))
+        XCTAssertEqual(wet(sim).count, 10)
+
+        let restored = BoardState()
+        try JSONDecoder().decode(BoardSnapshot.self, from: JSONEncoder().encode(BoardSnapshot.from(coord.boardState))).restore(to: restored)
+        XCTAssertEqual(restored.waterHeld, coord.boardState.waterHeld)
+        XCTAssertTrue(restored.floodSetUp)
+    }
+
+    /// Whole rounds played: with two characters the water rises as the second round ends, and
+    /// the scenario is lost once the hold can take no more.
+    func testTheWaterRisesAsRoundsOfPlayEnd() async throws {
+        let sim = try ScenarioSimulator(scenario: "74", options: .init(characters: ["brute", "spellweaver"], seed: 2))
+        _ = await sim.play(rounds: 2)
+        let lines = sim.transcript
+        let rose = try XCTUnwrap(lines.firstIndex { $0.contains("The water rises") }, "round 2's water")
+        XCTAssertGreaterThan(rose, try XCTUnwrap(lines.firstIndex { $0.contains("Round 1 complete") }), "not in round 1")
+        XCTAssertLessThan(rose, try XCTUnwrap(lines.firstIndex { $0.contains("Round 2 complete") }))
+        XCTAssertTrue(sim.violations.isEmpty, "\(sim.violations)")
+    }
+}
