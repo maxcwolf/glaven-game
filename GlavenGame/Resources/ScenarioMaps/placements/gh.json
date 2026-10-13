@@ -252,6 +252,9 @@
   }},
   "94": {"goal": {"text": "Kill all enemies and loot the treasure tile.", "enemies": "all", "loot": "goal"}, "tiles": {
   }},
-  "95": {"goal": {"text": "Kill the Prime Lieutenant.", "kill": ["prime-lieutenant"]}, "notes": ["Any figure that ends its turn in a water hex suffers 1+L damage."], "water": {"endOfTurn": "1+L"}, "tiles": {
+  "95": {"goal": {"text": "Kill the Prime Lieutenant.", "kill": ["prime-lieutenant"]}, "notes": ["Six numbered tokens lie face down in the side rooms and are looted like treasure. The door to the Prime Lieutenant is locked until tokens 1 to 4 have been found.", "Until then a Flame Demon arrives by that door as every odd round ends, and an Earth Demon as every even round ends.", "Any figure that ends its turn in a water hex suffers 1+L damage."], "water": {"endOfTurn": "1+L"}, "tokens": {"marker": "a", "count": 6}, "locks": [{"between": ["g1b", "e1a"], "tokens": [1, 2, 3, 4], "unlocksOnly": true, "note": "Locked: it can be opened once tokens 1 to 4 have all been looted."}], "rules": [{"round": "R % 2 == 1", "when": [{"locked": 0}], "spawns": [{"monster": {"name": "flame-demon", "player2": "normal", "player3": "elite", "player4": "elite"}, "marker": "s"}]}, {"round": "R % 2 == 0", "when": [{"locked": 0}], "spawns": [{"monster": {"name": "earth-demon", "player2": "normal", "player3": "normal", "player4": "elite"}, "marker": "s"}]}], "tiles": {
+    "d1a": {"markers": {"a": [[3, 4], [4, 2], [3, 0]]}},
+    "g1b": {"markers": {"s": [[0, 1]]}},
+    "k2b": {"markers": {"a": [[5, 0], [5, 5], [7, 4]]}}
   }}
 }

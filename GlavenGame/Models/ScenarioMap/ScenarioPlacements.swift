@@ -52,6 +52,8 @@ struct ScenarioPlacements: Codable, Equatable {
     var forgo: [Forgo]?
     /// Things a character carries: the doll, the Lurker King's claw.
     var carried: [Carried]?
+    /// Numbered tokens lying face down on lettered hexes, to be looted (Payment Due).
+    var tokens: Tokens?
     /// Escorts (objectives, 1-based) whose attacks draw "from whichever attack modifier deck the
     /// players choose": a character's, asked as the escort attacks (Redthorn; the captive
     /// Orchids of Bandit's Wood).
@@ -253,6 +255,8 @@ struct ScenarioPlacements: Codable, Equatable {
         var looted: Int?
         /// This many elite monsters have been killed.
         var eliteKills: Int?
+        /// The numbered tokens (`tokens`) that must all have been looted: [1, 2, 3, 4].
+        var tokens: [Int]?
         /// It stays open only while a character stands on a plate with one of these letters,
         /// and shuts again when they step off.
         var held: [String]?
@@ -353,6 +357,14 @@ extension ScenarioPlacements {
     struct Save: Codable, Hashable {
         let objective: Int
         var times: Int?
+    }
+
+    /// "Shuffle numbered tokens 1–6 and place them face down on hexes (a). These tokens can be
+    /// looted normally": how many there are and the letter of their hexes. Which number lies
+    /// where isn't known until it is looted; a lock's `tokens` waits for some of them.
+    struct Tokens: Codable, Hashable {
+        let marker: String
+        let count: Int
     }
 
     /// Something one character holds (a treasure tile on their mat): the doll of the Well of the

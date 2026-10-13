@@ -2743,6 +2743,7 @@ final class BoardCoordinator {
     /// Whether a hex holds a money token or an unlooted treasure tile.
     func hasLoot(at coord: HexCoord) -> Bool {
         (boardState.lootTokens[coord] ?? 0) > 0 || boardState.cells[coord]?.overlay == .treasure
+            || boardState.tokenHexes[coord] != nil
     }
 
     /// Loot every money token and treasure tile in `coords` for a character. Money tokens are
@@ -2762,6 +2763,8 @@ final class BoardCoordinator {
         var gold = 0
         var tokens = 0
         for coord in coords {
+            // A numbered token lying face down (Payment Due)
+            lootNumberedToken(at: coord, by: charID)
             // Money tokens dropped by monsters
             let dropped = boardState.takeLoot(at: coord)
             if dropped > 0 {

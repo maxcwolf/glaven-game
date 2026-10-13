@@ -387,6 +387,7 @@ extension BoardCoordinator {
             guard arrived >= saved else { return false }
         }
         if let lock = fact.lock, !boardState.releasedLocks.contains(lock) { return false }
+        if let lock = fact.locked, boardState.releasedLocks.contains(lock) { return false }
         if let plates = fact.occupied {
             // Every plate in play has a figure on it.
             let hexes = platesInPlay(plates).flatMap { boardState.markerHexes[$0] ?? [] }

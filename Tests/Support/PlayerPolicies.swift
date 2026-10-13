@@ -55,6 +55,8 @@ extension PlayerPolicy {
     /// Head for the nearest enemy, or a closed door once the room is clear.
     func moveDestination(for piece: PieceID, options: Set<HexCoord>, mode: MoveMode, sim: ScenarioSimulator) -> HexCoord? {
         var goals = sim.enemies(of: piece).compactMap { sim.position($0) }
+        // No one to fight: the numbered tokens lying about (Payment Due), then the doors.
+        if goals.isEmpty { goals = sim.coord.boardState.tokenHexes.keys.sorted() }
         if goals.isEmpty {
             goals = sim.coord.boardState.doors.filter { !$0.isOpen }.map(\.coord)
         }
@@ -267,7 +269,7 @@ struct TacticalPolicy: PlayerPolicy {
         let pool = candidates.isEmpty ? options : candidates
 
         func lootBonus(_ hex: HexCoord) -> Int {
-            (board.lootTokens[hex] ?? 0) > 0 || board.cells[hex]?.overlay == .treasure ? 1 : 0
+            (board.lootTokens[hex] ?? 0) > 0 || board.cells[hex]?.overlay == .treasure || board.tokenHexes[hex] != nil ? 1 : 0
         }
         let health = sim.health(piece)
         let hurt = health.current * 2 <= health.max
@@ -640,6 +642,8 @@ struct VeteranPolicy: PlayerPolicy {
                 if !free.isEmpty { return (free.sorted(), false) }
             }
         }
+        // Numbered tokens lying face down (Payment Due's, which unlock its last door).
+        if !board.tokenHexes.isEmpty { return (board.tokenHexes.keys.sorted(), false) }
         let doors = board.doors.filter { !$0.isOpen && !board.isLockedDoor($0.coord) }.map(\.coord)
         if !doors.isEmpty { return (doors.sorted(), false) }
         // Nothing left to open: the money on the floor.

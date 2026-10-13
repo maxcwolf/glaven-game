@@ -35,6 +35,10 @@ struct BoardSnapshot: Codable {
     var carriedLying: [String: HexCoord]? = nil
     var carriedGone: [String: String]? = nil
     var carriedCharge: [String: Int]? = nil
+    var tokenDeck: [Int]? = nil
+    var tokenHexes: [HexCoord: Int]? = nil
+    var tokensLooted: [Int]? = nil
+    var tokenHexesLooted: Set<HexCoord>? = nil
     /// Wall lines between tiles and the ends of a crossing. Optional: older saves have none
     /// (the coordinator draws them again from the map).
     var wallEdges: [HexEdge]? = nil
@@ -73,6 +77,8 @@ struct BoardSnapshot: Codable {
             conclusion: board.conclusion, goalReached: board.goalReached,
             carriedBy: board.carriedBy, carriedLying: board.carriedLying, carriedGone: board.carriedGone,
             carriedCharge: board.carriedCharge,
+            tokenDeck: board.tokenDeck, tokenHexes: board.tokenHexes, tokensLooted: board.tokensLooted,
+            tokenHexesLooted: board.tokenHexesLooted,
             wallEdges: board.wallEdges.sorted { ($0.a, $0.b) < ($1.a, $1.b) }, crossings: board.crossings
         )
     }
@@ -110,6 +116,10 @@ struct BoardSnapshot: Codable {
         board.carriedLying = carriedLying ?? [:]
         board.carriedGone = carriedGone ?? [:]
         board.carriedCharge = carriedCharge ?? [:]
+        board.tokenDeck = tokenDeck
+        board.tokenHexes = tokenHexes ?? [:]
+        board.tokensLooted = tokensLooted ?? []
+        board.tokenHexesLooted = tokenHexesLooted ?? []
         if let wallEdges { board.wallEdges = Set(wallEdges) }
         if let crossings { board.crossings = crossings }
     }

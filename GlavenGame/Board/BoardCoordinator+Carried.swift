@@ -161,7 +161,10 @@ extension BoardCoordinator {
 
     /// Show what lies on the board.
     func syncCarriedSprites() {
-        boardScene?.showCarried(boardState.carriedLying, offsetCol: offsetCol, offsetRow: offsetRow)
+        // Numbered tokens lie face down: each shows as "?" until it is looted.
+        var lying = boardState.carriedLying
+        for hex in boardState.tokenHexes.keys { lying["?\(hex.col),\(hex.row)"] = hex }
+        boardScene?.showCarried(lying, offsetCol: offsetCol, offsetRow: offsetRow)
     }
 
     // MARK: What only its holder harms, and its charge
@@ -247,5 +250,40 @@ extension BoardCoordinator {
                 checkVictoryDefeat()
             }
         }
+    }
+
+    // MARK: - Numbered tokens
+
+    /// Lay a numbered token, face down, on each of the scenario's lettered hexes that is on the
+    /// board and hasn't had one: the numbers are shuffled once, as the first is laid.
+    func layNumberedTokens() {
+        guard let tokens = scenarioData?.placements?.tokens else { return }
+        if boardState.tokenDeck == nil {
+            boardState.tokenDeck = Array(1...max(1, tokens.count)).shuffled(using: &GameRandom.shared)
+        }
+        let laid = boardState.tokenHexes.count + boardState.tokensLooted.count
+        guard laid < tokens.count else { return }
+        var changed = false
+        for hex in (boardState.markerHexes[tokens.marker] ?? []).sorted() where boardState.tokenHexes[hex] == nil
+            && !boardState.tokenHexesLooted.contains(hex) {
+            guard var deck = boardState.tokenDeck, !deck.isEmpty else { break }
+            boardState.tokenHexes[hex] = deck.removeFirst()
+            boardState.tokenDeck = deck
+            changed = true
+        }
+        if changed { syncCarriedSprites() }
+    }
+
+    /// `characterID` loots the token on `hex`, if one lies there: its number is known now.
+    func lootNumberedToken(at hex: HexCoord, by characterID: String) {
+        guard let number = boardState.tokenHexes[hex] else { return }
+        gameManager?.characterManager.onBeforeMutate?()
+        boardState.tokenHexes[hex] = nil
+        boardState.tokenHexesLooted.insert(hex)
+        boardState.tokensLooted.append(number)
+        let total = scenarioData?.placements?.tokens?.count ?? 0
+        log("\(characterName(characterID)) loots a token: number \(number) (\(boardState.tokensLooted.count) of \(total) found)", category: .loot)
+        syncCarriedSprites()
+        updateLocks()
     }
 }

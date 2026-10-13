@@ -398,4 +398,95 @@ final class CarriedThingTests: XCTestCase {
         lost.coord.checkVictoryDefeat(turnEnded: true)
         XCTAssertEqual(lost.coord.scenarioResult ?? lost.coord.pendingResult, .defeat)
     }
+
+    // MARK: - #95: the numbered tokens
+
+    /// Payment Due: "Shuffle numbered tokens 1–6 and place them facedown on hexes (a). These
+    /// tokens can be looted normally. Door 1 is locked and can be opened when all tokens 1–4 have
+    /// all been looted." Until then a demon arrives by the door as every round ends.
+    func testTheTokensAreLootedAndFourOfThemUnlockTheDoor() throws {
+        let sim = try simulator("95")
+        let coord = sim.coord
+        XCTAssertTrue(coord.boardState.tokenHexes.isEmpty, "none lies in the corridor the party starts in")
+        let boss = try XCTUnwrap(coord.boardState.doors.first { $0.childTileRef.lowercased() == "e1a" })
+        let sides = coord.boardState.doors.filter { $0.coord != boss.coord }.sorted { $0.coord < $1.coord }
+        XCTAssertEqual(sides.count, 2)
+        // One side room: its three tokens, one of which is looted before the other room is seen.
+        coord.openDoor(at: sides[0].coord)
+        XCTAssertEqual(coord.boardState.tokenHexes.count, 3, "one on each lettered hex in sight")
+        let brute = sim.gm.game.characters[0]
+        let first = try XCTUnwrap(coord.boardState.tokenHexes.keys.sorted().first)
+        let firstNumber = try XCTUnwrap(coord.boardState.tokenHexes[first])
+        stand(sim, 0, on: first)
+        coord.lootAtEndOfTurn(brute.id)
+        XCTAssertEqual(coord.boardState.tokensLooted, [firstNumber])
+        coord.openDoor(at: sides[1].coord)
+        XCTAssertNil(coord.boardState.tokenHexes[first], "none is laid again where one was looted")
+        XCTAssertEqual(coord.boardState.tokenHexes.count, 5)
+        XCTAssertEqual((coord.boardState.tokenHexes.values + [firstNumber]).sorted(), [1, 2, 3, 4, 5, 6])
+        XCTAssertEqual(Set(coord.boardState.tokenHexes.keys).union([first]), Set(coord.boardState.markerHexes["a"] ?? []))
+        XCTAssertTrue(coord.boardState.isLockedDoor(boss.coord))
+        XCTAssertFalse(coord.boardState.doors.first { $0.coord == boss.coord }?.isOpen ?? true)
+        for monster in monsters(sim) { coord.removePieceFromBoard(monster) }
+
+        // Odd rounds bring a Flame Demon by the door, even rounds an Earth Demon — while it is locked.
+        func demons(_ name: String) -> Int { monsters(sim).filter { if case .monster(name, _) = $0 { return true }; return false }.count }
+        sim.gm.game.round = 1
+        sim.gm.scenarioRulesManager.evaluateRules(phase: .roundEnd)
+        XCTAssertEqual([demons("flame-demon"), demons("earth-demon")], [1, 0])
+        let arrived = try XCTUnwrap(monsters(sim).first.flatMap { coord.boardState.piecePositions[$0] })
+        XCTAssertLessThanOrEqual(coord.boardState.steps(from: arrived, to: boss.coord), 2, "by the locked door")
+        sim.gm.game.round = 2
+        sim.gm.scenarioRulesManager.evaluateRules(phase: .roundEnd)
+        XCTAssertEqual([demons("flame-demon"), demons("earth-demon")], [1, 1])
+        for monster in monsters(sim) { coord.removePieceFromBoard(monster) }
+
+        // Looted like treasure, by ending a turn on one: three of 1 to 4 aren't enough.
+        let byNumber = Dictionary(uniqueKeysWithValues: coord.boardState.tokenHexes.map { ($0.value, $0.key) })
+        let wanted = [1, 2, 3, 4].filter { $0 != firstNumber }
+        for number in wanted.dropLast() + [5, 6].filter({ $0 != firstNumber }) {
+            stand(sim, 0, on: try XCTUnwrap(byNumber[number]))
+            coord.lootAtEndOfTurn(brute.id)
+        }
+        XCTAssertEqual(coord.boardState.tokenHexes.count, 1)
+        XCTAssertTrue(coord.boardState.isLockedDoor(boss.coord), "one of tokens 1 to 4 is still to be found")
+        sim.gm.game.round = 3
+        sim.gm.scenarioRulesManager.evaluateRules(phase: .roundEnd)
+        XCTAssertEqual(demons("flame-demon"), 1, "and the demons keep coming")
+        for monster in monsters(sim) { coord.removePieceFromBoard(monster) }
+        // A Loot action takes one in range as well.
+        let last = try XCTUnwrap(byNumber[try XCTUnwrap(wanted.last)])
+        stand(sim, 0, on: try XCTUnwrap(coord.boardState.neighbors(of: last).sorted()
+            .first { coord.boardState.isPassable($0) && coord.boardState.piece(at: $0) == nil }))
+        XCTAssertTrue(coord.collectLootInRange(pieceID: piece(sim, 0), range: 1))
+        XCTAssertTrue(coord.boardState.tokenHexes.isEmpty)
+        XCTAssertEqual(coord.boardState.tokensLooted.sorted(), [1, 2, 3, 4, 5, 6])
+        XCTAssertFalse(coord.boardState.isLockedDoor(boss.coord), "1 to 4 found: the door can be opened")
+        XCTAssertFalse(coord.boardState.doors.first { $0.coord == boss.coord }?.isOpen ?? true, "by walking in, not by itself")
+
+        // No more demons.
+        sim.gm.game.round = 5
+        sim.gm.scenarioRulesManager.evaluateRules(phase: .roundEnd)
+        XCTAssertEqual(demons("flame-demon") + demons("earth-demon"), 0)
+        coord.updateLocks()
+        XCTAssertTrue(coord.boardState.tokenHexes.isEmpty)
+
+        let restored = BoardState()
+        try JSONDecoder().decode(BoardSnapshot.self, from: JSONEncoder().encode(BoardSnapshot.from(coord.boardState))).restore(to: restored)
+        XCTAssertEqual(restored.tokensLooted, coord.boardState.tokensLooted)
+        XCTAssertEqual(restored.tokenHexes, coord.boardState.tokenHexes)
+    }
+
+    /// "Shuffle numbered tokens 1–6": where each number lies differs from one game to the next.
+    func testTheTokensAreShuffled() throws {
+        var layouts: Set<[Int]> = []
+        for seed in 1...5 {
+            let sim = try ScenarioSimulator(scenario: "95", options: .init(characters: ["brute", "spellweaver"], seed: UInt64(seed)))
+            revealAll(sim)
+            let tokens = sim.coord.boardState.tokenHexes
+            XCTAssertEqual(tokens.count, 6)
+            layouts.insert(tokens.keys.sorted().compactMap { tokens[$0] })
+        }
+        XCTAssertGreaterThan(layouts.count, 2)
+    }
 }
