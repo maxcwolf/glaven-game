@@ -625,6 +625,8 @@ struct VeteranPolicy: PlayerPolicy {
                 }.map(\.coord)
             }
             if !hexes.isEmpty { return (hexes.sorted(), false) }
+            // What is to be carried there lies on the floor (the claw where the Lurker King died): pick it up first.
+            if let thing = goal.reach?.holding, let lying = board.carriedLying[thing] { return ([lying], false) }
             if let reach = goal.reach, let lettered = board.markerHexes[reach.marker], !lettered.isEmpty {
                 return (lettered.sorted(), reach.adjacent == true)
             }

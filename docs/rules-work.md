@@ -62,8 +62,8 @@ fast-forward):
    Living Spirit goes (#70) and whose deck Redthorn and the Orchids draw from (#44, #56): the
    first group of scenario rules, "a choice the player couldn't make", is done. The second,
    things that are carried, has its mechanism (`carried`, `BoardCoordinator+Carried`) and four
-   of its seven scenarios (#69, #88, #58, #82); #81, #54 and #95 are next. After them: the things that
-   are carried (#69, #88, #82, #81, #58, #54, #95). Under Cards the large open item is the Beast
+   of its seven scenarios (#69, #88, #58, #82); #81, #54 and #95 are next. After them: a board
+   that moves as the round ends (#71, #88, #73, #74). Under Cards the large open item is the Beast
    Tyrant, who has no bear (N20).
 3. Merging to `main` (`git merge --no-ff -m "merge: …"`, then push) is done when the owner asks.
 
