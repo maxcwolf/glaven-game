@@ -130,7 +130,11 @@ ends up on the board:
   scenario if its holder is exhausted. With `"passes": true` it changes hands when another
   character performs a Loot action with the holder in range, and lies in the hex of a holder who
   is exhausted, to be looted like a treasure tile; without it, it stays with whoever has it. A
-  goal's `reach` takes `"holding": "doll"`: only its holder getting there counts.
+  goal's `reach` takes `"holding": "doll"`: only its holder getting there counts. Several things
+  with the same `treasure` are given in the order written (#81's Crystal of Zenith, then its
+  Sphere of Midnight), and `"spend": {"marker": "a", "adjacent": true, "damage": "2xC", "to":
+  "the-colorless"}` lets the holder discard one as their turn ends at (or beside) that lettered
+  hex: they are asked, and the monster suffers the damage.
 - `drawsFromACharacter`: escorts whose attacks draw "from whichever attack modifier deck the
   players choose" (#44 Redthorn, #56 the captive Orchids): as one attacks the players are asked
   whose deck, and the card is drawn from that character's.

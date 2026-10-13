@@ -12,8 +12,8 @@ means the data and code that enforce the rule were found, and usually a test tha
 that the scenario was played through. Keep it current: when a rule is built, rewrite its row in
 the same commit (see [../rules-work.md](../rules-work.md)).
 
-**447 rules: 376 done, 14 partial, 57 missing.**
-75 of 95 scenarios have every printed rule done. The other 20: #55 (6 missing, 1 partial), #88 (3 missing, 0 partial), #34 (4 missing, 2 partial), #76 (4 missing, 2 partial), #71 (5 missing, 0 partial), #73 (5 missing, 0 partial), #78 (5 missing, 0 partial), #95 (5 missing, 0 partial), #21 (2 missing, 2 partial), #49 (4 missing, 0 partial), #54 (4 missing, 0 partial), #74 (4 missing, 0 partial), #52 (1 missing, 1 partial), #68 (1 missing, 1 partial), #79 (1 missing, 1 partial), #81 (2 missing, 0 partial), #82 (0 missing, 2 partial), #38 (0 missing, 1 partial), #47 (0 missing, 1 partial), #67 (1 missing, 0 partial).
+**447 rules: 378 done, 14 partial, 55 missing.**
+76 of 95 scenarios have every printed rule done. The other 19: #55 (6 missing, 1 partial), #88 (3 missing, 0 partial), #34 (4 missing, 2 partial), #76 (4 missing, 2 partial), #71 (5 missing, 0 partial), #73 (5 missing, 0 partial), #78 (5 missing, 0 partial), #95 (5 missing, 0 partial), #21 (2 missing, 2 partial), #49 (4 missing, 0 partial), #54 (4 missing, 0 partial), #74 (4 missing, 0 partial), #52 (1 missing, 1 partial), #68 (1 missing, 1 partial), #79 (1 missing, 1 partial), #82 (0 missing, 2 partial), #38 (0 missing, 1 partial), #47 (0 missing, 1 partial), #67 (1 missing, 0 partial).
 
 Rules that were enforced wrongly, as against not at all, are findings of the engine audit
 ([../audits/2026-10-09-rules-audit.md](../audits/2026-10-09-rules-audit.md), rows S1-…, S2-…),
@@ -747,9 +747,9 @@ order", has the same list as tasks). The rows below say what the game does today
 | Rule (from the book) | Status | Where / what's missing |
 |---|---|---|
 | Goal: kill the Colorless | done | placements goal `kill: ["the-colorless"]` |
-| Section 1: a character adjacent to the altar (a) at end of turn may discard the Crystal of Zenith or Sphere of Midnight → the Colorless suffers 2×C damage | missing | no rule, no (a) marker in placements 81 (`tiles: {}`), no such tokens (`TODO.md`: "Things that are carried"). Needs the two tokens held by a character and an end-of-turn prompt beside the altar |
+| Section 1: a character adjacent to the altar (a) at end of turn may discard the Crystal of Zenith or Sphere of Midnight → the Colorless suffers 2×C damage | done | placements `d1a` marker a [1,0] (the altar, read off p.103) and `spend: {"marker": "a", "adjacent": true, "damage": "2xC", "to": "the-colorless"}` on both relics → as the holder's turn ends beside the altar they are asked (`resolveCarriedSpends`): discard it and the Colorless suffers 2×C, or "Keep It". `CarriedThingTests.testTheRelicsAreLootedInOrderAndDiscardedBesideTheAltar` |
 | Start of every round: Light and Dark Strong; Fire, Ice, Wind, Earth Inert | done | rule 0 (`round: "true"`, `start: true`, six `elements`) → `applyElementRule` each `roundStart` |
-| First treasure tile looted gives the Crystal of Zenith, the second the Sphere of Midnight | missing | the two "G" chests loot as plain goal treasure (`lootTreasure` returns "Goal treasure"; only `goalLooters`/`goalTreasuresLooted` are counted, nothing is held by the looter) |
+| First treasure tile looted gives the Crystal of Zenith, the second the Sphere of Midnight | done | placements `carried`: two things with `treasure: "goal"`, given in the order written to whoever loots a goal tile (`noteTreasureLooted`); neither changes hands. Same test |
 | Boss special 1: consume Dark → summon Night Demon (normal 2–3 / elite 4), then gain INVISIBLE | done | `the-colorless.json` `special[0]`: the Dark consume is paid as the special comes to it (`MonsterTurnController` `.special` → `executeCard` → `.element` consume → `performSummon`), no Dark no demon, INVISIBLE on self either way; `ScenarioSpecialRuleTests.testTheColorlessPaysForItsSummonsWithElements` |
 | Boss special 2: consume Light → summon Sun Demon (normal 2 / elite 3–4), then Shield 1 and heal self | done | `special[1]`: Light is consumed for the Sun Demon (same test), "Heal 4, self" runs (the book prints no amount; 4 is the data's), and Shield 1 is gained until the end of the round (`.shield` in `executeCard`; `MonsterTurnRulesTests.testABossSpecialsShieldIsGainedWhenItIsPerformed`) |
 
