@@ -118,6 +118,19 @@ ends up on the board:
   (`SaveChoiceSheet`): let it suffer, or pick a card from any hand. The sheet says when
   the scenario is lost with the objective; headless play and the simulator's policies give a card
   only then.
+- `carried`: things a character holds through the scenario, each `{"name": "doll", …}`
+  (`BoardCoordinator+Carried`; who holds what is in `BoardState.carriedBy`, what lies where in
+  `carriedLying`, and the party panel says "Holds the doll"). How it is come by: `"start":
+  "choose"` (the players are asked as the scenario starts: #69's doll), `"droppedBy":
+  "lurker-king"` (it lies where that monster dies, instead of a money token: #88's claw),
+  `"treasure": "goal"` or `"62"` (whoever loots that tile: #58's Occult Dagger, #82's artifacts;
+  with `"onlyQuest": "526"` only the character on that personal quest may loot it, where someone
+  is). What it does: `"move": -2` on its holder's Moves; `"pierce": 4, "against":
+  "the-harvester"` on its holder's attacks on that monster; `"lostWithHolder": true` loses the
+  scenario if its holder is exhausted. With `"passes": true` it changes hands when another
+  character performs a Loot action with the holder in range, and lies in the hex of a holder who
+  is exhausted, to be looted like a treasure tile; without it, it stays with whoever has it. A
+  goal's `reach` takes `"holding": "doll"`: only its holder getting there counts.
 - `drawsFromACharacter`: escorts whose attacks draw "from whichever attack modifier deck the
   players choose" (#44 Redthorn, #56 the captive Orchids): as one attacks the players are asked
   whose deck, and the card is drawn from that character's.
@@ -237,10 +250,10 @@ its map, every door objective is on a door and every objective number exists.
 | 45 Rebel Swamp | 6 totems | — | win: destroy all | — |
 | 56 Bandit's Wood | 3 captive Orchids | — | lost when all three die (scenario rule) | — |
 | 57 Investigation | — | a | win: kill the Infiltrator (he appears where the marked guard fell) | — |
-| 58 Bloody Shack | 4 bone piles | — | win: kill the Harvester | the Occult Dagger (who may loot it, its Pierce 4) isn't modelled |
+| 58 Bloody Shack | 4 bone piles | — | win: kill the Harvester | the Occult Dagger is `carried`: looted by the Vengeance character only, Pierce 4 against the Harvester |
 | 62 Pit of Souls | — | a, b, c | win: kill the Hungry Soul (appears at c after ten kills) | — |
 | 68 Toxic Moor | the tree (sheltered) | — | lost if it is destroyed | a poisoned summon doesn't yet avoid water as it would a trap |
-| 69 Well of the Unfortunate | — | a–d (traps appear at d when door 1 opens) | win: a character enters a hex beside the well | the doll isn't carried |
+| 69 Well of the Unfortunate | — | a–d (traps appear at d when door 1 opens) | win: the doll's holder enters a hex beside the well | the doll is `carried`: chosen at set-up, passed by a Loot action, dropped where its holder is exhausted |
 | 70 Chained Isle | — | a, b | — | — |
 | 72 Oozing Grove | 3 trees | — (oozes rise beside their tree) | win: destroy all trees, kill all Oozes | — |
 | 74 Merchant Ship | — | a–e | — | water tiles aren't modelled |
@@ -422,7 +435,7 @@ goals are checked; the notes say what around a goal is still missing.
 | 66 | Clockwork Cove | Occupy pressure plate (e) — a character occupies it at the end of their turn. | yes | — | — |
 | 67 | Arcane Library | Kill the Arcane Golem. | yes — the Stone Golem in the library | — | — |
 | 68 | Toxic Moor | Kill all enemies and protect the tree (a). | yes | The tree is destroyed. | yes |
-| 69 | Well of the Unfortunate | Bring the doll to the well (a) — complete when the doll is brought to a hex adjacent to the well. | approximately — any character entering a hex beside the well (the doll isn't carried) | — | — |
+| 69 | Well of the Unfortunate | Bring the doll to the well (a) — complete when the doll is brought to a hex adjacent to the well. | yes — the doll's holder entering a hex beside the well | — | — |
 | 70 | Chained Isle | Kill all demons. | yes | — | — |
 | 71 | Windswept Highlands | Loot all treasure tiles, then all characters must escape through the exit (a). | yes | Any character becomes exhausted while not occupying an exit hex (a). | yes |
 | 72 | Oozing Grove | Destroy all trees and kill all Oozes. | yes | — | — |
@@ -435,13 +448,13 @@ goals are checked; the notes say what around a goal is still missing.
 | 79 | Lost Temple | Kill the Betrayer. | yes | Fish is killed. | yes |
 | 80 | Vigil Keep | Every character must loot one treasure tile, and then all characters must reach the B tile (escape). | yes | Any character becomes exhausted while not occupying the B tile. | yes |
 | 81 | Temple of the Eclipse | Kill the Colorless. | yes | — | — |
-| 82 | Burning Mountain | Sacrifice one artifact, or escape with all artifacts. | approximately — with the treasure looted, a character on the altar hex (Conclusion A's rewards) or everyone at the entrance (Conclusion B's); no artifact is removed, and who holds them isn't tracked. Lost, the chest is handed back | — | — |
+| 82 | Burning Mountain | Sacrifice one artifact, or escape with all artifacts. | approximately — with the treasure looted, its holder on the altar hex (Conclusion A's rewards; no item is removed) or everyone at the entrance (Conclusion B's) | — | — |
 | 83 | Shadows Within | Kill all enemies. | yes | — | — |
 | 84 | Crystalline Cave | Kill all enemies and protect the crystal (a). | yes | The crystal is destroyed. | yes |
 | 85 | Sun Temple | Kill all enemies. | yes | — | — |
 | 86 | Harried Village | Save seven villagers before five are killed. | yes | Five villagers are killed. | yes |
 | 87 | Corrupted Cove | Kill the Giant Ooze. | yes | — | — |
-| 88 | Plane of Water | Bring the Lurker King's claw to the crystal (a) — the scenario is complete when the claw is carried to a hex adjacent to the crystal. | approximately — the Lurker King dead and any character ending a turn beside the crystal (the claw isn't carried) | — | — |
+| 88 | Plane of Water | Bring the Lurker King's claw to the crystal (a) — the scenario is complete when the claw is carried to a hex adjacent to the crystal. | yes — the Lurker King dead and the claw's holder ending a turn beside the crystal | — | — |
 | 89 | Syndicate Hideout | Kill all enemies. | yes | — | — |
 | 90 | Demonic Rift | Close the rift (after Section 1: kill all Living Spirits). | yes — the spirits come when every demon is dead and a character stands in each room | No character is present in the left room at any time; only one character is left unexhausted; after Section 1, either room has no character present at any time. | yes |
 | 91 | Wild Melee | Kill all enemies. | yes | — | — |

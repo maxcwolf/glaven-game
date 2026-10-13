@@ -40,7 +40,7 @@ question, how a piece of work is done from start to finish, and what to do next.
   second session had the main checkout. It adds: Singing Arrow's Curse over its area; the
   play ledger no longer miscounting #9's Scouts (N12); the audit's new screens rendered and
   looked at (N16) with the cards in play made finger-sized; a door two hexes wide opening as
-  one (N21). `scripts/mutate.py` has 124 mutations, each noticed by a test. Group 2 is begun: a card lost
+  one (N21). `scripts/mutate.py` has 140 mutations, each noticed by a test. Group 2 is begun: a card lost
   from any hand spares the crystal (#84) or a captive (#44) — `saves`, `SaveChoiceSheet` — and a
   character beside a captive gives up an action to free it (`forgo`), with #44's loss switched on.
 
@@ -60,7 +60,9 @@ fast-forward):
    The same rule cleanses #26's pumps (`does`, `bottom`; goal `freed`) and loots #52's treasure
    (`treasure`); #75's graves are dug with movement (`dig`). The players choose which
    Living Spirit goes (#70) and whose deck Redthorn and the Orchids draw from (#44, #56): the
-   first group of scenario rules, "a choice the player couldn't make", is done. Next: the things that
+   first group of scenario rules, "a choice the player couldn't make", is done. The second,
+   things that are carried, has its mechanism (`carried`, `BoardCoordinator+Carried`) and four
+   of its seven scenarios (#69, #88, #58, #82); #81, #54 and #95 are next. After them: the things that
    are carried (#69, #88, #82, #81, #58, #54, #95). Under Cards the large open item is the Beast
    Tyrant, who has no bear (N20).
 3. Merging to `main` (`git merge --no-ff -m "merge: …"`, then push) is done when the owner asks.
@@ -162,7 +164,7 @@ The task list is `TODO.md` → "Missing Gloomhaven Rules" → "Open, in order"; 
 ordered like this:
 
 1. **Tests and checks, before building on top.** Done but for a glance on the iPad at what the
-   off-screen renderer can't draw. (`scripts/mutate.py` has 124 mutations, 59 of them scenario
+   off-screen renderer can't draw. (`scripts/mutate.py` has 140 mutations, 75 of them scenario
    rules — `--scenario` — and each is noticed by a test: add one with every new mechanism.)
 2. **Scenario rules** — 94 printed rules in 28 scenarios, in this order because each group is one
    mechanism used several times:
