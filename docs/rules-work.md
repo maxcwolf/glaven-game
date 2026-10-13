@@ -47,9 +47,10 @@ question, how a piece of work is done from start to finish, and what to do next.
 To pick it up, work on `feat/cards-4` (or merge it into `feat/scenario-rules-3` first — it is a
 fast-forward):
 
-1. **Verified** at the head of `feat/cards-4` on 2026-10-13: `swift test` 1,550 tests, none
+1. **Verified** at the head of `feat/cards-4` on 2026-10-13: `swift test` 1,555 tests, none
    failing; the four-seed all-scenarios playthrough without a violation; the veteran playthrough
-   passing (55 and 59 of 94 won).
+   passing (54 and 58 of 94 won — #44 is now lost by both parties, who exhaust themselves
+   sparing captives: with its loss switched on it wants a policy that frees them first).
 2. **Next**, from `TODO.md` → "Open, in order": group 1 is done but for a glance at two things
    on the iPad (the Solo switch as a switch; the scrolling card lists in the damage and rest
    sheets) and the drawings that need a game in progress (#46's eggs, #48's Dark Rider, the
