@@ -163,6 +163,7 @@ S={
  "anyFourTokensOpenTheDoor": ("GlavenGame/Board/BoardCoordinator+Locks.swift", "return numbers.allSatisfy(boardState.tokensLooted.contains)", "return boardState.tokensLooted.count >= numbers.count"),
  "demonsComeForEver": ("GlavenGame/Board/BoardCoordinator+Goals.swift", "if let lock = fact.locked, boardState.releasedLocks.contains(lock) { return false }", "if let lock = fact.locked, false, boardState.releasedLocks.contains(lock) { return false }"),
  "tokensForgottenOnUndo": ("GlavenGame/Engine/BoardSnapshot.swift", "        board.tokensLooted = tokensLooted ?? []", "        _ = tokensLooted"),
+ "destroyedObstacleStaysInTheWay": ("GlavenGame/Board/BoardCoordinator+Rules.swift", "            clearObjectiveSite(number)\n", ""),
  "noOneIsAskedWhoHolds": ("GlavenGame/Board/BoardCoordinator+Carried.swift", "            } else if autoResolvePrompts {\n                give(thing.name, to: first.id, how: \"holds\")", "            } else if true {\n                give(thing.name, to: first.id, how: \"holds\")"),
  "lyingThingNotPickedUp": ("GlavenGame/Board/BoardCoordinator+Carried.swift", "            if let lying = boardState.carriedLying[name] { return hexes.contains(lying) }", "            if boardState.carriedLying[name] != nil { return false }"),
  "anyoneLootsTheQuestTile": ("GlavenGame/Board/BoardCoordinator+Carried.swift", "        return party.first { $0.id == characterID }?.personalQuest == quest", "        return party.first { $0.id == characterID }?.personalQuest == quest || true"),

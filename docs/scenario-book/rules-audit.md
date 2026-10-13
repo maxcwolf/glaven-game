@@ -12,8 +12,8 @@ means the data and code that enforce the rule were found, and usually a test tha
 that the scenario was played through. Keep it current: when a rule is built, rewrite its row in
 the same commit (see [../rules-work.md](../rules-work.md)).
 
-**447 rules: 382 done, 14 partial, 51 missing.**
-77 of 95 scenarios have every printed rule done. The other 18: #55 (6 missing, 1 partial), #88 (3 missing, 0 partial), #34 (4 missing, 2 partial), #76 (4 missing, 2 partial), #71 (5 missing, 0 partial), #73 (5 missing, 0 partial), #78 (5 missing, 0 partial), #95 (5 missing, 0 partial), #21 (2 missing, 2 partial), #49 (4 missing, 0 partial), #74 (4 missing, 0 partial), #52 (1 missing, 1 partial), #68 (1 missing, 1 partial), #79 (1 missing, 1 partial), #82 (0 missing, 2 partial), #38 (0 missing, 1 partial), #47 (0 missing, 1 partial), #67 (1 missing, 0 partial).
+**447 rules: 386 done, 14 partial, 47 missing.**
+77 of 95 scenarios have every printed rule done. The other 18: #55 (6 missing, 1 partial), #88 (3 missing, 0 partial), #34 (4 missing, 2 partial), #76 (4 missing, 2 partial), #71 (5 missing, 0 partial), #73 (5 missing, 0 partial), #78 (5 missing, 0 partial), #21 (2 missing, 2 partial), #49 (4 missing, 0 partial), #74 (4 missing, 0 partial), #52 (1 missing, 1 partial), #68 (1 missing, 1 partial), #79 (1 missing, 1 partial), #82 (0 missing, 2 partial), #38 (0 missing, 1 partial), #47 (0 missing, 1 partial), #67 (1 missing, 0 partial), #95 (1 missing, 0 partial).
 
 Rules that were enforced wrongly, as against not at all, are findings of the engine audit
 ([../audits/2026-10-09-rules-audit.md](../audits/2026-10-09-rules-audit.md), rows S1-…, S2-…),
@@ -35,7 +35,7 @@ order", has the same list as tasks). The rows below say what the game does today
   holder), #82 the chest's artifacts (who holds them decides both goals), #81 the Crystal of
   Zenith and Sphere of Midnight, #58 the Occult Dagger (and who may loot it), #54 the Staff of
   Xorn with its charge, goal and loss, #95 the six numbered tokens (with the locked door and the
-  demons that keep coming until four are looted).
+  demons that keep coming until four are looted). **All built** (2026-10-13).
 - **A board that moves as the round ends.** #71 the wind, #88 the current, #73 the boulders, #74
   the water rising in the hold (with its loss and the bailing).
 - **Monsters that don't act as their cards say.** #71's Spitting Drakes asleep until woken; #49's
@@ -873,10 +873,10 @@ order", has the same list as tasks). The rows below say what the game does today
 | Rule (from the book) | Status | Where / what's missing |
 |---|---|---|
 | Goal: kill the Prime Lieutenant | done | placements goal `kill: ["prime-lieutenant"]` |
-| Setup: numbered tokens 1–6 shuffled face down on the (a) hexes, lootable normally | missing | the placements for #95 have no objectives, markers or tokens (`tiles` is empty); nothing lies on the (a) hexes. Needs lootable numbered tokens (README: the six tokens "aren't modelled") |
+| Setup: numbered tokens 1–6 shuffled face down on the (a) hexes, lootable normally | done | placements `tokens: {marker: "a", count: 6}` with the six (a) hexes on D1a and K2b → `layNumberedTokens` (shuffled once with the game's seed, one laid on each lettered hex as its room is revealed, drawn as "?"); looted by ending a turn on one or by a Loot action (`lootNumberedToken`: the number is logged then); `CarriedThingTests.testTheTokensAreLootedAndFourOfThemUnlockTheDoor`, `testTheTokensAreShuffled` |
 | Section 1: the Savvas Lavaflow is the Prime Lieutenant | done | room 3 lists `prime-lieutenant` (boss, deck `savvas-lavaflow`, stats equal the elite Lavaflow's) |
-| Door 1 is locked; it can be opened once tokens 1–4 are looted | missing | no `locks` written; the G1b→E1a door opens to any character from round 1 (`TODO.md`: "Things that are carried"). Needs the tokens first |
-| Until tokens 1–4 are looted: end of every odd round a Flame Demon spawns by door 1 (normal for 2; elite for 3–4) | missing | 95.json has no rules and the placements write none; no demon arrives. A round rule could be written, but its end condition needs the tokens |
-| Until tokens 1–4 are looted: end of every even round an Earth Demon spawns by door 1 (normal for 2–3; elite for 4) | missing | no rule in the data or the placements, as for the Flame Demon |
+| Door 1 is locked; it can be opened once tokens 1–4 are looted | done | placements `locks: [{between: [g1b, e1a], tokens: [1, 2, 3, 4], unlocksOnly: true}]` → `keyTurned` (every number listed is among `tokensLooted`); unlocked, it opens to a character walking in; same test (three of the four, with 5 and 6, leave it locked) |
+| Until tokens 1–4 are looted: end of every odd round a Flame Demon spawns by door 1 (normal for 2; elite for 3–4) | done | placements rule `round: "R % 2 == 1"`, `when: [{locked: 0}]` (the fact "lock 0 isn't released yet", `boardFactHolds`), spawning at the letter written on the G1b hex beside the door; same test |
+| Until tokens 1–4 are looted: end of every even round an Earth Demon spawns by door 1 (normal for 2–3; elite for 4) | done | placements rule `round: "R % 2 == 0"`, `when: [{locked: 0}]`; same test |
 | Any figure ending its turn in a water hex suffers 1+L damage | done | placements `water: {endOfTurn: "1+L"}` → `BoardCoordinator.waterDamageAtTurnEnd` (characters as their turn ends; monsters and summons through `sufferWaterAtTurnEnd` in `MonsterTurnController` / `SummonTurnController`); `ScenarioSpecialRuleTests.testEndingATurnInTheWaterOfPaymentDue` |
 | Each boulder has 3+L hit points | missing | K2b's five boulders are plain obstacle overlays with no hit points: they can't be attacked or damaged (the audit and TODO.md list it as still open). Needs obstacles that are objectives with health |

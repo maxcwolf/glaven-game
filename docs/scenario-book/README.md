@@ -52,7 +52,7 @@ ends up on the board:
   its place, since rules refer to each other by index.
   Rules written here can use a few things the scenario data has no word for:
   - `when` — things that have happened on the board, all at once: `{"saved": 1}` (that many
-    escorts have arrived), `{"lock": 0}` (that lock of `locks`, from 0, has been released),
+    escorts have arrived), `{"lock": 0}` (that lock of `locks`, from 0, has been released; `{"locked": 0}` that it hasn't yet),
     `{"looted": "goal"}` (every goal treasure tile; a tile ref for the goal treasure on it; a
     treasure's number), `{"unrevealed": 2}` (that room isn't revealed yet), `{"occupied": {"markers": ["a"], "more":
     {"3": ["b"]}}}` (every pressure plate in play for this many characters has a figure on it),
@@ -139,6 +139,11 @@ ends up on the board:
   bearing that item (#54's Staff of Xorn is the Seeker's). `"soleHarmTo": ["harrower-infester"]`
   makes its holder the only one who damages that monster type, each point of that damage
   charging it up to `"charge": "2xCx(L+1)"`; a `reach` with `"charged": true` waits for it full.
+- `tokens`: numbered tokens lying face down, `{"marker": "a", "count": 6}` (#95): the numbers 1 to
+  `count` are shuffled with the game's seed and one is laid on each hex lettered `marker` as its
+  room is revealed (`layNumberedTokens`; `BoardState.tokenHexes`, drawn as "?"). They are looted
+  like money — by ending a turn on one or with a Loot action — and the number is told then
+  (`tokensLooted`). A lock's `"tokens": [1, 2, 3, 4]` is turned once all of those are found.
 - `drawsFromACharacter`: escorts whose attacks draw "from whichever attack modifier deck the
   players choose" (#44 Redthorn, #56 the captive Orchids): as one attacks the players are asked
   whose deck, and the card is drawn from that character's.
@@ -271,6 +276,7 @@ its map, every door objective is on a door and every objective number exists.
 | 86 Harried Village | 11 villagers | b–f | win: 7 reach the docks; lost at 5 killed | — |
 | 90 Demonic Rift | — | b, c (the Living Spirits, once every demon is dead; a Night Demon at b as an even round ends with no one in the right-hand room) | win: every Living Spirit killed | — (`DemonicRiftTests`: both rooms set up, characters cross by the altars for 1 movement, the losses for an empty room) |
 | 92 Back Alley Brawl | — | a, b, c (where the City Archer and the two City Guards are set up; not the book's letters) | win: every non-city enemy killed; lost if a guard or the archer is killed | — |
+| 95 Payment Due | — | a (the six numbered tokens), s (by door 1, where the demons arrive; not the book's letter) | win: kill the Prime Lieutenant | `tokens`; door 1 locked until 1 to 4 are looted; a demon as each round ends until then |
 
 ### Locked doors written
 
@@ -289,8 +295,10 @@ its map, every door objective is on a door and every objective number exists.
 | 79 Lost Temple | door 1 | none: the rule that every Stone Golem is dead opens it |
 | 82 Burning Mountain | all six | one for each elite killed, in order |
 | 84 Crystalline Cave | the three cave walls | as rounds 4, 6 and 9 begin |
+| 95 Payment Due | door 1 | tokens 1 to 4 looted (it can then be opened; it doesn't open itself) |
 
-Not locked yet: #95's door 1 (its key is the six numbered tokens, which aren't modelled).
+#95's door 1 is locked with `tokens: [1, 2, 3, 4]`: the numbered tokens that must all have been
+looted (see `tokens` above).
 
 Letters written only for a rule: #41 c–g (where the middle room's artilleries and golems are
 set up; not the book's letters), #83 the altar (a), #92 a–c (the city's men; not the book's letters).

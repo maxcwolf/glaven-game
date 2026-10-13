@@ -548,7 +548,21 @@ struct VeteranPolicy: PlayerPolicy {
     // MARK: - Reading the board
 
     private func foes(of piece: PieceID, _ sim: ScenarioSimulator) -> [(piece: PieceID, hex: HexCoord, health: Int)] {
-        sim.enemies(of: piece).compactMap { id in sim.position(id).map { (id, $0, sim.health(id).current) } }
+        let all: [(piece: PieceID, hex: HexCoord, health: Int)] = sim.enemies(of: piece).compactMap { id in
+            sim.position(id).map { (id, $0, sim.health(id).current) }
+        }
+        // One of the party goes for the tokens and fights only what stands in the way.
+        guard fetchesTokens(piece, sim), let here = sim.position(piece) else { return all }
+        return all.filter { $0.hex.distance(to: here) <= 2 }
+    }
+
+    /// Payment Due: a demon arrives every round until tokens 1 to 4 are found, so a party that
+    /// kills everything in sight first never gets to them. The last character still standing
+    /// goes for the tokens (and the doors they lie behind) while the others fight.
+    private func fetchesTokens(_ piece: PieceID, _ sim: ScenarioSimulator) -> Bool {
+        guard case .character(let id) = piece, sim.coord.scenarioData?.placements?.tokens != nil,
+              sim.coord.boardState.doors.contains(where: { sim.coord.boardState.isLockedDoor($0.coord) }) else { return false }
+        return sim.gm.game.characters.last { !$0.exhausted && !$0.absent }?.id == id
     }
 
     /// Hexes the character can end a move of `step` on (their own included), traps and hazardous

@@ -489,4 +489,42 @@ final class CarriedThingTests: XCTestCase {
         }
         XCTAssertGreaterThan(layouts.count, 2)
     }
+
+    /// "Each boulder has 3+L hit points": three of the tokens lie behind them, so they are
+    /// there to be attacked, and a boulder destroyed leaves its hex empty.
+    func testTheBouldersAreDestroyedToReachTheTokens() throws {
+        let sim = try simulator("95")
+        let coord = sim.coord
+        for door in coord.boardState.doors where door.childTileRef.lowercased() != "e1a" { coord.openDoor(at: door.coord) }
+        for monster in monsters(sim) { coord.removePieceFromBoard(monster) }
+        let brute = piece(sim, 0)
+        let boulders = coord.boardState.piecePositions.keys.filter { if case .objective = $0 { return true }; return false }.sorted()
+        XCTAssertEqual(boulders.count, 5)
+        for boulder in boulders {
+            XCTAssertEqual(coord.entity(for: boulder)?.maxHealth, 3 + sim.gm.game.level)
+            XCTAssertTrue(coord.areEnemies(brute, boulder), "it can be attacked")
+            XCTAssertEqual(coord.boardState.cells[try XCTUnwrap(coord.boardState.piecePositions[boulder])]?.overlay, .obstacle)
+        }
+        func onFoot() throws -> [HexCoord: Int] {
+            Pathfinder.reachableHexes(board: coord.boardState, from: try XCTUnwrap(coord.boardState.piecePositions[brute]), range: 60,
+                                      mode: .normal, avoidTraps: false, canOpenDoors: false,
+                                      occupiedByEnemy: Set(boulders.compactMap { coord.boardState.piecePositions[$0] }), occupiedByAlly: [])
+        }
+        let before = try onFoot()
+        let hidden = coord.boardState.tokenHexes.keys.filter { before[$0] == nil }
+        XCTAssertEqual(hidden.count, 3, "the far room's tokens lie behind the boulders")
+
+        let stood = boulders.compactMap { coord.boardState.piecePositions[$0] }
+        coord.sufferDamage(2 + sim.gm.game.level, to: boulders[0])
+        XCTAssertNotNil(coord.boardState.piecePositions[boulders[0]], "one hit point left")
+        for boulder in boulders { coord.sufferDamage(3 + sim.gm.game.level, to: boulder) }
+        for hex in stood {
+            XCTAssertNil(coord.boardState.piece(at: hex))
+            XCTAssertNil(coord.boardState.cells[hex]?.overlay, "the boulder is gone from \(hex)")
+        }
+        let after = try onFoot()
+        for hex in coord.boardState.tokenHexes.keys.sorted() {
+            XCTAssertNotNil(after[hex], "the token at \(hex) can't be reached on foot")
+        }
+    }
 }
