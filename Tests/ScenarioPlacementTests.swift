@@ -207,6 +207,13 @@ final class ScenarioPlacementTests: XCTestCase {
                 XCTAssertEqual(section?.isConclusion, true, "\(index): no conclusion \(conclusion)")
             }
             for id in placements.resetOnLoss ?? [] { XCTAssertTrue(treasure.contains(id), "\(index): no treasure \(id)") }
+            if let drift = placements.drift {
+                let sides = (drift.directions ?? []).flatMap { $0 } + (drift.byInitiative.map { $0.even + $0.odd } ?? [])
+                XCTAssertFalse(sides.isEmpty, "\(index): the \(drift.name) goes nowhere")
+                for side in sides { XCTAssertTrue(BoardCoordinator.hexSides.contains(side), "\(index): no side \(side)") }
+                for tile in drift.tiles ?? [] { XCTAssertTrue(tiles.contains(tile), "\(index): no tile \(tile)") }
+                if let by = drift.byInitiative { XCTAssertTrue(monsters.contains(by.monster), "\(index): no monster \(by.monster)") }
+            }
             for objective in placements.passiveTurns ?? [] {
                 XCTAssertEqual(data.objectives?.indices.contains(objective - 1), true, "\(index): no objective \(objective)")
                 XCTAssertEqual(data.objectives?[objective - 1].escort, true, "\(index): objective \(objective) takes no turn")

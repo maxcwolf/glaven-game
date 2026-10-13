@@ -35,6 +35,9 @@ enum InteractionMode {
     case selectingHealTarget(pieceID: PieceID, healValue: Int, validTargets: Set<PieceID>)
     /// Player selects an enemy to push or pull.
     case selectingForcedMoveTarget(pieceID: PieceID, steps: Int, isPush: Bool, validTargets: Set<PieceID>)
+    /// The players choose one of a few hexes for something that isn't a turn's action (which of
+    /// two hexes the wind blows `piece` into).
+    case choosingHex(piece: PieceID, title: String, detail: String, validHexes: Set<HexCoord>)
     case watchingMonsterTurn
 }
 
@@ -446,6 +449,8 @@ final class BoardCoordinator {
 
     /// Non-nil while the player picks a figure from a list mid-turn (Heart of the Betrayer).
     var pendingFigureChoice: PendingFigureChoice?
+    /// A hex the players are choosing outside a turn's action (the wind's two ways).
+    @ObservationIgnored var pendingHexChoice: PendingHexChoice?
 
     // MARK: Learning mode
 
@@ -778,9 +783,19 @@ final class BoardCoordinator {
 
     /// Continue with end-of-round cleanup after all short rests are resolved.
     private func proceedAfterShortRests() {
-        guard let gameManager = gameManager else { return }
-
         longRestedCharacterIDs = []
+        // The wind or the current first (decided while the round's cards still lie drawn).
+        guard pendingResult == nil, let coming = driftToCome() else { return finishTheRound() }
+        let generation = boardGeneration
+        Task { @MainActor in
+            await self.driftAsTheRoundEnds(coming)
+            guard self.isCurrentBoard(generation), self.scenarioResult == nil else { return }
+            self.finishTheRound()
+        }
+    }
+
+    private func finishTheRound() {
+        guard let gameManager = gameManager else { return }
 
         // End-of-round cleanup (end-of-round scenario rules, elements wane, decks reshuffle)
         let game = gameManager.game
@@ -1001,6 +1016,9 @@ final class BoardCoordinator {
         let figure = pendingFigureChoice
         pendingFigureChoice = nil
         figure?.continuation?.resume(returning: nil)
+        let hex = pendingHexChoice
+        pendingHexChoice = nil
+        hex?.continuation?.resume(returning: nil)
         pendingModifierDraw = nil
         pendingDamage = nil
         pendingItemUse = nil
@@ -3175,6 +3193,9 @@ final class BoardCoordinator {
             if validHexes.contains(coord) {
                 executePushPullStep(target: target, to: coord, attackerPos: attackerPos, remainingSteps: remaining, isPush: isPush)
             }
+
+        case .choosingHex:
+            resolveHexChoice(coord)
 
         default:
             // Doors open only when a character enters the door hex during its movement (p.17).

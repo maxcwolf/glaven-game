@@ -438,6 +438,9 @@ final class ScenarioSimulator {
         case .placingToken(_, _, _, let hexes):
             // Policies don't plan traps: the first free hex, in map order.
             if let hex = hexes.sorted().first { coord.handleHexTap(hex) }
+        case .choosingHex(_, _, _, let hexes):
+            // Where the wind blows someone: the first hex, in map order.
+            if let hex = hexes.sorted().first { coord.handleHexTap(hex) }
         case .placingSummon(_, let owner, let hexes):
             if let hex = policy.summonHex(for: owner, options: hexes, sim: self) {
                 coord.handleHexTap(hex)

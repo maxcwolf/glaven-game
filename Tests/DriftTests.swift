@@ -1,0 +1,370 @@
+import XCTest
+@testable import GlavenGameLib
+
+/// A board that moves the party as the round ends (`ScenarioPlacements.Drift`,
+/// `BoardCoordinator+Drift`): the wind of the Windswept Highlands (#71) and the current of the
+/// Plane of Water (#88).
+@MainActor
+final class DriftTests: XCTestCase {
+
+    private func simulator(_ index: String, prompts: Bool = false) throws -> ScenarioSimulator {
+        let sim = try ScenarioSimulator(scenario: index, options: .init(characters: ["brute", "spellweaver"], seed: 1,
+                                                                        autoResolvePrompts: !prompts))
+        sim.gm.game.round = 1
+        return sim
+    }
+
+    private func revealAll(_ sim: ScenarioSimulator) {
+        for _ in 0..<40 {
+            guard let door = sim.coord.boardState.doors.first(where: { !$0.isOpen }) else { return }
+            sim.coord.boardState.lockedDoors.removeAll()
+            sim.coord.openDoor(at: door.coord)
+        }
+    }
+
+    private func clearMonsters(_ sim: ScenarioSimulator) {
+        for piece in sim.coord.boardState.piecePositions.keys.sorted() {
+            if case .monster = piece { sim.coord.removePieceFromBoard(piece) }
+        }
+    }
+
+    private func piece(_ sim: ScenarioSimulator, _ index: Int) -> PieceID { .character(sim.gm.game.characters[index].id) }
+
+    private func stand(_ sim: ScenarioSimulator, _ piece: PieceID, on hex: HexCoord) {
+        sim.coord.boardState.removePiece(piece)
+        sim.coord.boardState.placePiece(piece, at: hex)
+    }
+
+    private func hex(_ sim: ScenarioSimulator, _ piece: PieceID) -> HexCoord? { sim.coord.boardState.piecePositions[piece] }
+
+    private func side(_ hex: HexCoord, _ name: String) -> HexCoord {
+        hex.neighbors[BoardCoordinator.hexSides.firstIndex(of: name)!]
+    }
+
+    /// Plain floor: no overlay, no figure, on one of `tiles` (any tile when nil).
+    private func isFloor(_ sim: ScenarioSimulator, _ hex: HexCoord, tiles: [String]? = nil) -> Bool {
+        let board = sim.coord.boardState
+        guard let cell = board.cells[hex], cell.passable, cell.overlay == nil, board.piece(at: hex) == nil,
+              !board.doors.contains(where: { $0.coord == hex }) else { return false }
+        return tiles.map { $0.contains(cell.tileRef.lowercased()) } ?? true
+    }
+
+    /// A hex of plain floor whose six neighbours are plain floor too, with no wall line between.
+    private func openGround(_ sim: ScenarioSimulator, tiles: [String]? = nil, not taken: Set<HexCoord> = []) throws -> HexCoord {
+        let board = sim.coord.boardState
+        return try XCTUnwrap(board.cells.keys.sorted().first { hex in
+            !taken.contains(hex) && isFloor(sim, hex, tiles: tiles)
+                && hex.neighbors.allSatisfy { isFloor(sim, $0) && !board.isWalled(hex, $0) && !taken.contains($0) }
+        }, "no open ground")
+    }
+
+    /// A hex of plain floor with two more in a row beyond it on the side named.
+    private func openLine(_ sim: ScenarioSimulator, toward name: String, tiles: [String]? = nil) throws -> HexCoord {
+        let board = sim.coord.boardState
+        return try XCTUnwrap(board.cells.keys.sorted().first { hex in
+            let next = side(hex, name), last = side(next, name)
+            return [hex, next, last].allSatisfy { isFloor(sim, $0, tiles: tiles) } && !board.isWalled(hex, next) && !board.isWalled(next, last)
+        }, "no three hexes of floor in a row")
+    }
+
+    private func drift(_ sim: ScenarioSimulator, round: Int) async throws {
+        sim.gm.game.round = round
+        let coming = try XCTUnwrap(sim.coord.driftToCome(), "nothing moves in round \(round)")
+        await sim.coord.driftAsTheRoundEnds(coming)
+    }
+
+    // MARK: - #71: the wind
+
+    /// "Strong winds will force characters and character summons to move one hex in a different
+    /// direction at the end of every round … in the order of left, up, right, down, and then back
+    /// to left." The book prints the map a quarter turn round: its left is up on our map, its up
+    /// our right, its right our down and its down our left.
+    func testTheWindTurnsWithTheRounds() async throws {
+        let sim = try simulator("71")
+        revealAll(sim)
+        clearMonsters(sim)
+        let brute = piece(sim, 0), weaver = piece(sim, 1)
+        let start = try openGround(sim)
+        sim.coord.boardState.removePiece(weaver)
+        func blown(round: Int) async throws -> HexCoord? {
+            stand(sim, brute, on: start)
+            try await drift(sim, round: round)
+            return hex(sim, brute)
+        }
+        // Headless, the first of two hexes in map order is taken.
+        let first = try await blown(round: 1)
+        XCTAssertEqual(first, [side(start, "NW"), side(start, "NE")].sorted()[0], "round 1: the book's left, up here")
+        let second = try await blown(round: 2)
+        XCTAssertEqual(second, side(start, "E"), "round 2: the book's up, our right")
+        let third = try await blown(round: 3)
+        XCTAssertEqual(third, [side(start, "SW"), side(start, "SE")].sorted()[0], "round 3: the book's right, down here")
+        let fourth = try await blown(round: 4)
+        XCTAssertEqual(fourth, side(start, "W"), "round 4: the book's down, our left")
+        let fifth = try await blown(round: 5)
+        XCTAssertEqual(fifth, first, "and round again")
+    }
+
+    /// "When forced to move left or right, players may choose either of the two available hexes
+    /// to move into": asked on the board when both are open, not when only one is.
+    func testThePlayersChooseBetweenTwoHexes() async throws {
+        let sim = try simulator("71", prompts: true)
+        let coord = sim.coord
+        revealAll(sim)
+        clearMonsters(sim)
+        let brute = piece(sim, 0), weaver = piece(sim, 1)
+        let start = try openGround(sim)
+        coord.boardState.removePiece(weaver)
+        stand(sim, brute, on: start)
+        sim.gm.game.round = 1
+        let coming = try XCTUnwrap(coord.driftToCome())
+        let blowing = Task { @MainActor in await coord.driftAsTheRoundEnds(coming) }
+        let deadline = Date().addingTimeInterval(3)
+        while coord.pendingHexChoice == nil, Date() < deadline { try? await Task.sleep(nanoseconds: 1_000_000) }
+        guard case .choosingHex(let asked, _, _, let hexes) = coord.interactionMode else {
+            blowing.cancel()
+            return XCTFail("asked which hex: \(coord.interactionMode)")
+        }
+        XCTAssertEqual(asked, brute)
+        XCTAssertEqual(hexes, [side(start, "NW"), side(start, "NE")])
+        XCTAssertNotNil(coord.instruction(for: coord.interactionMode), "the board says what is asked")
+        coord.handleHexTap(side(start, "W"))
+        XCTAssertNotNil(coord.pendingHexChoice, "a hex that isn't offered is no answer")
+        let chosen = [side(start, "NW"), side(start, "NE")].sorted()[1]
+        coord.handleHexTap(chosen)
+        await blowing.value
+        XCTAssertEqual(hex(sim, brute), chosen)
+        if case .idle = coord.interactionMode {} else { XCTFail("the prompt is gone: \(coord.interactionMode)") }
+
+        // One of the two taken: the other, unasked.
+        stand(sim, brute, on: start)
+        stand(sim, weaver, on: side(start, "NE"))
+        coord.gameManager?.game.characters[1].exhausted = true   // (stands there, but isn't blown about)
+        await coord.driftAsTheRoundEnds(try XCTUnwrap(coord.driftToCome()))
+        XCTAssertEqual(hex(sim, brute), side(start, "NW"))
+        XCTAssertNil(coord.pendingHexChoice)
+    }
+
+    /// "This movement is resolved in initiative order", summons with their owners: whoever goes
+    /// first may clear the way for the next, or stand in it. A figure with nowhere to go stays,
+    /// unharmed.
+    func testTheWindGoesInInitiativeOrderAndIsStoppedByWhatIsInTheWay() async throws {
+        let sim = try simulator("71")
+        let coord = sim.coord
+        revealAll(sim)
+        clearMonsters(sim)
+        let brute = sim.gm.game.characters[0], weaver = sim.gm.game.characters[1]
+        let start = try openLine(sim, toward: "E")
+        let east = side(start, "E")
+        // Round 2 blows to the right. The Brute stands left of the Spellweaver.
+        func blow(bruteFirst: Bool) async throws {
+            stand(sim, .character(brute.id), on: start)
+            stand(sim, .character(weaver.id), on: east)
+            brute.initiative = bruteFirst ? 10 : 80
+            weaver.initiative = bruteFirst ? 80 : 10
+            try await drift(sim, round: 2)
+        }
+        let health = brute.health
+        try await blow(bruteFirst: true)
+        XCTAssertEqual(hex(sim, .character(brute.id)), start, "the Spellweaver was still in the way")
+        XCTAssertEqual(brute.health, health, "the wind does no harm")
+        XCTAssertEqual(hex(sim, .character(weaver.id)), side(east, "E"))
+        try await blow(bruteFirst: false)
+        XCTAssertEqual(hex(sim, .character(brute.id)), east, "the Spellweaver went first and made room")
+
+        // A summon is blown too, before its owner.
+        stand(sim, .character(brute.id), on: start)
+        coord.boardState.removePiece(.character(weaver.id))
+        let summon = GameSummon(uuid: GameRandom.uuid(), name: "Test Ally", number: 1, health: 5, maxHealth: 5, level: 1,
+                                attack: .int(1), movement: 2, range: 0)
+        summon.state = .active
+        brute.summons.append(summon)
+        coord.boardState.placePiece(.summon(id: summon.id), at: east)
+        try await drift(sim, round: 2)
+        XCTAssertEqual(hex(sim, .summon(id: summon.id)), side(east, "E"))
+        XCTAssertEqual(hex(sim, .character(brute.id)), east, "its owner follows into the hex it left")
+
+        // An obstacle in the way: no move.
+        stand(sim, .character(brute.id), on: start)
+        coord.boardState.removePiece(.summon(id: summon.id))
+        brute.summons.removeAll()
+        coord.boardState.cells[east]?.overlay = .obstacle
+        coord.boardState.cells[east]?.passable = false
+        try await drift(sim, round: 2)
+        XCTAssertEqual(hex(sim, .character(brute.id)), start)
+        XCTAssertEqual(brute.health, health)
+    }
+
+    /// Forced into a trap, a figure springs it.
+    func testTheWindBlowsAFigureIntoATrap() async throws {
+        let sim = try simulator("71")
+        let coord = sim.coord
+        revealAll(sim)
+        clearMonsters(sim)
+        let brute = sim.gm.game.characters[0]
+        let trap = try XCTUnwrap(coord.boardState.cells.values.filter { $0.isTrap }.map(\.coord).sorted().first { trap in
+            isFloor(sim, side(trap, "E")) && !coord.boardState.isWalled(trap, side(trap, "E"))
+        })
+        coord.boardState.removePiece(piece(sim, 1))
+        stand(sim, piece(sim, 0), on: side(trap, "E"))
+        let health = brute.health
+        try await drift(sim, round: 4)   // to the left
+        XCTAssertEqual(hex(sim, piece(sim, 0)), trap)
+        XCTAssertLessThan(brute.health, health, "the trap is sprung")
+        XCTAssertFalse(coord.boardState.cells[trap]?.isTrap ?? true)
+    }
+
+    /// A whole round played: the wind comes after the last turn and before the next round's cards.
+    func testTheWindBlowsAsARoundOfPlayEnds() async throws {
+        let sim = try ScenarioSimulator(scenario: "71", options: .init(characters: ["brute", "spellweaver"], seed: 3))
+        _ = await sim.play(rounds: 2)
+        let lines = sim.transcript
+        let first = try XCTUnwrap(lines.firstIndex { $0.contains("The wind moves the party up") }, "round 1's wind")
+        let roundOne = try XCTUnwrap(lines.firstIndex { $0.contains("Round 1 complete") })
+        XCTAssertLessThan(first, roundOne)
+        XCTAssertTrue(lines[first...roundOne].contains { $0.contains("The wind moves Brute") })
+        XCTAssertTrue(lines[roundOne...].contains { $0.contains("The wind moves the party to the right") }, "round 2's")
+        XCTAssertTrue(sim.violations.isEmpty, "\(sim.violations)")
+    }
+
+    // MARK: - #88: the current
+
+    private func setLurkerInitiative(_ sim: ScenarioSimulator, even: Bool) throws -> Int {
+        let lurker = try XCTUnwrap(sim.gm.game.monsters.first { $0.name == "lurker" })
+        let cards = sim.gm.monsterManager.abilities(for: lurker)
+        let index = try XCTUnwrap(cards.firstIndex { ($0.initiative % 2 == 0) == even })
+        for monster in sim.gm.game.monsters where monster.name == "lurker" || monster.name == "lurker-king" {
+            monster.abilities = Array(cards.indices)
+            monster.ability = index
+            monster.abilityDrawn = true
+        }
+        return cards[index].initiative
+    }
+
+    private let largeRoom = ["g2a", "n1a"]
+
+    /// "The direction of the current is determined by the Lurker initiative each round, even or
+    /// odd": up and to the left on an even card, up and to the right on an odd one — and only
+    /// "in the large room".
+    func testTheCurrentFollowsTheLurkersInitiative() async throws {
+        let sim = try simulator("88")
+        let coord = sim.coord
+        XCTAssertNil(coord.driftToCome(), "no one is in the large room yet")
+        revealAll(sim)
+        clearMonsters(sim)
+        let brute = piece(sim, 0), weaver = piece(sim, 1)
+        let start = try openGround(sim, tiles: largeRoom)
+        let outside = try XCTUnwrap(coord.boardState.cells.keys.sorted().first { isFloor(sim, $0, tiles: ["d2b"]) })
+        stand(sim, weaver, on: outside)
+
+        stand(sim, brute, on: start)
+        XCTAssertEqual(try setLurkerInitiative(sim, even: true) % 2, 0)
+        try await drift(sim, round: 3)
+        XCTAssertEqual(hex(sim, brute), side(start, "NW"), "even: up and to the left")
+        XCTAssertEqual(hex(sim, weaver), outside, "the starting room has no current")
+
+        stand(sim, brute, on: start)
+        XCTAssertEqual(try setLurkerInitiative(sim, even: false) % 2, 1)
+        try await drift(sim, round: 3)
+        XCTAssertEqual(hex(sim, brute), side(start, "NE"), "odd: up and to the right")
+
+        // No Lurker acted this round: a card of theirs is drawn for the current.
+        stand(sim, brute, on: start)
+        for monster in sim.gm.game.monsters where monster.name == "lurker" || monster.name == "lurker-king" {
+            monster.abilityDrawn = false
+            monster.ability = -1
+        }
+        try await drift(sim, round: 3)
+        XCTAssertTrue([side(start, "NW"), side(start, "NE")].contains(try XCTUnwrap(hex(sim, brute))))
+        let lurker = try XCTUnwrap(sim.gm.game.monsters.first { $0.name == "lurker" })
+        let drawn = try XCTUnwrap(sim.gm.monsterManager.currentAbilityInitiative(for: lurker))
+        XCTAssertEqual(hex(sim, brute), side(start, drawn % 2 == 0 ? "NW" : "NE"))
+    }
+
+    /// "…unless they are occupying a hex directly behind an obstacle or wall hex in the direction
+    /// of the current. If they cannot move because of another figure, an obstacle, or a wall,
+    /// they suffer 3 damage instead."
+    func testShelterFromTheCurrentAndWhatItCostsToBeInItsWay() async throws {
+        let sim = try simulator("88")
+        let coord = sim.coord
+        revealAll(sim)
+        clearMonsters(sim)
+        let brute = sim.gm.game.characters[0], weaver = sim.gm.game.characters[1]
+        coord.boardState.removePiece(.character(weaver.id))
+        _ = try setLurkerInitiative(sim, even: true)   // up and to the left: it comes from the lower right
+        let start = try openGround(sim, tiles: largeRoom)
+        let health = brute.health
+        func obstacle(_ hex: HexCoord, _ on: Bool) {
+            coord.boardState.cells[hex]?.overlay = on ? .obstacle : nil
+            coord.boardState.cells[hex]?.passable = !on
+        }
+
+        // An obstacle on the side the current comes from: no move, no damage.
+        stand(sim, .character(brute.id), on: start)
+        obstacle(side(start, "SE"), true)
+        try await drift(sim, round: 2)
+        XCTAssertEqual(hex(sim, .character(brute.id)), start)
+        XCTAssertEqual(brute.health, health)
+        obstacle(side(start, "SE"), false)
+
+        // The wall of the room behind one: sheltered as well.
+        let bottom = try XCTUnwrap(coord.boardState.cells.keys.sorted().first { hex in
+            isFloor(sim, hex, tiles: largeRoom) && coord.boardState.cells[side(hex, "SE")] == nil && isFloor(sim, side(hex, "NW"))
+        })
+        stand(sim, .character(brute.id), on: bottom)
+        try await drift(sim, round: 2)
+        XCTAssertEqual(hex(sim, .character(brute.id)), bottom)
+        XCTAssertEqual(brute.health, health)
+
+        // An obstacle in the way: 3 damage instead.
+        stand(sim, .character(brute.id), on: start)
+        obstacle(side(start, "NW"), true)
+        try await drift(sim, round: 2)
+        XCTAssertEqual(hex(sim, .character(brute.id)), start)
+        XCTAssertEqual(brute.health, health - 3)
+        obstacle(side(start, "NW"), false)
+
+        // The wall in the way: 3 more.
+        let top = try XCTUnwrap(coord.boardState.cells.keys.sorted().first { hex in
+            isFloor(sim, hex, tiles: largeRoom) && coord.boardState.cells[side(hex, "NW")] == nil && isFloor(sim, side(hex, "SE"))
+        })
+        stand(sim, .character(brute.id), on: top)
+        try await drift(sim, round: 2)
+        XCTAssertEqual(hex(sim, .character(brute.id)), top)
+        XCTAssertEqual(brute.health, health - 6)
+    }
+
+    /// "Current movement is resolved from the top of the map to the bottom": of two figures in
+    /// the current's line the upper is moved first, so the lower has room — whatever their
+    /// initiative.
+    func testTheCurrentIsResolvedFromTheTopOfTheMap() async throws {
+        let sim = try simulator("88")
+        let coord = sim.coord
+        revealAll(sim)
+        clearMonsters(sim)
+        let brute = sim.gm.game.characters[0], weaver = sim.gm.game.characters[1]
+        _ = try setLurkerInitiative(sim, even: true)
+        let lower = try openLine(sim, toward: "NW", tiles: largeRoom)
+        let upper = side(lower, "NW")
+        stand(sim, .character(brute.id), on: lower)
+        stand(sim, .character(weaver.id), on: upper)
+        brute.initiative = 5
+        weaver.initiative = 90
+        let health = (brute.health, weaver.health)
+        try await drift(sim, round: 2)
+        XCTAssertEqual(hex(sim, .character(weaver.id)), side(upper, "NW"))
+        XCTAssertEqual(hex(sim, .character(brute.id)), upper, "the hex above was free by then")
+        XCTAssertEqual(brute.health, health.0)
+        XCTAssertEqual(weaver.health, health.1)
+
+        // Another figure in the way that isn't moved (a monster): 3 damage.
+        stand(sim, .character(brute.id), on: lower)
+        coord.boardState.removePiece(.character(weaver.id))
+        let lurker = try XCTUnwrap(coord.spawnMonster(name: "lurker", type: .normal, at: upper, origin: .placed))
+        XCTAssertEqual(coord.boardState.piecePositions[lurker], upper)
+        _ = try setLurkerInitiative(sim, even: true)
+        try await drift(sim, round: 2)
+        XCTAssertEqual(hex(sim, .character(brute.id)), lower)
+        XCTAssertEqual(brute.health, health.0 - 3)
+        XCTAssertEqual(coord.boardState.piecePositions[lurker], upper, "monsters stay")
+    }
+}

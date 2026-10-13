@@ -684,7 +684,7 @@ final class PlayerTurnController {
         case .selectingMove, .selectingAttackTarget, .selectingMultiAttackTargets, .placingSummon, .placingToken,
              .choosingPerformer, .selectingConditionTarget, .selectingHealTarget, .selectingForcedMoveTarget:
             break
-        case .idle, .placingCharacter, .selectingPushPullHex, .watchingMonsterTurn:
+        case .idle, .placingCharacter, .selectingPushPullHex, .choosingHex, .watchingMonsterTurn:
             return false
         }
         if case .selectingMultiAttackTargets(_, _, _, _, let selected) = coordinator.interactionMode, !selected.isEmpty {

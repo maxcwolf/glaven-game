@@ -201,6 +201,8 @@ extension BoardCoordinator {
         case .placingSummon(let summonID, _, _):
             return Instruction(title: "Place \(name(.summon(id: summonID)))",
                                detail: "Tap a highlighted hex next to your character", canSkip: false)
+        case .choosingHex(_, let title, let detail, _):
+            return Instruction(title: title, detail: detail, canSkip: false)
         case .selectingPushPullHex(let target, _, _, let remaining, let isPush):
             return Instruction(title: "\(isPush ? "Push" : "Pull") \(name(target))",
                                detail: "Tap the hex to \(isPush ? "push" : "pull") them into (\(remaining) left)"

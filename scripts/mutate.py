@@ -87,7 +87,7 @@ M={
 }
 # Scenario rules (the mechanisms of placements/gh.json): run against the scenario tests.
 SCENARIO_FILTER=("ScenarioSpecialRuleTests|ScenarioReauditTests|ScenarioEnforcedRuleTests|ScenarioLockTests|ScenarioGoalTests|"
-                 "ScenarioSpawnTests|DemonicRiftTests|BattlementsTests|MonsterTextTests|MonsterSummonTests|CarriedThingTests")
+                 "ScenarioSpawnTests|DemonicRiftTests|BattlementsTests|MonsterTextTests|MonsterSummonTests|CarriedThingTests|DriftTests")
 S={
  "factSavedIgnored": ("GlavenGame/Board/BoardCoordinator+Goals.swift", "            guard arrived >= saved else { return false }", "            guard arrived >= 0 * saved else { return false }"),
  "factLockIgnored": ("GlavenGame/Board/BoardCoordinator+Goals.swift", "        if let lock = fact.lock, !boardState.releasedLocks.contains(lock) { return false }", "        if let lock = fact.lock, lock < 0 { return false }"),
@@ -164,6 +164,20 @@ S={
  "demonsComeForEver": ("GlavenGame/Board/BoardCoordinator+Goals.swift", "if let lock = fact.locked, boardState.releasedLocks.contains(lock) { return false }", "if let lock = fact.locked, false, boardState.releasedLocks.contains(lock) { return false }"),
  "tokensForgottenOnUndo": ("GlavenGame/Engine/BoardSnapshot.swift", "        board.tokensLooted = tokensLooted ?? []", "        _ = tokensLooted"),
  "destroyedObstacleStaysInTheWay": ("GlavenGame/Board/BoardCoordinator+Rules.swift", "            clearObjectiveSite(number)\n", ""),
+ "windAlwaysBlowsOneWay": ("GlavenGame/Board/BoardCoordinator+Drift.swift", "sides = cycle[(max(1, gameManager.game.round) - 1) % cycle.count]", "sides = cycle[0]"),
+ "currentIgnoresTheLurkers": ("GlavenGame/Board/BoardCoordinator+Drift.swift", "sides = initiative % 2 == 0 ? by.even : by.odd", "sides = by.even"),
+ "driftReachesEveryRoom": ("GlavenGame/Board/BoardCoordinator+Drift.swift", "guard let tiles = drift.tiles else { return true }", "guard let tiles = drift.tiles, false else { return true }"),
+ "currentInInitiativeOrder": ("GlavenGame/Board/BoardCoordinator+Drift.swift", "        if drift.order == \"top\" {", "        if false {"),
+ "windInPartyOrder": ("GlavenGame/Board/BoardCoordinator+Drift.swift", "        characters.sort { place($0) < place($1) }\n", ""),
+ "summonsStayInTheWind": ("GlavenGame/Board/BoardCoordinator+Drift.swift", "character.summons.filter { !$0.dead }.map { PieceID.summon(id: $0.id) } + [.character(character.id)]", "[PieceID.character(character.id)]"),
+ "noShelterFromTheCurrent": ("GlavenGame/Board/BoardCoordinator+Drift.swift", "if drift.sheltered == true, coming.sides.count == 1,", "if false, drift.sheltered == true, coming.sides.count == 1,"),
+ "inTheCurrentsWayUnharmed": ("GlavenGame/Board/BoardCoordinator+Drift.swift", "if let damage = drift.blocked {", "if let damage = drift.blocked, false {"),
+ "driftIntoAFigure": ("GlavenGame/Board/BoardCoordinator+Drift.swift", "        return boardState.piece(at: hex) == nil\n    }\n\n    /// Whether the hex the drift comes from", "        return true\n    }\n\n    /// Whether the hex the drift comes from"),
+ "driftIntoAnObstacle": ("GlavenGame/Board/BoardCoordinator+Drift.swift", "guard let cell = boardState.cells[hex], cell.passable, cell.overlay != .wall,", "guard let cell = boardState.cells[hex], cell.overlay != .wall,"),
+ "noCardDrawnForTheCurrent": ("GlavenGame/Board/BoardCoordinator+Drift.swift", "        gameManager.monsterManager.drawAbility(for: monster)\n", ""),
+ "noDriftAsTheRoundEnds": ("GlavenGame/Board/BoardCoordinator.swift", "guard pendingResult == nil, let coming = driftToCome() else { return finishTheRound() }", "guard pendingResult == nil, false, let coming = driftToCome() else { return finishTheRound() }"),
+ "windChoiceMadeForThePlayers": ("GlavenGame/Board/BoardCoordinator+Drift.swift", "guard !autoResolvePrompts, sorted.count > 1 else { return sorted.first }", "guard false else { return sorted.first }"),
+ "anyHexAnswersTheChoice": ("GlavenGame/Board/BoardCoordinator+Drift.swift", "guard let pending = pendingHexChoice, pending.options.contains(hex) else { return }", "guard let pending = pendingHexChoice else { return }"),
  "noOneIsAskedWhoHolds": ("GlavenGame/Board/BoardCoordinator+Carried.swift", "            } else if autoResolvePrompts {\n                give(thing.name, to: first.id, how: \"holds\")", "            } else if true {\n                give(thing.name, to: first.id, how: \"holds\")"),
  "lyingThingNotPickedUp": ("GlavenGame/Board/BoardCoordinator+Carried.swift", "            if let lying = boardState.carriedLying[name] { return hexes.contains(lying) }", "            if boardState.carriedLying[name] != nil { return false }"),
  "anyoneLootsTheQuestTile": ("GlavenGame/Board/BoardCoordinator+Carried.swift", "        return party.first { $0.id == characterID }?.personalQuest == quest", "        return party.first { $0.id == characterID }?.personalQuest == quest || true"),

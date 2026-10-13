@@ -54,6 +54,8 @@ struct ScenarioPlacements: Codable, Equatable {
     var carried: [Carried]?
     /// Numbered tokens lying face down on lettered hexes, to be looted (Payment Due).
     var tokens: Tokens?
+    /// What moves the party as each round ends (the wind of #71, the current of #88).
+    var drift: Drift?
     /// Escorts (objectives, 1-based) whose attacks draw "from whichever attack modifier deck the
     /// players choose": a character's, asked as the escort attacks (Redthorn; the captive
     /// Orchids of Bandit's Wood).
@@ -357,6 +359,34 @@ extension ScenarioPlacements {
     struct Save: Codable, Hashable {
         let objective: Int
         var times: Int?
+    }
+
+    /// "Strong winds will force characters and character summons to move one hex … at the end of
+    /// every round" (#71); "all characters and character summons are forced to move one hex in
+    /// the direction of the current at the end of each round" (#88). Sides of a hex are named as
+    /// the map lies in the game: "NE", "E", "SE", "SW", "W", "NW".
+    struct Drift: Codable, Hashable {
+        /// What it is called: "wind", "current".
+        let name: String
+        /// The sides a figure may be moved toward in round 1, 2, 3… and round again: where two
+        /// are written the players choose between those that are open.
+        var directions: [[String]]?
+        /// Or the sides by this round's initiative of a monster type's ability card.
+        var byInitiative: ByInitiative?
+        /// Only figures standing on these tiles are moved.
+        var tiles: [String]?
+        /// A figure directly behind an obstacle or wall hex (the hex the drift comes from) stays.
+        var sheltered: Bool?
+        /// Damage a figure suffers instead when another figure, an obstacle or a wall is in its way.
+        var blocked: Int?
+        /// "top": from the top of the map to the bottom; otherwise in initiative order.
+        var order: String?
+
+        struct ByInitiative: Codable, Hashable {
+            let monster: String
+            let even: [String]
+            let odd: [String]
+        }
     }
 
     /// "Shuffle numbered tokens 1–6 and place them face down on hexes (a). These tokens can be

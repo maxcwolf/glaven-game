@@ -31,6 +31,9 @@ extension BoardCoordinator {
         case .placingToken(let piece, let token, _, let hexes):
             return hexChoices(hexes, from: boardState.piecePositions[piece]) { "\(token.verb) \(token.name) \($0)" }
 
+        case .choosingHex(let piece, let title, _, let hexes):
+            return hexChoices(hexes, from: boardState.piecePositions[piece]) { "\(title): \(self.name(piece)) \($0)" }
+
         case .selectingPushPullHex(let target, _, let hexes, _, let isPush):
             let verb = isPush ? "Push" : "Pull"
             return hexChoices(hexes, from: boardState.piecePositions[target]) { "\(verb) \(self.name(target)) \($0)" }
