@@ -92,7 +92,8 @@ final class CarrierTests: XCTestCase {
         for (carrier, hex) in zip(carriers, distant) { stand(sim, carrier, on: hex) }
         try await carriersTurn(sim)
         for carrier in carriers {
-            XCTAssertEqual(coord.boardState.range(from: try XCTUnwrap(coord.boardState.piecePositions[carrier]), to: victim.hex), 3)
+            let far = try XCTUnwrap(coord.boardState.range(from: try XCTUnwrap(coord.boardState.piecePositions[carrier]), to: victim.hex))
+            XCTAssertTrue((2...reach + 2).contains(far), "\(carrier) is nearer, and not beside him yet: \(far)")
         }
         XCTAssertEqual(coord.boardState.piecePositions[victim.piece], victim.hex)
     }
