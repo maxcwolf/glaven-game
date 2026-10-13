@@ -134,7 +134,11 @@ ends up on the board:
   with the same `treasure` are given in the order written (#81's Crystal of Zenith, then its
   Sphere of Midnight), and `"spend": {"marker": "a", "adjacent": true, "damage": "2xC", "to":
   "the-colorless"}` lets the holder discard one as their turn ends at (or beside) that lettered
-  hex: they are asked, and the monster suffers the damage.
+  hex: they are asked, and the monster suffers the damage. With `"start": "choose"`, an
+  `"onlyQuest"` or `"item": "gh-114"` gives it without asking to the character on that quest or
+  bearing that item (#54's Staff of Xorn is the Seeker's). `"soleHarmTo": ["harrower-infester"]`
+  makes its holder the only one who damages that monster type, each point of that damage
+  charging it up to `"charge": "2xCx(L+1)"`; a `reach` with `"charged": true` waits for it full.
 - `drawsFromACharacter`: escorts whose attacks draw "from whichever attack modifier deck the
   players choose" (#44 Redthorn, #56 the captive Orchids): as one attacks the players are asked
   whose deck, and the card is drawn from that character's.
@@ -424,7 +428,7 @@ goals are checked; the notes say what around a goal is still missing.
 | 51 | The Void | Kill the Gloom. | yes | — | — |
 | 52 | Noxious Cellar | All characters must loot one treasure tile. | yes | Any character becomes exhausted before they have looted a treasure tile. | yes |
 | 53 | Crypt Basement | Survive for ten rounds (the scenario is complete at the end of the tenth round). | yes (scenario rule) | — | — |
-| 54 | Palace of Ice | Place the fully charged Staff of Xorn on the altar (a): the scenario is complete when the Seeker of Xorn ends their turn adjacent to the altar (a) after the staff is fully charged. | **no** — charging the staff isn't modelled; plays as "kill all enemies" | The Seeker of Xorn becomes exhausted. | **no** |
+| 54 | Palace of Ice | Place the fully charged Staff of Xorn on the altar (a): the scenario is complete when the Seeker of Xorn ends their turn adjacent to the altar (a) after the staff is fully charged. | yes — the staff's holder beside the altar with the staff full | The Seeker of Xorn becomes exhausted. | yes |
 | 55 | Foggy Thicket | Loot the treasure tile in the third room. | **no** — random dungeon, no map | — | — |
 | 56 | Bandit's Wood | Kill all enemies and protect at least one captive Orchid. | yes | All three captive Orchids are killed. | yes |
 | 57 | Investigation | Kill the Infiltrator. | yes | — | — |

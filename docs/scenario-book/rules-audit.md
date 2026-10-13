@@ -12,8 +12,8 @@ means the data and code that enforce the rule were found, and usually a test tha
 that the scenario was played through. Keep it current: when a rule is built, rewrite its row in
 the same commit (see [../rules-work.md](../rules-work.md)).
 
-**447 rules: 378 done, 14 partial, 55 missing.**
-76 of 95 scenarios have every printed rule done. The other 19: #55 (6 missing, 1 partial), #88 (3 missing, 0 partial), #34 (4 missing, 2 partial), #76 (4 missing, 2 partial), #71 (5 missing, 0 partial), #73 (5 missing, 0 partial), #78 (5 missing, 0 partial), #95 (5 missing, 0 partial), #21 (2 missing, 2 partial), #49 (4 missing, 0 partial), #54 (4 missing, 0 partial), #74 (4 missing, 0 partial), #52 (1 missing, 1 partial), #68 (1 missing, 1 partial), #79 (1 missing, 1 partial), #82 (0 missing, 2 partial), #38 (0 missing, 1 partial), #47 (0 missing, 1 partial), #67 (1 missing, 0 partial).
+**447 rules: 382 done, 14 partial, 51 missing.**
+77 of 95 scenarios have every printed rule done. The other 18: #55 (6 missing, 1 partial), #88 (3 missing, 0 partial), #34 (4 missing, 2 partial), #76 (4 missing, 2 partial), #71 (5 missing, 0 partial), #73 (5 missing, 0 partial), #78 (5 missing, 0 partial), #95 (5 missing, 0 partial), #21 (2 missing, 2 partial), #49 (4 missing, 0 partial), #74 (4 missing, 0 partial), #52 (1 missing, 1 partial), #68 (1 missing, 1 partial), #79 (1 missing, 1 partial), #82 (0 missing, 2 partial), #38 (0 missing, 1 partial), #47 (0 missing, 1 partial), #67 (1 missing, 0 partial).
 
 Rules that were enforced wrongly, as against not at all, are findings of the engine audit
 ([../audits/2026-10-09-rules-audit.md](../audits/2026-10-09-rules-audit.md), rows S1-…, S2-…),
@@ -482,11 +482,11 @@ order", has the same list as tasks). The rows below say what the game does today
 ### 54 · Palace of Ice
 | Rule (from the book) | Status | Where / what's missing |
 |---|---|---|
-| Goal: the Seeker of Xorn ends a turn adjacent to the altar (a) with the staff fully charged | missing | still no placements entry for 54 and no staff in the Swift sources, so it plays as "kill all enemies" (default goal in `checkVictoryDefeat`). Needs the staff's charge counted (below), the Seeker identified (the character on quest 510 / carrying item gh-114), the altar's letter (a) written, and a goal like `reach` with `adjacent` that also asks for the charge |
-| Lose: the Seeker of Xorn becomes exhausted | missing | no loss written (`lostIfExhausted` knows `any`, `offExit`, `beforeLoot`, not one named character) and nothing identifies the Seeker on the board; listed open in `TODO.md` ("Things that are carried") |
+| Goal: the Seeker of Xorn ends a turn adjacent to the altar (a) with the staff fully charged | done | placements `n1a` marker a [0,3] (the altar, read off p.71) and goal `reach: {"marker": "a", "adjacent": true, "holding": "Staff of Xorn", "charged": true}`: the staff's holder ending a turn beside the altar once the staff is full. `CarriedThingTests.testTheStaffOfXornIsChargedByItsHolderAndPlacedOnTheAltar` |
+| Lose: the Seeker of Xorn becomes exhausted | done | placements `carried: [{"name": "Staff of Xorn", "start": "choose", "onlyQuest": "510", "item": "gh-114", …, "lostWithHolder": true}]`: the character on the Seeker of Xorn quest holds the staff (else the one bearing the item, else the players choose), and the scenario is lost with them (`carriedLoss`). Same test |
 | All Cave Bears add Poison to all their attacks | done | scenario `rules[0]` `statEffects` on `cave-bear` (`actions`: condition poison) → `MonsterManager.applyScenarioStatEffect` sets `additionalStatActions`, read by `GameMonster.attackStat` and applied in `MonsterAbility.attack` |
-| Section 1: only the character equipped with the Staff of Xorn can damage the Harrower Infesters | missing | no code: anyone damages the Infesters (`undamageable` is all-or-nothing by monster type; item gh-114 is only a ranged-attack Poison/Muddle item in `BoardCoordinator+Items`). Needs a per-attacker exception |
-| Section 1: each point of damage to an Infester puts a token on the staff; fully charged at 2×C×(L+1) | missing | no counter anywhere; needs damage dealt to the Infesters counted against 2×C×(L+1) and shown to the player |
+| Section 1: only the character equipped with the Staff of Xorn can damage the Harrower Infesters | done | `soleHarmTo: ["harrower-infester"]` → `carriedWard` in `sufferDamage`: damage from anyone or anything but the staff's holder does nothing to an Infester; the rest of an attack (its conditions) still lands. Same test |
+| Section 1: each point of damage to an Infester puts a token on the staff; fully charged at 2×C×(L+1) | done | `charge: "2xCx(L+1)"` → `chargeCarried`: each point the holder takes off an Infester is a point of charge (`BoardState.carriedCharge`, saved with the board), never more than full; the party panel shows "Holds the Staff of Xorn · 3 of 8". Same test |
 
 ### 55 · Foggy Thicket
 | Rule (from the book) | Status | Where / what's missing |
