@@ -54,6 +54,20 @@ struct HexCoord: Hashable, Codable, Sendable {
 
     // MARK: - Neighbors
 
+    /// The six sides of a hex by name, in the order `neighbors` lists them.
+    static let sides = ["NE", "E", "SE", "SW", "W", "NW"]
+
+    /// The hex on the side named ("NE" … "NW"). The bare grid: whether a wall lies between is
+    /// for the board to say.
+    func neighbor(toward side: String) -> HexCoord? {
+        Self.sides.firstIndex(of: side).map { neighbors[$0] }
+    }
+
+    /// The hex on the side opposite the one named.
+    func neighbor(awayFrom side: String) -> HexCoord? {
+        Self.sides.firstIndex(of: side).map { neighbors[($0 + 3) % 6] }
+    }
+
     /// The 6 adjacent hexes in odd-row offset.
     var neighbors: [HexCoord] {
         let isOddRow = (row & 1) == 1

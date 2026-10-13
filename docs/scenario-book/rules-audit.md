@@ -12,8 +12,8 @@ means the data and code that enforce the rule were found, and usually a test tha
 that the scenario was played through. Keep it current: when a rule is built, rewrite its row in
 the same commit (see [../rules-work.md](../rules-work.md)).
 
-**447 rules: 387 done, 14 partial, 46 missing.**
-78 of 95 scenarios have every printed rule done. The other 17: #55 (6 missing, 1 partial), #88 (3 missing, 0 partial), #34 (4 missing, 2 partial), #76 (4 missing, 2 partial), #71 (5 missing, 0 partial), #73 (5 missing, 0 partial), #78 (5 missing, 0 partial), #21 (2 missing, 2 partial), #49 (4 missing, 0 partial), #74 (4 missing, 0 partial), #52 (1 missing, 1 partial), #68 (1 missing, 1 partial), #79 (1 missing, 1 partial), #82 (0 missing, 2 partial), #38 (0 missing, 1 partial), #47 (0 missing, 1 partial), #67 (1 missing, 0 partial).
+**447 rules: 391 done, 14 partial, 42 missing.**
+79 of 95 scenarios have every printed rule done. The other 16: #55 (6 missing, 1 partial), #34 (4 missing, 2 partial), #76 (4 missing, 2 partial), #71 (4 missing, 0 partial), #73 (5 missing, 0 partial), #78 (5 missing, 0 partial), #21 (2 missing, 2 partial), #49 (4 missing, 0 partial), #74 (4 missing, 0 partial), #52 (1 missing, 1 partial), #68 (1 missing, 1 partial), #79 (1 missing, 1 partial), #82 (0 missing, 2 partial), #38 (0 missing, 1 partial), #47 (0 missing, 1 partial), #67 (1 missing, 0 partial).
 
 Rules that were enforced wrongly, as against not at all, are findings of the engine audit
 ([../audits/2026-10-09-rules-audit.md](../audits/2026-10-09-rules-audit.md), rows S1-…, S2-…),
@@ -36,7 +36,7 @@ order", has the same list as tasks). The rows below say what the game does today
   Zenith and Sphere of Midnight, #58 the Occult Dagger (and who may loot it), #54 the Staff of
   Xorn with its charge, goal and loss, #95 the six numbered tokens (with the locked door and the
   demons that keep coming until four are looted). **All built** (2026-10-13).
-- **A board that moves as the round ends.** #71 the wind, #88 the current, #73 the boulders, #74
+- **A board that moves as the round ends.** #71 the wind and #88 the current (built 2026-10-13: `drift`), #73 the boulders, #74
   the water rising in the hold (with its loss and the bailing).
 - **Monsters that don't act as their cards say.** #71's Spitting Drakes asleep until woken; #49's
   Siege Cannon that never acts, the archer who walks to it, its firing and the archer who
@@ -642,7 +642,7 @@ order", has the same list as tasks). The rows below say what the game does today
 |---|---|---|
 | Goal: loot all treasure tiles, then every character on an exit hex (a) | done | placements goal `loot: "goal"`, `escape: {"marker": "a"}` (four hexes on `g2a`) |
 | Lose: a character exhausted while not on an exit hex | done | placements `lostIfExhausted: ["offExit"]` |
-| Wind: at the end of every round every character and summon is forced one hex (left, up, right, down in turn), in initiative order | missing | `71.json` rules 0–3 are notes only ("Move left" …) and placements has no rule for it; no figure is moved. It would need a forced-move mechanic at the end of the round, with a prompt for which of the two hexes on left/right rounds |
+| Wind: at the end of every round every character and summon is forced one hex (left, up, right, down in turn), in initiative order | done | placements `drift: {name: "wind", directions: [[NW, NE], [E], [SW, SE], [W]]}` (the book prints this map a quarter turn round: its left is up on ours) → `BoardCoordinator+Drift`: `driftToCome` as the round's turns are over, `driftAsTheRoundEnds` moves each character, a summon before its owner, by `moveAlong(.forced)` (a trap is sprung); with two hexes open the players tap one (`chooseHex`), with one of the two shut they may stay instead (FAQ); nowhere to go, no move. `DriftTests.testTheWindTurnsWithTheRounds`, `testThePlayersChooseBetweenTwoHexes`, `testTheWindGoesInInitiativeOrderAndIsStoppedByWhatIsInTheWay`, `testTheWindBlowsAFigureIntoATrap`, `testTheWindBlowsAsARoundOfPlayEnds`. (Waking a drake by ending this move beside it belongs to the rows below) |
 | Spitting Drakes start asleep and do not act until woken | missing | no sleeping state is set (placements has no `inactive` entry for #71): the drakes act from round 1 |
 | A drake wakes when attacked, damaged, given a negative condition, or when a character or summon ends a move adjacent to it | missing | no code; nothing is asleep to wake |
 | Summons do not attack a sleeping drake unless directly controlled | missing | no code; summons focus on drakes like any enemy |
@@ -818,9 +818,9 @@ order", has the same list as tasks). The rows below say what the game does today
 |---|---|---|
 | Goal: carry the Lurker King's claw to a hex adjacent to the crystal (a) | done | placements goal `kill: ["lurker-king"]` + `reach: {marker: "a", adjacent: true, holding: "claw"}`: the claw's holder ending a turn beside the crystal. `CarriedThingTests.testTheClawsHolderBesideTheCrystalWins` |
 | Setup: all characters and their summons have −1 Move on all Move abilities | done | placements `effects: [{on: "party", move: -1}]` → `BoardCoordinator.scenarioMoveBonus` (characters in `beginMoveAction`, summons through `SummonTurnController`; monsters unchanged); `ScenarioReauditTests.testEveryMoveIsOneLessOnThePlaneOfWater` |
-| Current: at the end of each round every character and summon in the large room is forced one hex with the current (sheltered behind an obstacle/wall: no move); if blocked, 3 damage instead | missing | nothing in 88.json or the placements; no figure is moved or damaged as a round ends. `TODO.md`: "A board that moves as the round ends". Needs an end-of-round forced move by direction |
-| Current is resolved from the top of the map to the bottom | missing | no current |
-| Current direction depends on whether the Lurker initiative is even or odd | missing | no current |
+| Current: at the end of each round every character and summon in the large room is forced one hex with the current (sheltered behind an obstacle/wall: no move); if blocked, 3 damage instead | done | placements `drift: {name: "current", tiles: [g2a, n1a], sheltered: true, blocked: 3, …}` → `driftAsTheRoundEnds`: only figures on those tiles; one with an obstacle, a wall or the room's edge on the side the current comes from stays unharmed (`givesShelter`); one whose hex ahead is a figure, an obstacle or a wall suffers 3 (which a character may negate with cards). `DriftTests.testShelterFromTheCurrentAndWhatItCostsToBeInItsWay` |
+| Current is resolved from the top of the map to the bottom | done | `drift.order: "top"` → `driftOrder` sorts by row, whatever the initiatives; `DriftTests.testTheCurrentIsResolvedFromTheTopOfTheMap` |
+| Current direction depends on whether the Lurker initiative is even or odd | done | `drift.byInitiative: {monster: "lurker", even: [NW], odd: [NE]}` (our map lies as the book's diagram does) → `driftInitiative`: the card the Lurkers (or the King, who shares their deck) acted on this round; when none of them is left a Lurker card is drawn for the current alone (our reading: the book and the FAQ don't say). `DriftTests.testTheCurrentFollowsTheLurkersInitiative` |
 | The elite Lurker next to the crystal is the Lurker King | done | room 2 lists `lurker-king` (boss) whose stats equal the elite Lurker's; the map data gives it its own place on N1a, the hex beside the crystal's (a) (`ScenarioMaps/88.json`, corrected against the book; `MapMonsterPlaceTests.testEveryMonsterOfARoomHasItsOwnPlaceOnTheMap`) |
 | When it dies it drops a claw (a treasure tile) instead of a money token | done | placements `carried: [{"name": "claw", "droppedBy": "lurker-king", "move": -2, "passes": true}]` → `handleDeath`: the claw lies where the King died and no money token drops. `testTheLurkerKingDropsHisClawAndItWeighsItsHolderDown` |
 | A character holding the claw has −2 Move | done | `carriedMoveBonus` in `scenarioMoveBonus`: −2 for the holder on top of the scenario's −1. Same test |

@@ -4,18 +4,8 @@ import Foundation
 /// current of the Plane of Water (`ScenarioPlacements.Drift`).
 extension BoardCoordinator {
 
-    /// The six sides of a hex by name, in the order `HexCoord.neighbors` lists them.
-    static let hexSides = ["NE", "E", "SE", "SW", "W", "NW"]
-
-    /// The hex beside `hex` on the side named.
-    func neighbor(of hex: HexCoord, toward side: String) -> HexCoord? {
-        Self.hexSides.firstIndex(of: side).map { hex.neighbors[$0] }
-    }
-
-    /// The hex beside `hex` on the side opposite the one named.
-    private func neighbor(of hex: HexCoord, awayFrom side: String) -> HexCoord? {
-        Self.hexSides.firstIndex(of: side).map { hex.neighbors[($0 + 3) % 6] }
-    }
+    /// The six sides of a hex by name, as scenario data writes them.
+    static let hexSides = HexCoord.sides
 
     /// What moves the party as this round ends: which way, and whom in what order.
     struct DriftToCome {
@@ -101,12 +91,12 @@ extension BoardCoordinator {
         for piece in coming.order {
             guard isCurrentBoard(generation), scenarioResult == nil, isOnBoard(piece),
                   let here = boardState.piecePositions[piece] else { continue }
-            if drift.sheltered == true, coming.sides.count == 1, let behind = neighbor(of: here, awayFrom: coming.sides[0]),
+            if drift.sheltered == true, coming.sides.count == 1, let behind = here.neighbor(awayFrom: coming.sides[0]),
                givesShelter(behind, to: here) {
                 log("\(name(piece)) is sheltered from the \(drift.name)", category: .move)
                 continue
             }
-            let open = coming.sides.compactMap { neighbor(of: here, toward: $0) }.filter { canDrift(into: $0, from: here) }.sorted()
+            let open = coming.sides.compactMap { here.neighbor(toward: $0) }.filter { canDrift(into: $0, from: here) }.sorted()
             guard !open.isEmpty else {
                 if let damage = drift.blocked {
                     log("\(name(piece)) can't be moved by the \(drift.name) and suffers \(damage) damage", category: .damage)

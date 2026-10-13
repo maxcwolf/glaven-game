@@ -139,6 +139,17 @@ ends up on the board:
   bearing that item (#54's Staff of Xorn is the Seeker's). `"soleHarmTo": ["harrower-infester"]`
   makes its holder the only one who damages that monster type, each point of that damage
   charging it up to `"charge": "2xCx(L+1)"`; a `reach` with `"charged": true` waits for it full.
+- `drift`: what moves the party one hex as each round ends, before the round's other end-of-round
+  rules (`BoardCoordinator+Drift`): `{"name": "wind", "directions": [["NW", "NE"], ["E"], ["SW", "SE"],
+  ["W"]]}` (#71: the sides of a hex — NE, E, SE, SW, W, NW as the map lies in the game — by round,
+  round and round; with two the players tap one, and may stay if one is shut) or `"byInitiative":
+  {"monster": "lurker", "even": ["NW"], "odd": ["NE"]}` (#88: by this round's card of that
+  monster type). `tiles` keeps it to figures on those tiles, `"sheltered": true` leaves alone a
+  figure with an obstacle or wall on the side it comes from, `"blocked": 3` is the damage for one
+  that can't be moved, and `"order": "top"` goes from the top of the map down instead of in
+  initiative order. Characters and their summons are moved (a summon before its owner); the move
+  is forced movement, so traps are sprung. Check which way the book prints the map before writing
+  the sides.
 - `tokens`: numbered tokens lying face down, `{"marker": "a", "count": 6}` (#95): the numbers 1 to
   `count` are shuffled with the game's seed and one is laid on each hex lettered `marker` as its
   room is revealed (`layNumberedTokens`; `BoardState.tokenHexes`, drawn as "?"). They are looted
