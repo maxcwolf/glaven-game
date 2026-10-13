@@ -180,6 +180,14 @@ ends up on the board:
   draws them all to its side and turns the character last to play two cards this round, with
   their summons: that turn is a Move of `controlled` and the attacks of the top of the leading
   card, made on the party, with both cards discarded.
+- `walls`: walls broken down by damage instead of doors — `{"objective": 1, "condition": "stun"}`
+  (#76, `BoardCoordinator+Walls`). Every `breakable-wall` connector of the map is shut to everyone
+  (no one opens it by walking in, or jumps it) and carries one of the scenario's objective
+  `objective`, whose `health` is the wall's hit points; the objectives are made as the walls come
+  into sight, so no room lists them and no hexes are written. A character attacks a wall like an
+  enemy; a summon or anything else acting by itself leaves it alone. Destroyed, it is a corridor:
+  its room is revealed — and any other tile its hex touches — and every enemy beside it gains
+  `condition`. The default goal then needs every room revealed, not every wall down.
 - `drift`: what moves the party one hex as each round ends, before the round's other end-of-round
   rules (`BoardCoordinator+Drift`): `{"name": "wind", "directions": [["NW", "NE"], ["E"], ["SW", "SE"],
   ["W"]]}` (#71: the sides of a hex — NE, E, SE, SW, W, NW as the map lies in the game — by round,

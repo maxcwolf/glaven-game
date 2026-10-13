@@ -119,6 +119,8 @@ enum PlayerSideAI {
         let intangible = MonsterAI.intangibleMonsters(gameState)
         return board.piecePositions.keys.sorted().filter { id in
             if let (container, entity) = MonsterAI.objectiveEntity(id, gameState: gameState) {
+                // A wall to break down is a character's to attack: nothing acting by itself does.
+                if !includeInvisible, board.isStandingWall(board.piecePositions[id]) { return false }
                 return !container.escort && !container.isProtected && entity.maxHealth > 0
             }
             guard let (group, entity) = MonsterAI.monsterEntity(id, gameState: gameState),

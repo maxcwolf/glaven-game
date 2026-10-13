@@ -312,6 +312,15 @@ final class BoardState {
         shutDoors.contains(coord) || doors.contains { $0.coord == coord && !$0.isOpen }
     }
 
+    /// Whether a wall to break down still stands on this hex: a `breakable-wall` connector, shut,
+    /// with the objective that is its hit points on it (Harrower Hive).
+    func isStandingWall(_ coord: HexCoord?) -> Bool {
+        guard let coord, let door = doors.first(where: { $0.coord == coord }), !door.isOpen,
+              door.subType == BoardBuilder.breakableWallSubType else { return false }
+        if case .objective = piece(at: coord) { return true }
+        return false
+    }
+
     /// Whether a closed door on this hex can't be opened by walking into it.
     func isLockedDoor(_ coord: HexCoord) -> Bool {
         lockedDoors.contains(coord) && isClosedDoor(coord)

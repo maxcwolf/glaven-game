@@ -1927,7 +1927,8 @@ final class BoardCoordinator {
         let hostile = gameManager.game.monsters.filter { !MonsterAI.isAllyFaction($0) }
         let enemiesHaveAppeared = hostile.contains { !$0.entities.isEmpty }
         let allEnemiesDead = hostile.allSatisfy { monster in monster.off || monster.aliveEntities.isEmpty }
-        let allRoomsRevealed = boardState.doors.allSatisfy { $0.isOpen }
+        // (Where walls are broken down, a room is revealed by one of its walls: the rest may stand.)
+        let allRoomsRevealed = wallRule != nil ? everyRoomIsRevealed : boardState.doors.allSatisfy { $0.isOpen }
         if let written, written.replacesKillAll, !hasOwnWinCondition {
             if goalMet(written, turnEnded: turnEnded) && gameManager.game.round > 0 {
                 let brief = gameManager.game.scenario.map { ScenarioBrief.make(for: $0.data, labels: gameManager.editionStore) }
@@ -2936,7 +2937,7 @@ final class BoardCoordinator {
     }
 
     /// Set up the room behind a door: its tiles (if not yet laid out), monsters and objectives.
-    private func revealRoom(behind door: DoorInfo, opening: Bool) {
+    func revealRoom(behind door: DoorInfo, opening: Bool) {
         guard let scenario = scenarioData, let gameManager else { return }
         // A door mostly opens in a turn, but a scenario rule may open one as a round starts
         // (Gloomhaven Battlements B's gate, round 9), while cards are being chosen: the phase the
@@ -2977,11 +2978,15 @@ final class BoardCoordinator {
         // Draw the new room into the board as it stands (the grid offset stays put, so nothing
         // already drawn moves), and frame the board so the room is seen.
         boardScene?.revealRooms(from: boardState, scenario: scenario)
+        if opening, door.subType == BoardBuilder.breakableWallSubType { layCorridor(at: door.coord) }
         syncPieceVisuals()
         boardScene?.fitCamera(animated: true)
 
         boardPhase = interrupted
-        log(opening ? "A door opens and a new room is revealed" : "The defenders beyond the wall are roused", category: .door,
+        let brokenWall = opening && door.subType == BoardBuilder.breakableWallSubType && wallRule != nil
+        log(brokenWall ? (rooms.isEmpty ? "The wall comes down" : "The wall comes down and a new room is revealed")
+            : opening ? "A door opens and a new room is revealed"
+            : wallRule != nil ? "The room beside it is revealed too" : "The defenders beyond the wall are roused", category: .door,
             trace: door.childTileRef)
         for piece in placed {
             let id = PieceID.monster(name: piece.name, standee: piece.standee)

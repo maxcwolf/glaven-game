@@ -518,7 +518,13 @@ extension BoardCoordinator {
                 title = "Obstacle"
                 paragraphs.append("Nothing can move through it or stop on it (flying passes over), but it doesn't block line of sight.")
             case .door:
-                if boardState.isLockedDoor(hex) {
+                if boardState.isStandingWall(hex) {
+                    title = "Wall"
+                    paragraphs.append("It is broken down by damage: a character attacks it like an enemy. Summons acting on their own leave it alone.")
+                } else if boardState.doors.contains(where: { $0.coord == hex && $0.isOpen && $0.subType == BoardBuilder.breakableWallSubType }) {
+                    title = "Corridor"
+                    paragraphs.append("The wall that stood here is gone: the two rooms are joined.")
+                } else if boardState.isLockedDoor(hex) {
                     title = "Locked door"
                     paragraphs.append(lock(at: hex)?.note ?? "A rule of this scenario keeps it shut; walking into it doesn't open it.")
                 } else {

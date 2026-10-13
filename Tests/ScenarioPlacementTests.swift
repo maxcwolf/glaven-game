@@ -236,6 +236,13 @@ final class ScenarioPlacementTests: XCTestCase {
                 XCTAssertTrue(monsters.contains(sway.boss), "\(index): no monster \(sway.boss)")
                 XCTAssertGreaterThan(sway.flee, 0, index)
             }
+            if let walls = placements.walls {
+                XCTAssertEqual(data.objectives?.indices.contains(walls.objective - 1), true, "\(index): no objective \(walls.objective)")
+                XCTAssertNotNil(data.objectives?[walls.objective - 1].health, "\(index): a wall has hit points")
+                if let condition = walls.condition { XCTAssertNotNil(ConditionName(rawValue: condition), "\(index): no condition \(condition)") }
+                let connectors = BoardBuilder.findPlacements(in: map.mapTileData).flatMap { $0.tile.doors.map(\.subType) }
+                XCTAssertTrue(connectors.contains(BoardBuilder.breakableWallSubType), "\(index): the map has no wall to break down")
+            }
             if let battery = placements.battery {
                 for name in [battery.gun, battery.crew] { XCTAssertTrue(monsters.contains(name), "\(index): no monster \(name)") }
                 XCTAssertTrue(letters.contains(battery.line), "\(index): no hex lettered \(battery.line)")

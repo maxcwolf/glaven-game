@@ -534,6 +534,13 @@ final class ScenarioManager {
         }
     }
 
+    /// One more of the scenario's objective `index` (1-based), for a place the map has just
+    /// shown (a wall of the Harrower Hive).
+    func addObjective(_ index: Int) {
+        guard let scenario = game.scenario else { return }
+        spawnObjectiveByReference(.int(index), scenario: scenario)
+    }
+
     private func spawnObjectiveByReference(_ ref: IntOrString, scenario: Scenario) {
         guard let objectives = scenario.data.objectives else { return }
         let (index, condition) = Self.objectiveReference(ref)

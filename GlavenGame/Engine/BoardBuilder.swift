@@ -443,6 +443,10 @@ enum BoardBuilder {
                         placements: placements, traps: traps, reveal: &reveal)
             } else if !board.visibleRooms.contains(parent.ref) || !reveal.visited.contains(parentPath) {
                 let parentAxis = parentPlacement.axis ?? (refPoint: (0, 0), origin: (0, 0))
+                // (The connector's own hex is on the map from this side too.)
+                if board.cells[doorCoord] == nil {
+                    board.cells[doorCoord] = HexCell(coord: doorCoord, tileRef: tileData.ref, passable: true)
+                }
                 recordDoor(at: doorCoord, subType: door.subType, leadingTo: parent.ref, from: tileData.ref,
                            path: parentPath, axis: parentAxis, on: board)
             }
@@ -567,6 +571,15 @@ enum BoardBuilder {
 
     /// The connector that is a wall with hit points, not a door.
     static let breakableWallSubType = "breakable-wall"
+
+    /// The map tiles with a hex beside `hex`, revealed or not (a wall at the corner of three
+    /// tiles has two rooms on its other side).
+    static func tiles(touching hex: HexCoord, in scenario: VGBScenario) -> Set<String> {
+        let beside = Set(hex.neighbors)
+        return Set(findPlacements(in: scenario.mapTileData)
+            .filter { !cellSet(of: $0.tile, axis: $0.axis).isDisjoint(with: beside) }
+            .map { $0.tile.ref.lowercased() })
+    }
 
     /// Record a closed door (once per hex).
     private static func recordDoor(at coord: HexCoord, subType: String, leadingTo ref: String, from: String,

@@ -152,6 +152,7 @@ extension BoardCoordinator {
     /// pieces placed.
     @discardableResult
     func placeRevealedObjectives() -> [PieceID] {
+        raiseWalls()
         var placed: [PieceID] = []
         for (container, entity) in unplacedObjectiveEntities() {
             guard let index = container.objectiveIndex,
@@ -181,7 +182,11 @@ extension BoardCoordinator {
             boardState.removeObstacle(at: hex)
             boardScene?.removeOverlaySprite(at: hex, offsetCol: offsetCol, offsetRow: offsetRow)
         }
-        if site.barsDoor, boardState.isClosedDoor(site.coord) { openDoor(at: site.coord) }
+        if site.barsDoor, boardState.isClosedDoor(site.coord) {
+            let wasWall = standingWalls.contains(site.coord)
+            openDoor(at: site.coord)
+            if wasWall { wallComesDown(at: site.coord) }
+        }
     }
 
     /// Whether an objective still bars the door on this hex.

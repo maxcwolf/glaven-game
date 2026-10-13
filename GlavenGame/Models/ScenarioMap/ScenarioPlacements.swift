@@ -72,6 +72,8 @@ struct ScenarioPlacements: Codable, Equatable {
     var perch: Perch?
     /// A boss whose specials drive the party off and draw it in to turn one of them (#79's Betrayer).
     var sway: Sway?
+    /// Walls broken down by damage instead of doors that open (#76's hive).
+    var walls: Walls?
     /// Monster types set up asleep (#71's Spitting Drakes): each does nothing until a character or
     /// a character's summon attacks it, damages it, gives it a negative condition or ends a
     /// movement beside it; then it acts as a monster just spawned does.
@@ -470,6 +472,18 @@ extension ScenarioPlacements {
         let flee: Int
         /// The Move a mind-controlled character takes before the top of their leading card.
         let controlled: Int
+    }
+
+    /// "Each wall (a) can be destroyed through damage. Characters can target and attack the
+    /// walls like any regular enemy, but character summons will not attack walls unless directly
+    /// controlled by a character … when any wall is destroyed, the room or rooms on the other
+    /// side are revealed and a corridor overlay tile is placed on top of the wall hex.
+    /// Additionally, when any wall is destroyed, all enemies adjacent to it gain STUN." (#76)
+    /// Every `breakable-wall` connector of the map is one: the objective (1-based) stands on it.
+    struct Walls: Codable, Hashable {
+        let objective: Int
+        /// The condition the enemies beside a wall gain as it comes down.
+        var condition: String?
     }
 
     /// "It cannot enter or pass through door 2" (#67); "The Inox on tile E cannot enter or pass

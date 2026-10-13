@@ -87,7 +87,7 @@ M={
 }
 # Scenario rules (the mechanisms of placements/gh.json): run against the scenario tests.
 SCENARIO_FILTER=("ScenarioSpecialRuleTests|ScenarioReauditTests|ScenarioEnforcedRuleTests|ScenarioLockTests|ScenarioGoalTests|"
-                 "ScenarioSpawnTests|DemonicRiftTests|BattlementsTests|MonsterTextTests|MonsterSummonTests|CarriedThingTests|DriftTests|RollingBoulderTests|RisingWaterTests|SleepingMonsterTests|BarredDoorTests|BatteryTests|CarrierTests|ThroneTests|PerchTests|SwayTests")
+                 "ScenarioSpawnTests|DemonicRiftTests|BattlementsTests|MonsterTextTests|MonsterSummonTests|CarriedThingTests|DriftTests|RollingBoulderTests|RisingWaterTests|SleepingMonsterTests|BarredDoorTests|BatteryTests|CarrierTests|ThroneTests|PerchTests|SwayTests|WallTests")
 S={
  "factSavedIgnored": ("GlavenGame/Board/BoardCoordinator+Goals.swift", "            guard arrived >= saved else { return false }", "            guard arrived >= 0 * saved else { return false }"),
  "factLockIgnored": ("GlavenGame/Board/BoardCoordinator+Goals.swift", "        if let lock = fact.lock, !boardState.releasedLocks.contains(lock) { return false }", "        if let lock = fact.lock, lock < 0 { return false }"),
@@ -284,6 +284,21 @@ S={
  "mindControlLastsForEver": ("GlavenGame/Board/BoardCoordinator.swift", "        // Mind control lasts the round.\n        boardState.turned = []\n", ""),
  "alliesLandOnTheDrake": ("GlavenGame/Engine/MonsterAI.swift", "            positions.formUnion(board.bodies[id] ?? [coord])\n", "            positions.insert(coord)\n"),
  "bodyHexesFreeToStandOn": ("GlavenGame/Board/BoardCoordinator.swift", "            let hexes = boardState.bodies[id] ?? [coord]\n", "            let hexes = [coord]\n"),
+ "wallsOpenByWalking": ("GlavenGame/Board/BoardCoordinator+Walls.swift", "        boardState.lockedDoors.formUnion(walls)\n", ""),
+ "wallsHaveNoHitPoints": ("GlavenGame/Board/BoardCoordinator+Walls.swift", "        for _ in 0..<max(0, places - waiting) { gameManager.scenarioManager.addObjective(rule.objective) }\n", ""),
+ "oneWallTooMany": ("GlavenGame/Board/BoardCoordinator+Walls.swift", "for _ in 0..<max(0, places - waiting) {", "for _ in 0..<places {"),
+ "summonsAttackWalls": ("GlavenGame/Engine/SummonAI.swift", "if !includeInvisible, board.isStandingWall(board.piecePositions[id]) { return false }", "if false, board.isStandingWall(board.piecePositions[id]) { return false }"),
+ "noOneStunnedByAWall": ("GlavenGame/Board/BoardCoordinator+Walls.swift", "            applyCondition(condition, to: piece)\n", ""),
+ "partyStunnedByAWall": ("GlavenGame/Board/BoardCoordinator+Walls.swift", "            guard case .monster = piece, side(of: piece) != .party, !isInactive(piece) else { continue }\n", ""),
+ "cornerRoomStaysHidden": ("GlavenGame/Board/BoardCoordinator+Walls.swift", "            revealRoom(behind: way, opening: false)\n", ""),
+ "everyWallMustFall": ("GlavenGame/Board/BoardCoordinator.swift", "let allRoomsRevealed = wallRule != nil ? everyRoomIsRevealed : boardState.doors.allSatisfy { $0.isOpen }", "let allRoomsRevealed = boardState.doors.allSatisfy { $0.isOpen }"),
+ "wallGoalIgnoresRooms": ("GlavenGame/Board/BoardCoordinator+Walls.swift", "return (scenario.data.rooms ?? []).allSatisfy { scenario.revealedRooms.contains($0.roomNumber) }", "return true"),
+ "wallHexMissingFromFarSide": ("GlavenGame/Engine/BoardBuilder.swift", "                // (The connector's own hex is on the map from this side too.)\n                if board.cells[doorCoord] == nil {\n                    board.cells[doorCoord] = HexCell(coord: doorCoord, tileRef: tileData.ref, passable: true)\n                }\n", ""),
+ "padlocksOnWalls": ("GlavenGame/Board/BoardCoordinator+Locks.swift", ".filter(boardState.isClosedDoor).subtracting(standingWalls)", ".filter(boardState.isClosedDoor)"),
+ "brokenWallStaysDrawn": ("GlavenGame/Board/BoardCoordinator.swift", "        if opening, door.subType == BoardBuilder.breakableWallSubType { layCorridor(at: door.coord) }\n", ""),
+ "brokenWallRedrawnAsAWall": ("GlavenGame/Board/BoardScene.swift", "board.doors.contains(where: { $0.coord == overlayCoord && $0.isOpen }) {", "false {"),
+ "brokenWallStillCalledAWall": ("GlavenGame/Board/BoardCoordinator+Learning.swift", "$0.coord == hex && $0.isOpen && $0.subType == BoardBuilder.breakableWallSubType }) {", "$0.coord == hex && false }) {"),
+ "wallDoesNotComeDown": ("GlavenGame/Board/BoardCoordinator+Spawning.swift", "            if wasWall { wallComesDown(at: site.coord) }\n", ""),
  "noOneIsAskedWhoHolds": ("GlavenGame/Board/BoardCoordinator+Carried.swift", "            } else if autoResolvePrompts {\n                give(thing.name, to: first.id, how: \"holds\")", "            } else if true {\n                give(thing.name, to: first.id, how: \"holds\")"),
  "lyingThingNotPickedUp": ("GlavenGame/Board/BoardCoordinator+Carried.swift", "            if let lying = boardState.carriedLying[name] { return hexes.contains(lying) }", "            if boardState.carriedLying[name] != nil { return false }"),
  "anyoneLootsTheQuestTile": ("GlavenGame/Board/BoardCoordinator+Carried.swift", "        return party.first { $0.id == characterID }?.personalQuest == quest", "        return party.first { $0.id == characterID }?.personalQuest == quest || true"),
