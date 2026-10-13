@@ -193,6 +193,7 @@ final class ScenarioSimulator {
             let money = moneyOnTheTable()
             let turnBefore = coord.activePlayerTurn
             eachStep?()
+            noteRoundStart()
             step()
             await settle()
             collectLog()
@@ -299,8 +300,9 @@ final class ScenarioSimulator {
             coord.resolveActionChoice(nil)
             return
         }
-        if coord.pendingFigureChoice != nil {
-            coord.resolveFigureChoice(nil)
+        if let choice = coord.pendingFigureChoice {
+            // A Living Spirit to remove for a demon's death: the nearest (the first offered).
+            coord.resolveFigureChoice(choice.title == BoardCoordinator.reprieveTitle ? choice.options.first : nil)
             return
         }
         if coord.pendingItemUse != nil {
@@ -381,6 +383,11 @@ final class ScenarioSimulator {
                 turn.forgoAction(toFree: target)
                 return
             }
+            // A goal treasure beside a character who has yet to loot one: always worth the action.
+            if let treasure = turn.forgoLootHexes.first {
+                turn.forgoAction(toLoot: treasure)
+                return
+            }
             if policy.useDefaultAction(turn, sim: self) {
                 turn.useDefaultAction()
                 return
@@ -392,8 +399,11 @@ final class ScenarioSimulator {
     /// Answer a pending hex or figure selection. Returns false if nothing was pending.
     private func answerInteraction() -> Bool {
         switch coord.interactionMode {
-        case .selectingMove(let piece, _, let hexes, _, let mode):
-            if let hex = policy.moveDestination(for: piece, options: hexes, mode: mode, sim: self) {
+        case .selectingMove(let piece, _, let hexes, let teleport, let mode):
+            if !teleport, let grave = coord.diggable(beside: piece).first {
+                // A grave beside the mover: the movement goes into digging it.
+                coord.handlePieceTap(grave)
+            } else if let hex = policy.moveDestination(for: piece, options: hexes, mode: mode, sim: self) {
                 coord.handleHexTap(hex)
             } else {
                 coord.activePlayerTurn?.skipRemainingActions()
@@ -481,10 +491,16 @@ final class ScenarioSimulator {
 
     /// Enemies of `piece` on the board that can be targeted (invisible ones excluded), in a fixed order.
     func enemies(of piece: PieceID) -> [PieceID] {
-        coord.boardState.piecePositions.keys.sorted().filter { other in
+        let foes = coord.boardState.piecePositions.keys.sorted().filter { other in
             other != piece && coord.areEnemies(piece, other) && coord.entity(for: other) != nil
                 && !(coord.entity(for: other)?.entityConditions.contains { $0.name == .invisible && !$0.expired } ?? false)
         }
+        // With no one to fight, what is there to dig up is where the party goes (the graves of
+        // the Overgrown Graveyard, dug with movement beside them).
+        if foes.isEmpty, case .character = piece {
+            return coord.boardState.piecePositions.keys.sorted().filter { coord.isDug($0) && (coord.entity(for: $0)?.health ?? 0) > 0 }
+        }
+        return foes
     }
 
     func health(_ piece: PieceID) -> (current: Int, max: Int) {
@@ -501,6 +517,15 @@ final class ScenarioSimulator {
             transcript.append(entry.isRoundHeader ? "=== \(entry.message) ===" : line)
             logCursor += 1
         }
+    }
+
+    /// Who is on the board as a round's turns begin, for the ledger: anyone else has arrived
+    /// during the round. Taken as soon as the turns start, not at the first attack or move — a
+    /// grave dug up with movement lets a corpse out before anyone has "acted".
+    private func noteRoundStart() {
+        guard coord.boardPhase == .execution, gm.game.round != ledgerRound else { return }
+        ledgerRound = gm.game.round
+        presentAtRoundStart = Set(coord.boardState.piecePositions.keys.map(identity(of:)))
     }
 
     /// A board summary once per round (when card selection starts) and at the end.

@@ -214,6 +214,149 @@ final class ScenarioSpecialRuleTests: XCTestCase {
         }
     }
 
+    /// "A character adjacent to a pump may give up a bottom action (discarding that card
+    /// instead) to cleanse it" — a bottom action, not a top one. A cleansed pump is gone and
+    /// summons no more imps; with every pump cleansed the Cistern is won, whatever imps remain.
+    func testAPumpIsCleansedForABottomActionAndTheCisternIsWon() throws {
+        let sim = try simulator("26")
+        revealAll(sim)
+        let coord = sim.coord
+        sim.gm.game.state = .next
+        let brute = sim.gm.game.characters[0]
+        let pumps = objectives(sim)
+        XCTAssertEqual(pumps.count, 2)
+        let place = try XCTUnwrap(coord.boardState.piecePositions[pumps[0]])
+        for piece in pieces(sim) where (coord.boardState.piecePositions[piece]?.distance(to: place) ?? 9) <= 1 { coord.boardState.removePiece(piece) }
+        stand(sim, 0, on: try XCTUnwrap(coord.boardState.neighbors(of: place).sorted().first { coord.boardState.isPassable($0) && coord.boardState.piece(at: $0) == nil }))
+
+        let deck = sim.gm.editionStore.abilities(forDeck: "brute", edition: "gh")
+        brute.handCards = [deck[0].cardId, deck[1].cardId].compactMap { $0 }
+        let turn = PlayerTurnController(characterID: brute.id, coordinator: coord, gameManager: sim.gm)
+        coord.activePlayerTurn = turn
+        turn.selectCards(top: deck[0], bottom: deck[1])
+        XCTAssertEqual(turn.phase, .executeTopAction)
+        XCTAssertTrue(turn.forgoTargets.isEmpty, "not for a top action")
+        turn.setBottomFirst(true)
+        XCTAssertEqual(turn.phase, .executeBottomAction)
+        XCTAssertEqual(turn.forgoTargets, [pumps[0]])
+        XCTAssertEqual(turn.forgoTitle(pumps[0]), "Cleanse \(coord.name(pumps[0]))")
+        turn.forgoAction(toFree: pumps[0])
+        XCTAssertFalse(coord.isOnBoard(pumps[0]), "the pump is gone")
+        XCTAssertEqual(turn.phase, .executeTopAction, "the bottom action given up, the top one still to come")
+        XCTAssertNil(coord.scenarioResult ?? coord.pendingResult, "one pump is still foul")
+
+        // The round ends: the pump left summons its imp, the cleansed one none.
+        let imps = pieces(sim, named: "black-imp").count
+        sim.gm.scenarioRulesManager.evaluateRules(phase: .roundEnd)
+        XCTAssertEqual(pieces(sim, named: "black-imp").count, imps + 1)
+
+        coord.free(pumps[1], by: brute.id)
+        coord.checkVictoryDefeat()
+        XCTAssertEqual(coord.scenarioResult ?? coord.pendingResult, .victory, "every pump cleansed")
+        XCTAssertFalse(pieces(sim, named: "black-imp").isEmpty, "the imps needn't die")
+    }
+
+    // MARK: - #52 Noxious Cellar
+
+    /// The treasure tiles "can only be looted with a Loot action, or by a character adjacent to a
+    /// treasure tile forgoing a bottom action (discarding one card instead)": beside a goal tile
+    /// the bottom action — not the top one — may be given up to loot it. Each character loots
+    /// one: who has theirs is offered no other.
+    func testATreasureBesideACharacterIsLootedForABottomActionGivenUp() throws {
+        let sim = try simulator("52")
+        revealAll(sim)
+        let coord = sim.coord
+        sim.gm.game.state = .next
+        for piece in pieces(sim) { coord.boardState.removePiece(piece) }
+        func goals() -> [HexCoord] {
+            coord.boardState.cells.filter { $0.value.overlay == .treasure && $0.value.treasureID == BoardCoordinator.goalTreasureID }.map(\.key).sorted()
+        }
+        let tiles = goals()
+        XCTAssertEqual(tiles.count, 4)
+        func beside(_ tile: HexCoord) throws -> HexCoord {
+            try XCTUnwrap(coord.boardState.neighbors(of: tile).sorted().first { coord.isEmptyHex($0) && !tiles.contains($0) }, "a hex beside the tile")
+        }
+        func bottomAction(of index: Int) throws -> PlayerTurnController {
+            let character = sim.gm.game.characters[index]
+            let deck = sim.gm.editionStore.abilities(forDeck: character.name, edition: "gh")
+            character.handCards = [deck[0].cardId, deck[1].cardId].compactMap { $0 }
+            let turn = PlayerTurnController(characterID: character.id, coordinator: coord, gameManager: sim.gm)
+            coord.activePlayerTurn = turn
+            turn.selectCards(top: deck[0], bottom: deck[1])
+            return turn
+        }
+        let brute = sim.gm.game.characters[0]
+        stand(sim, 0, on: try beside(tiles[0]))
+        var turn = try bottomAction(of: 0)
+        XCTAssertTrue(turn.forgoLootHexes.isEmpty, "not for a top action")
+        turn.setBottomFirst(true)
+        XCTAssertEqual(turn.forgoLootHexes, [tiles[0]])
+        turn.forgoAction(toLoot: tiles[0])
+        XCTAssertEqual(goals(), Array(tiles.dropFirst()), "the tile is looted")
+        XCTAssertEqual(coord.boardState.goalLooters, [brute.id])
+        XCTAssertEqual(turn.phase, .executeTopAction, "the bottom action is given up")
+
+        // The Brute has his: beside another tile nothing is offered him — but the Spellweaver is.
+        stand(sim, 0, on: try beside(tiles[1]))
+        turn = try bottomAction(of: 0)
+        turn.setBottomFirst(true)
+        XCTAssertTrue(turn.forgoLootHexes.isEmpty)
+        stand(sim, 0, on: try beside(tiles[3]))
+        stand(sim, 1, on: try beside(tiles[1]))
+        turn = try bottomAction(of: 1)
+        turn.setBottomFirst(true)
+        XCTAssertEqual(turn.forgoLootHexes, [tiles[1]])
+        turn.forgoAction(toLoot: tiles[1])
+        coord.checkVictoryDefeat()
+        XCTAssertEqual(coord.scenarioResult ?? coord.pendingResult, .victory, "every character has looted one")
+    }
+
+    // MARK: - #75 Overgrown Graveyard
+
+    /// "Any character can dig up a grave by spending 1+C movement while adjacent to it. The
+    /// movement need not be spent all at once." During a Move, a tap on a grave beside the mover
+    /// spends one point on it; what is left of the move goes on. At 1+C the grave is dug up and
+    /// its Living Corpse rises. Nothing attacks a grave.
+    func testAGraveIsDugWithMovementSpentBesideIt() async throws {
+        let sim = try simulator("75")
+        let coord = sim.coord
+        sim.gm.game.state = .next
+        for piece in pieces(sim) { coord.boardState.removePiece(piece) }
+        let brute = character(sim, 0)
+        let grave = try XCTUnwrap(objectives(sim).first)
+        let entity = try XCTUnwrap(coord.entity(for: grave))
+        XCTAssertEqual(entity.health, 1 + 2, "1 + C to dig")
+        let place = try XCTUnwrap(coord.boardState.piecePositions[grave])
+        let stand = try XCTUnwrap(coord.boardState.neighbors(of: place).sorted().first(where: coord.isEmptyHex))
+        self.stand(sim, 0, on: stand)
+        XCTAssertFalse(coord.targetableEnemies(of: brute, range: 1).contains(grave), "a grave isn't attacked")
+        XCTAssertEqual(coord.diggable(beside: brute), [grave])
+
+        func idle() async {
+            let deadline = Date().addingTimeInterval(3)
+            while Date() < deadline { if case .idle = coord.interactionMode { return }; try? await Task.sleep(nanoseconds: 1_000_000) }
+        }
+        // Move 2: both points go into the grave, and the move is over where he stands.
+        coord.beginMoveAction(pieceID: brute, moveRange: 2)
+        XCTAssertEqual(coord.instruction(for: coord.interactionMode)?.detail.contains("spend 1 movement digging"), true)
+        coord.handlePieceTap(grave)
+        XCTAssertEqual(entity.health, 2)
+        guard case .selectingMove(_, 1, _, _, _) = coord.interactionMode else { return XCTFail("one point of the move left: \(coord.interactionMode)") }
+        coord.handlePieceTap(grave)
+        XCTAssertEqual(entity.health, 1, "the digging is kept for another turn")
+        await idle()
+        XCTAssertEqual(coord.boardState.piecePositions[brute], stand)
+
+        // Another turn's Move 4: one point digs it up, the corpse rises, three are left to walk.
+        coord.beginMoveAction(pieceID: brute, moveRange: 4)
+        coord.handlePieceTap(grave)
+        XCTAssertFalse(coord.isOnBoard(grave), "dug up")
+        XCTAssertEqual(pieces(sim, named: "living-corpse").count, 1, "and what lay in it is out")
+        guard case .selectingMove(_, 3, let hexes, _, _) = coord.interactionMode else { return XCTFail("three points left: \(coord.interactionMode)") }
+        XCTAssertTrue(hexes.contains { $0.distance(to: stand) == 3 || $0.distance(to: stand) == 2 })
+        XCTAssertTrue(coord.diggable(beside: brute).isEmpty)
+    }
+
     // MARK: - Hit points that round up
 
     /// The Hungry Soul and the Bloated Regent have half an elite's hit points times the number
@@ -1519,6 +1662,60 @@ final class ScenarioSpecialRuleTests: XCTestCase {
 
     /// Living Spirits can't be damaged in any way, though conditions still take hold; each
     /// demon's death banishes one of them, the nearest to the killer.
+    /// "Each time a demon dies, the players may remove any one Living Spirit from the map": they
+    /// are asked which — the nearest to the killer offered first — and may leave them all.
+    func testThePlayersChooseWhichLivingSpiritGoes() async throws {
+        let sim = try simulator("70")
+        let coord = sim.coord
+        coord.autoResolvePrompts = false
+        let stood = try XCTUnwrap(coord.boardState.piecePositions[character(sim, 0)])
+        let free = coord.boardState.cells.keys.filter(coord.isEmptyHex).sorted { ($0.distance(to: stood), $0) < ($1.distance(to: stood), $1) }
+        let near = try XCTUnwrap(coord.spawnMonster(name: "living-spirit", type: .normal, at: free[0], origin: .spawned))
+        let far = try XCTUnwrap(coord.spawnMonster(name: "living-spirit", type: .normal, at: try XCTUnwrap(free.last), origin: .spawned))
+        let demons = pieces(sim, named: "night-demon") + pieces(sim, named: "wind-demon")
+        XCTAssertGreaterThanOrEqual(demons.count, 2)
+        func asked() async -> BoardCoordinator.PendingFigureChoice? {
+            let deadline = Date().addingTimeInterval(3)
+            while coord.pendingFigureChoice == nil, Date() < deadline {
+                // The character's own draw for the attack, when one is waited for.
+                if let draw = coord.pendingModifierDraw {
+                    coord.completeModifierDraw(selectedCards: CombatResolver.drawModifiers(
+                        advantage: draw.advantage, disadvantage: draw.disadvantage, baseAttack: draw.comparedAttack, draw: draw.drawCard))
+                }
+                try? await Task.sleep(nanoseconds: 1_000_000)
+            }
+            return coord.pendingFigureChoice
+        }
+
+        // A demon killed by an attack: the question comes once the blow is settled.
+        let attack = Task { @MainActor in
+            await coord.performAttack(attacker: self.character(sim, 0), target: demons[0], attack: AttackParameters(value: 99),
+                                      drawCard: { AttackModifier(type: .plus0) })
+        }
+        var answer = await asked()
+        var choice = try XCTUnwrap(answer, "the players are asked")
+        XCTAssertFalse(coord.isOnBoard(demons[0]))
+        XCTAssertEqual(choice.options, [near, far], "the nearest first")
+        XCTAssertEqual(choice.declineTitle, "Leave Them")
+        coord.resolveFigureChoice(far)
+        _ = await attack.value
+        XCTAssertFalse(coord.isOnBoard(far), "the one they chose, not the nearest")
+        XCTAssertTrue(coord.isOnBoard(near))
+        XCTAssertEqual(sim.gm.game.scenario?.killCounts["living-spirit"], nil, "banished, not killed")
+
+        // A demon dead by other means (a wound, a trap): asked before the next turn — and they may decline.
+        coord.handleDeath(of: demons[1])
+        XCTAssertEqual(coord.pendingReprieves.count, 1)
+        let asking = Task { @MainActor in await coord.resolveReprieves() }
+        answer = await asked()
+        choice = try XCTUnwrap(answer)
+        XCTAssertEqual(choice.options, [near])
+        coord.resolveFigureChoice(nil)
+        await asking.value
+        XCTAssertTrue(coord.isOnBoard(near), "left where it is")
+        XCTAssertTrue(coord.pendingReprieves.isEmpty)
+    }
+
     func testLivingSpiritsCantBeDamagedAndGoWithTheDemons() async throws {
         let sim = try simulator("70")
         let coord = sim.coord
@@ -2034,5 +2231,52 @@ final class ScenarioSpecialRuleTests: XCTestCase {
         coord.sufferDamage(999, to: other)
         coord.checkVictoryDefeat()
         XCTAssertEqual(coord.scenarioResult ?? coord.pendingResult, .defeat)
+    }
+
+    // MARK: - Whose deck an ally draws from (#44, #56)
+
+    /// Redthorn attacks "drawing from whichever attack modifier deck the players choose": as he
+    /// attacks they are asked whose, and the card comes from that character's deck.
+    func testRedthornDrawsFromTheDeckThePlayersChoose() async throws {
+        let sim = try simulator("44")
+        let coord = sim.coord
+        coord.autoResolvePrompts = false
+        for piece in pieces(sim) { coord.boardState.removePiece(piece) }
+        let container = try XCTUnwrap(sim.gm.game.objectives.first { $0.name == "Redthorn" })
+        let redthorn = try XCTUnwrap(container.entities.first.map { PieceID.objective(id: $0.number) })
+        let place = try XCTUnwrap(coord.boardState.piecePositions[redthorn])
+        let foe = try XCTUnwrap(coord.spawnMonster(name: "inox-guard", type: .normal,
+                                                   at: try XCTUnwrap(coord.boardState.neighbors(of: place).sorted().first(where: coord.isEmptyHex)), origin: .placed))
+        let guardian = try entity(sim, foe)
+        guardian.maxHealth = 60
+        guardian.health = 60
+        guardian.shield = nil
+        guardian.shieldPersistent = nil
+        guardian.retaliate = []
+        let brute = sim.gm.game.characters[0], spellweaver = sim.gm.game.characters[1]
+        brute.attackModifierDeck = RuleBoard.deck(of: .plus2)
+        spellweaver.attackModifierDeck = RuleBoard.deck(of: .minus1)
+        let allies = sim.gm.game.allyAttackModifierDeck
+
+        func attack(drawingFrom character: GameCharacter) async throws -> Int {
+            let before = guardian.health
+            let turn = Task { @MainActor in await EscortTurnController(coordinator: coord, gameManager: sim.gm).executeEscortTurns(for: container) }
+            let deadline = Date().addingTimeInterval(3)
+            while coord.pendingFigureChoice == nil, Date() < deadline { try? await Task.sleep(nanoseconds: 1_000_000) }
+            let asked = try XCTUnwrap(coord.pendingFigureChoice, "the players are asked whose deck")
+            XCTAssertEqual(asked.title, "Redthorn attacks")
+            XCTAssertEqual(Set(asked.options), [self.character(sim, 0), self.character(sim, 1)])
+            XCTAssertNil(asked.declineTitle, "a deck must be chosen")
+            coord.resolveFigureChoice(.character(character.id))
+            await turn.value
+            return before - guardian.health
+        }
+        let withTheSpellweavers = try await attack(drawingFrom: spellweaver)
+        XCTAssertEqual(withTheSpellweavers, 3 - 1)
+        XCTAssertEqual(RuleBoard.drawn(spellweaver.attackModifierDeck), 1)
+        let withTheBrutes = try await attack(drawingFrom: brute)
+        XCTAssertEqual(withTheBrutes, 3 + 2)
+        XCTAssertEqual(RuleBoard.drawn(brute.attackModifierDeck), 1)
+        XCTAssertEqual(RuleBoard.drawn(sim.gm.game.allyAttackModifierDeck), RuleBoard.drawn(allies), "the ally deck is left alone")
     }
 }

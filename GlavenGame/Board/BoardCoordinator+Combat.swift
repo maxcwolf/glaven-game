@@ -294,6 +294,7 @@ extension BoardCoordinator {
             guard isCurrentBoard(generation) else { return died }
         }
         await resolveDeathAttacks()
+        await resolveReprieves()
         await resolveDoomDeaths()
         return died
     }

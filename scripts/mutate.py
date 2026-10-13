@@ -109,7 +109,7 @@ S={
  "undamageableDamaged": ("GlavenGame/Board/BoardCoordinator+Effects.swift", "        return scenarioData?.placements?.undamageable?.contains(name) == true", "        return false && scenarioData?.placements?.undamageable?.contains(name) == true"),
  "noReprieve": ("GlavenGame/Board/BoardCoordinator+Effects.swift", "reprieve.killed.contains(name) else { return }", "reprieve.killed.contains(name), false else { return }"),
  "inactiveCanBeAttacked": ("GlavenGame/Board/BoardCoordinator+Rules.swift", "        return MonsterAI.inactiveMonsters(game).contains(name)\n    }", "        return false && MonsterAI.inactiveMonsters(game).contains(name)\n    }"),
- "shelteredCanBeAttacked": ("GlavenGame/Board/BoardCoordinator+Rules.swift", "        if objectiveContainer(of: pieceID)?.isSheltered == true || isInactive(pieceID) { return true }", "        if isInactive(pieceID) { return true }"),
+ "shelteredCanBeAttacked": ("GlavenGame/Board/BoardCoordinator+Rules.swift", "        if objectiveContainer(of: pieceID)?.isSheltered == true || isInactive(pieceID) || isDug(pieceID) { return true }", "        if isInactive(pieceID) || isDug(pieceID) { return true }"),
  "inactiveMonstersAct": ("GlavenGame/Engine/MonsterAI.swift", "              written.inactive != nil else { return [] }", "              written.inactive != nil, false else { return [] }"),
  "apartSideIsMonsters": ("GlavenGame/Engine/MonsterAI.swift", "        monster.isAlly ? .party : monster.standsApart ? .apart : .monsters", "        monster.isAlly ? .party : .monsters"),
  "focusFirstIgnored": ("GlavenGame/Engine/MonsterAI.swift", "        return candidates.filter(isFirst) + candidates.filter { !isFirst($0) }", "        return candidates.filter { _ in _ = isFirst; return true }"),
@@ -135,6 +135,19 @@ S={
  "redthornNoStronger": ("GlavenGame/Board/BoardCoordinator+Forgo.swift", "(ally.escortActions[attack].value?.intValue ?? 0) + 1)", "(ally.escortActions[attack].value?.intValue ?? 0) + 0)"),
  "captivesFreedFromAfar": ("GlavenGame/Board/BoardCoordinator+Forgo.swift", "        return boardState.neighbors(of: here).compactMap { boardState.piece(at: $0) }.filter { piece in", "        _ = here\n        return boardState.piecePositions.keys.filter { piece in"),
  "freedCountsAsKilled": ("GlavenGame/Board/BoardCoordinator+Forgo.swift", "        entity.off = true\n        entity.tags.append(Self.freedTag)", "        entity.off = true\n        entity.dead = true\n        entity.tags.append(Self.freedTag)"),
+ "pumpsCleansedForAnyAction": ("GlavenGame/Board/BoardCoordinator+Forgo.swift", "            return rule.bottom != true || bottomAction", "            return rule.bottom != true || bottomAction || true"),
+ "goneObjectivesStillPresent": ("GlavenGame/Managers/ScenarioRulesManager.swift", "where entity.dead != alive && !entity.off {", "where entity.dead != alive {"),
+ "wonWithPumpsStanding": ("GlavenGame/Board/BoardCoordinator+Goals.swift", "            guard !all.isEmpty, allRoomsRevealed, all.allSatisfy({ $0.tags.contains(Self.freedTag) }) else { return false }", "            guard !all.isEmpty, allRoomsRevealed else { return false }"),
+ "treasureLootedForAnyAction": ("GlavenGame/Board/BoardCoordinator+Forgo.swift", "              rule.bottom != true || bottomAction, mayLootGoalTreasure(characterID),", "              mayLootGoalTreasure(characterID),"),
+ "secondTreasureOffered": ("GlavenGame/Board/BoardCoordinator+Forgo.swift", "              rule.bottom != true || bottomAction, mayLootGoalTreasure(characterID),", "              rule.bottom != true || bottomAction,"),
+ "treasureGivenUpForNothing": ("GlavenGame/Board/BoardCoordinator+Forgo.swift", "        lootHexes(for: .character(characterID), coords: [hex], byLootAction: true)", "        lootHexes(for: .character(characterID), coords: [hex], byLootAction: false)"),
+ "gravesCanBeAttacked": ("GlavenGame/Board/BoardCoordinator+Rules.swift", "|| isInactive(pieceID) || isDug(pieceID) { return true }", "|| isInactive(pieceID) { return true }"),
+ "diggingIsFree": ("GlavenGame/Board/BoardCoordinator+Forgo.swift", "        continueMove(of: mover, left: range - 1, mode: mode)", "        continueMove(of: mover, left: range, mode: mode)"),
+ "diggingFromAfar": ("GlavenGame/Board/BoardCoordinator+Forgo.swift", "        return boardState.neighbors(of: here).compactMap { boardState.piece(at: $0) }\n            .filter { isDug($0)", "        _ = here\n        return boardState.piecePositions.keys\n            .filter { isDug($0)"),
+ "diggingDigsNothing": ("GlavenGame/Board/BoardCoordinator+Forgo.swift", "        sufferDamage(1, to: grave, killer: mover)", "        sufferDamage(0, to: grave, killer: mover)"),
+ "spiritsGoUnasked": ("GlavenGame/Board/BoardCoordinator+Effects.swift", "        if autoResolvePrompts {\n            if let nearest = reprieveCandidates(nearest: killer).first { banish(nearest) }", "        if true {\n            if let nearest = reprieveCandidates(nearest: killer).first { banish(nearest) }"),
+ "reprieveNotAskedAfterTheBlow": ("GlavenGame/Board/BoardCoordinator+Combat.swift", "        await resolveDeathAttacks()\n        await resolveReprieves()\n", "        await resolveDeathAttacks()\n"),
+ "alliesDrawFromTheirOwnDeck": ("GlavenGame/Board/EscortTurnController.swift", "                draw = { am.drawCharacterCard(for: character) }", "                _ = character"),
 }
 M.update(S)
 def run(name, flt=None):

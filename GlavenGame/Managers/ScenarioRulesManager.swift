@@ -656,7 +656,9 @@ final class ScenarioRulesManager {
             for figure in game.figures {
                 guard case .objective(let container) = figure,
                       matchesName(container.name, pattern: namePattern) else { continue }
-                for entity in container.entities where entity.dead != alive {
+                // One that has left the map — an escort arrived, a captive freed, a pump cleansed —
+                // is neither there nor dead.
+                for entity in container.entities where entity.dead != alive && !entity.off {
                     if let markerFilter, entity.marker != markerFilter && !entity.markers.contains(markerFilter) {
                         continue
                     }

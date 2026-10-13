@@ -64,7 +64,7 @@ extension BoardCoordinator {
     /// Scenery without hit points (a water pump): nothing attacks it.
     private func isUntouchable(_ pieceID: PieceID) -> Bool {
         // An ally only to be healed is no one's enemy either, and nothing affects an inactive monster.
-        if objectiveContainer(of: pieceID)?.isSheltered == true || isInactive(pieceID) { return true }
+        if objectiveContainer(of: pieceID)?.isSheltered == true || isInactive(pieceID) || isDug(pieceID) { return true }
         guard isScenery(pieceID) else { return false }
         return (entity(for: pieceID)?.maxHealth ?? 0) <= 0
     }

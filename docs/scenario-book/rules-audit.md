@@ -12,8 +12,8 @@ means the data and code that enforce the rule were found, and usually a test tha
 that the scenario was played through. Keep it current: when a rule is built, rewrite its row in
 the same commit (see [../rules-work.md](../rules-work.md)).
 
-**447 rules: 358 done, 21 partial, 68 missing.**
-68 of 95 scenarios have every printed rule done. The other 27: #55 (6 missing, 1 partial), #88 (6 missing, 1 partial), #34 (4 missing, 2 partial), #76 (4 missing, 2 partial), #44 (0 missing, 1 partial), #71 (5 missing, 0 partial), #73 (5 missing, 0 partial), #78 (5 missing, 0 partial), #95 (5 missing, 0 partial), #21 (2 missing, 2 partial), #49 (4 missing, 0 partial), #54 (4 missing, 0 partial), #69 (3 missing, 1 partial), #74 (4 missing, 0 partial), #52 (1 missing, 2 partial), #58 (3 missing, 0 partial), #26 (2 missing, 0 partial), #68 (1 missing, 1 partial), #79 (1 missing, 1 partial), #81 (2 missing, 0 partial), #82 (0 missing, 2 partial), #38 (0 missing, 1 partial), #47 (0 missing, 1 partial), #56 (0 missing, 1 partial), #67 (1 missing, 0 partial), #70 (0 missing, 1 partial), #75 (0 missing, 1 partial).
+**447 rules: 365 done, 16 partial, 66 missing.**
+73 of 95 scenarios have every printed rule done. The other 22: #55 (6 missing, 1 partial), #88 (6 missing, 1 partial), #34 (4 missing, 2 partial), #76 (4 missing, 2 partial), #71 (5 missing, 0 partial), #73 (5 missing, 0 partial), #78 (5 missing, 0 partial), #95 (5 missing, 0 partial), #21 (2 missing, 2 partial), #49 (4 missing, 0 partial), #54 (4 missing, 0 partial), #69 (3 missing, 1 partial), #74 (4 missing, 0 partial), #52 (1 missing, 1 partial), #58 (3 missing, 0 partial), #68 (1 missing, 1 partial), #79 (1 missing, 1 partial), #81 (2 missing, 0 partial), #82 (0 missing, 2 partial), #38 (0 missing, 1 partial), #47 (0 missing, 1 partial), #67 (1 missing, 0 partial).
 
 Rules that were enforced wrongly, as against not at all, are findings of the engine audit
 ([../audits/2026-10-09-rules-audit.md](../audits/2026-10-09-rules-audit.md), rows S1-…, S2-…),
@@ -27,7 +27,7 @@ order", has the same list as tasks). The rows below say what the game does today
 
 - **A choice the player has no way to make yet.** (Losing a card from hand to negate damage to
   something else — #44's captives, #84's crystal — is built: `saves`.) Giving up an action or part of a move to
-  do something (built for #44's captives: `forgo`; the others still to do): #26 cleansing a pump (which is its goal), #44 freeing a captive, #52 looting an
+  do something (built: `forgo` for #44's captives, #26's pumps and #52's treasure, `dig` for #75's graves): #26 cleansing a pump (which is its goal), #44 freeing a captive, #52 looting an
   adjacent tile, #75 digging a grave with movement. Choosing: which Living Spirit goes (#70),
   whose attack modifier deck an escort draws from (#44, #56). With these, #44's loss ("a captive
   dies") and Redthorn's +1 Attack for each captive freed can be switched on.
@@ -223,10 +223,10 @@ order", has the same list as tasks). The rows below say what the game does today
 ### 26 · Ancient Cistern
 | Rule (from the book) | Status | Where / what's missing |
 |---|---|---|
-| Goal: cleanse all water pumps | missing | No goal is written (placements #26 has `notes` and the pumps' hexes only), so it plays as the default — every enemy dead with every room revealed, the imps that keep coming included. Needs the cleanse action below first, then a goal on the pumps being gone |
+| Goal: cleanse all water pumps | done | placements goal `freed: [1, 2, 3]` → `goalMet`: every pump set up (two, three or four by the party's size) cleansed, with every room revealed; the imps needn't die. `ScenarioSpecialRuleTests.testAPumpIsCleansedForABottomActionAndTheCisternIsWon` |
 | Setup: each character adds 3 Curse cards | done | rule 0 `amAdd curse:3` |
 | Number of pumps = C: a (2), a+b (3), a+b+c (4) | done | `rooms[2].objectives: [1, 1, "2:C > 2", "3:C > 3"]` (`spawnObjectiveByReference`); placed on l1a by placements; health 0 makes them untouchable scenery (`isUntouchable`) |
-| A character adjacent to a pump may give up a bottom action to cleanse it | missing | No such action. Nothing lets a character forgo a bottom action beside a pump, and a pump (health 0, untouchable scenery) is never removed. Needs a player prompt: discard the bottom card unplayed, next to a pump, to remove it (`TODO.md`: "A prompt for a choice the player can't make yet") |
+| A character adjacent to a pump may give up a bottom action to cleanse it | done | placements `forgo` with `does: "cleanse"`, `bottom: true` for the three pump objectives → the button "Cleanse Water Pump" beside the basic Move, for a bottom action not yet begun (never a top one); the card is discarded and the pump leaves the map, after which it summons no imp (an objective off the map is no longer `present` to a rule). Same test |
 | End of each round: every uncleansed pump summons one normal Black Imp | done | rules 1–3 (round end, a pump with that letter `present`) spawn `count: "F"` normal Black Imps — one for each pump carrying the letter — and `spawnHex(forMarker:)` puts each beside the pump with the fewest monsters next to it, so the two (a) pumps get one each. `ScenarioSpecialRuleTests.testEachPumpGetsItsOwnImp`. A pump that is gone would stop summoning, but none can be cleansed yet (row above), so in play it never stops |
 
 ### 27 · Ruinous Rift
@@ -392,7 +392,7 @@ order", has the same list as tasks). The rows below say what the game does today
 | Redthorn (b): 6+(3×L) HP | done | `objectives[0].health` `"6+(3xL)"`; placed on `b1b` [0,2] |
 | Redthorn: ally of the characters, enemy of all monsters | done | `escort: true` → player side in `isPlayerSide`; in `MonsterAI.gatherEnemies` |
 | Redthorn acts on initiative 01: Move 3, Attack 3, Range 3 | done | `objectives[0]` `initiative: 1`, `actions` move 3 / attack 3 with range 3 → `EscortTurnController` / `EscortAI` |
-| Redthorn draws from whichever attack modifier deck the players choose | partial | always the ally deck: `objectives[0].allyDeck: true` → `EscortTurnController` draws with `drawAllyCard`; the players are never asked which deck (would need a prompt) |
+| Redthorn draws from whichever attack modifier deck the players choose | done | placements `drawsFromACharacter: [1]` → as he attacks, `EscortTurnController` asks whose deck (`chooseFigure`, the characters on the board) and draws from it; headless play takes the first character's. `ScenarioSpecialRuleTests.testRedthornDrawsFromTheDeckThePlayersChoose` |
 | Redthorn adds +1 Attack for each captive freed | done | placements `forgo: [{"objective": 2, "strengthens": 1}]` → `BoardCoordinator.free` raises his Attack by 1 with each captive freed; `testACharacterBesideACaptiveGivesUpAnActionToFreeIt` |
 | Captive Orchids (a): nine, 4+(2×L) HP each | done | `objectives[1]` `"4+(2xL)"`; rooms list 5+1+2+1 = 9; placed on `m1b` ×5, `l1b`, `b4a` ×2, `b3a` |
 | Captives cannot be healed | done | placements `protect: [2]` → not an escort, so `isScenery`: `areAllies` is false and no heal can target them |
@@ -470,7 +470,7 @@ order", has the same list as tasks). The rows below say what the game does today
 | Setup: each character adds 2 Curse cards | done | scenario `rules[0]`: `amAdd` `curse:2` at `R == 1`, `start` → `ScenarioRulesManager.applyAmAdd` (the data's three was corrected to the book's two); `ScenarioSpecialRuleTests.testSetupCardCountsAreTheBooks` |
 | Setup: characters may only start in sections of the center room that contain monsters | missing | unchanged: the four starting hexes of M1a are all offered whatever the character count (`freeStartingHexes` only knows `splitStart`); nothing ties a starting hex to monsters being in its section. Needs the sections written as data |
 | Center-room obstacles cannot be destroyed or moved through in any way, and block line of sight for ranged abilities | partial | can't be destroyed: placements `indestructible.tiles: ["m1a"]` → `isDestructibleObstacle` (`ScenarioReauditTests.testWhatTheScenarioSaysCantBeDestroyedIsnt`). Not enforced: a jumping or flying figure still crosses them as it does any obstacle (`Pathfinder`), and they don't block line of sight (`LineOfSight` counts only walls) |
-| Treasure tiles are looted only by a Loot action, or by an adjacent character forgoing a bottom action; never at end of turn | partial | placements `lootActionOnly: true` → a goal tile is taken only by a Loot ability (`lootHexes` with `byLootAction`), never by ending a turn on it or walking over it (`ScenarioGoalTests.testGoalTreasureThatNeedsALootAction`, played on #30 with the same flag). Missing: an adjacent character giving up a bottom action (discarding the card) to loot the tile — needs a new player action |
+| Treasure tiles are looted only by a Loot action, or by an adjacent character forgoing a bottom action; never at end of turn | done | placements `lootActionOnly: true` → a goal tile is taken only by a Loot ability (`lootHexes` with `byLootAction`), never by ending a turn on it or walking over it (`ScenarioGoalTests.testGoalTreasureThatNeedsALootAction`); placements `forgo: [{"treasure": true, "bottom": true}]` → "Loot the Treasure" beside the basic Move for a character next to a goal tile who has yet to loot one: the bottom action is given up, its card discarded, the tile looted (`ScenarioSpecialRuleTests.testATreasureBesideACharacterIsLootedForABottomActionGivenUp`) |
 
 ### 53 · Crypt Basement
 | Rule (from the book) | Status | Where / what's missing |
@@ -507,7 +507,7 @@ order", has the same list as tasks). The rows below say what the game does today
 | Captive Orchids (a): three, 4+(2×L) HP each | done | `objectives[0]` `"4+(2xL)"`; room 4 lists three; placed on `m1b` [0,1], [1,0], [2,0] |
 | Captives are allies of the characters and enemies of all monsters | done | `escort: true` → player side; monsters focus them (`MonsterAI.gatherEnemies`) |
 | Captives act on initiative 50: Move 3, Attack 3 | done | `initiative: 50`, `actions` move 3 / attack 3 → `EscortTurnController` (each living Orchid in turn) |
-| Captives draw from whichever character attack modifier deck the players choose | partial | always the ally deck: `allyDeck: true` → `EscortTurnController` draws with `drawAllyCard()`. The players are never asked for a character's deck; needs a prompt |
+| Captives draw from whichever character attack modifier deck the players choose | done | placements `drawsFromACharacter: [1]` → asked as each Orchid attacks, as for Redthorn (#44); the same code and test |
 
 ### 57 · Investigation
 | Rule (from the book) | Status | Where / what's missing |
@@ -635,7 +635,7 @@ order", has the same list as tasks). The rows below say what the game does today
 | Goal: kill all demons | done | placements goal `kill: ["night-demon","wind-demon"]` |
 | A normal Living Spirit spawns at the end of every round: (a) odd / (b) even (2); (a) odd, (a)+(b) even (3); (a)+(b) every round (4) | done | `70.json` rules 0 (`R % 2 == 1`) and 1 (`R % 2 == 0`), end-of-round; markers a on `l3a`, b on `l1b` |
 | Living Spirits cannot be damaged in any way (conditions and other effects still apply) | done | placements `undamageable: ["living-spirit"]` → `isUndamageable`: `sufferDamage` does nothing to one, an attack's conditions still apply, and a Wound doesn't hurt it as its turn starts (`deferWoundDamage`); `testLivingSpiritsCantBeDamagedAndGoWithTheDemons`, `testAWoundDoesNotHurtALivingSpirit` |
-| Each time a demon dies the players may remove one Living Spirit | partial | placements `reprieve` (`killed: ["night-demon","wind-demon"]`, `removes: "living-spirit"`) → `grantReprieve` from `handleDeath`: one spirit is banished (not counted as a kill) at every demon's death (`testLivingSpiritsCantBeDamagedAndGoWithTheDemons`) — but always, and the game picks it: the one nearest the killer (or nearest any character), where the book lets the players choose which, or none; it would need a prompt |
+| Each time a demon dies the players may remove one Living Spirit | done | placements `reprieve` (`killed: ["night-demon","wind-demon"]`, `removes: "living-spirit"`) → `grantReprieve` from `handleDeath` queues the death and `resolveReprieves` asks, once the blow is settled or as the turn ends: which spirit (the nearest to the killer first), or "Leave Them". The one chosen is banished, not counted as a kill. Headless play takes the nearest. `ScenarioSpecialRuleTests.testThePlayersChooseWhichLivingSpiritGoes`, `testLivingSpiritsCantBeDamagedAndGoWithTheDemons` |
 
 ### 71 · Windswept Highlands
 | Rule (from the book) | Status | Where / what's missing |
@@ -685,7 +685,7 @@ order", has the same list as tasks). The rows below say what the game does today
 | Rule (from the book) | Status | Where / what's missing |
 |---|---|---|
 | Goal: dig up all graves and kill the Bloated Regent | done | placements goal `destroy: [1,2,3]`, `kill: ["bloated-regent"]` |
-| A character digs up a grave by spending 1+C movement while adjacent (not all at once) | partial | graves are objectives with `health: "1+C"` that are attacked: 1+C damage instead of 1+C movement (the brief says "attack it"); spending movement on a grave isn't possible |
+| A character digs up a grave by spending 1+C movement while adjacent (not all at once) | done | placements `dig: [1, 2, 3]` → during a Move a tap on a grave beside the mover spends one point on it (`BoardCoordinator.dig`), the grave's hit points (1+C) being what is left to dig, kept from turn to turn; the move goes on with the rest. Graves are no longer attacked (`isDug` → `isUntouchable`). `ScenarioSpecialRuleTests.testAGraveIsDugWithMovementSpentBesideIt` |
 | A dug-up grave spawns a Living Corpse in the nearest empty hex: normal (2); normal for (a), elite for (b) (3); elite (4) | done | placements `dropRules: [0, 1]` (the data's once-only rules) and `whenDestroyed` — objective 1 (a) normal / normal / elite, objective 2 (b) normal / elite / elite → `handleDeath` spawns each grave's own corpse on the hex the grave stood on (the grave is taken off the map, so that hex is the empty one); `testEveryGraveLetsOutItsCorpse`, `testWhatAGraveLetsOutAppearsWhereItStood` |
 | Section 1: grave (c) is dug up like the others and spawns an elite Living Corpse, the Bloated Regent | done | rule 2 `requiredRooms: [3]`, grave c `dead` → `bloated-regent` (boss, elite Living Corpse's stats) at marker c |
 | The Regent has (H×C)/2 HP rounded up | done | `monster/bloated-regent.json` health `[(10xC)/2{$math.ceil}]` … `[(25xC)/2{$math.ceil}]` (H = the elite Living Corpse's hit points at each level); `MonsterDataTests.testHalvedBossHealth_roundsUp` (20 for three characters at level 3) |

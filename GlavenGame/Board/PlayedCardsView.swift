@@ -112,6 +112,10 @@ struct TurnChoiceButtons: View {
                 Button(turn.forgoTitle(target)) { turn.forgoAction(toFree: target) }
                     .accessibilityHint("Instead of this action: the card is discarded")
             }
+            ForEach(turn.forgoLootHexes, id: \.self) { hex in
+                Button("Loot the Treasure") { turn.forgoAction(toLoot: hex) }
+                    .accessibilityHint("Instead of this action: the card is discarded")
+            }
             Button("Skip Rest of Half") { turn.skipRemainingActions() }
         }
         .buttonStyle(.boardQuietCompact)

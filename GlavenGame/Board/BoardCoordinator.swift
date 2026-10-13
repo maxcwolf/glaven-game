@@ -488,6 +488,9 @@ final class BoardCoordinator {
         let action: ActionModel
     }
     var pendingDeathAttacks: [DeathAttack] = []
+    /// Deaths for which the players may still remove a figure from the map (Chained Isle: a
+    /// Living Spirit for each demon), with who killed; asked once the blow is settled.
+    var pendingReprieves: [PieceID?] = []
     /// The fallen monster making its "on death" attack right now, and the hex it fell on.
     var deathAttackInProgress: DeathAttack?
 
@@ -1023,6 +1026,7 @@ final class BoardCoordinator {
         pendingItemRefresh = nil
         pendingConditionRemoval = nil
         pendingDeathAttacks = []
+        pendingReprieves = []
         deathAttackInProgress = nil
         pendingExtraConditions = []
         pendingForcedAttack = nil
@@ -1455,9 +1459,10 @@ final class BoardCoordinator {
     func advanceToNextFigure() {
         guard let gameManager = gameManager else { return }
         // Doomed enemies that died this turn (to a trap, a wound…) resolve their dooms first.
-        if !pendingDoomDeaths.isEmpty || !pendingDamageAttacks.isEmpty {
+        if !pendingDoomDeaths.isEmpty || !pendingDamageAttacks.isEmpty || !pendingReprieves.isEmpty {
             let generation = boardGeneration
             Task { @MainActor in
+                await self.resolveReprieves()
                 await self.resolveDoomDeaths()
                 guard self.isCurrentBoard(generation), self.scenarioResult == nil else { return }
                 self.advanceToNextFigure()
@@ -2084,6 +2089,17 @@ final class BoardCoordinator {
         let style: HighlightStyle = mode == .jump ? .jump : (mode == .fly ? .fly : .move)
         boardScene?.highlightHexes(validHexes, style: style, offsetCol: offsetCol, offsetRow: offsetRow)
         return true
+    }
+
+    /// A move goes on with the movement left after some of it was spent where the mover stands
+    /// (digging a grave): the hexes it still reaches are offered, or the move ends there.
+    func continueMove(of pieceID: PieceID, left: Int, mode: MoveMode) {
+        boardScene?.clearHighlights()
+        if !offerRestOfMove(pieceID: pieceID, left: left, mode: mode), let pos = boardState.piecePositions[pieceID] {
+            // No movement left: the move ends where the character stands.
+            continuedMove = (pieceID, mode)
+            executeMove(pieceID: pieceID, to: pos, range: 0, mode: mode)
+        }
     }
 
     /// End a move that is going on past a door where the character stands (Skip, on the banner).
@@ -3160,6 +3176,9 @@ final class BoardCoordinator {
             // Move 0: the character taps themselves.
             if piece == mover, let pos = boardState.piecePositions[mover], validHexes.contains(pos) {
                 executeMove(pieceID: mover, to: pos, range: range, mode: mode)
+            } else if diggable(beside: mover).contains(piece) {
+                // A grave beside the mover: a point of the move is spent digging it.
+                dig(piece, by: mover, movement: range, mode: mode)
             }
         case .selectingAttackTarget(let attackerID, _, let validTargets):
             if validTargets.contains(piece), let forced = pendingForcedAttack {

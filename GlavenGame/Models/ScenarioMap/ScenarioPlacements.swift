@@ -50,6 +50,14 @@ struct ScenarioPlacements: Codable, Equatable {
     /// What a character beside an objective may give up an action for (the captive Orchids,
     /// freed).
     var forgo: [Forgo]?
+    /// Escorts (objectives, 1-based) whose attacks draw "from whichever attack modifier deck the
+    /// players choose": a character's, asked as the escort attacks (Redthorn; the captive
+    /// Orchids of Bandit's Wood).
+    var drawsFromACharacter: [Int]?
+    /// Objectives (1-based) dug up with movement: a character beside one spends movement points
+    /// on it, one hit point each, in as many moves as it takes; nothing attacks it (the graves
+    /// of the Overgrown Graveyard, 1+C movement each).
+    var dig: [Int]?
     /// Monster types that can't be damaged in any way; conditions and other effects of an
     /// attack still apply (the Living Spirits of Chained Isle).
     var undamageable: [String]?
@@ -97,6 +105,9 @@ struct ScenarioPlacements: Codable, Equatable {
 
         /// Objectives (1-based) to destroy, every one of each.
         var destroy: [Int]?
+        /// Objectives (1-based) all of which must be freed or cleansed by an action given up
+        /// for it (`forgo`): the water pumps, however many the party's size sets up.
+        var freed: [Int]?
         /// Monster types to kill, every one ("jekserah"): each has appeared, every room that
         /// holds one is revealed, and none is alive.
         var kill: [String]?
@@ -150,7 +161,7 @@ struct ScenarioPlacements: Codable, Equatable {
         var replacesKillAll: Bool {
             destroy != nil || kill != nil || killCount != nil || reveal != nil || loot != nil || lootIDs != nil
                 || arrive != nil || escape != nil || occupy != nil || reach != nil || enemies == "revealed"
-                || either != nil || spare != nil
+                || either != nil || spare != nil || freed != nil
         }
 
         /// Whether part of the goal is where characters stand, judged as a turn ends.
@@ -340,10 +351,19 @@ extension ScenarioPlacements {
     /// "A character adjacent to a captive Orchid may forgo an action (discarding one card
     /// instead) to free that captive, which is removed from the map immediately": the objective
     /// (1-based) that is freed, and the objective whose attacks gain +1 for each one freed
-    /// (Redthorn).
+    /// (Redthorn). `does` names it where it isn't freeing ("cleanse": the water pumps of the
+    /// Ancient Cistern), and `bottom` is for what only a bottom action may be given up for.
+    /// With `treasure` instead of an objective it is the goal treasure tile beside the
+    /// character that the action is given up for: it is looted (Noxious Cellar).
     struct Forgo: Codable, Hashable {
-        let objective: Int
+        var objective: Int?
+        var treasure: Bool?
         var strengthens: Int?
+        var does: String?
+        var bottom: Bool?
+
+        /// What giving the action up does to the objective: "free", "cleanse".
+        var verb: String { does ?? "free" }
     }
 
     /// For every death of one of `killed`, one of `removes` leaves the map (Chained Isle: a

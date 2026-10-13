@@ -108,7 +108,8 @@ ends up on the board:
   the scenario when one of them stands on such a hex.
 - `undamageable`: monster types nothing damages (conditions still apply), and `reprieve`
   (`{"killed": [...], "removes": "living-spirit"}`): for each death of one of the first, one of
-  the second is banished — the nearest to the killer, where the book lets the players choose (#70).
+  the second may be banished — the players are asked which (the nearest to the killer first) or
+  none; with no one to ask, the nearest goes (#70).
 - `focusFirst`: objectives the monsters that attack them go for first — one that can get within
   range this turn focuses on it, whoever is nearer (#35 and #36 the gate, #84 the crystal).
 - `saves`: objectives a character may spare a source of damage by losing a card from their hand —
@@ -117,11 +118,25 @@ ends up on the board:
   (`SaveChoiceSheet`): let it suffer, or pick a card from any hand. The sheet says when
   the scenario is lost with the objective; headless play and the simulator's policies give a card
   only then.
+- `drawsFromACharacter`: escorts whose attacks draw "from whichever attack modifier deck the
+  players choose" (#44 Redthorn, #56 the captive Orchids): as one attacks the players are asked
+  whose deck, and the card is drawn from that character's.
+- `dig`: objectives dug up with movement, not attacked (#75's graves): during a Move a tap on one
+  beside the mover spends a point of the move on it — a hit point, so `health: "1+C"` is the
+  movement it takes — in as many moves as it needs; dug up, it is destroyed as any objective is
+  (`whenDestroyed`, the goal's `destroy`).
 - `forgo`: what a character beside an objective may give up an action for —
   `{"objective": 2, "strengthens": 1}`: the objective is freed and leaves the map, and objective 1
   attacks for 1 more with each one freed (#44's captives and Redthorn). Offered beside the basic
   action for a half none of whose abilities has been performed; the half's card is discarded as
   after a basic action. The simulator's policies free a captive whenever one is beside them.
+  With `"does": "cleanse"` the button and the log say so, and with `"bottom": true` only a bottom
+  action may be given up (#26's water pumps). The goal key `freed: [1, 2, 3]` is "every one of
+  these objectives freed or cleansed" (as many as the party's size sets up, every room revealed).
+  An objective that has left the map this way is no longer `present` to a scenario rule.
+  `{"treasure": true, "bottom": true}` is the goal treasure tile beside the character, looted for
+  the action given up as a Loot action would loot it (#52), once for each character where each
+  must loot one.
 - `splitStart`: there are two starting rooms and no more than half the party (rounded up) may
   start in the same one (#50, #58, #85).
 - `water`: what water hexes do — `hurtsThePoisoned` (a poisoned character or summon walking in
@@ -208,7 +223,7 @@ its map, every door objective is on a door and every objective number exists.
 | 3 Inox Encampment | — | a | win: 5×C kills | — |
 | 19 Forgotten Crypt | Hail | b–e | win when Hail ends beside the altar; lost if she dies | — |
 | 22 Temple of the Elements | 4 altars | — | win: destroy all altars | — |
-| 26 Ancient Cistern | water pumps | — (imps spawn beside their pump) | — | cleansing a pump isn't modelled, so the goal isn't (it plays as "kill all enemies") |
+| 26 Ancient Cistern | water pumps | — (imps spawn beside their pump) | — | a character beside a pump gives up a bottom action to cleanse it (`forgo`); the goal is every pump cleansed (`freed`) |
 | 27 Ruinous Rift | Hail | b–e | lost if Hail dies (win at round 10 is a scenario rule) | — |
 | 29 Sanctuary of Gloom | 3 barred doors | — | — | — |
 | 31 Plane of Night | rock column | b, c | win: destroy the column | — |
@@ -229,7 +244,7 @@ its map, every door objective is on a door and every objective number exists.
 | 70 Chained Isle | — | a, b | — | — |
 | 72 Oozing Grove | 3 trees | — (oozes rise beside their tree) | win: destroy all trees, kill all Oozes | — |
 | 74 Merchant Ship | — | a–e | — | water tiles aren't modelled |
-| 75 Overgrown Graveyard | 9 graves | — (what rises, rises where the grave was) | win: all graves and the Bloated Regent | graves are attacked rather than dug up with movement |
+| 75 Overgrown Graveyard | 9 graves | — (what rises, rises where the grave was) | win: all graves and the Bloated Regent | graves are dug up with movement spent beside them (`dig`), never attacked |
 | 79 Lost Temple | Fish | a, b, c (pressure plates) | win: kill the Betrayer; lost if Fish is killed | the Betrayer's two specials (forced moves, mind control) aren't modelled |
 | 84 Crystalline Cave | the crystal | — | lost if it is destroyed | protected, no ally; twice a card may be lost to spare it (`saves`) |
 | 86 Harried Village | 11 villagers | b–f | win: 7 reach the docks; lost at 5 killed | — |
@@ -364,7 +379,7 @@ goals are checked; the notes say what around a goal is still missing.
 | 23 | Deep Ruins | Occupy all pressure plates simultaneously. | yes | — | — |
 | 24 | Echo Chamber | Open all doors (fog tiles). | yes | — | — |
 | 25 | Icecrag Ascent | All characters must escape through the exit (a). | yes | Any character becomes exhausted while not standing on an exit hex (a). | yes |
-| 26 | Ancient Cistern | Cleanse all water pumps. | **no** — cleansing a pump isn't modelled; plays as "kill all enemies" | — | — |
+| 26 | Ancient Cistern | Cleanse all water pumps. | yes | — | — |
 | 27 | Ruinous Rift | Protect Hail (a) for ten rounds. | yes (scenario rule) | Hail is killed. | yes |
 | 28 | Outer Ritual Chamber | Kill all enemies. | yes | — | — |
 | 29 | Sanctuary of Gloom | Kill all enemies. | yes | — | — |
