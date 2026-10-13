@@ -1870,6 +1870,7 @@ final class ScenarioSpecialRuleTests: XCTestCase {
         // Twice is all: the next damage is suffered without a question.
         (attack, asked) = await attackUntilAsked(sim, by: demon, on: crystal)
         XCTAssertNil(asked, "no third time")
+        if asked != nil { coord.resolvePendingSave(by: nil, losing: nil) }   // asked all the same: answer, so the failure shows
         await attack.value
         XCTAssertEqual(entity.health, health - 4)
 
