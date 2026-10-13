@@ -193,7 +193,7 @@
     "b1a": {"markers": {"a": [[1, 3]], "b": [[2, 3], [0, 3]], "d": [[3, 0], [0, 0]]}},
     "g2b": {"markers": {"c": [[0, 0], [7, 0]], "e": [[0, 1], [6, 1]]}}
   }},
-  "75": {"goal": {"text": "Dig up all graves and kill the Bloated Regent.", "destroy": [1, 2, 3], "kill": ["bloated-regent"]}, "notes": ["Each grave dug up (attack it) lets out a Living Corpse where it stood; the grave in the last room lets out the Bloated Regent."], "dropRules": [0, 1], "whenDestroyed": {"1": {"name": "living-corpse", "player2": "normal", "player3": "normal", "player4": "elite"}, "2": {"name": "living-corpse", "player2": "normal", "player3": "elite", "player4": "elite"}}, "tiles": {
+  "75": {"goal": {"text": "Dig up all graves and kill the Bloated Regent.", "destroy": [1, 2, 3], "kill": ["bloated-regent"]}, "notes": ["A character beside a grave digs it up with movement: tap the grave during a move to spend a point on it, 1 + the number of characters in all. Each grave dug up lets out a Living Corpse where it stood; the grave in the last room lets out the Bloated Regent."], "dropRules": [0, 1], "whenDestroyed": {"1": {"name": "living-corpse", "player2": "normal", "player3": "normal", "player4": "elite"}, "2": {"name": "living-corpse", "player2": "normal", "player3": "elite", "player4": "elite"}}, "dig": [1, 2, 3], "tiles": {
     "b1b": {"objectives": [{"objective": 3, "cells": [[2, 2], [1, 2]]}]},
     "g1a": {"objectives": [{"objective": 1, "cells": [[3, 2]]}, {"objective": 2, "cells": [[0, 0], [1, 0]]}]},
     "l1b": {"objectives": [{"objective": 2, "cells": [[0, 0]]}, {"objective": 1, "cells": [[3, 4]]}, {"objective": 2, "cells": [[1, 6]]}]},

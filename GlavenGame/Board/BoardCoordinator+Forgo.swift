@@ -74,4 +74,31 @@ extension BoardCoordinator {
         gameManager?.scenarioRulesManager.evaluateRules()
         checkVictoryDefeat()
     }
+
+    // MARK: - Digging with movement
+
+    /// Something the scenario has dug up with movement, not attacked (a grave).
+    func isDug(_ piece: PieceID) -> Bool {
+        guard let index = objectiveContainer(of: piece)?.objectiveIndex else { return false }
+        return scenarioData?.placements?.dig?.contains(index) == true
+    }
+
+    /// The graves beside `piece` that its movement could dig: a character's, on the board.
+    func diggable(beside piece: PieceID) -> [PieceID] {
+        guard case .character = piece, scenarioData?.placements?.dig?.isEmpty == false,
+              let here = boardState.piecePositions[piece] else { return [] }
+        return boardState.neighbors(of: here).compactMap { boardState.piece(at: $0) }
+            .filter { isDug($0) && (entity(for: $0)?.health ?? 0) > 0 }.sorted()
+    }
+
+    /// One point of the move being chosen is spent digging `grave`, beside the mover: a hit
+    /// point off it (dug up at none), and the move goes on with what is left, or ends.
+    func dig(_ grave: PieceID, by mover: PieceID, movement range: Int, mode: MoveMode) {
+        guard range > 0, diggable(beside: mover).contains(grave), let entity = entity(for: grave) else { return }
+        gameManager?.characterManager.onBeforeMutate?()
+        let left = entity.health - 1
+        log("\(name(mover)) spends 1 movement digging \(name(grave))" + (left > 0 ? " (\(left) to go)" : ": it is dug up"), category: .move)
+        sufferDamage(1, to: grave, killer: mover)
+        continueMove(of: mover, left: range - 1, mode: mode)
+    }
 }

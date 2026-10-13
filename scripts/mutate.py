@@ -141,6 +141,10 @@ S={
  "treasureLootedForAnyAction": ("GlavenGame/Board/BoardCoordinator+Forgo.swift", "              rule.bottom != true || bottomAction, mayLootGoalTreasure(characterID),", "              mayLootGoalTreasure(characterID),"),
  "secondTreasureOffered": ("GlavenGame/Board/BoardCoordinator+Forgo.swift", "              rule.bottom != true || bottomAction, mayLootGoalTreasure(characterID),", "              rule.bottom != true || bottomAction,"),
  "treasureGivenUpForNothing": ("GlavenGame/Board/BoardCoordinator+Forgo.swift", "        lootHexes(for: .character(characterID), coords: [hex], byLootAction: true)", "        lootHexes(for: .character(characterID), coords: [hex], byLootAction: false)"),
+ "gravesCanBeAttacked": ("GlavenGame/Board/BoardCoordinator+Rules.swift", "|| isInactive(pieceID) || isDug(pieceID) { return true }", "|| isInactive(pieceID) { return true }"),
+ "diggingIsFree": ("GlavenGame/Board/BoardCoordinator+Forgo.swift", "        continueMove(of: mover, left: range - 1, mode: mode)", "        continueMove(of: mover, left: range, mode: mode)"),
+ "diggingFromAfar": ("GlavenGame/Board/BoardCoordinator+Forgo.swift", "        return boardState.neighbors(of: here).compactMap { boardState.piece(at: $0) }\n            .filter { isDug($0)", "        _ = here\n        return boardState.piecePositions.keys\n            .filter { isDug($0)"),
+ "diggingDigsNothing": ("GlavenGame/Board/BoardCoordinator+Forgo.swift", "        sufferDamage(1, to: grave, killer: mover)", "        sufferDamage(0, to: grave, killer: mover)"),
 }
 M.update(S)
 def run(name, flt=None):

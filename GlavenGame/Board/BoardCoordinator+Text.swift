@@ -172,6 +172,10 @@ extension BoardCoordinator {
                boardState.doors.contains(where: { !$0.isOpen && hexes.contains($0.coord) }) {
                 detail += ". Moving onto or through a closed door opens it"
             }
+            // A grave beside the mover (Overgrown Graveyard): movement may be spent on it.
+            if !teleport, let grave = diggable(beside: mover).first {
+                detail += ". Tap \(name(grave)) to spend 1 movement digging it"
+            }
             return Instruction(title: "\(verb) \(range)", detail: detail, canSkip: ownTurn)
         case .selectingAttackTarget(_, let range, _):
             let value = activePlayerTurn?.currentAttackValue()

@@ -311,6 +311,52 @@ final class ScenarioSpecialRuleTests: XCTestCase {
         XCTAssertEqual(coord.scenarioResult ?? coord.pendingResult, .victory, "every character has looted one")
     }
 
+    // MARK: - #75 Overgrown Graveyard
+
+    /// "Any character can dig up a grave by spending 1+C movement while adjacent to it. The
+    /// movement need not be spent all at once." During a Move, a tap on a grave beside the mover
+    /// spends one point on it; what is left of the move goes on. At 1+C the grave is dug up and
+    /// its Living Corpse rises. Nothing attacks a grave.
+    func testAGraveIsDugWithMovementSpentBesideIt() async throws {
+        let sim = try simulator("75")
+        let coord = sim.coord
+        sim.gm.game.state = .next
+        for piece in pieces(sim) { coord.boardState.removePiece(piece) }
+        let brute = character(sim, 0)
+        let grave = try XCTUnwrap(objectives(sim).first)
+        let entity = try XCTUnwrap(coord.entity(for: grave))
+        XCTAssertEqual(entity.health, 1 + 2, "1 + C to dig")
+        let place = try XCTUnwrap(coord.boardState.piecePositions[grave])
+        let stand = try XCTUnwrap(coord.boardState.neighbors(of: place).sorted().first(where: coord.isEmptyHex))
+        self.stand(sim, 0, on: stand)
+        XCTAssertFalse(coord.targetableEnemies(of: brute, range: 1).contains(grave), "a grave isn't attacked")
+        XCTAssertEqual(coord.diggable(beside: brute), [grave])
+
+        func idle() async {
+            let deadline = Date().addingTimeInterval(3)
+            while Date() < deadline { if case .idle = coord.interactionMode { return }; try? await Task.sleep(nanoseconds: 1_000_000) }
+        }
+        // Move 2: both points go into the grave, and the move is over where he stands.
+        coord.beginMoveAction(pieceID: brute, moveRange: 2)
+        XCTAssertEqual(coord.instruction(for: coord.interactionMode)?.detail.contains("spend 1 movement digging"), true)
+        coord.handlePieceTap(grave)
+        XCTAssertEqual(entity.health, 2)
+        guard case .selectingMove(_, 1, _, _, _) = coord.interactionMode else { return XCTFail("one point of the move left: \(coord.interactionMode)") }
+        coord.handlePieceTap(grave)
+        XCTAssertEqual(entity.health, 1, "the digging is kept for another turn")
+        await idle()
+        XCTAssertEqual(coord.boardState.piecePositions[brute], stand)
+
+        // Another turn's Move 4: one point digs it up, the corpse rises, three are left to walk.
+        coord.beginMoveAction(pieceID: brute, moveRange: 4)
+        coord.handlePieceTap(grave)
+        XCTAssertFalse(coord.isOnBoard(grave), "dug up")
+        XCTAssertEqual(pieces(sim, named: "living-corpse").count, 1, "and what lay in it is out")
+        guard case .selectingMove(_, 3, let hexes, _, _) = coord.interactionMode else { return XCTFail("three points left: \(coord.interactionMode)") }
+        XCTAssertTrue(hexes.contains { $0.distance(to: stand) == 3 || $0.distance(to: stand) == 2 })
+        XCTAssertTrue(coord.diggable(beside: brute).isEmpty)
+    }
+
     // MARK: - Hit points that round up
 
     /// The Hungry Soul and the Bloated Regent have half an elite's hit points times the number

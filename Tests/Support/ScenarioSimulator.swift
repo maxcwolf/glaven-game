@@ -397,8 +397,11 @@ final class ScenarioSimulator {
     /// Answer a pending hex or figure selection. Returns false if nothing was pending.
     private func answerInteraction() -> Bool {
         switch coord.interactionMode {
-        case .selectingMove(let piece, _, let hexes, _, let mode):
-            if let hex = policy.moveDestination(for: piece, options: hexes, mode: mode, sim: self) {
+        case .selectingMove(let piece, _, let hexes, let teleport, let mode):
+            if !teleport, let grave = coord.diggable(beside: piece).first {
+                // A grave beside the mover: the movement goes into digging it.
+                coord.handlePieceTap(grave)
+            } else if let hex = policy.moveDestination(for: piece, options: hexes, mode: mode, sim: self) {
                 coord.handleHexTap(hex)
             } else {
                 coord.activePlayerTurn?.skipRemainingActions()
@@ -486,10 +489,16 @@ final class ScenarioSimulator {
 
     /// Enemies of `piece` on the board that can be targeted (invisible ones excluded), in a fixed order.
     func enemies(of piece: PieceID) -> [PieceID] {
-        coord.boardState.piecePositions.keys.sorted().filter { other in
+        let foes = coord.boardState.piecePositions.keys.sorted().filter { other in
             other != piece && coord.areEnemies(piece, other) && coord.entity(for: other) != nil
                 && !(coord.entity(for: other)?.entityConditions.contains { $0.name == .invisible && !$0.expired } ?? false)
         }
+        // With no one to fight, what is there to dig up is where the party goes (the graves of
+        // the Overgrown Graveyard, dug with movement beside them).
+        if foes.isEmpty, case .character = piece {
+            return coord.boardState.piecePositions.keys.sorted().filter { coord.isDug($0) && (coord.entity(for: $0)?.health ?? 0) > 0 }
+        }
+        return foes
     }
 
     func health(_ piece: PieceID) -> (current: Int, max: Int) {

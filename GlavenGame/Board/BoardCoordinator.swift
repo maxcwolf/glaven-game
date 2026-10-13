@@ -2086,6 +2086,17 @@ final class BoardCoordinator {
         return true
     }
 
+    /// A move goes on with the movement left after some of it was spent where the mover stands
+    /// (digging a grave): the hexes it still reaches are offered, or the move ends there.
+    func continueMove(of pieceID: PieceID, left: Int, mode: MoveMode) {
+        boardScene?.clearHighlights()
+        if !offerRestOfMove(pieceID: pieceID, left: left, mode: mode), let pos = boardState.piecePositions[pieceID] {
+            // No movement left: the move ends where the character stands.
+            continuedMove = (pieceID, mode)
+            executeMove(pieceID: pieceID, to: pos, range: 0, mode: mode)
+        }
+    }
+
     /// End a move that is going on past a door where the character stands (Skip, on the banner).
     func stopContinuedMove() {
         guard let move = continuedMove, case .selectingMove(let mover, let range, _, false, let mode) = interactionMode,
@@ -3160,6 +3171,9 @@ final class BoardCoordinator {
             // Move 0: the character taps themselves.
             if piece == mover, let pos = boardState.piecePositions[mover], validHexes.contains(pos) {
                 executeMove(pieceID: mover, to: pos, range: range, mode: mode)
+            } else if diggable(beside: mover).contains(piece) {
+                // A grave beside the mover: a point of the move is spent digging it.
+                dig(piece, by: mover, movement: range, mode: mode)
             }
         case .selectingAttackTarget(let attackerID, _, let validTargets):
             if validTargets.contains(piece), let forced = pendingForcedAttack {

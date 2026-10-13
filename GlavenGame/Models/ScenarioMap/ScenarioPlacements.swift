@@ -50,6 +50,10 @@ struct ScenarioPlacements: Codable, Equatable {
     /// What a character beside an objective may give up an action for (the captive Orchids,
     /// freed).
     var forgo: [Forgo]?
+    /// Objectives (1-based) dug up with movement: a character beside one spends movement points
+    /// on it, one hit point each, in as many moves as it takes; nothing attacks it (the graves
+    /// of the Overgrown Graveyard, 1+C movement each).
+    var dig: [Int]?
     /// Monster types that can't be damaged in any way; conditions and other effects of an
     /// attack still apply (the Living Spirits of Chained Isle).
     var undamageable: [String]?
