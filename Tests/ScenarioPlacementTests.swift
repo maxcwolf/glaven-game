@@ -232,6 +232,10 @@ final class ScenarioPlacementTests: XCTestCase {
                 for letter in perch.cycle { XCTAssertTrue(letters.contains(letter), "\(index): no hex lettered \(letter)") }
                 XCTAssertTrue(perch.cycle.contains(perch.start), "\(index): it starts on a perch of its round")
             }
+            if let sway = placements.sway {
+                XCTAssertTrue(monsters.contains(sway.boss), "\(index): no monster \(sway.boss)")
+                XCTAssertGreaterThan(sway.flee, 0, index)
+            }
             if let battery = placements.battery {
                 for name in [battery.gun, battery.crew] { XCTAssertTrue(monsters.contains(name), "\(index): no monster \(name)") }
                 XCTAssertTrue(letters.contains(battery.line), "\(index): no hex lettered \(battery.line)")

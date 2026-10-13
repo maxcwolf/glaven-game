@@ -70,6 +70,8 @@ struct ScenarioPlacements: Codable, Equatable {
     var throne: Throne?
     /// A boss that sits on all the hexes of an obstacle and flies from one to the next (#34's Elder Drake).
     var perch: Perch?
+    /// A boss whose specials drive the party off and draw it in to turn one of them (#79's Betrayer).
+    var sway: Sway?
     /// Monster types set up asleep (#71's Spitting Drakes): each does nothing until a character or
     /// a character's summon attacks it, damages it, gives it a negative condition or ends a
     /// movement beside it; then it acts as a monster just spawned does.
@@ -454,6 +456,20 @@ extension ScenarioPlacements {
         /// The monster type its special summons, and how many.
         var summons: String?
         var count: Int?
+    }
+
+    /// Special 1: "all characters and character summons are forced to perform 'Move 4' in
+    /// initiative order such that they end the movement as far away from the Betrayer as
+    /// possible." Special 2: "All characters and character summons are forced to move to the
+    /// closest hex adjacent to the Betrayer. The character who will play two cards latest in
+    /// the turn order is mind controlled for this round … On their turn, they will perform a
+    /// 'Move 2' and then the top action of their leading-initiative card." (#79)
+    struct Sway: Codable, Hashable {
+        let boss: String
+        /// The Move the party is made to take away from it, after its first special.
+        let flee: Int
+        /// The Move a mind-controlled character takes before the top of their leading card.
+        let controlled: Int
     }
 
     /// "It cannot enter or pass through door 2" (#67); "The Inox on tile E cannot enter or pass

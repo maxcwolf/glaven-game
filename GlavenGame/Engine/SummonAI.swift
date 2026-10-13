@@ -50,8 +50,12 @@ enum PlayerSideAI {
             .reduce(0) { $0 + max(1, $1.value) }
         let totalMove = immobilized ? 0 : max(0, move - chill)
 
-        let enemies = hostileMonsters(board: board, gameState: gameState, includeInvisible: false)
-        let blockers = Set(hostileMonsters(board: board, gameState: gameState, includeInvisible: true)
+        // Mind controlled, it "treats enemies as allies and allies as enemies" for the round.
+        let turned = board.turned.contains(pieceID)
+        let enemies = turned ? formerAllies(of: pieceID, board: board, gameState: gameState, includeInvisible: false)
+            : hostileMonsters(board: board, gameState: gameState, includeInvisible: false)
+        let blockers = Set((turned ? formerAllies(of: pieceID, board: board, gameState: gameState, includeInvisible: true)
+            : hostileMonsters(board: board, gameState: gameState, includeInvisible: true))
             .compactMap { board.piecePositions[$0] })
         let allies = Set(board.piecePositions.compactMap { id, coord in
             id != pieceID && !blockers.contains(coord) ? coord : nil
@@ -87,6 +91,24 @@ enum PlayerSideAI {
                                         enemies: enemies, board: board, gameState: gameState)
         }
         return Plan(focus: focus, path: path, targets: targets, candidates: candidates)
+    }
+
+    /// Whom a mind-controlled character or summon turns on: the characters and summons still on
+    /// the party's side.
+    static func formerAllies(of piece: PieceID, board: BoardState, gameState: GameState, includeInvisible: Bool) -> [PieceID] {
+        board.piecePositions.keys.sorted().filter { id in
+            guard id != piece, !board.turned.contains(id) else { return false }
+            switch id {
+            case .character(let characterID):
+                guard let character = gameState.characters.first(where: { $0.id == characterID }), !character.exhausted else { return false }
+                return includeInvisible || !MonsterAI.isActive(.invisible, on: character)
+            case .summon(let summonID):
+                guard let summon = gameState.characters.flatMap(\.summons).first(where: { $0.id == summonID }), !summon.dead else { return false }
+                return includeInvisible || !MonsterAI.isActive(.invisible, on: summon)
+            default:
+                return false
+            }
+        }
     }
 
     /// The players' side's enemies on the board: hostile (non-allied) monsters — invisible ones

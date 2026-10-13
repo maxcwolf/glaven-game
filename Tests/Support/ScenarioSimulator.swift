@@ -605,7 +605,9 @@ final class ScenarioSimulator {
         }
         if attacker == target { violation("\(attacker) attacks itself") }
         if coord.isInactive(attacker) { violation("\(attacker) attacks while its kind sits the round out") }
-        if !coord.areEnemies(attacker, target) { violation("\(attacker) attacks its ally \(target)") }
+        // (Mind controlled, a character or summon takes the party for its enemies this round.)
+        let turnedOnTheParty = coord.boardState.turned.contains(attacker) && coord.isPlayerSide(target) && !coord.boardState.turned.contains(target)
+        if !coord.areEnemies(attacker, target) && !turnedOnTheParty { violation("\(attacker) attacks its ally \(target)") }
         if coord.entity(for: target)?.entityConditions.contains(where: { $0.name == .invisible && !$0.expired }) == true {
             violation("\(attacker) attacks invisible \(target)")
         }

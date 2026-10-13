@@ -50,6 +50,9 @@ final class BoardState {
     /// Monsters still asleep (Windswept Highlands' Spitting Drakes).
     var asleep: Set<PieceID> = []
 
+    /// Characters and their summons who fight for the other side this round (mind control).
+    var turned: Set<PieceID> = []
+
     /// The hexes of a figure that stands on more than one (the Elder Drake on its perch); its
     /// position is one of them.
     var bodies: [PieceID: [HexCoord]] = [:]

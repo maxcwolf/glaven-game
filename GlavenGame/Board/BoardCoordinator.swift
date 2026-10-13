@@ -608,7 +608,7 @@ final class BoardCoordinator {
     /// The end of a character's turn, however it was spent (two cards, a long rest, stunned):
     /// what the turn's items and active bonuses do as it ends, loot in the character's hex, and
     /// everything that is judged by where figures stand as a turn ends (pressure plates, goals).
-    private func endCharacterTurn(_ characterID: String) {
+    func endCharacterTurn(_ characterID: String) {
         if let turn = activePlayerTurn, turn.characterID == characterID {
             applyEndOfTurnItems(turn)
             applyEndOfTurnBonuses(turn)
@@ -808,6 +808,8 @@ final class BoardCoordinator {
 
     private func finishTheRound() {
         guard let gameManager = gameManager else { return }
+        // Mind control lasts the round.
+        boardState.turned = []
 
         // End-of-round cleanup (end-of-round scenario rules, elements wane, decks reshuffle)
         let game = gameManager.game
@@ -1727,6 +1729,18 @@ final class BoardCoordinator {
                 return
             }
             beginLongRest(character)
+            return
+        }
+
+        // Mind controlled: the turn is the Betrayer's to play — unless Stun takes it altogether.
+        if !stunned, boardState.turned.contains(.character(character.id)) {
+            interactionMode = .idle
+            let generation = boardGeneration
+            Task { @MainActor in
+                await self.mindControlledTurn(of: character)
+                guard self.isCurrentBoard(generation), self.scenarioResult == nil else { return }
+                self.endCharacterTurn(character.id)
+            }
             return
         }
 

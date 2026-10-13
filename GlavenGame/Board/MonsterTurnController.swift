@@ -478,6 +478,9 @@ final class MonsterTurnController {
                     } else if text.contains("fly to next perch"), coordinator.scenarioPerch?.monster == monster.name {
                         // Scorched Summit: the Zephyrs are summoned, then the drake flies on.
                         await coordinator.flyToNextPerch(pieceID)
+                    } else if text.contains("mind control"), coordinator.scenarioSway?.boss == monster.name {
+                        // Lost Temple: the party is drawn to the Betrayer and one of them turned.
+                        await coordinator.drawInAndTurn(by: pieceID)
                     } else if text.contains("hatch eggs") {
                         hatches = true   // the Winged Horror, once it has attacked
                     } else if text.hasSuffix("eggs") {
@@ -501,6 +504,10 @@ final class MonsterTurnController {
                 await executeCard(specialActions, pieceID: pieceID, entity: entity, monster: monster,
                                   ability: specialCard, payments: payments, turn: &specialState)
                 state.hexesMoved = specialState.hexesMoved
+                // Lost Temple: its vipers summoned, the Betrayer drives the party from it.
+                if index == 0, coordinator.scenarioSway?.boss == monster.name, stillHere(), !isStale {
+                    await coordinator.driveOff(from: pieceID)
+                }
                 if hatches, !isStale { coordinator.hatchEggs() }
                 if lays, stillHere() { coordinator.layEggs(by: pieceID, count: characterCount) }
 

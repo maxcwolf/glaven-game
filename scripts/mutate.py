@@ -87,7 +87,7 @@ M={
 }
 # Scenario rules (the mechanisms of placements/gh.json): run against the scenario tests.
 SCENARIO_FILTER=("ScenarioSpecialRuleTests|ScenarioReauditTests|ScenarioEnforcedRuleTests|ScenarioLockTests|ScenarioGoalTests|"
-                 "ScenarioSpawnTests|DemonicRiftTests|BattlementsTests|MonsterTextTests|MonsterSummonTests|CarriedThingTests|DriftTests|RollingBoulderTests|RisingWaterTests|SleepingMonsterTests|BarredDoorTests|BatteryTests|CarrierTests|ThroneTests|PerchTests")
+                 "ScenarioSpawnTests|DemonicRiftTests|BattlementsTests|MonsterTextTests|MonsterSummonTests|CarriedThingTests|DriftTests|RollingBoulderTests|RisingWaterTests|SleepingMonsterTests|BarredDoorTests|BatteryTests|CarrierTests|ThroneTests|PerchTests|SwayTests")
 S={
  "factSavedIgnored": ("GlavenGame/Board/BoardCoordinator+Goals.swift", "            guard arrived >= saved else { return false }", "            guard arrived >= 0 * saved else { return false }"),
  "factLockIgnored": ("GlavenGame/Board/BoardCoordinator+Goals.swift", "        if let lock = fact.lock, !boardState.releasedLocks.contains(lock) { return false }", "        if let lock = fact.lock, lock < 0 { return false }"),
@@ -268,6 +268,20 @@ S={
  "newZephyrsActAtOnce": ("GlavenGame/Board/MonsterTurnController.swift", "zephyrs.aliveEntities.filter({ $0.summonState != .new })", "zephyrs.aliveEntities.filter({ _ in true })"),
  "zephyrsTakeTurnsOfTheirOwn": ("GlavenGame/Engine/MonsterAI.swift", "Set([written.battery?.gun, written.perch?.summons].compactMap { $0 })", "Set([written.battery?.gun].compactMap { $0 })"),
  "immovableMovedByAChosenPush": ("GlavenGame/Board/BoardCoordinator.swift", "        if entity(for: target)?.immunities.contains(isPush ? .push : .pull) == true { return [] }\n", ""),
+ "partyStandsItsGround": ("GlavenGame/Board/MonsterTurnController.swift", "                    await coordinator.driveOff(from: pieceID)\n", ""),
+ "drivenOffAnyDistance": ("GlavenGame/Board/BoardCoordinator+Sway.swift", "let move = max(0, sway.flee + scenarioMoveBonus(of: piece))", "let move = max(0, 99 + scenarioMoveBonus(of: piece))"),
+ "drivenOffAnywhere": ("GlavenGame/Board/BoardCoordinator+Sway.swift", "let options = places.filter { far($0) == farthest }.sorted()", "let options = places.filter { $0 != here }.sorted()"),
+ "immobilizedAreDrivenToo": ("GlavenGame/Board/BoardCoordinator+Sway.swift", "            if isConditionActive(.immobilize, on: piece) {", "            if false {"),
+ "noOneDrawnIn": ("GlavenGame/Board/BoardCoordinator+Sway.swift", "            _ = await moveAlong(piece, path: path, style: .forced)\n", ""),
+ "noOneTurned": ("GlavenGame/Board/BoardCoordinator+Sway.swift", "        boardState.turned.insert(.character(victim.id))\n", ""),
+ "earliestIsTurned": ("GlavenGame/Board/BoardCoordinator+Sway.swift", "}).max(by: { $0.effectiveInitiative < $1.effectiveInitiative }) else {", "}).min(by: { $0.effectiveInitiative < $1.effectiveInitiative }) else {"),
+ "summonsStayLoyal": ("GlavenGame/Board/BoardCoordinator+Sway.swift", "        for summon in victim.summons where !summon.dead { boardState.turned.insert(.summon(id: summon.id)) }\n", ""),
+ "restersAreTurned": ("GlavenGame/Board/BoardCoordinator+Sway.swift", "turnOrder.isEmpty && !character.exhausted && !character.longRest && selectedCardPairs[character.id] != nil", "turnOrder.isEmpty && !character.exhausted"),
+ "turnedSummonsSpareTheParty": ("GlavenGame/Engine/SummonAI.swift", "let turned = board.turned.contains(pieceID)", "let turned = false && board.turned.contains(pieceID)"),
+ "controlledTurnIsTheirOwn": ("GlavenGame/Board/BoardCoordinator.swift", "        if !stunned, boardState.turned.contains(.character(character.id)) {", "        if false, !stunned, boardState.turned.contains(.character(character.id)) {"),
+ "controlledCardsNotDiscarded": ("GlavenGame/Board/BoardCoordinator+Sway.swift", "                    if !character.discardedCards.contains(cardId) { character.discardedCards.append(cardId) }\n", ""),
+ "controlledCharacterRuns": ("GlavenGame/Board/BoardCoordinator+Sway.swift", "move: max(0, sway.controlled + scenarioMoveBonus(of: piece)),", "move: max(0, 9 + scenarioMoveBonus(of: piece)),"),
+ "mindControlLastsForEver": ("GlavenGame/Board/BoardCoordinator.swift", "        // Mind control lasts the round.\n        boardState.turned = []\n", ""),
  "noOneIsAskedWhoHolds": ("GlavenGame/Board/BoardCoordinator+Carried.swift", "            } else if autoResolvePrompts {\n                give(thing.name, to: first.id, how: \"holds\")", "            } else if true {\n                give(thing.name, to: first.id, how: \"holds\")"),
  "lyingThingNotPickedUp": ("GlavenGame/Board/BoardCoordinator+Carried.swift", "            if let lying = boardState.carriedLying[name] { return hexes.contains(lying) }", "            if boardState.carriedLying[name] != nil { return false }"),
  "anyoneLootsTheQuestTile": ("GlavenGame/Board/BoardCoordinator+Carried.swift", "        return party.first { $0.id == characterID }?.personalQuest == quest", "        return party.first { $0.id == characterID }?.personalQuest == quest || true"),
