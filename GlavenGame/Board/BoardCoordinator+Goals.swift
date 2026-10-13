@@ -256,6 +256,8 @@ extension BoardCoordinator {
         }
 
         var standing = party.filter { !$0.exhausted }.compactMap { boardState.piecePositions[.character($0.id)] }
+        // A thing that must be charged first (the Staff of Xorn).
+        if let reach = goal.reach, reach.charged == true, let thing = reach.holding, !isFullyCharged(thing) { return false }
         // Where a thing is to be brought, only its holder's place counts.
         if let thing = goal.reach?.holding {
             standing = holder(of: thing).flatMap { $0.exhausted ? nil : boardState.piecePositions[.character($0.id)] }.map { [$0] } ?? []

@@ -169,6 +169,13 @@ S={
  "relicDoesNoDamage": ("GlavenGame/Board/BoardCoordinator+Carried.swift", "                sufferDamage(offer.damage, to: offer.target, killer: .character(characterID))", "                sufferDamage(0 * offer.damage, to: offer.target, killer: .character(characterID))"),
  "relicKeptAfterDiscard": ("GlavenGame/Board/BoardCoordinator+Carried.swift", "                boardState.carriedBy[offer.thing.name] = nil\n                boardState.carriedGone[offer.thing.name] = \"spent\"", "                _ = offer"),
  "relicDiscardedUnasked": ("GlavenGame/Board/BoardCoordinator+Carried.swift", "                guard chosen != nil, boardState.carriedBy[offer.thing.name] == characterID, isOnBoard(offer.target) else { continue }", "                guard boardState.carriedBy[offer.thing.name] == characterID, isOnBoard(offer.target) else { continue }"),
+ "anyoneHarmsWhatOnlyTheHolderMay": ("GlavenGame/Board/BoardCoordinator+Carried.swift", "boardState.carriedBy[thing.name] == id { return nil }\n        return thing", "boardState.carriedBy[thing.name] == id { return nil }\n        return thing.name.isEmpty ? thing : nil"),
+ "holderHarmsNoMoreThanAnyone": ("GlavenGame/Board/BoardCoordinator+Carried.swift", "        if case .character(let id)? = source, boardState.carriedBy[thing.name] == id { return nil }\n", ""),
+ "carriedThingNeverCharged": ("GlavenGame/Board/BoardCoordinator+Carried.swift", "        boardState.carriedCharge[thing.name] = now\n", ""),
+ "chargePastFull": ("GlavenGame/Board/BoardCoordinator+Carried.swift", "        let now = full.map { min($0, before + damage) } ?? before + damage", "        let now = before + damage"),
+ "placedUncharged": ("GlavenGame/Board/BoardCoordinator+Goals.swift", "        if let reach = goal.reach, reach.charged == true, let thing = reach.holding, !isFullyCharged(thing) { return false }", "        if let reach = goal.reach, reach.charged == true, let thing = reach.holding, !isFullyCharged(thing), false { return false }"),
+ "chargedByAnyDamage": ("GlavenGame/Board/BoardCoordinator+Carried.swift", "let thing = carriedThings.first(where: { $0.soleHarmTo?.contains(name) == true && boardState.carriedBy[$0.name] == id })", "let thing = carriedThings.first(where: { $0.soleHarmTo != nil && boardState.carriedBy[$0.name] == id })"),
+ "questHolderPassedOver": ("GlavenGame/Board/BoardCoordinator+Carried.swift", "            if let theirs = party.first(where: { thing.onlyQuest != nil && $0.personalQuest == thing.onlyQuest })", "            if let theirs = party.first(where: { thing.onlyQuest == nil && $0.personalQuest == thing.onlyQuest })"),
 }
 M.update(S)
 def run(name, flt=None):

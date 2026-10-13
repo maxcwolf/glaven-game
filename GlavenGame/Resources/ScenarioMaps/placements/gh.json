@@ -135,6 +135,9 @@
   }},
   "53": {"notes": ["The doors are locked and open by themselves, two more rooms as each of rounds 2, 4, 6 and 8 begins."], "locks": [{"between": ["m1a", "j1a"], "afterRound": 1, "note": "Locked: it opens at the start of round 2."}, {"between": ["m1a", "j2a"], "afterRound": 3, "note": "Locked: it opens at the start of round 4."}, {"between": ["m1a", "d2a"], "afterRound": 5, "note": "Locked: it opens at the start of round 6."}, {"between": ["m1a", "d1a"], "afterRound": 7, "note": "Locked: it opens at the start of round 8."}], "tiles": {
   }},
+  "54": {"carried": [{"name": "Staff of Xorn", "start": "choose", "onlyQuest": "510", "item": "gh-114", "soleHarmTo": ["harrower-infester"], "charge": "2xCx(L+1)", "lostWithHolder": true}], "goal": {"text": "Place the fully charged Staff of Xorn on the altar.", "reach": {"marker": "a", "adjacent": true, "holding": "Staff of Xorn", "charged": true}}, "notes": ["The Seeker of Xorn holds the Staff of Xorn: the scenario is lost if they are exhausted.", "Only the staff's holder can damage the Harrower Infesters, and each point of that damage charges the staff. Fully charged, it is placed on the altar by its holder ending a turn beside it."], "tiles": {
+    "n1a": {"markers": {"a": [[0, 3]]}}
+  }},
   "56": {"drawsFromACharacter": [1], "tiles": {
     "m1b": {"objectives": [{"objective": 1, "cells": [[0, 1]]}, {"objective": 1, "cells": [[1, 0]]}, {"objective": 1, "cells": [[2, 0]]}]}
   }},

@@ -38,7 +38,11 @@ extension BoardCoordinator {
         for thing in carriedThings where thing.start == "choose" && boardState.carriedBy[thing.name] == nil
             && boardState.carriedLying[thing.name] == nil {
             guard let first = party.first else { continue }
-            if autoResolvePrompts {
+            // The one the scenario is about holds it: the character on its quest, or bearing its item.
+            if let theirs = party.first(where: { thing.onlyQuest != nil && $0.personalQuest == thing.onlyQuest })
+                ?? party.first(where: { character in thing.item.map { character.items.contains($0) } ?? false }) {
+                give(thing.name, to: theirs.id, how: "holds")
+            } else if autoResolvePrompts {
                 give(thing.name, to: first.id, how: "holds")
             } else {
                 let generation = boardGeneration
@@ -158,6 +162,44 @@ extension BoardCoordinator {
     /// Show what lies on the board.
     func syncCarriedSprites() {
         boardScene?.showCarried(boardState.carriedLying, offsetCol: offsetCol, offsetRow: offsetRow)
+    }
+
+    // MARK: What only its holder harms, and its charge
+
+    /// The carried thing without whose holder `target` takes no damage, when `source` isn't
+    /// that holder (the Staff of Xorn and the Harrower Infesters).
+    func carriedWard(of target: PieceID, against source: PieceID?) -> ScenarioPlacements.Carried? {
+        guard case .monster(let name, _) = target,
+              let thing = carriedThings.first(where: { $0.soleHarmTo?.contains(name) == true }) else { return nil }
+        if case .character(let id)? = source, boardState.carriedBy[thing.name] == id { return nil }
+        return thing
+    }
+
+    /// The holder of a thing has done `damage` to one of the monsters only they harm: it is
+    /// charged by as much, up to its full charge.
+    func chargeCarried(for target: PieceID, by source: PieceID?, damage: Int) {
+        guard damage > 0, case .monster(let name, _) = target, case .character(let id)? = source,
+              let thing = carriedThings.first(where: { $0.soleHarmTo?.contains(name) == true && boardState.carriedBy[$0.name] == id })
+        else { return }
+        let full = fullCharge(of: thing)
+        let before = boardState.carriedCharge[thing.name, default: 0]
+        let now = full.map { min($0, before + damage) } ?? before + damage
+        guard now != before else { return }
+        boardState.carriedCharge[thing.name] = now
+        log("The \(thing.name) is charged: \(now)\(full.map { " of \($0)" } ?? "")", category: .info)
+        if let full, now >= full { log("The \(thing.name) is fully charged", category: .round) }
+    }
+
+    /// The charge a thing holds when full, if it is one that is charged.
+    func fullCharge(of thing: ScenarioPlacements.Carried) -> Int? {
+        guard let formula = thing.charge, let game = gameManager?.game else { return nil }
+        return evaluateEntityValue(.string(formula), level: game.level, characterCount: game.characterCount)
+    }
+
+    /// Whether `name` is fully charged.
+    func isFullyCharged(_ name: String) -> Bool {
+        guard let thing = carriedThings.first(where: { $0.name == name }), let full = fullCharge(of: thing) else { return true }
+        return boardState.carriedCharge[name, default: 0] >= full
     }
 
     // MARK: Discarding it for what it does

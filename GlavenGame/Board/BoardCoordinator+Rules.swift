@@ -237,6 +237,13 @@ extension BoardCoordinator {
             boardScene?.pieceUnharmed(id: pieceID, missed: false)
             return false
         }
+        // What only the holder of a carried thing can harm (the Harrower Infesters of the Palace
+        // of Ice, the Staff of Xorn).
+        if let ward = carriedWard(of: pieceID, against: killer) {
+            log("\(name(pieceID)) can be harmed only by the holder of the \(ward.name)", category: .damage)
+            boardScene?.pieceUnharmed(id: pieceID, missed: false)
+            return false
+        }
         // Intervening Apparitions: the owner's summons suffer no damage.
         if case .summon = pieceID, let owner = summonOwner(of: pieceID),
            useFirstCharge(of: .character(owner.id), where: { $0 == .summonsNegateDamage }) != nil {
@@ -255,6 +262,7 @@ extension BoardCoordinator {
         let (healthBefore, maxHealth) = (entity.health, entity.maxHealth)
         gameManager.entityManager.changeHealth(entity, amount: -amount)
         boardScene?.pieceDamage(id: pieceID, amount: amount)
+        chargeCarried(for: pieceID, by: killer, damage: min(amount, healthBefore))
         doomEnemyDamaged(pieceID)   // Sap Life
         // Vengeful Barrage: the character attacks back once the damage is done.
         if case .character(let id) = pieceID, entity.health > 0, let character = gameManager.game.characters.first(where: { $0.id == id }),

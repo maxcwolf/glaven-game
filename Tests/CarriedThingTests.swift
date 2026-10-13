@@ -325,4 +325,77 @@ final class CarriedThingTests: XCTestCase {
         try await endTurnBesideTheAltar(1, on: beside[1], discard: true)
         XCTAssertEqual(colorless.health, 50 - 4 * 2)
     }
+
+    // MARK: - #54: the Staff of Xorn
+
+    /// Palace of Ice: the Seeker of Xorn (the character on that quest) holds the staff. "Only
+    /// the character equipped with the Staff of Xorn can inflict damage on the Harrower
+    /// Infesters. For each point of damage inflicted … place one damage token on the Staff."
+    /// It is full at 2×C×(L+1); then the Seeker ending a turn beside the altar wins — and "if
+    /// the Seeker of Xorn becomes exhausted, the scenario is lost."
+    func testTheStaffOfXornIsChargedByItsHolderAndPlacedOnTheAltar() async throws {
+        let sim = try simulator("54")
+        let coord = sim.coord
+        let brute = sim.gm.game.characters[0], seeker = sim.gm.game.characters[1]
+        // The Spellweaver is the Seeker: set before the scenario is set up again with her quest.
+        seeker.personalQuest = "510"
+        coord.boardState.carriedBy = [:]
+        coord.assignCarriedAtSetup()
+        XCTAssertEqual(coord.holder(of: "Staff of Xorn")?.id, seeker.id, "the one on the quest, whoever comes first")
+        revealAll(sim)
+        let staff = try XCTUnwrap(coord.carriedThings.first)
+        XCTAssertEqual(coord.fullCharge(of: staff), 2 * 2 * (sim.gm.game.level + 1))
+        let full = try XCTUnwrap(coord.fullCharge(of: staff))
+
+        let infesters = monsters(sim).filter { if case .monster("harrower-infester", _) = $0 { return true }; return false }
+        let infester = try XCTUnwrap(infesters.first)
+        let harrower = try XCTUnwrap(coord.entity(for: infester))
+        harrower.maxHealth = 40
+        harrower.health = 40
+        harrower.shield = nil
+        harrower.shieldPersistent = nil
+        // Anyone else's attack does nothing to it — nor does damage from nowhere — but its effects land.
+        await coord.performAttack(attacker: piece(sim, 0), target: infester, attack: AttackParameters(value: 5, conditions: [.muddle]),
+                                  drawCard: { AttackModifier(type: .plus0) })
+        XCTAssertEqual(harrower.health, 40, "the Brute hasn't the staff")
+        XCTAssertTrue(harrower.entityConditions.contains { $0.name == .muddle })
+        XCTAssertFalse(coord.sufferDamage(3, to: infester))
+        XCTAssertEqual(coord.boardState.carriedCharge["Staff of Xorn"] ?? 0, 0)
+        // The Seeker's does, and each point is a token on the staff.
+        await coord.performAttack(attacker: piece(sim, 1), target: infester, attack: AttackParameters(value: 3),
+                                  drawCard: { AttackModifier(type: .plus0) })
+        XCTAssertEqual(harrower.health, 37)
+        XCTAssertEqual(coord.boardState.carriedCharge["Staff of Xorn"], 3)
+        // Damage she does anyone else charges nothing.
+        let other = try XCTUnwrap(monsters(sim).first { !infesters.contains($0) })
+        coord.sufferDamage(1, to: other, killer: piece(sim, 1))
+        XCTAssertEqual(coord.boardState.carriedCharge["Staff of Xorn"], 3)
+
+        // Beside the altar with the staff not yet full: nothing. Full: the scenario is won.
+        let altar = try XCTUnwrap(coord.boardState.markerHexes["a"]?.first)
+        for monster in monsters(sim) where monster != infester { coord.removePieceFromBoard(monster) }
+        let beside = try XCTUnwrap(coord.boardState.neighbors(of: altar).sorted().first { coord.boardState.isPassable($0) && coord.boardState.piece(at: $0) == nil })
+        stand(sim, 1, on: beside)
+        coord.checkVictoryDefeat(turnEnded: true)
+        XCTAssertNil(coord.scenarioResult ?? coord.pendingResult, "the staff isn't charged")
+        coord.sufferDamage(full, to: infester, killer: piece(sim, 1))
+        XCTAssertEqual(coord.boardState.carriedCharge["Staff of Xorn"], full, "never more than full")
+        XCTAssertTrue(coord.isFullyCharged("Staff of Xorn"))
+        stand(sim, 1, on: try XCTUnwrap(coord.boardState.cells.keys.sorted().first { coord.isEmptyHex($0) && $0.distance(to: altar) > 2 }))
+        stand(sim, 0, on: beside)
+        coord.checkVictoryDefeat(turnEnded: true)
+        XCTAssertNil(coord.scenarioResult ?? coord.pendingResult, "the Brute beside the altar isn't the Seeker")
+        stand(sim, 0, on: try XCTUnwrap(coord.boardState.cells.keys.sorted().first { coord.isEmptyHex($0) && $0.distance(to: altar) > 2 }))
+        stand(sim, 1, on: beside)
+        coord.checkVictoryDefeat(turnEnded: true)
+        XCTAssertEqual(coord.scenarioResult ?? coord.pendingResult, .victory)
+        _ = brute
+
+        // The Seeker exhausted loses it.
+        let lost = try simulator("54")
+        XCTAssertEqual(lost.coord.holder(of: "Staff of Xorn")?.id, lost.gm.game.characters[0].id, "no one on the quest or bearing the item: the first")
+        lost.coord.sufferDamage(999, to: piece(lost, 0))
+        lost.coord.checkVictoryDefeat(turnEnded: true)
+        XCTAssertEqual(lost.coord.scenarioResult ?? lost.coord.pendingResult, .defeat)
+    }
 }

@@ -227,6 +227,8 @@ struct ScenarioPlacements: Codable, Equatable {
         /// The thing (`Carried.name`) whose holder it is that must get there; without one, any
         /// character.
         var holding: String?
+        /// The thing must be fully charged (the Staff of Xorn).
+        var charged: Bool?
         /// Whether ending a turn next to the lettered hex is enough (a well can't be stood on).
         var adjacent: Bool?
         /// Entering such a hex is enough: the character needn't end the turn (or even the
@@ -382,6 +384,14 @@ extension ScenarioPlacements {
         var against: String?
         /// The scenario is lost if its holder is exhausted (the artifacts of Burning Mountain).
         var lostWithHolder: Bool?
+        /// The item ("gh-114") whose bearer holds it from the start, where no one is on
+        /// `onlyQuest` (the Staff of Xorn is the Seeker's).
+        var item: String?
+        /// Monster types only its holder damages; each point of that damage charges it (the
+        /// Harrower Infesters and the Staff of Xorn).
+        var soleHarmTo: [String]?
+        /// The charge it holds when full ("2xCx(L+1)").
+        var charge: String?
         /// What its holder may discard it for as their turn ends at a lettered hex (the Crystal
         /// of Zenith beside the altar: the Colorless suffers 2×C damage).
         var spend: Spend?

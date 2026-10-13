@@ -109,6 +109,9 @@ final class BoardState {
     /// Carried things that are out of the scenario, and how: "lost" with an exhausted holder,
     /// "spent" at an altar.
     var carriedGone: [String: String] = [:]
+    /// The charge on a carried thing (the Staff of Xorn: a token for each point of damage its
+    /// holder does the Harrower Infesters).
+    var carriedCharge: [String: Int] = [:]
 
     // MARK: - Derived
 
