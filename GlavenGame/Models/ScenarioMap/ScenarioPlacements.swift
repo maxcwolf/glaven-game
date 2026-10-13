@@ -50,6 +50,8 @@ struct ScenarioPlacements: Codable, Equatable {
     /// What a character beside an objective may give up an action for (the captive Orchids,
     /// freed).
     var forgo: [Forgo]?
+    /// Things a character carries: the doll, the Lurker King's claw.
+    var carried: [Carried]?
     /// Escorts (objectives, 1-based) whose attacks draw "from whichever attack modifier deck the
     /// players choose": a character's, asked as the escort attacks (Redthorn; the captive
     /// Orchids of Bandit's Wood).
@@ -222,6 +224,9 @@ struct ScenarioPlacements: Codable, Equatable {
 
     struct Reach: Codable, Equatable {
         var marker: String
+        /// The thing (`Carried.name`) whose holder it is that must get there; without one, any
+        /// character.
+        var holding: String?
         /// Whether ending a turn next to the lettered hex is enough (a well can't be stood on).
         var adjacent: Bool?
         /// Entering such a hex is enough: the character needn't end the turn (or even the
@@ -346,6 +351,21 @@ extension ScenarioPlacements {
     struct Save: Codable, Hashable {
         let objective: Int
         var times: Int?
+    }
+
+    /// Something one character holds (a treasure tile on their mat): the doll of the Well of the
+    /// Unfortunate, the Lurker King's claw. It changes hands only when another character performs
+    /// a Loot action with its holder within the loot's range, and lies in the holder's hex, to be
+    /// looted like a treasure tile, if they are exhausted.
+    struct Carried: Codable, Hashable {
+        /// What it is called in the data and to the players: "doll", "claw".
+        let name: String
+        /// "choose": the players choose who holds it as the scenario starts.
+        var start: String?
+        /// The monster that drops it where it dies, instead of a money token.
+        var droppedBy: String?
+        /// Added to every Move of its holder (−2 for the claw).
+        var move: Int?
     }
 
     /// "A character adjacent to a captive Orchid may forgo an action (discarding one card

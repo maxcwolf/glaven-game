@@ -87,7 +87,7 @@ M={
 }
 # Scenario rules (the mechanisms of placements/gh.json): run against the scenario tests.
 SCENARIO_FILTER=("ScenarioSpecialRuleTests|ScenarioReauditTests|ScenarioEnforcedRuleTests|ScenarioLockTests|ScenarioGoalTests|"
-                 "ScenarioSpawnTests|DemonicRiftTests|BattlementsTests|MonsterTextTests|MonsterSummonTests")
+                 "ScenarioSpawnTests|DemonicRiftTests|BattlementsTests|MonsterTextTests|MonsterSummonTests|CarriedThingTests")
 S={
  "factSavedIgnored": ("GlavenGame/Board/BoardCoordinator+Goals.swift", "            guard arrived >= saved else { return false }", "            guard arrived >= 0 * saved else { return false }"),
  "factLockIgnored": ("GlavenGame/Board/BoardCoordinator+Goals.swift", "        if let lock = fact.lock, !boardState.releasedLocks.contains(lock) { return false }", "        if let lock = fact.lock, lock < 0 { return false }"),
@@ -148,6 +148,15 @@ S={
  "spiritsGoUnasked": ("GlavenGame/Board/BoardCoordinator+Effects.swift", "        if autoResolvePrompts {\n            if let nearest = reprieveCandidates(nearest: killer).first { banish(nearest) }", "        if true {\n            if let nearest = reprieveCandidates(nearest: killer).first { banish(nearest) }"),
  "reprieveNotAskedAfterTheBlow": ("GlavenGame/Board/BoardCoordinator+Combat.swift", "        await resolveDeathAttacks()\n        await resolveReprieves()\n", "        await resolveDeathAttacks()\n"),
  "alliesDrawFromTheirOwnDeck": ("GlavenGame/Board/EscortTurnController.swift", "                draw = { am.drawCharacterCard(for: character) }", "                _ = character"),
+ "anyoneWinsWhereTheThingIsBrought": ("GlavenGame/Board/BoardCoordinator+Goals.swift", "        if let thing = goal.reach?.holding {", "        if let thing = goal.reach?.holding, false {"),
+ "anyoneEnteringWinsForTheHolder": ("GlavenGame/Board/BoardCoordinator+Goals.swift", "              reach.holding.map({ boardState.carriedBy[$0] == id }) ?? true,", "              reach.holding.map({ _ in id == id }) ?? true,"),
+ "lootReachesAnyHolder": ("GlavenGame/Board/BoardCoordinator+Carried.swift", "            boardState.isWithin(range, from: pos, to: hex) && (hex == pos", "            true || (hex == pos"),
+ "exhaustedHolderKeepsTheThing": ("GlavenGame/Board/BoardCoordinator+Rules.swift", "        dropCarried(of: character)\n        character.exhausted = true", "        character.exhausted = true"),
+ "thingVanishesWithItsHolder": ("GlavenGame/Board/BoardCoordinator+Carried.swift", "                boardState.carriedLying[thing.name] = hex\n                log(\"\\(characterName(character.id)) drops", "                log(\"\\(characterName(character.id)) drops"),
+ "kingDropsMoneyToo": ("GlavenGame/Board/BoardCoordinator+Rules.swift", "                if !droppedAThing { dropLoot(for: pieceID) }", "                _ = droppedAThing\n                dropLoot(for: pieceID)"),
+ "carriedThingWeighsNothing": ("GlavenGame/Board/BoardCoordinator+Effects.swift", " + carriedMoveBonus(of: pieceID)", ""),
+ "noOneIsAskedWhoHolds": ("GlavenGame/Board/BoardCoordinator+Carried.swift", "            if autoResolvePrompts {\n                give(thing.name, to: first.id, how: \"holds\")", "            if true {\n                give(thing.name, to: first.id, how: \"holds\")"),
+ "lyingThingNotPickedUp": ("GlavenGame/Board/BoardCoordinator+Carried.swift", "            if let lying = boardState.carriedLying[name] { return hexes.contains(lying) }", "            if boardState.carriedLying[name] != nil { return false }"),
 }
 M.update(S)
 def run(name, flt=None):

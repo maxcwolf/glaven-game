@@ -142,5 +142,6 @@ extension BoardCoordinator {
     func showLocksAndPlates() {
         boardScene?.showLocks(on: boardState.lockedDoors.filter(boardState.isClosedDoor),
                               plates: pressurePlateHexes, offsetCol: offsetCol, offsetRow: offsetRow)
+        syncCarriedSprites()
     }
 }

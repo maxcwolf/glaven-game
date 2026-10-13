@@ -408,7 +408,9 @@ extension BoardCoordinator {
             // GH p.21: a money token drops where a monster dies unless it was summoned or spawned —
             // a boss set up with the room like any other. An allied monster drops none (FAQ).
             if entity.summonState == nil && !MonsterAI.isAllyFaction(monster) {
-                dropLoot(for: pieceID)
+                // What a monster drops instead of money (the Lurker King's claw) lies where it died.
+                let droppedAThing = boardState.piecePositions[pieceID].map { dropCarried(byDeathOf: name, at: $0) } ?? false
+                if !droppedAThing { dropLoot(for: pieceID) }
             }
             noteDoomedDeath(pieceID)
             removePieceFromBoard(pieceID)
@@ -519,6 +521,8 @@ extension BoardCoordinator {
     /// (`ScenarioStatsManager.wasExhausted`): it keeps its hand and discards as they were, and
     /// only its cards in play are put away.
     func leaveScenario(_ character: GameCharacter, exhausted: Bool = true) {
+        // What they carried lies where they stood.
+        dropCarried(of: character)
         character.exhausted = true
         if exhausted {
             boardScene?.play(.exhaust)

@@ -253,7 +253,11 @@ extension BoardCoordinator {
             else { return false }
         }
 
-        let standing = party.filter { !$0.exhausted }.compactMap { boardState.piecePositions[.character($0.id)] }
+        var standing = party.filter { !$0.exhausted }.compactMap { boardState.piecePositions[.character($0.id)] }
+        // Where a thing is to be brought, only its holder's place counts.
+        if let thing = goal.reach?.holding {
+            standing = holder(of: thing).flatMap { $0.exhausted ? nil : boardState.piecePositions[.character($0.id)] }.map { [$0] } ?? []
+        }
         // A hex it is enough to enter: someone has, or stands there as a turn ends.
         var endsTurnAtReach = goal.reach
         if let reach = goal.reach, reach.enter == true {
@@ -296,7 +300,8 @@ extension BoardCoordinator {
     /// A character has moved along `path`: where the goal is a hex it is enough to enter (beside
     /// the well of the Unfortunate), entering it on the way counts.
     func noteGoalHexesEntered(by pieceID: PieceID, along path: [HexCoord]) {
-        guard case .character = pieceID, let reach = scenarioGoal?.reach, reach.enter == true, !boardState.goalReached,
+        guard case .character(let id) = pieceID, let reach = scenarioGoal?.reach, reach.enter == true, !boardState.goalReached,
+              reach.holding.map({ boardState.carriedBy[$0] == id }) ?? true,
               path.dropFirst().contains(where: { isAt(reach, $0) }) else { return }
         boardState.goalReached = true
         log("\(name(pieceID)) reaches the goal", category: .round)

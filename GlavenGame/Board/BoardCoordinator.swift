@@ -1261,6 +1261,7 @@ final class BoardCoordinator {
         guard boardPhase == .setup else { return }
         boardScene?.clearHighlights()
         interactionMode = .idle
+        assignCarriedAtSetup()
         beginCardSelection()
     }
 
@@ -2719,10 +2720,12 @@ final class BoardCoordinator {
     @discardableResult
     func collectLootInRange(pieceID: PieceID, range: Int) -> Bool {
         guard let pos = boardState.piecePositions[pieceID] else { return false }
-        let coords = boardState.cells.keys.filter { coord in
+        var coords = boardState.cells.keys.filter { coord in
             guard hasLoot(at: coord), boardState.isWithin(range, from: pos, to: coord) else { return false }
             return coord == pos || LineOfSight.hasLOS(from: pos, to: coord, board: boardState)
         }
+        // What is carried changes hands by a Loot with its holder in range, or lies to be taken.
+        coords += carriedInLootRange(of: pieceID, range: range).filter { !coords.contains($0) }
         if coords.isEmpty {
             log("\(name(pieceID)) finds nothing to loot within range \(range)", category: .loot)
             return false
@@ -2745,6 +2748,10 @@ final class BoardCoordinator {
         guard case .character(let charID) = pieceID,
               let gameManager = gameManager,
               let character = gameManager.game.characters.first(where: { $0.id == charID }) else { return }
+
+        for name in carriedTaken(by: charID, lootingHexes: coords, byLootAction: byLootAction) {
+            give(name, to: charID, how: boardState.carriedBy[name] == nil ? "picks up" : "takes")
+        }
 
         var gold = 0
         var tokens = 0

@@ -102,6 +102,10 @@ final class BoardState {
 
     /// A character has entered the hex the goal asks someone to reach (`Reach.enter`).
     var goalReached = false
+    /// Who holds each carried thing (`ScenarioPlacements.carried`, by its name): a character's id.
+    var carriedBy: [String: String] = [:]
+    /// Where a carried thing lies that no one holds.
+    var carriedLying: [String: HexCoord] = [:]
 
     // MARK: - Derived
 
