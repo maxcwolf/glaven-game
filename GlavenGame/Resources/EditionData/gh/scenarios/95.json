@@ -34,6 +34,12 @@
     "flame-demon",
     "prime-lieutenant"
   ],
+  "objectives": [
+    {
+      "name": "Boulder",
+      "health": "3+L"
+    }
+  ],
   "rooms": [
     {
       "roomNumber": 1,
@@ -94,6 +100,13 @@
           "name": "deep-terror",
           "player4": "normal"
         }
+      ],
+      "objectives": [
+        1,
+        1,
+        1,
+        1,
+        1
       ]
     }
   ]

@@ -50,6 +50,10 @@ struct ScenarioPlacements: Codable, Equatable {
     /// What a character beside an objective may give up an action for (the captive Orchids,
     /// freed).
     var forgo: [Forgo]?
+    /// Things a character carries: the doll, the Lurker King's claw.
+    var carried: [Carried]?
+    /// Numbered tokens lying face down on lettered hexes, to be looted (Payment Due).
+    var tokens: Tokens?
     /// Escorts (objectives, 1-based) whose attacks draw "from whichever attack modifier deck the
     /// players choose": a character's, asked as the escort attacks (Redthorn; the captive
     /// Orchids of Bandit's Wood).
@@ -222,6 +226,11 @@ struct ScenarioPlacements: Codable, Equatable {
 
     struct Reach: Codable, Equatable {
         var marker: String
+        /// The thing (`Carried.name`) whose holder it is that must get there; without one, any
+        /// character.
+        var holding: String?
+        /// The thing must be fully charged (the Staff of Xorn).
+        var charged: Bool?
         /// Whether ending a turn next to the lettered hex is enough (a well can't be stood on).
         var adjacent: Bool?
         /// Entering such a hex is enough: the character needn't end the turn (or even the
@@ -246,6 +255,8 @@ struct ScenarioPlacements: Codable, Equatable {
         var looted: Int?
         /// This many elite monsters have been killed.
         var eliteKills: Int?
+        /// The numbered tokens (`tokens`) that must all have been looted: [1, 2, 3, 4].
+        var tokens: [Int]?
         /// It stays open only while a character stands on a plate with one of these letters,
         /// and shuts again when they step off.
         var held: [String]?
@@ -346,6 +357,65 @@ extension ScenarioPlacements {
     struct Save: Codable, Hashable {
         let objective: Int
         var times: Int?
+    }
+
+    /// "Shuffle numbered tokens 1–6 and place them face down on hexes (a). These tokens can be
+    /// looted normally": how many there are and the letter of their hexes. Which number lies
+    /// where isn't known until it is looted; a lock's `tokens` waits for some of them.
+    struct Tokens: Codable, Hashable {
+        let marker: String
+        let count: Int
+    }
+
+    /// Something one character holds (a treasure tile on their mat): the doll of the Well of the
+    /// Unfortunate, the Lurker King's claw. It changes hands only when another character performs
+    /// a Loot action with its holder within the loot's range, and lies in the holder's hex, to be
+    /// looted like a treasure tile, if they are exhausted.
+    struct Carried: Codable, Hashable {
+        /// What it is called in the data and to the players: "doll", "claw".
+        let name: String
+        /// "choose": the players choose who holds it as the scenario starts.
+        var start: String?
+        /// The monster that drops it where it dies, instead of a money token.
+        var droppedBy: String?
+        /// Added to every Move of its holder (−2 for the claw).
+        var move: Int?
+        /// The treasure tile whose looter holds it ("goal", "62"). Several things on tiles with
+        /// one id are given in the order they are written (the Crystal of Zenith, then the
+        /// Sphere of Midnight).
+        var treasure: String?
+        /// The personal quest (its card: "526", Vengeance) of the only character who may loot
+        /// that tile, where someone in the party is on it.
+        var onlyQuest: String?
+        /// Whether it changes hands by a Loot action with its holder in range and lies where an
+        /// exhausted holder stood (the doll, the claw). Otherwise it stays with whoever has it.
+        var passes: Bool?
+        /// Pierce added to its holder's attacks on the monster type `against` (the Occult
+        /// Dagger: 4, against the Harvester).
+        var pierce: Int?
+        var against: String?
+        /// The scenario is lost if its holder is exhausted (the artifacts of Burning Mountain).
+        var lostWithHolder: Bool?
+        /// The item ("gh-114") whose bearer holds it from the start, where no one is on
+        /// `onlyQuest` (the Staff of Xorn is the Seeker's).
+        var item: String?
+        /// Monster types only its holder damages; each point of that damage charges it (the
+        /// Harrower Infesters and the Staff of Xorn).
+        var soleHarmTo: [String]?
+        /// The charge it holds when full ("2xCx(L+1)").
+        var charge: String?
+        /// What its holder may discard it for as their turn ends at a lettered hex (the Crystal
+        /// of Zenith beside the altar: the Colorless suffers 2×C damage).
+        var spend: Spend?
+
+        struct Spend: Codable, Hashable {
+            /// The lettered hex ("a") the holder must end the turn on — or beside, with `adjacent`.
+            let marker: String
+            var adjacent: Bool?
+            /// The damage ("2xC") the monster type `to` suffers.
+            let damage: String
+            let to: String
+        }
     }
 
     /// "A character adjacent to a captive Orchid may forgo an action (discarding one card

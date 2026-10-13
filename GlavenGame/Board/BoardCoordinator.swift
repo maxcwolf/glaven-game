@@ -491,6 +491,9 @@ final class BoardCoordinator {
     /// Deaths for which the players may still remove a figure from the map (Chained Isle: a
     /// Living Spirit for each demon), with who killed; asked once the blow is settled.
     var pendingReprieves: [PieceID?] = []
+    /// Characters whose turn has just ended where something they carry may be discarded for
+    /// its effect (Temple of the Eclipse's relics beside the altar): asked before the next turn.
+    var pendingSpends: [String] = []
     /// The fallen monster making its "on death" attack right now, and the hex it fell on.
     var deathAttackInProgress: DeathAttack?
 
@@ -603,6 +606,7 @@ final class BoardCoordinator {
             activePlayerTurn = nil
         }
         lootAtEndOfTurn(characterID)
+        noteCarriedSpends(after: characterID)
 
         updateLocks(turnEnded: true)
         // Rules that wait for where figures stand as a turn ends (every plate held).
@@ -1027,6 +1031,7 @@ final class BoardCoordinator {
         pendingConditionRemoval = nil
         pendingDeathAttacks = []
         pendingReprieves = []
+        pendingSpends = []
         deathAttackInProgress = nil
         pendingExtraConditions = []
         pendingForcedAttack = nil
@@ -1261,6 +1266,7 @@ final class BoardCoordinator {
         guard boardPhase == .setup else { return }
         boardScene?.clearHighlights()
         interactionMode = .idle
+        assignCarriedAtSetup()
         beginCardSelection()
     }
 
@@ -1459,9 +1465,10 @@ final class BoardCoordinator {
     func advanceToNextFigure() {
         guard let gameManager = gameManager else { return }
         // Doomed enemies that died this turn (to a trap, a wound…) resolve their dooms first.
-        if !pendingDoomDeaths.isEmpty || !pendingDamageAttacks.isEmpty || !pendingReprieves.isEmpty {
+        if !pendingDoomDeaths.isEmpty || !pendingDamageAttacks.isEmpty || !pendingReprieves.isEmpty || !pendingSpends.isEmpty {
             let generation = boardGeneration
             Task { @MainActor in
+                await self.resolveCarriedSpends()
                 await self.resolveReprieves()
                 await self.resolveDoomDeaths()
                 guard self.isCurrentBoard(generation), self.scenarioResult == nil else { return }
@@ -2719,10 +2726,12 @@ final class BoardCoordinator {
     @discardableResult
     func collectLootInRange(pieceID: PieceID, range: Int) -> Bool {
         guard let pos = boardState.piecePositions[pieceID] else { return false }
-        let coords = boardState.cells.keys.filter { coord in
+        var coords = boardState.cells.keys.filter { coord in
             guard hasLoot(at: coord), boardState.isWithin(range, from: pos, to: coord) else { return false }
             return coord == pos || LineOfSight.hasLOS(from: pos, to: coord, board: boardState)
         }
+        // What is carried changes hands by a Loot with its holder in range, or lies to be taken.
+        coords += carriedInLootRange(of: pieceID, range: range).filter { !coords.contains($0) }
         if coords.isEmpty {
             log("\(name(pieceID)) finds nothing to loot within range \(range)", category: .loot)
             return false
@@ -2734,6 +2743,7 @@ final class BoardCoordinator {
     /// Whether a hex holds a money token or an unlooted treasure tile.
     func hasLoot(at coord: HexCoord) -> Bool {
         (boardState.lootTokens[coord] ?? 0) > 0 || boardState.cells[coord]?.overlay == .treasure
+            || boardState.tokenHexes[coord] != nil
     }
 
     /// Loot every money token and treasure tile in `coords` for a character. Money tokens are
@@ -2746,9 +2756,15 @@ final class BoardCoordinator {
               let gameManager = gameManager,
               let character = gameManager.game.characters.first(where: { $0.id == charID }) else { return }
 
+        for name in carriedTaken(by: charID, lootingHexes: coords, byLootAction: byLootAction) {
+            give(name, to: charID, how: boardState.carriedBy[name] == nil ? "picks up" : "takes")
+        }
+
         var gold = 0
         var tokens = 0
         for coord in coords {
+            // A numbered token lying face down (Payment Due)
+            lootNumberedToken(at: coord, by: charID)
             // Money tokens dropped by monsters
             let dropped = boardState.takeLoot(at: coord)
             if dropped > 0 {
@@ -2761,6 +2777,8 @@ final class BoardCoordinator {
             if cell.overlaySubType == "coin" || cell.treasureID == nil {
                 tokens += max(1, cell.treasureAmount ?? 1)
             } else if let id = cell.treasureID {
+                // A tile only one character may loot (the Occult Dagger's) is left by the others.
+                guard mayLootTreasure(id, characterID: charID) else { continue }
                 // Where every character must loot one goal treasure tile, each loots only one.
                 if id == Self.goalTreasureID {
                     guard byLootAction || !goalTreasureNeedsLootAction else { continue }
@@ -2770,6 +2788,7 @@ final class BoardCoordinator {
                 }
                 let reward = gameManager.scenarioManager.lootTreasure(id, by: character)
                 log("\(characterName(charID)) loots treasure \(id)\(reward.map { ": \($0)" } ?? "")", category: .loot)
+                noteTreasureLooted(id, by: charID)
             }
             boardState.removeTreasure(at: coord)
             boardScene?.removeOverlaySprite(at: coord, offsetCol: offsetCol, offsetRow: offsetRow)

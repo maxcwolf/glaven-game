@@ -26,8 +26,9 @@ question, how a piece of work is done from start to finish, and what to do next.
 
 ### Work in progress (2026-10-13)
 
-`main` has everything up to merge `aec9e30`. Two branches carry on from it, neither merged
-(merging is the owner's call):
+`main` has everything up to merge `b253c4c` (the scenario rules that ask the player). The work
+since — every thing that is carried — is on `feat/cards-4`, not merged (merging is the owner's
+call). The branches:
 
 - **`feat/scenario-rules-3`** (2026-10-12): tests for the three rules no test caught; mutations
   for the audit fixes that were only read and for the scenario mechanisms; the golden
@@ -40,18 +41,17 @@ question, how a piece of work is done from start to finish, and what to do next.
   second session had the main checkout. It adds: Singing Arrow's Curse over its area; the
   play ledger no longer miscounting #9's Scouts (N12); the audit's new screens rendered and
   looked at (N16) with the cards in play made finger-sized; a door two hexes wide opening as
-  one (N21). `scripts/mutate.py` has 124 mutations, each noticed by a test. Group 2 is begun: a card lost
+  one (N21). `scripts/mutate.py` has 161 mutations, each noticed by a test. Group 2 is begun: a card lost
   from any hand spares the crystal (#84) or a captive (#44) — `saves`, `SaveChoiceSheet` — and a
   character beside a captive gives up an action to free it (`forgo`), with #44's loss switched on.
 
 To pick it up, work on `feat/cards-4` (or merge it into `feat/scenario-rules-3` first — it is a
 fast-forward):
 
-1. **Verified** at the head of `feat/cards-4` on 2026-10-13: `swift test` 1,561 tests, none
+1. **Verified** at the head of `feat/cards-4` on 2026-10-13: `swift test` 1,575 tests, none
    failing; the four-seed all-scenarios playthrough without a violation; the veteran playthrough
-   passing (#26 and #75 are now won by cleansing and digging; #44 is lost by both parties, who
-   exhaust themselves sparing captives instead of going to free them).
-   `main` has the branch up to `2f1631e` (merge `fa8ca13`); what came after is on the branch.
+   passing. `main` has the branch up to `4d3c58f` (merge `b253c4c`); the things that are carried
+   came after and are on the branch.
 2. **Next**, from `TODO.md` → "Open, in order": group 1 is done but for a glance at two things
    on the iPad (the Solo switch as a switch; the scrolling card lists in the damage and rest
    sheets) and the drawings that need a game in progress (#46's eggs, #48's Dark Rider, the
@@ -60,8 +60,11 @@ fast-forward):
    The same rule cleanses #26's pumps (`does`, `bottom`; goal `freed`) and loots #52's treasure
    (`treasure`); #75's graves are dug with movement (`dig`). The players choose which
    Living Spirit goes (#70) and whose deck Redthorn and the Orchids draw from (#44, #56): the
-   first group of scenario rules, "a choice the player couldn't make", is done. Next: the things that
-   are carried (#69, #88, #82, #81, #58, #54, #95). Under Cards the large open item is the Beast
+   first group of scenario rules, "a choice the player couldn't make", is done. The second,
+   things that are carried, is done too (`carried`, `BoardCoordinator+Carried`: #69, #88, #58,
+   #82, #81, #54; `tokens` for #95's numbered tokens, its locked door, its demons and — because
+   three tokens lie behind them — its boulders with hit points). Next: a board
+   that moves as the round ends (#71, #88, #73, #74). Under Cards the large open item is the Beast
    Tyrant, who has no bear (N20).
 3. Merging to `main` (`git merge --no-ff -m "merge: …"`, then push) is done when the owner asks.
 
@@ -162,7 +165,7 @@ The task list is `TODO.md` → "Missing Gloomhaven Rules" → "Open, in order"; 
 ordered like this:
 
 1. **Tests and checks, before building on top.** Done but for a glance on the iPad at what the
-   off-screen renderer can't draw. (`scripts/mutate.py` has 124 mutations, 59 of them scenario
+   off-screen renderer can't draw. (`scripts/mutate.py` has 161 mutations, 96 of them scenario
    rules — `--scenario` — and each is noticed by a test: add one with every new mechanism.)
 2. **Scenario rules** — 94 printed rules in 28 scenarios, in this order because each group is one
    mechanism used several times:
@@ -172,14 +175,14 @@ ordered like this:
      goals and losses the game can't check today (#26, #44). The damage sheet
      (`DamageChoiceSheet`, `promptDamageMitigation`) is the model; monsters hit captives often,
      so the prompt must be quick to answer;
-   - *things that are carried*: #69's doll, #88's claw, #82's artifacts, #81's relics, #58's
-     dagger, #54's staff, #95's tokens;
+   - *things that are carried* (done 2026-10-13): #69's doll, #88's claw, #82's artifacts, #81's
+     relics, #58's dagger, #54's staff, #95's tokens;
    - *a board that moves as the round ends*: #71's wind, #88's current, #73's boulders, #74's
      rising water;
    - *monsters that don't act as their cards say* (`inactive` and `march` are the mechanisms to
      extend): #71's sleeping drakes, #49's cannon and archer, #78's carriers and their victim;
    - *bosses still played from their stat cards*: #21, #34, #79;
-   - *walls and obstacles with hit points*: #76, #95, #52;
+   - *walls and obstacles with hit points*: #76, #52 (#95's boulders are done);
    - a few small ones, and #55, a random dungeon with no map, which is a project of its own.
 3. **Engine rules** still open, each with an id in the engine audit: element choices, placing
    an area by hand, the rest of negating damage, standees that run out.

@@ -35,7 +35,7 @@ M={
  "conditionEndsWithTheTurnItCame": ("GlavenGame/Managers/EntityManager.swift", "            if types.contains(.afterTurn) && condition.state == .normal {", "            if types.contains(.afterTurn) && (condition.state == .normal || condition.state == .new) {"),
  "stunKeepsCards": ("GlavenGame/Board/BoardCoordinator.swift", "                    character.handCards.removeAll { $0 == cardId }\n                    character.discardedCards.append(cardId)", "                    _ = cardId"),
  "noEndOfTurnLoot": ("GlavenGame/Board/BoardCoordinator.swift", "        if let pos = boardState.piecePositions[pieceID] {\n            lootHexes(for: pieceID, coords: [pos])\n        }", "        _ = pieceID"),
- "lootIgnoresSight": ("GlavenGame/Board/BoardCoordinator.swift", "            return coord == pos || LineOfSight.hasLOS(from: pos, to: coord, board: boardState)\n        }\n        if coords.isEmpty {", "            return true\n        }\n        if coords.isEmpty {"),
+ "lootIgnoresSight": ("GlavenGame/Board/BoardCoordinator.swift", "            return coord == pos || LineOfSight.hasLOS(from: pos, to: coord, board: boardState)\n        }\n        // What is carried", "            return true\n        }\n        // What is carried"),
  "revealedDontDraw": ("GlavenGame/Board/BoardCoordinator.swift", "            if isMidRound, !monster.abilityDrawn, !inactive.contains(monster.name) {", "            if false {"),
  "revealedDontActThisRound": ("GlavenGame/Board/BoardCoordinator.swift", "        if isMidRound {\n            for piece in placed where !inactive.contains(piece.name) {", "        if false {\n            for piece in placed where !inactive.contains(piece.name) {"),
  "revealedActLast": ("GlavenGame/Board/BoardCoordinator.swift", "            let insertAt = turnOrder.indices.first { $0 > currentTurnIndex && turnOrder[$0].initiative > initiative }\n                ?? turnOrder.count\n            turnOrder.insert(entry, at: insertAt)", "            let insertAt = turnOrder.count\n            turnOrder.insert(entry, at: insertAt)"),
@@ -87,7 +87,7 @@ M={
 }
 # Scenario rules (the mechanisms of placements/gh.json): run against the scenario tests.
 SCENARIO_FILTER=("ScenarioSpecialRuleTests|ScenarioReauditTests|ScenarioEnforcedRuleTests|ScenarioLockTests|ScenarioGoalTests|"
-                 "ScenarioSpawnTests|DemonicRiftTests|BattlementsTests|MonsterTextTests|MonsterSummonTests")
+                 "ScenarioSpawnTests|DemonicRiftTests|BattlementsTests|MonsterTextTests|MonsterSummonTests|CarriedThingTests")
 S={
  "factSavedIgnored": ("GlavenGame/Board/BoardCoordinator+Goals.swift", "            guard arrived >= saved else { return false }", "            guard arrived >= 0 * saved else { return false }"),
  "factLockIgnored": ("GlavenGame/Board/BoardCoordinator+Goals.swift", "        if let lock = fact.lock, !boardState.releasedLocks.contains(lock) { return false }", "        if let lock = fact.lock, lock < 0 { return false }"),
@@ -148,6 +148,43 @@ S={
  "spiritsGoUnasked": ("GlavenGame/Board/BoardCoordinator+Effects.swift", "        if autoResolvePrompts {\n            if let nearest = reprieveCandidates(nearest: killer).first { banish(nearest) }", "        if true {\n            if let nearest = reprieveCandidates(nearest: killer).first { banish(nearest) }"),
  "reprieveNotAskedAfterTheBlow": ("GlavenGame/Board/BoardCoordinator+Combat.swift", "        await resolveDeathAttacks()\n        await resolveReprieves()\n", "        await resolveDeathAttacks()\n"),
  "alliesDrawFromTheirOwnDeck": ("GlavenGame/Board/EscortTurnController.swift", "                draw = { am.drawCharacterCard(for: character) }", "                _ = character"),
+ "anyoneWinsWhereTheThingIsBrought": ("GlavenGame/Board/BoardCoordinator+Goals.swift", "        if let thing = goal.reach?.holding {", "        if let thing = goal.reach?.holding, false {"),
+ "anyoneEnteringWinsForTheHolder": ("GlavenGame/Board/BoardCoordinator+Goals.swift", "              reach.holding.map({ boardState.carriedBy[$0] == id }) ?? true,", "              reach.holding.map({ _ in id == id }) ?? true,"),
+ "lootReachesAnyHolder": ("GlavenGame/Board/BoardCoordinator+Carried.swift", "            boardState.isWithin(range, from: pos, to: hex) && (hex == pos", "            true || (hex == pos"),
+ "exhaustedHolderKeepsTheThing": ("GlavenGame/Board/BoardCoordinator+Rules.swift", "        dropCarried(of: character)\n        character.exhausted = true", "        character.exhausted = true"),
+ "thingVanishesWithItsHolder": ("GlavenGame/Board/BoardCoordinator+Carried.swift", "                boardState.carriedLying[thing.name] = hex\n                log(\"\\(characterName(character.id)) drops", "                log(\"\\(characterName(character.id)) drops"),
+ "kingDropsMoneyToo": ("GlavenGame/Board/BoardCoordinator+Rules.swift", "                if !droppedAThing { dropLoot(for: pieceID) }", "                _ = droppedAThing\n                dropLoot(for: pieceID)"),
+ "carriedThingWeighsNothing": ("GlavenGame/Board/BoardCoordinator+Effects.swift", " + carriedMoveBonus(of: pieceID)", ""),
+ "tokensNeverLaid": ("GlavenGame/Board/BoardCoordinator+Locks.swift", "        layNumberedTokens()\n        let locks = scenarioLocks", "        let locks = scenarioLocks"),
+ "tokensLieInOrder": ("GlavenGame/Board/BoardCoordinator+Carried.swift", "Array(1...max(1, tokens.count)).shuffled(using: &GameRandom.shared)", "Array(1...max(1, tokens.count))"),
+ "tokenLaidAgainWhereOneWasLooted": ("GlavenGame/Board/BoardCoordinator+Carried.swift", "\n            && !boardState.tokenHexesLooted.contains(hex) {", " {"),
+ "tokenStaysWhereItLay": ("GlavenGame/Board/BoardCoordinator.swift", "            lootNumberedToken(at: coord, by: charID)\n", ""),
+ "lootActionMissesTokens": ("GlavenGame/Board/BoardCoordinator.swift", "\n            || boardState.tokenHexes[coord] != nil", ""),
+ "anyFourTokensOpenTheDoor": ("GlavenGame/Board/BoardCoordinator+Locks.swift", "return numbers.allSatisfy(boardState.tokensLooted.contains)", "return boardState.tokensLooted.count >= numbers.count"),
+ "demonsComeForEver": ("GlavenGame/Board/BoardCoordinator+Goals.swift", "if let lock = fact.locked, boardState.releasedLocks.contains(lock) { return false }", "if let lock = fact.locked, false, boardState.releasedLocks.contains(lock) { return false }"),
+ "tokensForgottenOnUndo": ("GlavenGame/Engine/BoardSnapshot.swift", "        board.tokensLooted = tokensLooted ?? []", "        _ = tokensLooted"),
+ "destroyedObstacleStaysInTheWay": ("GlavenGame/Board/BoardCoordinator+Rules.swift", "            clearObjectiveSite(number)\n", ""),
+ "noOneIsAskedWhoHolds": ("GlavenGame/Board/BoardCoordinator+Carried.swift", "            } else if autoResolvePrompts {\n                give(thing.name, to: first.id, how: \"holds\")", "            } else if true {\n                give(thing.name, to: first.id, how: \"holds\")"),
+ "lyingThingNotPickedUp": ("GlavenGame/Board/BoardCoordinator+Carried.swift", "            if let lying = boardState.carriedLying[name] { return hexes.contains(lying) }", "            if boardState.carriedLying[name] != nil { return false }"),
+ "anyoneLootsTheQuestTile": ("GlavenGame/Board/BoardCoordinator+Carried.swift", "        return party.first { $0.id == characterID }?.personalQuest == quest", "        return party.first { $0.id == characterID }?.personalQuest == quest || true"),
+ "treasureGivesNothing": ("GlavenGame/Board/BoardCoordinator+Carried.swift", "        give(thing.name, to: characterID, how: \"now holds\")", "        _ = thing"),
+ "carriedPierceIsNothing": ("GlavenGame/Board/BoardCoordinator+Carried.swift", "        return carried(by: id).filter { $0.against == name }.reduce(0) { $0 + ($1.pierce ?? 0) }", "        return carried(by: id).filter { $0.against == name }.reduce(0) { $0 + 0 * ($1.pierce ?? 0) }"),
+ "carriedPierceAgainstAnyone": ("GlavenGame/Board/BoardCoordinator+Carried.swift", "        return carried(by: id).filter { $0.against == name }.reduce(0) { $0 + ($1.pierce ?? 0) }", "        return carried(by: id).filter { _ in name == name }.reduce(0) { $0 + ($1.pierce ?? 0) }"),
+ "holdersFallLosesNothing": ("GlavenGame/Board/BoardCoordinator+Carried.swift", "        carriedThings.first { $0.lostWithHolder == true && boardState.carriedGone[$0.name] == \"lost\" }", "        carriedThings.first { _ in false }"),
+ "stayingThingsChangeHands": ("GlavenGame/Board/BoardCoordinator+Carried.swift", "            guard byLootAction, carriedThings.first(where: { $0.name == name })?.passes == true,", "            guard byLootAction,"),
+ "stayingThingsAreLeftBehind": ("GlavenGame/Board/BoardCoordinator+Carried.swift", "            if thing.passes == true, let hex = boardState.piecePositions[.character(character.id)] {", "            if let hex = boardState.piecePositions[.character(character.id)] {"),
+ "relicsOutOfOrder": ("GlavenGame/Board/BoardCoordinator+Carried.swift", "        guard let thing = carriedThings.first(where: { $0.treasure == id && isUnclaimed($0) }) else { return }", "        guard let thing = carriedThings.last(where: { $0.treasure == id && isUnclaimed($0) }) else { return }"),
+ "relicDiscardedAnywhere": ("GlavenGame/Board/BoardCoordinator+Carried.swift", "            guard lettered.contains(here) || (spend.adjacent == true && lettered.contains { boardState.areAdjacent($0, here) }),", "            guard true || lettered.contains(here) || (spend.adjacent == true && lettered.contains { boardState.areAdjacent($0, here) }),"),
+ "relicDoesNoDamage": ("GlavenGame/Board/BoardCoordinator+Carried.swift", "                sufferDamage(offer.damage, to: offer.target, killer: .character(characterID))", "                sufferDamage(0 * offer.damage, to: offer.target, killer: .character(characterID))"),
+ "relicKeptAfterDiscard": ("GlavenGame/Board/BoardCoordinator+Carried.swift", "                boardState.carriedBy[offer.thing.name] = nil\n                boardState.carriedGone[offer.thing.name] = \"spent\"", "                _ = offer"),
+ "relicDiscardedUnasked": ("GlavenGame/Board/BoardCoordinator+Carried.swift", "                guard chosen != nil, boardState.carriedBy[offer.thing.name] == characterID, isOnBoard(offer.target) else { continue }", "                guard boardState.carriedBy[offer.thing.name] == characterID, isOnBoard(offer.target) else { continue }"),
+ "anyoneHarmsWhatOnlyTheHolderMay": ("GlavenGame/Board/BoardCoordinator+Carried.swift", "boardState.carriedBy[thing.name] == id { return nil }\n        return thing", "boardState.carriedBy[thing.name] == id { return nil }\n        return thing.name.isEmpty ? thing : nil"),
+ "holderHarmsNoMoreThanAnyone": ("GlavenGame/Board/BoardCoordinator+Carried.swift", "        if case .character(let id)? = source, boardState.carriedBy[thing.name] == id { return nil }\n", ""),
+ "carriedThingNeverCharged": ("GlavenGame/Board/BoardCoordinator+Carried.swift", "        boardState.carriedCharge[thing.name] = now\n", ""),
+ "chargePastFull": ("GlavenGame/Board/BoardCoordinator+Carried.swift", "        let now = full.map { min($0, before + damage) } ?? before + damage", "        let now = before + damage"),
+ "placedUncharged": ("GlavenGame/Board/BoardCoordinator+Goals.swift", "        if let reach = goal.reach, reach.charged == true, let thing = reach.holding, !isFullyCharged(thing) { return false }", "        if let reach = goal.reach, reach.charged == true, let thing = reach.holding, !isFullyCharged(thing), false { return false }"),
+ "chargedByAnyDamage": ("GlavenGame/Board/BoardCoordinator+Carried.swift", "let thing = carriedThings.first(where: { $0.soleHarmTo?.contains(name) == true && boardState.carriedBy[$0.name] == id })", "let thing = carriedThings.first(where: { $0.soleHarmTo != nil && boardState.carriedBy[$0.name] == id })"),
+ "questHolderPassedOver": ("GlavenGame/Board/BoardCoordinator+Carried.swift", "            if let theirs = party.first(where: { thing.onlyQuest != nil && $0.personalQuest == thing.onlyQuest })", "            if let theirs = party.first(where: { thing.onlyQuest == nil && $0.personalQuest == thing.onlyQuest })"),
 }
 M.update(S)
 def run(name, flt=None):

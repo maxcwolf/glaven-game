@@ -12,8 +12,8 @@ means the data and code that enforce the rule were found, and usually a test tha
 that the scenario was played through. Keep it current: when a rule is built, rewrite its row in
 the same commit (see [../rules-work.md](../rules-work.md)).
 
-**447 rules: 365 done, 16 partial, 66 missing.**
-73 of 95 scenarios have every printed rule done. The other 22: #55 (6 missing, 1 partial), #88 (6 missing, 1 partial), #34 (4 missing, 2 partial), #76 (4 missing, 2 partial), #71 (5 missing, 0 partial), #73 (5 missing, 0 partial), #78 (5 missing, 0 partial), #95 (5 missing, 0 partial), #21 (2 missing, 2 partial), #49 (4 missing, 0 partial), #54 (4 missing, 0 partial), #69 (3 missing, 1 partial), #74 (4 missing, 0 partial), #52 (1 missing, 1 partial), #58 (3 missing, 0 partial), #68 (1 missing, 1 partial), #79 (1 missing, 1 partial), #81 (2 missing, 0 partial), #82 (0 missing, 2 partial), #38 (0 missing, 1 partial), #47 (0 missing, 1 partial), #67 (1 missing, 0 partial).
+**447 rules: 387 done, 14 partial, 46 missing.**
+78 of 95 scenarios have every printed rule done. The other 17: #55 (6 missing, 1 partial), #88 (3 missing, 0 partial), #34 (4 missing, 2 partial), #76 (4 missing, 2 partial), #71 (5 missing, 0 partial), #73 (5 missing, 0 partial), #78 (5 missing, 0 partial), #21 (2 missing, 2 partial), #49 (4 missing, 0 partial), #74 (4 missing, 0 partial), #52 (1 missing, 1 partial), #68 (1 missing, 1 partial), #79 (1 missing, 1 partial), #82 (0 missing, 2 partial), #38 (0 missing, 1 partial), #47 (0 missing, 1 partial), #67 (1 missing, 0 partial).
 
 Rules that were enforced wrongly, as against not at all, are findings of the engine audit
 ([../audits/2026-10-09-rules-audit.md](../audits/2026-10-09-rules-audit.md), rows S1-…, S2-…),
@@ -35,7 +35,7 @@ order", has the same list as tasks). The rows below say what the game does today
   holder), #82 the chest's artifacts (who holds them decides both goals), #81 the Crystal of
   Zenith and Sphere of Midnight, #58 the Occult Dagger (and who may loot it), #54 the Staff of
   Xorn with its charge, goal and loss, #95 the six numbered tokens (with the locked door and the
-  demons that keep coming until four are looted).
+  demons that keep coming until four are looted). **All built** (2026-10-13).
 - **A board that moves as the round ends.** #71 the wind, #88 the current, #73 the boulders, #74
   the water rising in the hold (with its loss and the bailing).
 - **Monsters that don't act as their cards say.** #71's Spitting Drakes asleep until woken; #49's
@@ -46,7 +46,7 @@ order", has the same list as tasks). The rows below say what the game does today
   a → f and summons by where it lands. #34: the Elder Drake on three hexes, its Zephyrs and its
   flight between perches. #79: the Betrayer's forced "Move 4" and its mind control.
 - **Walls and obstacles with hit points.** #76's destructible walls (and its three discarded
-  cards, the Stun, summons leaving walls alone), #95's boulders, #52's centre-room obstacles
+  cards, the Stun, summons leaving walls alone), #95's boulders (built 2026-10-13), #52's centre-room obstacles
   that jumping and flying figures still cross and that don't block sight.
 - **Small ones.** #38's Orchid heads for the nearest enemy, not the shaman; #68's tree can take a
   condition given to allies, and a poisoned summon doesn't avoid water; #52's starting hexes
@@ -482,11 +482,11 @@ order", has the same list as tasks). The rows below say what the game does today
 ### 54 · Palace of Ice
 | Rule (from the book) | Status | Where / what's missing |
 |---|---|---|
-| Goal: the Seeker of Xorn ends a turn adjacent to the altar (a) with the staff fully charged | missing | still no placements entry for 54 and no staff in the Swift sources, so it plays as "kill all enemies" (default goal in `checkVictoryDefeat`). Needs the staff's charge counted (below), the Seeker identified (the character on quest 510 / carrying item gh-114), the altar's letter (a) written, and a goal like `reach` with `adjacent` that also asks for the charge |
-| Lose: the Seeker of Xorn becomes exhausted | missing | no loss written (`lostIfExhausted` knows `any`, `offExit`, `beforeLoot`, not one named character) and nothing identifies the Seeker on the board; listed open in `TODO.md` ("Things that are carried") |
+| Goal: the Seeker of Xorn ends a turn adjacent to the altar (a) with the staff fully charged | done | placements `n1a` marker a [0,3] (the altar, read off p.71) and goal `reach: {"marker": "a", "adjacent": true, "holding": "Staff of Xorn", "charged": true}`: the staff's holder ending a turn beside the altar once the staff is full. `CarriedThingTests.testTheStaffOfXornIsChargedByItsHolderAndPlacedOnTheAltar` |
+| Lose: the Seeker of Xorn becomes exhausted | done | placements `carried: [{"name": "Staff of Xorn", "start": "choose", "onlyQuest": "510", "item": "gh-114", …, "lostWithHolder": true}]`: the character on the Seeker of Xorn quest holds the staff (else the one bearing the item, else the players choose), and the scenario is lost with them (`carriedLoss`). Same test |
 | All Cave Bears add Poison to all their attacks | done | scenario `rules[0]` `statEffects` on `cave-bear` (`actions`: condition poison) → `MonsterManager.applyScenarioStatEffect` sets `additionalStatActions`, read by `GameMonster.attackStat` and applied in `MonsterAbility.attack` |
-| Section 1: only the character equipped with the Staff of Xorn can damage the Harrower Infesters | missing | no code: anyone damages the Infesters (`undamageable` is all-or-nothing by monster type; item gh-114 is only a ranged-attack Poison/Muddle item in `BoardCoordinator+Items`). Needs a per-attacker exception |
-| Section 1: each point of damage to an Infester puts a token on the staff; fully charged at 2×C×(L+1) | missing | no counter anywhere; needs damage dealt to the Infesters counted against 2×C×(L+1) and shown to the player |
+| Section 1: only the character equipped with the Staff of Xorn can damage the Harrower Infesters | done | `soleHarmTo: ["harrower-infester"]` → `carriedWard` in `sufferDamage`: damage from anyone or anything but the staff's holder does nothing to an Infester; the rest of an attack (its conditions) still lands. Same test |
+| Section 1: each point of damage to an Infester puts a token on the staff; fully charged at 2×C×(L+1) | done | `charge: "2xCx(L+1)"` → `chargeCarried`: each point the holder takes off an Infester is a point of charge (`BoardState.carriedCharge`, saved with the board), never more than full; the party panel shows "Holds the Staff of Xorn · 3 of 8". Same test |
 
 ### 55 · Foggy Thicket
 | Rule (from the book) | Status | Where / what's missing |
@@ -522,13 +522,13 @@ order", has the same list as tasks). The rows below say what the game does today
 |---|---|---|
 | Goal: kill the Harvester | done | placements goal `kill: ["the-harvester"]` (`goalMet`; needs room 3 revealed and the boss dead) |
 | Setup: two starting rooms, at most half the characters (rounded up) in the same one | done | placements `splitStart: true` → `freeStartingHexes(for:)` leaves out the hexes of a room that already holds half the party (rounded up) and `placeCharacter` refuses them; `testNoMoreThanHalfThePartyStartsInOneRoom` |
-| Section 1: only the character on the "Vengeance" quest may loot the treasure tile | missing | the goal chest on G2b is looted by anyone, at the end of a turn too (`lootHexes`); no quest check. Needs the looter's personal quest checked |
-| Section 1: looting it gives that character the Occult Dagger | missing | no dagger state anywhere in the Swift sources; needs who holds it remembered |
+| Section 1: only the character on the "Vengeance" quest may loot the treasure tile | done | placements `carried: [{"name": "Occult Dagger", "treasure": "goal", "onlyQuest": "526", "pierce": 4, "against": "the-harvester"}]` → `mayLootTreasure`: with a character on quest 526 in the party the tile is theirs alone (anyone's when no one is). `CarriedThingTests.testOnlyTheVengeanceCharacterTakesTheDaggerAndItPiercesTheHarvester`, `testWithNoOneOnTheQuestAnyoneTakesTheDagger` |
+| Section 1: looting it gives that character the Occult Dagger | done | `noteTreasureLooted` → the looter holds it (`BoardState.carriedBy`); it doesn't change hands. Same test |
 | Section 2: the City Guard is one level above the scenario level (max 7) and is the Harvester | done | `58.json` room 3 `the-harvester:+1` type boss; `MonsterNameSpec.level` clamps to 7; `monster/the-harvester.json` carries the elite City Guard's stats |
 | Each bone pile (a) has L+(2×C) HP | done | `58.json` objectives `health: "L+(2xC)"`, count 4, room 3 `objectives: [1,1,1,1]`; placed on the four nests by placements tile `b1a` |
 | Harvester gains Shield 1 for each bone pile on the map | done | placements `effects`: `on: "the-harvester"`, `shield: "X"`, `per: {"objective": 1}` → `scenarioShield(of:)` added in `shield(of:)` (`BoardCoordinator+Effects`), in the attack preview too; `testBonePilesShieldAndHealTheHarvester` |
 | Harvester heals C−1 at the end of each round for each bone pile | done | placements `rules[0]`: end of round, `requiredRooms: [3]`, Bone Pile `present` → the Harvester `heal` `C-1`, `times: "F"` (one heal for each pile standing, so Poison stops only the first); `testBonePilesShieldAndHealTheHarvester`, `testEachBonePileHealsTheHarvesterOnItsOwn` |
-| The Occult Dagger's holder adds PIERCE 4 to attacks on the Harvester | missing | no dagger, so no Pierce; needs the two rows above and a Pierce 4 added in `performAttack` for the holder against the Harvester |
+| The Occult Dagger's holder adds PIERCE 4 to attacks on the Harvester | done | `carriedPierce` added to the attack in `performAttack`, for the holder against the Harvester only. Same test |
 
 ### 59 · Forgotten Grove
 | Rule (from the book) | Status | Where / what's missing |
@@ -621,10 +621,10 @@ order", has the same list as tasks). The rows below say what the game does today
 ### 69 · Well of the Unfortunate
 | Rule (from the book) | Status | Where / what's missing |
 |---|---|---|
-| Goal: bring the doll to a hex adjacent to the well (a) | partial | placements goal `reach: {"marker": "a", "adjacent": true, "enter": true}`: any character entering a hex beside the well wins, even on the way past (`noteGoalHexesEntered` from `moveAlong` sets `boardState.goalReached`; `testEnteringAHexBesideTheWellWins`, `testEndingATurnBesideAHexWins`) — the FAQ's "entering is enough" is enforced, but the doll isn't modelled, so it needn't be the holder who gets there |
-| Setup: choose a character to hold the doll | missing | no doll state anywhere (no placements key, no code): nobody holds anything; it would need a carried-thing mechanic and a prompt at setup |
-| The doll changes hands only by another character's Loot action with the holder in range | missing | no doll state; a Loot action only loots |
-| If the holder is exhausted the doll is dropped in their hex | missing | no doll state; an exhausted character drops nothing and anyone else can still win |
+| Goal: bring the doll to a hex adjacent to the well (a) | done | placements goal `reach: {"marker": "a", "adjacent": true, "enter": true, "holding": "doll"}`: the doll's holder entering a hex beside the well wins, even on the way past (`noteGoalHexesEntered`); anyone else there doesn't. `CarriedThingTests.testOnlyTheDollsHolderWinsAtTheWell`, `ScenarioReauditTests.testEnteringAHexBesideTheWellWins` |
+| Setup: choose a character to hold the doll | done | placements `carried: [{"name": "doll", "start": "choose", "passes": true}]` → `assignCarriedAtSetup`: the players are asked who holds it as the scenario starts (headless: the first character); the party panel says who does. `testThePlayersChooseWhoHoldsTheDoll` |
+| The doll changes hands only by another character's Loot action with the holder in range | done | `collectLootInRange` reaches a holder in the Loot's range and sight and `lootHexes` hands the thing over (a Loot with only the holder in range is a Loot performed); ending a turn beside the holder does nothing. `testTheDollChangesHandsByALootAction` |
+| If the holder is exhausted the doll is dropped in their hex | done | `leaveScenario` → `dropCarried(of:)`: it lies in the hex they stood on (`BoardState.carriedLying`, saved with the board, drawn as a marked token) and whoever loots that hex holds it. `testAnExhaustedHoldersDollLiesWhereTheyStood` |
 | Door 1 is locked; opens when a character ends a turn on plate (b) | done | lock `l3a–j1a` `plate: ["b"]`, marker b on `b1b` |
 | Section 1: spawn at (c) 2 Scouts + 1 Shaman: normal/normal (2), elite/normal (3), elite/elite (4) | done | `69.json` rule 0 `requiredRooms: [3]`, `once`; scouts p2 normal / p3 elite / p4 elite ×2, shaman normal / normal / elite; marker c on `l3a` |
 | Section 1: two damage traps appear at (d); a non-flying figure standing there springs one at once | done | placements `rules` (`requiredRooms: [3]`, `once`, `traps: ["d"]`; marker d = two hexes on `b1b`) → `ScenarioRulesManager.onPlaceTraps` → `placeScenarioTraps`: a damage trap (`levelManager.trap()`) on each free hex; a figure on foot standing on one springs it at once (a character through `ruleDamageDue`, so cards may be lost to negate it); `testTheWellsTrapsAppearWhenItsDoorOpens` |
@@ -747,17 +747,17 @@ order", has the same list as tasks). The rows below say what the game does today
 | Rule (from the book) | Status | Where / what's missing |
 |---|---|---|
 | Goal: kill the Colorless | done | placements goal `kill: ["the-colorless"]` |
-| Section 1: a character adjacent to the altar (a) at end of turn may discard the Crystal of Zenith or Sphere of Midnight → the Colorless suffers 2×C damage | missing | no rule, no (a) marker in placements 81 (`tiles: {}`), no such tokens (`TODO.md`: "Things that are carried"). Needs the two tokens held by a character and an end-of-turn prompt beside the altar |
+| Section 1: a character adjacent to the altar (a) at end of turn may discard the Crystal of Zenith or Sphere of Midnight → the Colorless suffers 2×C damage | done | placements `d1a` marker a [1,0] (the altar, read off p.103) and `spend: {"marker": "a", "adjacent": true, "damage": "2xC", "to": "the-colorless"}` on both relics → as the holder's turn ends beside the altar they are asked (`resolveCarriedSpends`): discard it and the Colorless suffers 2×C, or "Keep It". `CarriedThingTests.testTheRelicsAreLootedInOrderAndDiscardedBesideTheAltar` |
 | Start of every round: Light and Dark Strong; Fire, Ice, Wind, Earth Inert | done | rule 0 (`round: "true"`, `start: true`, six `elements`) → `applyElementRule` each `roundStart` |
-| First treasure tile looted gives the Crystal of Zenith, the second the Sphere of Midnight | missing | the two "G" chests loot as plain goal treasure (`lootTreasure` returns "Goal treasure"; only `goalLooters`/`goalTreasuresLooted` are counted, nothing is held by the looter) |
+| First treasure tile looted gives the Crystal of Zenith, the second the Sphere of Midnight | done | placements `carried`: two things with `treasure: "goal"`, given in the order written to whoever loots a goal tile (`noteTreasureLooted`); neither changes hands. Same test |
 | Boss special 1: consume Dark → summon Night Demon (normal 2–3 / elite 4), then gain INVISIBLE | done | `the-colorless.json` `special[0]`: the Dark consume is paid as the special comes to it (`MonsterTurnController` `.special` → `executeCard` → `.element` consume → `performSummon`), no Dark no demon, INVISIBLE on self either way; `ScenarioSpecialRuleTests.testTheColorlessPaysForItsSummonsWithElements` |
 | Boss special 2: consume Light → summon Sun Demon (normal 2 / elite 3–4), then Shield 1 and heal self | done | `special[1]`: Light is consumed for the Sun Demon (same test), "Heal 4, self" runs (the book prints no amount; 4 is the data's), and Shield 1 is gained until the end of the round (`.shield` in `executeCard`; `MonsterTurnRulesTests.testABossSpecialsShieldIsGainedWhenItIsPerformed`) |
 
 ### 82 · Burning Mountain
 | Rule (from the book) | Status | Where / what's missing |
 |---|---|---|
-| Goal A: after the chest is looted, the character holding its items ends a turn on (g) and removes one item from the game | partial | placements goal `lootIDs: ["62"]` + `either: [{reach: {marker: "g"}, conclusion: "82-A"}, …]`: with the chest looted, any character ending a turn on g wins and Conclusion A's rewards are given (`settleScenarioEnd`; `ScenarioReauditTests.testSacrificingOnTheMountainIsConclusionA`, `ScenarioGoalTests.testEitherOfTwoWays`). Who holds the artifacts isn't tracked and no item is removed from the game (both are kept) |
-| Goal B: after the chest is looted, all characters return to an entrance hex before becoming exhausted | partial | `either: […, {escape: {start: true}, conclusion: "82-B"}]`: every *unexhausted* character on a starting hex as a turn ends wins with Conclusion B's rewards (`testEscapingTheMountainIsConclusionB`). An exhausted character isn't waited for and doesn't prevent it, and the holder's exhaustion doesn't lose (FAQ) since no holder is tracked |
+| Goal A: after the chest is looted, the character holding its items ends a turn on (g) and removes one item from the game | partial | placements `carried: [{"name": "artifacts", "treasure": "62", "lostWithHolder": true}]` and `either: [{reach: {marker: "g", holding: "artifacts"}, conclusion: "82-A"}, …]`: whoever looted the chest holds the artifacts, and it is their holder ending a turn on g that wins with Conclusion A's rewards (`CarriedThingTests.testTheArtifactsHolderSacrificesOneOrLosesThemAll`, `ScenarioGoalTests.testEitherOfTwoWays`, `ScenarioReauditTests.testSacrificingOnTheMountainIsConclusionA`). Still missing: no item is removed from the game — the player isn't asked which |
+| Goal B: after the chest is looted, all characters return to an entrance hex before becoming exhausted | partial | `either: […, {escape: {start: true}, conclusion: "82-B"}]`: every unexhausted character on a starting hex as a turn ends wins with Conclusion B's rewards (`testEscapingTheMountainIsConclusionB`); the holder's exhaustion loses the scenario (FAQ; `lostWithHolder`, `testTheArtifactsHolderSacrificesOneOrLosesThemAll`). Another character's exhaustion isn't waited for and doesn't prevent it |
 | If the scenario is lost, the treasure tile is reset (not kept) | done | placements `resetOnLoss: ["62"]` → `settleScenarioEnd(victory: false)` takes items 110/115 back from the looter and removes `gh-82-62` from `game.lootedTreasures`, on abandoning too; `testTheMountainsChestIsResetOnALoss`, `testTheMountainsChestIsResetWhenTheScenarioIsAbandoned` |
 | All doors locked; each elite killed opens one door, in order a, b, c, d, e, f | done | six placements locks with `eliteKills: 1…6` (`k1a–c1a`, `k1a–d1a`, `c1a–i1b`, `b2b–d1a`, `c1a–empty`, `empty–d1a`); `boardState.eliteKills` counted in `handleDeath`; `ScenarioLockTests` covers it |
 
@@ -816,15 +816,15 @@ order", has the same list as tasks). The rows below say what the game does today
 ### 88 · Plane of Water
 | Rule (from the book) | Status | Where / what's missing |
 |---|---|---|
-| Goal: carry the Lurker King's claw to a hex adjacent to the crystal (a) | partial | placements goal `kill: ["lurker-king"]` + `reach: {marker: "a", adjacent: true}` → `goalMet`: the King dead and any character ending a turn beside the crystal. No claw exists, so nobody has to pick it up or carry it there (README: "approximately"). Needs a carried token |
+| Goal: carry the Lurker King's claw to a hex adjacent to the crystal (a) | done | placements goal `kill: ["lurker-king"]` + `reach: {marker: "a", adjacent: true, holding: "claw"}`: the claw's holder ending a turn beside the crystal. `CarriedThingTests.testTheClawsHolderBesideTheCrystalWins` |
 | Setup: all characters and their summons have −1 Move on all Move abilities | done | placements `effects: [{on: "party", move: -1}]` → `BoardCoordinator.scenarioMoveBonus` (characters in `beginMoveAction`, summons through `SummonTurnController`; monsters unchanged); `ScenarioReauditTests.testEveryMoveIsOneLessOnThePlaneOfWater` |
 | Current: at the end of each round every character and summon in the large room is forced one hex with the current (sheltered behind an obstacle/wall: no move); if blocked, 3 damage instead | missing | nothing in 88.json or the placements; no figure is moved or damaged as a round ends. `TODO.md`: "A board that moves as the round ends". Needs an end-of-round forced move by direction |
 | Current is resolved from the top of the map to the bottom | missing | no current |
 | Current direction depends on whether the Lurker initiative is even or odd | missing | no current |
 | The elite Lurker next to the crystal is the Lurker King | done | room 2 lists `lurker-king` (boss) whose stats equal the elite Lurker's; the map data gives it its own place on N1a, the hex beside the crystal's (a) (`ScenarioMaps/88.json`, corrected against the book; `MapMonsterPlaceTests.testEveryMonsterOfARoomHasItsOwnPlaceOnTheMap`) |
-| When it dies it drops a claw (a treasure tile) instead of a money token | missing | the King drops an ordinary money token like any monster set up with its room (`handleDeath` → `dropLoot`); no claw |
-| A character holding the claw has −2 Move | missing | no claw, so no one is slowed by it (only the scenario's −1 applies) |
-| The claw changes hands only by a Loot action on the holder's hex; it is dropped where the holder is exhausted | missing | no claw; `TODO.md`: "Things that are carried" |
+| When it dies it drops a claw (a treasure tile) instead of a money token | done | placements `carried: [{"name": "claw", "droppedBy": "lurker-king", "move": -2, "passes": true}]` → `handleDeath`: the claw lies where the King died and no money token drops. `testTheLurkerKingDropsHisClawAndItWeighsItsHolderDown` |
+| A character holding the claw has −2 Move | done | `carriedMoveBonus` in `scenarioMoveBonus`: −2 for the holder on top of the scenario's −1. Same test |
+| The claw changes hands only by a Loot action on the holder's hex; it is dropped where the holder is exhausted | done | the carried mechanism of #69's doll (`passes`): `testTheDollChangesHandsByALootAction`, `testAnExhaustedHoldersDollLiesWhereTheyStood` |
 
 ### 89 · Syndicate Hideout
 | Rule (from the book) | Status | Where / what's missing |
@@ -873,10 +873,10 @@ order", has the same list as tasks). The rows below say what the game does today
 | Rule (from the book) | Status | Where / what's missing |
 |---|---|---|
 | Goal: kill the Prime Lieutenant | done | placements goal `kill: ["prime-lieutenant"]` |
-| Setup: numbered tokens 1–6 shuffled face down on the (a) hexes, lootable normally | missing | the placements for #95 have no objectives, markers or tokens (`tiles` is empty); nothing lies on the (a) hexes. Needs lootable numbered tokens (README: the six tokens "aren't modelled") |
+| Setup: numbered tokens 1–6 shuffled face down on the (a) hexes, lootable normally | done | placements `tokens: {marker: "a", count: 6}` with the six (a) hexes on D1a and K2b → `layNumberedTokens` (shuffled once with the game's seed, one laid on each lettered hex as its room is revealed, drawn as "?"); looted by ending a turn on one or by a Loot action (`lootNumberedToken`: the number is logged then); `CarriedThingTests.testTheTokensAreLootedAndFourOfThemUnlockTheDoor`, `testTheTokensAreShuffled` |
 | Section 1: the Savvas Lavaflow is the Prime Lieutenant | done | room 3 lists `prime-lieutenant` (boss, deck `savvas-lavaflow`, stats equal the elite Lavaflow's) |
-| Door 1 is locked; it can be opened once tokens 1–4 are looted | missing | no `locks` written; the G1b→E1a door opens to any character from round 1 (`TODO.md`: "Things that are carried"). Needs the tokens first |
-| Until tokens 1–4 are looted: end of every odd round a Flame Demon spawns by door 1 (normal for 2; elite for 3–4) | missing | 95.json has no rules and the placements write none; no demon arrives. A round rule could be written, but its end condition needs the tokens |
-| Until tokens 1–4 are looted: end of every even round an Earth Demon spawns by door 1 (normal for 2–3; elite for 4) | missing | no rule in the data or the placements, as for the Flame Demon |
+| Door 1 is locked; it can be opened once tokens 1–4 are looted | done | placements `locks: [{between: [g1b, e1a], tokens: [1, 2, 3, 4], unlocksOnly: true}]` → `keyTurned` (every number listed is among `tokensLooted`); unlocked, it opens to a character walking in; same test (three of the four, with 5 and 6, leave it locked) |
+| Until tokens 1–4 are looted: end of every odd round a Flame Demon spawns by door 1 (normal for 2; elite for 3–4) | done | placements rule `round: "R % 2 == 1"`, `when: [{locked: 0}]` (the fact "lock 0 isn't released yet", `boardFactHolds`), spawning at the letter written on the G1b hex beside the door; same test |
+| Until tokens 1–4 are looted: end of every even round an Earth Demon spawns by door 1 (normal for 2–3; elite for 4) | done | placements rule `round: "R % 2 == 0"`, `when: [{locked: 0}]`; same test |
 | Any figure ending its turn in a water hex suffers 1+L damage | done | placements `water: {endOfTurn: "1+L"}` → `BoardCoordinator.waterDamageAtTurnEnd` (characters as their turn ends; monsters and summons through `sufferWaterAtTurnEnd` in `MonsterTurnController` / `SummonTurnController`); `ScenarioSpecialRuleTests.testEndingATurnInTheWaterOfPaymentDue` |
-| Each boulder has 3+L hit points | missing | K2b's five boulders are plain obstacle overlays with no hit points: they can't be attacked or damaged (the audit and TODO.md list it as still open). Needs obstacles that are objectives with health |
+| Each boulder has 3+L hit points | done | `95.json` lists an objective "Boulder" (health `3+L`), five in room 4, and the placements stand one on each of K2b's five boulder hexes: a thing to destroy, attacked like an enemy; destroyed, its obstacle goes with it (`clearObjectiveSite`) — which is the only way on foot to the far room's three tokens; `CarriedThingTests.testTheBouldersAreDestroyedToReachTheTokens`. Was: K2b's five boulders were plain obstacle overlays with no hit points. Needed obstacles that are objectives with health |

@@ -420,6 +420,12 @@ final class ScenarioGoalTests: XCTestCase {
                 coord.checkVictoryDefeat(turnEnded: true)
                 XCTAssertNil(coord.pendingResult, "one is still inside")
                 stand(sim, 1, on: start[1])
+            } else {
+                // The one on the altar hex hasn't the artifacts: it is their holder who sacrifices one.
+                coord.checkVictoryDefeat(turnEnded: true)
+                XCTAssertNil(coord.pendingResult, "the artifacts are with the other")
+                stand(sim, 0, on: start[0])
+                stand(sim, 1, on: altar)
             }
             coord.checkVictoryDefeat(turnEnded: true)
             XCTAssertEqual(coord.pendingResult, .victory, way)

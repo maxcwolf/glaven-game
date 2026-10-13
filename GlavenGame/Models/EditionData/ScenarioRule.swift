@@ -127,6 +127,9 @@ struct BoardFact: Codable, Hashable {
     var saved: Int?
     /// The lock at this place in the placements' `locks` (from 0) has been released.
     var lock: Int?
+    /// The lock at this place hasn't been released yet (the demons of Payment Due come until
+    /// its tokens are found).
+    var locked: Int?
     /// Treasure looted: `"goal"` for every goal treasure tile, a map tile (`"b2b"`) for the goal
     /// treasure on it, or a treasure's number.
     var looted: String?

@@ -102,6 +102,24 @@ final class BoardState {
 
     /// A character has entered the hex the goal asks someone to reach (`Reach.enter`).
     var goalReached = false
+    /// Who holds each carried thing (`ScenarioPlacements.carried`, by its name): a character's id.
+    var carriedBy: [String: String] = [:]
+    /// Where a carried thing lies that no one holds.
+    var carriedLying: [String: HexCoord] = [:]
+    /// Carried things that are out of the scenario, and how: "lost" with an exhausted holder,
+    /// "spent" at an altar.
+    var carriedGone: [String: String] = [:]
+    /// The charge on a carried thing (the Staff of Xorn: a token for each point of damage its
+    /// holder does the Harrower Infesters).
+    var carriedCharge: [String: Int] = [:]
+    /// The numbered tokens of a scenario (`ScenarioPlacements.tokens`): the numbers still to be
+    /// laid out, in their shuffled order (nil until they are shuffled); those lying on the
+    /// board, each on its hex; and those looted.
+    var tokenDeck: [Int]?
+    var tokenHexes: [HexCoord: Int] = [:]
+    var tokensLooted: [Int] = []
+    /// The hexes whose token has been looted (none is laid there again).
+    var tokenHexesLooted: Set<HexCoord> = []
 
     // MARK: - Derived
 

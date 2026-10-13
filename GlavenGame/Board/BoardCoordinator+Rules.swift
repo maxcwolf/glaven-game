@@ -237,6 +237,13 @@ extension BoardCoordinator {
             boardScene?.pieceUnharmed(id: pieceID, missed: false)
             return false
         }
+        // What only the holder of a carried thing can harm (the Harrower Infesters of the Palace
+        // of Ice, the Staff of Xorn).
+        if let ward = carriedWard(of: pieceID, against: killer) {
+            log("\(name(pieceID)) can be harmed only by the holder of the \(ward.name)", category: .damage)
+            boardScene?.pieceUnharmed(id: pieceID, missed: false)
+            return false
+        }
         // Intervening Apparitions: the owner's summons suffer no damage.
         if case .summon = pieceID, let owner = summonOwner(of: pieceID),
            useFirstCharge(of: .character(owner.id), where: { $0 == .summonsNegateDamage }) != nil {
@@ -255,6 +262,7 @@ extension BoardCoordinator {
         let (healthBefore, maxHealth) = (entity.health, entity.maxHealth)
         gameManager.entityManager.changeHealth(entity, amount: -amount)
         boardScene?.pieceDamage(id: pieceID, amount: amount)
+        chargeCarried(for: pieceID, by: killer, damage: min(amount, healthBefore))
         doomEnemyDamaged(pieceID)   // Sap Life
         // Vengeful Barrage: the character attacks back once the damage is done.
         if case .character(let id) = pieceID, entity.health > 0, let character = gameManager.game.characters.first(where: { $0.id == id }),
@@ -408,7 +416,9 @@ extension BoardCoordinator {
             // GH p.21: a money token drops where a monster dies unless it was summoned or spawned —
             // a boss set up with the room like any other. An allied monster drops none (FAQ).
             if entity.summonState == nil && !MonsterAI.isAllyFaction(monster) {
-                dropLoot(for: pieceID)
+                // What a monster drops instead of money (the Lurker King's claw) lies where it died.
+                let droppedAThing = boardState.piecePositions[pieceID].map { dropCarried(byDeathOf: name, at: $0) } ?? false
+                if !droppedAThing { dropLoot(for: pieceID) }
             }
             noteDoomedDeath(pieceID)
             removePieceFromBoard(pieceID)
@@ -519,6 +529,8 @@ extension BoardCoordinator {
     /// (`ScenarioStatsManager.wasExhausted`): it keeps its hand and discards as they were, and
     /// only its cards in play are put away.
     func leaveScenario(_ character: GameCharacter, exhausted: Bool = true) {
+        // What they carried lies where they stood.
+        dropCarried(of: character)
         character.exhausted = true
         if exhausted {
             boardScene?.play(.exhaust)

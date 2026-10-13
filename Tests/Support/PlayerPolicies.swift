@@ -55,6 +55,8 @@ extension PlayerPolicy {
     /// Head for the nearest enemy, or a closed door once the room is clear.
     func moveDestination(for piece: PieceID, options: Set<HexCoord>, mode: MoveMode, sim: ScenarioSimulator) -> HexCoord? {
         var goals = sim.enemies(of: piece).compactMap { sim.position($0) }
+        // No one to fight: the numbered tokens lying about (Payment Due), then the doors.
+        if goals.isEmpty { goals = sim.coord.boardState.tokenHexes.keys.sorted() }
         if goals.isEmpty {
             goals = sim.coord.boardState.doors.filter { !$0.isOpen }.map(\.coord)
         }
@@ -267,7 +269,7 @@ struct TacticalPolicy: PlayerPolicy {
         let pool = candidates.isEmpty ? options : candidates
 
         func lootBonus(_ hex: HexCoord) -> Int {
-            (board.lootTokens[hex] ?? 0) > 0 || board.cells[hex]?.overlay == .treasure ? 1 : 0
+            (board.lootTokens[hex] ?? 0) > 0 || board.cells[hex]?.overlay == .treasure || board.tokenHexes[hex] != nil ? 1 : 0
         }
         let health = sim.health(piece)
         let hurt = health.current * 2 <= health.max
@@ -546,7 +548,21 @@ struct VeteranPolicy: PlayerPolicy {
     // MARK: - Reading the board
 
     private func foes(of piece: PieceID, _ sim: ScenarioSimulator) -> [(piece: PieceID, hex: HexCoord, health: Int)] {
-        sim.enemies(of: piece).compactMap { id in sim.position(id).map { (id, $0, sim.health(id).current) } }
+        let all: [(piece: PieceID, hex: HexCoord, health: Int)] = sim.enemies(of: piece).compactMap { id in
+            sim.position(id).map { (id, $0, sim.health(id).current) }
+        }
+        // One of the party goes for the tokens and fights only what stands in the way.
+        guard fetchesTokens(piece, sim), let here = sim.position(piece) else { return all }
+        return all.filter { $0.hex.distance(to: here) <= 2 }
+    }
+
+    /// Payment Due: a demon arrives every round until tokens 1 to 4 are found, so a party that
+    /// kills everything in sight first never gets to them. The last character still standing
+    /// goes for the tokens (and the doors they lie behind) while the others fight.
+    private func fetchesTokens(_ piece: PieceID, _ sim: ScenarioSimulator) -> Bool {
+        guard case .character(let id) = piece, sim.coord.scenarioData?.placements?.tokens != nil,
+              sim.coord.boardState.doors.contains(where: { sim.coord.boardState.isLockedDoor($0.coord) }) else { return false }
+        return sim.gm.game.characters.last { !$0.exhausted && !$0.absent }?.id == id
     }
 
     /// Hexes the character can end a move of `step` on (their own included), traps and hazardous
@@ -625,6 +641,8 @@ struct VeteranPolicy: PlayerPolicy {
                 }.map(\.coord)
             }
             if !hexes.isEmpty { return (hexes.sorted(), false) }
+            // What is to be carried there lies on the floor (the claw where the Lurker King died): pick it up first.
+            if let thing = goal.reach?.holding, let lying = board.carriedLying[thing] { return ([lying], false) }
             if let reach = goal.reach, let lettered = board.markerHexes[reach.marker], !lettered.isEmpty {
                 return (lettered.sorted(), reach.adjacent == true)
             }
@@ -638,6 +656,8 @@ struct VeteranPolicy: PlayerPolicy {
                 if !free.isEmpty { return (free.sorted(), false) }
             }
         }
+        // Numbered tokens lying face down (Payment Due's, which unlock its last door).
+        if !board.tokenHexes.isEmpty { return (board.tokenHexes.keys.sorted(), false) }
         let doors = board.doors.filter { !$0.isOpen && !board.isLockedDoor($0.coord) }.map(\.coord)
         if !doors.isEmpty { return (doors.sorted(), false) }
         // Nothing left to open: the money on the floor.

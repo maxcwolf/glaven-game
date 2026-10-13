@@ -235,7 +235,7 @@ final class ScenarioPlacementTests: XCTestCase {
                 for fact in rule.when ?? [] {
                     XCTAssertTrue(fact.saved != nil || fact.lock != nil || fact.looted != nil || fact.unrevealed != nil
                                   || fact.occupied != nil || fact.partyAchievement != nil || fact.noCharacterOn != nil
-                                  || fact.characterOn != nil,
+                                  || fact.characterOn != nil || fact.locked != nil,
                                   "\(index): an empty fact")
                     for tile in (fact.noCharacterOn ?? []) + (fact.characterOn ?? []) { XCTAssertTrue(tiles.contains(tile), "\(index): no tile \(tile)") }
                     if let achievement = fact.partyAchievement {
@@ -248,6 +248,7 @@ final class ScenarioPlacementTests: XCTestCase {
                     }
                     if let room = fact.unrevealed { XCTAssertTrue((data.rooms ?? []).contains { $0.roomNumber == room && $0.initial != true }, "\(index): no room \(room) to reveal") }
                     if let lock = fact.lock { XCTAssertTrue((placements.locks ?? []).indices.contains(lock), "\(index): no lock \(lock)") }
+                    if let lock = fact.locked { XCTAssertTrue((placements.locks ?? []).indices.contains(lock), "\(index): no lock \(lock)") }
                     if fact.saved != nil { XCTAssertNotNil(placements.goal?.arrive, "\(index): no one to save") }
                     if let looted = fact.looted {
                         XCTAssertTrue(treasure.contains(looted) || (tiles.contains(looted) && treasure.contains(BoardCoordinator.goalTreasureID)),

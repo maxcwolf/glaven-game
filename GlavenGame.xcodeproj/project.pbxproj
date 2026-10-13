@@ -168,6 +168,7 @@
 		B7FEED21869D52A1527939DC /* SoakDriver.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD46F8601A585EB5676DCC0D /* SoakDriver.swift */; };
 		B8BA0DCB5F22292931347410 /* BoardCoordinator+Combat.swift in Sources */ = {isa = PBXBuildFile; fileRef = A6B11F82C5E44D977254134D /* BoardCoordinator+Combat.swift */; };
 		B975922FF4C543F56ABDB18A /* PartySheetView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADC60986430A5DFFAA4EEAC9 /* PartySheetView.swift */; };
+		B99A9486BF3FBB905F6B65DD /* BoardCoordinator+Carried.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5DC4E202AFA7B05C57A561F7 /* BoardCoordinator+Carried.swift */; };
 		BA1FC5F02BBBDDBA6ECDE2B3 /* ItemData.swift in Sources */ = {isa = PBXBuildFile; fileRef = C567728A83844732D31F3F5F /* ItemData.swift */; };
 		BC3BC6A84314049CE3D9E374 /* RewardChoicesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 487FFAE9CF9ACC5FB5742CD6 /* RewardChoicesView.swift */; };
 		BECDE7A9C337E991508726F4 /* GameState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 927D27803802AD81536EA860 /* GameState.swift */; };
@@ -309,6 +310,7 @@
 		5BECAAE9C51B69F316A57166 /* Sounds */ = {isa = PBXFileReference; lastKnownFileType = folder; name = Sounds; path = GlavenGame/Resources/Sounds; sourceTree = SOURCE_ROOT; };
 		5C3F8355E887FAF9952D826E /* GameObjectiveContainer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameObjectiveContainer.swift; sourceTree = "<group>"; };
 		5D581F71B3F53FBB364E1E22 /* Fonts */ = {isa = PBXFileReference; lastKnownFileType = folder; name = Fonts; path = GlavenGame/Resources/Fonts; sourceTree = SOURCE_ROOT; };
+		5DC4E202AFA7B05C57A561F7 /* BoardCoordinator+Carried.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "BoardCoordinator+Carried.swift"; sourceTree = "<group>"; };
 		5DDE067C5844A08F39119A9F /* LearnDiagram.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LearnDiagram.swift; sourceTree = "<group>"; };
 		5E3252016F044D305E5F9AD4 /* GamePhase.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GamePhase.swift; sourceTree = "<group>"; };
 		5E6E7163EA81B6FEA0C1F76D /* SummonTurnController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SummonTurnController.swift; sourceTree = "<group>"; };
@@ -802,6 +804,7 @@
 				06273638779D4902224E1602 /* BoardCoordinator.swift */,
 				57AED47A654FB8809E8D584B /* BoardCoordinator+Bonuses.swift */,
 				7ACAF12981AE26F7C861B025 /* BoardCoordinator+Bosses.swift */,
+				5DC4E202AFA7B05C57A561F7 /* BoardCoordinator+Carried.swift */,
 				CE75E2B3B3818DD9370456F7 /* BoardCoordinator+Choices.swift */,
 				A6B11F82C5E44D977254134D /* BoardCoordinator+Combat.swift */,
 				F017EAC5B25B50251E9BB923 /* BoardCoordinator+Dooms.swift */,
@@ -1026,6 +1029,7 @@
 				428795E432235765EB962529 /* BoardCamera.swift in Sources */,
 				55E82ED1B02F39BE4D6E63DC /* BoardCoordinator+Bonuses.swift in Sources */,
 				9E6C26A84E60C22B9F83F126 /* BoardCoordinator+Bosses.swift in Sources */,
+				B99A9486BF3FBB905F6B65DD /* BoardCoordinator+Carried.swift in Sources */,
 				7071E837491694E5CFCA1CFF /* BoardCoordinator+Choices.swift in Sources */,
 				B8BA0DCB5F22292931347410 /* BoardCoordinator+Combat.swift in Sources */,
 				E38E2213257ECD55DA7680BB /* BoardCoordinator+Dooms.swift in Sources */,

@@ -735,8 +735,18 @@ struct BoardView: View {
     @ViewBuilder
     private func characterCard(_ character: GameCharacter) -> some View {
         let inPlay = coordinator.activeCards(of: character)
+        let held = coordinator.carried(by: character.id)
         VStack(alignment: .leading, spacing: 4) {
             characterSummary(character)
+            // What they carry for the scenario (the doll, the claw).
+            ForEach(held, id: \.name) { thing in
+                Label("Holds the \(thing.name)" + (thing.move.map { " \u{00B7} Move \($0 > 0 ? "+" : "\u{2212}")\(abs($0))" } ?? "")
+                      + (coordinator.fullCharge(of: thing).map { " \u{00B7} \(coordinator.boardState.carriedCharge[thing.name, default: 0]) of \($0)" } ?? ""),
+                      systemImage: "hand.raised.fill")
+                    .font(BoardTheme.font(size: 11, weight: .semibold))
+                    .foregroundStyle(BoardTheme.brass)
+                    .accessibilityLabel("\(GameText.characterName(character, labels: gameManager.editionStore)) holds the \(thing.name)")
+            }
             if !inPlay.isEmpty {
                 Rectangle().fill(BoardTheme.border.opacity(0.3)).frame(height: 1)
                 ForEach(inPlay) { card in

@@ -63,7 +63,7 @@ final class ScenarioLockTests: XCTestCase {
                 XCTAssertTrue(joined.contains(Set(lock.between)), "\(index): no door between \(lock.between)")
                 XCTAssertFalse((lock.note ?? "").isEmpty, "\(index): \(lock.between) says why it is locked")
                 let keys = [lock.plate != nil, lock.allOnPlates != nil, lock.afterRound != nil, lock.looted != nil,
-                            lock.eliteKills != nil, lock.held != nil].filter { $0 }.count
+                            lock.eliteKills != nil, lock.held != nil, lock.tokens != nil].filter { $0 }.count
                 XCTAssertLessThanOrEqual(keys, 1, "\(index): \(lock.between)")
                 let plates = (lock.plate ?? []) + (lock.held ?? [])
                     + (lock.allOnPlates.map { $0.markers + ($0.more ?? [:]).values.flatMap { $0 } } ?? [])
@@ -71,7 +71,7 @@ final class ScenarioLockTests: XCTestCase {
             }
             for letter in placements.plates ?? [] { XCTAssertTrue(letters.contains(letter), "\(index): no plate \(letter)") }
         }
-        XCTAssertEqual(scenarios, 13)
+        XCTAssertEqual(scenarios, 14)
     }
 
     // MARK: - Locked

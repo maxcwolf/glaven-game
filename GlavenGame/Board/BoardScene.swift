@@ -523,6 +523,37 @@ class BoardScene: SKScene {
         plateHexes = plates
     }
 
+    // MARK: - Things that are carried
+
+    /// Where a carried thing is shown lying (for tests).
+    private(set) var carriedShown: [String: HexCoord] = [:]
+
+    /// Show each carried thing that lies on the board as a marked token on its hex; one shown
+    /// before and no longer lying (picked up) goes.
+    func showCarried(_ lying: [String: HexCoord], offsetCol: Int, offsetRow: Int) {
+        for (name, _) in carriedShown where lying[name] != carriedShown[name] {
+            lootLayer.childNode(withName: "carried_\(name)")?.removeFromParent()
+        }
+        for (name, hex) in lying where carriedShown[name] != hex {
+            let badge = SKShapeNode(circleOfRadius: HexMath.cellStepX * 0.2)
+            badge.fillColor = SKColor(red: 0.45, green: 0.12, blue: 0.48, alpha: 0.95)
+            badge.strokeColor = SKColor(red: 0.89, green: 0.70, blue: 0.24, alpha: 1)
+            badge.lineWidth = 2
+            badge.position = hexCenterInScene(col: hex.col - offsetCol, row: hex.row - offsetRow)
+            badge.zPosition = 8
+            badge.name = "carried_\(name)"
+            let label = SKLabelNode(text: String(name.prefix(1)).uppercased())
+            label.fontName = "GermaniaOne-Regular"
+            label.fontSize = HexMath.cellStepX * 0.22
+            label.fontColor = .white
+            label.verticalAlignmentMode = .center
+            label.horizontalAlignmentMode = .center
+            badge.addChild(label)
+            lootLayer.addChild(badge)
+        }
+        carriedShown = lying
+    }
+
     // MARK: - Loot Sprites
 
     /// Add a loot token sprite at a hex coordinate.

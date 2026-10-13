@@ -63,6 +63,7 @@ extension BoardCoordinator {
         }
         if let count = lock.looted { return boardState.goalTreasuresLooted >= count }
         if let count = lock.eliteKills { return boardState.eliteKills >= count }
+        if let numbers = lock.tokens { return numbers.allSatisfy(boardState.tokensLooted.contains) }
         return false
     }
 
@@ -71,6 +72,7 @@ extension BoardCoordinator {
     /// with the plates. Call when the board changes: a room revealed, a turn or round ended, a
     /// figure moved, treasure looted, an elite killed.
     func updateLocks(turnEnded: Bool = false, roundEnded: Bool = false) {
+        layNumberedTokens()
         let locks = scenarioLocks
         guard !locks.isEmpty else { return }
         let released = boardState.releasedLocks
@@ -142,5 +144,6 @@ extension BoardCoordinator {
     func showLocksAndPlates() {
         boardScene?.showLocks(on: boardState.lockedDoors.filter(boardState.isClosedDoor),
                               plates: pressurePlateHexes, offsetCol: offsetCol, offsetRow: offsetRow)
+        syncCarriedSprites()
     }
 }

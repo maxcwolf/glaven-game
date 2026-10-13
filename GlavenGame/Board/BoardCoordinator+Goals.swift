@@ -171,6 +171,8 @@ extension BoardCoordinator {
         for name in goal.lostIfKilled ?? [] where (kills[name] ?? 0) > 0 {
             return "A \(monsterTypeName(name)) is killed."
         }
+        // What is lost with its holder (the artifacts of Burning Mountain).
+        if let loss = carriedLoss() { return loss }
         // Where characters must be, once they are all on the map.
         let standing = party.filter { !$0.exhausted }
         if boardPhase != .setup, !standing.isEmpty {
@@ -253,7 +255,13 @@ extension BoardCoordinator {
             else { return false }
         }
 
-        let standing = party.filter { !$0.exhausted }.compactMap { boardState.piecePositions[.character($0.id)] }
+        var standing = party.filter { !$0.exhausted }.compactMap { boardState.piecePositions[.character($0.id)] }
+        // A thing that must be charged first (the Staff of Xorn).
+        if let reach = goal.reach, reach.charged == true, let thing = reach.holding, !isFullyCharged(thing) { return false }
+        // Where a thing is to be brought, only its holder's place counts.
+        if let thing = goal.reach?.holding {
+            standing = holder(of: thing).flatMap { $0.exhausted ? nil : boardState.piecePositions[.character($0.id)] }.map { [$0] } ?? []
+        }
         // A hex it is enough to enter: someone has, or stands there as a turn ends.
         var endsTurnAtReach = goal.reach
         if let reach = goal.reach, reach.enter == true {
@@ -296,7 +304,8 @@ extension BoardCoordinator {
     /// A character has moved along `path`: where the goal is a hex it is enough to enter (beside
     /// the well of the Unfortunate), entering it on the way counts.
     func noteGoalHexesEntered(by pieceID: PieceID, along path: [HexCoord]) {
-        guard case .character = pieceID, let reach = scenarioGoal?.reach, reach.enter == true, !boardState.goalReached,
+        guard case .character(let id) = pieceID, let reach = scenarioGoal?.reach, reach.enter == true, !boardState.goalReached,
+              reach.holding.map({ boardState.carriedBy[$0] == id }) ?? true,
               path.dropFirst().contains(where: { isAt(reach, $0) }) else { return }
         boardState.goalReached = true
         log("\(name(pieceID)) reaches the goal", category: .round)
@@ -378,6 +387,7 @@ extension BoardCoordinator {
             guard arrived >= saved else { return false }
         }
         if let lock = fact.lock, !boardState.releasedLocks.contains(lock) { return false }
+        if let lock = fact.locked, boardState.releasedLocks.contains(lock) { return false }
         if let plates = fact.occupied {
             // Every plate in play has a figure on it.
             let hexes = platesInPlay(plates).flatMap { boardState.markerHexes[$0] ?? [] }

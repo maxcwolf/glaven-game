@@ -302,7 +302,9 @@ final class ScenarioSimulator {
         }
         if let choice = coord.pendingFigureChoice {
             // A Living Spirit to remove for a demon's death: the nearest (the first offered).
-            coord.resolveFigureChoice(choice.title == BoardCoordinator.reprieveTitle ? choice.options.first : nil)
+            // A relic to discard beside the altar for damage to the boss: always.
+            let takes = choice.title == BoardCoordinator.reprieveTitle || choice.declineTitle == BoardCoordinator.keepItTitle
+            coord.resolveFigureChoice(takes ? choice.options.first : nil)
             return
         }
         if coord.pendingItemUse != nil {
