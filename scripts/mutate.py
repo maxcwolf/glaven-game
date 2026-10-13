@@ -147,6 +147,7 @@ S={
  "diggingDigsNothing": ("GlavenGame/Board/BoardCoordinator+Forgo.swift", "        sufferDamage(1, to: grave, killer: mover)", "        sufferDamage(0, to: grave, killer: mover)"),
  "spiritsGoUnasked": ("GlavenGame/Board/BoardCoordinator+Effects.swift", "        if autoResolvePrompts {\n            if let nearest = reprieveCandidates(nearest: killer).first { banish(nearest) }", "        if true {\n            if let nearest = reprieveCandidates(nearest: killer).first { banish(nearest) }"),
  "reprieveNotAskedAfterTheBlow": ("GlavenGame/Board/BoardCoordinator+Combat.swift", "        await resolveDeathAttacks()\n        await resolveReprieves()\n", "        await resolveDeathAttacks()\n"),
+ "alliesDrawFromTheirOwnDeck": ("GlavenGame/Board/EscortTurnController.swift", "                draw = { am.drawCharacterCard(for: character) }", "                _ = character"),
 }
 M.update(S)
 def run(name, flt=None):

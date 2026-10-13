@@ -109,8 +109,21 @@ final class EscortTurnController {
         guard let attack = result.attack else { return }
         let am = gameManager.attackModifierManager
         // Escorts draw from the ally deck or the monster deck as the scenario specifies.
-        let draw: () -> AttackModifier? = container.useAllyDeck ? { am.drawAllyCard() } : { am.drawMonsterCard() }
-        for target in result.attackTargets.isEmpty ? [result.attackTarget].compactMap({ $0 }) : result.attackTargets {
+        var draw: () -> AttackModifier? = container.useAllyDeck ? { am.drawAllyCard() } : { am.drawMonsterCard() }
+        let targets = result.attackTargets.isEmpty ? [result.attackTarget].compactMap({ $0 }) : result.attackTargets
+        // "Drawing from whichever attack modifier deck the players choose": a character's.
+        if !targets.isEmpty, let index = container.objectiveIndex,
+           coordinator.scenarioData?.placements?.drawsFromACharacter?.contains(index) == true {
+            let party = gameManager.game.characters.filter { !$0.exhausted && !$0.absent && coordinator.isOnBoard(.character($0.id)) }
+            let chosen = await coordinator.chooseFigure(party.map { PieceID.character($0.id) }.sorted(), title: "\(name) attacks",
+                                                        question: "Whose attack modifier deck is drawn from?")
+            guard !isStale else { return }
+            if case .character(let id)? = chosen, let character = party.first(where: { $0.id == id }) {
+                coordinator.log("\(name) draws from \(coordinator.characterName(id))\u{2019}s deck", category: .attack)
+                draw = { am.drawCharacterCard(for: character) }
+            }
+        }
+        for target in targets {
             guard !isStale, coordinator.isOnBoard(pieceID), coordinator.isOnBoard(target) else { continue }
             await coordinator.performAttack(
                 attacker: pieceID, target: target,

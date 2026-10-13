@@ -50,6 +50,10 @@ struct ScenarioPlacements: Codable, Equatable {
     /// What a character beside an objective may give up an action for (the captive Orchids,
     /// freed).
     var forgo: [Forgo]?
+    /// Escorts (objectives, 1-based) whose attacks draw "from whichever attack modifier deck the
+    /// players choose": a character's, asked as the escort attacks (Redthorn; the captive
+    /// Orchids of Bandit's Wood).
+    var drawsFromACharacter: [Int]?
     /// Objectives (1-based) dug up with movement: a character beside one spends movement points
     /// on it, one hit point each, in as many moves as it takes; nothing attacks it (the graves
     /// of the Overgrown Graveyard, 1+C movement each).

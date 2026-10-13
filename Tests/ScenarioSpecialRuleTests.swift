@@ -2232,4 +2232,51 @@ final class ScenarioSpecialRuleTests: XCTestCase {
         coord.checkVictoryDefeat()
         XCTAssertEqual(coord.scenarioResult ?? coord.pendingResult, .defeat)
     }
+
+    // MARK: - Whose deck an ally draws from (#44, #56)
+
+    /// Redthorn attacks "drawing from whichever attack modifier deck the players choose": as he
+    /// attacks they are asked whose, and the card comes from that character's deck.
+    func testRedthornDrawsFromTheDeckThePlayersChoose() async throws {
+        let sim = try simulator("44")
+        let coord = sim.coord
+        coord.autoResolvePrompts = false
+        for piece in pieces(sim) { coord.boardState.removePiece(piece) }
+        let container = try XCTUnwrap(sim.gm.game.objectives.first { $0.name == "Redthorn" })
+        let redthorn = try XCTUnwrap(container.entities.first.map { PieceID.objective(id: $0.number) })
+        let place = try XCTUnwrap(coord.boardState.piecePositions[redthorn])
+        let foe = try XCTUnwrap(coord.spawnMonster(name: "inox-guard", type: .normal,
+                                                   at: try XCTUnwrap(coord.boardState.neighbors(of: place).sorted().first(where: coord.isEmptyHex)), origin: .placed))
+        let guardian = try entity(sim, foe)
+        guardian.maxHealth = 60
+        guardian.health = 60
+        guardian.shield = nil
+        guardian.shieldPersistent = nil
+        guardian.retaliate = []
+        let brute = sim.gm.game.characters[0], spellweaver = sim.gm.game.characters[1]
+        brute.attackModifierDeck = RuleBoard.deck(of: .plus2)
+        spellweaver.attackModifierDeck = RuleBoard.deck(of: .minus1)
+        let allies = sim.gm.game.allyAttackModifierDeck
+
+        func attack(drawingFrom character: GameCharacter) async throws -> Int {
+            let before = guardian.health
+            let turn = Task { @MainActor in await EscortTurnController(coordinator: coord, gameManager: sim.gm).executeEscortTurns(for: container) }
+            let deadline = Date().addingTimeInterval(3)
+            while coord.pendingFigureChoice == nil, Date() < deadline { try? await Task.sleep(nanoseconds: 1_000_000) }
+            let asked = try XCTUnwrap(coord.pendingFigureChoice, "the players are asked whose deck")
+            XCTAssertEqual(asked.title, "Redthorn attacks")
+            XCTAssertEqual(Set(asked.options), [self.character(sim, 0), self.character(sim, 1)])
+            XCTAssertNil(asked.declineTitle, "a deck must be chosen")
+            coord.resolveFigureChoice(.character(character.id))
+            await turn.value
+            return before - guardian.health
+        }
+        let withTheSpellweavers = try await attack(drawingFrom: spellweaver)
+        XCTAssertEqual(withTheSpellweavers, 3 - 1)
+        XCTAssertEqual(RuleBoard.drawn(spellweaver.attackModifierDeck), 1)
+        let withTheBrutes = try await attack(drawingFrom: brute)
+        XCTAssertEqual(withTheBrutes, 3 + 2)
+        XCTAssertEqual(RuleBoard.drawn(brute.attackModifierDeck), 1)
+        XCTAssertEqual(RuleBoard.drawn(sim.gm.game.allyAttackModifierDeck), RuleBoard.drawn(allies), "the ally deck is left alone")
+    }
 }
