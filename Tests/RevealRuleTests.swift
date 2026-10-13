@@ -208,6 +208,26 @@ final class RevealRuleTests: XCTestCase {
         XCTAssertFalse(coord.turnOrder.isEmpty)
     }
 
+    /// MOV-8: a door two hexes wide is one door. Shrine of Strength's first door is two hexes
+    /// side by side: opened by either, both are open — the other half isn't a second door left
+    /// shut (a wall to monsters, and a room "not yet revealed" to the scenario's end). A wall
+    /// to break down (Harrower Hive's, each with its own hit points) stays a hex of its own.
+    func testADoorTwoHexesWideOpensAsOne() throws {
+        sim = try ScenarioSimulator(scenario: "15", options: .init(seed: 1, autoResolvePrompts: true))
+        let halves = coord.boardState.doors.filter { !$0.isOpen }.map(\.coord).sorted()
+        XCTAssertEqual(halves.count, 2)
+        XCTAssertTrue(halves[0].neighbors.contains(halves[1]), "two door hexes side by side")
+        coord.openDoor(at: halves[1])
+        XCTAssertEqual(coord.boardState.doors.filter { halves.contains($0.coord) }.map(\.isOpen), [true, true])
+
+        sim = try ScenarioSimulator(scenario: "76", options: .init(seed: 1, autoResolvePrompts: true))
+        coord.openScenarioRooms((game.scenario?.data.rooms ?? []).map(\.roomNumber))   // the whole map, to find two together
+        let walls = coord.boardState.doors
+        let wall = try XCTUnwrap(walls.first { a in walls.contains { $0.coord != a.coord && a.coord.neighbors.contains($0.coord) } },
+                                 "two walls side by side")
+        XCTAssertEqual(BoardBuilder.doorHexes(ofTheDoorAt: wall.coord, on: coord.boardState), [wall.coord])
+    }
+
     // MARK: - MOV-9: cards and turns for the revealed
 
     /// MOV-9 (p.32): the Guards drew a 30 at the start of the round and have acted; the Brute, on
