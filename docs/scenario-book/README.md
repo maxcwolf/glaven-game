@@ -108,7 +108,8 @@ ends up on the board:
   the scenario when one of them stands on such a hex.
 - `undamageable`: monster types nothing damages (conditions still apply), and `reprieve`
   (`{"killed": [...], "removes": "living-spirit"}`): for each death of one of the first, one of
-  the second is banished — the nearest to the killer, where the book lets the players choose (#70).
+  the second may be banished — the players are asked which (the nearest to the killer first) or
+  none; with no one to ask, the nearest goes (#70).
 - `focusFirst`: objectives the monsters that attack them go for first — one that can get within
   range this turn focuses on it, whoever is nearer (#35 and #36 the gate, #84 the crystal).
 - `saves`: objectives a character may spare a source of damage by losing a card from their hand —
