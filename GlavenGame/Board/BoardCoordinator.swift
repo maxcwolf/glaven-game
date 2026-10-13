@@ -429,6 +429,9 @@ final class BoardCoordinator {
     /// Non-nil when a character is being attacked and needs to choose mitigation.
     var pendingDamage: PendingDamage?
 
+    /// Non-nil while the party decides whether to lose a card to spare an objective its damage.
+    var pendingSave: PendingSave?
+
     /// Non-nil while a character being attacked is offered a defence item.
     var pendingItemUse: PendingItemUse?
 

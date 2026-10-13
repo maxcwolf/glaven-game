@@ -110,6 +110,13 @@ struct BoardView: View {
                     .transition(.move(edge: .bottom).combined(with: .opacity))
             }
 
+            // A card to spare what the party protects (the crystal, a captive)
+            if let pending = coordinator.pendingSave {
+                SaveChoiceSheet(pending: pending, coordinator: coordinator)
+                    .id(pending.id)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+            }
+
             // A defence item offered while an enemy attacks
             if let pending = coordinator.pendingItemUse {
                 ItemUsePrompt(pending: pending, coordinator: coordinator)

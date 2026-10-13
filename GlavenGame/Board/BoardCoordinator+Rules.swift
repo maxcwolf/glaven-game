@@ -299,6 +299,11 @@ extension BoardCoordinator {
             if isOnBoard(pieceID) { boardScene?.floatText("Prevented", over: pieceID, style: .info) }
             return (false, true)
         }
+        // What the party protects: a card lost from a hand spares it this source of damage.
+        if await promptSave(of: pieceID, damage: amount, source: source) {
+            if isOnBoard(pieceID) { boardScene?.floatText("Spared", over: pieceID, style: .info) }
+            return (false, true)
+        }
         return (sufferDamage(amount, to: pieceID, killer: killer), false)
     }
 

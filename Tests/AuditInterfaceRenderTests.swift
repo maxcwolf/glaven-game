@@ -46,6 +46,14 @@ final class AuditInterfaceRenderTests: XCTestCase {
         try render(BoardView(coordinator: sim.coord).environment(sim.gm), "damage-sheet-bonus")
         sim.coord.pendingDamage = nil
 
+        // The crystal about to be destroyed (Crystalline Cave): a card from either hand spares it.
+        let cave = try ScenarioSimulator(scenario: "84", options: .init(characters: ["brute", "spellweaver"], seed: 2))
+        cave.coord.briefPresentation = nil
+        cave.coord.pendingSave = BoardCoordinator.PendingSave(objective: .objective(id: 1), name: "Crystal", damage: 4,
+                                                              sourceDescription: "Frost Demon 3", health: 3, left: 1,
+                                                              hands: cave.coord.savingHands())
+        try render(BoardView(coordinator: cave.coord).environment(cave.gm), "save-sheet")
+
         // The long-rest sheet, with a potion to use on the rest turn.
         brute.items = ["gh-12"]
         if brute.discardedCards.count < 2 { brute.discardedCards.append(contentsOf: brute.handCards.suffix(2)) }

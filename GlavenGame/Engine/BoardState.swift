@@ -75,6 +75,9 @@ final class BoardState {
 
     /// Characters (by id) a scenario's water has cleansed (`ScenarioPlacements.Water.cleanses`).
     var cleansed: [String] = []
+    /// How often a card has been lost to spare each objective (by its 1-based index) a source
+    /// of damage (`ScenarioPlacements.saves`).
+    var savesUsed: [Int: Int] = [:]
 
     /// How many places each cycling boss has been to (`ScenarioPlacements.Cycle`), by monster type.
     var cycleSteps: [String: Int] = [:]

@@ -112,6 +112,12 @@ final class SoakDriver {
         if coord.pendingFigureChoice != nil { coord.resolveFigureChoice(nil); return }
         if coord.pendingItemUse != nil { coord.resolvePendingItemUse(true); return }
         if coord.pendingDamage != nil { coord.resolvePendingDamage(choice: .takeDamage); return }
+        if let save = coord.pendingSave {
+            // Only what would be destroyed is worth a card.
+            let hand = save.destroys ? save.hands.max { $0.cards.count < $1.cards.count } : nil
+            coord.resolvePendingSave(by: hand?.characterID, losing: hand?.cards.last)
+            return
+        }
         if let rest = coord.pendingShortRest {
             if rest.committed { coord.resolveShortRest() } else { coord.commitShortRest() }
             return

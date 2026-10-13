@@ -125,6 +125,10 @@ S={
  "heldMonstersSetUpWithTheRoom": ("GlavenGame/Managers/ScenarioManager.swift", "        setUpMonsters(of: room, playerCount: playerCount, edition: edition) { !held.contains($0) }", "        setUpMonsters(of: room, playerCount: playerCount, edition: edition) { _ in _ = held; return true }"),
  "risenFromTheDestroyedStayDown": ("GlavenGame/Board/BoardCoordinator+Rules.swift", "            if let stood, let index, let risen = scenarioData?.placements?.whenDestroyed?[String(index)],", "            if false, let stood, let index, let risen = scenarioData?.placements?.whenDestroyed?[String(index)],"),
  "scenarioSpecialsIgnored": ("GlavenGame/Board/MonsterTurnController.swift", "                guard let special = coordinator.scenarioData?.placements?.specials?[monster.name] ?? stat?.special,", "                guard let special = stat?.special,"),
+ "savesNeverOffered": ("GlavenGame/Board/BoardCoordinator+Saves.swift", "        guard damage > 0, let rule = save(for: piece), let entity = entity(for: piece), entity.health > 0 else { return false }", "        guard damage > 0, false, let rule = save(for: piece), let entity = entity(for: piece), entity.health > 0 else { return false }"),
+ "savesNeverCounted": ("GlavenGame/Board/BoardCoordinator+Saves.swift", "        boardState.savesUsed[rule.objective, default: 0] += 1", "        boardState.savesUsed[rule.objective, default: 0] += 0"),
+ "savesAskEmptyHands": ("GlavenGame/Board/BoardCoordinator+Saves.swift", "            .filter { !$0.1.isEmpty }", "            .filter { _ in true }"),
+ "headlessSavesNothing": ("GlavenGame/Board/BoardCoordinator+Saves.swift", "            choice = damage >= entity.health ? fullest.flatMap", "            choice = false ? fullest.flatMap"),
 }
 M.update(S)
 def run(name, flt=None):

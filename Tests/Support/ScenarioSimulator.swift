@@ -315,6 +315,11 @@ final class ScenarioSimulator {
                 ? .takeDamage : policy.negateDamage(pending.damage, character: character, sim: self))
             return
         }
+        if let save = coord.pendingSave {
+            let answer = policy.spare(save, sim: self)
+            coord.resolvePendingSave(by: answer?.characterID, losing: answer?.cardId)
+            return
+        }
         if let rest = coord.pendingShortRest, let character = character(rest.characterID) {
             if !rest.committed, let problem = PlayLedger.restProblem(character.name, rest: "short", discards: character.discardedCards.count) {
                 violation(problem)
@@ -444,7 +449,7 @@ final class ScenarioSimulator {
         return [
             "\(gm.game.round)", "\(coord.boardPhase)", "\(coord.currentTurnIndex)", "\(coord.turnLog.count)",
             "\(coord.interactionMode)", turn ?? "-",
-            "\(coord.pendingDamage != nil)\(coord.pendingModifierDraw != nil)\(coord.pendingShortRest != nil)\(coord.pendingLongRest != nil)\(coord.pendingItemUse != nil)",
+            "\(coord.pendingDamage != nil)\(coord.pendingModifierDraw != nil)\(coord.pendingShortRest != nil)\(coord.pendingLongRest != nil)\(coord.pendingItemUse != nil)\(coord.pendingSave != nil)",
         ].joined(separator: " ")
     }
 

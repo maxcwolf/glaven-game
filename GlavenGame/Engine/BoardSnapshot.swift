@@ -27,6 +27,7 @@ struct BoardSnapshot: Codable {
     var heldMonsterSlots: [MonsterSlot]? = nil
     var cycleSteps: [String: Int]? = nil
     var cleansed: [String]? = nil
+    var savesUsed: [Int: Int]? = nil
     var exhaustedOnExit: [String]? = nil
     var conclusion: String? = nil
     var goalReached: Bool? = nil
@@ -63,7 +64,7 @@ struct BoardSnapshot: Codable {
             lockedDoors: board.lockedDoors, shutDoors: board.shutDoors, releasedLocks: board.releasedLocks,
             goalTreasuresLooted: board.goalTreasuresLooted, eliteKills: board.eliteKills,
             heldMonsterSlots: board.heldMonsterSlots, cycleSteps: board.cycleSteps,
-            cleansed: board.cleansed,
+            cleansed: board.cleansed, savesUsed: board.savesUsed,
             exhaustedOnExit: board.exhaustedOnExit,
             conclusion: board.conclusion, goalReached: board.goalReached,
             wallEdges: board.wallEdges.sorted { ($0.a, $0.b) < ($1.a, $1.b) }, crossings: board.crossings
@@ -95,6 +96,7 @@ struct BoardSnapshot: Codable {
         board.heldMonsterSlots = heldMonsterSlots ?? []
         board.cycleSteps = cycleSteps ?? [:]
         board.cleansed = cleansed ?? []
+        board.savesUsed = savesUsed ?? [:]
         board.exhaustedOnExit = exhaustedOnExit ?? []
         board.conclusion = conclusion
         board.goalReached = goalReached ?? false
