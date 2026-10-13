@@ -196,6 +196,18 @@ final class PlaythroughTests: XCTestCase {
         }
     }
 
+    /// Overgrown Graveyard with the four veterans: graves are dug with movement, and a corpse let
+    /// out in the middle of a round acts straight after the turn that dug it up when its card's
+    /// initiative has passed (MOV-9) — which the ledger must take for an arrival, also when no
+    /// one had attacked or moved yet that round.
+    func testACorpseDugUpMidRoundIsAnArrival() async throws {
+        let sim = try ScenarioSimulator(scenario: "75", options: .veteranParty(["brute", "scoundrel", "sun", "lightning"], seed: 1, scenarioLevel: 0),
+                                        policy: VeteranPolicy())
+        _ = await sim.play(rounds: 30)
+        XCTAssertTrue(sim.transcript.contains { $0.contains("digging") }, "the party digs")
+        XCTAssertTrue(sim.violations.isEmpty, sim.violations.joined(separator: "\n"))
+    }
+
     /// Print a seeded playthrough: SIM_SCENARIO=<index> [SIM_SEED=n] [SIM_DIFFICULTY=easy] [SIM_ROUNDS=n] [SIM_PARTY=a,b]
     /// [SIM_VETERAN=1 for the ninth-level party at scenario level 0]
     /// [SIM_OUT=path to write the transcript to instead of printing it].

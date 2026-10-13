@@ -193,6 +193,7 @@ final class ScenarioSimulator {
             let money = moneyOnTheTable()
             let turnBefore = coord.activePlayerTurn
             eachStep?()
+            noteRoundStart()
             step()
             await settle()
             collectLog()
@@ -515,6 +516,15 @@ final class ScenarioSimulator {
             transcript.append(entry.isRoundHeader ? "=== \(entry.message) ===" : line)
             logCursor += 1
         }
+    }
+
+    /// Who is on the board as a round's turns begin, for the ledger: anyone else has arrived
+    /// during the round. Taken as soon as the turns start, not at the first attack or move — a
+    /// grave dug up with movement lets a corpse out before anyone has "acted".
+    private func noteRoundStart() {
+        guard coord.boardPhase == .execution, gm.game.round != ledgerRound else { return }
+        ledgerRound = gm.game.round
+        presentAtRoundStart = Set(coord.boardState.piecePositions.keys.map(identity(of:)))
     }
 
     /// A board summary once per round (when card selection starts) and at the end.
