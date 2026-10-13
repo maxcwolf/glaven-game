@@ -172,4 +172,85 @@ final class CarriedThingTests: XCTestCase {
         coord.checkVictoryDefeat(turnEnded: true)
         XCTAssertEqual(coord.scenarioResult ?? coord.pendingResult, .victory)
     }
+
+    // MARK: - #58: the Occult Dagger
+
+    /// "Only the character on the Vengeance quest may loot the treasure tile; looting it gives
+    /// that character the Occult Dagger", whose holder "adds Pierce 4 to all their attacks that
+    /// target the Harvester".
+    func testOnlyTheVengeanceCharacterTakesTheDaggerAndItPiercesTheHarvester() async throws {
+        let sim = try simulator("58")
+        let coord = sim.coord
+        revealAll(sim)
+        let brute = sim.gm.game.characters[0], spellweaver = sim.gm.game.characters[1]
+        spellweaver.personalQuest = "526"
+        let chest = try XCTUnwrap(coord.boardState.cells.values.first { $0.overlay == .treasure && $0.treasureID == BoardCoordinator.goalTreasureID }?.coord)
+        stand(sim, 0, on: chest)
+        coord.lootAtEndOfTurn(brute.id)
+        XCTAssertEqual(coord.boardState.cells[chest]?.overlay, .treasure, "the Brute isn't on the quest: the tile stays")
+        XCTAssertNil(coord.holder(of: "Occult Dagger"))
+        let free = try XCTUnwrap(coord.boardState.cells.keys.sorted().first(where: coord.isEmptyHex))
+        stand(sim, 0, on: free)
+        stand(sim, 1, on: chest)
+        coord.lootAtEndOfTurn(spellweaver.id)
+        XCTAssertEqual(coord.holder(of: "Occult Dagger")?.id, spellweaver.id)
+
+        // Against the Harvester, with nothing else shielding it: Shield 4 is pierced by the
+        // holder's attack and not by the Brute's. Against anyone else the dagger does nothing.
+        for pile in coord.boardState.piecePositions.keys.sorted() { if case .objective = pile { coord.sufferDamage(999, to: pile) } }
+        let harvester = try XCTUnwrap(monsters(sim).first { if case .monster("the-harvester", _) = $0 { return true }; return false })
+        let boss = try XCTUnwrap(coord.entity(for: harvester))
+        boss.shield = ActionModel(type: .shield, value: .int(4))
+        boss.shieldPersistent = nil
+        boss.maxHealth = 99
+        boss.health = 99
+        XCTAssertEqual(coord.carriedPierce(of: piece(sim, 1), against: harvester), 4)
+        XCTAssertEqual(coord.carriedPierce(of: piece(sim, 0), against: harvester), 0)
+        let other = try XCTUnwrap(monsters(sim).first { $0 != harvester })
+        XCTAssertEqual(coord.carriedPierce(of: piece(sim, 1), against: other), 0)
+        await coord.performAttack(attacker: piece(sim, 1), target: harvester, attack: AttackParameters(value: 3), drawCard: { AttackModifier(type: .plus0) })
+        XCTAssertEqual(boss.health, 96, "Attack 3 through Shield 4, pierced")
+        await coord.performAttack(attacker: piece(sim, 0), target: harvester, attack: AttackParameters(value: 3), drawCard: { AttackModifier(type: .plus0) })
+        XCTAssertEqual(boss.health, 96, "the Brute's Attack 3 stops at the Shield")
+
+        // The dagger doesn't change hands, whatever the Brute loots.
+        coord.collectLootInRange(pieceID: piece(sim, 0), range: 99)
+        XCTAssertEqual(coord.holder(of: "Occult Dagger")?.id, spellweaver.id)
+    }
+
+    /// With no one in the party on the quest (the scenario played for itself) anyone may loot it.
+    func testWithNoOneOnTheQuestAnyoneTakesTheDagger() throws {
+        let sim = try simulator("58")
+        revealAll(sim)
+        let chest = try XCTUnwrap(sim.coord.boardState.cells.values.first { $0.overlay == .treasure && $0.treasureID == BoardCoordinator.goalTreasureID }?.coord)
+        stand(sim, 0, on: chest)
+        sim.coord.lootAtEndOfTurn(sim.gm.game.characters[0].id)
+        XCTAssertEqual(sim.coord.holder(of: "Occult Dagger")?.id, sim.gm.game.characters[0].id)
+    }
+
+    // MARK: - #82: the artifacts
+
+    /// Burning Mountain: whoever loots the chest holds its artifacts; it is their holder who
+    /// sacrifices one on the altar hex, and "the scenario is lost if the character holding the
+    /// items becomes exhausted" (FAQ).
+    func testTheArtifactsHolderSacrificesOneOrLosesThemAll() throws {
+        let sim = try simulator("82")
+        let coord = sim.coord
+        revealAll(sim)
+        for monster in monsters(sim) { coord.removePieceFromBoard(monster) }
+        let chest = try XCTUnwrap(coord.boardState.cells.values.first { $0.treasureID == "62" }?.coord)
+        stand(sim, 1, on: chest)
+        coord.lootAtEndOfTurn(sim.gm.game.characters[1].id)
+        XCTAssertEqual(coord.holder(of: "artifacts")?.id, sim.gm.game.characters[1].id)
+        coord.collectLootInRange(pieceID: piece(sim, 0), range: 99)
+        XCTAssertEqual(coord.holder(of: "artifacts")?.id, sim.gm.game.characters[1].id, "they stay with their holder")
+
+        coord.sufferDamage(999, to: piece(sim, 0))
+        coord.checkVictoryDefeat(turnEnded: true)
+        XCTAssertNil(coord.scenarioResult ?? coord.pendingResult, "the Brute exhausted: the artifacts aren't his")
+        coord.sufferDamage(999, to: piece(sim, 1))
+        XCTAssertTrue(coord.boardState.carriedLying.isEmpty, "they don't lie to be picked up")
+        coord.checkVictoryDefeat(turnEnded: true)
+        XCTAssertEqual(coord.scenarioResult ?? coord.pendingResult, .defeat)
+    }
 }

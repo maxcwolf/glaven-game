@@ -106,6 +106,9 @@ final class BoardState {
     var carriedBy: [String: String] = [:]
     /// Where a carried thing lies that no one holds.
     var carriedLying: [String: HexCoord] = [:]
+    /// Carried things that are out of the scenario, and how: "lost" with an exhausted holder,
+    /// "spent" at an altar.
+    var carriedGone: [String: String] = [:]
 
     // MARK: - Derived
 

@@ -60,6 +60,8 @@ extension BoardCoordinator {
         applyDoomBonuses(to: &attack, attacker: attacker, target: target, distance: distance)
         // What the scenario does to every attack of this figure (a vocal chord still standing).
         attack.value = max(0, attack.value + scenarioAttackBonus(of: attacker))
+        // What the attacker carries (the Occult Dagger: Pierce 4 against the Harvester).
+        attack.pierce += carriedPierce(of: attacker, against: target)
         let isPoisoned = defender.entityConditions.contains { $0.name == .poison && !$0.expired }
         var shield = shield(of: target) + cleansedShield(of: target, against: attacker)
         // Retaliate gained for this attack alone (a charge, an item), each with its reach. Whether

@@ -157,6 +157,13 @@ S={
  "carriedThingWeighsNothing": ("GlavenGame/Board/BoardCoordinator+Effects.swift", " + carriedMoveBonus(of: pieceID)", ""),
  "noOneIsAskedWhoHolds": ("GlavenGame/Board/BoardCoordinator+Carried.swift", "            if autoResolvePrompts {\n                give(thing.name, to: first.id, how: \"holds\")", "            if true {\n                give(thing.name, to: first.id, how: \"holds\")"),
  "lyingThingNotPickedUp": ("GlavenGame/Board/BoardCoordinator+Carried.swift", "            if let lying = boardState.carriedLying[name] { return hexes.contains(lying) }", "            if boardState.carriedLying[name] != nil { return false }"),
+ "anyoneLootsTheQuestTile": ("GlavenGame/Board/BoardCoordinator+Carried.swift", "        return party.first { $0.id == characterID }?.personalQuest == quest", "        return party.first { $0.id == characterID }?.personalQuest == quest || true"),
+ "treasureGivesNothing": ("GlavenGame/Board/BoardCoordinator+Carried.swift", "        give(thing.name, to: characterID, how: \"now holds\")", "        _ = thing"),
+ "carriedPierceIsNothing": ("GlavenGame/Board/BoardCoordinator+Carried.swift", "        return carried(by: id).filter { $0.against == name }.reduce(0) { $0 + ($1.pierce ?? 0) }", "        return carried(by: id).filter { $0.against == name }.reduce(0) { $0 + 0 * ($1.pierce ?? 0) }"),
+ "carriedPierceAgainstAnyone": ("GlavenGame/Board/BoardCoordinator+Carried.swift", "        return carried(by: id).filter { $0.against == name }.reduce(0) { $0 + ($1.pierce ?? 0) }", "        return carried(by: id).filter { _ in name == name }.reduce(0) { $0 + ($1.pierce ?? 0) }"),
+ "holdersFallLosesNothing": ("GlavenGame/Board/BoardCoordinator+Carried.swift", "        carriedThings.first { $0.lostWithHolder == true && boardState.carriedGone[$0.name] == \"lost\" }", "        carriedThings.first { _ in false }"),
+ "stayingThingsChangeHands": ("GlavenGame/Board/BoardCoordinator+Carried.swift", "            guard byLootAction, carriedThings.first(where: { $0.name == name })?.passes == true,", "            guard byLootAction,"),
+ "stayingThingsAreLeftBehind": ("GlavenGame/Board/BoardCoordinator+Carried.swift", "            if thing.passes == true, let hex = boardState.piecePositions[.character(character.id)] {", "            if let hex = boardState.piecePositions[.character(character.id)] {"),
 }
 M.update(S)
 def run(name, flt=None):

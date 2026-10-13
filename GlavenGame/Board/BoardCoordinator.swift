@@ -2768,6 +2768,8 @@ final class BoardCoordinator {
             if cell.overlaySubType == "coin" || cell.treasureID == nil {
                 tokens += max(1, cell.treasureAmount ?? 1)
             } else if let id = cell.treasureID {
+                // A tile only one character may loot (the Occult Dagger's) is left by the others.
+                guard mayLootTreasure(id, characterID: charID) else { continue }
                 // Where every character must loot one goal treasure tile, each loots only one.
                 if id == Self.goalTreasureID {
                     guard byLootAction || !goalTreasureNeedsLootAction else { continue }
@@ -2777,6 +2779,7 @@ final class BoardCoordinator {
                 }
                 let reward = gameManager.scenarioManager.lootTreasure(id, by: character)
                 log("\(characterName(charID)) loots treasure \(id)\(reward.map { ": \($0)" } ?? "")", category: .loot)
+                noteTreasureLooted(id, by: charID)
             }
             boardState.removeTreasure(at: coord)
             boardScene?.removeOverlaySprite(at: coord, offsetCol: offsetCol, offsetRow: offsetRow)

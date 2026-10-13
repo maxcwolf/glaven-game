@@ -171,6 +171,8 @@ extension BoardCoordinator {
         for name in goal.lostIfKilled ?? [] where (kills[name] ?? 0) > 0 {
             return "A \(monsterTypeName(name)) is killed."
         }
+        // What is lost with its holder (the artifacts of Burning Mountain).
+        if let loss = carriedLoss() { return loss }
         // Where characters must be, once they are all on the map.
         let standing = party.filter { !$0.exhausted }
         if boardPhase != .setup, !standing.isEmpty {

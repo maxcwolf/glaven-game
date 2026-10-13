@@ -83,12 +83,49 @@ extension BoardCoordinator {
         guard !held.isEmpty else { return }
         for thing in held {
             boardState.carriedBy[thing.name] = nil
-            if let hex = boardState.piecePositions[.character(character.id)] {
+            if thing.passes == true, let hex = boardState.piecePositions[.character(character.id)] {
                 boardState.carriedLying[thing.name] = hex
                 log("\(characterName(character.id)) drops the \(thing.name)", category: .loot, trace: "at \(hex)")
+            } else {
+                // What doesn't change hands goes with its holder.
+                boardState.carriedGone[thing.name] = "lost"
             }
         }
         syncCarriedSprites()
+    }
+
+    /// Whether a carried thing is still to be had: no one holds it, it lies nowhere and it
+    /// isn't out of the scenario.
+    private func isUnclaimed(_ thing: ScenarioPlacements.Carried) -> Bool {
+        boardState.carriedBy[thing.name] == nil && boardState.carriedLying[thing.name] == nil && boardState.carriedGone[thing.name] == nil
+    }
+
+    /// Whether `characterID` may loot the treasure tile `id`: a tile that gives a thing only one
+    /// quest's character may take (the Occult Dagger) is theirs alone, where someone is on it.
+    func mayLootTreasure(_ id: String, characterID: String) -> Bool {
+        guard let quest = carriedThings.first(where: { $0.treasure == id && $0.onlyQuest != nil && isUnclaimed($0) })?.onlyQuest,
+              let party = gameManager?.game.characters.filter({ !$0.absent }), party.contains(where: { $0.personalQuest == quest })
+        else { return true }
+        return party.first { $0.id == characterID }?.personalQuest == quest
+    }
+
+    /// `characterID` has looted the treasure tile `id`: the next thing that tile gives is theirs.
+    func noteTreasureLooted(_ id: String, by characterID: String) {
+        guard let thing = carriedThings.first(where: { $0.treasure == id && isUnclaimed($0) }) else { return }
+        give(thing.name, to: characterID, how: "now holds")
+    }
+
+    /// The Pierce what the attacker carries adds against this target (the Occult Dagger against
+    /// the Harvester).
+    func carriedPierce(of attacker: PieceID, against target: PieceID) -> Int {
+        guard case .character(let id) = attacker, case .monster(let name, _) = target else { return 0 }
+        return carried(by: id).filter { $0.against == name }.reduce(0) { $0 + ($1.pierce ?? 0) }
+    }
+
+    /// What has lost the scenario by a holder's exhaustion, in the brief's words.
+    func carriedLoss() -> String? {
+        carriedThings.first { $0.lostWithHolder == true && boardState.carriedGone[$0.name] == "lost" }
+            .map { "The character holding the \($0.name) is exhausted." }
     }
 
     /// The carried things a loot of `coords` by `characterID` takes: what lies on them, and — for
@@ -97,7 +134,8 @@ extension BoardCoordinator {
         let hexes = Set(coords)
         return carriedThings.map(\.name).filter { name in
             if let lying = boardState.carriedLying[name] { return hexes.contains(lying) }
-            guard byLootAction, let holder = boardState.carriedBy[name], holder != characterID,
+            guard byLootAction, carriedThings.first(where: { $0.name == name })?.passes == true,
+                  let holder = boardState.carriedBy[name], holder != characterID,
                   let at = boardState.piecePositions[.character(holder)] else { return false }
             return hexes.contains(at)
         }
@@ -109,7 +147,7 @@ extension BoardCoordinator {
         guard case .character(let id) = pieceID, let pos = boardState.piecePositions[pieceID] else { return [] }
         let places = carriedThings.compactMap { thing -> HexCoord? in
             if let lying = boardState.carriedLying[thing.name] { return lying }
-            guard let holder = boardState.carriedBy[thing.name], holder != id else { return nil }
+            guard thing.passes == true, let holder = boardState.carriedBy[thing.name], holder != id else { return nil }
             return boardState.piecePositions[.character(holder)]
         }
         return places.filter { hex in

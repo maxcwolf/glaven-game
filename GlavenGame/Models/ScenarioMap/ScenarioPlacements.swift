@@ -366,6 +366,22 @@ extension ScenarioPlacements {
         var droppedBy: String?
         /// Added to every Move of its holder (−2 for the claw).
         var move: Int?
+        /// The treasure tile whose looter holds it ("goal", "62"). Several things on tiles with
+        /// one id are given in the order they are written (the Crystal of Zenith, then the
+        /// Sphere of Midnight).
+        var treasure: String?
+        /// The personal quest (its card: "526", Vengeance) of the only character who may loot
+        /// that tile, where someone in the party is on it.
+        var onlyQuest: String?
+        /// Whether it changes hands by a Loot action with its holder in range and lies where an
+        /// exhausted holder stood (the doll, the claw). Otherwise it stays with whoever has it.
+        var passes: Bool?
+        /// Pierce added to its holder's attacks on the monster type `against` (the Occult
+        /// Dagger: 4, against the Harvester).
+        var pierce: Int?
+        var against: String?
+        /// The scenario is lost if its holder is exhausted (the artifacts of Burning Mountain).
+        var lostWithHolder: Bool?
     }
 
     /// "A character adjacent to a captive Orchid may forgo an action (discarding one card
