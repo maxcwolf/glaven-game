@@ -12,8 +12,8 @@ means the data and code that enforce the rule were found, and usually a test tha
 that the scenario was played through. Keep it current: when a rule is built, rewrite its row in
 the same commit (see [../rules-work.md](../rules-work.md)).
 
-**447 rules: 386 done, 14 partial, 47 missing.**
-77 of 95 scenarios have every printed rule done. The other 18: #55 (6 missing, 1 partial), #88 (3 missing, 0 partial), #34 (4 missing, 2 partial), #76 (4 missing, 2 partial), #71 (5 missing, 0 partial), #73 (5 missing, 0 partial), #78 (5 missing, 0 partial), #21 (2 missing, 2 partial), #49 (4 missing, 0 partial), #74 (4 missing, 0 partial), #52 (1 missing, 1 partial), #68 (1 missing, 1 partial), #79 (1 missing, 1 partial), #82 (0 missing, 2 partial), #38 (0 missing, 1 partial), #47 (0 missing, 1 partial), #67 (1 missing, 0 partial), #95 (1 missing, 0 partial).
+**447 rules: 387 done, 14 partial, 46 missing.**
+78 of 95 scenarios have every printed rule done. The other 17: #55 (6 missing, 1 partial), #88 (3 missing, 0 partial), #34 (4 missing, 2 partial), #76 (4 missing, 2 partial), #71 (5 missing, 0 partial), #73 (5 missing, 0 partial), #78 (5 missing, 0 partial), #21 (2 missing, 2 partial), #49 (4 missing, 0 partial), #74 (4 missing, 0 partial), #52 (1 missing, 1 partial), #68 (1 missing, 1 partial), #79 (1 missing, 1 partial), #82 (0 missing, 2 partial), #38 (0 missing, 1 partial), #47 (0 missing, 1 partial), #67 (1 missing, 0 partial).
 
 Rules that were enforced wrongly, as against not at all, are findings of the engine audit
 ([../audits/2026-10-09-rules-audit.md](../audits/2026-10-09-rules-audit.md), rows S1-…, S2-…),
@@ -46,7 +46,7 @@ order", has the same list as tasks). The rows below say what the game does today
   a → f and summons by where it lands. #34: the Elder Drake on three hexes, its Zephyrs and its
   flight between perches. #79: the Betrayer's forced "Move 4" and its mind control.
 - **Walls and obstacles with hit points.** #76's destructible walls (and its three discarded
-  cards, the Stun, summons leaving walls alone), #95's boulders, #52's centre-room obstacles
+  cards, the Stun, summons leaving walls alone), #95's boulders (built 2026-10-13), #52's centre-room obstacles
   that jumping and flying figures still cross and that don't block sight.
 - **Small ones.** #38's Orchid heads for the nearest enemy, not the shaman; #68's tree can take a
   condition given to allies, and a poisoned summon doesn't avoid water; #52's starting hexes
@@ -879,4 +879,4 @@ order", has the same list as tasks). The rows below say what the game does today
 | Until tokens 1–4 are looted: end of every odd round a Flame Demon spawns by door 1 (normal for 2; elite for 3–4) | done | placements rule `round: "R % 2 == 1"`, `when: [{locked: 0}]` (the fact "lock 0 isn't released yet", `boardFactHolds`), spawning at the letter written on the G1b hex beside the door; same test |
 | Until tokens 1–4 are looted: end of every even round an Earth Demon spawns by door 1 (normal for 2–3; elite for 4) | done | placements rule `round: "R % 2 == 0"`, `when: [{locked: 0}]`; same test |
 | Any figure ending its turn in a water hex suffers 1+L damage | done | placements `water: {endOfTurn: "1+L"}` → `BoardCoordinator.waterDamageAtTurnEnd` (characters as their turn ends; monsters and summons through `sufferWaterAtTurnEnd` in `MonsterTurnController` / `SummonTurnController`); `ScenarioSpecialRuleTests.testEndingATurnInTheWaterOfPaymentDue` |
-| Each boulder has 3+L hit points | missing | K2b's five boulders are plain obstacle overlays with no hit points: they can't be attacked or damaged (the audit and TODO.md list it as still open). Needs obstacles that are objectives with health |
+| Each boulder has 3+L hit points | done | `95.json` lists an objective "Boulder" (health `3+L`), five in room 4, and the placements stand one on each of K2b's five boulder hexes: a thing to destroy, attacked like an enemy; destroyed, its obstacle goes with it (`clearObjectiveSite`) — which is the only way on foot to the far room's three tokens; `CarriedThingTests.testTheBouldersAreDestroyedToReachTheTokens`. Was: K2b's five boulders were plain obstacle overlays with no hit points. Needed obstacles that are objectives with health |

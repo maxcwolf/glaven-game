@@ -276,7 +276,7 @@ its map, every door objective is on a door and every objective number exists.
 | 86 Harried Village | 11 villagers | b–f | win: 7 reach the docks; lost at 5 killed | — |
 | 90 Demonic Rift | — | b, c (the Living Spirits, once every demon is dead; a Night Demon at b as an even round ends with no one in the right-hand room) | win: every Living Spirit killed | — (`DemonicRiftTests`: both rooms set up, characters cross by the altars for 1 movement, the losses for an empty room) |
 | 92 Back Alley Brawl | — | a, b, c (where the City Archer and the two City Guards are set up; not the book's letters) | win: every non-city enemy killed; lost if a guard or the archer is killed | — |
-| 95 Payment Due | — | a (the six numbered tokens), s (by door 1, where the demons arrive; not the book's letter) | win: kill the Prime Lieutenant | `tokens`; door 1 locked until 1 to 4 are looted; a demon as each round ends until then |
+| 95 Payment Due | 5 boulders (3+L hit points; the objective is added to `95.json`) | a (the six numbered tokens), s (by door 1, where the demons arrive; not the book's letter) | win: kill the Prime Lieutenant | `tokens`; door 1 locked until 1 to 4 are looted; a demon as each round ends until then |
 
 ### Locked doors written
 

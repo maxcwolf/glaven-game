@@ -175,7 +175,7 @@ the ones the re-audit found wrong or newly missing.
 | — | #34, #35, #36, #39, #51, #73 | Obstacles the scenario says can't be destroyed can be | fixed — `testWhatTheScenarioSaysCantBeDestroyedIsnt`, `testNoAbilityDestroysADarkPit` |
 | — | #35 | The City Archers are set up beside the party instead of on the battlements | fixed: the tiles behind the gate are laid out from the start (`laidOut`), the archers of (a) and (b) stand on the battlements and shoot over the wall sections, and the rest are set up when the gate is destroyed or a character or ally gets over the wall (`BattlementsTests`) |
 | — | #49, #78 | Missing immunity to forced movement (Siege Cannon, Cultists (b)) | fixed — `testTheCarriersAndTheCannonCantBeForcedToMove` |
-| — | #66, #69, #76, #85, #88, #90, #95 | Smaller printed rules not enforced (door 1's timing, entering a hex beside the well, discarding three cards, Sun-Blessed, −1 Move, the Night Demon, boulders with hit points) | fixed for #66, #69, #85, #88, #90 (`ScenarioReauditTests`); open for #76 (discarding three cards) and #95 (boulders with hit points) |
+| — | #66, #69, #76, #85, #88, #90, #95 | Smaller printed rules not enforced (door 1's timing, entering a hex beside the well, discarding three cards, Sun-Blessed, −1 Move, the Night Demon, boulders with hit points) | fixed for #66, #69, #85, #88, #90 (`ScenarioReauditTests`); #95's boulders have their hit points (2026-10-13, `CarriedThingTests.testTheBouldersAreDestroyedToReachTheTokens`); open for #76 (discarding three cards) |
 
 Scenario rules still not built are listed, by the kind of work they need, in
 [../scenario-book/rules-audit.md](../scenario-book/rules-audit.md) ("What is still open") and as
