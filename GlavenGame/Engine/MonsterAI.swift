@@ -167,7 +167,7 @@ enum MonsterAI {
         )
         // What the scenario has monsters go for first comes first, when it is within reach.
         candidates = prioritized(candidates, move: totalMove, gameState: gameState)
-        guard let focus = candidates.first?.pieceID, let focusPos = board.piecePositions[focus] else {
+        guard let focus = candidates.first?.pieceID, let focusPos = board.nearestHex(of: focus, to: currentPos) else {
             // No focus: the monster neither moves nor attacks (p.30).
             return result(disarmed: isDisarmed, attack: attackSpec)
         }
@@ -215,7 +215,7 @@ enum MonsterAI {
         if let reach = spec.allEnemiesWithin {
             // "Target all enemies within N": every enemy in reach and line of sight.
             let hits = enemies.filter { enemy in
-                guard let pos = board.piecePositions[enemy] else { return false }
+                guard let pos = board.nearestHex(of: enemy, to: position) else { return false }
                 return canAttack(from: position, to: pos, range: reach, board: board)
             }
             guard !hits.isEmpty else { return [] }
@@ -293,7 +293,8 @@ enum MonsterAI {
         var candidates: [FocusCandidate] = []
 
         for enemy in enemies {
-            guard let enemyPos = board.piecePositions[enemy] else { continue }
+            // (Of a figure on several hexes, the one nearest the attacker.)
+            guard let enemyPos = board.nearestHex(of: enemy, to: position) else { continue }
 
             var attackHexes = findAttackHexes(
                 target: enemyPos, range: range, board: board,
@@ -545,7 +546,7 @@ enum MonsterAI {
         var candidates: [Candidate] = []
         for enemy in enemies {
             guard enemy != primaryTarget else { continue }
-            guard let enemyPos = board.piecePositions[enemy] else { continue }
+            guard let enemyPos = board.nearestHex(of: enemy, to: position) else { continue }
             guard canAttack(from: position, to: enemyPos, range: range, board: board) else { continue }
             candidates.append(Candidate(
                 pieceID: enemy,
@@ -578,9 +579,18 @@ enum MonsterAI {
     /// gun (`ScenarioPlacements.battery`).
     static func idleMonsters(_ gameState: GameState) -> Set<String> {
         guard let scenario = gameState.scenario, scenario.data.solo == nil,
-              let gun = ScenarioPlacementStore.shared.placements(for: scenario.data.index, edition: scenario.data.edition)?.battery?.gun
+              let written = ScenarioPlacementStore.shared.placements(for: scenario.data.index, edition: scenario.data.edition)
         else { return [] }
-        return [gun]
+        // (A perched boss's summons act with it, not on a turn of their own.)
+        return Set([written.battery?.gun, written.perch?.summons].compactMap { $0 })
+    }
+
+    /// Monster types nothing affects and no one focuses on (the Elder Drake's Zephyrs).
+    static func intangibleMonsters(_ gameState: GameState) -> Set<String> {
+        guard let scenario = gameState.scenario, scenario.data.solo == nil,
+              let summoned = ScenarioPlacementStore.shared.placements(for: scenario.data.index, edition: scenario.data.edition)?.perch?.summons
+        else { return [] }
+        return [summoned]
     }
 
     static func inactiveMonsters(_ gameState: GameState) -> Set<String> {

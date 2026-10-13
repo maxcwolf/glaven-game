@@ -64,7 +64,7 @@ extension BoardCoordinator {
     /// Scenery without hit points (a water pump): nothing attacks it.
     private func isUntouchable(_ pieceID: PieceID) -> Bool {
         // An ally only to be healed is no one's enemy either, and nothing affects an inactive monster.
-        if objectiveContainer(of: pieceID)?.isSheltered == true || isInactive(pieceID) || isDug(pieceID) { return true }
+        if objectiveContainer(of: pieceID)?.isSheltered == true || isInactive(pieceID) || isDug(pieceID) || isIntangible(pieceID) { return true }
         guard isScenery(pieceID) else { return false }
         return (entity(for: pieceID)?.maxHealth ?? 0) <= 0
     }
@@ -174,6 +174,7 @@ extension BoardCoordinator {
     func applyCondition(_ condition: ConditionName, to pieceID: PieceID) {
         guard let gameManager, let entity = entity(for: pieceID) else { return }
         if condition.isNegative { wake(pieceID) }
+        if isIntangible(pieceID) { return }
         // An objective on the map (an altar, a door) is immune to every condition.
         guard !isScenery(pieceID) else {
             boardScene?.floatText("Immune", over: pieceID, style: .info)
@@ -235,6 +236,8 @@ extension BoardCoordinator {
         wake(pieceID)
         // A thing of the map without hit points (a water pump, the pit's victim) has none to lose.
         if isScenery(pieceID), entity.maxHealth <= 0 { return false }
+        // What nothing affects at all (the Elder Drake's Zephyrs).
+        if isIntangible(pieceID) { return false }
         // What the scenario lets nothing damage (Chained Isle's Living Spirits).
         if isUndamageable(pieceID) {
             log("\(name(pieceID)) can\u{2019}t be damaged", category: .damage)

@@ -161,6 +161,20 @@ enum AoEResolver {
         if isMelee {
             // Anchored on the attacker's hex; try all 6 rotations, and those of the mirror image
             // (FAQ: "you can also use the mirror image of the area").
+            let activeOffsets = hexes.filter { $0.isActive }.map { Cube($0.cubeX, $0.cubeY, $0.cubeZ) }
+            if activeOffsets.count > 1, let body = board.bodies.values.first(where: { $0.contains(attackerPos) }), body.count > 1 {
+                // A figure of several hexes (the Elder Drake): the pattern's grey hexes are its
+                // body, so it lies only the ways that put them on the hexes it stands on.
+                for mirror in [false, true] {
+                    for turns in 0..<6 {
+                        func place(_ offset: Cube, _ origin: Cube) -> HexCoord { ((mirror ? offset.mirrored : offset).rotated(turns) + origin).hex }
+                        for origin in body.map(Cube.init) where Set(activeOffsets.map { place($0, origin) }) == Set(body) {
+                            consider(targetOffsets.map { place($0, origin) })
+                        }
+                    }
+                }
+                return best
+            }
             let origin = Cube(attackerPos)
             for offsets in [targetOffsets, targetOffsets.map(\.mirrored)] {
                 for turns in 0..<6 {

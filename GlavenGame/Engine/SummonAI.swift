@@ -68,7 +68,7 @@ enum PlayerSideAI {
                                                    isRanged: isRanged, enemyPositions: blockers, gameState: gameState,
                                                    mode: mode)
         guard let focus = candidates.first?.pieceID,
-              let focusPos = board.piecePositions[focus] else { return Plan() }
+              let focusPos = board.nearestHex(of: focus, to: position) else { return Plan() }
 
         var path: [HexCoord] = []
         if totalMove > 0 {
@@ -94,6 +94,7 @@ enum PlayerSideAI {
     /// objectives to destroy (an altar, a barred door), which are enemies like any other.
     static func hostileMonsters(board: BoardState, gameState: GameState, includeInvisible: Bool) -> [PieceID] {
         let inactive = MonsterAI.inactiveMonsters(gameState)
+        let intangible = MonsterAI.intangibleMonsters(gameState)
         return board.piecePositions.keys.sorted().filter { id in
             if let (container, entity) = MonsterAI.objectiveEntity(id, gameState: gameState) {
                 return !container.escort && !container.isProtected && entity.maxHealth > 0
@@ -102,6 +103,7 @@ enum PlayerSideAI {
                   !MonsterAI.isAllyFaction(group), !inactive.contains(group.name) else { return false }
             // A summon leaves a sleeping monster alone unless a character directs it (it is in the way all the same).
             if !includeInvisible, board.asleep.contains(id) { return false }
+            if !includeInvisible, intangible.contains(group.name) { return false }
             return includeInvisible || !MonsterAI.isActive(.invisible, on: entity)
         }
     }

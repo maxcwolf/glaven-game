@@ -87,7 +87,7 @@ M={
 }
 # Scenario rules (the mechanisms of placements/gh.json): run against the scenario tests.
 SCENARIO_FILTER=("ScenarioSpecialRuleTests|ScenarioReauditTests|ScenarioEnforcedRuleTests|ScenarioLockTests|ScenarioGoalTests|"
-                 "ScenarioSpawnTests|DemonicRiftTests|BattlementsTests|MonsterTextTests|MonsterSummonTests|CarriedThingTests|DriftTests|RollingBoulderTests|RisingWaterTests|SleepingMonsterTests|BarredDoorTests|BatteryTests|CarrierTests|ThroneTests")
+                 "ScenarioSpawnTests|DemonicRiftTests|BattlementsTests|MonsterTextTests|MonsterSummonTests|CarriedThingTests|DriftTests|RollingBoulderTests|RisingWaterTests|SleepingMonsterTests|BarredDoorTests|BatteryTests|CarrierTests|ThroneTests|PerchTests")
 S={
  "factSavedIgnored": ("GlavenGame/Board/BoardCoordinator+Goals.swift", "            guard arrived >= saved else { return false }", "            guard arrived >= 0 * saved else { return false }"),
  "factLockIgnored": ("GlavenGame/Board/BoardCoordinator+Goals.swift", "        if let lock = fact.lock, !boardState.releasedLocks.contains(lock) { return false }", "        if let lock = fact.lock, lock < 0 { return false }"),
@@ -251,6 +251,22 @@ S={
  "altarSummonsNothing": ("GlavenGame/Board/BoardCoordinator+Throne.swift", "guard let demon = throne.summons[letter], let gameManager else { return }", "guard false, let demon = throne.summons[letter], let gameManager else { return }"),
  "summonedDemonsNeverElite": ("GlavenGame/Board/BoardCoordinator+Throne.swift", "let elite = gameManager.game.characterCount >= throne.eliteFrom[", "let elite = false && gameManager.game.characterCount >= throne.eliteFrom["),
  "bothSpecialsSummonAlike": ("GlavenGame/Board/BoardCoordinator+Throne.swift", "throne.eliteFrom[min(max(0, index), throne.eliteFrom.count - 1)]", "throne.eliteFrom[0]"),
+ "drakeKeepsToOneHex": ("GlavenGame/Board/BoardCoordinator+Perch.swift", "        boardState.bodies[piece] = hexes\n", ""),
+ "drakeStaysWhereItWasSetUp": ("GlavenGame/Board/BoardCoordinator.swift", "            takeItsPerch(pieceID)\n", ""),
+ "targetedOnlyAtItsOwnHex": ("GlavenGame/Board/BoardCoordinator.swift", "let coord = boardState.nearestHex(of: id, to: pos) ?? position", "let coord = position"),
+ "drakeAttacksFromOneHexOnly": ("GlavenGame/Board/MonsterTurnController.swift", "            coordinator.faceItsEnemies(pieceID)\n", ""),
+ "areaTurnsFreely": ("GlavenGame/Engine/AoEResolver.swift", "if activeOffsets.count > 1, let body = board.bodies.values.first", "if false, activeOffsets.count > 1, let body = board.bodies.values.first"),
+ "drakeStaysOnItsPerch": ("GlavenGame/Board/MonsterTurnController.swift", "                        await coordinator.flyToNextPerch(pieceID)\n", ""),
+ "drakeFliesTheOtherWay": ("GlavenGame/Board/BoardCoordinator+Perch.swift", "perch.cycle[((here ?? -1) + 1) % perch.cycle.count]", "perch.cycle[((here ?? -1) + 2) % perch.cycle.count]"),
+ "noZephyrsSummoned": ("GlavenGame/Board/BoardCoordinator+Perch.swift", "if let summoned = perch.summons, let body = boardState.bodies[piece] {", "if false, let summoned = perch.summons, let body = boardState.bodies[piece] {"),
+ "oneZephyrASpecial": ("GlavenGame/Board/BoardCoordinator+Perch.swift", "for _ in 0..<max(1, perch.count ?? 1) {", "for _ in 0..<1 {"),
+ "zephyrsCanBeHurt": ("GlavenGame/Board/BoardCoordinator+Rules.swift", "        if isIntangible(pieceID) { return false }\n", ""),
+ "zephyrsTakeConditions": ("GlavenGame/Board/BoardCoordinator+Rules.swift", "        if isIntangible(pieceID) { return }\n", ""),
+ "zephyrsAreTargets": ("GlavenGame/Board/BoardCoordinator+Rules.swift", " || isIntangible(pieceID) { return true }", " { return true }"),
+ "summonsGoForZephyrs": ("GlavenGame/Engine/SummonAI.swift", "            if !includeInvisible, intangible.contains(group.name) { return false }\n", ""),
+ "zephyrsSitIdle": ("GlavenGame/Board/MonsterTurnController.swift", "            await zephyrsAct(before: monster, card: card, payments: payments)\n", ""),
+ "newZephyrsActAtOnce": ("GlavenGame/Board/MonsterTurnController.swift", "zephyrs.aliveEntities.filter({ $0.summonState != .new })", "zephyrs.aliveEntities.filter({ _ in true })"),
+ "zephyrsTakeTurnsOfTheirOwn": ("GlavenGame/Engine/MonsterAI.swift", "Set([written.battery?.gun, written.perch?.summons].compactMap { $0 })", "Set([written.battery?.gun].compactMap { $0 })"),
  "noOneIsAskedWhoHolds": ("GlavenGame/Board/BoardCoordinator+Carried.swift", "            } else if autoResolvePrompts {\n                give(thing.name, to: first.id, how: \"holds\")", "            } else if true {\n                give(thing.name, to: first.id, how: \"holds\")"),
  "lyingThingNotPickedUp": ("GlavenGame/Board/BoardCoordinator+Carried.swift", "            if let lying = boardState.carriedLying[name] { return hexes.contains(lying) }", "            if boardState.carriedLying[name] != nil { return false }"),
  "anyoneLootsTheQuestTile": ("GlavenGame/Board/BoardCoordinator+Carried.swift", "        return party.first { $0.id == characterID }?.personalQuest == quest", "        return party.first { $0.id == characterID }?.personalQuest == quest || true"),

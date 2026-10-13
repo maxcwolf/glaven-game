@@ -62,6 +62,11 @@ final class MonsterTurnController {
                 return a.number < b.number
             }
 
+        // A perched boss's summons act just before it does (the Elder Drake's Zephyrs).
+        if coordinator.scenarioPerch?.monster == monster.name {
+            await zephyrsAct(before: monster, card: card, payments: payments)
+            guard !isStale, coordinator.scenarioResult == nil else { return }
+        }
         // The one of them who serves the scenario's gun this round instead of acting (Rebel's Stand).
         let gunner = coordinator.gunner(ofType: monster.name)
         var anyActed = false
@@ -72,6 +77,8 @@ final class MonsterTurnController {
             guard !entity.dead, coordinator.appearIfOffMap(pieceID) else { continue }
             coordinator.setActing(pieceID)
 
+            // On several hexes, it works from whichever serves it best.
+            coordinator.faceItsEnemies(pieceID)
             // Start of this monster's turn: its conditions become active and tick (wound).
             gameManager.entityManager.restoreConditions(entity)
             gameManager.entityManager.applyConditionsTurn(entity)
@@ -133,6 +140,28 @@ final class MonsterTurnController {
                 gameManager.game.infuseElement(element)
                 coordinator.log("\(coordinator.monsterTypeName(monster.name)) infuses \(GameText.elementName(element))", category: .element)
             }
+        }
+    }
+
+    /// "They perform 'Move 2, Attack C' immediately before the Elder Drake's turn every round":
+    /// each of the boss's summons that was on the board as the round began.
+    @MainActor private func zephyrsAct(before boss: GameMonster, card: AbilityModel, payments: ElementPayments) async {
+        guard let coordinator, let gameManager, let name = coordinator.scenarioPerch?.summons,
+              let zephyrs = gameManager.game.monsters.first(where: { $0.name == name }) else { return }
+        let actions = [ActionModel(type: .move, value: .int(2)), ActionModel(type: .attack, value: .string("C"))]
+        let acting = AbilityModel(cardId: card.cardId, name: card.name, initiative: card.initiative, actions: actions)
+        for entity in zephyrs.aliveEntities.filter({ $0.summonState != .new }).sorted(by: { $0.number < $1.number }) {
+            guard !isStale else { return }
+            let pieceID = PieceID.monster(name: name, standee: entity.number)
+            guard coordinator.isOnBoard(pieceID) else { continue }
+            coordinator.setActing(pieceID)
+            var turn = MonsterTurnState()
+            await executeCard(actions, pieceID: pieceID, entity: entity, monster: zephyrs, ability: acting, payments: payments, turn: &turn)
+            coordinator.endWhy()
+            guard !isStale else { return }
+            coordinator.sweepDeadFigures()
+            if coordinator.scenarioResult != nil { return }
+            await coordinator.beat()
         }
     }
 
@@ -446,6 +475,9 @@ final class MonsterTurnController {
                     } else if text.contains("throne moves"), coordinator.scenarioThrone?.boss == monster.name {
                         // Infernal Throne: the altar jumps to its next hex and summons a demon there.
                         await coordinator.throneMoves(special: index)
+                    } else if text.contains("fly to next perch"), coordinator.scenarioPerch?.monster == monster.name {
+                        // Scorched Summit: the Zephyrs are summoned, then the drake flies on.
+                        await coordinator.flyToNextPerch(pieceID)
                     } else if text.contains("hatch eggs") {
                         hatches = true   // the Winged Horror, once it has attacked
                     } else if text.hasSuffix("eggs") {
@@ -459,7 +491,7 @@ final class MonsterTurnController {
                                     category: .info)
                 }
                 // (The throne's own summon is the altar's, made as it lands.)
-                let throne = coordinator.scenarioThrone?.boss == monster.name
+                let throne = coordinator.scenarioThrone?.boss == monster.name || coordinator.scenarioPerch?.monster == monster.name
                 let specialActions = MonsterAbility.flattened(special[index].filter { $0.type != .custom && !(throne && $0.type == .summon) })
                 let specialCard = AbilityModel(cardId: ability.cardId, name: ability.name,
                                                initiative: ability.initiative, actions: specialActions)

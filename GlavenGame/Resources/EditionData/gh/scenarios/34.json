@@ -40,7 +40,8 @@
   "monsters": [
     "elder-drake",
     "rending-drake",
-    "spitting-drake"
+    "spitting-drake",
+    "zephyr"
   ],
   "rooms": [
     {

@@ -2183,8 +2183,10 @@ final class BoardCoordinator {
         var targets = Set<PieceID>()
         // Eyes of the Night: invisible enemies can be targeted.
         let seesInvisible = chargedBonuses(of: pieceID).contains { $0.bonus == .advantageAndSeeInvisible }
-        for (id, coord) in boardState.piecePositions where id != pieceID && areEnemies(pieceID, id) {
+        for (id, position) in boardState.piecePositions where id != pieceID && areEnemies(pieceID, id) {
             guard entity(for: id) != nil, seesInvisible || !isConditionActive(.invisible, on: id) else { continue }
+            // (Of a figure on several hexes, whichever is nearest and in sight.)
+            let coord = boardState.nearestHex(of: id, to: pos) ?? position
             guard boardState.isWithin(max(1, range), from: pos, to: coord),
                   LineOfSight.hasLOS(from: pos, to: coord, board: boardState) else { continue }
             targets.insert(id)
@@ -3137,6 +3139,7 @@ final class BoardCoordinator {
             // A standee number is reused once its monster is dead: the mark follows the newcomer.
             if entity.type == .elite { boardState.eliteStandees.insert(pieceID) } else { boardState.eliteStandees.remove(pieceID) }
             setUpAsleep(pieceID, ofTheMap: true)
+            takeItsPerch(pieceID)
             boardScene?.addPieceSprite(id: pieceID, at: destination, offsetCol: offsetCol, offsetRow: offsetRow)
             placed.append((monster.name, entity.number))
         }

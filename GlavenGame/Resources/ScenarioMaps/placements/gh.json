@@ -72,7 +72,9 @@
     "c2b": {"markers": {"d": [[1, 0]]}},
     "i1b": {"markers": {"c": [[0, 0], [5, 0], [0, 2], [5, 2]]}}
   }},
-  "34": {"goal": {"text": "Kill the Elder Drake.", "kill": ["elder-drake"]}, "notes": ["The huge boulders can't be destroyed."], "indestructible": {"subTypes": ["boulder-3"]}, "tiles": {
+  "34": {"goal": {"text": "Kill the Elder Drake.", "kill": ["elder-drake"]}, "notes": ["The huge boulders can’t be destroyed.", "The Elder Drake sits on all three hexes of its boulder: it can be attacked through any of them, and attacks from any of them. Nothing moves it.", "With its second special it summons two Zephyrs and flies to the next boulder: right, left, top and round again. Nothing harms or affects a Zephyr; each moves 2 and attacks for the number of characters just before the Elder Drake’s turn."], "indestructible": {"subTypes": ["boulder-3"]}, "perch": {"monster": "elder-drake", "cycle": ["a", "b", "c"], "start": "c", "summons": "zephyr", "count": 2}, "tiles": {
+    "l2a": {"markers": {"b": [[0, 4], [1, 4], [0, 5]], "c": [[4, 0], [5, 0], [4, 1]]}},
+    "l3b": {"markers": {"a": [[1, 2], [0, 2], [0, 1]]}}
   }},
   "35": {"goal": {"text": "Destroy the door and kill the Captain of the Guard.", "destroy": [1], "kill": ["captain-of-the-guard"]}, "notes": ["The demons fight on your side and attack the gate — it is their focus whenever they can get within range of it. The City Archers on the battlements shoot from the start; the other defenders aren't set up until the gate is destroyed or one of you gets over the wall.", "The wall sections can't be destroyed."], "focusFirst": [1], "indestructible": {"subTypes": ["wall-section"]}, "laidOut": ["i1b", "b2b"], "tiles": {
     "b2b": {"markers": {"b": [[2, 0], [3, 0]]}},

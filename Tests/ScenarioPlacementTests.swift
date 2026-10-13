@@ -227,6 +227,11 @@ final class ScenarioPlacementTests: XCTestCase {
                     XCTAssertTrue(throne.summons[letter].map(monsters.contains) ?? false, "\(index): nothing to summon at \(letter)")
                 }
             }
+            if let perch = placements.perch {
+                for name in [perch.monster, perch.summons].compactMap({ $0 }) { XCTAssertTrue(monsters.contains(name), "\(index): no monster \(name)") }
+                for letter in perch.cycle { XCTAssertTrue(letters.contains(letter), "\(index): no hex lettered \(letter)") }
+                XCTAssertTrue(perch.cycle.contains(perch.start), "\(index): it starts on a perch of its round")
+            }
             if let battery = placements.battery {
                 for name in [battery.gun, battery.crew] { XCTAssertTrue(monsters.contains(name), "\(index): no monster \(name)") }
                 XCTAssertTrue(letters.contains(battery.line), "\(index): no hex lettered \(battery.line)")

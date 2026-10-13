@@ -68,6 +68,8 @@ struct ScenarioPlacements: Codable, Equatable {
     var carry: Carry?
     /// An objective that is a boss's hit points and jumps about the map (#21's altar).
     var throne: Throne?
+    /// A boss that sits on all the hexes of an obstacle and flies from one to the next (#34's Elder Drake).
+    var perch: Perch?
     /// Monster types set up asleep (#71's Spitting Drakes): each does nothing until a character or
     /// a character's summon attacks it, damages it, gives it a negative condition or ends a
     /// movement beside it; then it acts as a monster just spawned does.
@@ -434,6 +436,24 @@ extension ScenarioPlacements {
         /// From how many characters the summoned monster is elite, for the boss's first special
         /// and its second.
         let eliteFrom: [Int]
+    }
+
+    /// "The Elder Drake occupies all three hexes of the obstacle it is on. If a figure can target
+    /// any one of these hexes, they can target the Elder Drake, and the Elder Drake can use any of
+    /// its hexes to determine what it can target." With its second special it "summons two
+    /// Zephyrs …, then flies to the next perch of boulders in the order of a, b, c, and then back
+    /// to a. Zephyrs cannot be damaged in any way. They perform 'Move 2, Attack C' immediately
+    /// before the Elder Drake's turn every round." (#34)
+    struct Perch: Codable, Hashable {
+        /// The boss.
+        let monster: String
+        /// The letters of the perches in order: each marks every hex of one obstacle.
+        let cycle: [String]
+        /// The letter of the perch it is set up on.
+        let start: String
+        /// The monster type its special summons, and how many.
+        var summons: String?
+        var count: Int?
     }
 
     /// "It cannot enter or pass through door 2" (#67); "The Inox on tile E cannot enter or pass
