@@ -150,6 +150,21 @@ ends up on the board:
   initiative order. Characters and their summons are moved (a summon before its owner); the move
   is forced movement, so traps are sprung. Check which way the book prints the map before writing
   the sides.
+- `rolling`: obstacles that roll along their rows as each round ends, after any `drift` —
+  `{"subType": "boulder-1", "side": "W", "reenter": "b", "steps": [1, 2, 3]}` (#73,
+  `BoardCoordinator+Rolling`). The obstacles with that art are the rollers; a row runs from each hex
+  lettered `reenter` to the last hex of the map on that side, and a roller that gets there comes
+  back in at the letter. The players choose which row rolls how far (each a different one of
+  `steps`); a roller destroys an obstacle in its way, lies on traps and terrain without changing
+  them, deals trap damage to a figure whose hex it enters and pushes the one it stops on a hex on.
+  List the art under `indestructible` too, so no ability removes one.
+- `flood`: water that rises on a tile, after any `drift` and `rolling` —
+  `{"tile": "b1a", "every": "R % 2 == 0 || C > 2", "bail": "e", "dry": {"marker": "d",
+  "characters": 3}, "lost": "…"}` (#74, `BoardCoordinator+Flood`): as a round for which `every`
+  holds ends, the players tap a dry hex of the tile beside the water and it becomes water; with
+  none left the scenario is lost for the reason written. A character looting a water hex of the
+  tile picks the tile up (one at a time) and is rid of it as a turn ends on a hex lettered `bail`.
+  `dry` takes the water off the lettered hexes at setup for that many characters.
 - `tokens`: numbered tokens lying face down, `{"marker": "a", "count": 6}` (#95): the numbers 1 to
   `count` are shuffled with the game's seed and one is laid on each hex lettered `marker` as its
   room is revealed (`layNumberedTokens`; `BoardState.tokenHexes`, drawn as "?"). They are looted

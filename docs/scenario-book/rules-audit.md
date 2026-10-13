@@ -12,8 +12,8 @@ means the data and code that enforce the rule were found, and usually a test tha
 that the scenario was played through. Keep it current: when a rule is built, rewrite its row in
 the same commit (see [../rules-work.md](../rules-work.md)).
 
-**447 rules: 391 done, 14 partial, 42 missing.**
-79 of 95 scenarios have every printed rule done. The other 16: #55 (6 missing, 1 partial), #34 (4 missing, 2 partial), #76 (4 missing, 2 partial), #71 (4 missing, 0 partial), #73 (5 missing, 0 partial), #78 (5 missing, 0 partial), #21 (2 missing, 2 partial), #49 (4 missing, 0 partial), #74 (4 missing, 0 partial), #52 (1 missing, 1 partial), #68 (1 missing, 1 partial), #79 (1 missing, 1 partial), #82 (0 missing, 2 partial), #38 (0 missing, 1 partial), #47 (0 missing, 1 partial), #67 (1 missing, 0 partial).
+**447 rules: 399 done, 14 partial, 34 missing.**
+80 of 95 scenarios have every printed rule done. The other 15: #55 (6 missing, 1 partial), #34 (4 missing, 2 partial), #76 (4 missing, 2 partial), #71 (4 missing, 0 partial), #73 (1 missing, 0 partial), #78 (5 missing, 0 partial), #21 (2 missing, 2 partial), #49 (4 missing, 0 partial), #52 (1 missing, 1 partial), #68 (1 missing, 1 partial), #79 (1 missing, 1 partial), #82 (0 missing, 2 partial), #38 (0 missing, 1 partial), #47 (0 missing, 1 partial), #67 (1 missing, 0 partial).
 
 Rules that were enforced wrongly, as against not at all, are findings of the engine audit
 ([../audits/2026-10-09-rules-audit.md](../audits/2026-10-09-rules-audit.md), rows S1-…, S2-…),
@@ -36,7 +36,7 @@ order", has the same list as tasks). The rows below say what the game does today
   Zenith and Sphere of Midnight, #58 the Occult Dagger (and who may loot it), #54 the Staff of
   Xorn with its charge, goal and loss, #95 the six numbered tokens (with the locked door and the
   demons that keep coming until four are looted). **All built** (2026-10-13).
-- **A board that moves as the round ends.** #71 the wind and #88 the current (built 2026-10-13: `drift`), #73 the boulders, #74
+- **A board that moves as the round ends.** All built (2026-10-13): #71 the wind and #88 the current (`drift`), #73 the boulders (`rolling`), #74
   the water rising in the hold (with its loss and the bailing).
 - **Monsters that don't act as their cards say.** #71's Spitting Drakes asleep until woken; #49's
   Siege Cannon that never acts, the archer who walks to it, its firing and the archer who
@@ -662,10 +662,10 @@ order", has the same list as tasks). The rows below say what the game does today
 | Rule (from the book) | Status | Where / what's missing |
 |---|---|---|
 | Goal: kill all enemies and loot all treasure tiles | done | placements goal `enemies: "all"`, `loot: "goal"` (three goal chests on `e1b`) |
-| Six boulders start at (a) and (b) and each row rolls 1, 2 or 3 hexes left at the end of every round, a different number per row, chosen by the players | missing | the six are fixed `boulder-1` obstacles in the map data (`ScenarioMaps/73.json`); `73.json` rule 0 is a note ("Roll boulders down.") and placements has no rule or letters (`tiles: {}`). It would need a rolling-boulder mechanic and a prompt for each row's distance |
-| Boulders are unaffected by abilities and overlays and destroy obstacles in their way (traps stay) | missing | no boulder mechanic; the six boulders are ordinary obstacles a destroy-obstacle ability can remove (only `dark-pit` is in `indestructible`) |
-| A figure a boulder moves onto suffers trap damage; if the boulder stops there the figure is forced one hex left | missing | no boulder mechanic |
-| A boulder reaching the leftmost hex re-enters at (b) and keeps moving | missing | no boulder mechanic |
+| Six boulders start at (a) and (b) and each row rolls 1, 2 or 3 hexes left at the end of every round, a different number per row, chosen by the players | done | placements `rolling: {subType: "boulder-1", side: "W", reenter: "b", steps: [1, 2, 3]}` with (a) and (b) lettered on M1b → `BoardCoordinator+Rolling`: `rollAsTheRoundEnds` asks the players for one of the six ways (`chooseOption`, an answer in words: "Top 2 · Middle 3 · Bottom 1"; the one that rolls over the fewest of the party is suggested and is what headless play takes), `rollBoulders(by:)` rolls the rows. `RollingBoulderTests.testTheBouldersLieTwoToARowThatRunsToTheLeftEdgeOfTheMap`, `testThePlayersChooseHowFarEachRowRolls`, `testTheBouldersRollAsARoundOfPlayEnds` |
+| Boulders are unaffected by abilities and overlays and destroy obstacles in their way (traps stay) | done | `indestructible.subTypes` lists `boulder-1` (no ability destroys one); a rolling boulder removes an obstacle it enters and lies on a trap or rubble without changing it (`BoardState.underRollers` puts the hex back as it rolls on). `testEachRowRollsItsOwnNumberOfHexesOverTrapsAndThroughObstacles` |
+| A figure a boulder moves onto suffers trap damage; if the boulder stops there the figure is forced one hex left | done | `roll`: trap damage for the level to any character, summon or monster in a hex entered (a character may negate it with cards); the figure it stops on is moved one hex left by forced movement (to the nearest empty hex if that one is shut — the book doesn't say). `testABoulderHarmsWhoeverItRollsOverAndPushesWhoeverItStopsOn` |
+| A boulder reaching the leftmost hex re-enters at (b) and keeps moving | done | `rollerRows`: a row runs from (b) to the last hex of the map on the left — across the slope and the tile the party starts on (11, 10 and 11 hexes); `rollPath` enters that last hex and (b) in one step. Our reading of "the leftmost hex of its row": were the row the slope tile alone, the boulders at (a) would start on it. `testABoulderAtTheEndOfItsRowComesBackInAtB` |
 | Dark pit obstacles cannot be destroyed | done | placements `indestructible: {"subTypes": ["dark-pit"]}` → `isDestructibleObstacle` (asked by every destroy-obstacle ability); `testWhatTheScenarioSaysCantBeDestroyedIsnt` (#73's pits), `testNoAbilityDestroysADarkPit` |
 | Section 1: the Inox on tile E cannot enter or pass through door 1 | missing | no movement restriction in placements or code: once door 1 is open the Inox of `e1b` walk through it like any monster. It would need a door (or tile) a monster type can't cross |
 
@@ -673,10 +673,10 @@ order", has the same list as tasks). The rows below say what the game does today
 | Rule (from the book) | Status | Where / what's missing |
 |---|---|---|
 | Goal: kill all enemies (keeping the ship afloat — see Lose) | done | default goal: every enemy dead with both doors open |
-| Lose: a water tile must be added but the B tile is full | missing | water tiles aren't added, so nothing can fill; placements #74 has no `goal` and no loss |
-| Setup: remove the water tiles at (d) for three characters | missing | the 12 water hexes of `b1a` are always there; marker d is written but unused |
-| A water tile is added to the B tile at the end of every even round (2) or every round (3–4) | missing | `74.json` rule 0 (`R % 2 == 0 \|\| C > 2`) is a note only ("Add water tile."); no rising-water mechanic (it would need a prompt for where the tile goes) |
-| A character picks up a water tile by looting and bails it by ending a turn on (e); one tile at a time | missing | marker e is written but unused; no carried-tile state |
+| Lose: a water tile must be added but the B tile is full | done | placements `flood` → `waterRisesAsTheRoundEnds`: no dry hex left in the hold when one is due sets the defeat (`endReason .ruleLost`). `RisingWaterTests.testTheWaterRisesUntilTheHoldIsFullAndTheShipIsLost` |
+| Setup: remove the water tiles at (d) for three characters | done | `flood.dry: {marker: "d", characters: 3}` → `setUpTheFlood` as setup ends; `testTheHoldStartsWithTwoDryHexesOrFourForThree` |
+| A water tile is added to the B tile at the end of every even round (2) or every round (3–4) | done | `flood: {tile: "b1a", every: "R % 2 == 0 \|\| C > 2", …}`: as the round ends the players tap a dry hex of the hold beside the water (`chooseHex`; headless the first in map order); the hold is the tile's fourteen own hexes, not the corridor hex. `testThePlayersChooseWhereTheWaterRises`, `testTheWaterRisesAsRoundsOfPlayEnd` |
+| A character picks up a water tile by looting and bails it by ending a turn on (e); one tile at a time | done | `pickUpWater` in `lootHexes` (ending a turn on a water hex of the hold, or a Loot action: one tile, and none while holding one; `BoardState.waterHeld`, "Holds a water tile" in the party panel), `bailWater` as a turn ends on a hex lettered `flood.bail`. `testAWaterTileIsLootedOneAtATimeAndBailedOnTheDeck` |
 | Doors 1 and 2 are locked and open at the end of rounds 3 and 6 | done | locks `g2b–i2b` `afterRound: 3`, `g2b–i1a` `afterRound: 6`, and rules 1/2 (`R == 3` → rooms [2], `R == 6` → rooms [3]) |
 | Section 1: 1 normal Deep Terror at (a) (2); 1 elite at (a) (3); 2 normal at (b) (4) | done | rule 3 `requiredRooms: [2]`, `once`: marker a p2 normal / p3 elite, marker b p4 normal ×2 |
 | Section 2: at (c) 2 normal Deep Terrors (2–3) or 2 elite (4) | done | rule 4 `requiredRooms: [3]`, `once`, count 2, marker c |
