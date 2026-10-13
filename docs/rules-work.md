@@ -24,28 +24,36 @@ question, how a piece of work is done from start to finish, and what to do next.
   inactive monsters, eggs). Reading the golden transcripts' diffs against the rulebook is the
   other check a merge of this size deserves.
 
-### Work in progress (2026-10-12, branch `feat/scenario-rules-3`, pushed)
+### Work in progress (2026-10-13)
 
-`main` has everything up to merge `aec9e30`. The branch adds, each committed and proved by
-mutations: tests for the three rules no test caught; mutations for the audit fixes that were only
-read and for the scenario mechanisms (`scripts/mutate.py` now has 98, each noticed); the golden
-transcripts read against the rules; N17 (Scroll of Recall's Pull), N13 (Unending Chant, charges marked
-only when an action is performed), N19 (#36 hanging at the start of round 9) and N18 (an
-ability printed under a Move was never performed: nine cards) fixed.
+`main` has everything up to merge `aec9e30`. Two branches carry on from it, neither merged
+(merging is the owner's call):
 
-To pick it up:
+- **`feat/scenario-rules-3`** (2026-10-12): tests for the three rules no test caught; mutations
+  for the audit fixes that were only read and for the scenario mechanisms; the golden
+  transcripts read against the rules; fixes N17 (Scroll of Recall's Pull), N13 (Unending Chant;
+  charges marked only when an action is performed), N19 (#36 hanging at the start of round 9 —
+  a hang that is on `main`) and N18 (an ability printed under a Move was never performed: nine
+  cards).
+- **`feat/cards-4`** (2026-10-13), which starts from the head of `feat/scenario-rules-3` and so
+  holds all of the above too. It was made in a worktree (`.claude/worktrees/cards-4`) while a
+  second session had the main checkout. It adds: Singing Arrow's Curse over its area; the
+  play ledger no longer miscounting #9's Scouts (N12); the audit's new screens rendered and
+  looked at (N16) with the cards in play made finger-sized; a door two hexes wide opening as
+  one (N21). `scripts/mutate.py` has 101 mutations, each noticed by a test.
 
-1. **The branch is verified** at its head on 2026-10-12: `swift test` 1,545 tests, none failing;
-   the four-seed all-scenarios playthrough without a violation; the veteran playthrough passing
-   (55 and 59 of 94 won; run before the last fix, N18, which touches none of its four classes).
-   The branch also fixes a hang that is on `main`: #36 never went on past the start of round 9
-   (N19). It is not merged — merging is the owner's call.
-2. **Next**, from `TODO.md` → "Open, in order": #9's scouts attacking twice (N12) — play
-   `SIM_SCENARIO=9 SIM_SEED=2 SIM_VETERAN=1 SIM_OUT=/tmp/s9.log swift test --filter testDebugPlaythrough`
-   and read the round the Overseer has them act again; then the look at the new interface and
-   at what scenario rules draw, on the iPad simulator (`xcodegen generate` first); then group 2,
-   the scenario rules that need a player prompt. Under Cards: Singing Arrow's Curse has an area
-   the game ignores, and Commands are performed by the Beast Tyrant instead of the bear.
+To pick it up, work on `feat/cards-4` (or merge it into `feat/scenario-rules-3` first — it is a
+fast-forward):
+
+1. **Verified** at the head of `feat/cards-4` on 2026-10-13: `swift test` 1,550 tests, none
+   failing; the four-seed all-scenarios playthrough without a violation; the veteran playthrough
+   passing (55 and 59 of 94 won).
+2. **Next**, from `TODO.md` → "Open, in order": group 1 is done but for a glance at two things
+   on the iPad (the Solo switch as a switch; the scrolling card lists in the damage and rest
+   sheets) and the drawings that need a game in progress (#46's eggs, #48's Dark Rider, the
+   bosses' jumps). Then group 2, the scenario rules that need a player prompt — start with the
+   prompt itself (`DamageChoiceSheet` and `promptDamageMitigation` are the model), on #44 or
+   #84. Under Cards the large open item is the Beast Tyrant, who has no bear (N20).
 3. Merging to `main` (`git merge --no-ff -m "merge: …"`, then push) is done when the owner asks.
 
 ## Which document answers what
@@ -144,8 +152,8 @@ use it to find a rule and the page image to read it.
 The task list is `TODO.md` → "Missing Gloomhaven Rules" → "Open, in order"; it is grouped and
 ordered like this:
 
-1. **Tests and checks, before building on top.** A look at the new interface and at what
-   scenario rules draw, on a device. (`scripts/mutate.py` has 98 mutations, 36 of them scenario
+1. **Tests and checks, before building on top.** Done but for a glance on the iPad at what the
+   off-screen renderer can't draw. (`scripts/mutate.py` has 101 mutations, 36 of them scenario
    rules — `--scenario` — and each is noticed by a test: add one with every new mechanism.)
 2. **Scenario rules** — 94 printed rules in 28 scenarios, in this order because each group is one
    mechanism used several times:
