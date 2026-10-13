@@ -164,6 +164,11 @@ S={
  "holdersFallLosesNothing": ("GlavenGame/Board/BoardCoordinator+Carried.swift", "        carriedThings.first { $0.lostWithHolder == true && boardState.carriedGone[$0.name] == \"lost\" }", "        carriedThings.first { _ in false }"),
  "stayingThingsChangeHands": ("GlavenGame/Board/BoardCoordinator+Carried.swift", "            guard byLootAction, carriedThings.first(where: { $0.name == name })?.passes == true,", "            guard byLootAction,"),
  "stayingThingsAreLeftBehind": ("GlavenGame/Board/BoardCoordinator+Carried.swift", "            if thing.passes == true, let hex = boardState.piecePositions[.character(character.id)] {", "            if let hex = boardState.piecePositions[.character(character.id)] {"),
+ "relicsOutOfOrder": ("GlavenGame/Board/BoardCoordinator+Carried.swift", "        guard let thing = carriedThings.first(where: { $0.treasure == id && isUnclaimed($0) }) else { return }", "        guard let thing = carriedThings.last(where: { $0.treasure == id && isUnclaimed($0) }) else { return }"),
+ "relicDiscardedAnywhere": ("GlavenGame/Board/BoardCoordinator+Carried.swift", "            guard lettered.contains(here) || (spend.adjacent == true && lettered.contains { boardState.areAdjacent($0, here) }),", "            guard true || lettered.contains(here) || (spend.adjacent == true && lettered.contains { boardState.areAdjacent($0, here) }),"),
+ "relicDoesNoDamage": ("GlavenGame/Board/BoardCoordinator+Carried.swift", "                sufferDamage(offer.damage, to: offer.target, killer: .character(characterID))", "                sufferDamage(0 * offer.damage, to: offer.target, killer: .character(characterID))"),
+ "relicKeptAfterDiscard": ("GlavenGame/Board/BoardCoordinator+Carried.swift", "                boardState.carriedBy[offer.thing.name] = nil\n                boardState.carriedGone[offer.thing.name] = \"spent\"", "                _ = offer"),
+ "relicDiscardedUnasked": ("GlavenGame/Board/BoardCoordinator+Carried.swift", "                guard chosen != nil, boardState.carriedBy[offer.thing.name] == characterID, isOnBoard(offer.target) else { continue }", "                guard boardState.carriedBy[offer.thing.name] == characterID, isOnBoard(offer.target) else { continue }"),
 }
 M.update(S)
 def run(name, flt=None):

@@ -159,4 +159,51 @@ extension BoardCoordinator {
     func syncCarriedSprites() {
         boardScene?.showCarried(boardState.carriedLying, offsetCol: offsetCol, offsetRow: offsetRow)
     }
+
+    // MARK: Discarding it for what it does
+
+    static let keepItTitle = "Keep It"
+
+    /// What `characterID` could discard where they stand, each with the monster that would
+    /// suffer for it and how much.
+    func spendable(by characterID: String) -> [(thing: ScenarioPlacements.Carried, target: PieceID, damage: Int)] {
+        guard let game = gameManager?.game, let here = boardState.piecePositions[.character(characterID)] else { return [] }
+        return carried(by: characterID).compactMap { thing in
+            guard let spend = thing.spend else { return nil }
+            let lettered = boardState.markerHexes[spend.marker] ?? []
+            guard lettered.contains(here) || (spend.adjacent == true && lettered.contains { boardState.areAdjacent($0, here) }),
+                  let target = boardState.piecePositions.keys.sorted().first(where: { if case .monster(spend.to, _) = $0 { return true }; return false })
+            else { return nil }
+            let damage = evaluateEntityValue(.string(spend.damage), level: game.level, characterCount: game.characterCount)
+            return damage > 0 ? (thing, target, damage) : nil
+        }
+    }
+
+    /// A character's turn has ended: where they could discard something they carry, they are
+    /// asked before the next figure acts.
+    func noteCarriedSpends(after characterID: String) {
+        if !spendable(by: characterID).isEmpty, !pendingSpends.contains(characterID) { pendingSpends.append(characterID) }
+    }
+
+    /// Ask each such character, thing by thing: discard it and the monster suffers, or keep it.
+    @MainActor func resolveCarriedSpends() async {
+        let generation = boardGeneration
+        while !pendingSpends.isEmpty, isCurrentBoard(generation), scenarioResult == nil {
+            let characterID = pendingSpends.removeFirst()
+            for offer in spendable(by: characterID) {
+                guard isOnBoard(offer.target) else { break }
+                let chosen = await chooseFigure([offer.target], title: Self.carriedTitle(offer.thing.name),
+                                                question: "Discard it? \(name(offer.target)) suffers \(offer.damage) damage.",
+                                                declineTitle: Self.keepItTitle)
+                guard isCurrentBoard(generation) else { return }
+                guard chosen != nil, boardState.carriedBy[offer.thing.name] == characterID, isOnBoard(offer.target) else { continue }
+                gameManager?.characterManager.onBeforeMutate?()
+                boardState.carriedBy[offer.thing.name] = nil
+                boardState.carriedGone[offer.thing.name] = "spent"
+                log("\(characterName(characterID)) discards the \(offer.thing.name): \(name(offer.target)) suffers \(offer.damage) damage", category: .damage)
+                sufferDamage(offer.damage, to: offer.target, killer: .character(characterID))
+                checkVictoryDefeat()
+            }
+        }
+    }
 }

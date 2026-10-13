@@ -382,6 +382,18 @@ extension ScenarioPlacements {
         var against: String?
         /// The scenario is lost if its holder is exhausted (the artifacts of Burning Mountain).
         var lostWithHolder: Bool?
+        /// What its holder may discard it for as their turn ends at a lettered hex (the Crystal
+        /// of Zenith beside the altar: the Colorless suffers 2×C damage).
+        var spend: Spend?
+
+        struct Spend: Codable, Hashable {
+            /// The lettered hex ("a") the holder must end the turn on — or beside, with `adjacent`.
+            let marker: String
+            var adjacent: Bool?
+            /// The damage ("2xC") the monster type `to` suffers.
+            let damage: String
+            let to: String
+        }
     }
 
     /// "A character adjacent to a captive Orchid may forgo an action (discarding one card

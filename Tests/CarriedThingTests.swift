@@ -267,4 +267,62 @@ final class CarriedThingTests: XCTestCase {
         other.coord.checkVictoryDefeat(turnEnded: true)
         XCTAssertNil(other.coord.scenarioResult ?? other.coord.pendingResult)
     }
+
+    // MARK: - #81: the Crystal of Zenith and the Sphere of Midnight
+
+    /// "The first treasure tile looted gives the looting character the Crystal of Zenith; the
+    /// second gives the Sphere of Midnight." A character "adjacent to the altar at the end of
+    /// their turn may discard the Crystal of Zenith or the Sphere of Midnight to make the
+    /// Colorless suffer 2×C damage": asked for each as the turn ends there, and free to keep it.
+    func testTheRelicsAreLootedInOrderAndDiscardedBesideTheAltar() async throws {
+        let sim = try simulator("81", prompts: true)
+        let coord = sim.coord
+        revealAll(sim)
+        let brute = sim.gm.game.characters[0], spellweaver = sim.gm.game.characters[1]
+        let goals = coord.boardState.cells.values.filter { $0.overlay == .treasure && $0.treasureID == BoardCoordinator.goalTreasureID }.map(\.coord).sorted()
+        XCTAssertEqual(goals.count, 2)
+        stand(sim, 0, on: goals[0])
+        coord.lootAtEndOfTurn(brute.id)
+        XCTAssertEqual(coord.carried(by: brute.id).map(\.name), ["Crystal of Zenith"], "the first tile looted")
+        stand(sim, 1, on: goals[1])
+        coord.lootAtEndOfTurn(spellweaver.id)
+        XCTAssertEqual(coord.carried(by: spellweaver.id).map(\.name), ["Sphere of Midnight"], "the second")
+
+        let boss = try XCTUnwrap(monsters(sim).first { if case .monster("the-colorless", _) = $0 { return true }; return false })
+        let colorless = try XCTUnwrap(coord.entity(for: boss))
+        colorless.maxHealth = 50
+        colorless.health = 50
+        let altar = try XCTUnwrap(coord.boardState.markerHexes["a"]?.first)
+        let beside = coord.boardState.neighbors(of: altar).sorted().filter { coord.boardState.isPassable($0) && coord.boardState.piece(at: $0) == nil }
+        XCTAssertGreaterThanOrEqual(beside.count, 2)
+
+        // Away from the altar there is nothing to ask.
+        coord.noteCarriedSpends(after: brute.id)
+        XCTAssertTrue(coord.pendingSpends.isEmpty)
+
+        func endTurnBesideTheAltar(_ index: Int, on hex: HexCoord, discard: Bool) async throws {
+            stand(sim, index, on: hex)
+            coord.noteCarriedSpends(after: sim.gm.game.characters[index].id)
+            XCTAssertEqual(coord.pendingSpends, [sim.gm.game.characters[index].id])
+            let asking = Task { @MainActor in await coord.resolveCarriedSpends() }
+            let deadline = Date().addingTimeInterval(3)
+            while coord.pendingFigureChoice == nil, Date() < deadline { try? await Task.sleep(nanoseconds: 1_000_000) }
+            let asked = try XCTUnwrap(coord.pendingFigureChoice, "asked whether to discard it")
+            XCTAssertEqual(asked.options, [boss])
+            XCTAssertEqual(asked.declineTitle, "Keep It")
+            XCTAssertTrue(asked.question.contains("4 damage"), asked.question)
+            coord.resolveFigureChoice(discard ? boss : nil)
+            await asking.value
+        }
+        try await endTurnBesideTheAltar(0, on: beside[0], discard: false)
+        XCTAssertEqual(colorless.health, 50, "kept")
+        XCTAssertEqual(coord.holder(of: "Crystal of Zenith")?.id, brute.id)
+        try await endTurnBesideTheAltar(0, on: beside[0], discard: true)
+        XCTAssertEqual(colorless.health, 50 - 2 * 2, "2 × C")
+        XCTAssertNil(coord.holder(of: "Crystal of Zenith"))
+        XCTAssertEqual(coord.boardState.carriedGone["Crystal of Zenith"], "spent")
+        XCTAssertTrue(coord.spendable(by: brute.id).isEmpty, "it is gone")
+        try await endTurnBesideTheAltar(1, on: beside[1], discard: true)
+        XCTAssertEqual(colorless.health, 50 - 4 * 2)
+    }
 }

@@ -491,6 +491,9 @@ final class BoardCoordinator {
     /// Deaths for which the players may still remove a figure from the map (Chained Isle: a
     /// Living Spirit for each demon), with who killed; asked once the blow is settled.
     var pendingReprieves: [PieceID?] = []
+    /// Characters whose turn has just ended where something they carry may be discarded for
+    /// its effect (Temple of the Eclipse's relics beside the altar): asked before the next turn.
+    var pendingSpends: [String] = []
     /// The fallen monster making its "on death" attack right now, and the hex it fell on.
     var deathAttackInProgress: DeathAttack?
 
@@ -603,6 +606,7 @@ final class BoardCoordinator {
             activePlayerTurn = nil
         }
         lootAtEndOfTurn(characterID)
+        noteCarriedSpends(after: characterID)
 
         updateLocks(turnEnded: true)
         // Rules that wait for where figures stand as a turn ends (every plate held).
@@ -1027,6 +1031,7 @@ final class BoardCoordinator {
         pendingConditionRemoval = nil
         pendingDeathAttacks = []
         pendingReprieves = []
+        pendingSpends = []
         deathAttackInProgress = nil
         pendingExtraConditions = []
         pendingForcedAttack = nil
@@ -1460,9 +1465,10 @@ final class BoardCoordinator {
     func advanceToNextFigure() {
         guard let gameManager = gameManager else { return }
         // Doomed enemies that died this turn (to a trap, a wound…) resolve their dooms first.
-        if !pendingDoomDeaths.isEmpty || !pendingDamageAttacks.isEmpty || !pendingReprieves.isEmpty {
+        if !pendingDoomDeaths.isEmpty || !pendingDamageAttacks.isEmpty || !pendingReprieves.isEmpty || !pendingSpends.isEmpty {
             let generation = boardGeneration
             Task { @MainActor in
+                await self.resolveCarriedSpends()
                 await self.resolveReprieves()
                 await self.resolveDoomDeaths()
                 guard self.isCurrentBoard(generation), self.scenarioResult == nil else { return }
