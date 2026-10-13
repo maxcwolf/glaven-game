@@ -130,6 +130,11 @@ S={
  "savesAskEmptyHands": ("GlavenGame/Board/BoardCoordinator+Saves.swift", "            .filter { !$0.1.isEmpty }", "            .filter { _ in true }"),
  "headlessSavesNothing": ("GlavenGame/Board/BoardCoordinator+Saves.swift", "            choice = damage >= entity.health && losesTheScenario(with: rule.objective)", "            choice = false && losesTheScenario(with: rule.objective)"),
  "savesWhateverIsAtStake": ("GlavenGame/Board/BoardCoordinator+Saves.swift", "              let container = gameManager?.game.objectives.first(where: { $0.objectiveIndex == objective }) else { return false }\n        return container.entities.filter", "              let container = gameManager?.game.objectives.first(where: { $0.objectiveIndex == objective }) else { return true }\n        return container.entities.filter"),
+ "forgoneCardIsLost": ("GlavenGame/Board/PlayerTurnController.swift", "            topActions = kept\n            topUsedAsDefault = true", "            topActions = kept"),
+ "freedCaptivesStayOnTheMap": ("GlavenGame/Board/BoardCoordinator+Forgo.swift", "        removePieceFromBoard(piece)\n        boardState.objectiveSites[entity.number] = nil", "        boardState.objectiveSites[entity.number] = nil"),
+ "redthornNoStronger": ("GlavenGame/Board/BoardCoordinator+Forgo.swift", "(ally.escortActions[attack].value?.intValue ?? 0) + 1)", "(ally.escortActions[attack].value?.intValue ?? 0) + 0)"),
+ "captivesFreedFromAfar": ("GlavenGame/Board/BoardCoordinator+Forgo.swift", "        return boardState.neighbors(of: here).compactMap { boardState.piece(at: $0) }.filter { piece in", "        _ = here\n        return boardState.piecePositions.keys.filter { piece in"),
+ "freedCountsAsKilled": ("GlavenGame/Board/BoardCoordinator+Forgo.swift", "        entity.off = true\n        entity.tags.append(Self.freedTag)", "        entity.off = true\n        entity.dead = true\n        entity.tags.append(Self.freedTag)"),
 }
 M.update(S)
 def run(name, flt=None):

@@ -1911,11 +1911,13 @@ final class ScenarioSpecialRuleTests: XCTestCase {
         XCTAssertEqual(entity.health, 12)
         XCTAssertEqual(brute.lostCards.count, 3)
 
-        // The sheet says what is at stake: a captive's death doesn't lose this scenario (yet).
+        // The sheet says what is at stake: any captive's death loses this scenario — Redthorn's
+        // (were he to be spared by a card) would not.
         let (attack, asked) = await attackUntilAsked(sim, by: guardian, on: captive, value: 20)
         XCTAssertEqual(asked?.destroys, true)
-        XCTAssertEqual(asked?.losesTheScenario, false)
-        XCTAssertEqual(asked?.isDecisive, false)
+        XCTAssertEqual(asked?.losesTheScenario, true)
+        XCTAssertEqual(asked?.isDecisive, true)
+        XCTAssertFalse(coord.losesTheScenario(with: 1))
         coord.resolvePendingSave(by: nil, losing: nil)
         await attack.value
         XCTAssertEqual(entity.health, 0)
@@ -1945,5 +1947,92 @@ final class ScenarioSpecialRuleTests: XCTestCase {
         XCTAssertEqual(brute.lostCards.count, 1, "by the fuller hand")
         XCTAssertNil(coord.scenarioResult)
         XCTAssertEqual(coord.boardState.savesUsed, [1: 1])
+    }
+
+    // MARK: - Giving up an action to free a captive (#44)
+
+    /// The captives of Tribal Assault, and one with no other captive within two hexes.
+    private func captives(_ sim: ScenarioSimulator) throws -> (all: [PieceID], alone: PieceID) {
+        let coord = sim.coord
+        let all = objectives(sim).filter { coord.objectiveContainer(of: $0)?.objectiveIndex == 2 }
+        let alone = try XCTUnwrap(all.first { captive in
+            guard let place = coord.boardState.piecePositions[captive] else { return false }
+            return all.allSatisfy { $0 == captive || (coord.boardState.piecePositions[$0]?.distance(to: place) ?? 9) > 2 }
+        }, "a captive on its own")
+        return (all, alone)
+    }
+
+    /// Tribal Assault: "A character adjacent to a captive Orchid may forgo an action (discarding
+    /// one card instead) to free that captive, which is removed from the map immediately."
+    /// Offered beside the basic action; the card is discarded though its half would lose it, with
+    /// none of its experience; and Redthorn "adds +1 Attack to all his attacks for each captive
+    /// freed".
+    func testACharacterBesideACaptiveGivesUpAnActionToFreeIt() throws {
+        let sim = try simulator("44")
+        let coord = sim.coord
+        sim.gm.game.state = .next
+        for piece in pieces(sim) { coord.boardState.removePiece(piece) }
+        let brute = sim.gm.game.characters[0]
+        let captive = try captives(sim).alone
+        let place = try XCTUnwrap(coord.boardState.piecePositions[captive])
+        let redthorn = try XCTUnwrap(sim.gm.game.objectives.first { $0.name == "Redthorn" })
+        XCTAssertEqual(redthorn.escortAttack, 3)
+
+        let deck = sim.gm.editionStore.abilities(forDeck: "brute", edition: "gh")
+        let lostTop = try XCTUnwrap(deck.first { $0.lost == true || PlayerTurnController.markers(in: $0.actions ?? []).contains("lost") },
+                                    "a card whose top is lost")
+        let other = try XCTUnwrap(deck.first { $0.cardId != lostTop.cardId })
+        brute.handCards = [lostTop.cardId, other.cardId].compactMap { $0 }
+        let turn = PlayerTurnController(characterID: brute.id, coordinator: coord, gameManager: sim.gm)
+        coord.activePlayerTurn = turn
+        turn.selectCards(top: lostTop, bottom: other)
+
+        // Not beside a captive: nothing to give the action up for.
+        let everyCaptive = try captives(sim).all
+        stand(sim, 0, on: try XCTUnwrap(coord.boardState.cells.keys.sorted().first { hex in
+            coord.isEmptyHex(hex) && everyCaptive.allSatisfy { (coord.boardState.piecePositions[$0]?.distance(to: hex) ?? 9) > 1 }
+        }))
+        XCTAssertTrue(turn.forgoTargets.isEmpty)
+        stand(sim, 0, on: try XCTUnwrap(coord.boardState.neighbors(of: place).sorted().first(where: coord.isEmptyHex)))
+        XCTAssertEqual(turn.forgoTargets, [captive])
+        XCTAssertEqual(turn.forgoTitle(captive), "Free \(coord.name(captive))")
+
+        let experience = brute.experience
+        turn.forgoAction(toFree: captive)
+        XCTAssertFalse(coord.isOnBoard(captive), "removed from the map at once")
+        XCTAssertEqual(coord.entity(for: captive)?.health ?? 1 > 0, true, "freed, not killed")
+        XCTAssertEqual(coord.freedCount(2), 1)
+        XCTAssertEqual(redthorn.escortAttack, 4, "Redthorn: +1 Attack for the captive freed")
+        XCTAssertNil(coord.scenarioResult ?? coord.pendingResult)
+        XCTAssertEqual(turn.phase, .executeBottomAction, "the action given up is over")
+        XCTAssertTrue(turn.forgoTargets.isEmpty, "no captive beside the Brute now")
+
+        // The turn ends: the card given up is discarded, not lost, and gave no experience.
+        turn.skipRemainingActions()
+        coord.turnOrder = sim.gm.game.characters.enumerated().map {
+            TurnOrderEntry(figure: .character($0.element), initiative: Double(10 + $0.offset))
+        }
+        coord.currentTurnIndex = 0
+        coord.finishPlayerTurn()
+        let given = try XCTUnwrap(lostTop.cardId)
+        XCTAssertTrue(brute.discardedCards.contains(given))
+        XCTAssertFalse(brute.lostCards.contains(given))
+        XCTAssertEqual(brute.experience, experience)
+    }
+
+    /// "Lose: any captive Orchid is killed." One freed is beyond harm and is not a captive lost;
+    /// one killed loses the scenario.
+    func testACaptiveKilledLosesTribalAssaultAndOneFreedDoesNot() throws {
+        let sim = try simulator("44")
+        let coord = sim.coord
+        let (all, alone) = try captives(sim)
+        coord.free(alone, by: sim.gm.game.characters[0].id)
+        coord.checkVictoryDefeat()
+        XCTAssertNil(coord.scenarioResult ?? coord.pendingResult, "a captive freed is no loss")
+        let other = try XCTUnwrap(all.first { $0 != alone })
+        XCTAssertTrue(coord.losesTheScenario(with: 2))
+        coord.sufferDamage(999, to: other)
+        coord.checkVictoryDefeat()
+        XCTAssertEqual(coord.scenarioResult ?? coord.pendingResult, .defeat)
     }
 }

@@ -376,6 +376,11 @@ final class ScenarioSimulator {
         let half = "\(turn.phase)"
         if turn.currentActionIndex == 0, !defaultDecided.contains(half) {
             defaultDecided.insert(half)
+            let offered = turn.forgoTargets
+            if !offered.isEmpty, let target = policy.forgo(turn, options: offered, sim: self) {
+                turn.forgoAction(toFree: target)
+                return
+            }
             if policy.useDefaultAction(turn, sim: self) {
                 turn.useDefaultAction()
                 return

@@ -107,6 +107,11 @@ struct TurnChoiceButtons: View {
             if turn.canUseDefaultAction {
                 Button(turn.defaultActionTitle) { turn.useDefaultAction() }
             }
+            // What the scenario offers for an action given up (a captive beside the character).
+            ForEach(turn.forgoTargets, id: \.self) { target in
+                Button(turn.forgoTitle(target)) { turn.forgoAction(toFree: target) }
+                    .accessibilityHint("Instead of this action: the card is discarded")
+            }
             Button("Skip Rest of Half") { turn.skipRemainingActions() }
         }
         .buttonStyle(.boardQuietCompact)

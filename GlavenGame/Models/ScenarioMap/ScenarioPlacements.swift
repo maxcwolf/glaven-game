@@ -47,6 +47,9 @@ struct ScenarioPlacements: Codable, Equatable {
     /// Objectives a character may spare a source of damage by losing a card from their hand
     /// (the captive Orchids; the crystal, twice a scenario).
     var saves: [Save]?
+    /// What a character beside an objective may give up an action for (the captive Orchids,
+    /// freed).
+    var forgo: [Forgo]?
     /// Monster types that can't be damaged in any way; conditions and other effects of an
     /// attack still apply (the Living Spirits of Chained Isle).
     var undamageable: [String]?
@@ -332,6 +335,15 @@ extension ScenarioPlacements {
     struct Save: Codable, Hashable {
         let objective: Int
         var times: Int?
+    }
+
+    /// "A character adjacent to a captive Orchid may forgo an action (discarding one card
+    /// instead) to free that captive, which is removed from the map immediately": the objective
+    /// (1-based) that is freed, and the objective whose attacks gain +1 for each one freed
+    /// (Redthorn).
+    struct Forgo: Codable, Hashable {
+        let objective: Int
+        var strengthens: Int?
     }
 
     /// For every death of one of `killed`, one of `removes` leaves the map (Chained Isle: a

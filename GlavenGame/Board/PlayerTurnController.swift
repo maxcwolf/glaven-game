@@ -803,6 +803,36 @@ final class PlayerTurnController {
             : "Use Basic Move \(PassiveItems.defaultMove(for: items))"
     }
 
+    /// What the scenario lets this character do instead of the half's abilities, where the basic
+    /// action could still be used: the captives beside them, to free.
+    var forgoTargets: [PieceID] {
+        canUseDefaultAction ? (coordinator?.forgoTargets(for: characterID) ?? []) : []
+    }
+
+    /// The button that frees `target`: "Free Captive Orchid 3".
+    func forgoTitle(_ target: PieceID) -> String { "Free \(coordinator?.name(target) ?? "the captive")" }
+
+    /// Give up the half to free `target`: its abilities are passed over and the card is
+    /// discarded, as after a basic action (no experience, no lost icon).
+    func forgoAction(toFree target: PieceID) {
+        guard let coordinator, forgoTargets.contains(target) else { return }
+        if endIfStunned() { return }
+        finishedHalf = nil
+        checkpoint = nil   // freeing a captive isn't taken back
+        hasActed = true
+        let steps = currentSteps
+        let kept = Array(steps.prefix(currentActionIndex)) + steps.dropFirst(currentActionIndex).filter { Self.bonusCard(of: $0) != nil }
+        if phase == .executeTopAction {
+            topActions = kept
+            topUsedAsDefault = true
+        } else {
+            bottomActions = kept
+            bottomUsedAsDefault = true
+        }
+        coordinator.free(target, by: characterID)
+        finishHalfAfterBasicAction()
+    }
+
     /// After a basic action the half's printed abilities are done, but the turn's bonus steps in
     /// it still come (Auto Turret's attack at the end of the turn).
     private func finishHalfAfterBasicAction() {

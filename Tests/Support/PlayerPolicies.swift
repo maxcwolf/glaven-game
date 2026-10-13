@@ -28,6 +28,9 @@ protocol PlayerPolicy {
     func forcedMoveTarget(for piece: PieceID, options: Set<PieceID>, isPush: Bool, sim: ScenarioSimulator) -> PieceID?
     /// Lose cards to negate incoming damage (GH p.22)?
     func negateDamage(_ damage: Int, character: GameCharacter, sim: ScenarioSimulator) -> BoardCoordinator.DamageMitigationChoice
+    /// What the character gives the half up for, of what the scenario offers (a captive beside
+    /// them, to free); nil to play the half.
+    func forgo(_ turn: PlayerTurnController, options: [PieceID], sim: ScenarioSimulator) -> PieceID?
     /// Whose card, if any, is lost to spare what the party protects a source of damage.
     func spare(_ pending: BoardCoordinator.PendingSave, sim: ScenarioSimulator) -> (characterID: String, cardId: Int)?
     func shortRest(character: GameCharacter, cardToLose: Int, sim: ScenarioSimulator) -> ShortRestDecision
@@ -89,6 +92,11 @@ extension PlayerPolicy {
 
     func negateDamage(_ damage: Int, character: GameCharacter, sim: ScenarioSimulator) -> BoardCoordinator.DamageMitigationChoice {
         .takeDamage
+    }
+
+    /// A captive beside the character is freed there and then: its death would lose the scenario.
+    func forgo(_ turn: PlayerTurnController, options: [PieceID], sim: ScenarioSimulator) -> PieceID? {
+        options.first
     }
 
     /// A card only where the scenario would be lost without it: from the fullest hand, its last card.

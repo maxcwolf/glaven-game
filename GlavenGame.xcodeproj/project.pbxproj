@@ -204,6 +204,7 @@
 		D4E7121201A9D615F5FC0D37 /* DeckData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1BFD0B71E6987E420B5CBA91 /* DeckData.swift */; };
 		D5E66A358D8848C0094682B1 /* ScenarioManager+Rewards.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3C61D7D6C6A754273EE78F30 /* ScenarioManager+Rewards.swift */; };
 		D7CE1CE9C11E696DD3D22EA9 /* CardEnhancing.swift in Sources */ = {isa = PBXBuildFile; fileRef = D87DC294ED9193A4E2061B72 /* CardEnhancing.swift */; };
+		D95897779ADC73A057743CD6 /* BoardCoordinator+Forgo.swift in Sources */ = {isa = PBXBuildFile; fileRef = C44DE2E908CCA431E68158FE /* BoardCoordinator+Forgo.swift */; };
 		DA80F59435177C23D8E005E0 /* AoEResolver.swift in Sources */ = {isa = PBXBuildFile; fileRef = C9787C8278D29A360F280A45 /* AoEResolver.swift */; };
 		DBCECD3BAD657A5840A2F80A /* EditionData in Resources */ = {isa = PBXBuildFile; fileRef = 6837034E843BAFF4AB496C8A /* EditionData */; };
 		DC293FDDF51B54CC42CE224A /* HowToPlayBook.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8E10E7618A6813B862EC6475 /* HowToPlayBook.swift */; };
@@ -402,6 +403,7 @@
 		C0429C07F7DA0462F801132A /* GameSummon.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameSummon.swift; sourceTree = "<group>"; };
 		C124CDA0F843E56DFEB9254F /* ConditionName.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConditionName.swift; sourceTree = "<group>"; };
 		C27216A8BF9D29A97C3B588D /* ElementState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ElementState.swift; sourceTree = "<group>"; };
+		C44DE2E908CCA431E68158FE /* BoardCoordinator+Forgo.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "BoardCoordinator+Forgo.swift"; sourceTree = "<group>"; };
 		C4B5DE1CCC42A105EA251124 /* ScenarioMaps */ = {isa = PBXFileReference; lastKnownFileType = folder; name = ScenarioMaps; path = GlavenGame/Resources/ScenarioMaps; sourceTree = SOURCE_ROOT; };
 		C567728A83844732D31F3F5F /* ItemData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ItemData.swift; sourceTree = "<group>"; };
 		C5ACBCD4EE9EF90BEC9F2752 /* ScenarioMapBuilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScenarioMapBuilder.swift; sourceTree = "<group>"; };
@@ -804,6 +806,7 @@
 				A6B11F82C5E44D977254134D /* BoardCoordinator+Combat.swift */,
 				F017EAC5B25B50251E9BB923 /* BoardCoordinator+Dooms.swift */,
 				44AA05D2B037A74D620B3966 /* BoardCoordinator+Effects.swift */,
+				C44DE2E908CCA431E68158FE /* BoardCoordinator+Forgo.swift */,
 				AD54276A54BB6F54BABE7D2E /* BoardCoordinator+Goals.swift */,
 				8AF5F88A83DE6D05C0E02C99 /* BoardCoordinator+Items.swift */,
 				DDBAC7539C505743F35168AA /* BoardCoordinator+Learning.swift */,
@@ -1027,6 +1030,7 @@
 				B8BA0DCB5F22292931347410 /* BoardCoordinator+Combat.swift in Sources */,
 				E38E2213257ECD55DA7680BB /* BoardCoordinator+Dooms.swift in Sources */,
 				9C25B60E372D4CA3882F3A98 /* BoardCoordinator+Effects.swift in Sources */,
+				D95897779ADC73A057743CD6 /* BoardCoordinator+Forgo.swift in Sources */,
 				D4D98296B27433380EEC45FE /* BoardCoordinator+Goals.swift in Sources */,
 				20DF67A50B1E99F5D18B9FDC /* BoardCoordinator+Items.swift in Sources */,
 				B07CD09C3B00B44267349F5C /* BoardCoordinator+Learning.swift in Sources */,
