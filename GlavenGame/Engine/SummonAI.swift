@@ -56,7 +56,7 @@ enum PlayerSideAI {
             : hostileMonsters(board: board, gameState: gameState, includeInvisible: false)
         let blockers = Set((turned ? formerAllies(of: pieceID, board: board, gameState: gameState, includeInvisible: true)
             : hostileMonsters(board: board, gameState: gameState, includeInvisible: true))
-            .compactMap { board.piecePositions[$0] })
+            .flatMap { board.hexes(of: $0) })
         let allies = Set(board.piecePositions.compactMap { id, coord in
             id != pieceID && !blockers.contains(coord) ? coord : nil
         })

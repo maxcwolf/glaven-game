@@ -88,6 +88,15 @@ final class PerchTests: XCTestCase {
         await coord.performPushPull(target: boss, attackerPos: from, steps: 2, isPush: true)
         XCTAssertEqual(Set(coord.boardState.hexes(of: boss)), perch)
 
+        // No one ends a move on any of its hexes — not one that flies over obstacles either.
+        let flyer = try XCTUnwrap(coord.spawnMonster(name: "spitting-drake", type: .normal, at: from, origin: .spawned))
+        stand(sim, brute, on: try floor(sim) { (coord.boardState.range(from: $0, to: here) ?? 0) > 4 })
+        XCTAssertTrue(perch.isSubset(of: coord.movementSets(for: flyer).allies), "its allies see every hex taken")
+        XCTAssertTrue(perch.isSubset(of: coord.movementSets(for: brute).enemies))
+        let drakes = try XCTUnwrap(sim.gm.game.monsters.first { $0.name == "spitting-drake" })
+        XCTAssertTrue(perch.isSubset(of: MonsterAI.gatherAllyPositions(board: coord.boardState, monster: drakes, excluding: flyer, gameState: sim.gm.game)))
+        coord.sufferDamage(999, to: flyer)
+
         let restored = BoardState()
         try JSONDecoder().decode(BoardSnapshot.self, from: JSONEncoder().encode(BoardSnapshot.from(coord.boardState))).restore(to: restored)
         XCTAssertEqual(restored.bodies, coord.boardState.bodies)

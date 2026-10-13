@@ -282,6 +282,8 @@ S={
  "controlledCardsNotDiscarded": ("GlavenGame/Board/BoardCoordinator+Sway.swift", "                    if !character.discardedCards.contains(cardId) { character.discardedCards.append(cardId) }\n", ""),
  "controlledCharacterRuns": ("GlavenGame/Board/BoardCoordinator+Sway.swift", "move: max(0, sway.controlled + scenarioMoveBonus(of: piece)),", "move: max(0, 9 + scenarioMoveBonus(of: piece)),"),
  "mindControlLastsForEver": ("GlavenGame/Board/BoardCoordinator.swift", "        // Mind control lasts the round.\n        boardState.turned = []\n", ""),
+ "alliesLandOnTheDrake": ("GlavenGame/Engine/MonsterAI.swift", "            positions.formUnion(board.bodies[id] ?? [coord])\n", "            positions.insert(coord)\n"),
+ "bodyHexesFreeToStandOn": ("GlavenGame/Board/BoardCoordinator.swift", "            let hexes = boardState.bodies[id] ?? [coord]\n", "            let hexes = [coord]\n"),
  "noOneIsAskedWhoHolds": ("GlavenGame/Board/BoardCoordinator+Carried.swift", "            } else if autoResolvePrompts {\n                give(thing.name, to: first.id, how: \"holds\")", "            } else if true {\n                give(thing.name, to: first.id, how: \"holds\")"),
  "lyingThingNotPickedUp": ("GlavenGame/Board/BoardCoordinator+Carried.swift", "            if let lying = boardState.carriedLying[name] { return hexes.contains(lying) }", "            if boardState.carriedLying[name] != nil { return false }"),
  "anyoneLootsTheQuestTile": ("GlavenGame/Board/BoardCoordinator+Carried.swift", "        return party.first { $0.id == characterID }?.personalQuest == quest", "        return party.first { $0.id == characterID }?.personalQuest == quest || true"),

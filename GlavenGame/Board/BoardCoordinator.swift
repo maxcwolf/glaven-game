@@ -1980,7 +1980,9 @@ final class BoardCoordinator {
         var enemies = Set<HexCoord>()
         var allies = Set<HexCoord>()
         for (id, coord) in boardState.piecePositions where id != pieceID {
-            if areEnemies(pieceID, id) { enemies.insert(coord) } else { allies.insert(coord) }
+            // (Every hex of a figure that stands on several.)
+            let hexes = boardState.bodies[id] ?? [coord]
+            if areEnemies(pieceID, id) { enemies.formUnion(hexes) } else { allies.formUnion(hexes) }
         }
         // A doorway the scenario shuts to this monster: never entered, never passed through.
         enemies.formUnion(boardState.barredHexes(for: pieceID))

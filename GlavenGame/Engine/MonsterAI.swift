@@ -669,7 +669,7 @@ enum MonsterAI {
     /// Hexes the monster cannot move through: every enemy figure (visible or not) and objectives.
     static func movementBlockers(board: BoardState, monster: GameMonster, gameState: GameState) -> Set<HexCoord> {
         var blocked = Set(gatherEnemies(board: board, monster: monster, gameState: gameState, includeInvisible: true)
-            .compactMap { board.piecePositions[$0] })
+            .flatMap { board.hexes(of: $0) })
         for (id, coord) in board.piecePositions {
             if case .objective = id { blocked.insert(coord) }
         }
@@ -686,7 +686,8 @@ enum MonsterAI {
                side(of: group) != side(of: monster) {
                 continue
             }
-            positions.insert(coord)
+            // (Every hex of one that stands on several: no one ends a move on the Elder Drake.)
+            positions.formUnion(board.bodies[id] ?? [coord])
         }
         return positions
     }

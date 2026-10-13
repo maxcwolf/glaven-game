@@ -599,7 +599,8 @@ final class ScenarioSimulator {
     private func checkAttack(_ attacker: PieceID, _ target: PieceID) {
         // A fallen Cultist attacks from the hex it fell on.
         let fallen = coord.deathAttackInProgress.flatMap { $0.attacker == attacker ? $0.position : nil }
-        guard let from = fallen ?? position(attacker), let to = position(target) else {
+        // (A figure on several hexes is attacked through the nearest of them.)
+        guard let from = fallen ?? position(attacker), let to = coord.boardState.nearestHex(of: target, to: fallen ?? position(attacker) ?? HexCoord(0, 0)) else {
             violation("\(attacker) attacks \(target), but one of them is not on the board")
             return
         }
@@ -607,7 +608,9 @@ final class ScenarioSimulator {
         if coord.isInactive(attacker) { violation("\(attacker) attacks while its kind sits the round out") }
         // (Mind controlled, a character or summon takes the party for its enemies this round.)
         let turnedOnTheParty = coord.boardState.turned.contains(attacker) && coord.isPlayerSide(target) && !coord.boardState.turned.contains(target)
-        if !coord.areEnemies(attacker, target) && !turnedOnTheParty { violation("\(attacker) attacks its ally \(target)") }
+        // (What nothing can touch is no one's enemy, yet attacks: the Elder Drake's Zephyrs.)
+        let untouchable = coord.isIntangible(attacker) && coord.side(of: attacker) != coord.side(of: target)
+        if !coord.areEnemies(attacker, target) && !turnedOnTheParty && !untouchable { violation("\(attacker) attacks its ally \(target)") }
         if coord.entity(for: target)?.entityConditions.contains(where: { $0.name == .invisible && !$0.expired }) == true {
             violation("\(attacker) attacks invisible \(target)")
         }
@@ -904,7 +907,9 @@ final class ScenarioSimulator {
                     violation("piece \(piece) at \(hex) has no living monster (\(entities.joined(separator: ", ")))"); continue
                 }
                 let flying = gm.game.monsters.first { $0.name == name }?.monsterData?.flying == true
-                if !cell.passable && !flying { violation("\(piece) stands on an obstacle at \(hex)") }
+                // (A boss on its perch sits on every hex of the obstacle: the Elder Drake.)
+                let perched = coord.boardState.bodies[piece]?.contains(hex) == true
+                if !cell.passable && !flying && !perched { violation("\(piece) stands on an obstacle at \(hex)") }
             case .summon:
                 guard let summon = coord.entity(for: piece) as? GameSummon, !summon.dead else {
                     violation("piece \(piece) has no living summon"); continue
