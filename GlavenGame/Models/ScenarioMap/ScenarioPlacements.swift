@@ -64,6 +64,8 @@ struct ScenarioPlacements: Codable, Equatable {
     var barred: [Barred]?
     /// A gun that never acts and is fired by its crew (#49's Siege Cannon and the City Archers).
     var battery: Battery?
+    /// Monsters that carry an objective somewhere instead of acting (#78's Cultists and their victim).
+    var carry: Carry?
     /// Monster types set up asleep (#71's Spitting Drakes): each does nothing until a character or
     /// a character's summon attacks it, damages it, gives it a negative condition or ends a
     /// movement beside it; then it acts as a monster just spawned does.
@@ -392,6 +394,25 @@ extension ScenarioPlacements {
         let side: String
         /// Tiles the shot covers entirely.
         var tiles: [String]?
+    }
+
+    /// "The two Cultists b do not act normally but instead perform 'Move+0' simultaneously to
+    /// bring the victim a … to the altars d and sacrifice him. The Cultists will first move to a
+    /// hex adjacent to the victim, then move to c or the nearest hex adjacent to the altar. After
+    /// the cultists move, the victim … will then move the same number of hexes to be adjacent to
+    /// them … If a Cultist starts its turn adjacent to the altars d, and the victim is also
+    /// adjacent to the altars, the victim is sacrificed and the scenario is lost." (#78)
+    struct Carry: Codable, Hashable {
+        /// The monster type that carries.
+        let carriers: String
+        /// The objective carried (1-based, as the scenario lists its objectives).
+        let objective: Int
+        /// The letter of the hexes the carriers make for with it.
+        let toward: String
+        /// The letter of the altar's hexes.
+        let altar: String
+        /// What the players read when the sacrifice is made.
+        let lost: String
     }
 
     /// "It cannot enter or pass through door 2" (#67); "The Inox on tile E cannot enter or pass

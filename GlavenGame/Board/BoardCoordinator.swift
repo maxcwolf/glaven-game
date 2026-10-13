@@ -451,6 +451,8 @@ final class BoardCoordinator {
     var pendingFigureChoice: PendingFigureChoice?
     /// A hex the players are choosing outside a turn's action (the wind's two ways).
     @ObservationIgnored var pendingHexChoice: PendingHexChoice?
+    /// How far each carrier has gone this turn of theirs, and whether it had hold of what they carry (Sacrifice Pit).
+    @ObservationIgnored var carrierSteps: [PieceID: (steps: Int, carrying: Bool)] = [:]
     /// One of a few answers the players are choosing between (how far each row of boulders rolls).
     var pendingOptionChoice: PendingOptionChoice?
 

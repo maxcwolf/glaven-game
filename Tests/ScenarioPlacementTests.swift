@@ -213,6 +213,11 @@ final class ScenarioPlacementTests: XCTestCase {
                 for tile in rule.between + [rule.from].compactMap({ $0 }) { XCTAssertTrue(tiles.contains(tile), "\(index): no tile \(tile)") }
                 for name in rule.monsters { XCTAssertTrue(monsters.contains(name), "\(index): no monster \(name)") }
             }
+            if let carry = placements.carry {
+                XCTAssertTrue(monsters.contains(carry.carriers), "\(index): no monster \(carry.carriers)")
+                XCTAssertEqual(data.objectives?.indices.contains(carry.objective - 1), true, "\(index): no objective \(carry.objective)")
+                for letter in [carry.toward, carry.altar] { XCTAssertTrue(letters.contains(letter), "\(index): no hex lettered \(letter)") }
+            }
             if let battery = placements.battery {
                 for name in [battery.gun, battery.crew] { XCTAssertTrue(monsters.contains(name), "\(index): no monster \(name)") }
                 XCTAssertTrue(letters.contains(battery.line), "\(index): no hex lettered \(battery.line)")

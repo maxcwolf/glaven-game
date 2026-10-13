@@ -233,6 +233,8 @@ extension BoardCoordinator {
     func sufferDamage(_ amount: Int, to pieceID: PieceID, killer: PieceID? = nil) -> Bool {
         guard amount > 0, let gameManager, let entity = entity(for: pieceID) else { return false }
         wake(pieceID)
+        // A thing of the map without hit points (a water pump, the pit's victim) has none to lose.
+        if isScenery(pieceID), entity.maxHealth <= 0 { return false }
         // What the scenario lets nothing damage (Chained Isle's Living Spirits).
         if isUndamageable(pieceID) {
             log("\(name(pieceID)) can\u{2019}t be damaged", category: .damage)

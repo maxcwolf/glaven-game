@@ -91,6 +91,10 @@ final class MonsterTurnController {
                 if pieceID == gunner {
                     await coordinator.serveTheGun(pieceID)
                     guard !isStale else { return }
+                } else if coordinator.isCarrier(type: monster.name) {
+                    // It carries the victim toward the altar instead of acting (Sacrifice Pit).
+                    await coordinator.carrierStep(pieceID, entity: entity, monster: monster)
+                    guard !isStale else { return }
                 } else if coordinator.march(of: monster.name) != nil {
                     // It marches where the scenario sends it, then does the rest of its card.
                     await coordinator.marchStep(pieceID)
@@ -115,6 +119,12 @@ final class MonsterTurnController {
             coordinator.sweepDeadFigures()
             if coordinator.scenarioResult != nil { return }
             await coordinator.beat()
+        }
+
+        // What the carriers carry goes with them, once they have all moved.
+        if coordinator.isCarrier(type: monster.name) {
+            await coordinator.carriedFollows()
+            return
         }
 
         // Infusions on the card become strong at the end of the type's turn.
