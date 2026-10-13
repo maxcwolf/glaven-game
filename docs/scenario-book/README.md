@@ -114,8 +114,9 @@ ends up on the board:
 - `saves`: objectives a character may spare a source of damage by losing a card from their hand —
   `{"objective": 2}` as often as there are cards (#44's captives), `{"objective": 1, "times": 2}`
   twice a scenario (#84's crystal). As the damage is about to be suffered the party is asked
-  (`SaveChoiceSheet`): let it suffer, or pick a card from any hand. Headless play and the
-  simulator's policies give a card only for a blow that would destroy the objective.
+  (`SaveChoiceSheet`): let it suffer, or pick a card from any hand. The sheet says when
+  the scenario is lost with the objective; headless play and the simulator's policies give a card
+  only then.
 - `splitStart`: there are two starting rooms and no more than half the party (rounded up) may
   start in the same one (#50, #58, #85).
 - `water`: what water hexes do — `hurtsThePoisoned` (a poisoned character or summon walking in
