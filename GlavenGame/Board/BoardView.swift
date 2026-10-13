@@ -149,6 +149,11 @@ struct BoardView: View {
                     .id(pending.id)
                     .transition(.opacity)
             }
+            if let pending = coordinator.pendingOptionChoice {
+                OptionChoicePrompt(pending: pending, coordinator: coordinator)
+                    .id(pending.id)
+                    .transition(.opacity)
+            }
 
             // Elements to infuse, a condition to remove (Mana Potions, Minor Cure Potion)
             if let pending = coordinator.pendingElementChoice {

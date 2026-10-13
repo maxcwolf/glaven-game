@@ -451,6 +451,8 @@ final class BoardCoordinator {
     var pendingFigureChoice: PendingFigureChoice?
     /// A hex the players are choosing outside a turn's action (the wind's two ways).
     @ObservationIgnored var pendingHexChoice: PendingHexChoice?
+    /// One of a few answers the players are choosing between (how far each row of boulders rolls).
+    var pendingOptionChoice: PendingOptionChoice?
 
     // MARK: Learning mode
 
@@ -784,11 +786,16 @@ final class BoardCoordinator {
     /// Continue with end-of-round cleanup after all short rests are resolved.
     private func proceedAfterShortRests() {
         longRestedCharacterIDs = []
-        // The wind or the current first (decided while the round's cards still lie drawn).
-        guard pendingResult == nil, let coming = driftToCome() else { return finishTheRound() }
+        // What moves the board first: the wind or the current (decided while the round's cards
+        // still lie drawn), then the boulders.
+        let coming = pendingResult == nil ? driftToCome() : nil
+        let rolls = pendingResult == nil && scenarioRolling != nil
+        guard coming != nil || rolls else { return finishTheRound() }
         let generation = boardGeneration
         Task { @MainActor in
-            await self.driftAsTheRoundEnds(coming)
+            if let coming { await self.driftAsTheRoundEnds(coming) }
+            guard self.isCurrentBoard(generation), self.scenarioResult == nil else { return }
+            if rolls { await self.rollAsTheRoundEnds() }
             guard self.isCurrentBoard(generation), self.scenarioResult == nil else { return }
             self.finishTheRound()
         }
@@ -1019,6 +1026,9 @@ final class BoardCoordinator {
         let hex = pendingHexChoice
         pendingHexChoice = nil
         hex?.continuation?.resume(returning: nil)
+        let option = pendingOptionChoice
+        pendingOptionChoice = nil
+        option?.continuation?.resume(returning: nil)
         pendingModifierDraw = nil
         pendingDamage = nil
         pendingItemUse = nil

@@ -56,6 +56,8 @@ struct ScenarioPlacements: Codable, Equatable {
     var tokens: Tokens?
     /// What moves the party as each round ends (the wind of #71, the current of #88).
     var drift: Drift?
+    /// Obstacles that roll along their rows as each round ends (#73's boulders).
+    var rolling: Rolling?
     /// Escorts (objectives, 1-based) whose attacks draw "from whichever attack modifier deck the
     /// players choose": a character's, asked as the escort attacks (Redthorn; the captive
     /// Orchids of Bandit's Wood).
@@ -359,6 +361,22 @@ extension ScenarioPlacements {
     struct Save: Codable, Hashable {
         let objective: Int
         var times: Int?
+    }
+
+    /// "At the end of every round, both boulders in each row will move one, two, or three hexes
+    /// to the left. The players choose the number of hexes moved, but … each row of boulders
+    /// must move a different number of hexes" (#73). A row runs from the hex lettered `reenter`
+    /// to the last hex of the map on the side the boulders roll toward: one that gets there is
+    /// "immediately placed at b in its row and continues".
+    struct Rolling: Codable, Hashable {
+        /// The obstacles that roll, by the name of their art: "boulder-1".
+        let subType: String
+        /// The side they roll toward ("W").
+        let side: String
+        /// The letter of the hex of each row a boulder comes back in at.
+        let reenter: String
+        /// How far a row may roll: each row a different one of these.
+        let steps: [Int]
     }
 
     /// "Strong winds will force characters and character summons to move one hex … at the end of

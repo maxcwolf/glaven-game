@@ -237,6 +237,23 @@ struct ActionChoicePrompt: View {
     }
 }
 
+/// One of a few answers in words (how far each row of boulders rolls).
+struct OptionChoicePrompt: View {
+    let pending: BoardCoordinator.PendingOptionChoice
+    let coordinator: BoardCoordinator
+
+    var body: some View {
+        ItemChoicePanel(title: pending.title, detail: pending.question) {
+            EmptyView()
+        } actions: {
+            ForEach(Array(pending.options.enumerated()), id: \.offset) { index, option in
+                Button(option) { coordinator.resolveOptionChoice(index) }
+                    .buttonStyle(.boardPrimaryCompact)
+            }
+        }
+    }
+}
+
 /// A figure to pick from a list while a monster's turn waits (Heart of the Betrayer).
 struct FigureChoicePrompt: View {
     let pending: BoardCoordinator.PendingFigureChoice

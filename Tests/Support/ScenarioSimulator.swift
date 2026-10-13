@@ -300,6 +300,11 @@ final class ScenarioSimulator {
             coord.resolveActionChoice(nil)
             return
         }
+        if let option = coord.pendingOptionChoice {
+            // How far each row of boulders rolls: what the game suggests (the least harm to the party).
+            coord.resolveOptionChoice(option.suggested)
+            return
+        }
         if let choice = coord.pendingFigureChoice {
             // A Living Spirit to remove for a demon's death: the nearest (the first offered).
             // A relic to discard beside the altar for damage to the boss: always.

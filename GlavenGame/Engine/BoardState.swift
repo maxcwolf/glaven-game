@@ -120,6 +120,10 @@ final class BoardState {
     var tokensLooted: [Int] = []
     /// The hexes whose token has been looted (none is laid there again).
     var tokenHexesLooted: Set<HexCoord> = []
+    /// Where the obstacles that roll as rounds end lie (Rockslide Ridge's boulders).
+    var rollers: [HexCoord] = []
+    /// What a rolling obstacle lies on (a trap, rubble): put back as it rolls on.
+    var underRollers: [HexCoord: HexCell] = [:]
 
     // MARK: - Derived
 
