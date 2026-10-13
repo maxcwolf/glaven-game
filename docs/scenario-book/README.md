@@ -174,6 +174,12 @@ ends up on the board:
   beside it and takes it to the next letter. What it summons is untouchable — nothing damages or
   affects it and no summon focuses on it — and performs "Move 2, Attack C" as the boss's turn
   starts instead of having a turn of its own.
+- `sway`: a boss whose specials move and turn the party — `{"boss": "the-betrayer", "flee": 4,
+  "controlled": 2}` (#79, `BoardCoordinator+Sway`). After its first special each character and
+  summon moves `flee` to end as far from it as they can; a special whose text is "Mind Control"
+  draws them all to its side and turns the character last to play two cards this round, with
+  their summons: that turn is a Move of `controlled` and the attacks of the top of the leading
+  card, made on the party, with both cards discarded.
 - `drift`: what moves the party one hex as each round ends, before the round's other end-of-round
   rules (`BoardCoordinator+Drift`): `{"name": "wind", "directions": [["NW", "NE"], ["E"], ["SW", "SE"],
   ["W"]]}` (#71: the sides of a hex — NE, E, SE, SW, W, NW as the map lies in the game — by round,

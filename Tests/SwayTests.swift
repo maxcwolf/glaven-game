@@ -91,6 +91,18 @@ final class SwayTests: XCTestCase {
         XCTAssertLessThanOrEqual(bruteNow, 7, "by no more than a Move 4")
         XCTAssertEqual(far(coord.boardState.piecePositions[.character(weaver.id)]), 3, "immobilized, the Spellweaver stays")
         XCTAssertFalse(coord.turnLog.contains { $0.message.contains("as printed on its stat card") })
+
+        // Alone on the board, from each of several places: always to the farthest hex a Move 4 reaches.
+        coord.boardState.removePiece(.character(weaver.id))
+        coord.boardState.removePiece(.summon(id: ally.id))
+        brute.summons.removeAll()
+        for start in three.prefix(3) {
+            for piece in coord.boardState.piecePositions.keys.sorted() { if case .monster("giant-viper", _) = piece { coord.sufferDamage(999, to: piece) } }
+            stand(sim, .character(brute.id), on: start)
+            let best = try farthest(.character(brute.id))
+            await coord.driveOff(from: betrayer.piece)
+            XCTAssertEqual(far(coord.boardState.piecePositions[.character(brute.id)]), best, "from \(start)")
+        }
     }
 
     /// Special 2: "All characters and character summons are forced to move to the closest hex
