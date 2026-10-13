@@ -266,6 +266,7 @@ extension BoardCoordinator {
         let (healthBefore, maxHealth) = (entity.health, entity.maxHealth)
         gameManager.entityManager.changeHealth(entity, amount: -amount)
         boardScene?.pieceDamage(id: pieceID, amount: amount)
+        shareThroneDamage(with: pieceID, killer: killer)
         chargeCarried(for: pieceID, by: killer, damage: min(amount, healthBefore))
         doomEnemyDamaged(pieceID)   // Sap Life
         // Vengeful Barrage: the character attacks back once the damage is done.

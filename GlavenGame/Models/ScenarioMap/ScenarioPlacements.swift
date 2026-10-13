@@ -66,6 +66,8 @@ struct ScenarioPlacements: Codable, Equatable {
     var battery: Battery?
     /// Monsters that carry an objective somewhere instead of acting (#78's Cultists and their victim).
     var carry: Carry?
+    /// An objective that is a boss's hit points and jumps about the map (#21's altar).
+    var throne: Throne?
     /// Monster types set up asleep (#71's Spitting Drakes): each does nothing until a character or
     /// a character's summon attacks it, damages it, gives it a negative condition or ends a
     /// movement beside it; then it acts as a monster just spawned does.
@@ -413,6 +415,25 @@ extension ScenarioPlacements {
         let altar: String
         /// What the players read when the sacrifice is made.
         let lost: String
+    }
+
+    /// "The Prime Demon and the altar share hit points, initiative, and immunities. The Prime
+    /// Demon cannot be damaged in any way. Instead, damage must be done to the altar." With a
+    /// special of the boss "the altar jumps to the next hex in the order of a, b, c, d, e, f, and
+    /// then back to a … The altar then summons one normal demon for two characters or one elite
+    /// demon for three or four characters. The type depends on the location." (#21)
+    struct Throne: Codable, Hashable {
+        /// The boss whose hit points the objective is.
+        let boss: String
+        /// The objective (1-based, as the scenario lists its objectives).
+        let objective: Int
+        /// The lettered hexes it jumps round, in order; it starts on one of them.
+        let cycle: [String]
+        /// What it summons on each.
+        let summons: [String: String]
+        /// From how many characters the summoned monster is elite, for the boss's first special
+        /// and its second.
+        let eliteFrom: [Int]
     }
 
     /// "It cannot enter or pass through door 2" (#67); "The Inox on tile E cannot enter or pass

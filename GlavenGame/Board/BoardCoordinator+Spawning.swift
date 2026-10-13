@@ -168,6 +168,7 @@ extension BoardCoordinator {
             boardScene?.addPieceSprite(id: piece, at: slot.coord, offsetCol: offsetCol, offsetRow: offsetRow)
             placed.append(piece)
         }
+        shareThroneHealth()
         return placed
     }
 

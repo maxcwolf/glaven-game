@@ -443,6 +443,9 @@ final class MonsterTurnController {
                             coordinator.log("The Vermling Scouts act again", category: .round)
                             await executeMonsterGroup(scouts)
                         }
+                    } else if text.contains("throne moves"), coordinator.scenarioThrone?.boss == monster.name {
+                        // Infernal Throne: the altar jumps to its next hex and summons a demon there.
+                        await coordinator.throneMoves(special: index)
                     } else if text.contains("hatch eggs") {
                         hatches = true   // the Winged Horror, once it has attacked
                     } else if text.hasSuffix("eggs") {
@@ -455,7 +458,9 @@ final class MonsterTurnController {
                     coordinator.log("Resolve the boss\u{2019}s special ability \(index + 1) as printed on its stat card",
                                     category: .info)
                 }
-                let specialActions = MonsterAbility.flattened(special[index].filter { $0.type != .custom })
+                // (The throne's own summon is the altar's, made as it lands.)
+                let throne = coordinator.scenarioThrone?.boss == monster.name
+                let specialActions = MonsterAbility.flattened(special[index].filter { $0.type != .custom && !(throne && $0.type == .summon) })
                 let specialCard = AbilityModel(cardId: ability.cardId, name: ability.name,
                                                initiative: ability.initiative, actions: specialActions)
                 var specialState = MonsterTurnState(hexesMoved: state.hexesMoved)

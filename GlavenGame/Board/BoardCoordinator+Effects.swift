@@ -115,7 +115,8 @@ extension BoardCoordinator {
     /// A monster of a type nothing damages in this scenario.
     func isUndamageable(_ pieceID: PieceID) -> Bool {
         guard case .monster(let name, _) = pieceID else { return false }
-        return scenarioData?.placements?.undamageable?.contains(name) == true
+        // (A boss whose hit points are an altar's: the Prime Demon of the Infernal Throne.)
+        return scenarioData?.placements?.undamageable?.contains(name) == true || scenarioData?.placements?.throne?.boss == name
     }
 
     /// A monster of `name` has died: where the scenario gives a reprieve for it, "the players

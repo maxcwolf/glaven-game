@@ -87,7 +87,7 @@ M={
 }
 # Scenario rules (the mechanisms of placements/gh.json): run against the scenario tests.
 SCENARIO_FILTER=("ScenarioSpecialRuleTests|ScenarioReauditTests|ScenarioEnforcedRuleTests|ScenarioLockTests|ScenarioGoalTests|"
-                 "ScenarioSpawnTests|DemonicRiftTests|BattlementsTests|MonsterTextTests|MonsterSummonTests|CarriedThingTests|DriftTests|RollingBoulderTests|RisingWaterTests|SleepingMonsterTests|BarredDoorTests|BatteryTests|CarrierTests")
+                 "ScenarioSpawnTests|DemonicRiftTests|BattlementsTests|MonsterTextTests|MonsterSummonTests|CarriedThingTests|DriftTests|RollingBoulderTests|RisingWaterTests|SleepingMonsterTests|BarredDoorTests|BatteryTests|CarrierTests|ThroneTests")
 S={
  "factSavedIgnored": ("GlavenGame/Board/BoardCoordinator+Goals.swift", "            guard arrived >= saved else { return false }", "            guard arrived >= 0 * saved else { return false }"),
  "factLockIgnored": ("GlavenGame/Board/BoardCoordinator+Goals.swift", "        if let lock = fact.lock, !boardState.releasedLocks.contains(lock) { return false }", "        if let lock = fact.lock, lock < 0 { return false }"),
@@ -239,6 +239,18 @@ S={
  "carriersLeaveTheVictim": ("GlavenGame/Board/BoardCoordinator+Carry.swift", "            if !carrying {\n", "            if false {\n"),
  "thingsWithoutHitPointsDie": ("GlavenGame/Board/BoardCoordinator+Rules.swift", "        if isScenery(pieceID), entity.maxHealth <= 0 { return false }\n", ""),
  "carriersRun": ("GlavenGame/Board/BoardCoordinator+Carry.swift", "(monster.stat(for: entity.type)?.movement?.intValue ?? 0)", "(9)"),
+ "primeDemonCanBeHurt": ("GlavenGame/Board/BoardCoordinator+Effects.swift", " || scenarioData?.placements?.throne?.boss == name\n", "\n"),
+ "altarKeepsItsOwnHitPoints": ("GlavenGame/Board/BoardCoordinator+Spawning.swift", "        shareThroneHealth()\n", ""),
+ "bossOutlivesTheAltar": ("GlavenGame/Board/BoardCoordinator+Rules.swift", "        shareThroneDamage(with: pieceID, killer: killer)\n", ""),
+ "altarStaysPut": ("GlavenGame/Board/MonsterTurnController.swift", "                        await coordinator.throneMoves(special: index)\n", ""),
+ "altarSkipsAPlace": ("GlavenGame/Board/BoardCoordinator+Throne.swift", "throne.cycle[((here ?? -1) + 1) % throne.cycle.count]", "throne.cycle[((here ?? -1) + 2) % throne.cycle.count]"),
+ "altarLandsOnFigures": ("GlavenGame/Board/BoardCoordinator+Throne.swift", "if let figure = boardState.piece(at: destination), figure != altarNow.piece, let free", "if false, let figure = boardState.piece(at: destination), figure != altarNow.piece, let free"),
+ "altarLeavesItsStone": ("GlavenGame/Board/BoardCoordinator+Throne.swift", "        if stone?.overlay == .obstacle {\n            boardState.removeObstacle(at: from)", "        if false {\n            boardState.removeObstacle(at: from)"),
+ "unseenRoomStaysShut": ("GlavenGame/Board/BoardCoordinator+Throne.swift", "            reveal(tile: tile)\n", ""),
+ "otherDoorsStayShut": ("GlavenGame/Board/BoardCoordinator+Throne.swift", "        for _ in 0..<4 {\n            guard let door = boardState.doors.first", "        for _ in 0..<1 {\n            guard let door = boardState.doors.first"),
+ "altarSummonsNothing": ("GlavenGame/Board/BoardCoordinator+Throne.swift", "guard let demon = throne.summons[letter], let gameManager else { return }", "guard false, let demon = throne.summons[letter], let gameManager else { return }"),
+ "summonedDemonsNeverElite": ("GlavenGame/Board/BoardCoordinator+Throne.swift", "let elite = gameManager.game.characterCount >= throne.eliteFrom[", "let elite = false && gameManager.game.characterCount >= throne.eliteFrom["),
+ "bothSpecialsSummonAlike": ("GlavenGame/Board/BoardCoordinator+Throne.swift", "throne.eliteFrom[min(max(0, index), throne.eliteFrom.count - 1)]", "throne.eliteFrom[0]"),
  "noOneIsAskedWhoHolds": ("GlavenGame/Board/BoardCoordinator+Carried.swift", "            } else if autoResolvePrompts {\n                give(thing.name, to: first.id, how: \"holds\")", "            } else if true {\n                give(thing.name, to: first.id, how: \"holds\")"),
  "lyingThingNotPickedUp": ("GlavenGame/Board/BoardCoordinator+Carried.swift", "            if let lying = boardState.carriedLying[name] { return hexes.contains(lying) }", "            if boardState.carriedLying[name] != nil { return false }"),
  "anyoneLootsTheQuestTile": ("GlavenGame/Board/BoardCoordinator+Carried.swift", "        return party.first { $0.id == characterID }?.personalQuest == quest", "        return party.first { $0.id == characterID }?.personalQuest == quest || true"),

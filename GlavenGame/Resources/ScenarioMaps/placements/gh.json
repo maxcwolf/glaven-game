@@ -29,7 +29,11 @@
   }},
   "20": {"goal": {"text": "Kill the necromancer Jekserah.", "kill": ["jekserah"]}, "tiles": {
   }},
-  "21": {"goal": {"text": "Kill the Prime Demon.", "kill": ["prime-demon"]}, "tiles": {
+  "21": {"goal": {"text": "Kill the Prime Demon.", "kill": ["prime-demon"]}, "throne": {"boss": "prime-demon", "objective": 1, "cycle": ["a", "b", "c", "d", "e", "f"], "summons": {"a": "wind-demon", "b": "night-demon", "c": "earth-demon", "d": "flame-demon", "e": "sun-demon", "f": "frost-demon"}, "eliteFrom": [3, 4]}, "notes": ["Nothing damages the Prime Demon: its hit points are the altar’s, and it falls when the altar does. Attack the altar.", "With each special the altar jumps to the next of its six places — round the two long halls, the treasure room and back — moving aside whoever stands there and revealing the room if it is out of sight, and summons the demon of that place; the Prime Demon then moves and attacks."], "tiles": {
+    "d1a": {"objectives": [{"objective": 1, "cells": [[2, 2]]}], "markers": {"f": [[2, 2]]}},
+    "d2a": {"markers": {"e": [[2, 2]]}},
+    "j1a": {"markers": {"a": [[6, 2]], "b": [[2, 5]]}},
+    "j2a": {"markers": {"c": [[5, 3]], "d": [[1, 5]]}}
   }},
   "22": {"goal": {"text": "Destroy all altars.", "destroy": [1]}, "tiles": {
     "c1a": {"objectives": [{"objective": 1, "cells": [[0, 3]]}]},

@@ -42,6 +42,13 @@
     "sun-demon",
     "wind-demon"
   ],
+  "objectives": [
+    {
+      "name": "Altar",
+      "health": "8xC",
+      "marker": "f"
+    }
+  ],
   "rooms": [
     {
       "roomNumber": 1,
@@ -139,6 +146,9 @@
           "name": "prime-demon",
           "type": "boss"
         }
+      ],
+      "objectives": [
+        1
       ]
     }
   ]
