@@ -91,8 +91,8 @@ Still to do, in order:
    negated as usual), Bless cards for the monsters, elements inert, Strengthen (and for good),
    Invisible on elites, and as standing effects kept on the scenario (`Scenario.dungeonEffects`,
    saved): Shield this round or for good, +1 Attack, +1 Move, "Retaliate 2, Range 3" (Den; an
-   effect's `retaliate`/`retaliateRange`, counted in `performAttack`). Still to play: +1 Range
-   (Trail), heal 1 at each turn's start (Passage), no consuming elements
+   effect's `retaliate`/`retaliateRange`, counted in `performAttack`), heal 1 as each enemy's turn starts (Passage;
+   `healEachTurn`, `healAtTurnStart`). Still to play: +1 Range (Trail), no consuming elements
    (Clearing), cards lost or discarded (Cabin, Crossroads — the start-of-scenario discard picker
    can be widened), items spent or consumed (Trail, Hallway), a normal enemy made elite and
    enemies put back in the previous room (Encampment, Road); the difficulty as a choice at setup
