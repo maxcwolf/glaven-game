@@ -45,15 +45,15 @@ The branches:
   second session had the main checkout. It adds: Singing Arrow's Curse over its area; the
   play ledger no longer miscounting #9's Scouts (N12); the audit's new screens rendered and
   looked at (N16) with the cards in play made finger-sized; a door two hexes wide opening as
-  one (N21). `scripts/mutate.py` has 401 mutations, each noticed by a test. Group 2 is begun: a card lost
+  one (N21). `scripts/mutate.py` has 422 mutations, each noticed by a test. Group 2 is begun: a card lost
   from any hand spares the crystal (#84) or a captive (#44) — `saves`, `SaveChoiceSheet` — and a
   character beside a captive gives up an action to free it (`forgo`), with #44's loss switched on.
 
 To pick it up, work on `feat/cards-4` (or merge it into `feat/scenario-rules-3` first — it is a
 fast-forward):
 
-1. **Verified** at the head of `feat/cards-4` on 2026-10-14: `swift test` 1,688 tests, none
-   failing; the four-seed all-scenarios playthrough (376 runs) without a violation; the veteran
+1. **Verified** at the head of `feat/cards-4` on 2026-10-14: `swift test` 1,710 tests, none
+   failing; the four-seed all-scenarios playthrough (384 runs) without a violation; the veteran
    playthrough passing (53 and 58 of 94 won, as before). `main` has the branch up to merge
    `53c1ab1`; town and campaign came after and are on the branch.
 2. **Next**, from `TODO.md` → "Open, in order": group 1 is done but for a glance at two things
@@ -204,7 +204,7 @@ The task list is `TODO.md` → "Missing Gloomhaven Rules" → "Open, in order"; 
 ordered like this:
 
 1. **Tests and checks, before building on top.** Done but for a glance on the iPad at what the
-   off-screen renderer can't draw. (`scripts/mutate.py` has 401 mutations, 280 of them scenario
+   off-screen renderer can't draw. (`scripts/mutate.py` has 422 mutations, 280 of them scenario
    rules — `--scenario` — and each is noticed by a test: add one with every new mechanism.)
 2. **Scenario rules** (done 2026-10-14 but for #55) — 94 printed rules in 28 scenarios were
    open on 2026-10-12, done in this order because each group is one mechanism used several times:
