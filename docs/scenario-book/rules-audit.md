@@ -12,8 +12,8 @@ means the data and code that enforce the rule were found, and usually a test tha
 that the scenario was played through. Keep it current: when a rule is built, rewrite its row in
 the same commit (see [../rules-work.md](../rules-work.md)).
 
-**447 rules: 440 done, 1 partial, 6 missing.**
-94 of 95 scenarios have every printed rule done. The other is #55 (6 missing, 1 partial): a random dungeon with no map.
+**447 rules: 444 done, 1 partial, 2 missing.**
+94 of 95 scenarios have every printed rule done. The other is #55 (2 missing, 1 partial): a random dungeon, playable since 2026-10-14 with its own goal and treasure still to come.
 
 Rules that were enforced wrongly, as against not at all, are findings of the engine audit
 ([../audits/2026-10-09-rules-audit.md](../audits/2026-10-09-rules-audit.md), rows S1-…, S2-…),
@@ -54,7 +54,7 @@ order", has the same list as tasks). The rows below say what the game does today
   the water; #79's mind-controlled character plays the whole top action, and the Betrayer's
   specials reach only those it sees (FAQ). Before: #52's starting hexes, a Push or Pull chosen by
   itself honouring immunity (#34, #47).
-- **#55 Foggy Thicket** is a random dungeon with no map: it can't be started at all.
+- **#55 Foggy Thicket** is a random dungeon: it plays (2026-10-14), but its goal (the third room's treasure tile) and some of its rooms' penalties are still to come.
 
 ### 1 · Black Barrow
 | Rule (from the book) | Status | Where / what's missing |
@@ -493,13 +493,13 @@ order", has the same list as tasks). The rows below say what the game does today
 ### 55 · Foggy Thicket
 | Rule (from the book) | Status | Where / what's missing |
 |---|---|---|
-| Goal: loot the treasure tile in the third room | missing | unchanged: the scenario has no rooms and there is no `ScenarioMaps/55.json`; `GameManager.enterBoard` returns when there is no map, so no board ever starts (the setup list shows "No map"). Needs random dungeons (open in `TODO.md`: "Random dungeon mode") |
-| Setup: each character adds 3 "-1" cards | partial | scenario `rules[0]` (`amAdd` `minus1:3`) is in the data and would be applied at the start of round 1 like #53's curses, but no round is ever played on a board |
-| No fixed map: a random dungeon from a modified dungeon deck | missing | `rules[1].randomDungeon` is decoded (`ScenarioRule.randomDungeon`, `RandomDungeonRule`) and read by nothing |
-| Monster cards used: only Mangy, Wild, Scaled, Cutthroat, Tribal, Infected | missing | `randomDungeon.monsterCards` (554, 558, 560, 564, 567, 571) unused |
-| Room cards used: only Trail, Encampment, Clearing, Road, Cabin, Crossroads | missing | `randomDungeon.dungeonCards` unused |
-| Penalties: minor in the second room, major in the third | missing | not in the data, no code |
-| Third room: the "12" hex holds a treasure tile, lootable only with a Loot action | missing | no code (the Loot-action-only half exists as placements `lootActionOnly`, but there is no room to put the tile in) |
+| Goal: loot the treasure tile in the third room | missing | the scenario plays (2026-10-14) as a random dungeon, but its goal is still the default (every enemy dead, every door open); a placements goal for the treasure tile is to come (`docs/random-dungeons.md`) |
+| Setup: each character adds 3 "-1" cards | done | scenario `rules[0]` (`amAdd` `minus1:3`), applied as round 1 begins now that the board starts |
+| No fixed map: a random dungeon from a modified dungeon deck | done | `ScenarioManager.drawDungeon` draws it as the scenario is set (`RandomDungeon`, `RandomDungeonMap`); `RandomDungeonTests` |
+| Monster cards used: only Mangy, Wild, Scaled, Cutthroat, Tribal, Infected | done | `randomDungeon.monsterCards` limit the monster deck (`RandomDungeon.draw`) |
+| Room cards used: only Trail, Encampment, Clearing, Road, Cabin, Crossroads | done | `randomDungeon.dungeonCards` limit the room deck |
+| Penalties: minor in the second room, major in the third | partial | the suggested difficulty is the default (`DungeonPenaltyLevel.suggested`); of these six rooms' penalties, Clearing's, Cabin's, Crossroads', Encampment's, Road's and Trail's minor are still to play (`docs/random-dungeons.md`) |
+| Third room: the "12" hex holds a treasure tile, lootable only with a Loot action | missing | to come with the goal |
 
 ### 56 · Bandit's Wood
 | Rule (from the book) | Status | Where / what's missing |

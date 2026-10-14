@@ -411,8 +411,8 @@ all-scenarios playthrough (376 runs) without a rule violation, and each of the 4
 - [ ] Single-target condition lines can't be enhanced yet (F8); nothing in the data unlocks #72, #73, #76, #77 (N3, a question)
 
 **6. Not Gloomhaven, and tools** — next (the random dungeon mode first: it is Gloomhaven's, and #55 needs it)
-- [ ] **Icy terrain** — no forced-movement mechanic
-- [ ] **Plague / Enfeeble** (FH) — no mechanics
+- [ ] **Icy terrain** — no forced-movement mechanic (parked until Frosthaven can be played, 2026-10-14)
+- [ ] **Plague / Enfeeble** (FH) — no mechanics (parked until Frosthaven can be played)
 - [ ] **Multi-hex obstacles** — one overlay per hex
 - [ ] **Random dungeon mode** — playable since 2026-10-14 (offered in town; the twenty room cards written and checked; draw, map, exits, treasures, no campaign progress); left: penalties, the first room's entrance chosen, the room's title, #55's own rules. `docs/random-dungeons.md`
 - [ ] **Pathfinding visualization** — no debug overlay for monster movement decisions

@@ -13,9 +13,11 @@ question, how a piece of work is done from start to finish, and what to do next.
   the rulebook and FAQ: about 130 findings, all fixed but a few latent cases no Gloomhaven card
   triggers, each fix with a test that fails without it
   ([audits/2026-10-09-rules-audit.md](audits/2026-10-09-rules-audit.md)).
-- **The scenarios**: the book prints 447 rules for the 95 scenarios. 440 are enforced, 1 partly
-  and 6 not yet (2026-10-14; at the audit of 2026-10-10 it was 353, 21 and 73): 94 scenarios
-  have every printed rule done, and the rest is #55, a random dungeon. Every rule has a row in
+- **The scenarios**: the book prints 447 rules for the 95 scenarios. 444 are enforced, 1 partly
+  and 2 not yet (2026-10-14; at the audit of 2026-10-10 it was 353, 21 and 73): 94 scenarios
+  have every printed rule done, and the rest is #55, a random dungeon that plays since the
+  random dungeon mode was built ([random-dungeons.md](random-dungeons.md)) but has its goal and
+  some penalties still to come. Every rule has a row in
   [scenario-book/rules-audit.md](scenario-book/rules-audit.md).
 - Last verified 2026-10-14: 1,688 tests pass; the all-scenarios playthrough runs every scenario
   with four seeds (376 runs) without a rule violation; the scripted "veteran" parties win 53 and
@@ -98,8 +100,12 @@ fast-forward):
    Tyrant cards with no data and his text bonuses about the bear. Group 5, town and campaign, is
    done too (2026-10-14): travelling on without returning to Gloomhaven (F19, N6), collective
    gold split by the players (F20), summon stat enhancements (F8), Envelope X recorded. Left:
-   single-target condition lines at the Enhancer, and the question N3. Next is group 6, what
-   isn't Gloomhaven.
+   single-target condition lines at the Enhancer, and the question N3. Group 6 is begun
+   (2026-10-14) with the random dungeon mode, the one piece of it that is Gloomhaven's: the
+   twenty room cards written from the cards and checked, the draw, the map, the exits, the
+   treasures, most of the penalties, and #55 playable — [random-dungeons.md](random-dungeons.md)
+   says what is left. The Frosthaven items (icy terrain, Plague, Enfeeble) are parked by the
+   owner's choice.
 3. Merging to `main` (`git merge --no-ff -m "merge: …"`, then push) is done when the owner asks.
 
 ## Which document answers what
@@ -231,10 +237,10 @@ ordered like this:
 4. **Cards** and **town and campaign** (done 2026-10-14: the Beast Tyrant's bear, travelling on,
    collective gold, summon enhancements, Envelope X; left: three Beast Tyrant cards the data
    leaves empty, his text bonuses about the bear, single-target condition enhancements, N3).
-5. **What isn't Gloomhaven, and tools** — next. The random dungeon mode comes first, since it is
-   the one piece of the base game left and #55 needs it; then the Frosthaven mechanics (icy
-   terrain, Plague and Enfeeble), multi-hex obstacles as one piece, and a debug overlay for
-   monster movement.
+5. **What isn't Gloomhaven, and tools** — under way. The random dungeon mode first (playable;
+   [random-dungeons.md](random-dungeons.md) lists what is left), then multi-hex obstacles as one
+   piece and a debug overlay for monster movement. The Frosthaven mechanics (icy terrain,
+   Plague and Enfeeble) wait until Frosthaven can be played (the owner's choice, 2026-10-14).
 
 ## History, briefly
 
