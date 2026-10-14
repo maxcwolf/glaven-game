@@ -85,3 +85,73 @@ extension BoardCoordinator {
         }
     }
 }
+
+extension BoardCoordinator {
+    /// RD-6: the penalty of the room just revealed behind `door`, at the difficulty chosen.
+    func applyDungeonPenalty(behind door: DoorInfo) {
+        guard let scenario = gameManager?.game.scenario, let dungeon = scenario.randomDungeon,
+              let card = dungeonRoomCard(ofTile: door.childTileRef),
+              let entry = dungeon.allRooms.first(where: { $0.room.room == card.name }),
+              let penalty = (dungeon.penalties ?? .suggested).penalty(of: card.name, depth: entry.path.count + 1)
+        else { return }
+        let opener: String? = {
+            if case .character(let id) = actingPiece { return id }
+            return nil
+        }()
+        log("\(card.name): \(entry.path.count + 1 == 2 && (dungeon.penalties ?? .suggested) == .suggested ? card.minor : card.major)",
+            category: .setup)
+        apply(penalty, opener: opener)
+        syncPieceVisuals()
+    }
+
+    private func apply(_ penalty: DungeonPenalty, opener: String?) {
+        guard let game = gameManager?.game else { return }
+        let party = game.characters.filter { !$0.absent && !$0.exhausted }
+        func targets(_ who: DungeonPenalty.Who) -> [GameCharacter] {
+            switch who {
+            case .everyone: return party
+            case .opener: return party.filter { $0.id == opener }.isEmpty ? Array(party.prefix(1)) : party.filter { $0.id == opener }
+            }
+        }
+        let enemies = boardState.piecePositions.keys.sorted().filter { piece in
+            if case .monster = piece { return !isPlayerSide(piece) }
+            return false
+        }
+        switch penalty {
+        case .both(let first, let second):
+            apply(first, opener: opener)
+            apply(second, opener: opener)
+        case .conditions(let conditions, let who, let permanent):
+            for character in targets(who) {
+                for condition in conditions {
+                    applyCondition(condition, to: .character(character.id))
+                    if permanent, let index = character.entityConditions.lastIndex(where: { $0.name == condition }) {
+                        character.entityConditions[index].permanent = true
+                    }
+                }
+            }
+        case .curses(let times):
+            for character in party {
+                for _ in 0..<times where game.hasSpecialCardLeft(.curse, forMonsterDeck: false) {
+                    character.attackModifierDeck.addCard(type: .curse)
+                }
+            }
+        case .damage(let amount, let who):
+            for character in targets(who) { _ = sufferOwnDamage(amount, characterID: character.id, source: "The room's penalty") }
+        case .monsterBlessings(let count):
+            for _ in 0..<count where game.hasSpecialCardLeft(.bless, forMonsterDeck: true) {
+                game.monsterAttackModifierDeck.addCard(type: .bless)
+            }
+        case .elementsInert:
+            for index in game.elementBoard.indices { game.elementBoard[index].state = .inert }
+        case .enemyStrengthen(permanent: false):
+            for enemy in enemies { applyCondition(.strengthen, to: enemy) }
+        case .eliteInvisible:
+            for enemy in enemies where boardState.eliteStandees.contains(enemy) { applyCondition(.invisible, to: enemy) }
+        default:
+            // Lasting penalties and those the players choose for are still to come
+            // (docs/random-dungeons.md).
+            log("This penalty isn't played yet", category: .setup)
+        }
+    }
+}

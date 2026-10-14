@@ -24,6 +24,8 @@ struct RandomDungeon: Codable, Equatable {
     var first: Room
     /// How many rooms deep the dungeon goes (three).
     var depth: Int = 3
+    /// The penalties the players chose (RD-6); nil is the suggested.
+    var penalties: DungeonPenaltyLevel?
 
     /// The rooms on the way from the first, by the exits taken.
     func room(at path: [Int]) -> Room? {

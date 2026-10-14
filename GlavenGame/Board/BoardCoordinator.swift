@@ -3011,6 +3011,7 @@ final class BoardCoordinator {
         closeOffOtherExits(besides: door)
 
         revealRoom(behind: door, opening: true)
+        applyDungeonPenalty(behind: door)
     }
 
     /// Whether the tiles behind a door are on the map though its room isn't revealed.

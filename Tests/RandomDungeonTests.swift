@@ -330,6 +330,83 @@ final class RandomDungeonTests: XCTestCase {
         XCTAssertTrue(gm.game.lootedTreasures.isEmpty, "no campaign treasure")
     }
 
+    /// RD-6: every room card's two penalties are read — the conditions they name and the numbers
+    /// they print are those of the game's reading.
+    func testEveryPenaltyIsRead() throws {
+        func conditions(_ penalty: DungeonPenalty) -> Set<ConditionName> {
+            switch penalty {
+            case .conditions(let names, _, _): return Set(names)
+            case .curses: return [.curse]
+            case .enemyStrengthen: return [.strengthen]
+            case .eliteInvisible: return [.invisible]
+            case .both(let a, let b): return conditions(a).union(conditions(b))
+            default: return []
+            }
+        }
+        func numbers(_ penalty: DungeonPenalty) -> [Int] {
+            switch penalty {
+            case .damage(let n, _), .monsterBlessings(let n), .enemyAttack(let n),
+                 .enemyHealEachTurn(let n), .discardCards(let n, _): return [n]
+            case .enemyMoveAndRange(let n): return [n, n]
+            case .consumeSmallItem: return [1]
+            case .enemyShield(let n, _): return [n]
+            case .enemyRetaliate(let n, let range, _): return [n, range]
+            case .loseCards(let n, _): return n > 1 ? [n] : []      // "loses a card"
+            case .replaceInPreviousRoom(let elite, let n): return elite ? [] : [n]   // "an elite enemy"; "1 normal enemy"
+            case .both(let a, let b): return numbers(a) + numbers(b)
+            default: return []
+            }
+        }
+        let words: [String: ConditionName] = ["POISON": .poison, "WOUND": .wound, "MUDDLE": .muddle, "STUN": .stun,
+                                              "IMMOBILIZE": .immobilize, "CURSE": .curse, "STRENGTHEN": .strengthen,
+                                              "INVISIBLE": .invisible]
+        XCTAssertEqual(Set(DungeonPenalty.byRoom.keys), Set(rooms.map(\.name)))
+        for room in rooms {
+            let read = try XCTUnwrap(DungeonPenalty.byRoom[room.name])
+            for (text, penalty) in [(room.minor, read.minor), (room.major, read.major)] {
+                let named = Set(words.filter { text.uppercased().contains($0.key) }.values)
+                XCTAssertEqual(named, conditions(penalty), "\(room.name): \(text)")
+                let printed = text.split(whereSeparator: { !$0.isNumber }).compactMap { Int($0) }
+                    .filter { !(text.contains("three times") && $0 == 3) }
+                XCTAssertEqual(printed.sorted(), numbers(penalty).sorted(), "\(room.name): \(text)")
+            }
+        }
+    }
+
+    /// RD-6: at the suggested difficulty the second room's minor penalty falls as its door opens
+    /// (here, every one that gives the party a condition or damage).
+    func testTheSecondRoomsMinorPenaltyFallsAsItOpens() throws {
+        var tested = 0
+        for seed in UInt64(1)...60 {
+            let gm = try startDungeon(seed: seed)
+            let coord = gm.boardCoordinator
+            coord.autoResolvePrompts = true
+            let dungeon = try XCTUnwrap(gm.game.scenario?.randomDungeon)
+            guard dungeon.first.next.count == 1, let next = dungeon.first.next.first,
+                  let penalty = DungeonPenalty.byRoom[next.room]?.minor else { continue }
+            let party = gm.game.characters
+            let health = party.map(\.health)
+            let door = try XCTUnwrap(coord.boardState.doors.first { !$0.isOpen })
+            coord.openDoor(at: door.coord)
+            switch penalty {
+            case .conditions(let names, .everyone, _):
+                tested += 1
+                for character in party {
+                    for name in names { XCTAssertTrue(character.entityConditions.contains { $0.name == name }, "seed \(seed) \(next.room)") }
+                }
+            case .damage(let amount, .everyone):
+                tested += 1
+                XCTAssertEqual(party.map(\.health), health.map { max(0, $0 - amount) }, "seed \(seed) \(next.room)")
+            case .curses(let times):
+                tested += 1
+                for character in party { XCTAssertEqual(character.attackModifierDeck.cards.filter { $0.type == .curse }.count, times) }
+            default:
+                continue
+            }
+        }
+        XCTAssertGreaterThan(tested, 2)
+    }
+
     // MARK: - Reading the cards
 
     /// Draws each written room card as the game lays it out, its numbers in red and its
