@@ -13,11 +13,9 @@ question, how a piece of work is done from start to finish, and what to do next.
   the rulebook and FAQ: about 130 findings, all fixed but a few latent cases no Gloomhaven card
   triggers, each fix with a test that fails without it
   ([audits/2026-10-09-rules-audit.md](audits/2026-10-09-rules-audit.md)).
-- **The scenarios**: the book prints 447 rules for the 95 scenarios. 444 are enforced, 1 partly
-  and 2 not yet (2026-10-14; at the audit of 2026-10-10 it was 353, 21 and 73): 94 scenarios
-  have every printed rule done, and the rest is #55, a random dungeon that plays since the
-  random dungeon mode was built ([random-dungeons.md](random-dungeons.md)) but has its goal and
-  some penalties still to come. Every rule has a row in
+- **The scenarios**: the book prints 447 rules for the 95 scenarios, and all 447 are enforced
+  (2026-10-14; at the audit of 2026-10-10 it was 353, 21 partly and 73 not yet). The last was
+  #55, a random dungeon, done with the random dungeon mode ([random-dungeons.md](random-dungeons.md)). Every rule has a row in
   [scenario-book/rules-audit.md](scenario-book/rules-audit.md).
 - Last verified 2026-10-14 (with random dungeons): 1,704 tests pass; the all-scenarios
   playthrough runs every scenario and a random dungeon with four seeds (380 runs) without a rule

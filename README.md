@@ -22,12 +22,13 @@ The aim is a game that plays exactly as the rulebook, the official FAQ and the s
 
 ## Features
 
-- **The 95 campaign scenarios** — every map with its rooms, doors, traps, hazards, obstacles and treasure; each scenario's printed goal, losses and special rules (94 of 95 complete; #55, a random dungeon, needs the random dungeon mode). The scenario book's rules are tracked rule by rule in [docs/scenario-book/rules-audit.md](docs/scenario-book/rules-audit.md)
+- **The 95 campaign scenarios** — every map with its rooms, doors, traps, hazards, obstacles and treasure; each scenario's printed goal, losses and special rules (all 95 complete). The scenario book's rules are tracked rule by rule in [docs/scenario-book/rules-audit.md](docs/scenario-book/rules-audit.md)
 - **Monster AI** — focus, movement and attacks by the rulebook and FAQ, with pathfinding round walls and closed doors, line of sight, areas, jumps and flight; monster ability decks, shared decks, elements, and the bosses' special rules
 - **Player turns** — choose two cards, play a top and a bottom half on the board: moves, attacks, areas you aim, pushes and pulls, loot, summons, persistent bonuses, elements, items, rests and the losing of cards to negate damage
 - **Summons and allies** — summons act on their owner's initiative with the owner's modifier deck; escorts and objectives walk to their goals, captives can be saved
 - **Combat** — attack modifier decks with Bless and Curse, advantage and disadvantage, Shield, Pierce, Retaliate and every condition
 - **The campaign** — town with the shop, the Enhancer, the sanctuary, city and road events, travelling on without returning to Gloomhaven, levelling up, perks, personal quests, retirement and class unlocks, battle goals, prosperity, reputation and achievements on the world map; several campaigns, each saved to its own file
+- **Random dungeons** — the random dungeon deck's twenty rooms and twenty monster cards: three rooms drawn by the deck's rules, A and B exits, treasures, and every room's penalties
 - **Table rules and learning** — variants a group can play by, solo play, a learning mode that explains what is happening, undo outside the board
 - **Sound, accessibility and theming** — sound effects for the board, VoiceOver on the board and in the menus, light and dark mode
 

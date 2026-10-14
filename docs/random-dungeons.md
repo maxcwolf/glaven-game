@@ -83,25 +83,25 @@ recovery picker can take from the lost pile). The all-scenarios playthrough play
 five seeded veteran games were all won without a violation. Tests: `RandomDungeonTests`
 (ten); mutations `dungeon…` in `scripts/mutate.py` (eight), each noticed.
 
-Still to do, in order:
+Penalties (RD-6): every room card's two are read (`DungeonPenalty.byRoom`, checked against the
+printed text by `testEveryPenaltyIsRead`) and fall as the door opens at the suggested difficulty
+(`applyDungeonPenalty`): conditions (permanent too), curses, damage (negated as usual), Bless cards
+for the monsters, elements inert, cards lost or discarded (the players choose, with the start
+discard picker widened), items spent or consumed, Strengthen and Invisible, a normal enemy made
+elite (the players choose) and enemies of the previous room set up again (on their clear numbers,
+the monster card's first such), and as standing effects kept on the scenario and in the save
+(`Scenario.dungeonEffects`): Shield this round or for good, +1 Attack, +1 Move and Range (ranged
+attacks only), "Retaliate 2, Range 3", heal 1 as each enemy's turn starts, no consuming.
 
-1. Penalties (RD-6). Read for every card (`DungeonPenalty.byRoom`, checked against the printed
-   text by `testEveryPenaltyIsRead`) and falling as a door opens at the suggested difficulty
-   (`applyDungeonPenalty`). Played: conditions (permanent ones too), curses, damage (which may be
-   negated as usual), Bless cards for the monsters, elements inert, Strengthen (and for good),
-   Invisible on elites, and as standing effects kept on the scenario (`Scenario.dungeonEffects`,
-   saved): Shield this round or for good, +1 Attack, +1 Move, "Retaliate 2, Range 3" (Den; an
-   effect's `retaliate`/`retaliateRange`, counted in `performAttack`), heal 1 as each enemy's turn starts (Passage;
-   `healEachTurn`, `healAtTurnStart`). Still to play: +1 Range (Trail), no consuming elements
-   (Clearing), cards lost or discarded (Cabin, Crossroads — the start-of-scenario discard picker
-   can be widened), items spent or consumed (Trail, Hallway), a normal enemy made elite and
-   enemies put back in the previous room (Encampment, Road); the difficulty as a choice at setup
-   (`RandomDungeon.penalties`: none, suggested, major); the first room's penalty at "major"
-   ("the opener": the players choose who).
+#55 Foggy Thicket is done: its decks, its −1 cards, its goal treasure on the third room's "12"
+(placements `dungeonTreasure`, `lootActionOnly`, `goal.loot`). It and a Random Dungeon are in the
+all-scenarios playthrough.
+
+Still to do:
+
+1. The difficulty as a choice at setup (`RandomDungeon.penalties`: none, suggested, major; today
+   always the suggested), and at "major" the first room's penalty as the party starts ("the
+   opener": the players choose who; "the previous room": nothing).
 2. The first room's entrance chosen by the players when it has two (RD-4; today the first).
 3. The room's title on reveal: the monster card's adjective and the room card's noun ("Mangy
    Trail").
-4. #55 Foggy Thicket: its six-card decks are already used when it is drawn; still its three −1
-   cards (a start rule in the data — check it applies), the third room's "12" a treasure tile only
-   a Loot action takes (instead of whatever the monster card puts there), the goal to loot it, and
-   adding it to the all-scenarios playthrough.
