@@ -24,6 +24,7 @@ enum RandomDungeonMap {
                       monsters: (String) -> ScenarioData?) -> Built? {
         guard let firstCard = card(dungeon.first.room), let firstMonsters = monsters(dungeon.first.monsters) else { return nil }
         var trapKinds: [ScenarioTraps.Kind] = []
+        var unplaced: [String] = []
         var rooms: [[Int]: (card: DungeonRoomCard, monsters: ScenarioData)] = [:]
 
         /// A placed room: the cells of its tiles on the board.
@@ -122,7 +123,7 @@ enum RandomDungeonMap {
                     let score = touching.intersection(across).count * 2 - touching.intersection(inside).count
                     if best == nil || score > best!.score { best = (nextTurns, score) }
                 }
-                guard let chosen = best, chosen.score > 0 else { continue }
+                guard let chosen = best, chosen.score > 0 else { unplaced.append(next.room); continue }
                 let nextAxis: BoardBuilder.TurnAxis = (refPoint: (doorHex.col, doorHex.row), origin: (entrance.x, entrance.y))
                 let child = tileData(nextCard, monsterCard: nextMonsters, room: next, path: path + [index], isFirst: false,
                                      entranceTile: entrance.tile, turns: chosen.turns, axis: nextAxis,
@@ -156,7 +157,24 @@ enum RandomDungeonMap {
         let root = tileData(firstCard, monsterCard: firstMonsters, room: dungeon.first, path: [], isFirst: true,
                             entranceTile: entranceTile, turns: 0, axis: nil, occupied: [])
         let scenario = VGBScenario(id: 0, title: "Random Dungeon", mapTileData: root, angle: 0, additionalMonsters: nil)
-        return Built(scenario: scenario, traps: ScenarioTraps(page: nil, kinds: trapKinds), rooms: rooms)
+        return Built(scenario: scenario, traps: ScenarioTraps(page: nil, kinds: trapKinds), rooms: rooms, unplaced: unplaced)
+    }
+
+    /// Draws a dungeon whose every room can be laid out. Now and then a room drawn would lie on
+    /// a room before it, whichever way it is turned; the rules don't say what then, and the game
+    /// draws the dungeon again.
+    static func draw(rooms: [DungeonRoomCard], monsterCards: [ScenarioData], roomCards: [String]? = nil,
+                     monsterCardsUsed: [String]? = nil, random: inout GameRandom) -> (RandomDungeon, Built)? {
+        for _ in 0..<20 {
+            guard let dungeon = RandomDungeon.draw(rooms: rooms, monsterCards: monsterCards.map(\.index),
+                                                   roomCards: roomCards, monsterCardsUsed: monsterCardsUsed,
+                                                   random: &random),
+                  let built = build(dungeon, room: { name in rooms.first { $0.name == name } },
+                                    monsters: { index in monsterCards.first { $0.index == index } })
+            else { return nil }
+            if built.unplaced.isEmpty { return (dungeon, built) }
+        }
+        return nil
     }
 
     // MARK: - Geometry

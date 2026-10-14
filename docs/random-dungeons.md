@@ -58,16 +58,24 @@ on the third room's "12".
 
 ## Status (2026-10-14)
 
-Built: the data model and loader, the draw, the map. Being written: the twenty room cards (Trail
-done and checked against its card). Still to do, in order:
+Built: the data model and loader, the draw, the map, and all twenty room cards — each drawn by
+`testRenderRoomSheet` and checked against its card (numbers, obstacles, entrances, exits). Where a
+room's two tiles meet on a hex of neither (Armory's 1, Burrow's 2: the card covers it with a grey
+corridor piece), the `join` is that hex, which the corridor makes a cell. Several cards print their
+tiles a quarter turn from any of the six ways a tile lies; `matchTurns` then is the turn read after
+turning the card, and only the difference between a room's two tiles matters. The monster-card data
+had four mistakes, fixed against the cards: Defiled's forest imp on 1 instead of 7, "mormal" (Wild)
+and "nromal" (Scaled), and Horrific's lurker missing from its monster list
+(`testEveryMonsterCardIsWritten`). About one dungeon in two hundred has a room that would lie on a
+room before it however it is turned; the rules don't say what then, and the game draws again
+(`RandomDungeonMap.draw`). Still to do, in order:
 
-1. The rest of the room cards, each checked with `testRenderRoomSheet` against its card.
-2. Starting one: a synthetic scenario (`ScenarioData`: the monsters of every card drawn, a room per
+1. Starting one: a synthetic scenario (`ScenarioData`: the monsters of every card drawn, a room per
    drawn room with its monsters) and the map built from the save; offered in town as "Random
    Dungeon", and for #55 with its decks.
-3. The second exit closed off when one is opened (RD-3); the first room's entrance chosen.
-4. Winning: every enemy dead with the last room revealed; rewards without campaign progress.
-5. Penalties (RD-6), with the difficulty as a choice; treasures' contents (RD-7).
-6. #55: the six-card decks, three −1 cards, the third room's "12" a treasure only a Loot action
+2. The second exit closed off when one is opened (RD-3); the first room's entrance chosen.
+3. Winning: every enemy dead with the last room revealed; rewards without campaign progress.
+4. Penalties (RD-6), with the difficulty as a choice; treasures' contents (RD-7).
+5. #55: the six-card decks, three −1 cards, the third room's "12" a treasure only a Loot action
    takes, the goal to loot it.
-7. The simulator playing random dungeons; tests and mutations for each rule.
+6. The simulator playing random dungeons; tests and mutations for each rule.
