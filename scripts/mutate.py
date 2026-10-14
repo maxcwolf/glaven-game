@@ -17,7 +17,7 @@ os.makedirs(SCR, exist_ok=True)
 FILTER=("AttackRuleTests|ConditionRuleTests|RoundRuleTests|LootRuleTests|MovementRuleTests|RevealRuleTests|ScenarioEndRuleTests|"
         "ScenarioLevelRuleTests|ForcedMovementTests|RB_|PlayLedgerTests|PlaythroughTests|RestRuleTests|BoardRulesRegressionTests|"
         "JumpFlyMovementTests|HealAndConsumeRuleTests|CombatEffectsTests|TurnFlowTests|E2E|AttackModifier|BoardSimulationTests|MonsterTurnRulesTests|ScenarioFinishEdgeCaseTests|DynamicObstacleTests|FeatureTests|EscortAITests|TeleportTests|HexCoordTests|"
-        "MoneyTokenTests|SetupRulesTests|StandeeLimitTests|TreasureReplayTests|ItemUseRuleTests|ChargedBonusTests|ActionPerformedTests|ScenarioEnforcedRuleTests|ScenarioReauditTests|ModifierDeckRoundEndTests|MoveThenAbilityTests")
+        "MoneyTokenTests|SetupRulesTests|StandeeLimitTests|TreasureReplayTests|CompanionTests|ItemUseRuleTests|ChargedBonusTests|ActionPerformedTests|ScenarioEnforcedRuleTests|ScenarioReauditTests|ModifierDeckRoundEndTests|MoveThenAbilityTests")
 M={
  "poison0": ("GlavenGame/Engine/CombatResolver.swift", "        if isPoisoned {\n            attackValue += 1\n        }", "        if isPoisoned {\n            attackValue += 0\n        }"),
  "retaliateShielded": ("GlavenGame/Board/BoardCoordinator+Combat.swift", "            await sufferDamageWithMitigation(retaliate, to: attacker,", "            await sufferDamageWithMitigation(max(0, retaliate - self.shield(of: attacker)), to: attacker,"),
@@ -107,6 +107,12 @@ M={
  "treasureFoundTwice": ("GlavenGame/Board/BoardCoordinator.swift", "        let objectives = placeRevealedObjectives()\n        clearTreasuresLootedBefore()\n", "        let objectives = placeRevealedObjectives()\n"),
  "loopMoveInOneLeg": ("GlavenGame/Board/BoardCoordinator+Movement.swift", "        if openedDoor || loops, movementLeft > 0,", "        if openedDoor, movementLeft > 0,"),
  "loopJudgedOnTheLastLeg": ("GlavenGame/Board/BoardCoordinator+Movement.swift", "boardState.piecePositions[pieceID] == (turn.moveStartHex ?? path.first)", "path.first == path.last"),
+ "bearNeverSetUp": ("GlavenGame/Board/BoardCoordinator.swift", "        setUpCompanions { [weak self] in", "        ({ (go: @escaping () -> Void) in go() }) { [weak self] in"),
+ "bearWaitsTheFirstRound": ("GlavenGame/Board/BoardCoordinator+Companion.swift", "            bear.state = .active   // it acts from the first round\n", ""),
+ "bearSetUpAnywhere": ("GlavenGame/Board/BoardCoordinator+Companion.swift", "var options = boardState.neighbors(of: here).filter(isEmptyHex).sorted()", "var options = boardState.cells.keys.filter(isEmptyHex).sorted()"),
+ "commandByTheTyrant": ("GlavenGame/Board/PlayerTurnController.swift", "            pieceID = bear\n            commandedFigure = bear\n", "            commandedFigure = bear\n"),
+ "commandWithoutTheBear": ("GlavenGame/Board/PlayerTurnController.swift", "guard let bear = coordinator.companionPiece(of: character) else {", "guard let bear = coordinator.companionPiece(of: character) ?? Optional(PieceID.character(characterID)) else {"),
+ "tyrantsItemsOnTheBear": ("GlavenGame/Board/PlayerTurnController.swift", "            if range <= 1, bonusesApply {", "            if range <= 1 {"),
 }
 # Scenario rules (the mechanisms of placements/gh.json): run against the scenario tests.
 SCENARIO_FILTER=("ScenarioSpecialRuleTests|ScenarioReauditTests|ScenarioEnforcedRuleTests|ScenarioLockTests|ScenarioGoalTests|"

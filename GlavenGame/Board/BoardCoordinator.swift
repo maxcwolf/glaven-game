@@ -444,6 +444,8 @@ final class BoardCoordinator {
     /// Cards a character discards before the scenario begins (Harrower Hive), and what goes on
     /// once every character has.
     var pendingStartDiscard: PendingStartDiscard?
+    /// The companions are being set up as the scenario starts (`finishSetup`).
+    @ObservationIgnored var settingUpCompanions = false
     @ObservationIgnored var afterStartDiscards: (() -> Void)?
 
     /// Non-nil while a character picks a card to play for an item (Ring of Haste).
@@ -1067,6 +1069,7 @@ final class BoardCoordinator {
         pendingRecovery = nil
         pendingStartDiscard = nil
         afterStartDiscards = nil
+        settingUpCompanions = false
         pendingCardPlay = nil
         pendingActionChoice = nil
         initiativeOffers = []
@@ -1337,12 +1340,17 @@ final class BoardCoordinator {
 
     /// Finish setup phase and begin the first round.
     func finishSetup() {
-        guard boardPhase == .setup else { return }
+        guard boardPhase == .setup, !settingUpCompanions else { return }
         boardScene?.clearHighlights()
         interactionMode = .idle
         assignCarriedAtSetup()
         setUpTheFlood()
-        beginCardSelection()
+        // The Beast Tyrant's bear is set up beside him before the first round.
+        settingUpCompanions = true
+        setUpCompanions { [weak self] in
+            self?.settingUpCompanions = false
+            self?.beginCardSelection()
+        }
     }
 
     // MARK: - Card Selection Phase

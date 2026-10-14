@@ -210,6 +210,22 @@ final class PlayerTurnController {
         coordinator?.log("\(who) plays \(card.name ?? "a card") for its \(top ? "top" : "bottom") half", category: .round)
     }
 
+    /// The half being performed is a Command (the Beast Tyrant's): its abilities are his bear's.
+    var isCommandHalf: Bool {
+        switch phase {
+        case .executeTopAction: return Self.halfKinds(topCard?.actions ?? []).contains("command")
+        case .executeBottomAction: return Self.halfKinds(bottomCard?.bottomActions ?? []).contains("command")
+        case .executeExtraHalf:
+            return extraPlay.map { Self.halfKinds(($0.top ? $0.card.actions : $0.card.bottomActions) ?? []).contains("command") } ?? false
+        default: return false
+        }
+    }
+
+    /// The figure performing the step being executed when it isn't the character: the bear, for
+    /// a Command half. The character's own items and bonuses don't come with it.
+    private(set) var commandedFigure: PieceID?
+    private var bonusesApply: Bool { commandedFigure == nil }
+
     /// Kinds of action a printed half is, from the class tag at its start ("command", "song").
     static func halfKinds(_ printed: [ActionModel]) -> Set<String> {
         var kinds = Set<String>()
@@ -1290,7 +1306,20 @@ final class PlayerTurnController {
     /// Execute one action. Returns true if it waits for player input (and advances later).
     @discardableResult
     private func executeAction(_ action: ActionModel, coordinator: BoardCoordinator) -> Bool {
-        let pieceID = PieceID.character(characterID)
+        var pieceID = PieceID.character(characterID)
+        // A Command is performed by the bear; with the bear gone, it does nothing.
+        commandedFigure = nil
+        if isCommandHalf, let character {
+            guard let bear = coordinator.companionPiece(of: character) else {
+                if Self.isAbilityStep(action) {
+                    coordinator.log("\(who)\u{2019}s Command does nothing: the bear is gone", category: .info)
+                    abilityDidNothing()
+                }
+                return false
+            }
+            pieceID = bear
+            commandedFigure = bear
+        }
         // A turn step from a charged bonus marks its charge (Lumbering Bash's heal) — unless the
         // player has ended that bonus since the step was placed.
         if let cardId = Self.bonusCard(of: action), let character {
@@ -1320,7 +1349,7 @@ final class PlayerTurnController {
                 if effect.type == .move && !movesForSomeoneElse { moveValue += MonsterAbility.signedValue(effect) }
             }
             // Boots of Levitation, Cloak of Phasing: every move is a flight.
-            if PassiveItems.flies(character?.carriedItems ?? []) { mode = .fly }
+            if bonusesApply, PassiveItems.flies(character?.carriedItems ?? []) { mode = .fly }
             grantBonusExperience(bonus)
             hexesPassed = []
             // Rumbling Advance ("then all adjacent figures suffer 1 damage"), Swift Bow ("loot
@@ -1388,15 +1417,18 @@ final class PlayerTurnController {
             pendingAttackRange = range
             // This round's bonuses: Wall of Doom, Forceful Storm, an adjacent Enhancement Field.
             pendingAttackValue += coordinator.roundAttackBonus(for: pieceID, ranged: range > 1)
-            // Grim Bargain's targets, taken just before this attack.
-            targetCount += extraTargetsForNextAttack
-            extraTargetsForNextAttack = 0
-            // Eyes of the Night: advantage on every attack.
-            if let character, coordinator.chargedBonuses(of: character).contains(where: { $0.bonus == .advantageAndSeeInvisible }) {
-                pendingAdvantage = true
+            // The character's own bonuses and items are theirs: not the bear's on a Command.
+            if bonusesApply {
+                // Grim Bargain's targets, taken just before this attack.
+                targetCount += extraTargetsForNextAttack
+                extraTargetsForNextAttack = 0
+                // Eyes of the Night: advantage on every attack.
+                if let character, coordinator.chargedBonuses(of: character).contains(where: { $0.bonus == .advantageAndSeeInvisible }) {
+                    pendingAdvantage = true
+                }
+                // Mindthief augments shape every melee attack.
+                if range <= 1 { applyAugments(coordinator: coordinator) }
             }
-            // Mindthief augments shape every melee attack.
-            if range <= 1 { applyAugments(coordinator: coordinator) }
             // Bonuses counted in Attack actions — Backup Ammunition (one more target on a ranged
             // attack), Angelic Ascension, Grim Bargain's doubling — are counted in here, and their
             // charge is marked once the attack is made (`applyPerformedEffects`): an Attack
@@ -1418,14 +1450,14 @@ final class PlayerTurnController {
             // (Air consumed: +2), and a charge is marked with each attack then made, one for
             // every target (`attackValueWithBonuses`).
             // (Its Air was consumed, or not, as the card was played: FAQ.)
-            if let character, let crackling = coordinator.chargedBonuses(of: character).first(where: {
+            if bonusesApply, let character, let crackling = coordinator.chargedBonuses(of: character).first(where: {
                 if case .attackBonusOrElement = $0.bonus { return true }; return false }),
                case .attackBonusOrElement(let bonus, _, let upgraded) = crackling.bonus {
                 bonusPerAttack = character.elementBonusesPaid.contains(crackling.cardId) ? upgraded : bonus
             }
             // Nature's Lift (+2 Range on a ranged attack), Foul Wind (+1 Attack): consume Air,
             // unless the player keeps it.
-            if let game = gameManager?.game, let character {
+            if let game = gameManager?.game, let character, bonusesApply {
                 for (index, entry) in elementConsumingBonuses(of: character, coordinator: coordinator).enumerated() {
                     let (element, _, needsRange) = entry.what
                     guard game.isElementAvailable(element), !needsRange || range > 1 else { continue }
@@ -1452,7 +1484,7 @@ final class PlayerTurnController {
             // Voice of the Night ("on your next five attacks while invisible, add Stun") marks
             // its charges attack by attack too (`conditionsFromBonuses`).
             // Silent Stiletto: Pierce 1 on every melee attack.
-            if range <= 1 {
+            if range <= 1, bonusesApply {
                 pendingPierce += PassiveItems.meleePierce(for: character?.carriedItems ?? [])
                 pendingPush += PassiveItems.meleePush(for: character?.carriedItems ?? [])   // Mask of Terror
                 if character?.health == 1, character?.carriedItems.contains(PassiveItems.maskOfDeath) == true {
