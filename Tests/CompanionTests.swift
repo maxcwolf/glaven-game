@@ -165,6 +165,26 @@ final class CompanionTests: XCTestCase {
         XCTAssertGreaterThan(tyrant(sim).loot, gold, "the Tyrant's")
     }
 
+    /// Earthen Spikes: "Shield 2, Retaliate 2 — affect all summoned allies" for the round: the
+    /// bear and every other summon on the party's side have them, the Tyrant doesn't; they go
+    /// as the round ends.
+    func testABonusForAllSummonedAlliesIsTheirs() throws {
+        let sim = try simulator()
+        let coord = sim.coord
+        let (turn, bear, _) = try stage(sim, top: "Venomous Ally", bottom: "Earthen Spikes")
+        let bearEntity = try XCTUnwrap(coord.entity(for: bear) as? GameSummon)
+        turn.executeCurrentAction()
+        XCTAssertEqual(bearEntity.shield?.value?.intValue, 2, "Shield 2")
+        XCTAssertEqual(bearEntity.retaliate.map { $0.value?.intValue ?? 0 }, [2], "Retaliate 2, printed under the Shield")
+        XCTAssertNil(tyrant(sim).shield, "not the Tyrant")
+        XCTAssertTrue(tyrant(sim).retaliate.isEmpty)
+        // The round ends.
+        sim.gm.game.state = .next
+        sim.gm.roundManager.nextGameState()
+        XCTAssertNil(bearEntity.shield, "a round's bonus")
+        XCTAssertTrue(bearEntity.retaliate.isEmpty)
+    }
+
     /// With the bear gone, a Command does nothing: no attack, and the half isn't performed.
     func testACommandWithTheBearGoneDoesNothing() throws {
         let sim = try simulator()
@@ -195,5 +215,39 @@ final class CompanionTests: XCTestCase {
         await SummonTurnController(coordinator: coord, gameManager: sim.gm).executeSummonTurns(for: tyrant(sim))
         XCTAssertLessThan(coord.entity(for: foe)?.health ?? 40, 40, "the bear attacked")
         XCTAssertNotNil(coord.boardState.piecePositions[bear])
+    }
+}
+
+/// Amputate's bottom: "Heal 7, Range 1" with Stun on the one healed (it nests the Stun in the
+/// heal), played on a test board.
+@MainActor
+final class NestedAbilityCardTests: XCTestCase {
+
+    func testAmputateHealsAndStunsTheOneHealed() throws {
+        let sim = try ScenarioSimulator(scenario: "1", options: .init(characters: ["saw", "brute"], seed: 1, autoResolvePrompts: true))
+        let coord = sim.coord
+        let board = coord.boardState
+        let sawbones = sim.gm.game.characters[0], brute = sim.gm.game.characters[1]
+        let me = try XCTUnwrap(board.piecePositions[.character(sawbones.id)])
+        let beside = try XCTUnwrap(board.neighbors(of: me).sorted().first { coord.isEmptyHex($0) })
+        board.removePiece(.character(brute.id))
+        board.placePiece(.character(brute.id), at: beside)
+        brute.health = 1
+        let deck = sim.gm.editionStore.abilities(forDeck: "saw", edition: "gh")
+        let amputate = try XCTUnwrap(deck.first { $0.name == "Amputate" })
+        let other = try XCTUnwrap(deck.first { $0.cardId != amputate.cardId && $0.level == .int(1) })
+        sawbones.handCards = [amputate.cardId!, other.cardId!]
+        coord.boardPhase = .execution
+        let turn = PlayerTurnController(characterID: sawbones.id, coordinator: coord, gameManager: sim.gm)
+        coord.activePlayerTurn = turn
+        turn.selectCards(top: other, bottom: amputate)
+        turn.setBottomFirst(true)
+        turn.executeCurrentAction()   // Heal 7, Range 1, Stun
+        guard case .selectingHealTarget(_, _, let targets) = coord.interactionMode else { return XCTFail("\(coord.interactionMode)") }
+        XCTAssertTrue(targets.contains(.character(brute.id)))
+        coord.handlePieceTap(.character(brute.id))
+        XCTAssertEqual(brute.health, min(brute.maxHealth, 8), "Heal 7")
+        XCTAssertTrue(brute.entityConditions.contains { $0.name == .stun }, "and stunned")
+        XCTAssertFalse(sawbones.entityConditions.contains { $0.name == .stun })
     }
 }

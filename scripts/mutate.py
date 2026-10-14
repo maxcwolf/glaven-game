@@ -17,7 +17,7 @@ os.makedirs(SCR, exist_ok=True)
 FILTER=("AttackRuleTests|ConditionRuleTests|RoundRuleTests|LootRuleTests|MovementRuleTests|RevealRuleTests|ScenarioEndRuleTests|"
         "ScenarioLevelRuleTests|ForcedMovementTests|RB_|PlayLedgerTests|PlaythroughTests|RestRuleTests|BoardRulesRegressionTests|"
         "JumpFlyMovementTests|HealAndConsumeRuleTests|CombatEffectsTests|TurnFlowTests|E2E|AttackModifier|BoardSimulationTests|MonsterTurnRulesTests|ScenarioFinishEdgeCaseTests|DynamicObstacleTests|FeatureTests|EscortAITests|TeleportTests|HexCoordTests|"
-        "MoneyTokenTests|SetupRulesTests|StandeeLimitTests|TreasureReplayTests|CompanionTests|ItemUseRuleTests|ChargedBonusTests|ActionPerformedTests|ScenarioEnforcedRuleTests|ScenarioReauditTests|ModifierDeckRoundEndTests|MoveThenAbilityTests")
+        "MoneyTokenTests|SetupRulesTests|StandeeLimitTests|TreasureReplayTests|CompanionTests|NestedAbilityCardTests|ItemUseRuleTests|ChargedBonusTests|ActionPerformedTests|ScenarioEnforcedRuleTests|ScenarioReauditTests|ModifierDeckRoundEndTests|MoveThenAbilityTests")
 M={
  "poison0": ("GlavenGame/Engine/CombatResolver.swift", "        if isPoisoned {\n            attackValue += 1\n        }", "        if isPoisoned {\n            attackValue += 0\n        }"),
  "retaliateShielded": ("GlavenGame/Board/BoardCoordinator+Combat.swift", "            await sufferDamageWithMitigation(retaliate, to: attacker,", "            await sufferDamageWithMitigation(max(0, retaliate - self.shield(of: attacker)), to: attacker,"),
@@ -116,6 +116,9 @@ M={
  "ownStrengthenOnTheTarget": ("GlavenGame/Board/PlayerTurnController.swift", "                case .condition where hasSpecialTargetSelf(sub):\n", "                case .condition where false:\n"),
  "ownStrengthenBeforeTheAttack": ("GlavenGame/Board/PlayerTurnController.swift", "                conditionsAfterAttack += ownConditions.map { (pieceID, $0) }", "                for c in ownConditions { coordinator.applyCondition(c, to: pieceID) }"),
  "bearLootsForNoOne": ("GlavenGame/Board/BoardCoordinator.swift", "        let pieceID = summonOwner(of: looter).map { PieceID.character($0.id) } ?? looter\n", "        let pieceID = looter\n"),
+ "summonedAlliesBonusOnTheCharacter": ("GlavenGame/Board/PlayerTurnController.swift", "            if customText(of: action).contains(\"all summoned allies\"), let game = gameManager?.game {", "            if false, let game = gameManager?.game {"),
+ "summonedAlliesRetaliateDropped": ("GlavenGame/Board/PlayerTurnController.swift", "let bonuses = [action] + (action.subActions ?? []).filter { $0.type == .shield || $0.type == .retaliate }", "let bonuses = [action]"),
+ "summonRoundBonusesKept": ("GlavenGame/Managers/RoundManager.swift", "                    summon.shield = nil\n                    summon.retaliate = []\n", ""),
 }
 # Scenario rules (the mechanisms of placements/gh.json): run against the scenario tests.
 SCENARIO_FILTER=("ScenarioSpecialRuleTests|ScenarioReauditTests|ScenarioEnforcedRuleTests|ScenarioLockTests|ScenarioGoalTests|"

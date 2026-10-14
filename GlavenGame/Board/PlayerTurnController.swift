@@ -1668,6 +1668,19 @@ final class PlayerTurnController {
             }
 
         case .shield, .retaliate:
+            // "Shield 2, Retaliate 2 — affect all summoned allies" (Earthen Spikes, Patch Fur):
+            // every summon on the party's side has them this round; the character doesn't.
+            if customText(of: action).contains("all summoned allies"), let game = gameManager?.game {
+                let bonuses = [action] + (action.subActions ?? []).filter { $0.type == .shield || $0.type == .retaliate }
+                let summons = game.characters.filter { !$0.absent }.flatMap(\.summons)
+                    .filter { !$0.dead && coordinator.isOnBoard(.summon(id: $0.id)) }
+                for summon in summons {
+                    for bonus in bonuses { Self.giveRoundBonus(bonus, to: summon) }
+                }
+                coordinator.log("\(who): \(GameText.list(bonuses.map(GameText.actionTitle))) to all summoned allies", category: .condition)
+                if summons.isEmpty { abilityDidNothing() }
+                break
+            }
             // "Shield 1, self and all adjacent allies", "Retaliate 2, one adjacent ally"…
             if let reach = allyReach(of: action, coordinator: coordinator) {
                 for figure in reach.chooseOne ? Array(reach.pieces.prefix(1)) : reach.pieces {
@@ -1905,6 +1918,15 @@ final class PlayerTurnController {
     }
 
     /// A round Shield or Retaliate for an ally (it stacks with theirs).
+    private static func giveRoundBonus(_ action: ActionModel, to summon: GameSummon) {
+        let value = action.value?.intValue ?? 0
+        if action.type == .shield {
+            summon.shield = ActionModel(type: .shield, value: .int((summon.shield?.value?.intValue ?? 0) + value))
+        } else {
+            summon.retaliate.append(ActionModel(type: .retaliate, value: .int(value)))
+        }
+    }
+
     private static func giveRoundBonus(_ action: ActionModel, to ally: GameCharacter) {
         let value = action.value?.intValue ?? 0
         if action.type == .shield {
