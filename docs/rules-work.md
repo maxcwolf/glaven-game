@@ -49,11 +49,11 @@ The branches:
 To pick it up, work on `feat/cards-4` (or merge it into `feat/scenario-rules-3` first — it is a
 fast-forward):
 
-1. **Verified** at the head of `feat/cards-4` on 2026-10-14: `swift test` 1,652 tests, none
-   failing; the four-seed all-scenarios playthrough (376 runs) without a violation; the veteran
-   playthrough passing (53 and 58 of 94 won, as at the last merge: #38 and #68 still won, #79 and
-   #82 still lost — see `TODO.md`, "The simulator"). `main` has the branch up to merge
-   `2544267`; the small ones (#38, #68, #79, #82) came after and are on the branch.
+1. **Verified** at the head of `feat/cards-4` on 2026-10-14: `swift test` 1,664 tests, none
+   failing (the golden transcripts unchanged); the four-seed all-scenarios playthrough (376 runs)
+   without a violation; the veteran playthrough passing (53 and 58 of 94 won, as at the last
+   merge). `main` has the branch up to merge `3749f84`; the engine rules came after and are on
+   the branch.
 2. **Next**, from `TODO.md` → "Open, in order": group 1 is done but for a glance at two things
    on the iPad (the Solo switch as a switch; the scrolling card lists in the damage and rest
    sheets) and the drawings that need a game in progress (#46's eggs, #48's Dark Rider, the
