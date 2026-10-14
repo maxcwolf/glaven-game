@@ -18,8 +18,10 @@ struct MenuKeyArt: View {
                         .scaledToFill()
                         .frame(width: geo.size.width, height: geo.size.height)
                         .scaleEffect(1.45)
-                        .offset(x: drift ? -geo.size.width * Self.driftFraction : geo.size.width * Self.driftFraction,
-                                y: drift ? geo.size.height * Self.driftFraction * 0.6 : -geo.size.height * Self.driftFraction * 0.6)
+                        // The drift animates the offset alone: started with withAnimation it took
+                        // every change of its update with it, the macOS window growing to fill the
+                        // screen included, so the menu crept from a corner to full size over 45 s.
+                        .animation(driftAnimation) { $0.offset(Self.driftOffset(in: geo.size, drifted: drift)) }
                         .clipped()
                 } else {
                     Color(red: 0.12, green: 0.1, blue: 0.09)
@@ -38,10 +40,20 @@ struct MenuKeyArt: View {
         .accessibilityHidden(true)
         .onAppear {
             guard !reduceMotion else { return }
-            withAnimation(.easeInOut(duration: Self.driftDuration).repeatForever(autoreverses: true)) {
-                drift = true
-            }
+            drift = true
         }
+    }
+
+    /// The camera's slow wander, back and forth (none when motion is reduced).
+    private var driftAnimation: Animation? {
+        reduceMotion ? nil : .easeInOut(duration: Self.driftDuration).repeatForever(autoreverses: true)
+    }
+
+    /// Where the map sits at either end of its wander.
+    static func driftOffset(in size: CGSize, drifted: Bool) -> CGSize {
+        let x = size.width * driftFraction
+        let y = size.height * driftFraction * 0.6
+        return drifted ? CGSize(width: -x, height: y) : CGSize(width: x, height: -y)
     }
 
     @ViewBuilder

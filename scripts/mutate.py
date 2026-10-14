@@ -180,6 +180,7 @@ M={
  "settingsMidGameIgnored": ("GlavenGame/Board/BoardCoordinator.swift", "    func applySettings() {\n        applyAnimationSpeed(gameManager?.settingsManager.animationSpeed ?? 1)\n", "    func applySettings() {\n"),
  "cardPreviewTurnsNowhere": ("GlavenGame/Views/AbilityCardFace.swift", "    var other: CardStyle { self == .scans ? .drawn : .scans }", "    var other: CardStyle { self }"),
  "cardPreviewTurnsUnwritten": ("GlavenGame/Views/AbilityCardFace.swift", "        scan(of: card, edition: edition, style: .scans) != nil && scan(of: card, edition: edition, style: .drawn) == nil", "        scan(of: card, edition: edition, style: .scans) != nil"),
+ "menuDriftTakesTheWindow": ("GlavenGame/Views/MenuKeyArt.swift", "            guard !reduceMotion else { return }\n            drift = true\n", "            guard !reduceMotion else { return }\n            withAnimation(.easeInOut(duration: Self.driftDuration).repeatForever(autoreverses: true)) { drift = true }\n"),
 }
 # Scenario rules (the mechanisms of placements/gh.json): run against the scenario tests.
 SCENARIO_FILTER=("ScenarioSpecialRuleTests|ScenarioReauditTests|ScenarioEnforcedRuleTests|ScenarioLockTests|ScenarioGoalTests|"

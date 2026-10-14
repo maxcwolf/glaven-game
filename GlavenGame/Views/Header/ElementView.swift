@@ -46,13 +46,19 @@ struct ElementView: View {
 
             // Waning: medium halo with pulsing ring
             if isWaning {
-                Circle()
-                    .fill(color.opacity(waningPulse ? 0.3 : 0.15))
-                    .frame(width: 42, height: 42)
+                // The pulse animates these two rings alone (a repeating withAnimation would take
+                // every other change of its update with it).
+                Group {
+                    Circle()
+                        .fill(color.opacity(waningPulse ? 0.3 : 0.15))
+                        .frame(width: 42, height: 42)
 
-                Circle()
-                    .strokeBorder(color.opacity(waningPulse ? 0.9 : 0.5), lineWidth: 2.5)
-                    .frame(width: 42, height: 42)
+                    Circle()
+                        .strokeBorder(color.opacity(waningPulse ? 0.9 : 0.5), lineWidth: 2.5)
+                        .frame(width: 42, height: 42)
+                }
+                .animation(waningPulse ? .easeInOut(duration: 1.2).repeatForever(autoreverses: true) : .linear(duration: 0.1),
+                           value: waningPulse)
             }
 
             BundledImage(
@@ -74,20 +80,14 @@ struct ElementView: View {
         .onChange(of: element.state) { _, newState in
             if newState == .waning, !reduceMotion {
                 waningPulse = false
-                withAnimation(.easeInOut(duration: 1.2).repeatForever(autoreverses: true)) {
-                    waningPulse = true
-                }
+                DispatchQueue.main.async { waningPulse = true }
             } else {
-                withAnimation(.linear(duration: 0.1)) {
-                    waningPulse = false
-                }
+                waningPulse = false
             }
         }
         .onAppear {
             if element.state == .waning, !reduceMotion {
-                withAnimation(.easeInOut(duration: 1.2).repeatForever(autoreverses: true)) {
-                    waningPulse = true
-                }
+                waningPulse = true
             }
         }
         .onTapGesture {
