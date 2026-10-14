@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// An ability card as printed: the card scan when the game has it, the drawn card otherwise.
+/// An ability card in town's card grids, in the players' card style, sized to fit the grid.
 /// Selected cards get a brass edge and a check.
 struct AbilityCardTile: View {
     @Environment(GameManager.self) private var gameManager
@@ -51,19 +51,10 @@ struct AbilityCardTile: View {
         return "\(card.name ?? "Card"), \(level), initiative \(card.initiative)\(enhanced)"
     }
 
-    @ViewBuilder
     private var face: some View {
-        if let id = card.cardId, let image = ImageLoader.abilityCardImage(edition: character.edition, cardId: id) {
-            #if os(macOS)
-            Image(nsImage: image).resizable().aspectRatio(contentMode: .fit)
-            #else
-            Image(uiImage: image).resizable().aspectRatio(contentMode: .fit)
-            #endif
-        } else {
-            BoardAbilityCardView(card: card, characterColor: Color(hex: character.color) ?? .blue,
-                                 highlight: .none, width: width, height: height,
-                                 labelResolver: { gameManager.editionStore.resolveCustomText($0, edition: character.edition) })
-        }
+        AbilityCardFace(card: card, edition: character.edition, color: Color(hex: character.color) ?? .blue,
+                        height: height, followsCardSize: false,
+                        labelResolver: { gameManager.editionStore.resolveCustomText($0, edition: character.edition) })
     }
 }
 

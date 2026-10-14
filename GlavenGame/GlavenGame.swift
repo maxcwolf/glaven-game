@@ -19,6 +19,8 @@ private struct ScaledContentView: View {
 
         ContentView()
             .environment(\.uiScale, gameManager.settingsManager.uiScale)
+            .environment(\.cardStyle, gameManager.settingsManager.cardStyle)
+            .environment(\.cardScale, gameManager.settingsManager.cardScale)
             .environment(\.editionTheme, EditionTheme.forEdition(gameManager.game.edition))
             .environment(\.isCompact, false)
             .dynamicTypeSize(dynamicTypeForScale(gameManager.settingsManager.uiScale))

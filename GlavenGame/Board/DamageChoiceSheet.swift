@@ -145,7 +145,6 @@ struct DamageChoiceSheet: View {
             withAnimation(.snappy) { selectedCard = selected ? nil : cardId }
         } label: {
             cardFace(cardId)
-                .frame(height: cardHeight)
                 .clipShape(RoundedRectangle(cornerRadius: 8))
                 .overlay(RoundedRectangle(cornerRadius: 8)
                     .stroke(selected ? Color(red: 0.89, green: 0.33, blue: 0.29) : .clear, lineWidth: 3))
@@ -171,16 +170,10 @@ struct DamageChoiceSheet: View {
 
     @ViewBuilder
     private func cardFace(_ cardId: Int) -> some View {
-        if let image = ImageLoader.abilityCardImage(edition: character.edition, cardId: cardId) {
-            #if os(macOS)
-            Image(nsImage: image).resizable().aspectRatio(contentMode: .fit)
-            #else
-            Image(uiImage: image).resizable().aspectRatio(contentMode: .fit)
-            #endif
-        } else if let card = ability(cardId) {
-            BoardAbilityCardView(card: card, characterColor: Color(hex: character.color) ?? .blue,
-                                 highlight: .none, width: 130, height: cardHeight,
-                                 labelResolver: { gameManager.editionStore.resolveCustomText($0, edition: character.edition) })
+        if let card = ability(cardId) {
+            AbilityCardFace(card: card, edition: character.edition, color: Color(hex: character.color) ?? .blue,
+                            height: cardHeight,
+                            labelResolver: { gameManager.editionStore.resolveCustomText($0, edition: character.edition) })
         }
     }
 
@@ -193,8 +186,7 @@ struct DamageChoiceSheet: View {
             onConfirm: { indices in
                 coordinator.resolvePendingDamage(choice: .loseDiscardCards(indices: indices))
             },
-            labelResolver: { gameManager.editionStore.resolveCustomText($0, edition: character.edition) },
-            onPreviewCard: nil
+            labelResolver: { gameManager.editionStore.resolveCustomText($0, edition: character.edition) }
         )
     }
 

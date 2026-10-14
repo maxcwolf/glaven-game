@@ -1322,6 +1322,17 @@ struct BoardView: View {
         return { coordinator.showCardPreview(cardId: cardId) }
     }
 
+    /// A character's card by its id, with the character who has it.
+    private func previewedCard(_ cardId: Int) -> (card: AbilityModel, character: GameCharacter)? {
+        for character in gameManager.game.characters {
+            let deck = gameManager.editionStore.deckData(name: character.characterData?.deck ?? character.name,
+                                                         edition: character.edition)
+            if let card = deck?.abilities.first(where: { $0.cardId == cardId }) { return (card, character) }
+        }
+        return nil
+    }
+
+    /// The card as large as the screen allows, for reading it, in the players' card style.
     @ViewBuilder
     private func cardImagePreviewOverlay(cardId: Int) -> some View {
         Color.black.opacity(0.7)
@@ -1332,44 +1343,48 @@ struct BoardView: View {
             .accessibilityLabel("Close the card")
             .accessibilityAddTraits(.isButton)
             .overlay {
-                if let url = appResourceBundle.url(forResource: "\(cardId)", withExtension: "jpeg", subdirectory: "CardImages/gh"),
-                   let data = try? Data(contentsOf: url),
-                   let uiImage = crossPlatformImage(from: data) {
-                    Image(decorative: uiImage, scale: 1.0)
-                        .resizable()
-                        .aspectRatio(contentMode: .fit)
-                        .frame(maxWidth: 363, maxHeight: 504)
-                        .padding(12)
-                        .background(
-                            RoundedRectangle(cornerRadius: 16)
-                                .fill(.black.opacity(0.6))
-                        )
-                        .shadow(color: .black.opacity(0.5), radius: 20)
-                        .overlay(alignment: .topTrailing) {
-                            Button {
-                                coordinator.dismissCardPreview()
-                            } label: {
-                                Image(systemName: "xmark")
-                                    .font(BoardTheme.font(size: 12, weight: .bold))
-                                    .foregroundStyle(.white.opacity(0.9))
-                                    .frame(width: 26, height: 26)
-                                    .background(.ultraThinMaterial)
-                                    .clipShape(Circle())
-                                    .shadow(color: .black.opacity(0.3), radius: 4)
-                                    .frame(width: 44, height: 44)
-                                    .contentShape(Rectangle())
+                if let previewed = previewedCard(cardId) {
+                    GeometryReader { geo in
+                        AbilityCardFace(card: previewed.card, edition: previewed.character.edition,
+                                        color: Color(hex: previewed.character.color) ?? .blue,
+                                        height: Self.previewCardHeight(in: geo.size), followsCardSize: false,
+                                        labelResolver: labelResolver(for: previewed.character.edition))
+                            .clipShape(RoundedRectangle(cornerRadius: 10))
+                            .padding(12)
+                            .background(
+                                RoundedRectangle(cornerRadius: 16)
+                                    .fill(.black.opacity(0.6))
+                            )
+                            .shadow(color: .black.opacity(0.5), radius: 20)
+                            .overlay(alignment: .topTrailing) {
+                                Button {
+                                    coordinator.dismissCardPreview()
+                                } label: {
+                                    Image(systemName: "xmark")
+                                        .font(BoardTheme.font(size: 12, weight: .bold))
+                                        .foregroundStyle(.white.opacity(0.9))
+                                        .frame(width: 26, height: 26)
+                                        .background(.ultraThinMaterial)
+                                        .clipShape(Circle())
+                                        .shadow(color: .black.opacity(0.3), radius: 4)
+                                        .frame(width: 44, height: 44)
+                                        .contentShape(Rectangle())
+                                }
+                                .accessibilityLabel("Close")
+                                .buttonStyle(.plain)
+                                .keyboardShortcut(.cancelAction)
+                                .padding(4)
                             }
-                            .accessibilityLabel("Close")
-                            .buttonStyle(.plain)
-                            .keyboardShortcut(.cancelAction)
-                            .padding(4)
-                        }
+                            .accessibilityElement(children: .contain)
+                            .accessibilityLabel(previewed.card.name ?? "Card")
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    }
                 } else {
                     VStack(spacing: 12) {
                         Image(systemName: "photo.badge.exclamationmark")
                             .font(BoardTheme.font(size: 48))
                             .foregroundStyle(.white.opacity(0.5))
-                        Text("Card image not available")
+                        Text("Card not available")
                             .font(.subheadline)
                             .foregroundStyle(.white.opacity(0.6))
                     }
@@ -1377,15 +1392,9 @@ struct BoardView: View {
             }
     }
 
-    /// Create a CGImage from data, cross-platform (macOS + iOS).
-    private func crossPlatformImage(from data: Data) -> CGImage? {
-        #if canImport(UIKit)
-        return UIImage(data: data)?.cgImage
-        #elseif canImport(AppKit)
-        return NSImage(data: data)?.cgImage(forProposedRect: nil, context: nil, hints: nil)
-        #else
-        return nil
-        #endif
+    /// The previewed card's height: as tall as the space allows with a margin, up to 720 points.
+    static func previewCardHeight(in space: CGSize) -> CGFloat {
+        max(200, min(720, space.height - 80, (space.width - 80) * AbilityCardFace.aspect))
     }
 
     // MARK: - Helpers
@@ -1417,7 +1426,6 @@ struct DiscardCardPicker: View {
     let characterColor: Color
     let onConfirm: ([Int]) -> Void
     var labelResolver: ((String) -> String?)? = nil
-    var onPreviewCard: ((AbilityModel) -> (() -> Void)?)? = nil
 
     @State private var selectedIndices: Set<Int> = []
 
@@ -1446,15 +1454,9 @@ struct DiscardCardPicker: View {
                         let inPlay = !character.discardedCards.contains(cardId)
 
                         if let card = deckData?.abilities.first(where: { $0.cardId == cardId }) {
-                            BoardAbilityCardView(
-                                card: card,
-                                characterColor: characterColor,
-                                highlight: .none,
-                                width: 120,
-                                height: 200,
-                                labelResolver: labelResolver,
-                                onPreview: onPreviewCard?(card)
-                            )
+                            AbilityCardFace(card: card, edition: character.edition, color: characterColor,
+                                            height: 180, labelResolver: labelResolver)
+                                .clipShape(RoundedRectangle(cornerRadius: 8))
                             .overlay(alignment: .top) {
                                 if inPlay {
                                     Text("IN PLAY")
