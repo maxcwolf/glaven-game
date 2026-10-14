@@ -1965,8 +1965,7 @@ final class BoardCoordinator {
         let hostile = gameManager.game.monsters.filter { !MonsterAI.isAllyFaction($0) }
         let enemiesHaveAppeared = hostile.contains { !$0.entities.isEmpty }
         let allEnemiesDead = hostile.allSatisfy { monster in monster.off || monster.aliveEntities.isEmpty }
-        // (Where walls are broken down, a room is revealed by one of its walls: the rest may stand.)
-        let allRoomsRevealed = wallRule != nil ? everyRoomIsRevealed : boardState.doors.allSatisfy { $0.isOpen }
+        let allRoomsRevealed = allRoomsRevealed
         if let written, written.replacesKillAll, !hasOwnWinCondition {
             if goalMet(written, turnEnded: turnEnded) && gameManager.game.round > 0 {
                 let brief = gameManager.game.scenario.map { ScenarioBrief.make(for: $0.data, labels: gameManager.editionStore) }

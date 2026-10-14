@@ -248,6 +248,8 @@ final class WallTests: XCTestCase {
             XCTAssertLessThan(broken, 10)
         }
         XCTAssertEqual(visible(sim).count, 7)
+        XCTAssertEqual(ScenarioBrief.make(for: try XCTUnwrap(sim.gm.game.scenario).data, labels: sim.gm.editionStore).goal,
+                       "Reveal all rooms and kill all enemies.")
         XCTAssertFalse(walls(sim).isEmpty, "walls are left standing")
         XCTAssertFalse(monsters(sim).isEmpty)
         coord.checkVictoryDefeat(turnEnded: true)

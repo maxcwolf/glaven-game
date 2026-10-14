@@ -49,6 +49,12 @@ extension BoardCoordinator {
         }
     }
 
+    /// Whether no room is left to reveal: every door open — or, where walls are broken down
+    /// instead, every room on the map (one of its walls is enough; the rest may stand).
+    var allRoomsRevealed: Bool {
+        wallRule != nil ? everyRoomIsRevealed : boardState.doors.allSatisfy(\.isOpen)
+    }
+
     /// "Reveal all rooms": every room of the scenario is on the map, whichever walls still stand.
     var everyRoomIsRevealed: Bool {
         guard let scenario = gameManager?.game.scenario else { return false }

@@ -291,7 +291,7 @@ S={
  "noOneStunnedByAWall": ("GlavenGame/Board/BoardCoordinator+Walls.swift", "            applyCondition(condition, to: piece)\n", ""),
  "partyStunnedByAWall": ("GlavenGame/Board/BoardCoordinator+Walls.swift", "            guard case .monster = piece, side(of: piece) != .party, !isInactive(piece) else { continue }\n", ""),
  "cornerRoomStaysHidden": ("GlavenGame/Board/BoardCoordinator+Walls.swift", "            revealRoom(behind: way, opening: false)\n", ""),
- "everyWallMustFall": ("GlavenGame/Board/BoardCoordinator.swift", "let allRoomsRevealed = wallRule != nil ? everyRoomIsRevealed : boardState.doors.allSatisfy { $0.isOpen }", "let allRoomsRevealed = boardState.doors.allSatisfy { $0.isOpen }"),
+ "everyWallMustFall": ("GlavenGame/Board/BoardCoordinator+Walls.swift", "wallRule != nil ? everyRoomIsRevealed : boardState.doors.allSatisfy(\\.isOpen)", "boardState.doors.allSatisfy(\\.isOpen)"),
  "wallGoalIgnoresRooms": ("GlavenGame/Board/BoardCoordinator+Walls.swift", "return (scenario.data.rooms ?? []).allSatisfy { scenario.revealedRooms.contains($0.roomNumber) }", "return true"),
  "wallHexMissingFromFarSide": ("GlavenGame/Engine/BoardBuilder.swift", "                // (The connector's own hex is on the map from this side too.)\n                if board.cells[doorCoord] == nil {\n                    board.cells[doorCoord] = HexCell(coord: doorCoord, tileRef: tileData.ref, passable: true)\n                }\n", ""),
  "padlocksOnWalls": ("GlavenGame/Board/BoardCoordinator+Locks.swift", ".filter(boardState.isClosedDoor).subtracting(standingWalls)", ".filter(boardState.isClosedDoor)"),
