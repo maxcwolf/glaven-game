@@ -23,6 +23,38 @@ final class ForcedMovementTests: XCTestCase {
         coord.turnDelayNanoseconds = 0
     }
 
+    /// ATK-7: "farther" and "closer" are counted as range is, around walls. By the wall's end, a
+    /// hex nearer the attacker as the crow flies but further round the wall isn't a pull's step;
+    /// one further as the crow flies but no further round the wall isn't a push's.
+    func testPushAndPullCountDistanceAroundWalls() throws {
+        let board = coord.boardState
+        for col in 2...8 { board.cells[HexCoord(col, 5)]?.overlay = .wall; board.cells[HexCoord(col, 5)]?.passable = false }
+        let attacker = HexCoord(5, 7)
+        var pulled = 0, pushed = 0
+        for hex in board.cells.keys.sorted() where board.isPassable(hex) && hex != attacker {
+            let here = board.steps(from: hex, to: attacker)
+            let pulls = Set(coord.forcedMoveSteps(for: .monster(name: "bandit-guard", standee: 1), from: hex, attackerPos: attacker,
+                                                  stepsLeft: 1, isPush: false))
+            let pushes = Set(coord.forcedMoveSteps(for: .monster(name: "bandit-guard", standee: 1), from: hex, attackerPos: attacker,
+                                                   stepsLeft: 1, isPush: true))
+            for step in board.neighbors(of: hex) where board.isPassable(step) {
+                let there = board.steps(from: step, to: attacker)
+                if step.distance(to: attacker) < hex.distance(to: attacker), there >= here {
+                    XCTAssertFalse(pulls.contains(step), "pulled from \(hex) to \(step): nearer only as the crow flies")
+                    pulled += 1
+                }
+                if step.distance(to: attacker) > hex.distance(to: attacker), there <= here {
+                    XCTAssertFalse(pushes.contains(step), "pushed from \(hex) to \(step): further only as the crow flies")
+                    pushed += 1
+                }
+                if there < here { XCTAssertTrue(pulls.contains(step), "a pull may go from \(hex) to \(step)") }
+                if there > here { XCTAssertTrue(pushes.contains(step), "a push may go from \(hex) to \(step)") }
+            }
+        }
+        XCTAssertGreaterThan(pulled, 0, "the wall makes some hexes nearer only as the crow flies")
+        XCTAssertGreaterThan(pushed, 0)
+    }
+
     @discardableResult
     private func addCharacter(_ name: String = "brute", at hex: HexCoord) -> GameCharacter {
         gm.characterManager.addCharacter(name: name, edition: "gh")

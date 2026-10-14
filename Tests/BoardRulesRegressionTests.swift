@@ -339,6 +339,33 @@ final class BoardRulesRegressionTests: XCTestCase {
         XCTAssertEqual(character.lostCards, [4])
     }
 
+    /// FAQ: "Discardable cards in the active area may be lost to negate damage (technically
+    /// moving them to the discard pile first)" — as one of the two discards; its bonus ends. A
+    /// card in play that is lost when it leaves isn't offered.
+    func testACardInPlayMayBeLostToNegateDamage() async throws {
+        let character = addCharacter(at: HexCoord(3, 3))
+        let warding = try card("Warding Strength", of: "brute"), other = try card("Trample", of: "brute")
+        let lostOnLeaving = try card("Eye for an Eye", of: "brute")
+        character.handCards = []
+        character.discardedCards = [other.cardId!]
+        character.activeCards = [warding.cardId!, lostOnLeaving.cardId!]
+        character.lostWhenRemoved = [lostOnLeaving.cardId!]
+        XCTAssertEqual(coord.damageDiscardPool(of: character), [other.cardId!, warding.cardId!], "the discard and the discardable card in play")
+
+        coord.autoResolvePrompts = false
+        let hp = character.health
+        let negated = Task { await self.coord.sufferDamageWithMitigation(2, to: .character(character.id), source: "test") }
+        let asked = await waitUntil { self.coord.pendingDamage != nil }
+        XCTAssertTrue(asked, "one discard and one card in play make two")
+        coord.resolvePendingDamage(choice: .loseDiscardCards(indices: [0, 1]))
+        _ = await negated.value
+        XCTAssertEqual(character.health, hp, "negated")
+        XCTAssertEqual(Set(character.lostCards), [other.cardId!, warding.cardId!])
+        XCTAssertEqual(character.activeCards, [lostOnLeaving.cardId!], "Warding Strength left play")
+        XCTAssertTrue(character.discardedCards.isEmpty)
+        XCTAssertTrue(coord.chargedBonuses(of: character).allSatisfy { $0.cardId != warding.cardId! }, "its bonus with it")
+    }
+
     /// A character exhausted during its own turn (e.g. by retaliate) takes no further actions:
     /// its turn ends instead of waiting for input that can never come.
     func testCharacterExhaustedDuringItsTurnEndsTheTurn() throws {
@@ -519,8 +546,39 @@ final class BoardRulesRegressionTests: XCTestCase {
         turn.setBottomFirst(true)
         turn.executeCurrentAction()
         coord.handleHexTap(HexCoord(6, 3))
+        // The move is made in legs: with movement left, the rest is offered; stopping there ends it.
+        let offered = await waitUntil { if case .selectingMove = self.coord.interactionMode { return true }; return false }
+        XCTAssertTrue(offered, "the rest of the move is offered")
+        coord.stopContinuedMove()
         _ = await waitUntil { turn.currentActionIndex == 1 }
+        XCTAssertEqual(turn.currentActionIndex, 1)
         XCTAssertFalse(bandit.entityConditions.contains { $0.name == .muddle }, "the move didn't end where it started")
+    }
+
+    /// "If you end the movement in the same hex you started in, perform Muddle, all enemies moved
+    /// through": out over the Bandit Guard and back, in two legs of the one Move 4 (Jump).
+    func testFeedbackLoopOutAndBackMuddlesWhoItJumpedOver() async throws {
+        let character = addCharacter("mindthief", at: HexCoord(3, 3))
+        let bandit = addMonster("bandit-guard", at: HexCoord(4, 3))
+        let loop = try card("Feedback Loop", of: "mindthief"), other = try card("Corrupting Embrace", of: "mindthief")
+        character.handCards = [loop.cardId!, other.cardId!]
+        let turn = PlayerTurnController(characterID: character.id, coordinator: coord, gameManager: gm)
+        coord.activePlayerTurn = turn
+        turn.selectCards(top: other, bottom: loop)
+        turn.setBottomFirst(true)
+        turn.executeCurrentAction()
+        coord.handleHexTap(HexCoord(5, 3))   // out: over the Bandit Guard, two of the four
+        let offered = await waitUntil {
+            if case .selectingMove(_, let range, let hexes, _, _) = self.coord.interactionMode { return range == 2 && hexes.contains(HexCoord(3, 3)) }
+            return false
+        }
+        XCTAssertTrue(offered, "the way back is offered with the two left")
+        XCTAssertFalse(bandit.entityConditions.contains { $0.name == .muddle }, "not yet: the move isn't over")
+        coord.handleHexTap(HexCoord(3, 3))   // and back
+        _ = await waitUntil { turn.currentActionIndex == 1 }
+        XCTAssertEqual(coord.boardState.piecePositions[.character(character.id)], HexCoord(3, 3))
+        XCTAssertTrue(bandit.entityConditions.contains { $0.name == .muddle }, "jumped over, out and back")
+        XCTAssertFalse(character.entityConditions.contains { $0.name == .muddle })
     }
 
     /// Regression: a target printed beside a condition (Crippling Offensive's "Immobilize and

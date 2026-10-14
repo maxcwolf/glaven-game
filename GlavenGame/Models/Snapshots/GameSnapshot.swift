@@ -227,6 +227,7 @@ struct CharacterSnapshot: Codable {
     var questChoices: [String]?
     var itemSlotsUsed: [String: Int]?
     var bonusChargesUsed: [Int: Int]?
+    var elementBonusesPaid: [Int]?
     var itemsLeftBehind: [String]?
     var itemsBarred: Bool?
     /// Nil in saves from before the half a card is in play for was recorded.
@@ -341,6 +342,7 @@ struct CharacterSnapshot: Codable {
         questChoices = try container.decodeIfPresent([String].self, forKey: .questChoices)
         itemSlotsUsed = try container.decodeIfPresent([String: Int].self, forKey: .itemSlotsUsed)
         bonusChargesUsed = try container.decodeIfPresent([Int: Int].self, forKey: .bonusChargesUsed)
+        elementBonusesPaid = try container.decodeIfPresent([Int].self, forKey: .elementBonusesPaid)
         itemsLeftBehind = try container.decodeIfPresent([String].self, forKey: .itemsLeftBehind)
         itemsBarred = try container.decodeIfPresent(Bool.self, forKey: .itemsBarred)
         bottomHalvesInPlay = try container.decodeIfPresent([Int].self, forKey: .bottomHalvesInPlay)

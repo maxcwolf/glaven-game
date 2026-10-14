@@ -97,6 +97,53 @@ final class AreaAttackRuleTests: XCTestCase {
 
     /// FAQ, "Add Target": an added target is a single extra enemy within the range of the attack —
     /// range 1 for a melee area — attacked besides the area, which is placed as ever.
+    /// ATK-10: the player places the area. Aimed at an enemy, the ways it can lie that cover
+    /// different figures are offered — the one hitting the most suggested — and the area lies as
+    /// the player chooses: here over the one enemy, sparing the other (Retaliate, an ally…).
+    func testThePlayerPlacesTheArea() async throws {
+        coord.autoResolvePrompts = false
+        gm.characterManager.addCharacter(name: "brute", edition: "gh")
+        let brute = try XCTUnwrap(gm.game.characters.last)
+        let me = PieceID.character(brute.id)
+        coord.boardState.placePiece(me, at: HexCoord(5, 5))
+        var foes: [HexCoord: PieceID] = [:]
+        for hex in [HexCoord(6, 5), HexCoord(6, 4)] {
+            let piece = try XCTUnwrap(coord.spawnMonster(name: "bandit-guard", type: .normal, at: hex, origin: .placed))
+            guard case .monster(let name, let standee) = piece else { return XCTFail() }
+            let entity = try XCTUnwrap(coord.monsterEntity(name: name, standee: standee))
+            entity.maxHealth = 40; entity.health = 40; entity.shield = nil
+            foes[hex] = piece
+        }
+        let cleave = AbilityModel(cardId: 9001, name: "Cleave", initiative: 20, actions: [
+            ActionModel(type: .attack, value: .int(2), subActions: [
+                ActionModel(type: .area, value: .string("(1,1,active)|(2,1,target)|(2,0,target)")),
+            ])
+        ], bottomActions: [ActionModel(type: .move, value: .int(2))])
+        let other = AbilityModel(cardId: 9002, name: "Step", initiative: 30,
+                                 actions: [ActionModel(type: .attack, value: .int(1))], bottomActions: [ActionModel(type: .move, value: .int(2))])
+        brute.handCards = [9001, 9002]
+        coord.boardPhase = .execution
+        let turn = PlayerTurnController(characterID: brute.id, coordinator: coord, gameManager: gm)
+        coord.activePlayerTurn = turn
+        turn.selectCards(top: cleave, bottom: other)
+        turn.executeCurrentAction()
+        coord.handlePieceTap(foes[HexCoord(6, 5)]!)
+        let asked = await waitUntil { self.coord.pendingOptionChoice != nil }
+        XCTAssertTrue(asked, "the ways it can lie are offered")
+        let prompt = try XCTUnwrap(coord.pendingOptionChoice)
+        let both = "Hits \(GameText.list([coord.name(foes[HexCoord(6, 5)]!), coord.name(foes[HexCoord(6, 4)]!)]))"
+        let alone = "Hits \(coord.name(foes[HexCoord(6, 5)]!))"
+        XCTAssertEqual(prompt.options[prompt.suggested], both, "the most enemies suggested: \(prompt.options)")
+        let index = try XCTUnwrap(prompt.options.firstIndex(of: alone), "\(prompt.options)")
+        XCTAssertEqual(Set(prompt.options).count, prompt.options.count, "each choice covers different figures")
+        coord.autoResolvePrompts = true   // (the modifier draws that follow)
+        coord.resolveOptionChoice(index)
+        let done = await waitUntil { !turn.isWaiting }
+        XCTAssertTrue(done)
+        XCTAssertLessThan(coord.entity(for: foes[HexCoord(6, 5)]!)?.health ?? 40, 40, "the aimed enemy is hit")
+        XCTAssertEqual(coord.entity(for: foes[HexCoord(6, 4)]!)?.health, 40, "the other is spared, as placed")
+    }
+
     func testATargetAddedToAnAreaAttackIsOneMoreEnemyInRange() async throws {
         gm.characterManager.addCharacter(name: "brute", edition: "gh")
         let brute = try XCTUnwrap(gm.game.characters.last)

@@ -153,6 +153,10 @@ extension BoardCoordinator {
         var result = resolve()
         // Shields and armour: a shield for an attack that would damage (pierce still applies).
         var negated = false
+        /// Cards were lost to prevent the damage before a bonus came to it; and the bonus whose
+        /// shield was counted, to be marked once the damage is settled.
+        var preventedByCards = false
+        var wardUsed: Int?
         // Charged bonuses on the target: Warding Strength (Shield 1), Cold Front (no damage, and
         // Retaliate 3, Range 3), Opposing Strike (Retaliate against melee attacks).
         if areEnemies(attacker, target) {
@@ -160,29 +164,36 @@ extension BoardCoordinator {
                 if case .retaliateAgainstMelee = $0 { return true }; return false }) {
                 gainedRetaliates.append((amount, 1))
             }
-            if result.damage > 0, case .shieldAgainstAttacks(let amount)? = useFirstCharge(of: target, where: {
-                if case .shieldAgainstAttacks = $0 { return true }; return false }) {
+            // (Their charges are marked once the player has had the chance to lose cards
+            // instead, FAQ: "Can cards be lost before using defense abilities or items? Yes.")
+            if result.damage > 0, let ward = firstCharge(of: target, where: {
+                if case .shieldAgainstAttacks = $0 { return true }; return false }),
+               case .shieldAgainstAttacks(let amount) = ward.bonus {
                 shield += amount
                 result = resolve()
+                wardUsed = ward.cardId
             }
-            if result.damage > 0, case .negateAttackAndRetaliate(let amount, let range)? = useFirstCharge(of: target, where: {
-                if case .negateAttackAndRetaliate = $0 { return true }; return false }) {
-                negated = true
-                gainedRetaliates.append((amount, range))
+            if result.damage > 0, let front = firstCharge(of: target, where: {
+                if case .negateAttackAndRetaliate = $0 { return true }; return false }),
+               case .negateAttackAndRetaliate(let amount, let range) = front.bonus,
+               case .character(let id) = target, let character = gameManager?.game.characters.first(where: { $0.id == id }) {
+                let name = gameManager?.characterManager.abilities(for: character).first { $0.cardId == front.cardId }?.name
+                if await promptDamageMitigation(character: character, damage: result.damage, source: pieceLabel(attacker),
+                                                absorbedBy: name ?? "A bonus in play") {
+                    guard isCurrentBoard(generation) else { return false }
+                    preventedByCards = true
+                } else {
+                    guard isCurrentBoard(generation) else { return false }
+                    useCharge(front.cardId, of: character)
+                    negated = true
+                    gainedRetaliates.append((amount, range))
+                }
             }
         }
-        // Armour with use circles (Hide Armor, Chainmail…) works by itself on every attack that
-        // would damage its wearer (FAQ): it isn't offered. Its circle is marked once the damage is
-        // settled — the player may still lose cards instead, and the armour is then not used.
-        var armourUsed: [DefenseItem] = []
-        for item in DefenseItem.onDamage where result.damage > 0 && !negated && areEnemies(attacker, target)
-            && isChargedArmour(item, wornBy: target) {
-            armourUsed.append(item)
-            shield += item.shield
-            result = resolve()
-        }
-        // The other shields and armours are the player's to use or keep.
-        for item in DefenseItem.onDamage where result.damage > 0 && !negated && areEnemies(attacker, target) {
+        // The other shields and armours are the player's to use or keep — asked first, since the
+        // player chooses which Shield to use first and needn't use another once the damage is
+        // gone (FAQ, "Shield and Retaliate").
+        for item in DefenseItem.onDamage where result.damage > 0 && !negated && !preventedByCards && areEnemies(attacker, target) {
             if await offerDefenseItem(item, to: target, from: attacker) {
                 shield += item.shield
                 if item.retaliate > 0 { gainedRetaliates.append((item.retaliate, 1)) }
@@ -190,6 +201,16 @@ extension BoardCoordinator {
                 result = resolve()
             }
             guard isCurrentBoard(generation) else { return false }
+        }
+        // Armour with use circles (Hide Armor, Chainmail…) works by itself on every attack that
+        // would still damage its wearer (FAQ): it isn't offered. Its circle is marked once the
+        // damage is settled — the player may still lose cards instead, and the armour is then not used.
+        var armourUsed: [DefenseItem] = []
+        for item in DefenseItem.onDamage where result.damage > 0 && !negated && !preventedByCards && areEnemies(attacker, target)
+            && isChargedArmour(item, wornBy: target) {
+            armourUsed.append(item)
+            shield += item.shield
+            result = resolve()
         }
         let breakdown = CombatResolver.damageBreakdown(
             base: attack.value, isPoisoned: isPoisoned, preDrawnCards: preDrawn,
@@ -228,7 +249,11 @@ extension BoardCoordinator {
         }
 
         var died = false
-        if negated {
+        if preventedByCards {
+            if isOnBoard(target) { boardScene?.floatText("Prevented", over: target, style: .info) }
+            armourUsed = []
+            wardUsed = nil
+        } else if negated {
             log("\(name(target)) suffers no damage", category: .damage)
             boardScene?.pieceUnharmed(id: target, missed: false)
         } else if result.damage > 0 {
@@ -238,7 +263,14 @@ extension BoardCoordinator {
             died = outcome.died
             guard isCurrentBoard(generation) else { return died }
             // Cards were lost to prevent the damage before the armour came to it (FAQ).
-            if outcome.prevented { armourUsed = [] }
+            if outcome.prevented {
+                armourUsed = []
+                wardUsed = nil
+            }
+        }
+        if let wardUsed, case .character(let id) = target,
+           let character = gameManager?.game.characters.first(where: { $0.id == id }) {
+            useCharge(wardUsed, of: character)
         }
         for item in armourUsed {
             useChargedArmour(item, wornBy: target)

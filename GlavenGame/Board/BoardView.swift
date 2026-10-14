@@ -514,6 +514,20 @@ struct BoardView: View {
                             .buttonStyle(option.declined ? .boardQuietCompact : .boardPrimaryCompact)
                             .accessibilityLabel(option.declined ? "Consume for \(option.label): off" : "Consume for \(option.label): on")
                             .help("Tap to keep the element for an ally instead")
+                            // "Any element": which one it takes.
+                            if !option.declined, option.anyElementChoices.count > 1 {
+                                ForEach(Array(option.anyElement.enumerated()), id: \.offset) { slot, current in
+                                    Menu {
+                                        ForEach(option.anyElementChoices, id: \.self) { element in
+                                            Button(GameText.elementName(element)) { playerTurn.pickAnyElement(option.id, slot: slot, element) }
+                                        }
+                                    } label: {
+                                        Label("Consume \(GameText.elementName(current))", systemImage: "arrow.triangle.2.circlepath")
+                                    }
+                                    .buttonStyle(.boardQuietCompact)
+                                    .accessibilityLabel("Element consumed: \(GameText.elementName(current)). Choose another")
+                                }
+                            }
                         }
                     }
                 } else {
@@ -1391,9 +1405,12 @@ struct BoardView: View {
 
 // MARK: - Discard Card Picker
 
-/// Lets the player pick exactly 2 discard cards to lose for damage mitigation.
+/// Lets the player pick exactly 2 discard cards to lose for damage mitigation — of the discard
+/// pile, and of the discardable cards in play (shown as such).
 struct DiscardCardPicker: View {
     let character: GameCharacter
+    /// The cards to pick from (the discard pile first); the choice is their indices here.
+    let cards: [Int]
     let deckData: DeckData?
     let characterColor: Color
     let onConfirm: ([Int]) -> Void
@@ -1422,8 +1439,9 @@ struct DiscardCardPicker: View {
 
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 8) {
-                    ForEach(Array(character.discardedCards.enumerated()), id: \.offset) { index, cardId in
+                    ForEach(Array(cards.enumerated()), id: \.offset) { index, cardId in
                         let isSelected = selectedIndices.contains(index)
+                        let inPlay = !character.discardedCards.contains(cardId)
 
                         if let card = deckData?.abilities.first(where: { $0.cardId == cardId }) {
                             BoardAbilityCardView(
@@ -1435,6 +1453,18 @@ struct DiscardCardPicker: View {
                                 labelResolver: labelResolver,
                                 onPreview: onPreviewCard?(card)
                             )
+                            .overlay(alignment: .top) {
+                                if inPlay {
+                                    Text("IN PLAY")
+                                        .font(BoardTheme.font(size: 11, weight: .heavy))
+                                        .foregroundStyle(.white)
+                                        .padding(.horizontal, 8)
+                                        .padding(.vertical, 2)
+                                        .background(BoardTheme.brass.opacity(0.9))
+                                        .clipShape(Capsule())
+                                        .padding(.top, 6)
+                                }
+                            }
                             .overlay(alignment: .bottom) {
                                 if isSelected {
                                     Text("SELECTED")
@@ -1460,7 +1490,7 @@ struct DiscardCardPicker: View {
                                 }
                             }
                             .accessibilityAddTraits(isSelected ? [.isButton, .isSelected] : .isButton)
-                            .accessibilityLabel(card.name ?? "Card")
+                            .accessibilityLabel((card.name ?? "Card") + (inPlay ? ", in play" : ""))
                         }
                     }
                 }

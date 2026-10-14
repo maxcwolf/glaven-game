@@ -37,7 +37,7 @@ struct DamageChoiceSheet: View {
                     .frame(width: 230)
                 if !losable.isEmpty {
                     handCards(losable)
-                } else if character.discardedCards.count >= 2 {
+                } else if coordinator.damageDiscardPool(of: character).count >= 2 {
                     discardChoice
                 } else {
                     Text("No cards can be lost to prevent this damage.")
@@ -132,7 +132,7 @@ struct DamageChoiceSheet: View {
                 .padding(.vertical, 14)
                 .padding(.horizontal, 2)
             }
-            if character.discardedCards.count >= 2 {
+            if coordinator.damageDiscardPool(of: character).count >= 2 {
                 discardChoice
             }
         }
@@ -187,6 +187,7 @@ struct DamageChoiceSheet: View {
     private var discardChoice: some View {
         DiscardCardPicker(
             character: character,
+            cards: coordinator.damageDiscardPool(of: character),
             deckData: deckData,
             characterColor: Color(hex: character.color) ?? .blue,
             onConfirm: { indices in

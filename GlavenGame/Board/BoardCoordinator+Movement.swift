@@ -164,8 +164,10 @@ extension BoardCoordinator {
         noteGoalHexesEntered(by: pieceID, along: path)
         // Over the wall onto tiles laid out but not yet set up: their defenders appear.
         if isPlayerSide(pieceID) { setUpLaidOutRoomsEntered() }
-        // The acting character opened a door with movement to spare: the move isn't over.
-        if openedDoor, movementLeft > 0, style != .forced, case .character(let id) = pieceID,
+        // The acting character opened a door with movement to spare: the move isn't over. Nor is
+        // a move that must end where it began (Feedback Loop): it is made in legs, out and back.
+        let loops = activePlayerTurn?.movedThroughNeedsLoop == true && activePlayerTurn?.movedThroughConditions.isEmpty == false
+        if openedDoor || loops, movementLeft > 0, style != .forced, case .character(let id) = pieceID,
            activePlayerTurn?.characterID == id, isOnBoard(pieceID),
            !isConditionActive(.immobilize, on: pieceID), !isConditionActive(.stun, on: pieceID) {
             moveGoesOnPastDoor = true
@@ -200,7 +202,7 @@ extension BoardCoordinator {
         }
         if let turn = activePlayerTurn, case .character(let id) = pieceID, turn.characterID == id,
            style != .forced, !turn.movedThroughConditions.isEmpty {
-            if !turn.movedThroughNeedsLoop || path.first == path.last {
+            if !turn.movedThroughNeedsLoop || boardState.piecePositions[pieceID] == (turn.moveStartHex ?? path.first) {
                 for condition in turn.movedThroughConditions {
                     applyCondition(condition, toEnemiesOn: turn.hexesPassed, from: pieceID)
                 }

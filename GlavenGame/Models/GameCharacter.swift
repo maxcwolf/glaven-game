@@ -67,6 +67,9 @@ final class GameCharacter: Figure, Entity {
     var itemSlotsUsed: [String: Int] = [:]
     /// Charges marked on persistent bonuses in the active area (Warding Strength), by card.
     var bonusChargesUsed: [Int: Int] = [:]
+    /// Bonuses in play whose element was consumed as their card was played: Crackling Air's Air
+    /// gives +2 instead of +1 on all its attacks (FAQ).
+    var elementBonusesPaid: Set<Int> = []
 
     // Character sheet
     var notes: String = ""
@@ -105,6 +108,7 @@ final class GameCharacter: Figure, Entity {
     func removeFromActiveArea(_ cardId: Int) {
         activeCards.removeAll { $0 == cardId }
         bonusChargesUsed[cardId] = nil
+        elementBonusesPaid.remove(cardId)
         roundBonusCards.removeAll { $0 == cardId }
         bottomHalvesInPlay.removeAll { $0 == cardId }
         if lostWhenRemoved.contains(cardId) {

@@ -17,7 +17,7 @@ os.makedirs(SCR, exist_ok=True)
 FILTER=("AttackRuleTests|ConditionRuleTests|RoundRuleTests|LootRuleTests|MovementRuleTests|RevealRuleTests|ScenarioEndRuleTests|"
         "ScenarioLevelRuleTests|ForcedMovementTests|RB_|PlayLedgerTests|PlaythroughTests|RestRuleTests|BoardRulesRegressionTests|"
         "JumpFlyMovementTests|HealAndConsumeRuleTests|CombatEffectsTests|TurnFlowTests|E2E|AttackModifier|BoardSimulationTests|MonsterTurnRulesTests|ScenarioFinishEdgeCaseTests|DynamicObstacleTests|FeatureTests|EscortAITests|TeleportTests|HexCoordTests|"
-        "MoneyTokenTests|SetupRulesTests|ItemUseRuleTests|ChargedBonusTests|ActionPerformedTests|ScenarioEnforcedRuleTests|ScenarioReauditTests|ModifierDeckRoundEndTests|MoveThenAbilityTests")
+        "MoneyTokenTests|SetupRulesTests|StandeeLimitTests|TreasureReplayTests|ItemUseRuleTests|ChargedBonusTests|ActionPerformedTests|ScenarioEnforcedRuleTests|ScenarioReauditTests|ModifierDeckRoundEndTests|MoveThenAbilityTests")
 M={
  "poison0": ("GlavenGame/Engine/CombatResolver.swift", "        if isPoisoned {\n            attackValue += 1\n        }", "        if isPoisoned {\n            attackValue += 0\n        }"),
  "retaliateShielded": ("GlavenGame/Board/BoardCoordinator+Combat.swift", "            await sufferDamageWithMitigation(retaliate, to: attacker,", "            await sufferDamageWithMitigation(max(0, retaliate - self.shield(of: attacker)), to: attacker,"),
@@ -84,6 +84,29 @@ M={
  "areaLeftOutOfItsCondition": ("GlavenGame/Board/PlayerTurnController.swift", "            if step.type == .area,\n               let host = result.lastIndex(where: { $0.type != .concatenationSpacer }), result[host].type == .condition,", "            if false, step.type == .area,\n               let host = result.lastIndex(where: { $0.type != .concatenationSpacer }), result[host].type == .condition,"),
  "areaConditionOnOneEnemy": ("GlavenGame/Board/BoardCoordinator.swift", "                let cursed = inArea ?? [piece]", "                let cursed = inArea == nil ? [piece] : [piece]"),
  "wideDoorsOpenByHalves": ("GlavenGame/Engine/BoardBuilder.swift", "            for coord in doorHexes(ofTheDoorAt: door.coord, on: board) {", "            for coord in [door.coord] {"),
+ "anyElementNotPicked": ("GlavenGame/Board/PlayerTurnController.swift", "for element in (declinedConsumesStep == stepKey ? anyElementPicks[id] ?? [] : [])", "for element in ([] as [ElementType])"),
+ "liftAirCantBeKept": ("GlavenGame/Board/PlayerTurnController.swift", "if declinedConsume(Self.bonusConsumeIds + index) {", "if false {"),
+ "cracklingAirIgnoresItsToken": ("GlavenGame/Board/PlayerTurnController.swift", "bonusPerAttack = character.elementBonusesPaid.contains(crackling.cardId) ? upgraded : bonus", "bonusPerAttack = bonus"),
+ "cracklingAirNotPaidAsPlayed": ("GlavenGame/Board/PlayerTurnController.swift", "            payElementAsPlayed(action, coordinator: coordinator)\n", ""),
+ "cracklingAirKeptStillPaid": ("GlavenGame/Board/PlayerTurnController.swift", "        if declinedConsume(index) {\n", "        if false {\n"),
+ "cracklingAirTokenOutlivesTheCard": ("GlavenGame/Models/GameCharacter.swift", "        elementBonusesPaid.remove(cardId)\n", ""),
+ "cracklingAirTokenNotSaved": ("GlavenGame/Models/Snapshots/SnapshotConversions.swift", "        c.elementBonusesPaid = Set(elementBonusesPaid ?? [])\n", ""),
+ "areaPlacedForThePlayer": ("GlavenGame/Board/BoardCoordinator.swift", "        guard distinct.count > 1, !autoResolvePrompts else { return best }", "        guard false else { return best }"),
+ "areaChoicesRepeat": ("GlavenGame/Board/BoardCoordinator.swift", "for placement in all where !distinct.contains(where: { Set($0.targets) == Set(placement.targets) && covered($0) == covered(placement) }) {", "for placement in all {"),
+ "areaSuggestsTheFewest": ("GlavenGame/Board/BoardCoordinator.swift", "            best == nil || next.targets.count > best!.targets.count ? next : best }) else { return nil }", "            best == nil || next.targets.count < best!.targets.count ? next : best }) else { return nil }"),
+ "areaIgnoresTheChoice": ("GlavenGame/Board/BoardCoordinator.swift", "        return distinct[answer ?? suggested]", "        _ = answer; return distinct[suggested]"),
+ "cardsInPlayNeverLostForDamage": ("GlavenGame/Board/BoardCoordinator+Rules.swift", "        character.discardedCards + character.activeCards.filter { !character.lostWhenRemoved.contains($0) }", "        character.discardedCards"),
+ "lostCardsInPlayLostForDamage": ("GlavenGame/Board/BoardCoordinator+Rules.swift", "character.activeCards.filter { !character.lostWhenRemoved.contains($0) }", "character.activeCards"),
+ "cardInPlayStaysInPlay": ("GlavenGame/Board/BoardCoordinator+Rules.swift", "                    character.removeFromActiveArea(cardId)\n", ""),
+ "wardingMarkedBeforeTheChoice": ("GlavenGame/Board/BoardCoordinator+Combat.swift", "                armourUsed = []\n                wardUsed = nil\n            }\n        }", "                armourUsed = []\n            }\n        }"),
+ "coldFrontWithoutTheChoice": ("GlavenGame/Board/BoardCoordinator+Combat.swift", "                if await promptDamageMitigation(character: character, damage: result.damage, source: pieceLabel(attacker),\n                                                absorbedBy: name ?? \"A bonus in play\") {", "                if false {"),
+ "wardingNeverMarked": ("GlavenGame/Board/BoardCoordinator+Combat.swift", "            useCharge(wardUsed, of: character)\n", ""),
+ "armourBeforeTheChosenShield": ("GlavenGame/Board/BoardCoordinator+Combat.swift", "        // The other shields and armours are the player's to use or keep — asked first, since the", "        for item in DefenseItem.onDamage where result.damage > 0 && !negated && !preventedByCards && areEnemies(attacker, target)\n            && isChargedArmour(item, wornBy: target) { shield += item.shield; result = resolve(); useChargedArmour(item, wornBy: target) }\n        // The other shields and armours are the player's to use or keep — asked first, since the"),
+ "standeesSetUpInMapOrder": ("GlavenGame/Board/BoardCoordinator.swift", "                guard let origin, short.contains(monster.name) else { return open.first }", "                guard let origin, false else { return open.first }"),
+ "forcedMovesAsTheCrowFlies": ("GlavenGame/Board/BoardCoordinator.swift", "                return isPush ? there > here : there < here\n", "                return isPush ? step.distance(to: attackerPos) > hex.distance(to: attackerPos) : step.distance(to: attackerPos) < hex.distance(to: attackerPos)\n"),
+ "treasureFoundTwice": ("GlavenGame/Board/BoardCoordinator.swift", "        let objectives = placeRevealedObjectives()\n        clearTreasuresLootedBefore()\n", "        let objectives = placeRevealedObjectives()\n"),
+ "loopMoveInOneLeg": ("GlavenGame/Board/BoardCoordinator+Movement.swift", "        if openedDoor || loops, movementLeft > 0,", "        if openedDoor, movementLeft > 0,"),
+ "loopJudgedOnTheLastLeg": ("GlavenGame/Board/BoardCoordinator+Movement.swift", "boardState.piecePositions[pieceID] == (turn.moveStartHex ?? path.first)", "path.first == path.last"),
 }
 # Scenario rules (the mechanisms of placements/gh.json): run against the scenario tests.
 SCENARIO_FILTER=("ScenarioSpecialRuleTests|ScenarioReauditTests|ScenarioEnforcedRuleTests|ScenarioLockTests|ScenarioGoalTests|"

@@ -956,6 +956,7 @@ final class BoardCoordinator {
         placeRevealedMonsters(slots: holdBack(startingSlots), newEntities: unplacedMonsterEntities(),
                               playerCount: playerCount, useMapMonsters: !hasRoomData)
         placeRevealedObjectives()
+        clearTreasuresLootedBefore()
         updateLocks()
         updateItemBars()
 
@@ -2140,7 +2141,8 @@ final class BoardCoordinator {
             await self.moveAlong(pieceID, path: path, style: style, movementLeft: left, continuing: continuing)
             guard self.isCurrentBoard(generation) else { return }
             // The move may end early (a trap that immobilizes, or one that exhausts the figure).
-            if let end = self.boardState.piecePositions[pieceID] {
+            // (A move going on that stops where it is said nothing more.)
+            if let end = self.boardState.piecePositions[pieceID], !(continuing && path.count == 1) {
                 let steps = path.firstIndex(of: end) ?? path.count - 1
                 self.log("\(self.name(pieceID)) moves \(steps) hex\(steps == 1 ? "" : "es")", category: .move, trace: "to \(end)")
             }
@@ -2381,6 +2383,37 @@ final class BoardCoordinator {
         }
         return AoEResolver.resolveTargets(pattern: pattern, attackerPos: pos, focusTarget: primary,
                                           enemies: Array(enemies), board: boardState, range: range)
+    }
+
+    /// Where an area attack aimed at `primary` lies: the player chooses among the placements that
+    /// cover different figures (who is hit, and who else stands in it), the one hitting the most
+    /// suggested; with one such choice, or headless, that one.
+    @MainActor func placeArea(pattern: String, attacker: PieceID, primary: PieceID, range: Int) async -> AoEResolver.Placement? {
+        guard let pos = boardState.piecePositions[attacker] else { return nil }
+        let enemies = boardState.piecePositions.keys.sorted().filter { id in
+            id != attacker && areEnemies(attacker, id) && entity(for: id) != nil && !isConditionActive(.invisible, on: id)
+        }
+        let all = AoEResolver.placements(pattern: pattern, attackerPos: pos, focusTarget: primary,
+                                         enemies: Array(enemies), board: boardState, range: range)
+        func covered(_ placement: AoEResolver.Placement) -> [PieceID] {
+            placement.targetHexes.compactMap { boardState.piece(at: $0) }.filter { $0 != attacker }.sorted()
+        }
+        // One of each: by the enemies hit and the figures covered.
+        var distinct: [AoEResolver.Placement] = []
+        for placement in all where !distinct.contains(where: { Set($0.targets) == Set(placement.targets) && covered($0) == covered(placement) }) {
+            distinct.append(placement)
+        }
+        guard let best = distinct.reduce(nil as AoEResolver.Placement?, { best, next in
+            best == nil || next.targets.count > best!.targets.count ? next : best }) else { return nil }
+        guard distinct.count > 1, !autoResolvePrompts else { return best }
+        let labels = distinct.map { placement -> String in
+            let hit = placement.targets.map(name)
+            let others = covered(placement).filter { !placement.targets.contains($0) }.map(name)
+            return "Hits \(GameText.list(hit))" + (others.isEmpty ? "" : "; also covers \(GameText.list(others))")
+        }
+        let suggested = distinct.firstIndex(of: best) ?? 0
+        let answer = await chooseOption(labels, title: "Place the area", question: "Which way does the area lie?", suggested: suggested)
+        return distinct[answer ?? suggested]
     }
 
     /// The hexes an area attack aimed at `primary` covers.
@@ -2672,9 +2705,13 @@ final class BoardCoordinator {
         // Heaving Swing: "You may push the target into hexes containing obstacles."
         let intoObstacles = isPush && pushesIntoObstacles
         func next(_ hex: HexCoord) -> [HexCoord] {
-            // Never across a wall line between two tiles.
-            (isPush ? hex.pushCandidates(awayFrom: attackerPos) : hex.pullCandidates(toward: attackerPos))
-                .filter { !boardState.isWalled(hex, $0) }
+            // Further and nearer as range is counted, around walls (ATK-7); never across a
+            // wall line between two tiles.
+            let here = boardState.steps(from: hex, to: attackerPos)
+            return boardState.neighbors(of: hex).filter { step in
+                let there = boardState.steps(from: step, to: attackerPos)
+                return isPush ? there > here : there < here
+            }
         }
         let barred = boardState.barredHexes(for: target)
         func open(_ hex: HexCoord) -> Bool {
@@ -3016,9 +3053,15 @@ final class BoardCoordinator {
         // Everything not yet on the board goes into this room — including monsters of a room a
         // scenario rule opened before its door was reached.
         let hasRoomData = !(gameManager.game.scenario?.data.rooms ?? []).isEmpty
+        // Standees running short, those nearest the character who opened the door come first.
+        let opener = actingPiece.flatMap { piece -> HexCoord? in
+            if case .character = piece { return boardState.piecePositions[piece] }
+            return nil
+        } ?? door.coord
         let placed = placeRevealedMonsters(slots: holdBack(reveal.slots), newEntities: unplacedMonsterEntities(),
-                                           playerCount: playerCount, useMapMonsters: !hasRoomData)
+                                           playerCount: playerCount, useMapMonsters: !hasRoomData, nearestTo: opener)
         let objectives = placeRevealedObjectives()
+        clearTreasuresLootedBefore()
         readyNewMonsters(placed)
 
         // Draw the new room into the board as it stands (the grid offset stays put, so nothing
@@ -3048,6 +3091,16 @@ final class BoardCoordinator {
         sweepDeadFigures()
         // The room's own doors may be locked, and its pressure plates are now in sight.
         updateLocks()
+    }
+
+    /// MOV-10: a numbered treasure tile is looted once in a campaign. Played again, the scenario
+    /// has none where one was looted before.
+    func clearTreasuresLootedBefore() {
+        guard let scenarioManager = gameManager?.scenarioManager else { return }
+        for cell in boardState.cells.values.sorted(by: { $0.coord < $1.coord })
+        where cell.overlay == .treasure && cell.treasureID.flatMap(Int.init) != nil && scenarioManager.isTreasureLooted(cell.treasureID!) {
+            boardState.removeTreasure(at: cell.coord)
+        }
     }
 
     /// Reveal rooms opened by a scenario rule: through the door leading to the room's tile, or —
@@ -3159,7 +3212,8 @@ final class BoardCoordinator {
     /// monster list is used instead. Returns the pieces placed.
     @discardableResult
     func placeRevealedMonsters(slots: [MonsterSlot], newEntities: [(GameMonster, GameMonsterEntity)],
-                               playerCount: Int, useMapMonsters: Bool = false) -> [(name: String, standee: Int)] {
+                               playerCount: Int, useMapMonsters: Bool = false,
+                               nearestTo origin: HexCoord? = nil) -> [(name: String, standee: Int)] {
         guard gameManager != nil else { return [] }
         var placed: [(name: String, standee: Int)] = []
 
@@ -3184,9 +3238,17 @@ final class BoardCoordinator {
         }
         let anchor = slots.first?.coord ?? boardState.startingLocations.first ?? boardState.cells.keys.min()
 
+        // A type with fewer standees than places (SET-2): its places nearest the character who
+        // revealed the room are filled first, elites before normals (N11).
+        let short = Set(names.filter { name in
+            slots.filter { $0.name == name && $0.type(forPlayerCount: playerCount) != "none" }.count
+                > ordered.filter { $0.0.name == name }.count
+        })
         for (monster, entity) in ordered {
             func pick(_ predicate: (MonsterSlot) -> Bool) -> Int? {
-                slots.indices.first { !used.contains($0) && predicate(slots[$0]) }
+                let open = slots.indices.filter { !used.contains($0) && predicate(slots[$0]) }
+                guard let origin, short.contains(monster.name) else { return open.first }
+                return open.min { (boardState.steps(from: origin, to: slots[$0].coord), $0) < (boardState.steps(from: origin, to: slots[$1].coord), $1) }
             }
             let wanted = entity.type == .elite ? "elite" : "normal"
             let index = pick { $0.name == monster.name && $0.type(forPlayerCount: playerCount) == wanted }
@@ -3336,14 +3398,18 @@ final class BoardCoordinator {
                 let range = activePlayerTurn?.currentAttackRange() ?? 1
                 if let pattern = activePlayerTurn?.pendingAreaPattern, !addingTarget {
                     // Area attack: every enemy in the pattern is a separate attack.
-                    let targets = areaTargets(pattern: pattern, attacker: attackerID, primary: piece, range: range)
                     let ranged = !AoEResolver.isMeleePattern(pattern)
-                    let areaHexes = areaPlacementHexes(pattern: pattern, attacker: attackerID, primary: piece, range: range)
                     let areaTexts = activePlayerTurn?.attackTexts ?? []
                     interactionMode = .idle
-                    log("\(name(attackerID))\u{2019}s area attack hits \(targets.count) enem\(targets.count == 1 ? "y" : "ies")", category: .attack)
                     let turn = activePlayerTurn, generation = boardGeneration
                     Task { @MainActor in
+                        // The player places the area (ATK-10): of the ways it can lie over the
+                        // enemy tapped, those that cover different figures are offered.
+                        guard let placement = await self.placeArea(pattern: pattern, attacker: attackerID, primary: piece, range: range),
+                              self.isCurrentBoard(generation) else { return }
+                        let targets = placement.targets
+                        let areaHexes = Set(placement.targetHexes)
+                        self.log("\(self.name(attackerID))\u{2019}s area attack hits \(targets.count) enem\(targets.count == 1 ? "y" : "ies")", category: .attack)
                         for target in targets where self.isOnBoard(target) && self.isOnBoard(attackerID) {
                             guard self.isCurrentBoard(generation) else { return }
                             await self.resolvePlayerAttack(attacker: attackerID, target: target, attackValue: attackValue,

@@ -117,11 +117,27 @@ enum AoEResolver {
         board: BoardState,
         range: Int = 1
     ) -> Placement? {
-        guard let focusPos = board.piecePositions[focusTarget] else { return nil }
+        let all = placements(pattern: pattern, attackerPos: attackerPos, focusTarget: focusTarget,
+                             enemies: enemies, board: board, range: range)
+        // The first that hits the most.
+        return all.reduce(nil) { best, next in best == nil || next.targets.count > best!.targets.count ? next : best }
+    }
+
+    /// Every way the area can lie that covers `focusTarget`, in the order they are tried: each
+    /// rotation, and those of the mirror image (FAQ), with the enemies each hits (in sight).
+    static func placements(
+        pattern: String,
+        attackerPos: HexCoord,
+        focusTarget: PieceID,
+        enemies: [PieceID],
+        board: BoardState,
+        range: Int = 1
+    ) -> [Placement] {
+        guard let focusPos = board.piecePositions[focusTarget] else { return [] }
 
         let hexes = parsePattern(pattern)
         let targetOffsets = hexes.filter { $0.isTarget }.map { Cube($0.cubeX, $0.cubeY, $0.cubeZ) }
-        guard !targetOffsets.isEmpty else { return nil }
+        guard !targetOffsets.isEmpty else { return [] }
         let isMelee = hexes.contains { $0.isActive }
 
         // Enemy lookup by hex (summons may share a hex).
@@ -131,7 +147,7 @@ enum AoEResolver {
                 enemiesAt[pos, default: []].append(enemy)
             }
         }
-        guard enemiesAt[focusPos]?.contains(focusTarget) == true else { return nil }
+        guard enemiesAt[focusPos]?.contains(focusTarget) == true else { return [] }
 
         var losCache: [HexCoord: Bool] = [:]
         func inSight(_ hex: HexCoord) -> Bool {
@@ -141,7 +157,7 @@ enum AoEResolver {
             return result
         }
 
-        var best: Placement?
+        var all: [Placement] = []
         func consider(_ placementHexes: [HexCoord]) {
             var hit: [PieceID] = []
             for hex in placementHexes {
@@ -153,9 +169,7 @@ enum AoEResolver {
             guard let focusIdx = hit.firstIndex(of: focusTarget) else { return }
             hit.remove(at: focusIdx)
             hit.insert(focusTarget, at: 0)
-            if best == nil || hit.count > best!.targets.count {
-                best = Placement(targetHexes: placementHexes, targets: hit)
-            }
+            all.append(Placement(targetHexes: placementHexes, targets: hit))
         }
 
         if isMelee {
@@ -173,7 +187,7 @@ enum AoEResolver {
                         }
                     }
                 }
-                return best
+                return all
             }
             let origin = Cube(attackerPos)
             for offsets in [targetOffsets, targetOffsets.map(\.mirrored)] {
@@ -189,7 +203,7 @@ enum AoEResolver {
                 consider(placement)
             }
         }
-        return best
+        return all
     }
 
     /// All legal placements of a ranged pattern's red hexes that cover `hex`: every rotation,

@@ -165,6 +165,7 @@ extension GameCharacter {
         snapshot.questChoices = questChoices.isEmpty ? nil : questChoices
         snapshot.itemSlotsUsed = itemSlotsUsed.isEmpty ? nil : itemSlotsUsed
         snapshot.bonusChargesUsed = bonusChargesUsed.isEmpty ? nil : bonusChargesUsed
+        snapshot.elementBonusesPaid = elementBonusesPaid.isEmpty ? nil : elementBonusesPaid.sorted()
         snapshot.itemsLeftBehind = itemsLeftBehind.isEmpty ? nil : itemsLeftBehind
         snapshot.itemsBarred = itemsBarred ? true : nil
         snapshot.bottomHalvesInPlay = bottomHalvesInPlay.isEmpty ? nil : bottomHalvesInPlay
@@ -234,6 +235,7 @@ extension CharacterSnapshot {
         c.questChoices = questChoices ?? []
         c.itemSlotsUsed = itemSlotsUsed ?? [:]
         c.bonusChargesUsed = bonusChargesUsed ?? [:]
+        c.elementBonusesPaid = Set(elementBonusesPaid ?? [])
         c.itemsLeftBehind = itemsLeftBehind ?? []
         c.itemsBarred = itemsBarred ?? false
         if let chosenCards {
