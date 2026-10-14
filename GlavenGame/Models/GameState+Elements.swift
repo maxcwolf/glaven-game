@@ -65,6 +65,18 @@ extension GameState {
 
     /// Pick concrete elements for an augment: named elements first, then each "wild" takes a
     /// different remaining available element (strong before waning).
+    /// The elements a consume's "any element" would take, strong ones first, besides those it
+    /// names: what is consumed when the player doesn't choose.
+    func wildCandidates(besides named: [ElementType]) -> [ElementType] {
+        ElementType.gameElements
+            .filter { isElementAvailable($0) && !named.contains($0) }
+            .sorted { a, b in
+                let sa = elementBoard.first { $0.type == a }?.state == .strong
+                let sb = elementBoard.first { $0.type == b }?.state == .strong
+                return sa && !sb
+            }
+    }
+
     private func chooseElements(for types: [ElementType]) -> [ElementType]? {
         guard !types.isEmpty else { return nil }
         var chosen: [ElementType] = []
@@ -74,13 +86,7 @@ extension GameState {
         }
         let wildCount = types.filter { $0 == .wild }.count
         if wildCount > 0 {
-            let candidates = ElementType.gameElements
-                .filter { isElementAvailable($0) && !chosen.contains($0) }
-                .sorted { a, b in
-                    let sa = elementBoard.first { $0.type == a }?.state == .strong
-                    let sb = elementBoard.first { $0.type == b }?.state == .strong
-                    return sa && !sb
-                }
+            let candidates = wildCandidates(besides: chosen)
             guard candidates.count >= wildCount else { return nil }
             chosen.append(contentsOf: candidates.prefix(wildCount))
         }

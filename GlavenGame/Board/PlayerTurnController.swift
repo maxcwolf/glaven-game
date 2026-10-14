@@ -1038,33 +1038,122 @@ final class PlayerTurnController {
         let payable: Bool
         /// The player chose to keep the elements.
         let declined: Bool
+        /// For "any element": what it would take, one per slot, and what the player may pick from.
+        var anyElement: [ElementType] = []
+        var anyElementChoices: [ElementType] = []
     }
 
     /// Consume bonuses of the current step the player turned down, by `ConsumeOption.id`.
     private var declinedConsumes: Set<Int> = []
     /// The step those choices belong to; another step starts with every bonus taken.
     private var declinedConsumesStep: String = ""
+    /// The elements the player picked for a bonus's "any element", by `ConsumeOption.id`, for the
+    /// step `declinedConsumesStep`.
+    private var anyElementPicks: [Int: [ElementType]] = [:]
 
     private var stepKey: String { "\(phase)-\(currentActionIndex)" }
 
-    /// The element bonuses on `action`, whether each can be paid and whether it's turned down.
+    /// Ids of `ConsumeOption`s for an element an active bonus consumes by itself at an attack
+    /// (Nature's Lift, Foul Wind): after the step's own printed bonuses.
+    private static let bonusConsumeIds = 100
+
+    /// The element bonuses on `action`, whether each can be paid and whether it's turned down;
+    /// for an attack, the Air that Nature's Lift and Foul Wind would consume too.
     func consumeOptions(for action: ActionModel) -> [ConsumeOption] {
         guard let game = gameManager?.game else { return [] }
         let declined = declinedConsumesStep == stepKey ? declinedConsumes : []
-        return (action.subActions ?? []).filter(MonsterAbility.isConsume).enumerated().map { index, sub in
+        var options = (action.subActions ?? []).filter(MonsterAbility.isConsume).enumerated().map { index, sub in
             let elements = MonsterAbility.elements(of: sub)
-            let names = GameText.list(elements.map { $0 == .wild ? "any element" : GameText.elementName($0) })
+            let paying = payment(for: index, of: elements)
+            let names = GameText.list(elements.enumerated().map { slot, element in
+                guard element == .wild else { return GameText.elementName(element) }
+                let wilds = elements.prefix(slot).filter { $0 == .wild }.count
+                let named = elements.filter { $0 != .wild }.count
+                return paying.indices.contains(named + wilds) && paying[named + wilds] != .wild
+                    ? "any element (\(GameText.elementName(paying[named + wilds])))" : "any element"
+            })
             let reward = bonusWords(sub)
-            return ConsumeOption(id: index, elements: elements,
-                                 label: reward.isEmpty ? names : "\(names): \(reward)",
-                                 payable: game.canConsumeElements(elements), declined: declined.contains(index))
+            var option = ConsumeOption(id: index, elements: elements,
+                                       label: reward.isEmpty ? names : "\(names): \(reward)",
+                                       payable: game.canConsumeElements(elements), declined: declined.contains(index))
+            if elements.contains(.wild) {
+                let named = elements.filter { $0 != .wild }
+                option.anyElement = Array(paying.dropFirst(named.count)).filter { $0 != .wild }
+                option.anyElementChoices = game.wildCandidates(besides: named).sorted { $0.rawValue < $1.rawValue }
+            }
+            return option
         }
+        if action.type == .attack, let character, let coordinator {
+            let ranged = (action.subActions ?? []).contains { $0.type == .range && ($0.value?.intValue ?? 0) > 1 }
+            for (index, entry) in elementConsumingBonuses(of: character, coordinator: coordinator).enumerated() {
+                let id = Self.bonusConsumeIds + index
+                let (element, words, needsRange) = entry.what
+                options.append(ConsumeOption(id: id, elements: [element],
+                                             label: "\(GameText.elementName(element)): \(words) (\(entry.name))",
+                                             payable: game.isElementAvailable(element) && (!needsRange || ranged),
+                                             declined: declined.contains(id)))
+            }
+        }
+        return options
+    }
+
+    /// The active bonuses that consume an element by themselves at an attack, in order: Nature's
+    /// Lift (+2 Range on a ranged attack), Foul Wind (+1 Attack).
+    private func elementConsumingBonuses(of character: GameCharacter, coordinator: BoardCoordinator)
+        -> [(cardId: Int, name: String, what: (ElementType, String, Bool))] {
+        let deck = gameManager?.characterManager.abilities(for: character) ?? []
+        return coordinator.chargedBonuses(of: character).compactMap { cardId, bonus in
+            let name = deck.first { $0.cardId == cardId }?.name ?? "a bonus"
+            switch bonus {
+            case .consumeForRange(let element, let extra): return (cardId, name, (element, "+\(extra) Range", true))
+            case .consumeForAttack(let element, let extra): return (cardId, name, (element, "+\(extra) Attack", false))
+            default: return nil
+            }
+        }
+    }
+
+    /// What a consume of `elements` takes: its "any element" slots filled with the player's
+    /// picks where those are still there, else strong elements first. A slot nothing can fill
+    /// stays `.wild` (and the bonus can't be paid).
+    private func payment(for id: Int, of elements: [ElementType]) -> [ElementType] {
+        guard elements.contains(.wild), let game = gameManager?.game else { return elements }
+        let named = elements.filter { $0 != .wild }
+        let wilds = elements.count - named.count
+        var picks: [ElementType] = []
+        for element in (declinedConsumesStep == stepKey ? anyElementPicks[id] ?? [] : [])
+        where game.isElementAvailable(element) && !named.contains(element) && !picks.contains(element) && picks.count < wilds {
+            picks.append(element)
+        }
+        for element in game.wildCandidates(besides: named + picks) where picks.count < wilds { picks.append(element) }
+        return named + picks + Array(repeating: .wild, count: wilds - picks.count)
+    }
+
+    /// The player picks the element a bonus's "any element" takes (its `slot`th, for one that
+    /// names two).
+    func pickAnyElement(_ id: Int, slot: Int = 0, _ element: ElementType) {
+        if declinedConsumesStep != stepKey {
+            declinedConsumes = []
+            anyElementPicks = [:]
+            declinedConsumesStep = stepKey
+        }
+        let step = currentSteps.indices.contains(currentActionIndex) ? currentSteps[currentActionIndex] : ActionModel(type: .attack)
+        let elements = consumeOptions(for: step).first { $0.id == id }?.anyElement ?? []
+        var picks = anyElementPicks[id] ?? elements
+        while picks.count <= slot { picks.append(element) }
+        picks[slot] = element
+        anyElementPicks[id] = picks
+    }
+
+    /// Whether the player turned down the element of `ConsumeOption` `id` at this step.
+    private func declinedConsume(_ id: Int) -> Bool {
+        declinedConsumesStep == stepKey && declinedConsumes.contains(id)
     }
 
     /// Take or turn down one of the current step's element bonuses.
     func toggleConsume(_ id: Int) {
         if declinedConsumesStep != stepKey {
             declinedConsumes = []
+            anyElementPicks = [:]
             declinedConsumesStep = stepKey
         }
         if declinedConsumes.contains(id) { declinedConsumes.remove(id) } else { declinedConsumes.insert(id) }
@@ -1102,7 +1191,7 @@ final class PlayerTurnController {
                 coordinator?.log("\(who) keeps \(GameText.list(MonsterAbility.elements(of: sub).map(GameText.elementName)))", category: .element)
                 continue
             }
-            let elements = MonsterAbility.elements(of: sub)
+            let elements = payment(for: index, of: MonsterAbility.elements(of: sub))
             guard let used = game.consumeElements(elements) else { continue }
             coordinator?.log("\(who) consumes \(GameText.list(used.map(GameText.elementName)))", category: .element)
             notePaidConsume(sub)
@@ -1119,6 +1208,26 @@ final class PlayerTurnController {
             }
         }
         return bonus
+    }
+
+    /// Crackling Air: "Air: add +2 Attack instead" is paid once, as the card is played, and the
+    /// card remembers it for all four attacks (FAQ) — unless the player keeps the Air.
+    private func payElementAsPlayed(_ action: ActionModel, coordinator: BoardCoordinator) {
+        guard let character, let card = currentCard, let cardId = card.cardId,
+              case .attackBonusOrElement(_, let element, _)? = ChargedBonus.bonus(edition: character.edition, card: card,
+                                                                                                    top: phase == .executeTopAction),
+              let index = (action.subActions ?? []).filter(MonsterAbility.isConsume).firstIndex(where: {
+                  MonsterAbility.elements(of: $0) == [element] }),
+              let game = gameManager?.game else { return }
+        character.elementBonusesPaid.remove(cardId)
+        guard game.isElementAvailable(element) else { return }
+        if declinedConsume(index) {
+            coordinator.log("\(who) keeps \(GameText.elementName(element))", category: .element)
+            return
+        }
+        _ = game.consumeElements([element])
+        character.elementBonusesPaid.insert(cardId)
+        coordinator.log("\(who) consumes \(GameText.elementName(element)) for \(card.name ?? "the card")\u{2019}s attacks", category: .element)
     }
 
     /// Experience printed in a bonus (e.g. "card experience:1" inside a consume augment).
@@ -1305,33 +1414,35 @@ final class PlayerTurnController {
             // Crackling Air: "on your next four attacks" — what it adds is settled for the action
             // (Air consumed: +2), and a charge is marked with each attack then made, one for
             // every target (`attackValueWithBonuses`).
-            if let character, case .attackBonusOrElement(let bonus, let element, let upgraded)? = coordinator
-                .chargedBonuses(of: character).lazy.map(\.bonus).first(where: {
-                    if case .attackBonusOrElement = $0 { return true }; return false }) {
-                if let game = gameManager?.game, game.consumeElements([element]) != nil {
-                    coordinator.log("\(who) consumes \(GameText.elementName(element))", category: .element)
-                    bonusPerAttack = upgraded
-                } else {
-                    bonusPerAttack = bonus
-                }
+            // (Its Air was consumed, or not, as the card was played: FAQ.)
+            if let character, let crackling = coordinator.chargedBonuses(of: character).first(where: {
+                if case .attackBonusOrElement = $0.bonus { return true }; return false }),
+               case .attackBonusOrElement(let bonus, _, let upgraded) = crackling.bonus {
+                bonusPerAttack = character.elementBonusesPaid.contains(crackling.cardId) ? upgraded : bonus
             }
-            // Nature's Lift (+2 Range on a ranged attack), Foul Wind (+1 Attack): consume Air.
+            // Nature's Lift (+2 Range on a ranged attack), Foul Wind (+1 Attack): consume Air,
+            // unless the player keeps it.
             if let game = gameManager?.game, let character {
-                for (cardId, bonus) in coordinator.chargedBonuses(of: character) {
-                    switch bonus {
-                    case .consumeForRange(let element, let extra) where range > 1 && game.isElementAvailable(element):
-                        _ = game.consumeElements([element])
-                        range += extra
-                        coordinator.log("\(who) consumes \(GameText.elementName(element)): +\(extra) Range", category: .element)
-                        coordinator.useCharge(cardId, of: character)
-                    case .consumeForAttack(let element, let extra) where game.isElementAvailable(element):
-                        _ = game.consumeElements([element])
-                        pendingAttackValue += extra
-                        coordinator.log("\(who) consumes \(GameText.elementName(element)): +\(extra) Attack", category: .element)
-                        coordinator.useCharge(cardId, of: character)
-                    default:
+                for (index, entry) in elementConsumingBonuses(of: character, coordinator: coordinator).enumerated() {
+                    let (element, _, needsRange) = entry.what
+                    guard game.isElementAvailable(element), !needsRange || range > 1 else { continue }
+                    if declinedConsume(Self.bonusConsumeIds + index) {
+                        coordinator.log("\(who) keeps \(GameText.elementName(element)) (\(entry.name))", category: .element)
                         continue
                     }
+                    guard let bonus = coordinator.chargedBonuses(of: character).first(where: { $0.cardId == entry.cardId })?.bonus else { continue }
+                    _ = game.consumeElements([element])
+                    switch bonus {
+                    case .consumeForRange(_, let extra):
+                        range += extra
+                        coordinator.log("\(who) consumes \(GameText.elementName(element)): +\(extra) Range", category: .element)
+                    case .consumeForAttack(_, let extra):
+                        pendingAttackValue += extra
+                        coordinator.log("\(who) consumes \(GameText.elementName(element)): +\(extra) Attack", category: .element)
+                    default:
+                        break
+                    }
+                    coordinator.useCharge(entry.cardId, of: character)
                 }
                 pendingAttackRange = range
             }
@@ -1534,6 +1645,7 @@ final class PlayerTurnController {
             return offerCurseForTargets(action, coordinator: coordinator)
 
         case .custom:
+            payElementAsPlayed(action, coordinator: coordinator)
             return performPrintedText(action, coordinator: coordinator)
 
         case .experience:

@@ -84,6 +84,13 @@ M={
  "areaLeftOutOfItsCondition": ("GlavenGame/Board/PlayerTurnController.swift", "            if step.type == .area,\n               let host = result.lastIndex(where: { $0.type != .concatenationSpacer }), result[host].type == .condition,", "            if false, step.type == .area,\n               let host = result.lastIndex(where: { $0.type != .concatenationSpacer }), result[host].type == .condition,"),
  "areaConditionOnOneEnemy": ("GlavenGame/Board/BoardCoordinator.swift", "                let cursed = inArea ?? [piece]", "                let cursed = inArea == nil ? [piece] : [piece]"),
  "wideDoorsOpenByHalves": ("GlavenGame/Engine/BoardBuilder.swift", "            for coord in doorHexes(ofTheDoorAt: door.coord, on: board) {", "            for coord in [door.coord] {"),
+ "anyElementNotPicked": ("GlavenGame/Board/PlayerTurnController.swift", "for element in (declinedConsumesStep == stepKey ? anyElementPicks[id] ?? [] : [])", "for element in ([] as [ElementType])"),
+ "liftAirCantBeKept": ("GlavenGame/Board/PlayerTurnController.swift", "if declinedConsume(Self.bonusConsumeIds + index) {", "if false {"),
+ "cracklingAirIgnoresItsToken": ("GlavenGame/Board/PlayerTurnController.swift", "bonusPerAttack = character.elementBonusesPaid.contains(crackling.cardId) ? upgraded : bonus", "bonusPerAttack = bonus"),
+ "cracklingAirNotPaidAsPlayed": ("GlavenGame/Board/PlayerTurnController.swift", "            payElementAsPlayed(action, coordinator: coordinator)\n", ""),
+ "cracklingAirKeptStillPaid": ("GlavenGame/Board/PlayerTurnController.swift", "        if declinedConsume(index) {\n", "        if false {\n"),
+ "cracklingAirTokenOutlivesTheCard": ("GlavenGame/Models/GameCharacter.swift", "        elementBonusesPaid.remove(cardId)\n", ""),
+ "cracklingAirTokenNotSaved": ("GlavenGame/Models/Snapshots/SnapshotConversions.swift", "        c.elementBonusesPaid = Set(elementBonusesPaid ?? [])\n", ""),
 }
 # Scenario rules (the mechanisms of placements/gh.json): run against the scenario tests.
 SCENARIO_FILTER=("ScenarioSpecialRuleTests|ScenarioReauditTests|ScenarioEnforcedRuleTests|ScenarioLockTests|ScenarioGoalTests|"

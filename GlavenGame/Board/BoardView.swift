@@ -514,6 +514,20 @@ struct BoardView: View {
                             .buttonStyle(option.declined ? .boardQuietCompact : .boardPrimaryCompact)
                             .accessibilityLabel(option.declined ? "Consume for \(option.label): off" : "Consume for \(option.label): on")
                             .help("Tap to keep the element for an ally instead")
+                            // "Any element": which one it takes.
+                            if !option.declined, option.anyElementChoices.count > 1 {
+                                ForEach(Array(option.anyElement.enumerated()), id: \.offset) { slot, current in
+                                    Menu {
+                                        ForEach(option.anyElementChoices, id: \.self) { element in
+                                            Button(GameText.elementName(element)) { playerTurn.pickAnyElement(option.id, slot: slot, element) }
+                                        }
+                                    } label: {
+                                        Label("Consume \(GameText.elementName(current))", systemImage: "arrow.triangle.2.circlepath")
+                                    }
+                                    .buttonStyle(.boardQuietCompact)
+                                    .accessibilityLabel("Element consumed: \(GameText.elementName(current)). Choose another")
+                                }
+                            }
                         }
                     }
                 } else {

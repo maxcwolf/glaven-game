@@ -295,16 +295,18 @@ final class ChargedBonusTests: XCTestCase {
 
     /// Crackling Air: "On your next four attacks, add +1 Attack. Air: add +2 instead." Its
     /// charges count attacks, not Attack actions: Fire Orbs (Attack 3, Range 3, Target 3) on
-    /// three enemies is three attacks, each +2 with Air consumed, and marks three charges.
+    /// three enemies is three attacks, each +2 with the Air paid as the card was played, and
+    /// marks three charges. Air on the board now isn't touched (FAQ: it was consumed once).
     func testCracklingAirMarksAChargeForEachAttack() async throws {
         let spellweaver = add("spellweaver", at: HexCoord(3, 3))
         spellweaver.activeCards = [69]
+        spellweaver.elementBonusesPaid = [69]
         plainDeck(for: spellweaver)
         let bandits = try [HexCoord(5, 3), HexCoord(5, 4), HexCoord(5, 2)].map { try bandit(at: $0) }
         gm.game.elementBoard[gm.game.elementBoard.firstIndex { $0.type == .air }!].state = .strong
         let turn = try startTurn(spellweaver, top: 61, bottom: 66)   // Fire Orbs; Frost Armor
         turn.executeCurrentAction()
-        XCTAssertFalse(gm.game.isElementAvailable(.air), "Air is consumed for +2")
+        XCTAssertTrue(gm.game.isElementAvailable(.air), "the Air was paid once, as the card was played")
         XCTAssertNil(spellweaver.bonusChargesUsed[69], "no attack made yet: no charge marked")
         guard case .selectingMultiAttackTargets = coord.interactionMode else { return XCTFail("three targets to choose") }
         for piece in bandits { coord.handlePieceTap(piece) }
@@ -312,6 +314,47 @@ final class ChargedBonusTests: XCTestCase {
         XCTAssertTrue(done)
         for piece in bandits { XCTAssertEqual(coord.entity(for: piece)?.health, 50 - 5, "Attack 3 +2") }
         XCTAssertEqual(spellweaver.bonusChargesUsed[69], 3, "three attacks, three charges")
+    }
+
+    /// FAQ: Crackling Air's Air is consumed once, as the card is played, and the card remembers
+    /// it for all four attacks — unless the player keeps the Air; then it is +1 each, whatever
+    /// Air there is later.
+    func testCracklingAirsAirIsPaidAsTheCardIsPlayed() async throws {
+        try await playCracklingAir(keepingTheAir: false)
+    }
+
+    func testCracklingAirWithTheAirKeptIsPlusOne() async throws {
+        try await playCracklingAir(keepingTheAir: true)
+    }
+
+    private func playCracklingAir(keepingTheAir keeping: Bool) async throws {
+        let spellweaver = add("spellweaver", at: HexCoord(3, 3))
+        plainDeck(for: spellweaver)
+        gm.game.elementBoard[gm.game.elementBoard.firstIndex { $0.type == .air }!].state = .strong
+        let turn = try startTurn(spellweaver, top: 69, bottom: 66)   // Crackling Air; Frost Armor
+        let step = try XCTUnwrap(turn.currentSteps.first)
+        let option = try XCTUnwrap(turn.consumeOptions(for: step).first, "Air: +2 instead is offered")
+        XCTAssertTrue(option.payable)
+        if keeping { turn.toggleConsume(option.id) }
+        turn.executeCurrentAction()
+        XCTAssertEqual(gm.game.isElementAvailable(.air), keeping, keeping ? "kept" : "consumed as it is played")
+        XCTAssertEqual(spellweaver.elementBonusesPaid.contains(69), !keeping)
+        coord.activePlayerTurn = nil
+        spellweaver.activeCards = [69]
+        gm.game.elementBoard[gm.game.elementBoard.firstIndex { $0.type == .air }!].state = .strong
+        let target = try bandit(at: HexCoord(5, 3))
+        let attack = try startTurn(spellweaver, top: 61, bottom: 66)   // Fire Orbs
+        attack.executeCurrentAction()
+        coord.handlePieceTap(target)
+        _ = await waitUntil { !attack.isWaiting }
+        XCTAssertEqual(coord.entity(for: target)?.health, 50 - 3 - (keeping ? 1 : 2), keeping ? "+1" : "+2")
+        XCTAssertTrue(gm.game.isElementAvailable(.air), "no Air taken at the attack")
+        // The token on the card is kept in a save, and goes with the card when it leaves play.
+        let data = try JSONEncoder().encode(spellweaver.toSnapshot())
+        let restored = try JSONDecoder().decode(CharacterSnapshot.self, from: data).toRuntime(editionStore: gm.editionStore)
+        XCTAssertEqual(restored.elementBonusesPaid.contains(69), !keeping)
+        spellweaver.removeFromActiveArea(69)
+        XCTAssertTrue(spellweaver.elementBonusesPaid.isEmpty)
     }
 
     /// The fourth attack takes the last charge: with one left, only the first target of two
@@ -445,6 +488,41 @@ final class ChargedBonusTests: XCTestCase {
         XCTAssertEqual(next.currentAttackRange(), 5)
         XCTAssertFalse(gm.game.isElementAvailable(.air))
         XCTAssertEqual(cragheart.bonusChargesUsed[129], 1)
+
+        // The Air may be kept for an ally: the attack is offered it, and turned down, no lift.
+        gm.game.elementBoard[gm.game.elementBoard.firstIndex { $0.type == .air }!].state = .strong
+        let kept = PlayerTurnController(characterID: cragheart.id, coordinator: coord, gameManager: gm)
+        coord.activePlayerTurn = kept
+        kept.selectCards(top: boulder, bottom: other)
+        let step = try XCTUnwrap(kept.currentSteps.first { $0.type == .attack })
+        let option = try XCTUnwrap(kept.consumeOptions(for: step).first { $0.label.contains("Nature") }, "the lift is offered")
+        XCTAssertTrue(option.payable)
+        kept.toggleConsume(option.id)
+        kept.executeCurrentAction()
+        XCTAssertEqual(kept.currentAttackRange(), 3, "kept: no lift")
+        XCTAssertTrue(gm.game.isElementAvailable(.air))
+        XCTAssertEqual(cragheart.bonusChargesUsed[129], 1, "no charge marked")
+    }
+
+    /// "Any element": the player picks which element it takes; without a pick, a strong one first.
+    func testAnyElementIsThePlayersChoice() throws {
+        let spellweaver = add("spellweaver", at: HexCoord(3, 3))
+        plainDeck(for: spellweaver)
+        _ = try bandit(at: HexCoord(5, 3))
+        let board = gm.game.elementBoard
+        gm.game.elementBoard[board.firstIndex { $0.type == .fire }!].state = .strong
+        gm.game.elementBoard[board.firstIndex { $0.type == .ice }!].state = .waning
+        let turn = try startTurn(spellweaver, top: 65, bottom: 66)   // Mana Bolt: any element, +1 Attack
+        let step = try XCTUnwrap(turn.currentSteps.first { $0.type == .attack })
+        let option = try XCTUnwrap(turn.consumeOptions(for: step).first)
+        XCTAssertEqual(option.anyElement, [.fire], "a strong one first")
+        XCTAssertEqual(Set(option.anyElementChoices), [.fire, .ice])
+        XCTAssertTrue(option.label.contains("Fire"), option.label)
+        turn.pickAnyElement(option.id, .ice)
+        XCTAssertEqual(turn.consumeOptions(for: step).first?.anyElement, [.ice])
+        turn.executeCurrentAction()
+        XCTAssertFalse(gm.game.isElementAvailable(.ice), "Ice taken, as picked")
+        XCTAssertTrue(gm.game.isElementAvailable(.fire), "Fire left")
     }
 
     func testUnendingChantDoublesCurses() async throws {
