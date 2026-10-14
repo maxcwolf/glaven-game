@@ -18,6 +18,38 @@ final class EventCardManager {
         var discards: [String: [Int]] = [:]
         /// Who takes an effect meant for one character (default the first in the party).
         var oneCharacter: String?
+        /// Character id → their share of the outcome's collective gold, and what each pays of
+        /// a collective cost (CMP-8, FAQ: "distributed among all characters however they
+        /// choose"). Ignored unless they add up; then the gold is shared out evenly, or taken from
+        /// whoever has most.
+        var goldShares: [String: Int] = [:]
+        var goldPaid: [String: Int] = [:]
+    }
+
+    /// The collective gold an outcome gives, and the collective gold it costs (its condition's
+    /// price and its "lose collective gold" effects), for the players to split.
+    func collectiveGold(in outcome: EventOutcome) -> (gained: Int, paid: Int) {
+        var gained = 0, paid = 0
+        switch outcome.condition?.type {
+        case "payCollectiveGold": paid += (outcome.condition?.values ?? []).first?.intValue ?? 0
+        case "payCollectiveGoldConditional": paid += outcome.condition.flatMap(conditionalPrice) ?? 0
+        default: break
+        }
+        for effect in outcome.effects ?? [] where holds(effect.condition) {
+            let amount = (effect.values ?? []).first?.intValue ?? 0
+            switch effect.type {
+            case "collectiveGold", "collectiveGoldAdditional": gained += amount
+            case "loseCollectiveGold": paid += amount
+            default: break
+            }
+        }
+        return (gained, min(paid, totalGold))
+    }
+
+    /// Whether the players' split of a cost is one they can pay: each within their own gold.
+    func canPay(_ shares: [String: Int], total: Int) -> Bool {
+        shares.values.reduce(0, +) == total
+            && party.allSatisfy { (shares[$0.id] ?? 0) <= $0.loot && (shares[$0.id] ?? 0) >= 0 }
     }
 
     /// What an option led to: the outcome's text and its effects in words.
@@ -27,6 +59,10 @@ final class EventCardManager {
     }
 
     private let game: GameState
+    /// The players' split of the outcome being resolved (`Choices.goldShares`, `goldPaid`); an
+    /// empty one once applied.
+    private var sharing: [String: Int]?
+    private var paying: [String: Int]?
     private let editionStore: EditionDataStore
     private let scenarioManager: ScenarioManager
     private let itemManager: ItemManager
@@ -167,6 +203,11 @@ final class EventCardManager {
         var lines: [String] = []
         var narrative = outcome.narrative ?? ""
         var chooseIndex = 0
+        // The players settle the collective cost between them, where they did.
+        let collective = collectiveGold(in: outcome)
+        paying = !choices.goldPaid.isEmpty && canPay(choices.goldPaid, total: collective.paid) ? choices.goldPaid : nil
+        sharing = !choices.goldShares.isEmpty && choices.goldShares.values.reduce(0, +) == collective.gained ? choices.goldShares : nil
+        defer { paying = nil; sharing = nil }
         pay(outcome.condition, lines: &lines)
 
         // "outcome A": the outcome of another option applies instead.
@@ -251,8 +292,14 @@ final class EventCardManager {
             for character in party { character.experience += amount }
             lines.append("Each character gains \(amount) experience.")
         case "collectiveGold", "collectiveGoldAdditional":
-            let shares = scenarioManager.collectiveGoldShares(total: amount)
-            for character in party { character.loot += shares[character.id] ?? 0 }
+            // As the players shared it (once, for every collective gain of the outcome), else evenly.
+            if let chosen = sharing {
+                for character in party { character.loot += chosen[character.id] ?? 0 }
+                sharing = [:]
+            } else if sharing == nil {
+                let shares = scenarioManager.collectiveGoldShares(total: amount)
+                for character in party { character.loot += shares[character.id] ?? 0 }
+            }
             lines.append("The party gains \(amount) gold, shared out.")
         case "loseCollectiveGold":
             takeCollectiveGold(amount, lines: &lines)
@@ -355,6 +402,13 @@ final class EventCardManager {
     /// Take gold from the party one coin at a time from whoever has most (the players can settle
     /// it differently between themselves; the total is what the rules ask).
     private func takeCollectiveGold(_ amount: Int, lines: inout [String]) {
+        // As the players settled it (once, for the whole cost of the outcome).
+        if let chosen = paying {
+            for character in party { character.loot = max(0, character.loot - (chosen[character.id] ?? 0)) }
+            paying = [:]
+            lines.append("The party pays \(amount) gold.")
+            return
+        }
         var left = min(amount, totalGold)
         while left > 0, let richest = party.max(by: { $0.loot < $1.loot }), richest.loot > 0 {
             richest.loot -= 1

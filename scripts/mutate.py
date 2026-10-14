@@ -17,7 +17,7 @@ os.makedirs(SCR, exist_ok=True)
 FILTER=("AttackRuleTests|ConditionRuleTests|RoundRuleTests|LootRuleTests|MovementRuleTests|RevealRuleTests|ScenarioEndRuleTests|"
         "ScenarioLevelRuleTests|ForcedMovementTests|RB_|PlayLedgerTests|PlaythroughTests|RestRuleTests|BoardRulesRegressionTests|"
         "JumpFlyMovementTests|HealAndConsumeRuleTests|CombatEffectsTests|TurnFlowTests|E2E|AttackModifier|BoardSimulationTests|MonsterTurnRulesTests|ScenarioFinishEdgeCaseTests|DynamicObstacleTests|FeatureTests|EscortAITests|TeleportTests|HexCoordTests|"
-        "MoneyTokenTests|SetupRulesTests|StandeeLimitTests|TreasureReplayTests|CompanionTests|NestedAbilityCardTests|ItemUseRuleTests|ChargedBonusTests|ActionPerformedTests|ScenarioEnforcedRuleTests|ScenarioReauditTests|ModifierDeckRoundEndTests|MoveThenAbilityTests")
+        "MoneyTokenTests|SetupRulesTests|StandeeLimitTests|TreasureReplayTests|CompanionTests|NestedAbilityCardTests|CollectiveGoldTests|ItemUseRuleTests|ChargedBonusTests|ActionPerformedTests|ScenarioEnforcedRuleTests|ScenarioReauditTests|ModifierDeckRoundEndTests|MoveThenAbilityTests")
 M={
  "poison0": ("GlavenGame/Engine/CombatResolver.swift", "        if isPoisoned {\n            attackValue += 1\n        }", "        if isPoisoned {\n            attackValue += 0\n        }"),
  "retaliateShielded": ("GlavenGame/Board/BoardCoordinator+Combat.swift", "            await sufferDamageWithMitigation(retaliate, to: attacker,", "            await sufferDamageWithMitigation(max(0, retaliate - self.shield(of: attacker)), to: attacker,"),
@@ -126,6 +126,9 @@ M={
  "impendingEndKillsNoOne": ("GlavenGame/Board/BoardCoordinator.swift", "        if let text = turn?.attackTexts.first(where: { $0.contains(\"kill the target\") }), isOnBoard(target),", "        if false, let text = turn?.attackTexts.first(where: { $0.contains(\"kill the target\") }), isOnBoard(target),"),
  "darkenedSkiesOneTarget": ("GlavenGame/Board/PlayerTurnController.swift", "            result[index].subActions = (result[index].subActions ?? []) + [ActionModel(type: .specialTarget, value: .string(\"enemiesRange:\\(reach)\"))]\n", ""),
  "darkenedSkiesNoExperience": ("GlavenGame/Board/PlayerTurnController.swift", "            if xp > 0 { grantExperience(xp) }\n", ""),
+ "collectiveGoldSharedEvenly": ("GlavenGame/Managers/EventCardManager.swift", "        sharing = !choices.goldShares.isEmpty && choices.goldShares.values.reduce(0, +) == collective.gained ? choices.goldShares : nil", "        sharing = nil"),
+ "collectiveCostFromTheRichest": ("GlavenGame/Managers/EventCardManager.swift", "        paying = !choices.goldPaid.isEmpty && canPay(choices.goldPaid, total: collective.paid) ? choices.goldPaid : nil", "        paying = nil"),
+ "collectiveCostBeyondMeans": ("GlavenGame/Managers/EventCardManager.swift", "            && party.allSatisfy { (shares[$0.id] ?? 0) <= $0.loot && (shares[$0.id] ?? 0) >= 0 }", "            && true"),
 }
 # Scenario rules (the mechanisms of placements/gh.json): run against the scenario tests.
 SCENARIO_FILTER=("ScenarioSpecialRuleTests|ScenarioReauditTests|ScenarioEnforcedRuleTests|ScenarioLockTests|ScenarioGoalTests|"
