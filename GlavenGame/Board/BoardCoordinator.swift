@@ -2902,7 +2902,9 @@ final class BoardCoordinator {
     /// treasure index. Summons and monsters never loot this way.
     /// `byLootAction`: a Loot ability is doing the looting — in some scenarios the only way
     /// to pick up the goal treasure.
-    func lootHexes(for pieceID: PieceID, coords: [HexCoord], byLootAction: Bool = false) {
+    func lootHexes(for looter: PieceID, coords: [HexCoord], byLootAction: Bool = false) {
+        // What a summon loots (the Beast Tyrant's bear, by a Command) is its master's.
+        let pieceID = summonOwner(of: looter).map { PieceID.character($0.id) } ?? looter
         guard case .character(let charID) = pieceID,
               let gameManager = gameManager,
               let character = gameManager.game.characters.first(where: { $0.id == charID }) else { return }

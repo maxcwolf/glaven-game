@@ -115,6 +115,7 @@ M={
  "tyrantsItemsOnTheBear": ("GlavenGame/Board/PlayerTurnController.swift", "            if range <= 1, bonusesApply {", "            if range <= 1 {"),
  "ownStrengthenOnTheTarget": ("GlavenGame/Board/PlayerTurnController.swift", "                case .condition where hasSpecialTargetSelf(sub):\n", "                case .condition where false:\n"),
  "ownStrengthenBeforeTheAttack": ("GlavenGame/Board/PlayerTurnController.swift", "                conditionsAfterAttack += ownConditions.map { (pieceID, $0) }", "                for c in ownConditions { coordinator.applyCondition(c, to: pieceID) }"),
+ "bearLootsForNoOne": ("GlavenGame/Board/BoardCoordinator.swift", "        let pieceID = summonOwner(of: looter).map { PieceID.character($0.id) } ?? looter\n", "        let pieceID = looter\n"),
 }
 # Scenario rules (the mechanisms of placements/gh.json): run against the scenario tests.
 SCENARIO_FILTER=("ScenarioSpecialRuleTests|ScenarioReauditTests|ScenarioEnforcedRuleTests|ScenarioLockTests|ScenarioGoalTests|"

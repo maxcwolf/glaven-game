@@ -148,6 +148,23 @@ final class CompanionTests: XCTestCase {
         XCTAssertEqual(tyrant(sim).health, tyrant(sim).maxHealth - 2, "not the Tyrant")
     }
 
+    /// "Command: Loot 1" (Soaring Ally): the bear loots, beside itself, and the money is the Tyrant's.
+    func testWhatTheBearLootsIsTheTyrants() throws {
+        let sim = try simulator()
+        let coord = sim.coord
+        let (turn, bear, foe) = try stage(sim, top: "Venomous Ally", bottom: "Soaring Ally")
+        coord.boardState.removePiece(foe)
+        let board = coord.boardState
+        let me = try XCTUnwrap(board.piecePositions[.character(tyrant(sim).id)])
+        let spot = try XCTUnwrap(board.neighbors(of: try XCTUnwrap(board.piecePositions[bear])).sorted().first {
+            coord.isEmptyHex($0) && !board.areAdjacent($0, me) && $0 != me })
+        board.placeLoot(at: spot)
+        let gold = tyrant(sim).loot
+        turn.executeCurrentAction()
+        XCTAssertNil(board.lootTokens[spot], "taken")
+        XCTAssertGreaterThan(tyrant(sim).loot, gold, "the Tyrant's")
+    }
+
     /// With the bear gone, a Command does nothing: no attack, and the half isn't performed.
     func testACommandWithTheBearGoneDoesNothing() throws {
         let sim = try simulator()
