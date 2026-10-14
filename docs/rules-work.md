@@ -19,10 +19,11 @@ question, how a piece of work is done from start to finish, and what to do next.
   random dungeon mode was built ([random-dungeons.md](random-dungeons.md)) but has its goal and
   some penalties still to come. Every rule has a row in
   [scenario-book/rules-audit.md](scenario-book/rules-audit.md).
-- Last verified 2026-10-14: 1,688 tests pass; the all-scenarios playthrough runs every scenario
-  with four seeds (376 runs) without a rule violation; the scripted "veteran" parties win 53 and
+- Last verified 2026-10-14 (with random dungeons): 1,704 tests pass; the all-scenarios
+  playthrough runs every scenario and a random dungeon with four seeds (380 runs) without a rule
+  violation; the scripted "veteran" parties win 53 and
   58 of the 94 playable scenarios (those they never win are mostly goals they don't play for);
-  `scripts/mutate.py`'s 401 mutations are each noticed by a test.
+  `scripts/mutate.py`'s 413 mutations are each noticed by a test.
 - **Not yet seen on a device:** the interface added by the audit (the Solo switch, cards in play
   with "End This Bonus", the damage sheet's "Let <card> take it", the long-rest sheet, the wall
   lines between tiles) and everything scenario rules draw (pressure plates, padlocks, hollow
