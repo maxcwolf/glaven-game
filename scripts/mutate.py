@@ -176,6 +176,7 @@ M={
  "cardAreaOwnLine": ("GlavenGame/Board/AbilityCardView.swift", "if case .area(let pattern) = line.kind, let last = rows.last,", "if case .area(let pattern) = line.kind, rows.isEmpty, let last = rows.last,"),
  "dungeonBriefNumbered": ("GlavenGame/Models/EditionData/ScenarioData.swift", "hideIndex == true ? name :", "hideIndex == nil ? name :"),
  "dungeonBriefEveryRoom": ("GlavenGame/Engine/ScenarioBrief.swift", "        return scenario.rooms?.first(where: \\.isInitial)?.monster?.map(\\.name) ?? []", "        return scenario.monsters ?? []"),
+ "dungeonRoadEvent": ("GlavenGame/Managers/EventCardManager.swift", "        if scenario.isDungeonVariant { return false }\n", ""),
 }
 # Scenario rules (the mechanisms of placements/gh.json): run against the scenario tests.
 SCENARIO_FILTER=("ScenarioSpecialRuleTests|ScenarioReauditTests|ScenarioEnforcedRuleTests|ScenarioLockTests|ScenarioGoalTests|"
