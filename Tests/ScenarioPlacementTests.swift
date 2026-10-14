@@ -27,7 +27,7 @@ final class ScenarioPlacementTests: XCTestCase {
         let gm = try SaveAndContinueTestsSupport.manager()
         let written = ScenarioPlacementStore.shared.all()
         XCTAssertFalse(written.isEmpty, "placements are bundled")
-        for (index, placements) in written.sorted(by: { $0.key < $1.key }) {
+        for (index, placements) in written.sorted(by: { $0.key < $1.key }) where placements.dungeonTreasure == nil {
             let data = try XCTUnwrap(gm.editionStore.scenarios(for: "gh").first { $0.index == index && $0.solo == nil }, index)
             let (board, _) = try wholeBoard(index)
             let entries = placements.tiles.values.flatMap { $0.objectives ?? [] }
@@ -52,7 +52,8 @@ final class ScenarioPlacementTests: XCTestCase {
     func testEveryWrittenGoalRefersToThingsInItsScenario() throws {
         let gm = try SaveAndContinueTestsSupport.manager()
         for (index, placements) in ScenarioPlacementStore.shared.all().sorted(by: { $0.key < $1.key }) {
-            guard let goal = placements.goal else { continue }
+            // A random dungeon has no map of its own to check against (`RandomDungeonTests`).
+            guard placements.dungeonTreasure == nil, let goal = placements.goal else { continue }
             let data = try XCTUnwrap(gm.editionStore.scenarios(for: "gh").first { $0.index == index && $0.solo == nil }, index)
             let map = try XCTUnwrap(ScenarioMapStore.shared.scenarioMap(for: index))
             let tiles = BoardBuilder.findPlacements(in: map.mapTileData).map(\.tile)
@@ -94,7 +95,8 @@ final class ScenarioPlacementTests: XCTestCase {
     func testEveryWrittenRuleRefersToThingsInItsScenario() throws {
         let gm = try SaveAndContinueTestsSupport.manager()
         var checked = 0
-        for (index, placements) in ScenarioPlacementStore.shared.all().sorted(by: { $0.key < $1.key }) {
+        for (index, placements) in ScenarioPlacementStore.shared.all().sorted(by: { $0.key < $1.key })
+        where placements.dungeonTreasure == nil {
             let data = try XCTUnwrap(gm.editionStore.scenarios(for: "gh").first { $0.index == index && $0.solo == nil }, index)
             let map = try XCTUnwrap(ScenarioMapStore.shared.scenarioMap(for: index))
             let tiles = Set(BoardBuilder.findPlacements(in: map.mapTileData).map { $0.tile.ref.lowercased() })

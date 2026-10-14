@@ -829,6 +829,15 @@ final class ScenarioSimulator {
         tokensGone += before.coins.filter { now.coins[$0.key] == nil }.values.reduce(0, +)
         var treasureGold = 0
         for (hex, id) in before.treasures where now.treasures[hex] == nil {
+            // A random dungeon's treasure tile: the gold its monster card prints.
+            let dungeon = id.split(separator: "-").map(String.init)
+            if dungeon.count == 3, dungeon[0] == "rnd",
+               let treasure = gm.editionStore.sections(for: "gh").first(where: { $0.index == dungeon[1] })?
+                .overlays?.first(where: { $0.type == "treasure" && $0.marker?.stringValue == dungeon[2] }),
+               treasure.value == "gold" {
+                treasureGold += treasure.values?.first.flatMap { Int($0.stringValue) } ?? 0
+                continue
+            }
             guard let index = Int(id), let reward = gm.editionStore.treasureReward(index: index, edition: "gh") else { continue }
             for part in reward.split(separator: "|") where part.hasPrefix("gold:") {
                 treasureGold += Int(part.dropFirst(5)) ?? 0
