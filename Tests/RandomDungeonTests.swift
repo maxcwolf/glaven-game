@@ -420,7 +420,7 @@ final class RandomDungeonTests: XCTestCase {
             guard dungeon.first.next.count == 1, let next = dungeon.first.next.first,
                   let penalty = DungeonPenalty.byRoom[next.room]?.major else { continue }
             switch penalty {
-            case .enemyShield, .enemyAttack, .enemyMoveAndRange, .enemyStrengthen: break
+            case .enemyShield, .enemyAttack, .enemyMoveAndRange, .enemyStrengthen, .enemyRetaliate: break
             default: continue
             }
             seen.insert(next.room)
@@ -431,6 +431,8 @@ final class RandomDungeonTests: XCTestCase {
             case .enemyShield(let amount, _): XCTAssertGreaterThanOrEqual(coord.scenarioShield(of: monster), amount, next.room)
             case .enemyAttack(let amount): XCTAssertEqual(coord.scenarioAttackBonus(of: monster), amount, next.room)
             case .enemyMoveAndRange(let amount): XCTAssertEqual(coord.scenarioMoveBonus(of: monster), amount, next.room)
+            case .enemyRetaliate(let amount, let range, _):
+                XCTAssertTrue(coord.scenarioEffects(on: monster).contains { $0.retaliate == amount && $0.retaliateRange == range }, next.room)
             case .enemyStrengthen:
                 guard case .monster(let name, let standee) = monster else { continue }
                 XCTAssertTrue(coord.monsterEntity(name: name, standee: standee)?.entityConditions.contains { $0.name == .strengthen && $0.permanent } == true)
@@ -441,6 +443,24 @@ final class RandomDungeonTests: XCTestCase {
             XCTAssertEqual(restored.dungeonEffects, gm.game.scenario?.dungeonEffects)
         }
         XCTAssertGreaterThanOrEqual(seen.count, 2, "rooms seen: \(seen)")
+    }
+
+    /// Den's "Retaliate 2, Range 3": an enemy attacked from three hexes away retaliates; from
+    /// four, it doesn't.
+    func testAPenaltysRetaliateReachesAsFarAsItSays() async throws {
+        for (distance, expected) in [(3, 18), (4, 20)] {
+            let board = try RuleBoard()
+            let data = try XCTUnwrap(board.gm.editionStore.scenarios(for: "gh").first { $0.index == "rnd" })
+            board.game.scenario = Scenario(data: data)
+            board.game.scenario?.dungeonEffects = [ScenarioPlacements.Effect(on: "monsters", retaliate: 2, retaliateRange: 3)]
+            let brute = board.character(at: HexCoord(2, 4), health: 20)
+            brute.attackModifierDeck = RuleBoard.deck(of: .plus0)
+            let target = try board.monster(at: HexCoord(2 + distance, 4))
+            target.entity.health = 20
+            await board.coord.performAttack(attacker: .character(brute.id), target: target.piece,
+                                            attack: AttackParameters(value: 1, isRanged: true))
+            XCTAssertEqual(brute.health, expected, "attacked from \(distance) hexes")
+        }
     }
 
     // MARK: - Reading the cards

@@ -701,6 +701,9 @@ extension ScenarioPlacements {
         var per: Per?
         /// Only in this round (a random dungeon's penalty "this round").
         var round: Int?
+        /// "Retaliate X, Range R" (a random dungeon's penalty).
+        var retaliate: Int?
+        var retaliateRange: Int?
 
         /// What X counts: an objective (1-based) or other monsters of a type on the board, or
         /// tokens of which one is lost each time a monster of a type dies.

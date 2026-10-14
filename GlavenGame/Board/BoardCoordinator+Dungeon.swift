@@ -160,6 +160,9 @@ extension BoardCoordinator {
             addDungeonEffect(ScenarioPlacements.Effect(on: "monsters", shield: String(amount), round: permanent ? nil : game.round))
         case .enemyAttack(let amount):
             addDungeonEffect(ScenarioPlacements.Effect(on: "monsters", attack: amount))
+        case .enemyRetaliate(let amount, let range, let permanent):
+            addDungeonEffect(ScenarioPlacements.Effect(on: "monsters", round: permanent ? nil : game.round,
+                                                       retaliate: amount, retaliateRange: range))
         case .enemyMoveAndRange(let amount):
             addDungeonEffect(ScenarioPlacements.Effect(on: "monsters", move: amount))
         default:

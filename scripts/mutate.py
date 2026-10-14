@@ -150,6 +150,7 @@ M={
  "dungeonTreasureHarmsNoEnemy": ("GlavenGame/Board/BoardCoordinator+Dungeon.swift", "            for enemy in enemies { _ = sufferDamage(number, to: enemy, killer: me) }", "            for enemy in enemies.prefix(0) { _ = sufferDamage(number, to: enemy, killer: me) }"),
  "dungeonPenaltyNeverFalls": ("GlavenGame/Board/BoardCoordinator.swift", "        applyDungeonPenalty(behind: door)\n", ""),
  "dungeonEffectsForgotten": ("GlavenGame/Board/BoardCoordinator+Effects.swift", "(scenarioData?.placements?.effects ?? []) + (gameManager?.game.scenario?.dungeonEffects ?? [])", "(scenarioData?.placements?.effects ?? [])"),
+ "dungeonRetaliateReachesOne": ("GlavenGame/Board/BoardCoordinator+Combat.swift", "effect.retaliate.map { (amount: $0, range: effect.retaliateRange ?? 1) }", "effect.retaliate.map { (amount: $0, range: 1) }"),
 }
 # Scenario rules (the mechanisms of placements/gh.json): run against the scenario tests.
 SCENARIO_FILTER=("ScenarioSpecialRuleTests|ScenarioReauditTests|ScenarioEnforcedRuleTests|ScenarioLockTests|ScenarioGoalTests|"
