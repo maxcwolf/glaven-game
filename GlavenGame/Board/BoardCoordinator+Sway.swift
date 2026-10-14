@@ -94,16 +94,17 @@ extension BoardCoordinator {
             _ = await moveAlong(piece, path: path, style: .forced)
         }
         guard isCurrentBoard(generation), scenarioResult == nil else { return }
-        // Who is still to play two cards, latest in the order.
+        // Who is still to play two cards, latest in the order, of those it sees.
+        func inSight(_ character: GameCharacter) -> Bool { seen.contains(.character(character.id)) }
         let toCome = turnOrder.indices.filter { $0 > currentTurnIndex && !turnOrder[$0].completed }.compactMap { index -> GameCharacter? in
             guard case .character(let character) = turnOrder[index].figure, !character.longRest, !character.exhausted,
-                  selectedCardPairs[character.id] != nil, seen.contains(.character(character.id)) else { return nil }
+                  selectedCardPairs[character.id] != nil, inSight(character) else { return nil }
             return character
         }
         guard let victim = toCome.last ?? gameManager.game.characters.filter({ character in
             // (Outside a round's turn order — a test, a board set by hand — whoever has cards down.)
             turnOrder.isEmpty && !character.exhausted && !character.longRest && selectedCardPairs[character.id] != nil
-                && seen.contains(.character(character.id))
+                && inSight(character)
         }).max(by: { $0.effectiveInitiative < $1.effectiveInitiative }) else {
             log("No one is left to play two cards this round: \(name(boss)) controls no one", category: .info)
             return
