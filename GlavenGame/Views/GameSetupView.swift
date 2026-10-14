@@ -5,6 +5,8 @@ struct GameSetupView: View {
     @Environment(\.editionTheme) private var theme
     @State private var selectedLevel = 1
     @State private var selectedScenario: ScenarioData?
+    /// A random dungeon's penalties, as the players choose them (RD-6).
+    @State private var dungeonPenalties: DungeonPenaltyLevel = .suggested
     @State private var scenarioSearch = ""
     @State private var sheetCharacter: GameCharacter?
     @State private var shopCharacter: GameCharacter?
@@ -275,7 +277,7 @@ struct GameSetupView: View {
         guard let scenario = settingOutFor else { return }
         settingOutFor = nil
         gameManager.saveGame()
-        gameManager.startScenarioOnBoard(scenario)
+        gameManager.startScenarioOnBoard(scenario, dungeonPenalties: dungeonPenalties)
     }
 
     /// Put the events off: they stay due, and setting out waits until they're resolved.
@@ -651,6 +653,7 @@ struct GameSetupView: View {
                 soloRow
             }
             difficultyHint
+            if selectedScenario?.isRandomDungeon == true { dungeonPenaltyRow }
             HStack(spacing: 16) {
                 Button { showTableRules = true } label: {
                     Label(TableRulesSheet.summary(gameManager.game.tableRules), systemImage: "list.bullet.rectangle")
@@ -663,6 +666,39 @@ struct GameSetupView: View {
                 .buttonStyle(.plain)
                 learningModeRow
             }
+        }
+    }
+
+    /// A random dungeon's penalties: none, the suggested (the second room's minor, the third's
+    /// major), or every room's major.
+    private var dungeonPenaltyRow: some View {
+        HStack(alignment: .center, spacing: 12) {
+            TownSmallCaps(text: "Penalties")
+            HStack(spacing: 0) {
+                ForEach(DungeonPenaltyLevel.allCases, id: \.self) { level in
+                    let selected = dungeonPenalties == level
+                    Button { dungeonPenalties = level } label: {
+                        Text(level.label)
+                            .font(BoardTheme.font(size: 13, weight: .semibold))
+                            .lineLimit(1)
+                            .foregroundStyle(selected ? BoardTheme.sheet : BoardTheme.text)
+                            .padding(.horizontal, 10)
+                            .frame(minHeight: 30)
+                            .background(selected ? BoardTheme.brass : Color.clear, in: Capsule())
+                            .contentShape(Capsule())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(level.explanation)
+                    .accessibilityAddTraits(selected ? .isSelected : [])
+                }
+            }
+            .padding(2)
+            .background(BoardTheme.raised, in: Capsule())
+            .fixedSize()
+            Text(dungeonPenalties.explanation)
+                .font(BoardTheme.font(size: 12))
+                .foregroundStyle(BoardTheme.secondaryText)
+                .lineLimit(2)
         }
     }
 

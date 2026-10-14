@@ -159,6 +159,7 @@ M={
  "dungeonNoEnemyReplaced": ("GlavenGame/Board/BoardCoordinator+Dungeon.swift", "            if let previous { replaceEnemies(of: previous, elite: elite, count: count) }", "            _ = previous"),
  "dungeonNoEliteMade": ("GlavenGame/Board/BoardCoordinator+Dungeon.swift", "        boardState.eliteStandees.insert(piece)\n        log(", "        log("),
  "dungeonGoalTreasureNowhere": ("GlavenGame/Managers/ScenarioManager.swift", "goalTreasureOn: placements?.dungeonTreasure)", "goalTreasureOn: nil)"),
+ "dungeonFirstRoomSpared": ("GlavenGame/Managers/GameManager.swift", "        if boardCoordinator.boardScene != nil { boardCoordinator.applyFirstRoomPenalty() }\n", ""),
 }
 # Scenario rules (the mechanisms of placements/gh.json): run against the scenario tests.
 SCENARIO_FILTER=("ScenarioSpecialRuleTests|ScenarioReauditTests|ScenarioEnforcedRuleTests|ScenarioLockTests|ScenarioGoalTests|"

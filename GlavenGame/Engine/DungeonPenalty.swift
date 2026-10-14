@@ -81,6 +81,22 @@ enum DungeonPenaltyLevel: String, Codable, CaseIterable {
     /// The major penalty of every room, the first included.
     case major
 
+    var label: String {
+        switch self {
+        case .none: return "None"
+        case .suggested: return "Suggested"
+        case .major: return "Major"
+        }
+    }
+
+    var explanation: String {
+        switch self {
+        case .none: return "No room's penalty falls."
+        case .suggested: return "The second room's minor penalty, the third's major."
+        case .major: return "Every room's major penalty, the first's as you start."
+        }
+    }
+
     /// The penalty of the room at `depth` (1–3), if any.
     func penalty(of room: String, depth: Int) -> DungeonPenalty? {
         guard let both = DungeonPenalty.byRoom[room] else { return nil }

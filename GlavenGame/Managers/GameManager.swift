@@ -200,7 +200,7 @@ final class GameManager {
     }
 
     /// Set scenario and initialize the game board.
-    func startScenarioOnBoard(_ scenarioData: ScenarioData) {
+    func startScenarioOnBoard(_ scenarioData: ScenarioData, dungeonPenalties: DungeonPenaltyLevel = .suggested) {
         // Until the first round begins, a save is the town as the party left it: quitting while
         // placing characters sets out again later, without the scenario's setup (item −1 cards,
         // the events' effects) applied twice.
@@ -212,9 +212,11 @@ final class GameManager {
 
         // Set the scenario in game state
         scenarioManager.setScenario(scenarioData)
+        game.scenario?.randomDungeon?.penalties = dungeonPenalties
 
         // Try to start the board (requires characters)
         enterBoard()
+        if boardCoordinator.boardScene != nil { boardCoordinator.applyFirstRoomPenalty() }
     }
 
     /// Enter the board for the current scenario. Requires characters to be set.

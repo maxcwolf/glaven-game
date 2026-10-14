@@ -105,6 +105,35 @@ extension BoardCoordinator {
         syncPieceVisuals()
     }
 
+    /// RD-6 at the hardest difficulty: the first room's major penalty as the party starts. "The
+    /// character who opened the door" is the one the players choose; "the previous room" is none.
+    func applyFirstRoomPenalty() {
+        guard let scenario = gameManager?.game.scenario, let dungeon = scenario.randomDungeon,
+              let card = DungeonCardStore.shared.room(named: dungeon.first.room, edition: scenario.data.edition),
+              let penalty = (dungeon.penalties ?? .suggested).penalty(of: card.name, depth: 1) else { return }
+        log("\(card.name): \(card.major)", category: .setup)
+        let party = gameManager?.game.characters.filter { !$0.absent } ?? []
+        guard Self.namesTheOpener(penalty), party.count > 1, !autoResolvePrompts else {
+            apply(penalty, opener: party.first?.id, room: cells(ofRoom: card))
+            syncPieceVisuals()
+            return
+        }
+        Task { @MainActor in
+            let choice = await chooseOption(party.map { characterName($0.id) }, title: card.name,
+                                            question: "\(card.major) Who opened the door?") ?? 0
+            apply(penalty, opener: party[min(max(0, choice), party.count - 1)].id, room: cells(ofRoom: card))
+            syncPieceVisuals()
+        }
+    }
+
+    private static func namesTheOpener(_ penalty: DungeonPenalty) -> Bool {
+        switch penalty {
+        case .conditions(_, .opener, _), .damage(_, .opener), .loseCards(_, .opener), .discardCards(_, .opener): return true
+        case .both(let a, let b): return namesTheOpener(a) || namesTheOpener(b)
+        default: return false
+        }
+    }
+
     /// The board's hexes of a dungeon room.
     func cells(ofRoom card: DungeonRoomCard) -> Set<HexCoord> {
         let tiles = Set(card.tiles.map { $0.ref.lowercased() })

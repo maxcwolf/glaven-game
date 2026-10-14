@@ -588,6 +588,34 @@ final class RandomDungeonTests: XCTestCase {
         }
     }
 
+    /// RD-6: at "Major" the first room's major penalty falls as the party starts; at "None" no
+    /// penalty falls at all.
+    func testTheHardestDifficultyPunishesTheFirstRoomToo() throws {
+        var tested = 0
+        for seed in UInt64(1)...40 {
+            for level in [DungeonPenaltyLevel.major, .none] {
+                let gm = try SaveAndContinueTestsSupport.manager()
+                gm.characterManager.addCharacter(name: "brute", edition: "gh")
+                gm.characterManager.addCharacter(name: "spellweaver", edition: "gh")
+                gm.boardCoordinator.autoResolvePrompts = true
+                GameRandom.shared = GameRandom(seed: seed)
+                let data = try XCTUnwrap(gm.editionStore.scenarios(for: "gh").first { $0.index == "rnd" })
+                gm.startScenarioOnBoard(data, dungeonPenalties: level)
+                let dungeon = try XCTUnwrap(gm.game.scenario?.randomDungeon)
+                XCTAssertEqual(dungeon.penalties, level)
+                guard case .conditions(let names, .everyone, _) = DungeonPenalty.byRoom[dungeon.first.room]?.major else { continue }
+                if level == .major { tested += 1 }
+                for character in gm.game.characters {
+                    for name in names {
+                        XCTAssertEqual(character.entityConditions.contains { $0.name == name }, level == .major,
+                                       "seed \(seed) \(dungeon.first.room) at \(level)")
+                    }
+                }
+            }
+        }
+        XCTAssertGreaterThan(tested, 0)
+    }
+
     // MARK: - Reading the cards
 
     /// Draws each written room card as the game lays it out, its numbers in red and its
