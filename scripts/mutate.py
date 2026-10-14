@@ -95,6 +95,9 @@ M={
  "areaChoicesRepeat": ("GlavenGame/Board/BoardCoordinator.swift", "for placement in all where !distinct.contains(where: { Set($0.targets) == Set(placement.targets) && covered($0) == covered(placement) }) {", "for placement in all {"),
  "areaSuggestsTheFewest": ("GlavenGame/Board/BoardCoordinator.swift", "            best == nil || next.targets.count > best!.targets.count ? next : best }) else { return nil }", "            best == nil || next.targets.count < best!.targets.count ? next : best }) else { return nil }"),
  "areaIgnoresTheChoice": ("GlavenGame/Board/BoardCoordinator.swift", "        return distinct[answer ?? suggested]", "        _ = answer; return distinct[suggested]"),
+ "cardsInPlayNeverLostForDamage": ("GlavenGame/Board/BoardCoordinator+Rules.swift", "        character.discardedCards + character.activeCards.filter { !character.lostWhenRemoved.contains($0) }", "        character.discardedCards"),
+ "lostCardsInPlayLostForDamage": ("GlavenGame/Board/BoardCoordinator+Rules.swift", "character.activeCards.filter { !character.lostWhenRemoved.contains($0) }", "character.activeCards"),
+ "cardInPlayStaysInPlay": ("GlavenGame/Board/BoardCoordinator+Rules.swift", "                    character.removeFromActiveArea(cardId)\n", ""),
 }
 # Scenario rules (the mechanisms of placements/gh.json): run against the scenario tests.
 SCENARIO_FILTER=("ScenarioSpecialRuleTests|ScenarioReauditTests|ScenarioEnforcedRuleTests|ScenarioLockTests|ScenarioGoalTests|"

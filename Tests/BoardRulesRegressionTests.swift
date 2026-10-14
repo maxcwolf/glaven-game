@@ -339,6 +339,33 @@ final class BoardRulesRegressionTests: XCTestCase {
         XCTAssertEqual(character.lostCards, [4])
     }
 
+    /// FAQ: "Discardable cards in the active area may be lost to negate damage (technically
+    /// moving them to the discard pile first)" — as one of the two discards; its bonus ends. A
+    /// card in play that is lost when it leaves isn't offered.
+    func testACardInPlayMayBeLostToNegateDamage() async throws {
+        let character = addCharacter(at: HexCoord(3, 3))
+        let warding = try card("Warding Strength", of: "brute"), other = try card("Trample", of: "brute")
+        let lostOnLeaving = try card("Eye for an Eye", of: "brute")
+        character.handCards = []
+        character.discardedCards = [other.cardId!]
+        character.activeCards = [warding.cardId!, lostOnLeaving.cardId!]
+        character.lostWhenRemoved = [lostOnLeaving.cardId!]
+        XCTAssertEqual(coord.damageDiscardPool(of: character), [other.cardId!, warding.cardId!], "the discard and the discardable card in play")
+
+        coord.autoResolvePrompts = false
+        let hp = character.health
+        let negated = Task { await self.coord.sufferDamageWithMitigation(2, to: .character(character.id), source: "test") }
+        let asked = await waitUntil { self.coord.pendingDamage != nil }
+        XCTAssertTrue(asked, "one discard and one card in play make two")
+        coord.resolvePendingDamage(choice: .loseDiscardCards(indices: [0, 1]))
+        _ = await negated.value
+        XCTAssertEqual(character.health, hp, "negated")
+        XCTAssertEqual(Set(character.lostCards), [other.cardId!, warding.cardId!])
+        XCTAssertEqual(character.activeCards, [lostOnLeaving.cardId!], "Warding Strength left play")
+        XCTAssertTrue(character.discardedCards.isEmpty)
+        XCTAssertTrue(coord.chargedBonuses(of: character).allSatisfy { $0.cardId != warding.cardId! }, "its bonus with it")
+    }
+
     /// A character exhausted during its own turn (e.g. by retaliate) takes no further actions:
     /// its turn ends instead of waiting for input that can never come.
     func testCharacterExhaustedDuringItsTurnEndsTheTurn() throws {

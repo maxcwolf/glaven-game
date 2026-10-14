@@ -352,12 +352,19 @@ extension BoardCoordinator {
         return character.handCards.filter { !played.contains($0) }
     }
 
+    /// The cards that may be lost two at a time to negate damage: the discard pile, then the
+    /// discardable cards in the active area (FAQ: "Discardable cards in the active area may be
+    /// lost to negate damage (technically moving them to the discard pile first)").
+    func damageDiscardPool(of character: GameCharacter) -> [Int] {
+        character.discardedCards + character.activeCards.filter { !character.lostWhenRemoved.contains($0) }
+    }
+
     /// Offer the "lose 1 hand card or 2 discards to negate the damage" choice.
     /// Returns true if the damage was negated.
     @MainActor func promptDamageMitigation(character: GameCharacter, damage: Int, source: String,
                                            absorbedBy: String? = nil) async -> Bool {
         let canLoseHand = !losableHandCards(of: character).isEmpty
-        let canLoseDiscard = character.discardedCards.count >= 2
+        let canLoseDiscard = damageDiscardPool(of: character).count >= 2
         guard canLoseHand || canLoseDiscard, !autoResolvePrompts else { return false }
 
         let generation = boardGeneration
@@ -380,12 +387,22 @@ extension BoardCoordinator {
             log("\(characterName(character.id)) loses a card from hand to prevent \(damage) damage", category: .damage)
             return true
         case .loseDiscardCards(let indices):
-            guard indices.count >= 2 else { return false }
-            for idx in indices.sorted(by: >) where idx < character.discardedCards.count {
-                character.lostCards.append(character.discardedCards.remove(at: idx))
+            let pool = damageDiscardPool(of: character)
+            let chosen = Set(indices).filter(pool.indices.contains).map { pool[$0] }
+            guard chosen.count >= 2 else { return false }
+            var fromPlay = 0
+            for cardId in chosen {
+                // A card in play leaves it (its bonus with it) through the discard pile.
+                if !character.discardedCards.contains(cardId), character.activeCards.contains(cardId) {
+                    character.removeFromActiveArea(cardId)
+                    fromPlay += 1
+                }
+                guard let index = character.discardedCards.firstIndex(of: cardId) else { continue }
+                character.lostCards.append(character.discardedCards.remove(at: index))
             }
             boardScene?.play(.lose)
-            log("\(characterName(character.id)) loses 2 discarded cards to prevent \(damage) damage", category: .damage)
+            log("\(characterName(character.id)) loses 2 \(fromPlay == 0 ? "discarded cards" : fromPlay == 2 ? "cards in play" : "cards, one of them in play") to prevent \(damage) damage",
+                category: .damage)
             return true
         }
     }
