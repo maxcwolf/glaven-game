@@ -120,6 +120,7 @@ extension BoardCoordinator {
             if let name = rewards.unlockCharacter {
                 lines.append("New class: \(GameText.className(name, edition: edition, labels: labels))")
             }
+            for envelope in rewards.envelopes ?? [] { lines.append("Open Envelope \(envelope)") }
             for entry in rewards.events ?? [] {
                 let parts = entry.split(separator: ":")
                 if parts.count == 2 { lines.append("A new \(parts[0]) event joins the deck") }

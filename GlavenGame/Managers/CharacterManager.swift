@@ -105,6 +105,9 @@ final class CharacterManager {
                                  how: "Via retirement of \(GameText.characterName(character, labels: editionStore))",
                                  labels: editionStore)
             }
+            if let envelope = quest.openEnvelope {
+                game.openEnvelope(envelope, how: "the retirement of \(GameText.characterName(character, labels: editionStore))")
+            }
             game.events.questsRemoved.insert(questId)
         }
         // The others in the party saw it (A Helping Hand).

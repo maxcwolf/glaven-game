@@ -17,7 +17,7 @@ os.makedirs(SCR, exist_ok=True)
 FILTER=("AttackRuleTests|ConditionRuleTests|RoundRuleTests|LootRuleTests|MovementRuleTests|RevealRuleTests|ScenarioEndRuleTests|"
         "ScenarioLevelRuleTests|ForcedMovementTests|RB_|PlayLedgerTests|PlaythroughTests|RestRuleTests|BoardRulesRegressionTests|"
         "JumpFlyMovementTests|HealAndConsumeRuleTests|CombatEffectsTests|TurnFlowTests|E2E|AttackModifier|BoardSimulationTests|MonsterTurnRulesTests|ScenarioFinishEdgeCaseTests|DynamicObstacleTests|FeatureTests|EscortAITests|TeleportTests|HexCoordTests|"
-        "MoneyTokenTests|SetupRulesTests|StandeeLimitTests|TreasureReplayTests|CompanionTests|NestedAbilityCardTests|CollectiveGoldTests|TravelOnTests|ItemUseRuleTests|ChargedBonusTests|ActionPerformedTests|ScenarioEnforcedRuleTests|ScenarioReauditTests|ModifierDeckRoundEndTests|MoveThenAbilityTests")
+        "MoneyTokenTests|SetupRulesTests|StandeeLimitTests|TreasureReplayTests|CompanionTests|NestedAbilityCardTests|CollectiveGoldTests|TravelOnTests|EnvelopeTests|ItemUseRuleTests|ChargedBonusTests|ActionPerformedTests|ScenarioEnforcedRuleTests|ScenarioReauditTests|ModifierDeckRoundEndTests|MoveThenAbilityTests")
 M={
  "poison0": ("GlavenGame/Engine/CombatResolver.swift", "        if isPoisoned {\n            attackValue += 1\n        }", "        if isPoisoned {\n            attackValue += 0\n        }"),
  "retaliateShielded": ("GlavenGame/Board/BoardCoordinator+Combat.swift", "            await sufferDamageWithMitigation(retaliate, to: attacker,", "            await sufferDamageWithMitigation(max(0, retaliate - self.shield(of: attacker)), to: attacker,"),
@@ -133,6 +133,9 @@ M={
  "travellingOnVisitsTown": ("GlavenGame/Managers/GameManager.swift", "        if returning {\n            // Back to town", "        if true {\n            // Back to town"),
  "theRoadNeverEnds": ("GlavenGame/Managers/GameManager.swift", "        game.events.roadEventDoneFor = nil\n        game.events.onTheRoadFrom = nil\n", "        game.events.roadEventDoneFor = nil\n"),
  "noWayBackToTown": ("GlavenGame/Managers/GameManager.swift", "        game.events.onTheRoadFrom = nil\n        game.events.cityEventDue = true\n        saveGame()", "        saveGame()"),
+ "envelopeRewardIgnored": ("GlavenGame/Managers/ScenarioManager+Rewards.swift", "        for envelope in rewards.envelopes ?? [] { game.openEnvelope(envelope, how: \"a scenario's reward\") }\n", ""),
+ "envelopeQuestIgnored": ("GlavenGame/Managers/CharacterManager.swift", "            if let envelope = quest.openEnvelope {", "            if false, let envelope = quest.openEnvelope {"),
+ "envelopeOpenedTwice": ("GlavenGame/Managers/ClassUnlocks.swift", "        guard events.openedEnvelopes.insert(envelope).inserted else { return }", "        events.openedEnvelopes.insert(envelope)"),
 }
 # Scenario rules (the mechanisms of placements/gh.json): run against the scenario tests.
 SCENARIO_FILTER=("ScenarioSpecialRuleTests|ScenarioReauditTests|ScenarioEnforcedRuleTests|ScenarioLockTests|ScenarioGoalTests|"

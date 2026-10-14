@@ -41,6 +41,10 @@ struct EventState: Codable, Equatable {
     var perksForRecruits: [Int] = []
     /// Personal quests removed from the game: their holder fulfilled them and retired (GH p.48).
     var questsRemoved: Set<String> = []
+    /// Sealed envelopes of the game box opened in this campaign ("X": scenario 58 or 60, or a
+    /// quest's retirement). What they hold (the Bladeswarm) isn't in the game's data: the
+    /// opening is recorded, and said.
+    var openedEnvelopes: Set<String> = []
     /// Reputation milestones already reached (GH p.49), so each adds its events once.
     var reputationMilestones: Set<Int> = []
 
@@ -66,6 +70,7 @@ struct EventState: Codable, Equatable {
         perksForRecruits = try c.decodeIfPresent([Int].self, forKey: .perksForRecruits) ?? []
         questsRemoved = try c.decodeIfPresent(Set<String>.self, forKey: .questsRemoved) ?? []
         reputationMilestones = try c.decodeIfPresent(Set<Int>.self, forKey: .reputationMilestones) ?? []
+        openedEnvelopes = try c.decodeIfPresent(Set<String>.self, forKey: .openedEnvelopes) ?? []
     }
 
     /// A deck, top card first, starting it (cards 01–30, shuffled) on first use. Only that first

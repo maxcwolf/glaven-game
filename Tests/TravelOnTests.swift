@@ -53,3 +53,35 @@ final class TravelOnTests: XCTestCase {
         XCTAssertNil(old.onTheRoadFrom)
     }
 }
+
+/// Envelope X (GH 58, 60, and the quests that end in them): a sealed envelope of the box. Its
+/// class isn't in the game's data; opening it is recorded once and said.
+@MainActor
+final class EnvelopeTests: XCTestCase {
+
+    func testAScenarioRewardOpensEnvelopeX() throws {
+        let gm = try SaveAndContinueTestsSupport.manager()
+        gm.characterManager.addCharacter(name: "brute", edition: "gh")
+        let rewards = try XCTUnwrap(gm.editionStore.scenarios(for: "gh").first { $0.index == "58" && $0.solo == nil }?.rewards)
+        XCTAssertEqual(rewards.envelopes, ["X"])
+        gm.scenarioManager.applyRewardChoices(rewards, edition: "gh", choices: ScenarioRewardChoices())
+        XCTAssertEqual(gm.game.events.openedEnvelopes, ["X"])
+        gm.scenarioManager.applyRewardChoices(rewards, edition: "gh", choices: ScenarioRewardChoices())
+        XCTAssertEqual(gm.game.campaignLog.filter { $0.type == .envelopeOpened }.count, 1, "opened once")
+        XCTAssertEqual(gm.game.campaignLog.last { $0.type == .envelopeOpened }?.message, "Opened Envelope X")
+        let saved = try JSONDecoder().decode(EventState.self, from: try JSONEncoder().encode(gm.game.events))
+        XCTAssertEqual(saved.openedEnvelopes, ["X"], "kept in a save")
+    }
+
+    /// A Helping Hand's sequel, quest 526: fulfilled, its retirement opens Envelope X.
+    func testRetiringWithItsQuestOpensEnvelopeX() throws {
+        let gm = try SaveAndContinueTestsSupport.manager()
+        gm.characterManager.addCharacter(name: "brute", edition: "gh")
+        let brute = gm.game.characters[0]
+        brute.personalQuest = "526"
+        brute.personalQuestProgress = [4, 1]
+        gm.game.completedScenarios.insert("gh-58")
+        XCTAssertTrue(gm.characterManager.retireCharacter(brute))
+        XCTAssertEqual(gm.game.events.openedEnvelopes, ["X"])
+    }
+}

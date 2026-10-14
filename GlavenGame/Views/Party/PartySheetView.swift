@@ -320,6 +320,7 @@ struct PartySheetView: View {
         case .characterUnlocked: return "lock.open"
         case .questCompleted: return "scroll.fill"
         case .eventResolved: return "scroll"
+        case .envelopeOpened: return "envelope.open"
         }
     }
 
