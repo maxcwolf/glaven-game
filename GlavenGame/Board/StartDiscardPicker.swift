@@ -18,7 +18,8 @@ struct StartDiscardPicker: View {
             Text(coordinator.characterName(character.id))
                 .font(BoardTheme.display(26))
                 .foregroundStyle(BoardTheme.text)
-            Text("This scenario begins with \(pending.count) of your cards discarded. Choose them (\(chosen.count) of \(pending.count)); they come back when you rest.")
+            Text(pending.penalty.map { "\($0) Choose \(pending.count == 1 ? "the card" : "the \(pending.count) cards") you \(pending.lose ? "lose" : "discard") (\(chosen.count) of \(pending.count))." }
+                 ?? "This scenario begins with \(pending.count) of your cards discarded. Choose them (\(chosen.count) of \(pending.count)); they come back when you rest.")
                 .font(.body)
                 .foregroundStyle(BoardTheme.secondaryText)
             ScrollView(.horizontal, showsIndicators: false) {
@@ -36,7 +37,7 @@ struct StartDiscardPicker: View {
             }
             HStack(spacing: 12) {
                 Spacer()
-                Button("Discard \(pending.count)") {
+                Button("\(pending.lose ? "Lose" : "Discard") \(pending.count)") {
                     coordinator.resolveStartDiscard(chosen)
                 }
                 .buttonStyle(.borderedProminent)

@@ -52,3 +52,13 @@ extension GameState {
         events.add(id, to: "road")
     }
 }
+
+extension GameState {
+    /// Open a sealed envelope of the game box (once): it is recorded and logged. Envelope X
+    /// holds the Bladeswarm, a class not in the game's data, so nothing more is unlocked.
+    func openEnvelope(_ envelope: String, how: String) {
+        guard events.openedEnvelopes.insert(envelope).inserted else { return }
+        campaignLog.append(CampaignLogEntry(type: .envelopeOpened, message: "Opened Envelope \(envelope)",
+                                            details: "By \(how). Its contents are not in this game's data: open the envelope in the box."))
+    }
+}

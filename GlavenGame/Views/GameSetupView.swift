@@ -5,6 +5,8 @@ struct GameSetupView: View {
     @Environment(\.editionTheme) private var theme
     @State private var selectedLevel = 1
     @State private var selectedScenario: ScenarioData?
+    /// A random dungeon's penalties, as the players choose them (RD-6).
+    @State private var dungeonPenalties: DungeonPenaltyLevel = .suggested
     @State private var scenarioSearch = ""
     @State private var sheetCharacter: GameCharacter?
     @State private var shopCharacter: GameCharacter?
@@ -158,6 +160,7 @@ struct GameSetupView: View {
             let compact = geo.size.width < 1300
             VStack(spacing: 0) {
                 topBar
+                if let from = onTheRoadFrom { onTheRoadBanner(from) }
                 HStack(alignment: .top, spacing: 16) {
                     partyPanel
                         .frame(width: compact ? 350 : 400)
@@ -274,7 +277,7 @@ struct GameSetupView: View {
         guard let scenario = settingOutFor else { return }
         settingOutFor = nil
         gameManager.saveGame()
-        gameManager.startScenarioOnBoard(scenario)
+        gameManager.startScenarioOnBoard(scenario, dungeonPenalties: dungeonPenalties)
     }
 
     /// Put the events off: they stay due, and setting out waits until they're resolved.
@@ -329,10 +332,11 @@ struct GameSetupView: View {
             .buttonStyle(.plain)
             .accessibilityLabel("Main menu")
             VStack(alignment: .leading, spacing: 0) {
-                Text(inTown ? "Gloomhaven" : "New Campaign")
+                Text(onTheRoadFrom != nil ? "On the Road" : inTown ? "Gloomhaven" : "New Campaign")
                     .font(BoardTheme.display(24))
                     .foregroundStyle(BoardTheme.text)
-                Text(Self.townSubtitle(scenariosPlayed: gameManager.game.completedScenarios.count, inTown: inTown))
+                Text(Self.townSubtitle(scenariosPlayed: gameManager.game.completedScenarios.count, inTown: inTown,
+                                       onTheRoad: onTheRoadFrom != nil))
                     .font(BoardTheme.font(size: 12, weight: .medium))
                     .foregroundStyle(BoardTheme.secondaryText)
                     .lineLimit(1)
@@ -355,7 +359,7 @@ struct GameSetupView: View {
                 .buttonStyle(.boardPrimaryCompact)
                 .learnable(.cityEvent)
             }
-            if inTown {
+            if inTown, onTheRoadFrom == nil {
                 Button("Sanctuary", systemImage: "sun.max") { if !heldToLearn { showSanctuary = true } }
                     .buttonStyle(.boardQuietCompact)
                     .learnable(.sanctuary)
@@ -373,9 +377,41 @@ struct GameSetupView: View {
 
     /// "Recruit your party and set out", or "In town · 3 scenarios played".
     /// A party back from a lost or abandoned scenario is in town, with nothing won yet.
-    static func townSubtitle(scenariosPlayed: Int, inTown: Bool) -> String {
-        guard scenariosPlayed > 0 else { return inTown ? "In town" : "Recruit your party and set out" }
-        return "In town \u{00B7} \(scenariosPlayed) scenario\(scenariosPlayed == 1 ? "" : "s") played"
+    static func townSubtitle(scenariosPlayed: Int, inTown: Bool, onTheRoad: Bool = false) -> String {
+        let place = onTheRoad ? "Between scenarios" : "In town"
+        guard scenariosPlayed > 0 else { return inTown ? place : "Recruit your party and set out" }
+        return "\(place) \u{00B7} \(scenariosPlayed) scenario\(scenariosPlayed == 1 ? "" : "s") played"
+    }
+
+    /// The scenario the party has come from without returning to Gloomhaven, if it has.
+    private var onTheRoadFrom: ScenarioData? {
+        gameManager.game.events.onTheRoadFrom.flatMap { id in gameManager.editionStore.scenarios(for: edition).first { $0.id == id } }
+    }
+
+    /// On the road (CMP-8): what that means, and the way back to town.
+    private func onTheRoadBanner(_ from: ScenarioData) -> some View {
+        HStack(spacing: 12) {
+            Image(systemName: "signpost.right.fill")
+                .foregroundStyle(BoardTheme.brass)
+            Text(Self.onTheRoadText(from: from))
+                .font(BoardTheme.font(size: 14))
+                .foregroundStyle(BoardTheme.text)
+                .fixedSize(horizontal: false, vertical: true)
+            Spacer(minLength: 8)
+            Button("Return to Gloomhaven", systemImage: "building.columns") { gameManager.returnToGloomhaven() }
+                .buttonStyle(.boardPrimaryCompact)
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 10)
+        .background(BoardTheme.raised)
+        .accessibilityElement(children: .combine)
+    }
+
+    static func onTheRoadText(from: ScenarioData) -> String {
+        let links = (from.links ?? []).map { "#\($0)" }
+        let straight = links.isEmpty ? "#\(from.index) again" : "#\(from.index) again or \(GameText.list(links))"
+        return "On the road from #\(from.index) \(from.name): no shop, levelling up, enhancing or city event. "
+            + "Straight on to \(straight) needs no road event; anywhere else is reached by road."
     }
 
     // MARK: - Party
@@ -617,6 +653,7 @@ struct GameSetupView: View {
                 soloRow
             }
             difficultyHint
+            if selectedScenario?.isRandomDungeon == true { dungeonPenaltyRow }
             HStack(spacing: 16) {
                 Button { showTableRules = true } label: {
                     Label(TableRulesSheet.summary(gameManager.game.tableRules), systemImage: "list.bullet.rectangle")
@@ -629,6 +666,39 @@ struct GameSetupView: View {
                 .buttonStyle(.plain)
                 learningModeRow
             }
+        }
+    }
+
+    /// A random dungeon's penalties: none, the suggested (the second room's minor, the third's
+    /// major), or every room's major.
+    private var dungeonPenaltyRow: some View {
+        HStack(alignment: .center, spacing: 12) {
+            TownSmallCaps(text: "Penalties")
+            HStack(spacing: 0) {
+                ForEach(DungeonPenaltyLevel.allCases, id: \.self) { level in
+                    let selected = dungeonPenalties == level
+                    Button { dungeonPenalties = level } label: {
+                        Text(level.label)
+                            .font(BoardTheme.font(size: 13, weight: .semibold))
+                            .lineLimit(1)
+                            .foregroundStyle(selected ? BoardTheme.sheet : BoardTheme.text)
+                            .padding(.horizontal, 10)
+                            .frame(minHeight: 30)
+                            .background(selected ? BoardTheme.brass : Color.clear, in: Capsule())
+                            .contentShape(Capsule())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(level.explanation)
+                    .accessibilityAddTraits(selected ? .isSelected : [])
+                }
+            }
+            .padding(2)
+            .background(BoardTheme.raised, in: Capsule())
+            .fixedSize()
+            Text(dungeonPenalties.explanation)
+                .font(BoardTheme.font(size: 12))
+                .foregroundStyle(BoardTheme.secondaryText)
+                .lineLimit(2)
         }
     }
 
@@ -714,12 +784,12 @@ struct GameSetupView: View {
 
     private func scenarioRow(_ scenario: ScenarioData) -> some View {
         let isSelected = selectedScenario?.id == scenario.id
-        let hasMap = ScenarioMapStore.shared.hasMap(for: scenario.index)
+        let hasMap = scenario.isRandomDungeon || ScenarioMapStore.shared.hasMap(for: scenario.index)
         return Button {
             selectedScenario = scenario
         } label: {
             HStack(spacing: 10) {
-                Text(scenario.index)
+                Text(scenario.hideIndex == true ? "?" : scenario.index)
                     .font(BoardTheme.font(size: 13, weight: .bold).monospacedDigit())
                     .foregroundStyle(isSelected ? BoardTheme.sheet : BoardTheme.brass)
                     .minimumScaleFactor(0.7)

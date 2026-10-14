@@ -19,6 +19,11 @@ struct EventState: Codable, Equatable {
     /// whose road event is already resolved: quitting before departure doesn't deal another.
     var departingFor: String?
     var roadEventDoneFor: String?
+    /// The scenario the party has come from without returning to Gloomhaven (CMP-8): on the
+    /// road, nothing of the town is done — no shopping, levelling up, enhancing, donating or city
+    /// event — and the scenario it links to, or the same one tried again, is reached without a
+    /// road event. Nil in Gloomhaven.
+    var onTheRoadFrom: String?
 
     // What the campaign keeps beside the decks (see `CampaignRules`).
 
@@ -36,6 +41,10 @@ struct EventState: Codable, Equatable {
     var perksForRecruits: [Int] = []
     /// Personal quests removed from the game: their holder fulfilled them and retired (GH p.48).
     var questsRemoved: Set<String> = []
+    /// Sealed envelopes of the game box opened in this campaign ("X": scenario 58 or 60, or a
+    /// quest's retirement). What they hold (the Bladeswarm) isn't in the game's data: the
+    /// opening is recorded, and said.
+    var openedEnvelopes: Set<String> = []
     /// Reputation milestones already reached (GH p.49), so each adds its events once.
     var reputationMilestones: Set<Int> = []
 
@@ -54,12 +63,14 @@ struct EventState: Codable, Equatable {
         donatedThisVisit = try c.decodeIfPresent(Set<String>.self, forKey: .donatedThisVisit) ?? []
         departingFor = try c.decodeIfPresent(String.self, forKey: .departingFor)
         roadEventDoneFor = try c.decodeIfPresent(String.self, forKey: .roadEventDoneFor)
+        onTheRoadFrom = try c.decodeIfPresent(String.self, forKey: .onTheRoadFrom)
         achievementCounts = try c.decodeIfPresent([String: Int].self, forKey: .achievementCounts) ?? [:]
         looseItems = try c.decodeIfPresent([String: Int].self, forKey: .looseItems) ?? [:]
         classEnhancements = try c.decodeIfPresent([String: [Enhancement]].self, forKey: .classEnhancements) ?? [:]
         perksForRecruits = try c.decodeIfPresent([Int].self, forKey: .perksForRecruits) ?? []
         questsRemoved = try c.decodeIfPresent(Set<String>.self, forKey: .questsRemoved) ?? []
         reputationMilestones = try c.decodeIfPresent(Set<Int>.self, forKey: .reputationMilestones) ?? []
+        openedEnvelopes = try c.decodeIfPresent(Set<String>.self, forKey: .openedEnvelopes) ?? []
     }
 
     /// A deck, top card first, starting it (cards 01–30, shuffled) on first use. Only that first

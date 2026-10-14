@@ -100,7 +100,7 @@ final class BoardRewardChoiceTests: XCTestCase {
         try FileManager.default.createDirectory(atPath: out, withIntermediateDirectories: true)
         for index in ["53", "55", "13"] {
             let gm = try winOnTheBoard(index)
-            let view = ScenarioResultsView(outcome: try XCTUnwrap(gm.boardCoordinator.scenarioOutcome())) { _ in }
+            let view = ScenarioResultsView(outcome: try XCTUnwrap(gm.boardCoordinator.scenarioOutcome())) { _, _ in }
                 .environment(gm).frame(width: 1376, height: 1032).background(Color(white: 0.2))
             let renderer = ImageRenderer(content: view)
             renderer.scale = 1

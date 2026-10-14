@@ -447,6 +447,8 @@ final class BoardCoordinator {
     /// The companions are being set up as the scenario starts (`finishSetup`).
     @ObservationIgnored var settingUpCompanions = false
     @ObservationIgnored var afterStartDiscards: (() -> Void)?
+    /// Cards still owed to a random dungeon room's penalty, after the one being asked.
+    @ObservationIgnored var penaltyCardsOwed: [PendingStartDiscard] = []
 
     /// Non-nil while a character picks a card to play for an item (Ring of Haste).
     var pendingCardPlay: PendingCardPlay?
@@ -1071,6 +1073,7 @@ final class BoardCoordinator {
         pendingRecovery = nil
         pendingStartDiscard = nil
         afterStartDiscards = nil
+        penaltyCardsOwed = []
         settingUpCompanions = false
         pendingCardPlay = nil
         pendingActionChoice = nil
@@ -2019,10 +2022,10 @@ final class BoardCoordinator {
     }
 
     /// Apply scenario result and clean up.
-    func confirmScenarioEnd(choices: ScenarioRewardChoices = ScenarioRewardChoices()) {
+    func confirmScenarioEnd(choices: ScenarioRewardChoices = ScenarioRewardChoices(), returning: Bool = true) {
         guard let gameManager = gameManager, let result = scenarioResult else { return }
 
-        gameManager.completeScenario(success: result == .victory, choices: choices)
+        gameManager.completeScenario(success: result == .victory, choices: choices, returning: returning)
     }
 
     // MARK: - Turn Execution Actions
@@ -2956,7 +2959,8 @@ final class BoardCoordinator {
                     noteGoalTreasureLooted(by: charID)
                     boardState.goalTreasuresLooted += 1
                 }
-                let reward = gameManager.scenarioManager.lootTreasure(id, by: character)
+                let reward = id.hasPrefix("rnd-") ? lootDungeonTreasure(id, by: character)
+                    : gameManager.scenarioManager.lootTreasure(id, by: character)
                 log("\(characterName(charID)) loots treasure \(id)\(reward.map { ": \($0)" } ?? "")", category: .loot)
                 noteTreasureLooted(id, by: charID)
             }
@@ -3007,8 +3011,10 @@ final class BoardCoordinator {
         if let character = creditedCharacter(for: actingPiece) {
             gameManager.scenarioStatsManager.recordDoor(by: character.name)
         }
+        closeOffOtherExits(besides: door)
 
         revealRoom(behind: door, opening: true)
+        applyDungeonPenalty(behind: door)
     }
 
     /// Whether the tiles behind a door are on the map though its room isn't revealed.

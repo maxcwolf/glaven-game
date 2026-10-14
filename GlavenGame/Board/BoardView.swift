@@ -243,7 +243,9 @@ struct BoardView: View {
 
             // Results
             if let outcome = coordinator.scenarioOutcome() {
-                ScenarioResultsView(outcome: outcome) { choices in coordinator.confirmScenarioEnd(choices: choices) }
+                ScenarioResultsView(outcome: outcome) { choices, returning in
+                    coordinator.confirmScenarioEnd(choices: choices, returning: returning)
+                }
                     .transition(.opacity)
                     .zIndex(10)
                     .onAppear { BoardSoundPlayer.play(outcome.victory ? .victory : .defeat) }

@@ -668,7 +668,9 @@ final class ScenarioSimulator {
                   let entity = coord.monsterEntity(name: name, standee: standee), entity.type != .boss,
                   let card = gm.monsterManager.currentAbility(for: monster) else { return nil }
             let statRange = monster.stat(for: entity.type)?.range?.intValue ?? 0
-            return PlayLedger.monsterReach(statRange: statRange, card: card.actions ?? [])
+            let reach = PlayLedger.monsterReach(statRange: statRange, card: card.actions ?? [])
+            // A standing effect's +Range (a random dungeon's penalty) widens a ranged attack only.
+            return reach.map { $0 > 1 ? $0 + coord.scenarioRangeBonus(of: attacker) : $0 }
         case .objective:
             return nil
         }
@@ -827,6 +829,15 @@ final class ScenarioSimulator {
         tokensGone += before.coins.filter { now.coins[$0.key] == nil }.values.reduce(0, +)
         var treasureGold = 0
         for (hex, id) in before.treasures where now.treasures[hex] == nil {
+            // A random dungeon's treasure tile: the gold its monster card prints.
+            let dungeon = id.split(separator: "-").map(String.init)
+            if dungeon.count == 3, dungeon[0] == "rnd",
+               let treasure = gm.editionStore.sections(for: "gh").first(where: { $0.index == dungeon[1] })?
+                .overlays?.first(where: { $0.type == "treasure" && $0.marker?.stringValue == dungeon[2] }),
+               treasure.value == "gold" {
+                treasureGold += treasure.values?.first.flatMap { Int($0.stringValue) } ?? 0
+                continue
+            }
             guard let index = Int(id), let reward = gm.editionStore.treasureReward(index: index, edition: "gh") else { continue }
             for part in reward.split(separator: "|") where part.hasPrefix("gold:") {
                 treasureGold += Int(part.dropFirst(5)) ?? 0

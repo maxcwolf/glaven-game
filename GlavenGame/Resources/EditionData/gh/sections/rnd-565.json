@@ -6,7 +6,8 @@
   "named": true,
   "monsters": [
     "black-imp",
-    "deep-terror"
+    "deep-terror",
+    "lurker"
   ],
   "rooms": [
     {

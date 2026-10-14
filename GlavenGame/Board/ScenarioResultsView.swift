@@ -6,7 +6,9 @@ import SwiftUI
 struct ScenarioResultsView: View {
     @Environment(GameManager.self) private var gameManager
     let outcome: ScenarioOutcome
-    let onFinish: (ScenarioRewardChoices) -> Void
+    /// The rewards chosen, and whether the party returns to Gloomhaven (false: it travels on to
+    /// the next scenario without the town, CMP-8).
+    let onFinish: (ScenarioRewardChoices, Bool) -> Void
     @State private var choices = ScenarioRewardChoices()
 
     /// The scenario's rewards when it was won and they need the players to choose.
@@ -41,15 +43,24 @@ struct ScenarioResultsView: View {
                     .font(.footnote)
                     .foregroundStyle(BoardTheme.secondaryText)
                     .multilineTextAlignment(.center)
-                Button { onFinish(choices) } label: {
-                    Label(outcome.victory ? "Finish Scenario" : "Back to Town",
-                          systemImage: outcome.victory ? "checkmark.circle.fill" : "arrow.uturn.left.circle.fill")
-                        .font(.headline)
-                        .frame(minWidth: 200, minHeight: 44)
+                HStack(spacing: 12) {
+                    Button { onFinish(choices, true) } label: {
+                        Label("Return to Gloomhaven", systemImage: outcome.victory ? "checkmark.circle.fill" : "arrow.uturn.left.circle.fill")
+                            .font(.headline)
+                            .frame(minWidth: 200, minHeight: 44)
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .tint(outcome.victory ? BoardTheme.brass : BoardTheme.defeat)
+                    .keyboardShortcut(.defaultAction)
+                    // Straight on to a linked scenario, or the same one again, or anywhere by road.
+                    Button { onFinish(choices, false) } label: {
+                        Label(outcome.victory ? "Travel On" : "Try Again or Travel On", systemImage: "signpost.right.fill")
+                            .font(.headline)
+                            .frame(minHeight: 44)
+                    }
+                    .buttonStyle(.boardQuiet)
+                    .accessibilityHint("Go to the next scenario without returning to Gloomhaven: no shop, levelling up or city event")
                 }
-                .buttonStyle(.borderedProminent)
-                .tint(outcome.victory ? BoardTheme.brass : BoardTheme.defeat)
-                .keyboardShortcut(.defaultAction)
                 .disabled(!canFinish)
             }
             .padding(28)

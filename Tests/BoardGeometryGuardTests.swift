@@ -9,6 +9,7 @@ final class BoardGeometryGuardTests: XCTestCase {
     /// Files that are the geometry itself, or that measure the page rather than the board.
     private let exempt: Set<String> = [
         "HexCoord.swift", "BoardState.swift", "Pathfinder.swift", "BoardBuilder.swift",
+        "RandomDungeonMap.swift",      // lays out tiles before there is a board, like BoardBuilder
         "LearnDiagram.swift",          // a teaching diagram, not the board
         "SoakDriver.swift",            // the soak test's own player
         "EscortTurnController.swift",  // nearest door to a place not yet on the map

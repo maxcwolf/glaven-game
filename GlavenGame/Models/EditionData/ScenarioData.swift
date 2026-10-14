@@ -52,6 +52,13 @@ struct ScenarioData: Codable, Hashable, Identifiable {
 
 // MARK: - Room Data
 
+extension ScenarioData {
+    /// Played as a random dungeon (rulebook pp. 50–51): the Random Dungeon, and #55 Foggy Thicket.
+    var isRandomDungeon: Bool { rules?.contains { $0.randomDungeon != nil } ?? false }
+    /// The game variant itself, which doesn't progress the campaign in any way (p.50).
+    var isDungeonVariant: Bool { group == "randomDungeon" }
+}
+
 struct RoomData: Codable, Hashable {
     var roomNumber: Int
     var ref: String?
@@ -66,6 +73,19 @@ struct RoomData: Codable, Hashable {
     var isInitial: Bool { initial ?? false }
 
     var adjacentRooms: [Int] { rooms ?? [] }
+
+    init(roomNumber: Int, ref: String?, initial: Bool?, marker: IntOrString?, rooms: [Int]?,
+         treasures: [IntOrString]?, monster: [MonsterStandeeData]?, allies: [String]?, objectives: [IntOrString]?) {
+        self.roomNumber = roomNumber
+        self.ref = ref
+        self.initial = initial
+        self.marker = marker
+        self.rooms = rooms
+        self.treasures = treasures
+        self.monster = monster
+        self.allies = allies
+        self.objectives = objectives
+    }
 
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)

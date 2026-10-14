@@ -4,6 +4,9 @@ import Foundation
 /// in the tile's own coordinates (as the map data's overlays are). The map data has neither;
 /// these are written by hand into `Resources/ScenarioMaps/placements/<edition>.json`.
 struct ScenarioPlacements: Codable, Equatable {
+    /// A random dungeon's goal treasure (#55): the number of the last room that holds a treasure
+    /// tile instead of what the monster card puts there.
+    var dungeonTreasure: String?
     /// By tile ref ("m1a").
     var tiles: [String: Tile]
     /// Objectives (1-based) the party must keep from harm without their being allies: monsters
@@ -699,6 +702,17 @@ extension ScenarioPlacements {
         /// (what `per` counts), C and L.
         var shield: String?
         var per: Per?
+        /// Only in this round (a random dungeon's penalty "this round").
+        var round: Int?
+        /// "Retaliate X, Range R" (a random dungeon's penalty).
+        var retaliate: Int?
+        var retaliateRange: Int?
+        /// Healed at the start of each of their turns (a random dungeon's penalty).
+        var healEachTurn: Int?
+        /// Added to the range of their ranged attacks (a random dungeon's penalty).
+        var range: Int?
+        /// They can't consume elements (a random dungeon's penalty).
+        var noConsuming: Bool?
 
         /// What X counts: an objective (1-based) or other monsters of a type on the board, or
         /// tokens of which one is lost each time a monster of a type dies.

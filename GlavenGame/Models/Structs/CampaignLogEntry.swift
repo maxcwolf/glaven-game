@@ -15,6 +15,7 @@ enum CampaignLogType: String, Codable {
     case characterUnlocked
     case eventResolved
     case questCompleted
+    case envelopeOpened
 }
 
 struct CampaignLogEntry: Codable, Identifiable {

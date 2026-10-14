@@ -23,7 +23,8 @@ final class CampaignRulesTests: XCTestCase {
         try XCTUnwrap(gm.editionStore.scenarioData(index: index, edition: "gh"), "#\(index)")
     }
 
-    private func open() -> Set<String> { Set(scenarios.availableScenarios(for: "gh").map(\.index)) }
+    /// The campaign's open scenarios (the random dungeon, always open, aside).
+    private func open() -> Set<String> { Set(scenarios.availableScenarios(for: "gh").filter { !$0.isDungeonVariant }.map(\.index)) }
 
     /// Win a scenario the way the board does: set out, then finish with a victory.
     private func win(_ index: String, choices: ScenarioRewardChoices = ScenarioRewardChoices(),

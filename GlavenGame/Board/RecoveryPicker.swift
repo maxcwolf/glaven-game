@@ -10,7 +10,7 @@ struct RecoveryPicker: View {
 
     private var discards: [AbilityModel] {
         let deck = gameManager.characterManager.abilities(for: character)
-        return character.discardedCards.compactMap { id in deck.first { $0.cardId == id } }
+        return coordinator.recoverable(pending, of: character).compactMap { id in deck.first { $0.cardId == id } }
     }
 
     var body: some View {
@@ -18,7 +18,7 @@ struct RecoveryPicker: View {
             Text(pending.itemName)
                 .font(BoardTheme.display(26))
                 .foregroundStyle(BoardTheme.text)
-            Text("Recover up to \(pending.count) discarded cards (\(chosen.count) of \(pending.count) chosen).")
+            Text("Recover up to \(pending.count) \(pending.fromLost ? "lost" : "discarded") card\(pending.count == 1 ? "" : "s") (\(chosen.count) of \(pending.count) chosen).")
                 .font(.body)
                 .foregroundStyle(BoardTheme.secondaryText)
             ScrollView(.horizontal, showsIndicators: false) {

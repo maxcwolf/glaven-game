@@ -800,21 +800,30 @@ extension BoardCoordinator {
         let characterID: String
         let count: Int
         let itemName: String
+        /// From the lost pile (a random dungeon's treasure) rather than the discard pile.
+        var fromLost = false
+    }
+
+    /// The cards a recovery takes from: the lost pile or the discard pile.
+    func recoverable(_ pending: PendingRecovery, of character: GameCharacter) -> [Int] {
+        pending.fromLost ? character.lostCards : character.discardedCards
     }
 
     /// Called from the picker with the cards chosen (at most the pending count, all from the discard pile).
     func resolveRecovery(_ cardIds: [Int]) {
         guard let pending = pendingRecovery,
               let character = gameManager?.game.characters.first(where: { $0.id == pending.characterID }) else { return }
-        let chosen = Array(cardIds.filter(character.discardedCards.contains).prefix(pending.count))
+        let chosen = Array(cardIds.filter(recoverable(pending, of: character).contains).prefix(pending.count))
         pendingRecovery = nil
-        recover(chosen, for: character)
+        recover(chosen, for: character, fromLost: pending.fromLost)
     }
 
-    private func recover(_ cardIds: [Int], for character: GameCharacter) {
+    func recover(_ cardIds: [Int], for character: GameCharacter, fromLost: Bool = false) {
         guard !cardIds.isEmpty else { return }
         for id in cardIds {
-            if let index = character.discardedCards.firstIndex(of: id) {
+            if fromLost, let index = character.lostCards.firstIndex(of: id) {
+                character.handCards.append(character.lostCards.remove(at: index))
+            } else if !fromLost, let index = character.discardedCards.firstIndex(of: id) {
                 character.handCards.append(character.discardedCards.remove(at: index))
             }
         }

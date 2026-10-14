@@ -17,7 +17,7 @@ os.makedirs(SCR, exist_ok=True)
 FILTER=("AttackRuleTests|ConditionRuleTests|RoundRuleTests|LootRuleTests|MovementRuleTests|RevealRuleTests|ScenarioEndRuleTests|"
         "ScenarioLevelRuleTests|ForcedMovementTests|RB_|PlayLedgerTests|PlaythroughTests|RestRuleTests|BoardRulesRegressionTests|"
         "JumpFlyMovementTests|HealAndConsumeRuleTests|CombatEffectsTests|TurnFlowTests|E2E|AttackModifier|BoardSimulationTests|MonsterTurnRulesTests|ScenarioFinishEdgeCaseTests|DynamicObstacleTests|FeatureTests|EscortAITests|TeleportTests|HexCoordTests|"
-        "MoneyTokenTests|SetupRulesTests|StandeeLimitTests|TreasureReplayTests|CompanionTests|NestedAbilityCardTests|ItemUseRuleTests|ChargedBonusTests|ActionPerformedTests|ScenarioEnforcedRuleTests|ScenarioReauditTests|ModifierDeckRoundEndTests|MoveThenAbilityTests")
+        "MoneyTokenTests|SetupRulesTests|StandeeLimitTests|TreasureReplayTests|CompanionTests|NestedAbilityCardTests|CollectiveGoldTests|TravelOnTests|EnvelopeTests|ItemUseRuleTests|ChargedBonusTests|ActionPerformedTests|ScenarioEnforcedRuleTests|ScenarioReauditTests|ModifierDeckRoundEndTests|MoveThenAbilityTests")
 M={
  "poison0": ("GlavenGame/Engine/CombatResolver.swift", "        if isPoisoned {\n            attackValue += 1\n        }", "        if isPoisoned {\n            attackValue += 0\n        }"),
  "retaliateShielded": ("GlavenGame/Board/BoardCoordinator+Combat.swift", "            await sufferDamageWithMitigation(retaliate, to: attacker,", "            await sufferDamageWithMitigation(max(0, retaliate - self.shield(of: attacker)), to: attacker,"),
@@ -126,6 +126,41 @@ M={
  "impendingEndKillsNoOne": ("GlavenGame/Board/BoardCoordinator.swift", "        if let text = turn?.attackTexts.first(where: { $0.contains(\"kill the target\") }), isOnBoard(target),", "        if false, let text = turn?.attackTexts.first(where: { $0.contains(\"kill the target\") }), isOnBoard(target),"),
  "darkenedSkiesOneTarget": ("GlavenGame/Board/PlayerTurnController.swift", "            result[index].subActions = (result[index].subActions ?? []) + [ActionModel(type: .specialTarget, value: .string(\"enemiesRange:\\(reach)\"))]\n", ""),
  "darkenedSkiesNoExperience": ("GlavenGame/Board/PlayerTurnController.swift", "            if xp > 0 { grantExperience(xp) }\n", ""),
+ "collectiveGoldSharedEvenly": ("GlavenGame/Managers/EventCardManager.swift", "        sharing = !choices.goldShares.isEmpty && choices.goldShares.values.reduce(0, +) == collective.gained ? choices.goldShares : nil", "        sharing = nil"),
+ "collectiveCostFromTheRichest": ("GlavenGame/Managers/EventCardManager.swift", "        paying = !choices.goldPaid.isEmpty && canPay(choices.goldPaid, total: collective.paid) ? choices.goldPaid : nil", "        paying = nil"),
+ "collectiveCostBeyondMeans": ("GlavenGame/Managers/EventCardManager.swift", "            && party.allSatisfy { (shares[$0.id] ?? 0) <= $0.loot && (shares[$0.id] ?? 0) >= 0 }", "            && true"),
+ "roadEventEvenWhenLinked": ("GlavenGame/Managers/EventCardManager.swift", "           from == scenario.id || isLinked(scenario, from: from) { return false }", "           false { return false }"),
+ "travellingOnVisitsTown": ("GlavenGame/Managers/GameManager.swift", "        if returning {\n            // Back to town", "        if true {\n            // Back to town"),
+ "theRoadNeverEnds": ("GlavenGame/Managers/GameManager.swift", "        game.events.roadEventDoneFor = nil\n        game.events.onTheRoadFrom = nil\n", "        game.events.roadEventDoneFor = nil\n"),
+ "noWayBackToTown": ("GlavenGame/Managers/GameManager.swift", "        game.events.onTheRoadFrom = nil\n        game.events.cityEventDue = true\n        saveGame()", "        saveGame()"),
+ "envelopeRewardIgnored": ("GlavenGame/Managers/ScenarioManager+Rewards.swift", "        for envelope in rewards.envelopes ?? [] { game.openEnvelope(envelope, how: \"a scenario's reward\") }\n", ""),
+ "envelopeQuestIgnored": ("GlavenGame/Managers/CharacterManager.swift", "            if let envelope = quest.openEnvelope {", "            if false, let envelope = quest.openEnvelope {"),
+ "envelopeOpenedTwice": ("GlavenGame/Managers/ClassUnlocks.swift", "        guard events.openedEnvelopes.insert(envelope).inserted else { return }", "        events.openedEnvelopes.insert(envelope)"),
+ "summonStatsNotSold": ("GlavenGame/Engine/CardEnhancing.swift", "                for (stat, name) in (summon.enhancements ?? []).enumerated() {", "                for (stat, name) in ([] as [String]).enumerated() {"),
+ "summonStatsPricedAsAbilities": ("GlavenGame/Engine/CardEnhancing.swift", "            isSummon: isSummonStat(slot), edition: edition)", "            isSummon: false, edition: edition)"),
+ "summonStatsNotApplied": ("GlavenGame/Engine/CardEnhancing.swift", "                result[index].summonValueObject = summon\n                continue", "                continue"),
+ "summonMadeFromTheBoxStats": ("GlavenGame/Board/PlayerTurnController.swift", "            if let printed = action.summonValueObject {\n                summonData.health = printed.health", "            if false, let printed = action.summonValueObject {\n                summonData.health = printed.health"),
+ "dungeonExitTypeIgnored": ("GlavenGame/Engine/RandomDungeon.swift", "guard let index = roomDeck.firstIndex(where: { $0.entranceTypes.contains(exit.type) }) else { continue }", "guard let index = roomDeck.indices.first else { continue }"),
+ "dungeonRoomsOverlap": ("GlavenGame/Engine/RandomDungeonMap.swift", "guard nextCells.isDisjoint(with: taken), !nextCells.contains(doorHex) else { continue }", "guard !nextCells.contains(doorHex) else { continue }"),
+ "dungeonStartAnywhere": ("GlavenGame/Engine/RandomDungeonMap.swift", ".distance(to: entranceHex) <= 2 {", ".distance(to: entranceHex) <= 4 {"),
+ "dungeonNumbersMisread": ("GlavenGame/Engine/RandomDungeonMap.swift", "monster: monster.name, initialX: place.x, initialY: place.y,", "monster: monster.name, initialX: place.y, initialY: place.x,"),
+ "dungeonProgressesCampaign": ("GlavenGame/Managers/ScenarioManager.swift", "if !data.isDungeonVariant { game.completedScenarios.insert(data.id) }", "game.completedScenarios.insert(data.id)"),
+ "dungeonNeverOffered": ("GlavenGame/Managers/ScenarioManager.swift", "if scenario.isDungeonVariant { return true }", "if scenario.isDungeonVariant { return false }"),
+ "dungeonBothExitsStayOpen": ("GlavenGame/Board/BoardCoordinator.swift", "        closeOffOtherExits(besides: door)\n", ""),
+ "dungeonTreasureHarmsNoEnemy": ("GlavenGame/Board/BoardCoordinator+Dungeon.swift", "            for enemy in enemies { _ = sufferDamage(number, to: enemy, killer: me) }", "            for enemy in enemies.prefix(0) { _ = sufferDamage(number, to: enemy, killer: me) }"),
+ "dungeonPenaltyNeverFalls": ("GlavenGame/Board/BoardCoordinator.swift", "        applyDungeonPenalty(behind: door)\n", ""),
+ "dungeonEffectsForgotten": ("GlavenGame/Board/BoardCoordinator+Effects.swift", "(scenarioData?.placements?.effects ?? []) + (gameManager?.game.scenario?.dungeonEffects ?? [])", "(scenarioData?.placements?.effects ?? [])"),
+ "dungeonRetaliateReachesOne": ("GlavenGame/Board/BoardCoordinator+Combat.swift", "effect.retaliate.map { (amount: $0, range: effect.retaliateRange ?? 1) }", "effect.retaliate.map { (amount: $0, range: 1) }"),
+ "dungeonHealNever": ("GlavenGame/Board/BoardCoordinator+Dungeon.swift", "        guard amount > 0 else { return }\n        let healed", "        guard amount > 99 else { return }\n        let healed"),
+ "dungeonRangeIgnored": ("GlavenGame/Board/BoardCoordinator+Dungeon.swift", "move: amount, range: amount))", "move: amount))"),
+ "dungeonConsumingAllowed": ("GlavenGame/Board/BoardCoordinator+Dungeon.swift", "ScenarioPlacements.Effect(on: \"party\", noConsuming: true)", "ScenarioPlacements.Effect(on: \"party\")"),
+ "dungeonCardsDiscardedNotLost": ("GlavenGame/Board/BoardCoordinator+Dungeon.swift", "owePenaltyCards(count, by: targets(who), lose: true,", "owePenaltyCards(count, by: targets(who), lose: false,"),
+ "dungeonItemsSpentAlways": ("GlavenGame/Board/BoardCoordinator+Dungeon.swift", "            if spend && item.spent {", "            if item.spent || item.consumed {"),
+ "dungeonNoEnemyReplaced": ("GlavenGame/Board/BoardCoordinator+Dungeon.swift", "            if let previous { replaceEnemies(of: previous, elite: elite, count: count) }", "            _ = previous"),
+ "dungeonNoEliteMade": ("GlavenGame/Board/BoardCoordinator+Dungeon.swift", "        boardState.eliteStandees.insert(piece)\n        log(", "        log("),
+ "dungeonGoalTreasureNowhere": ("GlavenGame/Managers/ScenarioManager.swift", "goalTreasureOn: placements?.dungeonTreasure)", "goalTreasureOn: nil)"),
+ "dungeonFirstRoomSpared": ("GlavenGame/Managers/GameManager.swift", "        if boardCoordinator.boardScene != nil { boardCoordinator.applyFirstRoomPenalty() }\n", ""),
+ "dungeonEntranceIgnored": ("GlavenGame/Board/BoardCoordinator+Dungeon.swift", "        let entrance = card.entrances[index]\n", "        let entrance = card.entrances[0]\n"),
 }
 # Scenario rules (the mechanisms of placements/gh.json): run against the scenario tests.
 SCENARIO_FILTER=("ScenarioSpecialRuleTests|ScenarioReauditTests|ScenarioEnforcedRuleTests|ScenarioLockTests|ScenarioGoalTests|"

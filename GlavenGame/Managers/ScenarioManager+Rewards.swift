@@ -43,6 +43,7 @@ extension ScenarioManager {
         if let name = rewards.unlockCharacter {
             unlockRewardCharacter(name, edition: edition)
         }
+        for envelope in rewards.envelopes ?? [] { game.openEnvelope(envelope, how: "a scenario's reward") }
         // "city:78": shuffle that event into its deck.
         for entry in rewards.events ?? [] {
             let parts = entry.split(separator: ":").map(String.init)

@@ -20,7 +20,7 @@ final class TownTests: XCTestCase {
     /// it's where the campaign starts.
     func testTheOpenScenariosFollowTheCampaign() throws {
         let gm = try party(["cragheart", "brute"])
-        func open() -> [String] { gm.scenarioManager.availableScenarios(for: "gh").map(\.index) }
+        func open() -> [String] { gm.scenarioManager.availableScenarios(for: "gh").filter { !$0.isDungeonVariant }.map(\.index) }
         XCTAssertEqual(open(), ["1"])
 
         // Lost: still open, and nothing new. Won: First Steps, and the Barrow Lair.
@@ -368,6 +368,8 @@ extension TownTests {
         gm.game.characters[0].loot = 23
         gm.game.characters[1].experience = 18
         gm.game.characters[1].loot = 9
+        // TOWN_ON_THE_ROAD=1: the party travelling on from Black Barrow.
+        if ProcessInfo.processInfo.environment["TOWN_ON_THE_ROAD"] != nil { gm.game.events.onTheRoadFrom = "gh-1" }
         let renderer = ImageRenderer(content: GameSetupView().environment(gm).frame(width: 1376, height: 1032))
         renderer.scale = 1
         let image = try XCTUnwrap(renderer.cgImage)

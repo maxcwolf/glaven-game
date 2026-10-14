@@ -500,4 +500,6 @@ struct ScenarioSnapshot: Codable {
     /// "won"/"lost" once a scenario rule has decided the outcome, applied at the end of the round.
     var pendingFinish: String?
     var releasedMonsters: Set<String>?
+    var randomDungeon: RandomDungeon?
+    var dungeonEffects: [ScenarioPlacements.Effect]?
 }

@@ -69,6 +69,10 @@ extension BoardCoordinator {
         // Retaliate gained for this attack alone (a charge, an item), each with its reach. Whether
         // any retaliate lands is judged after the attack's push or pull (FAQ).
         var gainedRetaliates: [(amount: Int, range: Int)] = []
+        // A standing effect's Retaliate (a random dungeon room's penalty) reaches as far as it says.
+        gainedRetaliates += scenarioEffects(on: target).compactMap { effect in
+            effect.retaliate.map { (amount: $0, range: effect.retaliateRange ?? 1) }
+        }
         let retaliateInView = CombatResolver.retaliateDamage(retaliate: defender.retaliate,
                                                              retaliatePersistent: defender.retaliatePersistent,
                                                              distance: distance)

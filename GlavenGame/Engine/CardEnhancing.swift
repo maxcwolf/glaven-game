@@ -32,6 +32,14 @@ enum CardEnhancing {
     private static func slots(in actions: [ActionModel], cardId: Int, half: String) -> [Slot] {
         var result: [Slot] = []
         for (index, action) in actions.enumerated() {
+            // A summon's stats, each a slot of its own that takes +1 (GH p.47).
+            if let summon = action.summonValueObject {
+                for (stat, name) in (summon.enhancements ?? []).enumerated() {
+                    guard let line = summonStatLine(name, of: summon) else { continue }
+                    result.append(Slot(cardId: cardId, half: half, actionIndex: summonStatAddress(index, stat),
+                                       slotIndex: 0, type: .square, action: line, host: action))
+                }
+            }
             for (slot, type) in (action.enhancementTypes ?? []).enumerated() {
                 result.append(Slot(cardId: cardId, half: half, actionIndex: index, slotIndex: slot,
                                    type: type, action: action, host: action))
@@ -51,11 +59,34 @@ enum CardEnhancing {
         (index + 1) * 100 + subIndex
     }
 
+    /// The address of a summon's stat slot: the `stat`th the card lists, on action `index`.
+    static func summonStatAddress(_ index: Int, _ stat: Int) -> Int {
+        10_000 + index * 10 + stat
+    }
+
+    /// A summon's stat as a line to enhance: Move, Attack, its hit points (the data's "heal")
+    /// or Range, with its printed value.
+    static func summonStatLine(_ name: String, of summon: SummonValueObject) -> ActionModel? {
+        func value(_ stat: IntOrString?) -> Int { stat?.intValue ?? Int(stat?.stringValue ?? "") ?? 0 }
+        switch name {
+        case "move": return ActionModel(type: .move, value: .int(value(summon.movement)))
+        case "attack": return ActionModel(type: .attack, value: .int(value(summon.attack)))
+        case "heal": return ActionModel(type: .heal, value: .int(value(summon.health)))
+        case "range": return ActionModel(type: .range, value: .int(value(summon.range)))
+        default: return nil
+        }
+    }
+
+    /// Whether a slot is one of a summon's stats.
+    static func isSummonStat(_ slot: Slot) -> Bool { slot.actionIndex >= 10_000 }
+
     // MARK: - What a slot can take
 
     /// The enhancements a slot can take that the board plays.
     static func options(for slot: Slot, edition: String) -> [EnhancementAction] {
-        EnhancementsManager.availableActions(for: slot.type, actionType: slot.action.type, isSummon: false, edition: edition)
+        // A summon's stat takes +1 and nothing else.
+        if isSummonStat(slot) { return [.plus1] }
+        return EnhancementsManager.availableActions(for: slot.type, actionType: slot.action.type, isSummon: false, edition: edition)
             .filter { plays($0, in: slot) }
             // Gloomhaven puts conditions and elements on main ability lines only (GH p.47): a
             // small line under one (Range, Target, Pierce, Push, Pull) takes its +1.
@@ -137,7 +168,7 @@ enum CardEnhancing {
             isMultiTarget: targetsSeveral(slot.host) && !neverDoubled(enhancement, in: slot),
             isLost: slot.half == "top" ? card.lost == true : card.bottomLost == true,
             isPersistent: card.persistent == true,
-            isSummon: false, edition: edition)
+            isSummon: isSummonStat(slot), edition: edition)
     }
 
     /// The doubling for several targets "does not apply to target, area-of-effect hex, or
@@ -188,6 +219,22 @@ enum CardEnhancing {
         let mine = enhancements.filter { $0.cardId == cardId && $0.actionHalf == half }
             .sorted { ($0.actionIndex, $0.slotIndex) < ($1.actionIndex, $1.slotIndex) }
         for enhancement in mine {
+            // +1 on a summon's stat: the summon the card makes is that much stronger.
+            if enhancement.actionIndex >= 10_000 {
+                let index = (enhancement.actionIndex - 10_000) / 10, stat = (enhancement.actionIndex - 10_000) % 10
+                guard enhancement.action == .plus1, result.indices.contains(index), var summon = result[index].summonValueObject,
+                      let name = summon.enhancements?.indices.contains(stat) == true ? summon.enhancements?[stat] : nil else { continue }
+                func plus(_ stat: IntOrString?) -> IntOrString { .int((stat?.intValue ?? Int(stat?.stringValue ?? "") ?? 0) + 1) }
+                switch name {
+                case "move": summon.movement = plus(summon.movement)
+                case "attack": summon.attack = plus(summon.attack)
+                case "heal": summon.health = plus(summon.health)
+                case "range": summon.range = plus(summon.range)
+                default: break
+                }
+                result[index].summonValueObject = summon
+                continue
+            }
             let index = enhancement.actionIndex < 100 ? enhancement.actionIndex : enhancement.actionIndex / 100 - 1
             let subIndex = enhancement.actionIndex < 100 ? nil : enhancement.actionIndex % 100
             guard result.indices.contains(index) else { continue }

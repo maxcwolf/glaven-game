@@ -70,7 +70,7 @@ struct TownPartyRow: View {
             }
             TownQuestLine(character: character, onChooseQuest: onChooseQuest, onRetire: onRetire)
             FlowLayout(spacing: 6) {
-                if manager.canLevelUp(character) {
+                if manager.canLevelUp(character), inGloomhaven {
                     Button("Level Up", systemImage: "arrow.up.circle.fill", action: onLevelUp)
                         .buttonStyle(.boardPrimaryCompact)
                 } else if cardChoices > 0 {
@@ -87,8 +87,11 @@ struct TownPartyRow: View {
                     Button("Sheet", systemImage: "person.text.rectangle", action: onSheet)
                         .buttonStyle(.boardQuietCompact)
                 }
-                Button("Shop", systemImage: "bag", action: onShop)
-                    .buttonStyle(.boardQuietCompact)
+                // Shopping, levelling up and enhancing are done in Gloomhaven, not on the road (CMP-8).
+                if inGloomhaven {
+                    Button("Shop", systemImage: "bag", action: onShop)
+                        .buttonStyle(.boardQuietCompact)
+                }
                 if !character.items.isEmpty {
                     // Brought / owned, so an item left at home is never a surprise.
                     Button("Items \(character.carriedItems.count)/\(character.items.count)", systemImage: "shield.lefthalf.filled",
@@ -96,7 +99,7 @@ struct TownPartyRow: View {
                         .buttonStyle(.boardQuietCompact)
                         .accessibilityLabel("Items, bringing \(character.carriedItems.count) of \(character.items.count)")
                 }
-                if gameManager.enhancementsManager.enhancerOpen(edition: character.edition) {
+                if inGloomhaven, gameManager.enhancementsManager.enhancerOpen(edition: character.edition) {
                     Button("Enhance", systemImage: "sparkles", action: onEnhance)
                         .buttonStyle(.boardQuietCompact)
                 }
@@ -105,6 +108,9 @@ struct TownPartyRow: View {
         .padding(12)
         .background(BoardTheme.raised.opacity(0.7), in: RoundedRectangle(cornerRadius: BoardTheme.Radius.medium))
     }
+
+    /// The party is in Gloomhaven, not on the road between scenarios.
+    private var inGloomhaven: Bool { gameManager.game.events.onTheRoadFrom == nil }
 
     private var levelLine: String {
         guard let next = nextThreshold else { return "Level \(character.level) · \(character.experience) XP" }

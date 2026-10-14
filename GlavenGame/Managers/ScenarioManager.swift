@@ -24,7 +24,12 @@ final class ScenarioManager {
 
     func setScenario(_ scenarioData: ScenarioData) {
         onBeforeMutate?()
+        // A random dungeon (the Random Dungeon, #55) is drawn now and played as its rooms.
+        var scenarioData = scenarioData
+        let dungeon = drawDungeon(for: scenarioData)
+        if let dungeon { scenarioData = Self.dungeonData(base: scenarioData, dungeon: dungeon, editionStore: editionStore) }
         let scenario = Scenario(data: scenarioData)
+        scenario.randomDungeon = dungeon
         game.scenario = scenario
         // Standees are drawn at random as monsters are set up, revealed, spawned and summoned.
         monsterManager.randomStandees = true
@@ -46,6 +51,46 @@ final class ScenarioManager {
                 }
             }
         }
+    }
+
+    // MARK: - Random dungeons
+
+    /// The monster cards of an edition's random dungeon deck.
+    static func dungeonMonsterCards(edition: String, editionStore: EditionDataStore) -> [ScenarioData] {
+        editionStore.sections(for: edition).filter { $0.group == "randomMonsterCard" }
+    }
+
+    /// The dungeon of a scenario with a random dungeon rule, drawn from the decks it names.
+    func drawDungeon(for data: ScenarioData) -> RandomDungeon? {
+        guard let rule = data.rules?.compactMap(\.randomDungeon).first else { return nil }
+        let rooms = DungeonCardStore.shared.rooms(edition: data.edition)
+        let monsterCards = Self.dungeonMonsterCards(edition: data.edition, editionStore: editionStore)
+        return RandomDungeonMap.draw(rooms: rooms, monsterCards: monsterCards, roomCards: rule.dungeonCards,
+                                     monsterCardsUsed: rule.monsterCards, random: &GameRandom.shared)?.0
+    }
+
+    /// The data a drawn dungeon is played as.
+    static func dungeonData(base: ScenarioData, dungeon: RandomDungeon, editionStore: EditionDataStore) -> ScenarioData {
+        dungeon.scenarioData(base: base, rooms: DungeonCardStore.shared.rooms(edition: base.edition),
+                             monsterCards: dungeonMonsterCards(edition: base.edition, editionStore: editionStore))
+    }
+
+    /// The map of a scenario: a random dungeon's built from its draws, else the map data's.
+    static func map(for scenario: Scenario, editionStore: EditionDataStore) -> VGBScenario? {
+        guard let dungeon = scenario.randomDungeon else {
+            return ScenarioMapStore.shared.scenarioMap(for: scenario.data.index)
+        }
+        let edition = scenario.data.edition
+        let monsterCards = dungeonMonsterCards(edition: edition, editionStore: editionStore)
+        let placements = ScenarioPlacementStore.shared.placements(for: scenario.data.index, edition: edition)
+        guard let built = RandomDungeonMap.build(dungeon, room: { DungeonCardStore.shared.room(named: $0, edition: edition) },
+                                                 monsters: { index in monsterCards.first { $0.index == index } },
+                                                 goalTreasureOn: placements?.dungeonTreasure)
+        else { return nil }
+        var map = built.scenario
+        map.traps = built.traps
+        map.placements = placements
+        return map
     }
 
     /// Equipped items with a −1 penalty add that many −1 cards to the character's attack modifier
@@ -101,8 +146,8 @@ final class ScenarioManager {
         onFinishing?(success)
 
         if success {
-            // Record completion
-            game.completedScenarios.insert(data.id)
+            // Record completion — but a random dungeon doesn't progress the campaign (p.50).
+            if !data.isDungeonVariant { game.completedScenarios.insert(data.id) }
 
             // Bonus XP (4 + 2L) for every character in the scenario — an exhausted character still
             // earns it, along with rewards and battle goals, on a success (GH p.47).
@@ -343,8 +388,10 @@ final class ScenarioManager {
             // Filter out sections (have parent)
             if scenario.parent != nil { return false }
 
-            // Filter out solo scenarios, random dungeons, and random dungeon card sections
-            if scenario.group == "solo" || scenario.group == "randomDungeon"
+            // The random dungeon may be played instead of any scenario, any time (p.50).
+            if scenario.isDungeonVariant { return true }
+            // Filter out solo scenarios and random dungeon card sections
+            if scenario.group == "solo"
                 || scenario.group == "randomMonsterCard" || scenario.group == "randomDungeonCard" { return false }
 
             // Already completed and not repeatable (an initial scenario too)

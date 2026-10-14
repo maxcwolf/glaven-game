@@ -200,7 +200,7 @@ final class GameManager {
     }
 
     /// Set scenario and initialize the game board.
-    func startScenarioOnBoard(_ scenarioData: ScenarioData) {
+    func startScenarioOnBoard(_ scenarioData: ScenarioData, dungeonPenalties: DungeonPenaltyLevel = .suggested) {
         // Until the first round begins, a save is the town as the party left it: quitting while
         // placing characters sets out again later, without the scenario's setup (item −1 cards,
         // the events' effects) applied twice.
@@ -212,9 +212,14 @@ final class GameManager {
 
         // Set the scenario in game state
         scenarioManager.setScenario(scenarioData)
+        game.scenario?.randomDungeon?.penalties = dungeonPenalties
 
         // Try to start the board (requires characters)
         enterBoard()
+        if boardCoordinator.boardScene != nil {
+            boardCoordinator.applyFirstRoomPenalty()
+            boardCoordinator.chooseFirstEntrance()
+        }
     }
 
     /// Enter the board for the current scenario. Requires characters to be set.
@@ -224,8 +229,7 @@ final class GameManager {
         guard boardCoordinator.boardScene == nil else { return } // already on board
         scenarioManager.recordStartingTallies()
 
-        let mapStore = ScenarioMapStore.shared
-        guard let vgbScenario = mapStore.scenarioMap(for: scenario.data.index) else { return }
+        guard let vgbScenario = ScenarioManager.map(for: scenario, editionStore: editionStore) else { return }
 
         // A character who hasn't chosen a hand brings the default one from their card pool.
         for character in game.activeCharacters where character.handCards.isEmpty {
@@ -245,6 +249,7 @@ final class GameManager {
         game.events.donatedThisVisit = []   // the party has left town
         game.events.departingFor = nil
         game.events.roadEventDoneFor = nil
+        game.events.onTheRoadFrom = nil
         let effects = game.events.nextScenario
         guard !effects.isEmpty else { return }
         for character in game.activeCharacters {
@@ -421,15 +426,24 @@ final class GameManager {
     private func resumeScenarioFromCheckpoint() -> Bool {
         guard let checkpoint = roundCheckpoint, let board = checkpoint.boardSnapshot,
               let scenario = game.scenario,
-              let map = ScenarioMapStore.shared.scenarioMap(for: scenario.data.index) else {
+              let map = ScenarioManager.map(for: scenario, editionStore: editionStore) else {
             roundCheckpoint = nil
             return false
         }
         boardCoordinator.resumeScenario(scenario: map, board: board)
         return true
     }
+    /// The party on the road goes back to Gloomhaven after all: the town is open, and a city event due.
+    func returnToGloomhaven() {
+        guard game.events.onTheRoadFrom != nil else { return }
+        game.events.onTheRoadFrom = nil
+        game.events.cityEventDue = true
+        saveGame()
+    }
+
     /// Finish the scenario on the board (rewards on a success), leave the board and save.
-    func completeScenario(success: Bool, choices: ScenarioRewardChoices = ScenarioRewardChoices()) {
+    func completeScenario(success: Bool, choices: ScenarioRewardChoices = ScenarioRewardChoices(), returning: Bool = true) {
+        let from = game.scenario?.data.id
         let questReward = success ? game.scenario.flatMap { scenario in
             scenario.data.rewards?.custom.flatMap { editionStore.resolveCustomText($0, edition: scenario.data.edition) }
         } : nil
@@ -439,8 +453,14 @@ final class GameManager {
         departureCheckpoint = nil
         boardCoordinator.exitBoard()
         forgetHistory()   // a finished scenario can't be undone
-        // Back to town: spend gold, level up, pick the next scenario — after a city event.
-        game.events.cityEventDue = true
+        if returning {
+            // Back to town: spend gold, level up, pick the next scenario — after a city event.
+            game.events.cityEventDue = true
+            game.events.onTheRoadFrom = nil
+        } else {
+            // Travelling on (CMP-8): no town this time — straight to the next scenario.
+            game.events.onTheRoadFrom = from
+        }
         appPhase = .gameSetup
         saveGame()
     }
