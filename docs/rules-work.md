@@ -17,11 +17,11 @@ question, how a piece of work is done from start to finish, and what to do next.
   (2026-10-14; at the audit of 2026-10-10 it was 353, 21 partly and 73 not yet). The last was
   #55, a random dungeon, done with the random dungeon mode ([random-dungeons.md](random-dungeons.md)). Every rule has a row in
   [scenario-book/rules-audit.md](scenario-book/rules-audit.md).
-- Last verified 2026-10-14 (card style and size added): 1,730 tests pass; the all-scenarios
+- Last verified 2026-10-14 (card style and size added): 1,732 tests pass; the all-scenarios
   playthrough runs every scenario, #55 and a Random Dungeon with four seeds (384 runs) without a
   rule violation; the scripted "veteran" parties win 53 and
   58 of the 94 playable scenarios (those they never win are mostly goals they don't play for);
-  `scripts/mutate.py`'s 437 mutations are each noticed by a test.
+  `scripts/mutate.py`'s 439 mutations are each noticed by a test.
 - **Not yet seen on a device:** the interface added by the audit (the Solo switch, cards in play
   with "End This Bonus", the damage sheet's "Let <card> take it", the long-rest sheet, the wall
   lines between tiles) and everything scenario rules draw (pressure plates, padlocks, hollow
@@ -45,14 +45,14 @@ The branches:
   second session had the main checkout. It adds: Singing Arrow's Curse over its area; the
   play ledger no longer miscounting #9's Scouts (N12); the audit's new screens rendered and
   looked at (N16) with the cards in play made finger-sized; a door two hexes wide opening as
-  one (N21). `scripts/mutate.py` has 437 mutations, each noticed by a test. Group 2 is begun: a card lost
+  one (N21). `scripts/mutate.py` has 439 mutations, each noticed by a test. Group 2 is begun: a card lost
   from any hand spares the crystal (#84) or a captive (#44) — `saves`, `SaveChoiceSheet` — and a
   character beside a captive gives up an action to free it (`forgo`), with #44's loss switched on.
 
 To pick it up, work on `feat/cards-4` (or merge it into `feat/scenario-rules-3` first — it is a
 fast-forward):
 
-1. **Verified** at the head of `feat/cards-4` on 2026-10-14: `swift test` 1,730 tests, none
+1. **Verified** at the head of `feat/cards-4` on 2026-10-14: `swift test` 1,732 tests, none
    failing; the four-seed all-scenarios playthrough (384 runs) without a violation; the veteran
    playthrough passing (53 and 58 of 94 won, as before). `main` has the branch up to merge
    `77bb551`; the card style setting and card size slider came after and are on the branch.
@@ -204,7 +204,7 @@ The task list is `TODO.md` → "Missing Gloomhaven Rules" → "Open, in order"; 
 ordered like this:
 
 1. **Tests and checks, before building on top.** Done but for a glance on the iPad at what the
-   off-screen renderer can't draw. (`scripts/mutate.py` has 437 mutations, 280 of them scenario
+   off-screen renderer can't draw. (`scripts/mutate.py` has 439 mutations, 280 of them scenario
    rules — `--scenario` — and each is noticed by a test: add one with every new mechanism.)
 2. **Scenario rules** (done 2026-10-14 but for #55) — 94 printed rules in 28 scenarios were
    open on 2026-10-12, done in this order because each group is one mechanism used several times:
