@@ -1,163 +1,116 @@
-# GlavenGame — Manual Test Plan
+# GlavenGame — Testing
 
-Last updated: 2026-03-13
+Last updated: 2026-10-14
 
-## Prerequisites
+Almost everything is tested headless: the board is played through the same coordinator calls the
+interface makes, so a rule test is a short game. What can only be judged by eye is rendered to
+images by tests that write a file when asked, and there is a short checklist for a device at the
+end.
 
-- Build and run via `xcodegen generate && open GlavenGame.xcodeproj` or `swift build`
-- Start a new game with the **Gloomhaven** edition
+One `swift test` (or mutation run) at a time per checkout: two at once share the build folder
+and fail each other.
 
-## Automated Tests
+## The suite
 
-Run the automated test suite:
 ```sh
-swift test
+swift test                      # 1,688 tests on 2026-10-14, about 30 seconds after a build
+swift test --filter AttackRuleTests
 ```
 
-35 tests covering: AoE resolution, curse/bless limits, escort AI, objective count parsing, loot board state, teleport vs pathfinding, treasure reward parsing, bonus XP, entity conditions, hex coordinate math, invisible+AoE interaction.
+- **Rule tests** play through the coordinator on a shared fixture (`Tests/Support/RuleBoard.swift`):
+  `AttackRuleTests`, `ConditionRuleTests`, `MovementRuleTests`, `RoundRuleTests`, `LootRuleTests`,
+  `RevealRuleTests`, `WallLineTests`, `DoorRuleTests`, `RestRuleTests`… Each rule of the rulebook
+  and FAQ ([docs/rulebook/gh-rules.md](docs/rulebook/gh-rules.md)) that the engine audit looked at
+  names its test in [docs/audits/2026-10-09-rules-audit.md](docs/audits/2026-10-09-rules-audit.md).
+- **Scenario rules** are tested on the real maps (`ScenarioSpecialRuleTests`, `ScenarioGoalTests`,
+  `ScenarioLockTests`, `ScenarioPlacementTests`, and one class for each mechanism: `DriftTests`,
+  `CarriedThingTests`, `WallTests`, `SwayTests`…). Each printed rule's row in
+  [docs/scenario-book/rules-audit.md](docs/scenario-book/rules-audit.md) names its test.
+- **Data checks** read every card, monster, scenario and placement: every printed XP and element
+  reachable, every trap legend counting its traps, every door on a hex, every written rule naming
+  things in its scenario, every scenario reachable in the campaign.
+- **Golden transcripts** (`GoldenTurnLogTests`): seeded games of #1, #2 and #4 compared turn by turn
+  with hand-checked logs in `Tests/Golden/`. A diff there means turn play changed — check it
+  against the rulebook, then re-record:
 
----
+  ```sh
+  GOLDEN_RECORD=1 swift test --filter GoldenTurnLogTests
+  ```
 
-## 1. Escort AI and Movement
+## Whole games
 
-**Scenario:** #19 (Forgotten Crypt)
+`Tests/Support/ScenarioSimulator` plays real scenarios through the coordinator with a
+`PlayerPolicy` answering every prompt (`ScriptedPolicy`, `TacticalPolicy`, `VeteranPolicy`). It
+checks every attack (range, sight, enemies, visibility), every move (adjacency, walls, obstacles,
+doors, end hex) and the board after each step, and `PlayLedger` checks the round as a whole
+(initiative order, rests, cards conserved, gold looted).
 
-| Step | Action | Expected |
-|------|--------|----------|
-| 1 | Select Scenario #19 | Loads with Hail escort objective |
-| 2 | Add 2 characters, place them, start scenario | Hail appears on board with health bar |
-| 3 | Set initiatives and advance to execution phase | Turn order includes "Hail" at initiative 99 |
-| 4 | Wait for Hail's turn | Hail moves toward nearest monster (Move 2) — animated |
-| 5 | Observe Hail has no attack | Hail should only move (scenario 19 escort has move only) |
+```sh
+# every scenario to a legitimate end, four seeds each (~3 min)
+SIM_ALL=1 SIM_SEEDS=4 swift test --filter testAllScenariosPlayToALegitimateEnd
 
-**Scenario:** #44 (Tribal Assault)
+# ninth-level parties that win most scenarios
+SIM_ALL=1 swift test --filter testVeteranPartiesWinMostScenarios
 
-| Step | Action | Expected |
-|------|--------|----------|
-| 1 | Select Scenario #44, start | Redthorn escort appears at initiative 1 |
-| 2 | Wait for Redthorn's turn | Redthorn moves (Move 3) AND attacks (Attack 3, Range 3) |
-| 3 | Verify AM deck used | Redthorn uses ally AM deck (not monster deck) |
-| 4 | Apply Stun to Redthorn via context menu | Next turn: Redthorn skips ("Stunned — skipped" in log) |
-| 5 | Apply Disarm to Redthorn | Next turn: Redthorn moves but does not attack |
+# one game written out turn by turn
+SIM_SCENARIO=1 SIM_SEED=2 SIM_DIFFICULTY=easy SIM_OUT=/tmp/s1.log swift test --filter testDebugPlaythrough
+```
 
-## 2. Objective Count
+Other switches: `SIM_FROM`/`SIM_TO` (a range of scenarios), `SIM_PARTY`, `SIM_LEVEL`, `SIM_ROUNDS`,
+`SIM_VETERAN`, `SIM_WIN`.
 
-**Scenario:** #56 (Bandit's Wood)
+## Proving a test: mutations
 
-| Step | Action | Expected |
-|------|--------|----------|
-| 1 | Select Scenario #56, reveal room with escorts | **3** Captive Orchid escort tokens appear (not 1) |
-| 2 | Check each token | All three have independent health bars |
-| 3 | Kill one Captive Orchid | Other two remain alive and functional |
+`scripts/mutate.py` breaks one rule in the game code and runs the tests that should notice; it
+restores the file with `git checkout`, so commit first. Every fix adds one (401 on 2026-10-14, each
+noticed by a test).
 
-**Scenario:** #86 (Sunken Vessel)
+```sh
+python3 scripts/mutate.py --list
+python3 scripts/mutate.py <name> <TestClass>
+python3 scripts/mutate.py --scenario        # the scenario mechanisms only
+python3 scripts/mutate.py --all             # every engine mutation
+```
 
-| Step | Action | Expected |
-|------|--------|----------|
-| 1 | Select Scenario #86, reveal escort room | **11** Villager escort tokens appear |
+## Pictures
 
-## 3. End-of-Turn Auto-Loot
+Tests that render a screen or a map to a PNG when given a path, for looking at what can't be
+asserted:
 
-| Step | Action | Expected |
-|------|--------|----------|
-| 1 | Start any scenario, kill a monster | Loot token appears on the hex where monster died |
-| 2 | Move a character onto that hex | Loot auto-collected (gold notification, log entry) |
-| 3 | Kill a monster on a hex NOT adjacent to any character | Loot stays on board |
-| 4 | End a character's turn while standing on a loot token | Loot on character's current hex auto-collected |
-| 5 | Use "Loot 1" action near multiple loot tokens | Tokens within range 1 collected |
+```sh
+BOARD_RENDER=15 BOARD_RENDER_OUT=/tmp/s15.png swift test --filter testRenderScenarioMap
+PLACEMENT_SHEET=19 PLACEMENT_SHEET_OUT=/tmp/s19.png swift test --filter testRenderPlacementSheet
+INTERFACE_RENDER_OUT=/tmp/ui swift test --filter testRenderTheAuditsInterface
+TOWN_RENDER_OUT=/tmp/town swift test --filter testRenderTown
+```
 
-## 4. AoE Spatial Patterns
+The others: `testRenderMainMenu` (`MENU_RENDER_OUT`), `testRenderCampaigns`, `testRenderTableRules`,
+`testRenderEvent`, `testRenderEnhancer`, `testRenderQuestPicker`, `testRenderGoalPicker`,
+`testRenderCardChoice`, `testRenderLoadout`, `testRenderRestPanel`, `testRenderRewardChoices`,
+`testRenderBriefAndResults`, `testRenderFloatingText`, `testRenderElementChoice` — each takes the
+`*_RENDER_OUT` variable named in its test.
 
-| Step | Action | Expected |
-|------|--------|----------|
-| 1 | Start a scenario with Flame Demons or Cultists | Monsters with AoE ability cards |
-| 2 | Place 2+ characters adjacent to each other, near a monster | Within AoE range |
-| 3 | Wait for monster AoE ability card | Monster attacks multiple characters in the AoE pattern |
-| 4 | Check combat log | Shows multiple targets hit by single attack |
-| 5 | Place characters far apart (outside AoE shape) | AoE only hits those in the pattern hexes |
+## CI
 
-## 5. Teleport Movement
+`.github/workflows/tests.yml` runs the suite on every push to `main` and every pull request, and
+every scenario to the end with four seeds nightly. `.github/workflows/release.yml` builds a
+macOS DMG and regenerates `CHANGELOG.md` from the commit messages when a version tag is pushed.
 
-| Step | Action | Expected |
-|------|--------|----------|
-| 1 | Use a character with teleport ability | Teleport action available |
-| 2 | Activate teleport with obstacles between you and destination | Valid hexes shown in **purple** (not cyan) |
-| 3 | Confirm hex on other side of wall is selectable | Hex highlighted despite obstacle blocking path |
-| 4 | Select that hex | Character teleports directly (instant placement) |
-| 5 | Teleport over a trap | Character does NOT take trap damage |
-| 6 | Teleport over hazardous terrain | Character does NOT take hazard damage |
-| 7 | Verify occupied hexes not selectable | Can't teleport onto another figure |
+## On a device
 
-## 6. Treasure Reward Distribution
+The renderer can't play animations, sound or touch. On the iPad simulator
+(`xcodegen generate && open GlavenGame.xcodeproj`), a playthrough of a scenario or two should show:
 
-| Step | Action | Expected |
-|------|--------|----------|
-| 1 | Open Treasures dialog during a scenario | Shows available treasures with reward descriptions |
-| 2 | Click "Loot" on a gold treasure (e.g., "Gain 15 gold") | Active character's gold increases by 15 |
-| 3 | Click "Loot" on a damage treasure (e.g., "Suffer 5 damage") | Active character's health decreases by 5 |
-| 4 | Click "Loot" on an item treasure | Item unlocked in party inventory |
-| 5 | Click "Loot" on XP treasure | Character's XP increases |
-| 6 | Verify treasure marked as "Looted" after collection | Shows green checkmark, can't loot again |
+- [ ] The app launches; a new campaign can be started, characters recruited, a scenario chosen
+- [ ] Characters are placed on the starting hexes by tapping; cards are chosen and initiative shown
+- [ ] Moves, attacks and areas are aimed by tapping hexes and figures; monsters move and attack,
+      animated, with their focus explained ("Why?")
+- [ ] Loot is picked up at the end of a turn on its hex, or by a Loot action — not in passing
+- [ ] An invisible figure is not focused on or targeted by its enemies, area attacks included
+- [ ] Doors open rooms, traps spring, the wall lines between tiles are drawn
+- [ ] Resting, losing a card to negate damage, exhaustion and the end of the scenario
+- [ ] Back in town (or travelling on): events, shop, level up, perks, enhancing
+- [ ] Sound plays and VoiceOver reads the board
 
-## 7. Curse/Bless Deck Limits
-
-| Step | Action | Expected |
-|------|--------|----------|
-| 1 | Open AM deck dialog for monster deck | Shows current deck contents |
-| 2 | Add 10 Bless cards | All 10 added to deck |
-| 3 | Try to add an 11th Bless card | Card NOT added (stays at 10 bless) |
-| 4 | Add 10 Curse cards | All 10 added |
-| 5 | Try to add an 11th Curse card | Card NOT added (stays at 10 curse) |
-| 6 | Repeat for a character's personal AM deck | Same 10-card cap applies |
-
-## 8. End-of-Scenario Bonus XP
-
-| Step | Action | Expected |
-|------|--------|----------|
-| 1 | Note all character XP values before completing scenario | Record starting XP |
-| 2 | Note the scenario level (shown in footer) | Determines bonus amount |
-| 3 | Complete a scenario successfully | Victory dialog appears |
-| 4 | Check character XP | Increased by (4 + scenario_level × 2) + any scenario-specific rewards |
-| 5 | Level 0 scenario: bonus = **4 XP** | Verify exact amount |
-| 6 | Level 3 scenario: bonus = **10 XP** | Verify exact amount |
-| 7 | Exhaust a character, then win | Exhausted character does NOT receive bonus XP |
-
-## 9. Invisible + AoE Interaction
-
-| Step | Action | Expected |
-|------|--------|----------|
-| 1 | Apply Invisible condition to a character (context menu) | Character becomes invisible |
-| 2 | Place invisible character adjacent to a visible character, near a monster | Both near AoE source |
-| 3 | Monster turn with AoE attack | AoE hits both characters — invisible one takes damage too |
-| 4 | Monster turn with single-target attack | Invisible character is NOT targeted |
-| 5 | Monster focus selection | Should skip invisible character, focus visible one |
-
-## 10. Character Exhaustion from Cards
-
-| Step | Action | Expected |
-|------|--------|----------|
-| 1 | Play cards until hand has 1 card and discard has 1 card | Near exhaustion |
-| 2 | Advance to card selection phase | Character auto-exhausted, removed from board |
-| 3 | Play until hand has 1 card but discard has 3+ cards | Near forced rest |
-| 4 | Advance to card selection | Character enters forced long rest (initiative 99) |
-| 5 | Exhaust all characters | Scenario defeat triggered |
-
----
-
-## Quick Smoke Test Checklist
-
-- [ ] App launches without crash
-- [ ] Can create a new game with Gloomhaven edition
-- [ ] Can add characters and start a scenario
-- [ ] Character placement on starting hexes works
-- [ ] Monster turns execute with animated movement and attacks
-- [ ] Escort turns animate (move/attack) on escort scenarios
-- [ ] Loot tokens appear when monsters die
-- [ ] Loot auto-collected on move and end-of-turn
-- [ ] Teleport shows purple highlights through obstacles
-- [ ] Treasures distribute actual rewards on loot
-- [ ] Curse/Bless decks cap at 10 each
-- [ ] Bonus XP awarded on scenario victory
-- [ ] AoE attacks hit multiple targets spatially
-- [ ] Invisible figures excluded from focus but hit by AoE
-- [ ] Card exhaustion triggers correctly
+A recorded campaign to continue from is in
+[docs/playthroughs/2026-10-09-ipad/](docs/playthroughs/2026-10-09-ipad/README.md).

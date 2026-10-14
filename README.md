@@ -14,27 +14,29 @@
 
 ## What Is This?
 
-GlavenGame is a digital implementation of Gloomhaven's tactical board game. Players place characters on a hex grid, select ability cards, and execute turns — while monsters move, focus, and attack automatically using Gloomhaven's AI rules.
+GlavenGame is a digital implementation of Gloomhaven (first edition, base game). Players choose ability cards, move their characters on a hex board and fight, while monsters move, focus and attack on their own by Gloomhaven's AI rules. Between scenarios the party is in town: shopping, levelling up, enhancing cards, reading city and road events, and following the campaign across the world map.
 
 **This isn't GlavenApp** (the companion/helper app). GlavenGame is a playable game with a visual hex board, animated piece movement, and automated combat.
 
+The aim is a game that plays exactly as the rulebook, the official FAQ and the scenario book say. Where that work stands, and how it is done, is in [docs/rules-work.md](docs/rules-work.md).
+
 ## Features
 
-- **Hex Board** — SpriteKit-rendered hex grid with scenario maps, room reveals, doors, traps, hazardous terrain, and overlays
-- **Monster AI** — Faithful Gloomhaven focus/movement algorithm with pathfinding, line of sight, and multi-target attacks
-- **Summon AI** — Automated summon turns using monster AI with inverted friend/foe, drawing from owner's modifier deck
-- **Interactive Player Turns** — Move characters on the board, select attack targets, play ability cards with hex-based AoE
-- **Combat Resolution** — Attack modifier draws with advantage/disadvantage, shield, pierce, retaliate, poison, conditions
-- **Scenario System** — Load scenarios from edition data, progressive room reveals via doors, victory/defeat conditions
-- **3 Editions** — Gloomhaven, Frosthaven, and Jaws of the Lion with full scenario and monster data
-- **Character Management** — Health, XP, gold, conditions, summons, ability hand management, perks, enhancements
-- **Attack Modifier Decks** — Per-character and monster decks with bless/curse, perk modifications, animated card draws
-- **Visual Theming** — Edition-specific fonts and colors, parchment backgrounds, light/dark mode
+- **The 95 campaign scenarios** — every map with its rooms, doors, traps, hazards, obstacles and treasure; each scenario's printed goal, losses and special rules (94 of 95 complete; #55, a random dungeon, needs the random dungeon mode). The scenario book's rules are tracked rule by rule in [docs/scenario-book/rules-audit.md](docs/scenario-book/rules-audit.md)
+- **Monster AI** — focus, movement and attacks by the rulebook and FAQ, with pathfinding round walls and closed doors, line of sight, areas, jumps and flight; monster ability decks, shared decks, elements, and the bosses' special rules
+- **Player turns** — choose two cards, play a top and a bottom half on the board: moves, attacks, areas you aim, pushes and pulls, loot, summons, persistent bonuses, elements, items, rests and the losing of cards to negate damage
+- **Summons and allies** — summons act on their owner's initiative with the owner's modifier deck; escorts and objectives walk to their goals, captives can be saved
+- **Combat** — attack modifier decks with Bless and Curse, advantage and disadvantage, Shield, Pierce, Retaliate and every condition
+- **The campaign** — town with the shop, the Enhancer, the sanctuary, city and road events, travelling on without returning to Gloomhaven, levelling up, perks, personal quests, retirement and class unlocks, battle goals, prosperity, reputation and achievements on the world map; several campaigns, each saved to its own file
+- **Table rules and learning** — variants a group can play by, solo play, a learning mode that explains what is happening, undo outside the board
+- **Sound, accessibility and theming** — sound effects for the board, VoiceOver on the board and in the menus, light and dark mode
+
+The data of Frosthaven and Jaws of the Lion is bundled from Gloomhaven Secretariat, but only Gloomhaven can be played.
 
 ## Requirements
 
 - macOS 14+ (Sonoma) or iPadOS 17+
-- Xcode 16+ (includes Swift 6 toolchain)
+- Xcode 16+ (the project builds in Swift 5.10 mode)
 - [xcodegen](https://github.com/yonaskolb/XcodeGen) (for Xcode project generation)
 
 ## Building and Running
@@ -64,7 +66,8 @@ GlavenGame/
   GlavenGame.swift             # App entry point
   ContentView.swift            # Root navigation
   Board/                       # Board UI and turn execution
-    BoardCoordinator.swift     # Bridges SpriteKit scene ↔ SwiftUI state
+    BoardCoordinator.swift     # Bridges SpriteKit scene ↔ SwiftUI state; the turn loop
+    BoardCoordinator+*.swift   # Rules by subject: combat, movement, goals, locks, effects, bosses…
     BoardScene.swift           # SpriteKit hex grid rendering and animations
     BoardView.swift            # SwiftUI overlay (character panel, HUD, turn UI)
     PlayerTurnController.swift # Interactive player turn execution
@@ -74,22 +77,33 @@ GlavenGame/
     MonsterAI.swift            # Gloomhaven monster focus/movement/attack AI
     SummonAI.swift             # Summon AI (inverted friend/foe monster AI)
     CombatResolver.swift       # Attack resolution with modifiers and conditions
-    BoardState.swift           # Hex grid state (cells, pieces, doors, overlays)
+    BoardState.swift           # Hex grid state (cells, pieces, doors, walls, overlays)
     BoardBuilder.swift         # Constructs board from scenario map data
     Pathfinder.swift           # Hex grid A* pathfinding
     LineOfSight.swift          # Hex-based line of sight
     HexCoord.swift / HexCell.swift / PieceID.swift
-  Managers/                    # Game state orchestration
+  Managers/                    # Game state orchestration (rounds, scenarios, campaign, events)
   Models/                      # Data models, enums, protocols
-  Views/                       # SwiftUI views (setup, menus, dialogs)
+  Views/                       # SwiftUI views (setup, town, menus, dialogs)
   Utilities/                   # Image loading, fonts, sound, theming
   Resources/
     EditionData/{gh,fh,jotl}/  # Bundled JSON game data
-    ScenarioMaps/              # Hex map data for scenarios
+    ScenarioMaps/              # Hex map data for scenarios; placements/ written from the scenario book
     Fonts/ Images/ Sounds/
+Tests/                         # XCTest suite, scenario simulator, golden transcripts
+docs/                          # Rules work, rulebook checklist, scenario book notes, audits
+scripts/                       # Mutation runner, scenario book helpers
 Package.swift                  # SPM package definition
 project.yml                    # xcodegen project spec
 ```
+
+## Testing
+
+```sh
+swift test
+```
+
+The suite plays the rules through the real board on shared fixtures, plays every scenario to its end with a simulated party, and compares seeded games with hand-checked transcripts. [TESTING.md](TESTING.md) says what there is and how to run each part.
 
 ## Copyright / License
 

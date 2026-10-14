@@ -5,20 +5,22 @@ official FAQ and the scenario book say. This page is the way in for anyone — a
 session — picking that work up. It says what has been done, which document answers which
 question, how a piece of work is done from start to finish, and what to do next.
 
-## Where it stands (2026-10-10)
+## Where it stands (2026-10-14)
 
-- Everything is on `main` (merge `236fb2d`, "scenario rules and the rules audit"); the branch
-  `feat/scenario-rules` carries on from there. Nothing is local only.
+- `main` has everything up to merge `53c1ab1` (the cards); `feat/cards-4` adds town and campaign
+  and is pushed, not merged ("Work in progress" below). Nothing is local only.
 - **The engine** (turns, attacks, movement, monsters, campaign) was audited rule by rule against
-  the rulebook and FAQ: about 130 findings, about 115 fixed, each with a test that fails without
-  the fix. What is open is listed in `TODO.md`.
+  the rulebook and FAQ: about 130 findings, all fixed but a few latent cases no Gloomhaven card
+  triggers, each fix with a test that fails without it
+  ([audits/2026-10-09-rules-audit.md](audits/2026-10-09-rules-audit.md)).
 - **The scenarios**: the book prints 447 rules for the 95 scenarios. 440 are enforced, 1 partly
   and 6 not yet (2026-10-14; at the audit of 2026-10-10 it was 353, 21 and 73): 94 scenarios
   have every printed rule done, and the rest is #55, a random dungeon. Every rule has a row in
   [scenario-book/rules-audit.md](scenario-book/rules-audit.md).
-- As last run by the audit: 1,534 tests pass; the all-scenarios playthrough runs every scenario
-  with four seeds without a rule violation; a scripted "veteran" party wins 70 of the 95 scenarios
-  (the 25 it never wins are mostly goals it doesn't play for).
+- Last verified 2026-10-14: 1,688 tests pass; the all-scenarios playthrough runs every scenario
+  with four seeds (376 runs) without a rule violation; the scripted "veteran" parties win 53 and
+  58 of the 94 playable scenarios (those they never win are mostly goals they don't play for);
+  `scripts/mutate.py`'s 401 mutations are each noticed by a test.
 - **Not yet seen on a device:** the interface added by the audit (the Solo switch, cards in play
   with "End This Bonus", the damage sheet's "Let <card> take it", the long-rest sheet, the wall
   lines between tiles) and everything scenario rules draw (pressure plates, padlocks, hollow
@@ -199,9 +201,9 @@ ordered like this:
 1. **Tests and checks, before building on top.** Done but for a glance on the iPad at what the
    off-screen renderer can't draw. (`scripts/mutate.py` has 401 mutations, 280 of them scenario
    rules — `--scenario` — and each is noticed by a test: add one with every new mechanism.)
-2. **Scenario rules** — 94 printed rules in 28 scenarios, in this order because each group is one
-   mechanism used several times:
-   - *a prompt for a choice the player can't make yet*: losing a card to spare a captive or the
+2. **Scenario rules** (done 2026-10-14 but for #55) — 94 printed rules in 28 scenarios were
+   open on 2026-10-12, done in this order because each group is one mechanism used several times:
+   - *a prompt for a choice the player can't make yet* (done 2026-10-13): losing a card to spare a captive or the
      crystal (#44, #84), giving up an action to cleanse a pump, free a captive, loot an adjacent
      tile or dig a grave (#26, #44, #52, #75), choosing which Living Spirit goes (#70). It unlocks
      goals and losses the game can't check today (#26, #44). The damage sheet
@@ -225,10 +227,14 @@ ordered like this:
    (A10), the rest of negating damage (N8 a card in play lost, N9 Warding Strength and Cold
    Front after the choice, N10 the shield order), standees that run out (N11), push and pull
    around walls (A12), treasure on a replay (C11), and a move in legs for Feedback Loop. Left: the
-   latent cases no Gloomhaven card triggers (`TODO.md`), and the campaign's F19, F20, N6.
-4. **Cards** and **town and campaign** (done 2026-10-14; left: three Beast Tyrant cards the data
-   leaves empty, his text bonuses about the bear, single-target condition enhancements, N3);
-   **next: what isn't Gloomhaven**.
+   latent cases no Gloomhaven card triggers (`TODO.md`).
+4. **Cards** and **town and campaign** (done 2026-10-14: the Beast Tyrant's bear, travelling on,
+   collective gold, summon enhancements, Envelope X; left: three Beast Tyrant cards the data
+   leaves empty, his text bonuses about the bear, single-target condition enhancements, N3).
+5. **What isn't Gloomhaven, and tools** — next. The random dungeon mode comes first, since it is
+   the one piece of the base game left and #55 needs it; then the Frosthaven mechanics (icy
+   terrain, Plague and Enfeeble), multi-hex obstacles as one piece, and a debug overlay for
+   monster movement.
 
 ## History, briefly
 
@@ -238,3 +244,11 @@ ordered like this:
   effects, a third side, inactive monsters, boss cycles, marching guards, and so on).
 - 2026-10-10 — the engine audit against the rulebook and FAQ, a re-audit of the scenario rules
   already built, walls between map tiles, trap legends, the mutation runner.
+- 2026-10-12 — the three rules no test caught, mutations for every scenario mechanism, the golden
+  transcripts read against the rulebook; Scroll of Recall, Unending Chant, #36's hang.
+- 2026-10-13 — the scenario rules that were left, group by group: choices the player makes,
+  things that are carried, a board that moves, monsters that don't act as their cards say,
+  bosses, walls with hit points.
+- 2026-10-14 — the small scenario rules, the engine rules the audit left open, the Beast
+  Tyrant's bear and the other cards, town and campaign (travelling on, collective gold, summon
+  enhancements), and the changelog.

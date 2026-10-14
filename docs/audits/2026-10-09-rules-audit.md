@@ -260,7 +260,7 @@ could not see the rule broken and were changed (solo play at a level where its g
 scenario summary of an escape, a stunned character's offers answered instead of waited on).
 The scenario mechanisms have 87 more (`scripts/mutate.py --scenario`: the `when` facts, standing
 effects, water, inactive monsters, sides, boss cycles, marching, locks, monsters set up late…),
-run against the scenario tests. 152 mutations, each noticed by a test (fourteen more came with the fixes of N13, N17 to N19 and N21, twenty-eight with the things that are carried, twenty-three with the first scenario rules that ask the player: the card that spares an objective, the action given up for a captive, a pump or a treasure, the grave dug with movement, the Living Spirit and the deck chosen).
+run against the scenario tests. Every batch of rules since has added its own: 401 mutations on 2026-10-14, each noticed by a test (`python3 scripts/mutate.py --list`).
 
 **The simulator** (`Tests/Support/ScenarioSimulator`, `PlayLedger`, `PlayerPolicies`). It now
 also checks, of every playthrough: each attack within its attack's range (read from the card and
@@ -271,10 +271,10 @@ gained equal to tokens looted × the level's rate. `PlayLedgerTests` shows each 
 bad event. Line of sight is still judged with the engine's own function; the ledger's own range check is plain hex
 distance, beside the simulator's check that range reaches round the walls at all. With `Options.veteranParty` (ninth-level Brute, Sunkeeper and Berserker with their
 level-up cards and perks, at scenario level 0 — a level the players may choose, p.15) and
-`VeteranPolicy`, playthroughs reach the end: over two seeds of all 94 scenarios this party wins 117 of 188 games (62%) and 52 of the 60 games won by killing every enemy (87%); with a Scoundrel added, 116 of 188 and 47 of 60 (`testVeteranPartiesWinMostScenarios`, `SIM_ALL=1`). The first-level `TacticalPolicy` party still wins none of its 188.
+`VeteranPolicy`, playthroughs reach the end: over two seeds of all 94 scenarios this party won 117 of 188 games (62%) on 2026-10-10 and 52 of the 60 games won by killing every enemy (87%); with a Scoundrel added, 116 of 188 and 47 of 60 (`testVeteranPartiesWinMostScenarios`, `SIM_ALL=1`). Since the scenario rules were finished the goals are harder to reach: on 2026-10-14, at one seed, the two parties win 53 and 58 of 94. The first-level `TacticalPolicy` party still wins none of its 188.
 `PlaythroughTests.testTheVeteranPartyWinsSixKindsOfScenario` wins #1, #13 (kill all), #9 (a boss
 and a treasure), #94 (enemies and a treasure), #25 (an escape) and #51 (the Gloom) on every test
-run (each with a seed the party wins with: about one game in three is lost to the cards). Still never won by a playthrough: scenarios #7, #12, #15, #19, #26, #27, #30, #33, #40, #50, #52, #59, #60, #61, #66, #67, #69, #70, #71, #73, #79, #82, #85, #90, #92 (25 of 94) — mostly goals the policy doesn't play for (a treasure only a Loot action takes, pressure plates, escorts, objectives to protect) and the longest boss fights.
+run (each with a seed the party wins with: about one game in three is lost to the cards). The scenarios neither veteran party wins, and why, are listed in `TODO.md` ("The simulator", 31 of 94 on 2026-10-13) — mostly goals the policy doesn't play for (a treasure only a Loot action takes, pressure plates, escorts, objectives to protect) and the longest boss fights.
 
 ## Rules with no test that would catch a break
 
