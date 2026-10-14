@@ -353,9 +353,9 @@ Found along the way
 The way in is [`docs/rules-work.md`](docs/rules-work.md): where the rules work stands, which document
 answers what, how a fix is built, proved and verified, and how to read the scenario book. This
 section is its task list. `main` has the work up to merge `53c1ab1` (2026-10-14); `feat/cards-4`
-adds town and campaign. Last verified 2026-10-14: 1,688 tests passing, the four-seed
-all-scenarios playthrough (376 runs) without a rule violation, and each of the 401 mutations in
-`scripts/mutate.py` noticed by a test.
+adds town and campaign and the random dungeons. Last verified 2026-10-14: 1,710 tests passing,
+the four-seed all-scenarios playthrough (384 runs, #55 and a Random Dungeon included) without a
+rule violation, and each of the 422 mutations in `scripts/mutate.py` noticed by a test.
 
 ### Open, in order
 

@@ -60,7 +60,7 @@ campaign run between scenarios. 384 commits; a summary by area.
 
 - Headless play through the coordinator (`ScenarioSimulator`): every scenario played to its end
   with four seeds and checked for rule violations, and a ninth-level party that wins 53 to 58 of
-  94; 1,688 tests; `scripts/mutate.py`, 401 deliberate rule breaks each caught by a test.
+  94; 1,710 tests; `scripts/mutate.py`, 422 deliberate rule breaks each caught by a test.
 
 ## [1.0.0-beta.2] - 2026-05-29
 
