@@ -29,9 +29,8 @@ final class LabelTests: XCTestCase {
         for item in store.items(for: "gh") {
             check(item.actions ?? [], item.name)
         }
-        // Two lines the upstream data doesn't have at all.
-        let absentFromData: Set = ["three-spears Portable Ballista: %data.custom.gh.three-spears.abilities.229.2%",
-                                   "angry-face Wild Command: %data.custom.gh.angry-face.abilities.398.4%"]
-        XCTAssertEqual(missing.filter { !absentFromData.contains($0) }, [], "\(missing.count) texts unresolved")
+        // Fixed against the printed cards: Portable Ballista's bottom half named a text the data
+        // doesn't have (229.2 for 229.1); Wild Command's fourth line is the Doomed icon alone.
+        XCTAssertEqual(missing, [], "\(missing.count) texts unresolved")
     }
 }
