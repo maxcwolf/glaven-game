@@ -108,3 +108,9 @@ a room that can't be laid apart from the rooms before it makes the game draw the
 "replace an enemy in the previous room" sets up again the monster card's first such enemy (for the
 party's size) whose number is clear; a penalty's "+1 Range" widens ranged attacks only; the
 success bonus experience is given for a random dungeon won.
+
+Seen on the 11-inch iPad Pro simulator (2026-10-14): setup with its Penalties row, the brief, the
+first room and its starting hexes. The brief now names the dungeon without a number and shows only
+the first room's monsters (it had listed every drawn room's, rooms behind exits never taken
+included). Open question: a road event is drawn before a random dungeon as before any scenario; the
+variant "doesn't progress the campaign", and a road event can change gold and reputation.
