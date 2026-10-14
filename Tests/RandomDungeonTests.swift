@@ -420,7 +420,7 @@ final class RandomDungeonTests: XCTestCase {
             guard dungeon.first.next.count == 1, let next = dungeon.first.next.first,
                   let penalty = DungeonPenalty.byRoom[next.room]?.major else { continue }
             switch penalty {
-            case .enemyShield, .enemyAttack, .enemyMoveAndRange, .enemyStrengthen, .enemyRetaliate: break
+            case .enemyShield, .enemyAttack, .enemyMoveAndRange, .enemyStrengthen, .enemyRetaliate, .noConsuming: break
             default: continue
             }
             seen.insert(next.room)
@@ -433,6 +433,9 @@ final class RandomDungeonTests: XCTestCase {
             case .enemyMoveAndRange(let amount):
                 XCTAssertEqual(coord.scenarioMoveBonus(of: monster), amount, next.room)
                 XCTAssertEqual(coord.scenarioRangeBonus(of: monster), amount, next.room)
+            case .noConsuming:
+                for character in gm.game.characters { XCTAssertTrue(coord.cannotConsume(.character(character.id)), next.room) }
+                XCTAssertFalse(coord.cannotConsume(monster), "the monsters still consume")
             case .enemyRetaliate(let amount, let range, _):
                 XCTAssertTrue(coord.scenarioEffects(on: monster).contains { $0.retaliate == amount && $0.retaliateRange == range }, next.room)
             case .enemyStrengthen:

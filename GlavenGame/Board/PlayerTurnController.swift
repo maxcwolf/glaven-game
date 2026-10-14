@@ -1088,6 +1088,8 @@ final class PlayerTurnController {
     /// for an attack, the Air that Nature's Lift and Foul Wind would consume too.
     func consumeOptions(for action: ActionModel) -> [ConsumeOption] {
         guard let game = gameManager?.game else { return [] }
+        // Clearing's penalty: no element can be consumed for the rest of the scenario.
+        if coordinator?.cannotConsume(.character(characterID)) == true { return [] }
         let declined = declinedConsumesStep == stepKey ? declinedConsumes : []
         var options = (action.subActions ?? []).filter(MonsterAbility.isConsume).enumerated().map { index, sub in
             let elements = MonsterAbility.elements(of: sub)
@@ -1128,6 +1130,7 @@ final class PlayerTurnController {
     /// Lift (+2 Range on a ranged attack), Foul Wind (+1 Attack).
     private func elementConsumingBonuses(of character: GameCharacter, coordinator: BoardCoordinator)
         -> [(cardId: Int, name: String, what: (ElementType, String, Bool))] {
+        if coordinator.cannotConsume(.character(character.id)) { return [] }
         let deck = gameManager?.characterManager.abilities(for: character) ?? []
         return coordinator.chargedBonuses(of: character).compactMap { cardId, bonus in
             let name = deck.first { $0.cardId == cardId }?.name ?? "a bonus"

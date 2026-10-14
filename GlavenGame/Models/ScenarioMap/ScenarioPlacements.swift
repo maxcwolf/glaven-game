@@ -708,6 +708,8 @@ extension ScenarioPlacements {
         var healEachTurn: Int?
         /// Added to the range of their ranged attacks (a random dungeon's penalty).
         var range: Int?
+        /// They can't consume elements (a random dungeon's penalty).
+        var noConsuming: Bool?
 
         /// What X counts: an objective (1-based) or other monsters of a type on the board, or
         /// tokens of which one is lost each time a monster of a type dies.

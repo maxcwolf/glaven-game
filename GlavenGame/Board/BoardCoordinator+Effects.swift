@@ -238,6 +238,11 @@ extension BoardCoordinator {
     }
 
     /// What the scenario adds to each of a figure's Move abilities (never below a Move of 0).
+    /// Whether a standing effect keeps a figure from consuming elements (Clearing's penalty).
+    func cannotConsume(_ pieceID: PieceID) -> Bool {
+        scenarioEffects(on: pieceID).contains { $0.noConsuming == true }
+    }
+
     func scenarioRangeBonus(of pieceID: PieceID) -> Int {
         scenarioEffects(on: pieceID).reduce(0) { $0 + ($1.range ?? 0) }
     }
