@@ -163,6 +163,8 @@ extension BoardCoordinator {
         case .enemyRetaliate(let amount, let range, let permanent):
             addDungeonEffect(ScenarioPlacements.Effect(on: "monsters", round: permanent ? nil : game.round,
                                                        retaliate: amount, retaliateRange: range))
+        case .enemyHealEachTurn(let amount):
+            addDungeonEffect(ScenarioPlacements.Effect(on: "monsters", healEachTurn: amount))
         case .enemyMoveAndRange(let amount):
             addDungeonEffect(ScenarioPlacements.Effect(on: "monsters", move: amount))
         default:
@@ -177,5 +179,13 @@ extension BoardCoordinator {
     /// A lasting penalty, kept on the scenario (and in the save) as a standing effect.
     func addDungeonEffect(_ effect: ScenarioPlacements.Effect) {
         gameManager?.game.scenario?.dungeonEffects.append(effect)
+    }
+
+    /// A standing effect's heal at the start of each turn (Passage's major penalty).
+    func healAtTurnStart(_ pieceID: PieceID) {
+        let amount = scenarioEffects(on: pieceID).reduce(0) { $0 + ($1.healEachTurn ?? 0) }
+        guard amount > 0 else { return }
+        let healed = heal(pieceID, amount: amount, source: pieceID)
+        if healed > 0 { log("\(name(pieceID)) heals \(healed)", category: .heal) }
     }
 }

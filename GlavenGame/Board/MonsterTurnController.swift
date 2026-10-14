@@ -84,6 +84,7 @@ final class MonsterTurnController {
             gameManager.entityManager.applyConditionsTurn(entity)
             // Scenario rules that act as a turn starts (the totems of Rebel Swamp).
             gameManager.scenarioRulesManager.evaluateTurnRules(.turnStart, for: entity)
+            coordinator.healAtTurnStart(pieceID)
             // Race to the Grave: a doomed monster suffers damage as its turn starts.
             await coordinator.applyDoomTurnStart(pieceID)
             guard !isStale else { return }

@@ -463,6 +463,22 @@ final class RandomDungeonTests: XCTestCase {
         }
     }
 
+    /// Passage's major penalty: every enemy heals 1 as each of its turns starts.
+    func testAPenaltysHealComesAsAnEnemysTurnStarts() throws {
+        let board = try RuleBoard()
+        let data = try XCTUnwrap(board.gm.editionStore.scenarios(for: "gh").first { $0.index == "rnd" })
+        board.game.scenario = Scenario(data: data)
+        board.game.scenario?.dungeonEffects = [ScenarioPlacements.Effect(on: "monsters", healEachTurn: 1)]
+        let monster = try board.monster(at: HexCoord(4, 4))
+        monster.entity.health = monster.entity.maxHealth - 3
+        board.coord.healAtTurnStart(monster.piece)
+        XCTAssertEqual(monster.entity.health, monster.entity.maxHealth - 2)
+        let brute = board.character(at: HexCoord(2, 4), health: 20)
+        brute.health = 10
+        board.coord.healAtTurnStart(.character(brute.id))
+        XCTAssertEqual(brute.health, 10, "the party isn't healed")
+    }
+
     // MARK: - Reading the cards
 
     /// Draws each written room card as the game lays it out, its numbers in red and its

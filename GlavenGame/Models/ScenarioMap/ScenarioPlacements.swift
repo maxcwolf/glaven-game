@@ -704,6 +704,8 @@ extension ScenarioPlacements {
         /// "Retaliate X, Range R" (a random dungeon's penalty).
         var retaliate: Int?
         var retaliateRange: Int?
+        /// Healed at the start of each of their turns (a random dungeon's penalty).
+        var healEachTurn: Int?
 
         /// What X counts: an objective (1-based) or other monsters of a type on the board, or
         /// tokens of which one is lost each time a monster of a type dies.
