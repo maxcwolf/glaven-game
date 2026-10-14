@@ -30,6 +30,12 @@ final class CardStyleTests: XCTestCase {
                        .scans, "a new player sees the scans")
     }
 
+    /// Three of the Beast Tyrant's cards aren't in the data: drawn, they would be blank.
+    func testACardTheDataDoesntHaveShowsItsScanInEitherStyle() throws {
+        let swap = try XCTUnwrap(gm.editionStore.deckData(name: "two-mini", edition: "gh")?.abilities.first { $0.name == "Spirit Swap" })
+        XCTAssertNotNil(AbilityCardFace.scan(of: swap, edition: "gh", style: .drawn))
+    }
+
     func testTheCardSizeGrowsTheCardAtItsShape() {
         XCTAssertEqual(AbilityCardFace.size(height: 190, scale: 1), CGSize(width: 127, height: 190))
         XCTAssertEqual(AbilityCardFace.size(height: 190, scale: 1.5), CGSize(width: 190, height: 285))
