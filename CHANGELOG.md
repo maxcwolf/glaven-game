@@ -6,8 +6,8 @@ Format based on [Conventional Commits](https://www.conventionalcommits.org/).
 ## [Unreleased]
 
 Since 1.0.0-beta.2: the game plays by the Gloomhaven rulebook, its FAQ and the scenario book —
-94 of the 95 scenarios with every printed rule (the last, #55, is a random dungeon) — and the
-town and campaign run between scenarios. 384 commits; a summary by area.
+all 95 scenarios with every printed rule, and the random dungeon deck — and the town and
+campaign run between scenarios. 384 commits; a summary by area.
 
 ### Features
 
