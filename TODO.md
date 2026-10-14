@@ -162,7 +162,7 @@ Tracking features needed for parity with [Gloomhaven Secretariat](https://github
 - [x] Locale/language selection
 - [x] Keyboard shortcuts configuration
 - [ ] Server ping configuration
-- [ ] **Card style setting** (asked 2026-10-10): a Settings switch, changeable at any time (mid-scenario too), between the real card scans — the default, the way the game is played — and the simpler drawn cards the app had before, which are easier to read and parse at a glance. It should cover every place ability cards appear (hand and card selection, the turn panel's played cards, previews), take effect at once, and be remembered
+- [x] **Card style setting** (asked 2026-10-10, done 2026-10-14): Settings → Cards switches between the card scans (the default) and the drawn cards, and a **card size** slider (75–200%, asked 2026-10-14: on an 11-inch iPad Pro the cards are hard to read unmagnified) sizes the players' cards in hand, in play and when choosing one to lose. Every character card is drawn through `AbilityCardFace`, so both take effect at once, mid-scenario too; the full-size preview follows the style. The drawn cards now say everything a card prints (`CardText`, checked for every Gloomhaven card by `testEveryCharacterCardIsReadWhole`); the three Beast Tyrant cards the data leaves empty show their scan in either style. Not yet seen on the iPad
 
 ## UI/UX
 
