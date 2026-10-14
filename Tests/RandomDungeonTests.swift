@@ -241,6 +241,21 @@ final class RandomDungeonTests: XCTestCase {
         }
     }
 
+    /// p.50: a random dungeon may be played instead of any scenario, again and again, and doesn't
+    /// progress the campaign — though the party keeps its experience, its gold and the success bonus.
+    func testTheDungeonIsAlwaysOfferedAndLeavesTheCampaignAlone() throws {
+        let gm = try startDungeon()
+        XCTAssertTrue(gm.scenarioManager.availableScenarios(for: "gh").contains { $0.index == "rnd" })
+        let brute = try XCTUnwrap(gm.game.characters.first)
+        let experience = brute.experience
+        gm.scenarioManager.finishScenario(success: true)
+        XCTAssertFalse(gm.game.completedScenarios.contains("gh-rnd"))
+        XCTAssertGreaterThan(brute.experience, experience, "the success bonus")
+        XCTAssertTrue(gm.scenarioManager.availableScenarios(for: "gh").contains { $0.index == "rnd" })
+        XCTAssertEqual(gm.scenarioManager.availableScenarios(for: "gh").filter { $0.index != "rnd" }.map(\.index), ["1"],
+                       "nothing unlocked")
+    }
+
     // MARK: - Reading the cards
 
     /// Draws each written room card as the game lays it out, its numbers in red and its

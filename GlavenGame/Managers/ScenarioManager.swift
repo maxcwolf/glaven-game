@@ -143,8 +143,8 @@ final class ScenarioManager {
         onFinishing?(success)
 
         if success {
-            // Record completion
-            game.completedScenarios.insert(data.id)
+            // Record completion — but a random dungeon doesn't progress the campaign (p.50).
+            if !data.isDungeonVariant { game.completedScenarios.insert(data.id) }
 
             // Bonus XP (4 + 2L) for every character in the scenario — an exhausted character still
             // earns it, along with rewards and battle goals, on a success (GH p.47).
@@ -385,8 +385,10 @@ final class ScenarioManager {
             // Filter out sections (have parent)
             if scenario.parent != nil { return false }
 
-            // Filter out solo scenarios, random dungeons, and random dungeon card sections
-            if scenario.group == "solo" || scenario.group == "randomDungeon"
+            // The random dungeon may be played instead of any scenario, any time (p.50).
+            if scenario.isDungeonVariant { return true }
+            // Filter out solo scenarios and random dungeon card sections
+            if scenario.group == "solo"
                 || scenario.group == "randomMonsterCard" || scenario.group == "randomDungeonCard" { return false }
 
             // Already completed and not repeatable (an initial scenario too)

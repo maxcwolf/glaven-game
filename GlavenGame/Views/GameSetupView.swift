@@ -748,12 +748,12 @@ struct GameSetupView: View {
 
     private func scenarioRow(_ scenario: ScenarioData) -> some View {
         let isSelected = selectedScenario?.id == scenario.id
-        let hasMap = ScenarioMapStore.shared.hasMap(for: scenario.index)
+        let hasMap = scenario.isRandomDungeon || ScenarioMapStore.shared.hasMap(for: scenario.index)
         return Button {
             selectedScenario = scenario
         } label: {
             HStack(spacing: 10) {
-                Text(scenario.index)
+                Text(scenario.hideIndex == true ? "?" : scenario.index)
                     .font(BoardTheme.font(size: 13, weight: .bold).monospacedDigit())
                     .foregroundStyle(isSelected ? BoardTheme.sheet : BoardTheme.brass)
                     .minimumScaleFactor(0.7)

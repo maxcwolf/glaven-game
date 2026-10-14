@@ -140,6 +140,12 @@ M={
  "summonStatsPricedAsAbilities": ("GlavenGame/Engine/CardEnhancing.swift", "            isSummon: isSummonStat(slot), edition: edition)", "            isSummon: false, edition: edition)"),
  "summonStatsNotApplied": ("GlavenGame/Engine/CardEnhancing.swift", "                result[index].summonValueObject = summon\n                continue", "                continue"),
  "summonMadeFromTheBoxStats": ("GlavenGame/Board/PlayerTurnController.swift", "            if let printed = action.summonValueObject {\n                summonData.health = printed.health", "            if false, let printed = action.summonValueObject {\n                summonData.health = printed.health"),
+ "dungeonExitTypeIgnored": ("GlavenGame/Engine/RandomDungeon.swift", "guard let index = roomDeck.firstIndex(where: { $0.entranceTypes.contains(exit.type) }) else { continue }", "guard let index = roomDeck.indices.first else { continue }"),
+ "dungeonRoomsOverlap": ("GlavenGame/Engine/RandomDungeonMap.swift", "guard nextCells.isDisjoint(with: taken), !nextCells.contains(doorHex) else { continue }", "guard !nextCells.contains(doorHex) else { continue }"),
+ "dungeonStartAnywhere": ("GlavenGame/Engine/RandomDungeonMap.swift", ".distance(to: entranceHex) <= 2 {", ".distance(to: entranceHex) <= 4 {"),
+ "dungeonNumbersMisread": ("GlavenGame/Engine/RandomDungeonMap.swift", "monster: monster.name, initialX: place.x, initialY: place.y,", "monster: monster.name, initialX: place.y, initialY: place.x,"),
+ "dungeonProgressesCampaign": ("GlavenGame/Managers/ScenarioManager.swift", "if !data.isDungeonVariant { game.completedScenarios.insert(data.id) }", "game.completedScenarios.insert(data.id)"),
+ "dungeonNeverOffered": ("GlavenGame/Managers/ScenarioManager.swift", "if scenario.isDungeonVariant { return true }", "if scenario.isDungeonVariant { return false }"),
 }
 # Scenario rules (the mechanisms of placements/gh.json): run against the scenario tests.
 SCENARIO_FILTER=("ScenarioSpecialRuleTests|ScenarioReauditTests|ScenarioEnforcedRuleTests|ScenarioLockTests|ScenarioGoalTests|"

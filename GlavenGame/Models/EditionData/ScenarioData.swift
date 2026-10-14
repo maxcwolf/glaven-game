@@ -52,6 +52,13 @@ struct ScenarioData: Codable, Hashable, Identifiable {
 
 // MARK: - Room Data
 
+extension ScenarioData {
+    /// Played as a random dungeon (rulebook pp. 50–51): the Random Dungeon, and #55 Foggy Thicket.
+    var isRandomDungeon: Bool { rules?.contains { $0.randomDungeon != nil } ?? false }
+    /// The game variant itself, which doesn't progress the campaign in any way (p.50).
+    var isDungeonVariant: Bool { group == "randomDungeon" }
+}
+
 struct RoomData: Codable, Hashable {
     var roomNumber: Int
     var ref: String?

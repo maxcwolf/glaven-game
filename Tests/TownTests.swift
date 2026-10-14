@@ -20,7 +20,7 @@ final class TownTests: XCTestCase {
     /// it's where the campaign starts.
     func testTheOpenScenariosFollowTheCampaign() throws {
         let gm = try party(["cragheart", "brute"])
-        func open() -> [String] { gm.scenarioManager.availableScenarios(for: "gh").map(\.index) }
+        func open() -> [String] { gm.scenarioManager.availableScenarios(for: "gh").filter { !$0.isDungeonVariant }.map(\.index) }
         XCTAssertEqual(open(), ["1"])
 
         // Lost: still open, and nothing new. Won: First Steps, and the Barrow Lair.
