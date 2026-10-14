@@ -87,8 +87,20 @@ extension BoardCoordinator {
 }
 
 extension BoardCoordinator {
+    /// A room's full title: the monster card's adjective and the room card's noun ("Mangy Trail").
+    func dungeonRoomTitle(_ room: RandomDungeon.Room) -> String {
+        guard let scenario = gameManager?.game.scenario, let store = gameManager?.editionStore else { return room.room }
+        let adjective = ScenarioManager.dungeonMonsterCards(edition: scenario.data.edition, editionStore: store)
+            .first { $0.index == room.monsters }?.name
+        return [adjective, room.room].compactMap { $0 }.joined(separator: " ")
+    }
+
     /// RD-6: the penalty of the room just revealed behind `door`, at the difficulty chosen.
     func applyDungeonPenalty(behind door: DoorInfo) {
+        if let dungeon = gameManager?.game.scenario?.randomDungeon, let card = dungeonRoomCard(ofTile: door.childTileRef),
+           let room = dungeon.allRooms.first(where: { $0.room.room == card.name })?.room {
+            log("The \(dungeonRoomTitle(room))", category: .setup)
+        }
         guard let scenario = gameManager?.game.scenario, let dungeon = scenario.randomDungeon,
               let card = dungeonRoomCard(ofTile: door.childTileRef),
               let entry = dungeon.allRooms.first(where: { $0.room.room == card.name }),
@@ -108,6 +120,7 @@ extension BoardCoordinator {
     /// RD-6 at the hardest difficulty: the first room's major penalty as the party starts. "The
     /// character who opened the door" is the one the players choose; "the previous room" is none.
     func applyFirstRoomPenalty() {
+        if let dungeon = gameManager?.game.scenario?.randomDungeon { log("The \(dungeonRoomTitle(dungeon.first))", category: .setup) }
         guard let scenario = gameManager?.game.scenario, let dungeon = scenario.randomDungeon,
               let card = DungeonCardStore.shared.room(named: dungeon.first.room, edition: scenario.data.edition),
               let penalty = (dungeon.penalties ?? .suggested).penalty(of: card.name, depth: 1) else { return }

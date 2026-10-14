@@ -209,6 +209,9 @@ final class RandomDungeonTests: XCTestCase {
         }
         // The exits are doors, shut.
         XCTAssertEqual(board.doors.filter { !$0.isOpen }.count, card.exits.count)
+        // The room is named by its two cards: "Mangy Trail".
+        XCTAssertTrue(gm.boardCoordinator.turnLog.contains { $0.message == "The \(monsterCard.name) \(card.name)" },
+                      "seed \(seed): no title")
     }
 
     /// RD-1: opening an exit sets up the room behind it — its monsters on their numbers — and
