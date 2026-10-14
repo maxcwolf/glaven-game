@@ -83,32 +83,48 @@ final class CardStyleTests: XCTestCase {
                        "a card already sized to fit (town, the preview) keeps its size")
     }
 
-    /// Where a drawn card's lowest white text ends, as a share of its height.
-    private func lowestText(scale: CGFloat) throws -> CGFloat {
-        let face = AbilityCardFace(card: trample, edition: "gh", height: CardSelectionPanel.cardHeight)
-            .environment(\.cardStyle, .drawn)
-            .environment(\.cardScale, scale)
-        let renderer = ImageRenderer(content: face)
-        renderer.scale = 2
-        let image = try XCTUnwrap(renderer.cgImage)
-        let bitmap = NSBitmapImageRep(cgImage: image)
-        for y in stride(from: bitmap.pixelsHigh - 1, through: 0, by: -1) {
-            for x in 0..<bitmap.pixelsWide {
-                if let c = bitmap.colorAt(x: x, y: y), c.redComponent > 0.85, c.greenComponent > 0.85, c.blueComponent > 0.85 {
-                    return CGFloat(y) / CGFloat(bitmap.pixelsHigh)
-                }
-            }
-        }
-        return 0
+    /// The size an image renders at.
+    private func rendered(_ view: some View) throws -> CGImage {
+        let renderer = ImageRenderer(content: view)
+        renderer.scale = 1
+        return try XCTUnwrap(renderer.cgImage)
     }
 
-    /// Regression: a crowded half (Trample's bottom) shrank to its smallest type at 100% but not
-    /// at 150%; its type now shrinks by the same share at any card size.
-    func testACrowdedHalfShrinksAlikeAtAnySize() throws {
-        let normal = try lowestText(scale: 1)
-        let large = try lowestText(scale: 1.5)
-        XCTAssertGreaterThan(normal, 0.8, "the half's lines reach down the card")
-        XCTAssertEqual(normal, large, accuracy: 0.04)
+    /// A drawn half's type shrinks to the first size whose lines fit the half, measured at the
+    /// half's own width (ViewThatFits chose smaller type on the iPad than the half needed).
+    func testAHalfTakesTheFirstSizeThatFits() throws {
+        let image = try rendered(FirstThatFits {
+            Color(red: 1, green: 0, blue: 0).frame(height: 300)
+            Color(red: 0, green: 1, blue: 0).frame(height: 200)
+            Color(red: 0, green: 0, blue: 1).frame(height: 100)
+        }
+        .frame(width: 10, height: 250).clipped())
+        let pixel = try XCTUnwrap(NSBitmapImageRep(cgImage: image).colorAt(x: 5, y: 125)?.usingColorSpace(.deviceRGB))
+        XCTAssertGreaterThan(pixel.greenComponent, 0.8, "the 200-high variant, the first that fits 250")
+        XCTAssertLessThan(pixel.redComponent, 0.2)
+        XCTAssertLessThan(pixel.blueComponent, 0.2)
+    }
+
+    /// A half's closing marks share a row with LOST when they fit, and stack (and wrap) when not.
+    func testMarksSitSideBySideWhenTheyFit() throws {
+        func marks(width: CGFloat) -> some View {
+            RowOrColumn(spacing: 3) {
+                Color.red.frame(width: 50, height: 10)
+                Color.blue.frame(width: 50, height: 10)
+            }
+            .frame(width: width)
+        }
+        XCTAssertEqual(try rendered(marks(width: 200)).height, 10)
+        XCTAssertEqual(try rendered(marks(width: 80)).height, 23)
+    }
+
+    /// An area is drawn beside the attack it belongs to, as printed, not on a line of its own.
+    func testAnAreaSitsBesideItsAttack() {
+        let sweeping = gm.editionStore.deckData(name: "brute", edition: "gh")!.abilities.first { $0.name == "Sweeping Blow" }!
+        let rows = BoardAbilityCardView.rows(CardText.lines(of: sweeping.actions).lines)
+        XCTAssertEqual(rows.count, 1)
+        XCTAssertEqual(rows.first?.line.text, "Attack 2")
+        XCTAssertNotNil(rows.first?.area)
     }
 
     func testACardIsShownInTheChosenStyle() throws {

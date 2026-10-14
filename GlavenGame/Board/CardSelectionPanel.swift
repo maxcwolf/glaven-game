@@ -117,7 +117,7 @@ struct CardSelectionPanel: View {
             toggleCardSelection(index)
         } label: {
             AbilityCardFace(card: card, edition: character.edition, color: characterColor,
-                            height: Self.cardHeight, labelResolver: labelResolver)
+                            height: Self.cardHeight, labelResolver: labelResolver, cornerInset: 30)
                 .clipShape(RoundedRectangle(cornerRadius: 8))
                 .overlay(RoundedRectangle(cornerRadius: 8).stroke(chosen ? BoardTheme.brass : .clear, lineWidth: 3))
                 .overlay(alignment: .bottom) {

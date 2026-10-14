@@ -256,6 +256,9 @@ enum CardText {
         }
         result = result.replacingOccurrences(of: "<br>", with: " ")
         result = result.replacingOccurrences(of: "([a-z])([0-9])", with: "$1 $2", options: .regularExpression)
+        // The data writes experience as "XP +1" (which the engine reads); the card says "Gain 1 XP".
+        result = result.replacingOccurrences(of: "Gain XP \\+([0-9]+)", with: "Gain $1 XP", options: .regularExpression)
+        result = result.replacingOccurrences(of: "XP \\+([0-9]+)", with: "+$1 XP", options: .regularExpression)
         return result.trimmingCharacters(in: .whitespaces)
     }
 }
