@@ -3,6 +3,63 @@
 All notable changes to this project will be documented in this file.
 Format based on [Conventional Commits](https://www.conventionalcommits.org/).
 
+## [Unreleased]
+
+Since 1.0.0-beta.2: the game plays by the Gloomhaven rulebook, its FAQ and the scenario book —
+94 of the 95 scenarios with every printed rule (the last, #55, is a random dungeon) — and the
+town and campaign run between scenarios. 384 commits; a summary by area.
+
+### Features
+
+- **Scenarios as the book prints them**: objectives, escorts and lettered hexes placed from the
+  scenario book; each scenario's own goal and losses; locked doors and pressure plates; traps
+  that do what each scenario's legend says; standing effects, boss specials and rules that wait
+  on the board; things carried (the doll, the claw, the Staff of Xorn, the artifacts); a board
+  that moves as the round ends (wind, current, rolling boulders, rising water); monsters that
+  don't act as their cards say (sleeping drakes, the siege cannon and its crew, cultists carrying
+  their victim); the bosses' own rules (the Infernal Throne's altar, the Elder Drake's perches and
+  Zephyrs, the Betrayer's mind control); walls and obstacles with hit points (the Harrower Hive's
+  walls, the Noxious Cellar's boulders); and the small ones (#38's Orchid, #68's tree, #82's
+  sacrifice and escape).
+- **Choices the player makes**: a card lost to spare a captive or the crystal; an action given
+  up to free a captive, cleanse a pump or loot a treasure; which Living Spirit goes, whose deck an
+  escort draws from, where the wind takes you, which boulder row rolls; the element an
+  "any element" bonus takes; where an area attack lies; a discardable card in play lost to
+  negate damage; which shield comes first.
+- **Classes and cards**: every printed action of a half performed in steps; charged and
+  persistent bonuses; the Doomstalker's dooms; the Beast Tyrant's bear, set up beside him, his
+  summon and the one who performs his Commands; Feedback Loop's move out and back; Detonation's
+  and Flight of Flame's traps; Impending End and Darkened Skies; dozens of items played on the
+  board, on the character's turn and on others'.
+- **Town and campaign**: a town between scenarios — city and road events, the shop at the
+  city's prices, levelling up with a card and a perk, the Enhancer (summon stats included), the
+  Sanctuary, battle goals and personal quests, retirement and new classes, the campaign log;
+  travelling on to the next scenario without returning to Gloomhaven; collective gold split by
+  the players; Envelope X recorded when opened; several campaigns, each saved to its own file;
+  table rules a group can play by.
+- **The board**: a new layout from the mockup; portrait tokens; wall lines between tiles; attack
+  previews and the modifier tray; a turn-order rail; learning mode and an illustrated How to Play;
+  sound for what happens on the board; VoiceOver throughout and an 11-point text floor.
+
+### Bug Fixes
+
+- **Turn engine and rules**: rounds, conditions, monster decks and turns reworked to the
+  rulebook and FAQ; line of sight and range counted round walls; push and pull counted round
+  walls; elements infused and consumed by the rules; damage of every source negated by losing
+  cards; Warding Strength and Cold Front used only once the player keeps their cards; standees
+  that run out set up nearest the character who opened the door; numbered treasure looted once
+  per campaign.
+- **Maps**: monster places corrected against the scenario book; doors two hexes wide open as
+  one; a door seen from its far side is on the map (scenario 12 can be finished).
+- **Saves and the app**: saves that keep every field and load older ones; undo that stays in its
+  scenario or in town; board hangs found by soak testing fixed; the app fills every iPad.
+
+### Testing
+
+- Headless play through the coordinator (`ScenarioSimulator`): every scenario played to its end
+  with four seeds and checked for rule violations, and a ninth-level party that wins 53 to 58 of
+  94; 1,688 tests; `scripts/mutate.py`, 401 deliberate rule breaks each caught by a test.
+
 ## [1.0.0-beta.2] - 2026-05-29
 
 ### Bug Fixes
