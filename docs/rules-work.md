@@ -48,12 +48,14 @@ The branches:
 To pick it up, work on `feat/cards-4` (or merge it into `feat/scenario-rules-3` first — it is a
 fast-forward):
 
-1. **Verified** at the head of `feat/cards-4` on 2026-10-13: `swift test` 1,621 tests, none
+1. **Verified** at the head of `feat/cards-4` on 2026-10-13: `swift test` 1,640 tests, none
    failing; the four-seed all-scenarios playthrough (376 runs) without a violation; the veteran
-   playthrough passing (52 and 55 of 94 won: #21 is lost since its altar jumps, as #74 and #88
-   are since their water rises and their current flows — see `TODO.md`, "The simulator"; the
-   veterans win #34 with its perches and Zephyrs, and #49 and #78 with their rules). `main` has
-   the branch up to merge `9cad118`; the bosses (#21, #34, #79) came after and are on the branch.
+   playthrough passing (53 and 58 of 94 won, against 52 and 55 at the last merge, run again for
+   the comparison: #12 and #85 are won, and #58 by the party of four, since a door first seen
+   from its far side got its hex — engine audit N22; #76 is won with its walls, #52 still lost).
+   `TODO.md`, "The simulator", lists the 31 scenarios neither party wins, recounted from this
+   run. `main` has the branch up to merge `8de8ea0`; the walls (#76, #52) came after and are on
+   the branch.
 2. **Next**, from `TODO.md` → "Open, in order": group 1 is done but for a glance at two things
    on the iPad (the Solo switch as a switch; the scrolling card lists in the damage and rest
    sheets) and the drawings that need a game in progress (#46's eggs, #48's Dark Rider, the
