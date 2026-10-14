@@ -42,11 +42,14 @@ targets:
         type: folder
     settings:
       base:
+        # The game is called Glaven. The bundle identifier and the module keep the old name:
+        # saves and settings belong to the identifier, and the code to the module.
         PRODUCT_BUNDLE_IDENTIFIER: com.glaven.GlavenGame
-        PRODUCT_NAME: GlavenGame
-        MARKETING_VERSION: "1.0"
+        PRODUCT_NAME: Glaven
+        PRODUCT_MODULE_NAME: GlavenGame
+        MARKETING_VERSION: "1.0.0"
         CURRENT_PROJECT_VERSION: "1"
-        INFOPLIST_KEY_CFBundleDisplayName: GlavenGame
+        INFOPLIST_KEY_CFBundleDisplayName: Glaven
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         SWIFT_EMIT_LOC_STRINGS: true
         CODE_SIGN_STYLE: Manual
