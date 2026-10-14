@@ -2141,7 +2141,8 @@ final class BoardCoordinator {
             await self.moveAlong(pieceID, path: path, style: style, movementLeft: left, continuing: continuing)
             guard self.isCurrentBoard(generation) else { return }
             // The move may end early (a trap that immobilizes, or one that exhausts the figure).
-            if let end = self.boardState.piecePositions[pieceID] {
+            // (A move going on that stops where it is said nothing more.)
+            if let end = self.boardState.piecePositions[pieceID], !(continuing && path.count == 1) {
                 let steps = path.firstIndex(of: end) ?? path.count - 1
                 self.log("\(self.name(pieceID)) moves \(steps) hex\(steps == 1 ? "" : "es")", category: .move, trace: "to \(end)")
             }

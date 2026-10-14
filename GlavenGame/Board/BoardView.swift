@@ -1456,7 +1456,7 @@ struct DiscardCardPicker: View {
                             .overlay(alignment: .top) {
                                 if inPlay {
                                     Text("IN PLAY")
-                                        .font(BoardTheme.font(size: 10, weight: .heavy))
+                                        .font(BoardTheme.font(size: 11, weight: .heavy))
                                         .foregroundStyle(.white)
                                         .padding(.horizontal, 8)
                                         .padding(.vertical, 2)
