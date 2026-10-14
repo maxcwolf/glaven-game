@@ -430,7 +430,9 @@ final class RandomDungeonTests: XCTestCase {
             switch penalty {
             case .enemyShield(let amount, _): XCTAssertGreaterThanOrEqual(coord.scenarioShield(of: monster), amount, next.room)
             case .enemyAttack(let amount): XCTAssertEqual(coord.scenarioAttackBonus(of: monster), amount, next.room)
-            case .enemyMoveAndRange(let amount): XCTAssertEqual(coord.scenarioMoveBonus(of: monster), amount, next.room)
+            case .enemyMoveAndRange(let amount):
+                XCTAssertEqual(coord.scenarioMoveBonus(of: monster), amount, next.room)
+                XCTAssertEqual(coord.scenarioRangeBonus(of: monster), amount, next.room)
             case .enemyRetaliate(let amount, let range, _):
                 XCTAssertTrue(coord.scenarioEffects(on: monster).contains { $0.retaliate == amount && $0.retaliateRange == range }, next.room)
             case .enemyStrengthen:
@@ -477,6 +479,17 @@ final class RandomDungeonTests: XCTestCase {
         brute.health = 10
         board.coord.healAtTurnStart(.character(brute.id))
         XCTAssertEqual(brute.health, 10, "the party isn't healed")
+    }
+
+    /// Trail's "+1 Range to all of their attacks": a ranged attack reaches a hex further, a melee
+    /// attack stays melee.
+    func testARangeBonusWidensOnlyRangedAttacks() {
+        let ranged = MonsterAttackSpec(value: 2, range: 3, isRanged: true, targetCount: 1, pierce: 0, push: 0, pull: 0,
+                                       conditions: [], area: nil, advantage: false)
+        XCTAssertEqual(ranged.widened(by: 1).range, 4)
+        let melee = MonsterAttackSpec(value: 2, range: 1, isRanged: false, targetCount: 1, pierce: 0, push: 0, pull: 0,
+                                      conditions: [], area: nil, advantage: false)
+        XCTAssertEqual(melee.widened(by: 1).range, 1)
     }
 
     // MARK: - Reading the cards

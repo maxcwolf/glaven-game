@@ -166,7 +166,7 @@ extension BoardCoordinator {
         case .enemyHealEachTurn(let amount):
             addDungeonEffect(ScenarioPlacements.Effect(on: "monsters", healEachTurn: amount))
         case .enemyMoveAndRange(let amount):
-            addDungeonEffect(ScenarioPlacements.Effect(on: "monsters", move: amount))
+            addDungeonEffect(ScenarioPlacements.Effect(on: "monsters", move: amount, range: amount))
         default:
             // Lasting penalties and those the players choose for are still to come
             // (docs/random-dungeons.md).

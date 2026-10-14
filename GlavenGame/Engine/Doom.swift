@@ -128,6 +128,15 @@ extension MonsterAttackSpec {
         if isRanged { spec.range = max(1, range - penalty) }
         return spec
     }
+
+    /// A ranged attack reaching further (a random dungeon's "+1 Range to all of their attacks";
+    /// a melee attack stays melee).
+    func widened(by bonus: Int) -> MonsterAttackSpec {
+        guard bonus != 0, isRanged, area == nil else { return self }
+        var spec = self
+        spec.range = max(1, range + bonus)
+        return spec
+    }
 }
 
 extension GameMonsterEntity {

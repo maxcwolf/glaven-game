@@ -237,7 +237,8 @@ final class MonsterTurnController {
                 : MonsterAbility.flattened(ability.actions ?? []).first { $0.type == .attack }
             return MonsterAI.computeTurn(pieceID: pieceID, monster: monster, entity: entity, ability: ability,
                                          board: coordinator.boardState, gameState: game,
-                                         consumed: expected(for: attack, payments: payments))
+                                         consumed: expected(for: attack, payments: payments),
+                                         rangeBonus: coordinator.scenarioRangeBonus(of: pieceID))
         }
         func stillHere() -> Bool { !isStale && !entity.dead && coordinator.isOnBoard(pieceID) }
 
@@ -297,7 +298,7 @@ final class MonsterTurnController {
                 func resolved(_ consumed: Set<UUID>) -> (spec: MonsterAttackSpec, targets: [PieceID]) {
                     let spec = MonsterAbility.attack(action, stat: stat, baseAttack: baseAttack(),
                                                      baseRange: baseRange, consumed: consumed)
-                        .reduced(by: entity.doomPenalty)
+                        .reduced(by: entity.doomPenalty).widened(by: coordinator.scenarioRangeBonus(of: pieceID))
                     return (spec, MonsterAI.targets(for: spec, from: position, focus: target, focusPos: focusPos,
                                                     enemies: enemies, board: coordinator.boardState, gameState: game))
                 }

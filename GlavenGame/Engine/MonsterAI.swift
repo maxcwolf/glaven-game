@@ -81,7 +81,8 @@ enum MonsterAI {
         ability: AbilityModel,
         board: BoardState,
         gameState: GameState,
-        consumed: Set<UUID> = []
+        consumed: Set<UUID> = [],
+        rangeBonus: Int = 0
     ) -> MonsterTurnResult {
         let standee = entity.number
         // An attack laid out in a grid with its element bonus is still the card's attack.
@@ -134,7 +135,7 @@ enum MonsterAI {
         // as if it had a melee attack (p.30).
         let attackSpec = actions.first(where: { $0.type == .attack }).map {
             MonsterAbility.attack($0, stat: stat, baseAttack: baseAttack, baseRange: baseRange, consumed: consumed)
-                .reduced(by: doomPenalty)
+                .reduced(by: doomPenalty).widened(by: rangeBonus)
         }
         // A disarmed monster finds its focus and moves as if it had no attack either: as for a
         // melee attack, as near its focus as it can get (FAQ).

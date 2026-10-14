@@ -238,6 +238,10 @@ extension BoardCoordinator {
     }
 
     /// What the scenario adds to each of a figure's Move abilities (never below a Move of 0).
+    func scenarioRangeBonus(of pieceID: PieceID) -> Int {
+        scenarioEffects(on: pieceID).reduce(0) { $0 + ($1.range ?? 0) }
+    }
+
     func scenarioMoveBonus(of pieceID: PieceID) -> Int {
         scenarioEffects(on: pieceID).reduce(0) { $0 + ($1.move ?? 0) } + carriedMoveBonus(of: pieceID)
     }
