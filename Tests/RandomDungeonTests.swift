@@ -492,6 +492,26 @@ final class RandomDungeonTests: XCTestCase {
         XCTAssertEqual(melee.widened(by: 1).range, 1)
     }
 
+    /// #55 Foggy Thicket: a random dungeon from its six room cards and six monster cards, each
+    /// character with three −1 cards more as it begins.
+    func testFoggyThicketIsADungeonOfItsOwnCards() throws {
+        let rooms: Set<String> = ["Trail", "Encampment", "Clearing", "Road", "Cabin", "Crossroads"]
+        let monsters: Set<String> = ["554", "558", "560", "564", "567", "571"]
+        for seed in UInt64(1)...6 {
+            let sim = try ScenarioSimulator(scenario: "55", options: .init(seed: seed))
+            let dungeon = try XCTUnwrap(sim.gm.game.scenario?.randomDungeon, "seed \(seed)")
+            for (_, room) in dungeon.allRooms {
+                XCTAssertTrue(rooms.contains(room.room), "seed \(seed): \(room.room)")
+                XCTAssertTrue(monsters.contains(room.monsters), "seed \(seed): \(room.monsters)")
+            }
+            XCTAssertFalse(sim.coord.boardState.cells.isEmpty, "seed \(seed): no board")
+            for character in sim.gm.game.characters where !character.absent {
+                XCTAssertEqual(character.attackModifierDeck.cards.filter { $0.type == .minus1 }.count, 5 + 3,
+                               "seed \(seed): \(character.name)")
+            }
+        }
+    }
+
     // MARK: - Reading the cards
 
     /// Draws each written room card as the game lays it out, its numbers in red and its
