@@ -14,6 +14,43 @@ struct SummonValueObject: Codable, Hashable {
     /// The stats the card has an enhancement slot for ("move", "attack", "heal" — its hit
     /// points — "range").
     var enhancements: [String]?
+    /// What the card prints under the stats (Flying, Shield 2, Poison, an attack as it dies), from
+    /// the data's `action` and `additionalAction`; an array, so the struct can hold actions.
+    var traits: [ActionModel] = []
+
+    enum CodingKeys: String, CodingKey {
+        case name, health, attack, movement, range, flying, level, count, enhancements, action, additionalAction
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        name = try container.decode(String.self, forKey: .name)
+        health = try container.decode(IntOrString.self, forKey: .health)
+        attack = try container.decodeIfPresent(IntOrString.self, forKey: .attack)
+        movement = try container.decodeIfPresent(IntOrString.self, forKey: .movement)
+        range = try container.decodeIfPresent(IntOrString.self, forKey: .range)
+        flying = try container.decodeIfPresent(Bool.self, forKey: .flying)
+        level = try container.decodeIfPresent(Int.self, forKey: .level)
+        count = try container.decodeIfPresent(Int.self, forKey: .count)
+        enhancements = try container.decodeIfPresent([String].self, forKey: .enhancements)
+        traits = [try container.decodeIfPresent(ActionModel.self, forKey: .action),
+                  try container.decodeIfPresent(ActionModel.self, forKey: .additionalAction)].compactMap { $0 }
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(name, forKey: .name)
+        try container.encode(health, forKey: .health)
+        try container.encodeIfPresent(attack, forKey: .attack)
+        try container.encodeIfPresent(movement, forKey: .movement)
+        try container.encodeIfPresent(range, forKey: .range)
+        try container.encodeIfPresent(flying, forKey: .flying)
+        try container.encodeIfPresent(level, forKey: .level)
+        try container.encodeIfPresent(count, forKey: .count)
+        try container.encodeIfPresent(enhancements, forKey: .enhancements)
+        try container.encodeIfPresent(traits.first, forKey: .action)
+        try container.encodeIfPresent(traits.dropFirst().first, forKey: .additionalAction)
+    }
 
     /// Convert to `SummonDataModel` for use with `CharacterManager.addSummon`.
     func toSummonData() -> SummonDataModel {
