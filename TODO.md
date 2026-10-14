@@ -405,8 +405,9 @@ violation.
 - [x] Impending End's top kills a target left at 2 hit points or fewer, with its XP; Darkened Skies' top attacks every enemy within Range 3, XP for each two (done 2026-10-14; `DoomTests`)
 
 **5. Town and campaign**
-- [ ] Town and campaign: travelling on without returning to Gloomhaven, linked scenarios and retries skipping the road event, the optional city event (F19, N6); collective results split by the players (F20); summon stat enhancements (F8); nothing in the data unlocks #72, #73, #76, #77 (N3, a question)
-- [ ] **Scenario reward: envelopes** (GH 58, 60: envelope X) — there's no envelope or sealed-content state to open
+- [x] Town and campaign (done 2026-10-14): the party may travel on without returning to Gloomhaven — no shop, levelling, enhancing, sanctuary or city event on the road, and no road event to the linked scenario or a retry (F19, N6; `TravelOnTests`); an event's collective gold and cost are the players' to split (F20; `CollectiveGoldTests`); a summon's stats can be enhanced (F8; `EnhancementTests.testASummonsStatsAreEnhanced`)
+- [x] **Scenario reward: envelopes** (GH 58, 60: envelope X; done 2026-10-14) — opening it, by those scenarios or by the two quests that end in it, is recorded and said (`EventState.openedEnvelopes`, the campaign log); what it holds, the Bladeswarm, isn't in the game's data (`EnvelopeTests`)
+- [ ] Single-target condition lines can't be enhanced yet (F8); nothing in the data unlocks #72, #73, #76, #77 (N3, a question)
 
 **6. Not Gloomhaven, and tools**
 - [ ] **Icy terrain** — no forced-movement mechanic
