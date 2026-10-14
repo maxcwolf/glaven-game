@@ -956,6 +956,7 @@ final class BoardCoordinator {
         placeRevealedMonsters(slots: holdBack(startingSlots), newEntities: unplacedMonsterEntities(),
                               playerCount: playerCount, useMapMonsters: !hasRoomData)
         placeRevealedObjectives()
+        clearTreasuresLootedBefore()
         updateLocks()
         updateItemBars()
 
@@ -3059,6 +3060,7 @@ final class BoardCoordinator {
         let placed = placeRevealedMonsters(slots: holdBack(reveal.slots), newEntities: unplacedMonsterEntities(),
                                            playerCount: playerCount, useMapMonsters: !hasRoomData, nearestTo: opener)
         let objectives = placeRevealedObjectives()
+        clearTreasuresLootedBefore()
         readyNewMonsters(placed)
 
         // Draw the new room into the board as it stands (the grid offset stays put, so nothing
@@ -3088,6 +3090,16 @@ final class BoardCoordinator {
         sweepDeadFigures()
         // The room's own doors may be locked, and its pressure plates are now in sight.
         updateLocks()
+    }
+
+    /// MOV-10: a numbered treasure tile is looted once in a campaign. Played again, the scenario
+    /// has none where one was looted before.
+    func clearTreasuresLootedBefore() {
+        guard let scenarioManager = gameManager?.scenarioManager else { return }
+        for cell in boardState.cells.values.sorted(by: { $0.coord < $1.coord })
+        where cell.overlay == .treasure && cell.treasureID.flatMap(Int.init) != nil && scenarioManager.isTreasureLooted(cell.treasureID!) {
+            boardState.removeTreasure(at: cell.coord)
+        }
     }
 
     /// Reveal rooms opened by a scenario rule: through the door leading to the room's tile, or —

@@ -90,3 +90,44 @@ final class StandeeLimitTests: XCTestCase {
         XCTAssertGreaterThan(demons.count, 0)
     }
 }
+
+/// MOV-10: "numbered treasure tiles are looted once per campaign". Played again, the scenario
+/// has no tile where one was looted before (C11); another campaign still finds it.
+@MainActor
+final class TreasureReplayTests: XCTestCase {
+
+    private func revealAll(_ coord: BoardCoordinator) {
+        for _ in 0..<12 {
+            guard let door = coord.boardState.doors.first(where: { !$0.isOpen }) else { return }
+            coord.boardState.lockedDoors.removeAll()
+            coord.openDoor(at: door.coord)
+        }
+    }
+
+    private func numbered(_ coord: BoardCoordinator) -> [HexCell] {
+        coord.boardState.cells.values.filter { $0.overlay == .treasure && $0.treasureID.flatMap(Int.init) != nil }.sorted { $0.coord < $1.coord }
+    }
+
+    func testATreasureLootedBeforeIsNotThereOnAReplay() throws {
+        let sim = try ScenarioSimulator(scenario: "1", options: .init(characters: ["brute", "spellweaver"], seed: 1, autoResolvePrompts: true))
+        revealAll(sim.coord)
+        let tile = try XCTUnwrap(numbered(sim.coord).first, "Black Barrow has a numbered treasure")
+        let id = try XCTUnwrap(tile.treasureID)
+        let others = numbered(sim.coord).count
+        sim.coord.lootHexes(for: .character(sim.gm.game.characters[0].id), coords: [tile.coord])
+        XCTAssertTrue(sim.gm.scenarioManager.isTreasureLooted(id))
+
+        // The same campaign plays the scenario again.
+        let scenario = try XCTUnwrap(sim.gm.editionStore.scenarios(for: "gh").first { $0.index == "1" && $0.solo == nil })
+        sim.gm.startScenarioOnBoard(scenario)
+        let again = sim.gm.boardCoordinator
+        revealAll(again)
+        XCTAssertFalse(numbered(again).contains { $0.treasureID == id }, "treasure \(id) was looted in this campaign")
+        XCTAssertEqual(numbered(again).count, others - 1, "the others are there")
+
+        // Another campaign finds it.
+        let fresh = try ScenarioSimulator(scenario: "1", options: .init(characters: ["brute", "spellweaver"], seed: 1, autoResolvePrompts: true))
+        revealAll(fresh.coord)
+        XCTAssertTrue(numbered(fresh.coord).contains { $0.treasureID == id })
+    }
+}
