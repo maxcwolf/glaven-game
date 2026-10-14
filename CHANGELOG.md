@@ -11,6 +11,8 @@ town and campaign run between scenarios. 384 commits; a summary by area.
 
 ### Features
 
+- Random dungeons: the random dungeon deck's twenty room cards and twenty monster cards, three rooms drawn by the deck's rules with A and B exits, treasure tiles, every room's penalties at a difficulty chosen at setup, and no campaign progress; #55 Foggy Thicket plays as one, completing every printed scenario rule
+
 - **Scenarios as the book prints them**: objectives, escorts and lettered hexes placed from the
   scenario book; each scenario's own goal and losses; locked doors and pressure plates; traps
   that do what each scenario's legend says; standing effects, boss specials and rules that wait

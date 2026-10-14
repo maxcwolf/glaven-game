@@ -414,7 +414,7 @@ all-scenarios playthrough (376 runs) without a rule violation, and each of the 4
 - [ ] **Icy terrain** — no forced-movement mechanic (parked until Frosthaven can be played, 2026-10-14)
 - [ ] **Plague / Enfeeble** (FH) — no mechanics (parked until Frosthaven can be played)
 - [ ] **Multi-hex obstacles** — one overlay per hex
-- [ ] **Random dungeon mode** — playable since 2026-10-14: the twenty room cards written and checked, the draw, the map, the exits, the treasures, all forty penalties, no campaign progress, #55. Left: the difficulty as a choice at setup, the first room's penalty at the hardest difficulty, the first room's entrance chosen, the room's title. `docs/random-dungeons.md`
+- [x] **Random dungeon mode** (done 2026-10-14): the twenty room cards written and checked, the draw, the map, the exits, the treasures, all forty penalties with the difficulty chosen at setup, the first room's entrance chosen, no campaign progress, #55. `docs/random-dungeons.md`
 - [ ] **Pathfinding visualization** — no debug overlay for monster movement decisions
 
 **Housekeeping**

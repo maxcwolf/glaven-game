@@ -97,11 +97,14 @@ attacks only), "Retaliate 2, Range 3", heal 1 as each enemy's turn starts, no co
 (placements `dungeonTreasure`, `lootActionOnly`, `goal.loot`). It and a Random Dungeon are in the
 all-scenarios playthrough.
 
-Still to do:
+Setup (2026-10-14): the penalties are a choice beside the difficulty when a random dungeon is
+chosen (None, Suggested, Major; `RandomDungeon.penalties`); at Major the first room's major penalty
+falls as the party starts, the players choosing who "opened the door" (`applyFirstRoomPenalty`). A
+first room with two entrances asks where the party starts (RD-4, `chooseFirstEntrance`,
+`startAtEntrance`). Each room is named by its two cards as it is set up ("The Mangy Trail").
 
-1. The difficulty as a choice at setup (`RandomDungeon.penalties`: none, suggested, major; today
-   always the suggested), and at "major" the first room's penalty as the party starts ("the
-   opener": the players choose who; "the previous room": nothing).
-2. The first room's entrance chosen by the players when it has two (RD-4; today the first).
-3. The room's title on reveal: the monster card's adjective and the room card's noun ("Mangy
-   Trail").
+Nothing of the variant is left to build. Choices the rules leave open, as the game reads them:
+a room that can't be laid apart from the rooms before it makes the game draw the dungeon again;
+"replace an enemy in the previous room" sets up again the monster card's first such enemy (for the
+party's size) whose number is clear; a penalty's "+1 Range" widens ranged attacks only; the
+success bonus experience is given for a random dungeon won.
