@@ -444,6 +444,8 @@ final class BoardCoordinator {
     /// Cards a character discards before the scenario begins (Harrower Hive), and what goes on
     /// once every character has.
     var pendingStartDiscard: PendingStartDiscard?
+    /// The companions are being set up as the scenario starts (`finishSetup`).
+    @ObservationIgnored var settingUpCompanions = false
     @ObservationIgnored var afterStartDiscards: (() -> Void)?
 
     /// Non-nil while a character picks a card to play for an item (Ring of Haste).
@@ -524,6 +526,8 @@ final class BoardCoordinator {
 
     /// Traps placed by characters that give experience when an enemy springs them (Proximity Mine).
     var characterTraps: [HexCoord: (characterID: String, experience: Int)] = [:]
+    /// What the trap being placed does besides to the enemies beside it as it is sprung (Detonation, Flight of Flame).
+    @ObservationIgnored var trapAround: (damage: Int?, conditions: [ConditionName])?
 
     /// Doomed enemies that died, their dooms still to resolve (BoardCoordinator+Dooms).
     var pendingDoomDeaths: [PendingDoomDeath] = []
@@ -1067,6 +1071,7 @@ final class BoardCoordinator {
         pendingRecovery = nil
         pendingStartDiscard = nil
         afterStartDiscards = nil
+        settingUpCompanions = false
         pendingCardPlay = nil
         pendingActionChoice = nil
         initiativeOffers = []
@@ -1337,12 +1342,17 @@ final class BoardCoordinator {
 
     /// Finish setup phase and begin the first round.
     func finishSetup() {
-        guard boardPhase == .setup else { return }
+        guard boardPhase == .setup, !settingUpCompanions else { return }
         boardScene?.clearHighlights()
         interactionMode = .idle
         assignCarriedAtSetup()
         setUpTheFlood()
-        beginCardSelection()
+        // The Beast Tyrant's bear is set up beside him before the first round.
+        settingUpCompanions = true
+        setUpCompanions { [weak self] in
+            self?.settingUpCompanions = false
+            self?.beginCardSelection()
+        }
     }
 
     // MARK: - Card Selection Phase
@@ -2316,7 +2326,7 @@ final class BoardCoordinator {
     }
 
     /// The enemies an "attack all enemies within N" reaches, in the order they are attacked.
-    private func enemiesToAttack(from pieceID: PieceID, within range: Int, exactly: Bool) -> [PieceID] {
+    func enemiesToAttack(from pieceID: PieceID, within range: Int, exactly: Bool) -> [PieceID] {
         guard let pos = boardState.piecePositions[pieceID] else { return [] }
         return targetableEnemies(of: pieceID, range: range)
             .filter { !exactly || boardState.piecePositions[$0].map { boardState.range(from: pos, to: $0) == range } == true }
@@ -2567,6 +2577,19 @@ final class BoardCoordinator {
                                      advantage: turn?.pendingAdvantage ?? false))
         guard isCurrentBoard(generation) else { return }
 
+        // Impending End: "Kill the target and gain 1 XP if its hit point value is less than or
+        // equal to 2 after the attack."
+        if let text = turn?.attackTexts.first(where: { $0.contains("kill the target") }), isOnBoard(target),
+           let health = entity(for: target)?.health, health > 0,
+           health <= (text.firstMatch(of: #/less than or equal to (\d+)/#).flatMap { Int($0.1) } ?? 2) {
+            log("\(name(target)) has \(health) hit point\(health == 1 ? "" : "s") left and is killed", category: .death)
+            sufferDamage(health, to: target, killer: attacker)
+            if case .character(let id) = attacker, let character = gameManager?.game.characters.first(where: { $0.id == id }) {
+                let xp = text.firstMatch(of: #/xp \+?(\d+)/#).flatMap { Int($0.1) } ?? 1
+                character.experience += xp
+                log("\(name(attacker)) gains \(xp) XP", category: .info)
+            }
+        }
         // Massive Boulder: "all allies and enemies adjacent to the target suffer 1 damage".
         for text in turn?.attackTexts ?? [] where text.contains("adjacent to the target suffer") {
             await printedDamage(text, amount: PlayerTurnController.damageAmount(in: text), by: attacker, around: targetHex)
@@ -2894,7 +2917,9 @@ final class BoardCoordinator {
     /// treasure index. Summons and monsters never loot this way.
     /// `byLootAction`: a Loot ability is doing the looting — in some scenarios the only way
     /// to pick up the goal treasure.
-    func lootHexes(for pieceID: PieceID, coords: [HexCoord], byLootAction: Bool = false) {
+    func lootHexes(for looter: PieceID, coords: [HexCoord], byLootAction: Bool = false) {
+        // What a summon loots (the Beast Tyrant's bear, by a Command) is its master's.
+        let pieceID = summonOwner(of: looter).map { PieceID.character($0.id) } ?? looter
         guard case .character(let charID) = pieceID,
               let gameManager = gameManager,
               let character = gameManager.game.characters.first(where: { $0.id == charID }) else { return }

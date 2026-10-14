@@ -258,6 +258,90 @@ final class DoomTests: XCTestCase {
         XCTAssertEqual(stalker.health, 20, "allies aren't hurt")
     }
 
+    /// Frightening Curse's doom: "force all enemies adjacent to the hex in which it died to
+    /// perform a Move 1 action with you controlling the actions" — each moves to the hex the
+    /// player taps (toward the dead one's hex too), or stays.
+    func testFrighteningCursesDoomMovesTheEnemiesBesideIt() async throws {
+        coord.autoResolvePrompts = false
+        let stalker = add("angry-face", at: HexCoord(2, 2))
+        let brute = add("brute", at: HexCoord(6, 3))
+        let doomed = try bandit(at: HexCoord(6, 5), health: 2)
+        let beside = try bandit(at: HexCoord(7, 5))
+        doom(383, by: stalker, on: doomed)
+        let attack = Task { await self.hit(doomed, by: .character(brute.id), value: 5) }
+        var asked = false
+        var over = false
+        Task { await attack.value; over = true }
+        for _ in 0..<500 where !over {
+            if let pending = coord.pendingHexChoice {
+                asked = true
+                XCTAssertTrue(pending.options.contains(HexCoord(7, 5)), "it may stay")
+                XCTAssertTrue(pending.options.contains(HexCoord(6, 5)), "or step into where the doomed enemy died: a move, not a push")
+                XCTAssertTrue(pending.options.allSatisfy { HexCoord(7, 5).distance(to: $0) <= 1 }, "Move 1")
+                coord.resolveHexChoice(HexCoord(6, 5))
+            } else if coord.pendingFigureChoice != nil {
+                coord.resolveFigureChoice(nil)   // (no doom moves on: not this test's matter)
+            } else if let draw = coord.pendingModifierDraw {
+                coord.completeModifierDraw(selectedCards: CombatResolver.drawModifiers(advantage: draw.advantage, disadvantage: draw.disadvantage,
+                                                                                        baseAttack: draw.comparedAttack, draw: draw.drawCard))
+            }
+            try await Task.sleep(nanoseconds: 2_000_000)
+        }
+        XCTAssertTrue(over, "the attack and its doom are over")
+        XCTAssertTrue(asked, "the player chooses where it moves")
+        XCTAssertEqual(coord.boardState.piecePositions[beside], HexCoord(6, 5))
+    }
+
+    private func turn(_ stalker: GameCharacter, top: Int, bottom: Int) throws -> PlayerTurnController {
+        stalker.handCards = [top, bottom]
+        let turn = PlayerTurnController(characterID: stalker.id, coordinator: coord, gameManager: gm)
+        coord.activePlayerTurn = turn
+        turn.selectCards(top: try card(top), bottom: try card(bottom))
+        return turn
+    }
+
+    /// Darkened Skies' top: "Attack 3. Target all enemies within Range 3. Gain XP 1 for each two
+    /// enemies targeted": three in reach are attacked, the one further isn't, and 1 XP.
+    func testDarkenedSkiesAttacksEveryEnemyInRange() async throws {
+        let stalker = add("angry-face", at: HexCoord(3, 3))
+        let near = try [HexCoord(4, 3), HexCoord(5, 3), HexCoord(3, 5)].map { try bandit(at: $0) }
+        let far = try bandit(at: HexCoord(8, 3))
+        let zeros = (0..<20).map { _ in AttackModifier.standard(.plus0) }
+        stalker.attackModifierDeck = AttackModifierDeck(attackModifiers: zeros, cards: zeros)
+        for piece in near { (coord.entity(for: piece) as? GameMonsterEntity)?.shield = nil }
+        let skies = try turn(stalker, top: 393, bottom: 401)
+        XCTAssertTrue(skies.currentSteps.first?.subActions?.contains { $0.type == .specialTarget && $0.value?.stringValue == "enemiesRange:3" } == true,
+                      "the text's targets are the attack's")
+        let xp = stalker.experience
+        skies.executeCurrentAction()
+        for _ in 0..<200 where skies.isWaiting { try await Task.sleep(nanoseconds: 2_000_000) }
+        for piece in near { XCTAssertLessThan(health(piece), 50, "\(piece) in reach") }
+        XCTAssertEqual(health(far), 50, "out of reach")
+        skies.executeCurrentAction()   // the text: XP for each two
+        XCTAssertEqual(stalker.experience, xp + 1, "three enemies: one XP")
+    }
+
+    /// Impending End's top: "Attack 4, Range 4. Kill the target and gain XP 1 if its hit point
+    /// value is less than or equal to 2 after the attack."
+    func testImpendingEndKillsATargetLeftAtTwo() async throws {
+        let stalker = add("angry-face", at: HexCoord(3, 3))
+        let zeros = (0..<20).map { _ in AttackModifier.standard(.plus0) }
+        stalker.attackModifierDeck = AttackModifierDeck(attackModifiers: zeros, cards: zeros)
+        for (start, alive) in [(6, false), (10, true)] {
+            let target = try bandit(at: HexCoord(5, 3), health: start)
+            (coord.entity(for: target) as? GameMonsterEntity)?.shield = nil
+            let end = try turn(stalker, top: 401, bottom: 393)
+            let xp = stalker.experience
+            end.executeCurrentAction()
+            coord.handlePieceTap(target)
+            for _ in 0..<200 where end.isWaiting { try await Task.sleep(nanoseconds: 2_000_000) }
+            XCTAssertEqual(coord.isOnBoard(target), alive, "from \(start) hit points")
+            if !alive { XCTAssertGreaterThanOrEqual(stalker.experience, xp + 1) }
+            if alive { coord.removePieceFromBoard(target) }
+            coord.activePlayerTurn = nil
+        }
+    }
+
     /// Rising Momentum: dying within range 2 of another enemy, the dooms move to it.
     func testRisingMomentumMovesTheDooms() async throws {
         let stalker = add("angry-face", at: HexCoord(2, 2))

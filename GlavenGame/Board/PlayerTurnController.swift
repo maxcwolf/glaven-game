@@ -210,6 +210,27 @@ final class PlayerTurnController {
         coordinator?.log("\(who) plays \(card.name ?? "a card") for its \(top ? "top" : "bottom") half", category: .round)
     }
 
+    /// The half being performed is a Command (the Beast Tyrant's): its abilities are his bear's.
+    var isCommandHalf: Bool {
+        switch phase {
+        case .executeTopAction: return Self.halfKinds(topCard?.actions ?? []).contains("command")
+        case .executeBottomAction: return Self.halfKinds(bottomCard?.bottomActions ?? []).contains("command")
+        case .executeExtraHalf:
+            return extraPlay.map { Self.halfKinds(($0.top ? $0.card.actions : $0.card.bottomActions) ?? []).contains("command") } ?? false
+        default: return false
+        }
+    }
+
+    /// The figure performing the step being executed when it isn't the character: the bear, for
+    /// a Command half. The character's own items and bonuses don't come with it.
+    private(set) var commandedFigure: PieceID?
+    /// How many enemies the last attack on "all enemies within range" targeted (Darkened Skies'
+    /// experience for each two).
+    private var allTargetsAttacked = 0
+    /// Conditions the attack being made gives its own attacker once it is over.
+    private var conditionsAfterAttack: [(piece: PieceID, condition: ConditionName)] = []
+    private var bonusesApply: Bool { commandedFigure == nil }
+
     /// Kinds of action a printed half is, from the class tag at its start ("command", "song").
     static func halfKinds(_ printed: [ActionModel]) -> Set<String> {
         var kinds = Set<String>()
@@ -459,6 +480,10 @@ final class PlayerTurnController {
     func advanceAfterAsyncAction() {
         // A turn that is no longer the board's (the board was left, or the turn ended) stays put.
         guard coordinator?.activePlayerTurn === self else { return }
+        for (piece, condition) in conditionsAfterAttack where coordinator?.isOnBoard(piece) == true {
+            coordinator?.applyCondition(condition, to: piece)
+        }
+        conditionsAfterAttack = []
         if defaultAttackPending {
             defaultAttackPending = false
             awaitingAsync = false
@@ -1290,7 +1315,20 @@ final class PlayerTurnController {
     /// Execute one action. Returns true if it waits for player input (and advances later).
     @discardableResult
     private func executeAction(_ action: ActionModel, coordinator: BoardCoordinator) -> Bool {
-        let pieceID = PieceID.character(characterID)
+        var pieceID = PieceID.character(characterID)
+        // A Command is performed by the bear; with the bear gone, it does nothing.
+        commandedFigure = nil
+        if isCommandHalf, let character {
+            guard let bear = coordinator.companionPiece(of: character) else {
+                if Self.isAbilityStep(action) {
+                    coordinator.log("\(who)\u{2019}s Command does nothing: the bear is gone", category: .info)
+                    abilityDidNothing()
+                }
+                return false
+            }
+            pieceID = bear
+            commandedFigure = bear
+        }
         // A turn step from a charged bonus marks its charge (Lumbering Bash's heal) — unless the
         // player has ended that bonus since the step was placed.
         if let cardId = Self.bonusCard(of: action), let character {
@@ -1320,7 +1358,7 @@ final class PlayerTurnController {
                 if effect.type == .move && !movesForSomeoneElse { moveValue += MonsterAbility.signedValue(effect) }
             }
             // Boots of Levitation, Cloak of Phasing: every move is a flight.
-            if PassiveItems.flies(character?.carriedItems ?? []) { mode = .fly }
+            if bonusesApply, PassiveItems.flies(character?.carriedItems ?? []) { mode = .fly }
             grantBonusExperience(bonus)
             hexesPassed = []
             // Rumbling Advance ("then all adjacent figures suffer 1 damage"), Swift Bow ("loot
@@ -1360,8 +1398,13 @@ final class PlayerTurnController {
                 && (roomWide ? !coordinator.enemiesInRoom(of: pieceID).isEmpty
                              : !coordinator.targetableEnemies(of: pieceID, range: attackRange(of: action)).isEmpty)
             let bonus = hasTarget ? consumeAugments(of: action) : []
+            // A condition printed for the attacker itself (Energizing Strike: "Strengthen self"),
+            // gained as the attack is made.
+            var ownConditions: [ConditionName] = []
             for sub in (action.subActions ?? []) + bonus {
                 switch sub.type {
+                case .condition where hasSpecialTargetSelf(sub):
+                    if let name = sub.value?.stringValue, let cond = ConditionName(rawValue: name) { ownConditions.append(cond) }
                 case .attack: pendingAttackValue += MonsterAbility.signedValue(sub)
                 case .range:
                     if let r = sub.value?.intValue {
@@ -1388,15 +1431,18 @@ final class PlayerTurnController {
             pendingAttackRange = range
             // This round's bonuses: Wall of Doom, Forceful Storm, an adjacent Enhancement Field.
             pendingAttackValue += coordinator.roundAttackBonus(for: pieceID, ranged: range > 1)
-            // Grim Bargain's targets, taken just before this attack.
-            targetCount += extraTargetsForNextAttack
-            extraTargetsForNextAttack = 0
-            // Eyes of the Night: advantage on every attack.
-            if let character, coordinator.chargedBonuses(of: character).contains(where: { $0.bonus == .advantageAndSeeInvisible }) {
-                pendingAdvantage = true
+            // The character's own bonuses and items are theirs: not the bear's on a Command.
+            if bonusesApply {
+                // Grim Bargain's targets, taken just before this attack.
+                targetCount += extraTargetsForNextAttack
+                extraTargetsForNextAttack = 0
+                // Eyes of the Night: advantage on every attack.
+                if let character, coordinator.chargedBonuses(of: character).contains(where: { $0.bonus == .advantageAndSeeInvisible }) {
+                    pendingAdvantage = true
+                }
+                // Mindthief augments shape every melee attack.
+                if range <= 1 { applyAugments(coordinator: coordinator) }
             }
-            // Mindthief augments shape every melee attack.
-            if range <= 1 { applyAugments(coordinator: coordinator) }
             // Bonuses counted in Attack actions — Backup Ammunition (one more target on a ranged
             // attack), Angelic Ascension, Grim Bargain's doubling — are counted in here, and their
             // charge is marked once the attack is made (`applyPerformedEffects`): an Attack
@@ -1418,14 +1464,14 @@ final class PlayerTurnController {
             // (Air consumed: +2), and a charge is marked with each attack then made, one for
             // every target (`attackValueWithBonuses`).
             // (Its Air was consumed, or not, as the card was played: FAQ.)
-            if let character, let crackling = coordinator.chargedBonuses(of: character).first(where: {
+            if bonusesApply, let character, let crackling = coordinator.chargedBonuses(of: character).first(where: {
                 if case .attackBonusOrElement = $0.bonus { return true }; return false }),
                case .attackBonusOrElement(let bonus, _, let upgraded) = crackling.bonus {
                 bonusPerAttack = character.elementBonusesPaid.contains(crackling.cardId) ? upgraded : bonus
             }
             // Nature's Lift (+2 Range on a ranged attack), Foul Wind (+1 Attack): consume Air,
             // unless the player keeps it.
-            if let game = gameManager?.game, let character {
+            if let game = gameManager?.game, let character, bonusesApply {
                 for (index, entry) in elementConsumingBonuses(of: character, coordinator: coordinator).enumerated() {
                     let (element, _, needsRange) = entry.what
                     guard game.isElementAvailable(element), !needsRange || range > 1 else { continue }
@@ -1452,7 +1498,7 @@ final class PlayerTurnController {
             // Voice of the Night ("on your next five attacks while invisible, add Stun") marks
             // its charges attack by attack too (`conditionsFromBonuses`).
             // Silent Stiletto: Pierce 1 on every melee attack.
-            if range <= 1 {
+            if range <= 1, bonusesApply {
                 pendingPierce += PassiveItems.meleePierce(for: character?.carriedItems ?? [])
                 pendingPush += PassiveItems.meleePush(for: character?.carriedItems ?? [])   // Mask of Terror
                 if character?.health == 1, character?.carriedItems.contains(PassiveItems.maskOfDeath) == true {
@@ -1476,6 +1522,8 @@ final class PlayerTurnController {
             func applyPerformedEffects() {
                 grantBonusExperience(bonus)
                 applyPrintedEffects(of: action, coordinator: coordinator)
+                // (Once the attack is over: it isn't strengthened by its own Strengthen.)
+                conditionsAfterAttack += ownConditions.map { (pieceID, $0) }
                 if let character { for cardId in actionCharges { coordinator.useCharge(cardId, of: character) } }
             }
 
@@ -1498,6 +1546,7 @@ final class PlayerTurnController {
                 let reach: Int = spec.hasPrefix("enemiesadjacent")
                     ? 1 : Int(spec.split(separator: ":").last ?? "") ?? range
                 let exact = spec.hasPrefix("enemiesrangeexact")
+                allTargetsAttacked = coordinator.enemiesToAttack(from: pieceID, within: reach, exactly: exact).count
                 coordinator.log("\(who): Attack \(pendingAttackValue) on every enemy within \(reach)", category: .attack)
                 if coordinator.hasEnemiesToAttack(from: pieceID, within: reach, exactly: exact) { applyPerformedEffects() }
                 coordinator.attackAllEnemies(from: pieceID, within: reach, exactly: exact)
@@ -1623,6 +1672,19 @@ final class PlayerTurnController {
             }
 
         case .shield, .retaliate:
+            // "Shield 2, Retaliate 2 — affect all summoned allies" (Earthen Spikes, Patch Fur):
+            // every summon on the party's side has them this round; the character doesn't.
+            if customText(of: action).contains("all summoned allies"), let game = gameManager?.game {
+                let bonuses = [action] + (action.subActions ?? []).filter { $0.type == .shield || $0.type == .retaliate }
+                let summons = game.characters.filter { !$0.absent }.flatMap(\.summons)
+                    .filter { !$0.dead && coordinator.isOnBoard(.summon(id: $0.id)) }
+                for summon in summons {
+                    for bonus in bonuses { Self.giveRoundBonus(bonus, to: summon) }
+                }
+                coordinator.log("\(who): \(GameText.list(bonuses.map(GameText.actionTitle))) to all summoned allies", category: .condition)
+                if summons.isEmpty { abilityDidNothing() }
+                break
+            }
             // "Shield 1, self and all adjacent allies", "Retaliate 2, one adjacent ally"…
             if let reach = allyReach(of: action, coordinator: coordinator) {
                 for figure in reach.chooseOne ? Array(reach.pieces.prefix(1)) : reach.pieces {
@@ -1860,6 +1922,15 @@ final class PlayerTurnController {
     }
 
     /// A round Shield or Retaliate for an ally (it stacks with theirs).
+    private static func giveRoundBonus(_ action: ActionModel, to summon: GameSummon) {
+        let value = action.value?.intValue ?? 0
+        if action.type == .shield {
+            summon.shield = ActionModel(type: .shield, value: .int((summon.shield?.value?.intValue ?? 0) + value))
+        } else {
+            summon.retaliate.append(ActionModel(type: .retaliate, value: .int(value)))
+        }
+    }
+
     private static func giveRoundBonus(_ action: ActionModel, to ally: GameCharacter) {
         let value = action.value?.intValue ?? 0
         if action.type == .shield {
@@ -1951,8 +2022,13 @@ final class PlayerTurnController {
                 self.advanceAfterAsyncAction()
             }
             return true
-        } else if text.contains("when the trap is sprung") {
-            // What a placed trap does when sprung (Detonation, Flight of Flame) isn't for now.
+        } else if text.hasPrefix("target all enemies within"), text.contains("for each two enemies targeted") {
+            // Darkened Skies: its targets were the attack's; the experience is for each two.
+            let xp = (allTargetsAttacked / 2) * (text.firstMatch(of: #/xp \+?(\d+)/#).flatMap { Int($0.1) } ?? 1)
+            if xp > 0 { grantExperience(xp) }
+            return false
+        } else if text.contains("when the trap is sprung"), !text.contains("trap in an adjacent empty hex") {
+            // What a placed trap does when sprung (Flight of Flame's line): read as it is made.
             return false
         } else if Self.isDoomDescription(text, className: character.name) {
             // The Doomstalker's lines about a doom or doomed enemies describe what happens while
@@ -1965,7 +2041,12 @@ final class PlayerTurnController {
             let following = half.dropFirst(currentActionIndex + 1).first.map(customText(of:)) ?? ""
             let nextLine = half.dropFirst(currentActionIndex + 1).first.flatMap { $0.value }
                 .flatMap { gameManager?.editionStore.resolveCustomText($0.stringValue, edition: character.edition) }?.lowercased() ?? following
-            let xp = nextLine.contains("trap is sprung") ? (nextLine.firstMatch(of: #/xp \+(\d+)/#).flatMap { Int($0.1) } ?? 0) : 0
+            // What it does when sprung is printed with it, inside the step (Detonation) or as the
+            // next line (Proximity Mine, Flight of Flame).
+            let sprung = (customTexts(of: action) + [nextLine]).filter { $0.contains("trap is sprung") }
+            let xp = sprung.lazy.compactMap { $0.firstMatch(of: #/xp \+(\d+)/#).flatMap { Int($0.1) } }.first ?? 0
+            let around = TrapEffect.around(from: sprung)
+            coordinator.trapAround = around.damage == nil && around.conditions.isEmpty ? nil : around
             let trap = PlacedToken.trap(damage: Self.damageAmount(in: text), subType: PlacedToken.trapCondition(in: text),
                                         experience: xp)
             return coordinator.beginPlacingTokens(trap, count: 1, by: me)
@@ -2260,8 +2341,25 @@ final class PlayerTurnController {
     /// opened up, so a move or a target choice inside them is a step of its own and the turn
     /// waits for it. Augments stay whole: they aren't performed.
     static func steps(_ actions: [ActionModel], labels: EditionDataStore? = nil, edition: String = "gh") -> [ActionModel] {
-        attachingModifierConsumes(attachingForcedMoveRange(attachingConditionArea(abilitiesUnderMovesAsSteps(
-            flatSteps(actions, labels: labels, edition: edition)))).map(hoistingGroupedEffects))
+        attachingTargetText(attachingModifierConsumes(attachingForcedMoveRange(attachingConditionArea(abilitiesUnderMovesAsSteps(
+            flatSteps(actions, labels: labels, edition: edition)))).map(hoistingGroupedEffects)), labels: labels, edition: edition)
+    }
+
+    /// Darkened Skies: "Attack 3" and beside it the text "Target all enemies within Range 3. Gain
+    /// XP 1 for each two enemies targeted" — the data has the text as a step of its own; its
+    /// targets are the attack's (the text stays a step, for its experience).
+    static func attachingTargetText(_ steps: [ActionModel], labels: EditionDataStore?, edition: String) -> [ActionModel] {
+        var result = steps
+        for index in result.indices.dropLast() where result[index].type == .attack {
+            let next = result[index + 1]
+            guard next.type == .custom, let key = next.value?.stringValue,
+                  let text = labels?.resolveCustomText(key, edition: edition)?.lowercased(),
+                  text.hasPrefix("target all enemies within"),
+                  let reach = text.firstMatch(of: #/range (\d+)/#).flatMap({ Int($0.1) }),
+                  !(result[index].subActions ?? []).contains(where: { $0.type == .specialTarget }) else { continue }
+            result[index].subActions = (result[index].subActions ?? []) + [ActionModel(type: .specialTarget, value: .string("enemiesRange:\(reach)"))]
+        }
+        return result
     }
 
     /// A condition printed beside an area (Singing Arrow's "Curse, Range 3" and three red

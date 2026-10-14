@@ -17,7 +17,7 @@ os.makedirs(SCR, exist_ok=True)
 FILTER=("AttackRuleTests|ConditionRuleTests|RoundRuleTests|LootRuleTests|MovementRuleTests|RevealRuleTests|ScenarioEndRuleTests|"
         "ScenarioLevelRuleTests|ForcedMovementTests|RB_|PlayLedgerTests|PlaythroughTests|RestRuleTests|BoardRulesRegressionTests|"
         "JumpFlyMovementTests|HealAndConsumeRuleTests|CombatEffectsTests|TurnFlowTests|E2E|AttackModifier|BoardSimulationTests|MonsterTurnRulesTests|ScenarioFinishEdgeCaseTests|DynamicObstacleTests|FeatureTests|EscortAITests|TeleportTests|HexCoordTests|"
-        "MoneyTokenTests|SetupRulesTests|StandeeLimitTests|TreasureReplayTests|ItemUseRuleTests|ChargedBonusTests|ActionPerformedTests|ScenarioEnforcedRuleTests|ScenarioReauditTests|ModifierDeckRoundEndTests|MoveThenAbilityTests")
+        "MoneyTokenTests|SetupRulesTests|StandeeLimitTests|TreasureReplayTests|CompanionTests|NestedAbilityCardTests|ItemUseRuleTests|ChargedBonusTests|ActionPerformedTests|ScenarioEnforcedRuleTests|ScenarioReauditTests|ModifierDeckRoundEndTests|MoveThenAbilityTests")
 M={
  "poison0": ("GlavenGame/Engine/CombatResolver.swift", "        if isPoisoned {\n            attackValue += 1\n        }", "        if isPoisoned {\n            attackValue += 0\n        }"),
  "retaliateShielded": ("GlavenGame/Board/BoardCoordinator+Combat.swift", "            await sufferDamageWithMitigation(retaliate, to: attacker,", "            await sufferDamageWithMitigation(max(0, retaliate - self.shield(of: attacker)), to: attacker,"),
@@ -107,6 +107,25 @@ M={
  "treasureFoundTwice": ("GlavenGame/Board/BoardCoordinator.swift", "        let objectives = placeRevealedObjectives()\n        clearTreasuresLootedBefore()\n", "        let objectives = placeRevealedObjectives()\n"),
  "loopMoveInOneLeg": ("GlavenGame/Board/BoardCoordinator+Movement.swift", "        if openedDoor || loops, movementLeft > 0,", "        if openedDoor, movementLeft > 0,"),
  "loopJudgedOnTheLastLeg": ("GlavenGame/Board/BoardCoordinator+Movement.swift", "boardState.piecePositions[pieceID] == (turn.moveStartHex ?? path.first)", "path.first == path.last"),
+ "bearNeverSetUp": ("GlavenGame/Board/BoardCoordinator.swift", "        setUpCompanions { [weak self] in", "        ({ (go: @escaping () -> Void) in go() }) { [weak self] in"),
+ "bearWaitsTheFirstRound": ("GlavenGame/Board/BoardCoordinator+Companion.swift", "            bear.state = .active   // it acts from the first round\n", ""),
+ "bearSetUpAnywhere": ("GlavenGame/Board/BoardCoordinator+Companion.swift", "var options = boardState.neighbors(of: here).filter(isEmptyHex).sorted()", "var options = boardState.cells.keys.filter(isEmptyHex).sorted()"),
+ "commandByTheTyrant": ("GlavenGame/Board/PlayerTurnController.swift", "            pieceID = bear\n            commandedFigure = bear\n", "            commandedFigure = bear\n"),
+ "commandWithoutTheBear": ("GlavenGame/Board/PlayerTurnController.swift", "guard let bear = coordinator.companionPiece(of: character) else {", "guard let bear = coordinator.companionPiece(of: character) ?? Optional(PieceID.character(characterID)) else {"),
+ "tyrantsItemsOnTheBear": ("GlavenGame/Board/PlayerTurnController.swift", "            if range <= 1, bonusesApply {", "            if range <= 1 {"),
+ "ownStrengthenOnTheTarget": ("GlavenGame/Board/PlayerTurnController.swift", "                case .condition where hasSpecialTargetSelf(sub):\n", "                case .condition where false:\n"),
+ "ownStrengthenBeforeTheAttack": ("GlavenGame/Board/PlayerTurnController.swift", "                conditionsAfterAttack += ownConditions.map { (pieceID, $0) }", "                for c in ownConditions { coordinator.applyCondition(c, to: pieceID) }"),
+ "bearLootsForNoOne": ("GlavenGame/Board/BoardCoordinator.swift", "        let pieceID = summonOwner(of: looter).map { PieceID.character($0.id) } ?? looter\n", "        let pieceID = looter\n"),
+ "summonedAlliesBonusOnTheCharacter": ("GlavenGame/Board/PlayerTurnController.swift", "            if customText(of: action).contains(\"all summoned allies\"), let game = gameManager?.game {", "            if false, let game = gameManager?.game {"),
+ "summonedAlliesRetaliateDropped": ("GlavenGame/Board/PlayerTurnController.swift", "let bonuses = [action] + (action.subActions ?? []).filter { $0.type == .shield || $0.type == .retaliate }", "let bonuses = [action]"),
+ "summonRoundBonusesKept": ("GlavenGame/Managers/RoundManager.swift", "                    summon.shield = nil\n                    summon.retaliate = []\n", ""),
+ "frighteningCursePushes": ("GlavenGame/Board/BoardCoordinator+Dooms.swift", "                let options = [from] + reach.keys.filter { $0 != from && boardState.piece(at: $0) == nil }.sorted()", "                let options = [from] + reach.keys.filter { $0 != from && boardState.piece(at: $0) == nil && $0.distance(to: hex) > from.distance(to: hex) }.sorted()"),
+ "trapsDoNothingAround": ("GlavenGame/Board/BoardCoordinator+Movement.swift", "        if aroundDamage > 0 || !aroundConditions.isEmpty {", "        if false {"),
+ "trapAroundHitsAllies": ("GlavenGame/Board/BoardCoordinator+Movement.swift", "piece != pieceID && isFigure(piece) && (owner.map { areEnemies($0, piece) } ?? (side(of: piece) == .monsters))", "piece != pieceID && isFigure(piece)"),
+ "trapLinesInsideIgnored": ("GlavenGame/Board/PlayerTurnController.swift", "let sprung = (customTexts(of: action) + [nextLine]).filter", "let sprung = [nextLine].filter"),
+ "impendingEndKillsNoOne": ("GlavenGame/Board/BoardCoordinator.swift", "        if let text = turn?.attackTexts.first(where: { $0.contains(\"kill the target\") }), isOnBoard(target),", "        if false, let text = turn?.attackTexts.first(where: { $0.contains(\"kill the target\") }), isOnBoard(target),"),
+ "darkenedSkiesOneTarget": ("GlavenGame/Board/PlayerTurnController.swift", "            result[index].subActions = (result[index].subActions ?? []) + [ActionModel(type: .specialTarget, value: .string(\"enemiesRange:\\(reach)\"))]\n", ""),
+ "darkenedSkiesNoExperience": ("GlavenGame/Board/PlayerTurnController.swift", "            if xp > 0 { grantExperience(xp) }\n", ""),
 }
 # Scenario rules (the mechanisms of placements/gh.json): run against the scenario tests.
 SCENARIO_FILTER=("ScenarioSpecialRuleTests|ScenarioReauditTests|ScenarioEnforcedRuleTests|ScenarioLockTests|ScenarioGoalTests|"

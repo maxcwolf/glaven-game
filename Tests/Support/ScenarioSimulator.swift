@@ -644,9 +644,12 @@ final class ScenarioSimulator {
     /// a summon's own range, a monster's stat card and ability card. Nil when the attack isn't
     /// one of range: an attack on everyone moved through, a boss's special, an escort's.
     private func reach(of attacker: PieceID) -> Int? {
+        // A Command is measured as its master's printed step.
+        let commanded = coord.activePlayerTurn?.commandedFigure == attacker
         switch attacker {
-        case .character(let id):
-            guard let turn = coord.activePlayerTurn, turn.characterID == id, turn.currentActionIndex < turn.currentSteps.count
+        case _ where commanded, .character:
+            guard let turn = coord.activePlayerTurn, commanded || PieceID.character(turn.characterID) == attacker,
+                  turn.currentActionIndex < turn.currentSteps.count
             else { return nil }
             let step = turn.currentSteps[turn.currentActionIndex]
             let subs = step.subActions ?? []
@@ -680,6 +683,10 @@ final class ScenarioSimulator {
             guard let turn = coord.activePlayerTurn, turn.characterID == id else { return nil }
             return ("\(attacker) \(turn.phase) step \(turn.currentActionIndex)", 1)
         case .summon:
+            // A Command (the Beast Tyrant's bear): an ability of its master's step.
+            if let turn = coord.activePlayerTurn, turn.commandedFigure == attacker {
+                return ("\(attacker) commanded \(turn.phase) step \(turn.currentActionIndex)", 1)
+            }
             return ("\(attacker)", 1)
         case .monster(let name, let standee):
             guard let monster = gm.game.monsters.first(where: { $0.name == name }), !monster.isBoss,

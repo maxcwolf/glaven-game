@@ -103,6 +103,8 @@ final class RoundManager {
                 // Reset summon states
                 for summon in c.summons {
                     summon.active = false
+                    summon.shield = nil
+                    summon.retaliate = []
                     if summon.state == .new { summon.state = .active }
                 }
             case .monster(let m):

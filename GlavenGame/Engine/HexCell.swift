@@ -20,6 +20,24 @@ struct TrapEffect: Codable, Sendable, Equatable {
     var damage: Bool
     /// The conditions it gives, in the order the legend names them.
     var conditions: [ConditionName] = []
+    /// What it does besides to the enemies beside it as it is sprung (Detonation: "all enemies
+    /// adjacent to this trap suffer 2 damage"; Flight of Flame: "Wound all enemies adjacent to
+    /// this trap").
+    var adjacentDamage: Int? = nil
+    var adjacentConditions: [ConditionName]? = nil
+
+    /// Those lines of a card, from its words ("… when the trap is sprung").
+    static func around(from lines: [String]) -> (damage: Int?, conditions: [ConditionName]) {
+        var damage: Int?
+        var conditions: [ConditionName] = []
+        for line in lines.map({ $0.lowercased() }) where line.contains("adjacent to this trap") {
+            if let match = line.firstMatch(of: #/suffer (\d+) damage/#) { damage = Int(match.1) }
+            for condition in ConditionName.allCases where line.contains("\(condition.rawValue) all enemies adjacent") {
+                conditions.append(condition)
+            }
+        }
+        return (damage, conditions)
+    }
 
     /// A plain damage trap.
     static let damageOnly = TrapEffect(damage: true)

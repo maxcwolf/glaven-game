@@ -27,8 +27,8 @@ question, how a piece of work is done from start to finish, and what to do next.
 
 ### Work in progress (2026-10-14)
 
-`main` has everything up to merge `3749f84` (the small ones). The work since — the engine
-rules the audit left open — is on `feat/cards-4`, not merged (merging is the owner's call).
+`main` has everything up to merge `dabf4eb` (the engine rules). The work since — the cards —
+is on `feat/cards-4`, not merged (merging is the owner's call).
 The branches:
 
 - **`feat/scenario-rules-3`** (2026-10-12): tests for the three rules no test caught; mutations
@@ -42,18 +42,18 @@ The branches:
   second session had the main checkout. It adds: Singing Arrow's Curse over its area; the
   play ledger no longer miscounting #9's Scouts (N12); the audit's new screens rendered and
   looked at (N16) with the cards in play made finger-sized; a door two hexes wide opening as
-  one (N21). `scripts/mutate.py` has 368 mutations, each noticed by a test. Group 2 is begun: a card lost
+  one (N21). `scripts/mutate.py` has 387 mutations, each noticed by a test. Group 2 is begun: a card lost
   from any hand spares the crystal (#84) or a captive (#44) — `saves`, `SaveChoiceSheet` — and a
   character beside a captive gives up an action to free it (`forgo`), with #44's loss switched on.
 
 To pick it up, work on `feat/cards-4` (or merge it into `feat/scenario-rules-3` first — it is a
 fast-forward):
 
-1. **Verified** at the head of `feat/cards-4` on 2026-10-14: `swift test` 1,664 tests, none
-   failing (the golden transcripts unchanged); the four-seed all-scenarios playthrough (376 runs)
-   without a violation; the veteran playthrough passing (53 and 58 of 94 won, as at the last
-   merge). `main` has the branch up to merge `3749f84`; the engine rules came after and are on
-   the branch.
+1. **Verified** at the head of `feat/cards-4` on 2026-10-14: `swift test` 1,679 tests, none
+   failing; the four-seed all-scenarios playthrough (376 runs) without a violation; the veteran
+   playthrough passing (53 and 58 of 94 won, as before); a party with the Beast Tyrant played
+   through eight scenarios without a violation. `main` has the branch up to merge `dabf4eb`; the
+   cards came after and are on the branch.
 2. **Next**, from `TODO.md` → "Open, in order": group 1 is done but for a glance at two things
    on the iPad (the Solo switch as a switch; the scrolling card lists in the damage and rest
    sheets) and the drawings that need a game in progress (#46's eggs, #48's Dark Rider, the
@@ -89,8 +89,13 @@ fast-forward):
    with no map, which needs the random dungeon mode built first (`TODO.md`). Group 3, the engine
    rules the audit left open, is done too (2026-10-14): element choices, the player placing an
    area, the rest of negating damage, standees that run out, push and pull around walls, treasure
-   on a replay, and moves made in legs (Feedback Loop). Next is group 4, Cards: its large open
-   item is the Beast Tyrant, who has no bear (N20).
+   on a replay, and moves made in legs (Feedback Loop). Group 4, Cards, is done too
+   (2026-10-14): the Beast Tyrant's bear (N20) — set up beside him, his summon, the performer of
+   his Commands — with Earthen Spikes' and Patch Fur's bonuses for all summoned allies, an
+   attack's "Strengthen self" for its attacker, Frightening Curse's controlled Move 1, Detonation's
+   and Flight of Flame's traps, Impending End and Darkened Skies. Left under Cards: three Beast
+   Tyrant cards with no data and his text bonuses about the bear. Next is group 5, town and
+   campaign (F19, F20, N6, envelopes).
 3. Merging to `main` (`git merge --no-ff -m "merge: …"`, then push) is done when the owner asks.
 
 ## Which document answers what
@@ -190,7 +195,7 @@ The task list is `TODO.md` → "Missing Gloomhaven Rules" → "Open, in order"; 
 ordered like this:
 
 1. **Tests and checks, before building on top.** Done but for a glance on the iPad at what the
-   off-screen renderer can't draw. (`scripts/mutate.py` has 368 mutations, 280 of them scenario
+   off-screen renderer can't draw. (`scripts/mutate.py` has 387 mutations, 280 of them scenario
    rules — `--scenario` — and each is noticed by a test: add one with every new mechanism.)
 2. **Scenario rules** — 94 printed rules in 28 scenarios, in this order because each group is one
    mechanism used several times:
@@ -219,8 +224,8 @@ ordered like this:
    Front after the choice, N10 the shield order), standees that run out (N11), push and pull
    around walls (A12), treasure on a replay (C11), and a move in legs for Feedback Loop. Left: the
    latent cases no Gloomhaven card triggers (`TODO.md`), and the campaign's F19, F20, N6.
-4. **Next: Cards** — the Beast Tyrant's bear (N20) first — then **town and campaign**, and what
-   isn't Gloomhaven.
+4. **Cards** (done 2026-10-14, but for three Beast Tyrant cards the data leaves empty and his
+   text bonuses about the bear); **next: town and campaign**, then what isn't Gloomhaven.
 
 ## History, briefly
 

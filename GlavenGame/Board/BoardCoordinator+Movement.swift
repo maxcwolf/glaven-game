@@ -364,8 +364,13 @@ extension BoardCoordinator {
     func placeToken(_ token: PlacedToken, at hex: HexCoord, by pieceID: PieceID, remaining: Int) {
         switch token {
         case .trap(let damage, let subType, let experience):
-            boardState.placeTrap(at: hex, damage: damage, subType: subType, effect: token.trapEffect)
-            if experience > 0, case .character(let id) = pieceID { characterTraps[hex] = (id, experience) }
+            var effect = token.trapEffect
+            if let around = trapAround {
+                effect?.adjacentDamage = around.damage
+                effect?.adjacentConditions = around.conditions.isEmpty ? nil : around.conditions
+            }
+            boardState.placeTrap(at: hex, damage: damage, subType: subType, effect: effect)
+            if case .character(let id) = pieceID { characterTraps[hex] = (id, experience) }
         case .obstacle:
             boardState.placeObstacle(at: hex)
         case .destroyObstacle:
@@ -380,6 +385,7 @@ extension BoardCoordinator {
         log("\(name(pieceID)) \(token.verb.lowercased())s \(token.name)", category: .info, trace: "at \(hex)")
         interactionMode = .idle
         if remaining > 1, beginPlacingTokens(token, count: remaining - 1, by: pieceID) { return }
+        trapAround = nil
         activePlayerTurn?.advanceAfterAsyncAction()
     }
 
@@ -470,10 +476,26 @@ extension BoardCoordinator {
         log("\(name(pieceID)) springs \(Self.trapName(effect))" + (damage > 0 ? " and suffers \(damage) damage" : ""),
             category: damage > 0 ? .damage : .condition, trace: subType)
         // Proximity Mine: experience for its owner when an enemy springs it.
-        if let (owner, experience) = characterTraps.removeValue(forKey: hex), areEnemies(.character(owner), pieceID),
+        let maker = characterTraps.removeValue(forKey: hex)
+        if let (owner, experience) = maker, experience > 0, areEnemies(.character(owner), pieceID),
            let character = gameManager.game.characters.first(where: { $0.id == owner }) {
             character.experience += experience
             log("\(name(.character(owner))) gains \(experience) XP", category: .info)
+        }
+        // Detonation, Flight of Flame: the enemies beside it suffer too, whoever springs it.
+        let aroundDamage = effect.adjacentDamage ?? 0, aroundConditions = effect.adjacentConditions ?? []
+        if aroundDamage > 0 || !aroundConditions.isEmpty {
+            let owner = maker.map { PieceID.character($0.0) }
+            let beside = boardState.neighbors(of: hex).compactMap { boardState.piece(at: $0) }.filter { piece in
+                piece != pieceID && isFigure(piece) && (owner.map { areEnemies($0, piece) } ?? (side(of: piece) == .monsters))
+            }.sorted()
+            for victim in beside {
+                if aroundDamage > 0 {
+                    log("\(name(victim)) suffers \(aroundDamage) damage from the trap", category: .damage)
+                    await sufferDamageWithMitigation(aroundDamage, to: victim, source: "a trap", killer: owner)
+                }
+                for condition in aroundConditions where isOnBoard(victim) { applyCondition(condition, to: victim) }
+            }
         }
 
         if damage > 0, await sufferDamageWithMitigation(damage, to: pieceID, source: "a trap") {

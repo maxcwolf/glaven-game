@@ -104,6 +104,8 @@ final class AreaAttackRuleTests: XCTestCase {
         coord.autoResolvePrompts = false
         gm.characterManager.addCharacter(name: "brute", edition: "gh")
         let brute = try XCTUnwrap(gm.game.characters.last)
+        let zeros = (0..<20).map { _ in AttackModifier.standard(.plus0) }
+        brute.attackModifierDeck = AttackModifierDeck(attackModifiers: zeros, cards: zeros)
         let me = PieceID.character(brute.id)
         coord.boardState.placePiece(me, at: HexCoord(5, 5))
         var foes: [HexCoord: PieceID] = [:]
