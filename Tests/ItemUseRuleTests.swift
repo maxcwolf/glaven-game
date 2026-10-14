@@ -119,6 +119,36 @@ final class ItemUseRuleTests: XCTestCase {
         XCTAssertEqual(brute.health, health - 7, "spent: no shield for the third attack")
     }
 
+    /// FAQ: "You can choose which Shield bonus to apply … once the damage is reduced to zero …
+    /// any other bonuses do not have to be used." The single-use shield is asked about first:
+    /// taken, and blocking the attack, it leaves the armour's circle unmarked; turned down, the
+    /// armour takes its part.
+    func testThePlayerChoosesWhichShieldGoesFirst() async throws {
+        brute.items = ["gh-3", "gh-61"]   // Hide Armor (two circles), Wall Shield (Shield 4, once)
+        coord.autoResolvePrompts = false
+        let health = brute.health
+        let piece = try bandit()
+        let blocked = attack(from: piece)
+        let offered = await waitUntil { coord.pendingItemUse != nil }
+        XCTAssertTrue(offered, "the Wall Shield is offered first")
+        XCTAssertEqual(coord.pendingItemUse?.itemName, coord.itemData("gh-61")?.name)
+        coord.resolvePendingItemUse(true)
+        _ = await blocked.value
+        XCTAssertEqual(brute.health, health, "Shield 4 blocks Attack 3")
+        XCTAssertNil(brute.itemSlotsUsed["gh-3"], "the armour needn't be used: no circle marked")
+        XCTAssertFalse(brute.spentItems.contains("gh-3"))
+
+        brute.items = ["gh-3", "gh-32"]   // Tower Shield (Shield 2, once) this time, turned down
+        let second = attack(from: piece)
+        _ = await waitUntil { coord.pendingItemUse != nil }
+        coord.resolvePendingItemUse(false)
+        _ = await waitUntil { coord.pendingDamage != nil }
+        coord.resolvePendingDamage(choice: .takeDamage)
+        _ = await second.value
+        XCTAssertEqual(brute.health, health - 2, "the armour's Shield 1")
+        XCTAssertEqual(brute.itemSlotsUsed["gh-3"], 1)
+    }
+
     /// Every armour with circles in the box, and none of the single-use shields.
     func testWhichArmoursWorkByThemselves() throws {
         let charged = ["gh-3", "gh-23", "gh-44", "gh-65", "gh-74", "gh-104"]

@@ -190,17 +190,9 @@ extension BoardCoordinator {
                 }
             }
         }
-        // Armour with use circles (Hide Armor, Chainmail…) works by itself on every attack that
-        // would damage its wearer (FAQ): it isn't offered. Its circle is marked once the damage is
-        // settled — the player may still lose cards instead, and the armour is then not used.
-        var armourUsed: [DefenseItem] = []
-        for item in DefenseItem.onDamage where result.damage > 0 && !negated && !preventedByCards && areEnemies(attacker, target)
-            && isChargedArmour(item, wornBy: target) {
-            armourUsed.append(item)
-            shield += item.shield
-            result = resolve()
-        }
-        // The other shields and armours are the player's to use or keep.
+        // The other shields and armours are the player's to use or keep — asked first, since the
+        // player chooses which Shield to use first and needn't use another once the damage is
+        // gone (FAQ, "Shield and Retaliate").
         for item in DefenseItem.onDamage where result.damage > 0 && !negated && !preventedByCards && areEnemies(attacker, target) {
             if await offerDefenseItem(item, to: target, from: attacker) {
                 shield += item.shield
@@ -209,6 +201,16 @@ extension BoardCoordinator {
                 result = resolve()
             }
             guard isCurrentBoard(generation) else { return false }
+        }
+        // Armour with use circles (Hide Armor, Chainmail…) works by itself on every attack that
+        // would still damage its wearer (FAQ): it isn't offered. Its circle is marked once the
+        // damage is settled — the player may still lose cards instead, and the armour is then not used.
+        var armourUsed: [DefenseItem] = []
+        for item in DefenseItem.onDamage where result.damage > 0 && !negated && !preventedByCards && areEnemies(attacker, target)
+            && isChargedArmour(item, wornBy: target) {
+            armourUsed.append(item)
+            shield += item.shield
+            result = resolve()
         }
         let breakdown = CombatResolver.damageBreakdown(
             base: attack.value, isPoisoned: isPoisoned, preDrawnCards: preDrawn,
