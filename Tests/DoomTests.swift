@@ -258,6 +258,40 @@ final class DoomTests: XCTestCase {
         XCTAssertEqual(stalker.health, 20, "allies aren't hurt")
     }
 
+    /// Frightening Curse's doom: "force all enemies adjacent to the hex in which it died to
+    /// perform a Move 1 action with you controlling the actions" — each moves to the hex the
+    /// player taps (toward the dead one's hex too), or stays.
+    func testFrighteningCursesDoomMovesTheEnemiesBesideIt() async throws {
+        coord.autoResolvePrompts = false
+        let stalker = add("angry-face", at: HexCoord(2, 2))
+        let brute = add("brute", at: HexCoord(6, 3))
+        let doomed = try bandit(at: HexCoord(6, 5), health: 2)
+        let beside = try bandit(at: HexCoord(7, 5))
+        doom(383, by: stalker, on: doomed)
+        let attack = Task { await self.hit(doomed, by: .character(brute.id), value: 5) }
+        var asked = false
+        var over = false
+        Task { await attack.value; over = true }
+        for _ in 0..<500 where !over {
+            if let pending = coord.pendingHexChoice {
+                asked = true
+                XCTAssertTrue(pending.options.contains(HexCoord(7, 5)), "it may stay")
+                XCTAssertTrue(pending.options.contains(HexCoord(6, 5)), "or step into where the doomed enemy died: a move, not a push")
+                XCTAssertTrue(pending.options.allSatisfy { HexCoord(7, 5).distance(to: $0) <= 1 }, "Move 1")
+                coord.resolveHexChoice(HexCoord(6, 5))
+            } else if coord.pendingFigureChoice != nil {
+                coord.resolveFigureChoice(nil)   // (no doom moves on: not this test's matter)
+            } else if let draw = coord.pendingModifierDraw {
+                coord.completeModifierDraw(selectedCards: CombatResolver.drawModifiers(advantage: draw.advantage, disadvantage: draw.disadvantage,
+                                                                                        baseAttack: draw.comparedAttack, draw: draw.drawCard))
+            }
+            try await Task.sleep(nanoseconds: 2_000_000)
+        }
+        XCTAssertTrue(over, "the attack and its doom are over")
+        XCTAssertTrue(asked, "the player chooses where it moves")
+        XCTAssertEqual(coord.boardState.piecePositions[beside], HexCoord(6, 5))
+    }
+
     /// Rising Momentum: dying within range 2 of another enemy, the dooms move to it.
     func testRisingMomentumMovesTheDooms() async throws {
         let stalker = add("angry-face", at: HexCoord(2, 2))

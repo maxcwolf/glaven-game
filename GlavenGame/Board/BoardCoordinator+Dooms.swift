@@ -263,9 +263,25 @@ extension BoardCoordinator {
             }
         case .moveAdjacent(let n):
             // "Force all enemies adjacent to the hex in which it died to perform Move 1, with you
-            // controlling the actions": moved away from that hex.
+            // controlling the actions": each makes a Move of its own — as it moves, flying or not,
+            // round its enemies — to the hex the player taps, or stays.
+            let generation = boardGeneration
             for victim in boardState.neighbors(of: hex).compactMap({ boardState.piece(at: $0) }).filter({ areEnemies(me, $0) && isFigure($0) }).sorted() {
-                await performPushPull(target: victim, attackerPos: hex, steps: n, isPush: true)
+                guard isCurrentBoard(generation), isOnBoard(victim), let from = boardState.piecePositions[victim],
+                      !isConditionActive(.immobilize, on: victim) else { continue }
+                let (enemies, allies) = movementSets(for: victim)
+                let mode: MoveMode = flies(victim) ? .fly : .normal
+                let reach = Pathfinder.reachableHexes(board: boardState, from: from, range: n, mode: mode, canOpenDoors: false,
+                                                      occupiedByEnemy: enemies, occupiedByAlly: allies)
+                let options = [from] + reach.keys.filter { $0 != from && boardState.piece(at: $0) == nil }.sorted()
+                guard options.count > 1 else { continue }
+                let to = await chooseHex(options, for: victim, title: "\(name(victim)): Move \(n)",
+                                         detail: "Tap where \(name(victim)) moves, with you controlling it — or the hex it stands on") ?? from
+                guard isCurrentBoard(generation), to != from,
+                      let path = Pathfinder.findPath(board: boardState, from: from, to: to, mode: mode, canOpenDoors: false,
+                                                     maxCost: n, occupiedByEnemy: enemies, occupiedByAlly: allies) else { continue }
+                log("\(name(victim)) moves \(path.count - 1) hex\(path.count == 2 ? "" : "es"), \(name(me)) controlling it", category: .move, trace: "to \(to)")
+                _ = await moveAlong(victim, path: path, style: mode == .fly ? .fly : .normal)
             }
         case .attack(let value, let range, let targets):
             await reactionAttack(by: owner, value: value, range: range, targets: targets)

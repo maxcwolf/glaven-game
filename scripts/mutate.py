@@ -119,6 +119,7 @@ M={
  "summonedAlliesBonusOnTheCharacter": ("GlavenGame/Board/PlayerTurnController.swift", "            if customText(of: action).contains(\"all summoned allies\"), let game = gameManager?.game {", "            if false, let game = gameManager?.game {"),
  "summonedAlliesRetaliateDropped": ("GlavenGame/Board/PlayerTurnController.swift", "let bonuses = [action] + (action.subActions ?? []).filter { $0.type == .shield || $0.type == .retaliate }", "let bonuses = [action]"),
  "summonRoundBonusesKept": ("GlavenGame/Managers/RoundManager.swift", "                    summon.shield = nil\n                    summon.retaliate = []\n", ""),
+ "frighteningCursePushes": ("GlavenGame/Board/BoardCoordinator+Dooms.swift", "                let options = [from] + reach.keys.filter { $0 != from && boardState.piece(at: $0) == nil }.sorted()", "                let options = [from] + reach.keys.filter { $0 != from && boardState.piece(at: $0) == nil && $0.distance(to: hex) > from.distance(to: hex) }.sorted()"),
 }
 # Scenario rules (the mechanisms of placements/gh.json): run against the scenario tests.
 SCENARIO_FILTER=("ScenarioSpecialRuleTests|ScenarioReauditTests|ScenarioEnforcedRuleTests|ScenarioLockTests|ScenarioGoalTests|"
