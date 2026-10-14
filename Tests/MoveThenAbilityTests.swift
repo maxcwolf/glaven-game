@@ -16,9 +16,19 @@ final class MoveThenAbilityTests: XCTestCase {
     /// Play `name`'s bottom half with `character`: the Move is skipped (staying put), and what
     /// follows is performed. Returns the turn, left where it waits for a choice (or done).
     private func playBottom(_ name: String, other: String, for character: GameCharacter) throws -> PlayerTurnController {
-        board.play(try board.card(other, of: character.name), try board.card(name, of: character.name), for: character)
-        board.startTurns([TurnOrderEntry(figure: .character(character), initiative: 10)])
-        let turn = try XCTUnwrap(board.coord.activePlayerTurn)
+        let top = try board.card(other, of: character.name), bottom = try board.card(name, of: character.name)
+        board.play(top, bottom, for: character)
+        let turn: PlayerTurnController
+        if character.summons.isEmpty {
+            board.startTurns([TurnOrderEntry(figure: .character(character), initiative: 10)])
+            turn = try XCTUnwrap(board.coord.activePlayerTurn)
+        } else {
+            // (Their summons would act first: the turn is made directly, the bear left where it is.)
+            board.coord.boardPhase = .execution
+            turn = PlayerTurnController(characterID: character.id, coordinator: board.coord, gameManager: board.gm)
+            board.coord.activePlayerTurn = turn
+            turn.selectCards(top: top, bottom: bottom)
+        }
         turn.setBottomFirst(true)
         XCTAssertEqual(turn.bottomActions.first?.type, .move)
         turn.executeCurrentAction()
@@ -94,17 +104,28 @@ final class MoveThenAbilityTests: XCTestCase {
         XCTAssertEqual(board.coord.shield(of: .character(tyrant.id)), 0)
     }
 
-    /// Lash Out: "Move 3" and "Push 2, target all adjacent enemies". Forceful Swipe: "Move 3"
-    /// and "Push 2, target one adjacent enemy".
+    /// The Beast Tyrant far off and his bear at `here`: Lash Out and Forceful Swipe are Commands.
+    private func tyrantWithHisBear() -> GameCharacter {
+        let tyrant = board.character("two-mini", at: HexCoord(1, 1))
+        board.coord.setUpCompanions {}
+        if let bear = board.coord.companionPiece(of: tyrant) {
+            board.coord.boardState.removePiece(bear)
+            board.coord.boardState.placePiece(bear, at: here)
+        }
+        return tyrant
+    }
+
+    /// Lash Out: "Command: Move 3" and "Push 2, target all adjacent enemies". Forceful Swipe:
+    /// "Command: Move 3" and "Push 2, target one adjacent enemy" — the bear's.
     func testAPushUnderAMovePushesTheEnemiesBesideTheCharacter() async throws {
-        var tyrant = board.character("two-mini", at: here)
+        var tyrant = tyrantWithHisBear()
         let east = try board.monster(at: HexCoord(6, 5)), west = try board.monster(at: HexCoord(4, 5))
         var turn = try playBottom("Lash Out", other: "Maul", for: tyrant)
         await board.settle { !turn.isWaiting }
         XCTAssertEqual([east, west].map { board.hex($0.piece).map { here.distance(to: $0) } }, [3, 3], "both pushed two hexes")
 
         board = try RuleBoard()
-        tyrant = board.character("two-mini", at: here)
+        tyrant = tyrantWithHisBear()
         let foe = try board.monster(at: HexCoord(6, 5))
         turn = try playBottom("Forceful Swipe", other: "Maul", for: tyrant)
         guard case .selectingForcedMoveTarget(_, 2, true, let targets) = board.coord.interactionMode else {

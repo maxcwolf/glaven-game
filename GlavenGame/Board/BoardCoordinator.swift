@@ -2326,7 +2326,7 @@ final class BoardCoordinator {
     }
 
     /// The enemies an "attack all enemies within N" reaches, in the order they are attacked.
-    private func enemiesToAttack(from pieceID: PieceID, within range: Int, exactly: Bool) -> [PieceID] {
+    func enemiesToAttack(from pieceID: PieceID, within range: Int, exactly: Bool) -> [PieceID] {
         guard let pos = boardState.piecePositions[pieceID] else { return [] }
         return targetableEnemies(of: pieceID, range: range)
             .filter { !exactly || boardState.piecePositions[$0].map { boardState.range(from: pos, to: $0) == range } == true }
@@ -2577,6 +2577,19 @@ final class BoardCoordinator {
                                      advantage: turn?.pendingAdvantage ?? false))
         guard isCurrentBoard(generation) else { return }
 
+        // Impending End: "Kill the target and gain 1 XP if its hit point value is less than or
+        // equal to 2 after the attack."
+        if let text = turn?.attackTexts.first(where: { $0.contains("kill the target") }), isOnBoard(target),
+           let health = entity(for: target)?.health, health > 0,
+           health <= (text.firstMatch(of: #/less than or equal to (\d+)/#).flatMap { Int($0.1) } ?? 2) {
+            log("\(name(target)) has \(health) hit point\(health == 1 ? "" : "s") left and is killed", category: .death)
+            sufferDamage(health, to: target, killer: attacker)
+            if case .character(let id) = attacker, let character = gameManager?.game.characters.first(where: { $0.id == id }) {
+                let xp = text.firstMatch(of: #/xp \+?(\d+)/#).flatMap { Int($0.1) } ?? 1
+                character.experience += xp
+                log("\(name(attacker)) gains \(xp) XP", category: .info)
+            }
+        }
         // Massive Boulder: "all allies and enemies adjacent to the target suffer 1 damage".
         for text in turn?.attackTexts ?? [] where text.contains("adjacent to the target suffer") {
             await printedDamage(text, amount: PlayerTurnController.damageAmount(in: text), by: attacker, around: targetHex)

@@ -224,6 +224,9 @@ final class PlayerTurnController {
     /// The figure performing the step being executed when it isn't the character: the bear, for
     /// a Command half. The character's own items and bonuses don't come with it.
     private(set) var commandedFigure: PieceID?
+    /// How many enemies the last attack on "all enemies within range" targeted (Darkened Skies'
+    /// experience for each two).
+    private var allTargetsAttacked = 0
     /// Conditions the attack being made gives its own attacker once it is over.
     private var conditionsAfterAttack: [(piece: PieceID, condition: ConditionName)] = []
     private var bonusesApply: Bool { commandedFigure == nil }
@@ -1543,6 +1546,7 @@ final class PlayerTurnController {
                 let reach: Int = spec.hasPrefix("enemiesadjacent")
                     ? 1 : Int(spec.split(separator: ":").last ?? "") ?? range
                 let exact = spec.hasPrefix("enemiesrangeexact")
+                allTargetsAttacked = coordinator.enemiesToAttack(from: pieceID, within: reach, exactly: exact).count
                 coordinator.log("\(who): Attack \(pendingAttackValue) on every enemy within \(reach)", category: .attack)
                 if coordinator.hasEnemiesToAttack(from: pieceID, within: reach, exactly: exact) { applyPerformedEffects() }
                 coordinator.attackAllEnemies(from: pieceID, within: reach, exactly: exact)
@@ -2018,6 +2022,11 @@ final class PlayerTurnController {
                 self.advanceAfterAsyncAction()
             }
             return true
+        } else if text.hasPrefix("target all enemies within"), text.contains("for each two enemies targeted") {
+            // Darkened Skies: its targets were the attack's; the experience is for each two.
+            let xp = (allTargetsAttacked / 2) * (text.firstMatch(of: #/xp \+?(\d+)/#).flatMap { Int($0.1) } ?? 1)
+            if xp > 0 { grantExperience(xp) }
+            return false
         } else if text.contains("when the trap is sprung"), !text.contains("trap in an adjacent empty hex") {
             // What a placed trap does when sprung (Flight of Flame's line): read as it is made.
             return false
@@ -2332,8 +2341,25 @@ final class PlayerTurnController {
     /// opened up, so a move or a target choice inside them is a step of its own and the turn
     /// waits for it. Augments stay whole: they aren't performed.
     static func steps(_ actions: [ActionModel], labels: EditionDataStore? = nil, edition: String = "gh") -> [ActionModel] {
-        attachingModifierConsumes(attachingForcedMoveRange(attachingConditionArea(abilitiesUnderMovesAsSteps(
-            flatSteps(actions, labels: labels, edition: edition)))).map(hoistingGroupedEffects))
+        attachingTargetText(attachingModifierConsumes(attachingForcedMoveRange(attachingConditionArea(abilitiesUnderMovesAsSteps(
+            flatSteps(actions, labels: labels, edition: edition)))).map(hoistingGroupedEffects)), labels: labels, edition: edition)
+    }
+
+    /// Darkened Skies: "Attack 3" and beside it the text "Target all enemies within Range 3. Gain
+    /// XP 1 for each two enemies targeted" — the data has the text as a step of its own; its
+    /// targets are the attack's (the text stays a step, for its experience).
+    static func attachingTargetText(_ steps: [ActionModel], labels: EditionDataStore?, edition: String) -> [ActionModel] {
+        var result = steps
+        for index in result.indices.dropLast() where result[index].type == .attack {
+            let next = result[index + 1]
+            guard next.type == .custom, let key = next.value?.stringValue,
+                  let text = labels?.resolveCustomText(key, edition: edition)?.lowercased(),
+                  text.hasPrefix("target all enemies within"),
+                  let reach = text.firstMatch(of: #/range (\d+)/#).flatMap({ Int($0.1) }),
+                  !(result[index].subActions ?? []).contains(where: { $0.type == .specialTarget }) else { continue }
+            result[index].subActions = (result[index].subActions ?? []) + [ActionModel(type: .specialTarget, value: .string("enemiesRange:\(reach)"))]
+        }
+        return result
     }
 
     /// A condition printed beside an area (Singing Arrow's "Curse, Range 3" and three red

@@ -123,6 +123,9 @@ M={
  "trapsDoNothingAround": ("GlavenGame/Board/BoardCoordinator+Movement.swift", "        if aroundDamage > 0 || !aroundConditions.isEmpty {", "        if false {"),
  "trapAroundHitsAllies": ("GlavenGame/Board/BoardCoordinator+Movement.swift", "piece != pieceID && isFigure(piece) && (owner.map { areEnemies($0, piece) } ?? (side(of: piece) == .monsters))", "piece != pieceID && isFigure(piece)"),
  "trapLinesInsideIgnored": ("GlavenGame/Board/PlayerTurnController.swift", "let sprung = (customTexts(of: action) + [nextLine]).filter", "let sprung = [nextLine].filter"),
+ "impendingEndKillsNoOne": ("GlavenGame/Board/BoardCoordinator.swift", "        if let text = turn?.attackTexts.first(where: { $0.contains(\"kill the target\") }), isOnBoard(target),", "        if false, let text = turn?.attackTexts.first(where: { $0.contains(\"kill the target\") }), isOnBoard(target),"),
+ "darkenedSkiesOneTarget": ("GlavenGame/Board/PlayerTurnController.swift", "            result[index].subActions = (result[index].subActions ?? []) + [ActionModel(type: .specialTarget, value: .string(\"enemiesRange:\\(reach)\"))]\n", ""),
+ "darkenedSkiesNoExperience": ("GlavenGame/Board/PlayerTurnController.swift", "            if xp > 0 { grantExperience(xp) }\n", ""),
 }
 # Scenario rules (the mechanisms of placements/gh.json): run against the scenario tests.
 SCENARIO_FILTER=("ScenarioSpecialRuleTests|ScenarioReauditTests|ScenarioEnforcedRuleTests|ScenarioLockTests|ScenarioGoalTests|"
