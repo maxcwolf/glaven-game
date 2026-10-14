@@ -745,6 +745,45 @@ final class BoardRulesRegressionTests: XCTestCase {
         XCTAssertEqual(tinkerer.experience, xp + 2)
     }
 
+    /// Detonation: a 3 damage trap; as an enemy springs it "all enemies adjacent to this trap
+    /// suffer 2 damage", and the Doomstalker gains 2 experience. Flight of Flame: a 2 damage
+    /// Wound trap that wounds the enemies beside it too. Allies beside it are spared.
+    func testTrapsThatDoMoreWhenSprung() async throws {
+        let stalker = addCharacter("angry-face", at: HexCoord(3, 3))
+        let brute = addCharacter("brute", at: HexCoord(5, 4))
+        let turn = turn(for: stalker, top: try card("Detonation", of: "angry-face"), bottom: try card("Flight of Flame", of: "angry-face"))
+        turn.executeCurrentAction()
+        guard case .placingToken(_, let token, _, _) = coord.interactionMode else { return XCTFail("a hex to choose") }
+        XCTAssertEqual(token, .trap(damage: 3, subType: nil, experience: 2))
+        coord.handleHexTap(HexCoord(4, 3))
+        XCTAssertEqual(coord.boardState.cells[HexCoord(4, 3)]?.trapEffect?.adjacentDamage, 2)
+
+        let springer = addMonster("bandit-guard", at: HexCoord(5, 3))
+        let beside = addMonster("bandit-guard", at: HexCoord(4, 2))
+        for entity in [springer, beside] { entity.health = 50; entity.maxHealth = 50 }
+        let health = brute.health, xp = stalker.experience
+        guard let piece = coord.boardState.piecePositions.first(where: { $0.value == HexCoord(5, 3) })?.key else { return XCTFail() }
+        await coord.moveAlong(piece, path: [HexCoord(5, 3), HexCoord(4, 3)], style: .normal)
+        XCTAssertEqual(springer.health, 47, "the trap's 3 damage")
+        XCTAssertEqual(beside.health, 48, "2 to the enemy beside it")
+        XCTAssertEqual(brute.health, health, "not the Brute beside it")
+        XCTAssertEqual(stalker.experience, xp + 2)
+
+        // Flight of Flame's top, played on its own.
+        let flame = self.turn(for: stalker, top: try card("Flight of Flame", of: "angry-face"), bottom: try card("Detonation", of: "angry-face"))
+        flame.executeCurrentAction()
+        coord.handleHexTap(HexCoord(2, 3))
+        XCTAssertEqual(coord.boardState.cells[HexCoord(2, 3)]?.trapEffect?.adjacentConditions, [.wound])
+        let next = addMonster("bandit-guard", at: HexCoord(1, 3))
+        let near = addMonster("bandit-guard", at: HexCoord(2, 2))
+        for entity in [next, near] { entity.health = 50; entity.maxHealth = 50 }
+        guard let walker = coord.boardState.piecePositions.first(where: { $0.value == HexCoord(1, 3) })?.key,
+              let nearPiece = coord.boardState.piecePositions.first(where: { $0.value == HexCoord(2, 2) })?.key else { return XCTFail() }
+        await coord.moveAlong(walker, path: [HexCoord(1, 3), HexCoord(2, 3)], style: .normal)
+        XCTAssertTrue(coord.isConditionActive(.wound, on: walker) || next.entityConditions.contains { $0.name == .wound })
+        XCTAssertTrue(near.entityConditions.contains { $0.name == .wound }, "wounded beside the trap")
+    }
+
     /// Avalanche: two obstacles, one hex at a time.
     func testAvalanchePlacesTwoObstacles() throws {
         let cragheart = addCharacter("cragheart", at: HexCoord(3, 3))

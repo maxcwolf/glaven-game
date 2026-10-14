@@ -526,6 +526,8 @@ final class BoardCoordinator {
 
     /// Traps placed by characters that give experience when an enemy springs them (Proximity Mine).
     var characterTraps: [HexCoord: (characterID: String, experience: Int)] = [:]
+    /// What the trap being placed does besides to the enemies beside it as it is sprung (Detonation, Flight of Flame).
+    @ObservationIgnored var trapAround: (damage: Int?, conditions: [ConditionName])?
 
     /// Doomed enemies that died, their dooms still to resolve (BoardCoordinator+Dooms).
     var pendingDoomDeaths: [PendingDoomDeath] = []

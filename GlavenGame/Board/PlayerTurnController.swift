@@ -2018,8 +2018,8 @@ final class PlayerTurnController {
                 self.advanceAfterAsyncAction()
             }
             return true
-        } else if text.contains("when the trap is sprung") {
-            // What a placed trap does when sprung (Detonation, Flight of Flame) isn't for now.
+        } else if text.contains("when the trap is sprung"), !text.contains("trap in an adjacent empty hex") {
+            // What a placed trap does when sprung (Flight of Flame's line): read as it is made.
             return false
         } else if Self.isDoomDescription(text, className: character.name) {
             // The Doomstalker's lines about a doom or doomed enemies describe what happens while
@@ -2032,7 +2032,12 @@ final class PlayerTurnController {
             let following = half.dropFirst(currentActionIndex + 1).first.map(customText(of:)) ?? ""
             let nextLine = half.dropFirst(currentActionIndex + 1).first.flatMap { $0.value }
                 .flatMap { gameManager?.editionStore.resolveCustomText($0.stringValue, edition: character.edition) }?.lowercased() ?? following
-            let xp = nextLine.contains("trap is sprung") ? (nextLine.firstMatch(of: #/xp \+(\d+)/#).flatMap { Int($0.1) } ?? 0) : 0
+            // What it does when sprung is printed with it, inside the step (Detonation) or as the
+            // next line (Proximity Mine, Flight of Flame).
+            let sprung = (customTexts(of: action) + [nextLine]).filter { $0.contains("trap is sprung") }
+            let xp = sprung.lazy.compactMap { $0.firstMatch(of: #/xp \+(\d+)/#).flatMap { Int($0.1) } }.first ?? 0
+            let around = TrapEffect.around(from: sprung)
+            coordinator.trapAround = around.damage == nil && around.conditions.isEmpty ? nil : around
             let trap = PlacedToken.trap(damage: Self.damageAmount(in: text), subType: PlacedToken.trapCondition(in: text),
                                         experience: xp)
             return coordinator.beginPlacingTokens(trap, count: 1, by: me)

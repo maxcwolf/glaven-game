@@ -120,6 +120,9 @@ M={
  "summonedAlliesRetaliateDropped": ("GlavenGame/Board/PlayerTurnController.swift", "let bonuses = [action] + (action.subActions ?? []).filter { $0.type == .shield || $0.type == .retaliate }", "let bonuses = [action]"),
  "summonRoundBonusesKept": ("GlavenGame/Managers/RoundManager.swift", "                    summon.shield = nil\n                    summon.retaliate = []\n", ""),
  "frighteningCursePushes": ("GlavenGame/Board/BoardCoordinator+Dooms.swift", "                let options = [from] + reach.keys.filter { $0 != from && boardState.piece(at: $0) == nil }.sorted()", "                let options = [from] + reach.keys.filter { $0 != from && boardState.piece(at: $0) == nil && $0.distance(to: hex) > from.distance(to: hex) }.sorted()"),
+ "trapsDoNothingAround": ("GlavenGame/Board/BoardCoordinator+Movement.swift", "        if aroundDamage > 0 || !aroundConditions.isEmpty {", "        if false {"),
+ "trapAroundHitsAllies": ("GlavenGame/Board/BoardCoordinator+Movement.swift", "piece != pieceID && isFigure(piece) && (owner.map { areEnemies($0, piece) } ?? (side(of: piece) == .monsters))", "piece != pieceID && isFigure(piece)"),
+ "trapLinesInsideIgnored": ("GlavenGame/Board/PlayerTurnController.swift", "let sprung = (customTexts(of: action) + [nextLine]).filter", "let sprung = [nextLine].filter"),
 }
 # Scenario rules (the mechanisms of placements/gh.json): run against the scenario tests.
 SCENARIO_FILTER=("ScenarioSpecialRuleTests|ScenarioReauditTests|ScenarioEnforcedRuleTests|ScenarioLockTests|ScenarioGoalTests|"
