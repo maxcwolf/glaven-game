@@ -501,4 +501,5 @@ struct ScenarioSnapshot: Codable {
     var pendingFinish: String?
     var releasedMonsters: Set<String>?
     var randomDungeon: RandomDungeon?
+    var dungeonEffects: [ScenarioPlacements.Effect]?
 }

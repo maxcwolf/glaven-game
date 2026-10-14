@@ -5,7 +5,9 @@ import Foundation
 /// around it.
 extension BoardCoordinator {
 
-    var scenarioEffects: [ScenarioPlacements.Effect] { scenarioData?.placements?.effects ?? [] }
+    var scenarioEffects: [ScenarioPlacements.Effect] {
+        (scenarioData?.placements?.effects ?? []) + (gameManager?.game.scenario?.dungeonEffects ?? [])
+    }
 
     /// The effects in force that touch a figure.
     func scenarioEffects(on pieceID: PieceID) -> [ScenarioPlacements.Effect] {
@@ -27,6 +29,7 @@ extension BoardCoordinator {
     func isInForce(_ effect: ScenarioPlacements.Effect) -> Bool {
         if let objective = effect.whileStanding, standing(objective: objective) == 0 { return false }
         if let room = effect.room, gameManager?.game.scenario?.revealedRooms.contains(room) != true { return false }
+        if let round = effect.round, gameManager?.game.round != round { return false }
         return true
     }
 

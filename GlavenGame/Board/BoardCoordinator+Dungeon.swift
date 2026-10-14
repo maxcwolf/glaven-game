@@ -148,10 +148,31 @@ extension BoardCoordinator {
             for enemy in enemies { applyCondition(.strengthen, to: enemy) }
         case .eliteInvisible:
             for enemy in enemies where boardState.eliteStandees.contains(enemy) { applyCondition(.invisible, to: enemy) }
+        case .enemyStrengthen(permanent: true):
+            for enemy in enemies {
+                applyCondition(.strengthen, to: enemy)
+                if case .monster(let name, let standee) = enemy, let entity = monsterEntity(name: name, standee: standee),
+                   let index = entity.entityConditions.lastIndex(where: { $0.name == .strengthen }) {
+                    entity.entityConditions[index].permanent = true
+                }
+            }
+        case .enemyShield(let amount, let permanent):
+            addDungeonEffect(ScenarioPlacements.Effect(on: "monsters", shield: String(amount), round: permanent ? nil : game.round))
+        case .enemyAttack(let amount):
+            addDungeonEffect(ScenarioPlacements.Effect(on: "monsters", attack: amount))
+        case .enemyMoveAndRange(let amount):
+            addDungeonEffect(ScenarioPlacements.Effect(on: "monsters", move: amount))
         default:
             // Lasting penalties and those the players choose for are still to come
             // (docs/random-dungeons.md).
             log("This penalty isn't played yet", category: .setup)
         }
+    }
+}
+
+extension BoardCoordinator {
+    /// A lasting penalty, kept on the scenario (and in the save) as a standing effect.
+    func addDungeonEffect(_ effect: ScenarioPlacements.Effect) {
+        gameManager?.game.scenario?.dungeonEffects.append(effect)
     }
 }

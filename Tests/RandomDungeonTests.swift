@@ -407,6 +407,42 @@ final class RandomDungeonTests: XCTestCase {
         XCTAssertGreaterThan(tested, 2)
     }
 
+    /// RD-6: a lasting penalty stays — the monsters' Shield, +1 Attack, +1 Move, a Strengthen
+    /// that doesn't wane — and is kept in the save.
+    func testALastingPenaltyStays() throws {
+        var seen: Set<String> = []
+        for seed in UInt64(1)...120 {
+            let gm = try startDungeon(seed: seed)
+            let coord = gm.boardCoordinator
+            coord.autoResolvePrompts = true
+            gm.game.scenario?.randomDungeon?.penalties = .major
+            let dungeon = try XCTUnwrap(gm.game.scenario?.randomDungeon)
+            guard dungeon.first.next.count == 1, let next = dungeon.first.next.first,
+                  let penalty = DungeonPenalty.byRoom[next.room]?.major else { continue }
+            switch penalty {
+            case .enemyShield, .enemyAttack, .enemyMoveAndRange, .enemyStrengthen: break
+            default: continue
+            }
+            seen.insert(next.room)
+            coord.openDoor(at: try XCTUnwrap(coord.boardState.doors.first { !$0.isOpen }).coord)
+            let monsters = coord.boardState.piecePositions.keys.filter { if case .monster = $0 { return true }; return false }
+            let monster = try XCTUnwrap(monsters.sorted().first)
+            switch penalty {
+            case .enemyShield(let amount, _): XCTAssertGreaterThanOrEqual(coord.scenarioShield(of: monster), amount, next.room)
+            case .enemyAttack(let amount): XCTAssertEqual(coord.scenarioAttackBonus(of: monster), amount, next.room)
+            case .enemyMoveAndRange(let amount): XCTAssertEqual(coord.scenarioMoveBonus(of: monster), amount, next.room)
+            case .enemyStrengthen:
+                guard case .monster(let name, let standee) = monster else { continue }
+                XCTAssertTrue(coord.monsterEntity(name: name, standee: standee)?.entityConditions.contains { $0.name == .strengthen && $0.permanent } == true)
+            default: break
+            }
+            // Kept in the save.
+            let restored = try XCTUnwrap(gm.game.scenario?.toSnapshot().toRuntime(editionStore: gm.editionStore))
+            XCTAssertEqual(restored.dungeonEffects, gm.game.scenario?.dungeonEffects)
+        }
+        XCTAssertGreaterThanOrEqual(seen.count, 2, "rooms seen: \(seen)")
+    }
+
     // MARK: - Reading the cards
 
     /// Draws each written room card as the game lays it out, its numbers in red and its

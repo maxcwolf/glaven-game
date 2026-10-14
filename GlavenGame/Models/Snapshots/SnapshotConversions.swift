@@ -472,7 +472,8 @@ extension Scenario {
             partyStats: partyStats,
             pendingFinish: pendingFinish,
             releasedMonsters: releasedMonsters,
-            randomDungeon: randomDungeon
+            randomDungeon: randomDungeon,
+            dungeonEffects: dungeonEffects.isEmpty ? nil : dungeonEffects
         )
     }
 }
@@ -487,6 +488,7 @@ extension ScenarioSnapshot {
         }
         let scenario = Scenario(data: scenarioData, isCustom: isCustom)
         scenario.randomDungeon = randomDungeon
+        scenario.dungeonEffects = dungeonEffects ?? []
         scenario.revealedRooms = revealedRooms
         scenario.additionalSections = additionalSections
         scenario.appliedRules = appliedRules

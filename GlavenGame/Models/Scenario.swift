@@ -23,6 +23,8 @@ final class Scenario {
     var partyStats = ScenarioPartyStats()
     /// A random dungeon's draws (the Random Dungeon, #55): its map and its rooms are built from them.
     var randomDungeon: RandomDungeon?
+    /// Standing effects a random dungeon's penalties have added (RD-6).
+    var dungeonEffects: [ScenarioPlacements.Effect] = []
 
     init(data: ScenarioData, isCustom: Bool = false) {
         self.data = data
