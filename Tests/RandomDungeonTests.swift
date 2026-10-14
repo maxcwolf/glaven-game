@@ -279,6 +279,57 @@ final class RandomDungeonTests: XCTestCase {
         XCTAssertGreaterThan(tested, 0, "only Tunnel has two exits")
     }
 
+    /// RD-7: a dungeon's treasure tile holds what its monster card prints — gold, a heal, cured
+    /// conditions, a lost card back, harm to every enemy — and is no campaign treasure.
+    func testATreasureTileHoldsWhatItsMonsterCardPrints() throws {
+        let gm = try startDungeon()
+        let coord = gm.boardCoordinator
+        let brute = try XCTUnwrap(gm.game.characters.first)
+        let enemies = coord.boardState.piecePositions.keys.filter { if case .monster = $0 { return true }; return false }.sorted()
+        XCTAssertFalse(enemies.isEmpty)
+
+        let gold = brute.loot
+        XCTAssertEqual(coord.lootDungeonTreasure("rnd-554-12", by: brute), "10 gold")   // Mangy
+        XCTAssertEqual(brute.loot, gold + 10)
+
+        brute.health = 5
+        _ = coord.lootDungeonTreasure("rnd-557-12", by: brute)                         // Defiled: heal 5
+        XCTAssertEqual(brute.health, 10)
+
+        gm.entityManager.addCondition(.poison, to: brute)
+        gm.entityManager.addCondition(.wound, to: brute)
+        _ = coord.lootDungeonTreasure("rnd-558-12", by: brute)                         // Wild: cure all negative
+        XCTAssertFalse(brute.entityConditions.contains { $0.name.isNegative })
+
+        let card = try XCTUnwrap(brute.handCards.first)
+        brute.handCards.removeFirst()
+        brute.lostCards = [card]
+        _ = coord.lootDungeonTreasure("rnd-555-12", by: brute)                         // Drowned: recover a lost card
+        XCTAssertTrue(brute.handCards.contains(card))
+        XCTAssertTrue(brute.lostCards.isEmpty)
+
+        _ = coord.lootDungeonTreasure("rnd-568-12", by: brute)                         // Venomous: poison all enemies
+        for enemy in enemies {
+            guard case .monster(let name, let standee) = enemy,
+                  let entity = gm.game.monsters.first(where: { $0.name == name })?.entities.first(where: { $0.number == standee })
+            else { continue }
+            XCTAssertTrue(entity.entityConditions.contains { $0.name == .poison }, "\(enemy)")
+        }
+        let health = enemies.compactMap { enemy -> (PieceID, Int)? in
+            guard case .monster(let name, let standee) = enemy,
+                  let entity = gm.game.monsters.first(where: { $0.name == name })?.entities.first(where: { $0.number == standee })
+            else { return nil }
+            return (enemy, entity.health)
+        }
+        _ = coord.lootDungeonTreasure("rnd-561-12", by: brute)                         // Rotting: all enemies suffer 2
+        for (enemy, before) in health {
+            guard case .monster(let name, let standee) = enemy else { continue }
+            let entity = gm.game.monsters.first { $0.name == name }?.entities.first { $0.number == standee }
+            XCTAssertTrue(entity == nil || entity!.dead || entity!.health == before - 2, "\(enemy)")
+        }
+        XCTAssertTrue(gm.game.lootedTreasures.isEmpty, "no campaign treasure")
+    }
+
     // MARK: - Reading the cards
 
     /// Draws each written room card as the game lays it out, its numbers in red and its

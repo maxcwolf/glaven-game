@@ -2956,7 +2956,8 @@ final class BoardCoordinator {
                     noteGoalTreasureLooted(by: charID)
                     boardState.goalTreasuresLooted += 1
                 }
-                let reward = gameManager.scenarioManager.lootTreasure(id, by: character)
+                let reward = id.hasPrefix("rnd-") ? lootDungeonTreasure(id, by: character)
+                    : gameManager.scenarioManager.lootTreasure(id, by: character)
                 log("\(characterName(charID)) loots treasure \(id)\(reward.map { ": \($0)" } ?? "")", category: .loot)
                 noteTreasureLooted(id, by: charID)
             }
