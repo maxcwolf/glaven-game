@@ -85,14 +85,18 @@ five seeded veteran games were all won without a violation. Tests: `RandomDungeo
 
 Still to do, in order:
 
-1. Penalties (RD-6): forty texts (`minor`, `major` on each room card), with the difficulty a
-   choice at setup — none; the suggested (none, the second room's minor, the third's major); up
-   to the major penalty of every room. Some are a moment's harm (damage, conditions, cards lost,
-   items spent, Bless cards for the monsters, elements inert), some last (Shield, Retaliate,
-   Strengthen, +1 Attack/Move/Range for enemies, heal 1 a turn, no consuming elements,
-   permanent conditions), some change the monsters (a normal enemy made elite; "replace" one or
-   two enemies in the previous room). "The character who opened the door" and "the previous
-   room" in the first room: the players choose who; nothing happens.
+1. Penalties (RD-6). Read for every card (`DungeonPenalty.byRoom`, checked against the printed
+   text by `testEveryPenaltyIsRead`) and falling as a door opens at the suggested difficulty
+   (`applyDungeonPenalty`). Played: conditions (permanent ones too), curses, damage (which may be
+   negated as usual), Bless cards for the monsters, elements inert, Strengthen (and for good),
+   Invisible on elites, and as standing effects kept on the scenario (`Scenario.dungeonEffects`,
+   saved): Shield this round or for good, +1 Attack, +1 Move. Still to play: +1 Range (Trail),
+   "Retaliate 2, Range 3" (Den), heal 1 at each turn's start (Passage), no consuming elements
+   (Clearing), cards lost or discarded (Cabin, Crossroads — the start-of-scenario discard picker
+   can be widened), items spent or consumed (Trail, Hallway), a normal enemy made elite and
+   enemies put back in the previous room (Encampment, Road); the difficulty as a choice at setup
+   (`RandomDungeon.penalties`: none, suggested, major); the first room's penalty at "major"
+   ("the opener": the players choose who).
 2. The first room's entrance chosen by the players when it has two (RD-4; today the first).
 3. The room's title on reveal: the monster card's adjective and the room card's noun ("Mangy
    Trail").
