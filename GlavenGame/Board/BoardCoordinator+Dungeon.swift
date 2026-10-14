@@ -198,10 +198,6 @@ extension BoardCoordinator {
             addDungeonEffect(ScenarioPlacements.Effect(on: "monsters", healEachTurn: amount))
         case .enemyMoveAndRange(let amount):
             addDungeonEffect(ScenarioPlacements.Effect(on: "monsters", move: amount, range: amount))
-        default:
-            // Lasting penalties and those the players choose for are still to come
-            // (docs/random-dungeons.md).
-            log("This penalty isn't played yet", category: .setup)
         }
     }
 }
