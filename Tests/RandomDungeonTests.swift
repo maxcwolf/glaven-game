@@ -619,6 +619,29 @@ final class RandomDungeonTests: XCTestCase {
         XCTAssertGreaterThan(tested, 0)
     }
 
+    /// RD-4: a first room with two entrances: the party starts round the one the players choose.
+    func testThePartyStartsAtTheEntranceItChooses() throws {
+        var tested = 0
+        for seed in UInt64(1)...80 {
+            let gm = try startDungeon(seed: seed)
+            let coord = gm.boardCoordinator
+            let dungeon = try XCTUnwrap(gm.game.scenario?.randomDungeon)
+            let card = try XCTUnwrap(DungeonCardStore.shared.room(named: dungeon.first.room))
+            guard card.entrances.count == 2 else { continue }
+            tested += 1
+            coord.startAtEntrance(1)
+            XCTAssertEqual(gm.game.scenario?.randomDungeon?.first.entrance, 1)
+            let placements = RandomDungeonMap.tilePlacements(of: card, entranceTile: card.entrances[0].tile, turns: 0, axis: nil)
+            let placed = try XCTUnwrap(placements.first { $0.ref == card.entrances[1].tile })
+            let entrance = RandomDungeonMap.global(card.entrances[1].x, card.entrances[1].y, turns: placed.turns, axis: placed.axis)
+            XCTAssertFalse(coord.boardState.startingLocations.isEmpty, "seed \(seed) \(card.name)")
+            for start in coord.boardState.startingLocations {
+                XCTAssertLessThanOrEqual(try XCTUnwrap(coord.boardState.range(from: start, to: entrance)), 2, "seed \(seed) \(card.name)")
+            }
+        }
+        XCTAssertGreaterThan(tested, 0)
+    }
+
     // MARK: - Reading the cards
 
     /// Draws each written room card as the game lays it out, its numbers in red and its

@@ -160,6 +160,7 @@ M={
  "dungeonNoEliteMade": ("GlavenGame/Board/BoardCoordinator+Dungeon.swift", "        boardState.eliteStandees.insert(piece)\n        log(", "        log("),
  "dungeonGoalTreasureNowhere": ("GlavenGame/Managers/ScenarioManager.swift", "goalTreasureOn: placements?.dungeonTreasure)", "goalTreasureOn: nil)"),
  "dungeonFirstRoomSpared": ("GlavenGame/Managers/GameManager.swift", "        if boardCoordinator.boardScene != nil { boardCoordinator.applyFirstRoomPenalty() }\n", ""),
+ "dungeonEntranceIgnored": ("GlavenGame/Board/BoardCoordinator+Dungeon.swift", "        let entrance = card.entrances[index]\n", "        let entrance = card.entrances[0]\n"),
 }
 # Scenario rules (the mechanisms of placements/gh.json): run against the scenario tests.
 SCENARIO_FILTER=("ScenarioSpecialRuleTests|ScenarioReauditTests|ScenarioEnforcedRuleTests|ScenarioLockTests|ScenarioGoalTests|"

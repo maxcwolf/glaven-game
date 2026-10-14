@@ -117,6 +117,37 @@ extension BoardCoordinator {
         syncPieceVisuals()
     }
 
+    /// RD-4: in a first room with two entrances the players choose where they start; the party
+    /// starts on empty hexes within two of it. Kept on the draws, so a save starts there too.
+    func chooseFirstEntrance() {
+        guard let scenario = gameManager?.game.scenario, let dungeon = scenario.randomDungeon,
+              let card = DungeonCardStore.shared.room(named: dungeon.first.room, edition: scenario.data.edition),
+              card.entrances.count > 1, !autoResolvePrompts else { return }
+        Task { @MainActor in
+            let choice = await chooseOption(card.entrances.map { "Entrance \($0.type)" }, title: dungeonRoomTitle(dungeon.first),
+                                            question: "Which entrance do you start at?", suggested: dungeon.first.entrance) ?? 0
+            startAtEntrance(choice)
+        }
+    }
+
+    /// The starting hexes of the first room around one of its entrances.
+    func startAtEntrance(_ index: Int) {
+        guard let scenario = gameManager?.game.scenario, let dungeon = scenario.randomDungeon,
+              let card = DungeonCardStore.shared.room(named: dungeon.first.room, edition: scenario.data.edition),
+              card.entrances.indices.contains(index), let map = scenarioData else { return }
+        scenario.randomDungeon?.first.entrance = index
+        let entrance = card.entrances[index]
+        guard let placed = BoardBuilder.findPlacements(in: map.mapTileData).first(where: { $0.tile.ref.lowercased() == entrance.tile.lowercased() })
+        else { return }
+        let hex = RandomDungeonMap.global(entrance.x, entrance.y, turns: placed.tile.turns, axis: placed.axis)
+        let room = cells(ofRoom: card)
+        boardState.startingLocations = room.sorted().filter { coord in
+            (boardState.range(from: coord, to: hex).map { $0 <= 2 } ?? false)
+                && boardState.cells[coord]?.overlay == nil && boardState.piece(at: coord) == nil && boardState.isPassable(coord)
+        }
+        beginNextPlacement()
+    }
+
     /// RD-6 at the hardest difficulty: the first room's major penalty as the party starts. "The
     /// character who opened the door" is the one the players choose; "the previous room" is none.
     func applyFirstRoomPenalty() {

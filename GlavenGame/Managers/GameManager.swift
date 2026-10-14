@@ -216,7 +216,10 @@ final class GameManager {
 
         // Try to start the board (requires characters)
         enterBoard()
-        if boardCoordinator.boardScene != nil { boardCoordinator.applyFirstRoomPenalty() }
+        if boardCoordinator.boardScene != nil {
+            boardCoordinator.applyFirstRoomPenalty()
+            boardCoordinator.chooseFirstEntrance()
+        }
     }
 
     /// Enter the board for the current scenario. Requires characters to be set.
