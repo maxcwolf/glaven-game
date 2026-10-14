@@ -100,11 +100,18 @@ extension BoardCoordinator {
         }()
         log("\(card.name): \(entry.path.count + 1 == 2 && (dungeon.penalties ?? .suggested) == .suggested ? card.minor : card.major)",
             category: .setup)
-        apply(penalty, opener: opener)
+        let previous = entry.path.isEmpty ? nil : dungeon.room(at: Array(entry.path.dropLast()))
+        apply(penalty, opener: opener, room: cells(ofRoom: card), previous: previous)
         syncPieceVisuals()
     }
 
-    private func apply(_ penalty: DungeonPenalty, opener: String?) {
+    /// The board's hexes of a dungeon room.
+    func cells(ofRoom card: DungeonRoomCard) -> Set<HexCoord> {
+        let tiles = Set(card.tiles.map { $0.ref.lowercased() })
+        return Set(boardState.cells.values.filter { tiles.contains($0.tileRef.lowercased()) }.map(\.coord))
+    }
+
+    private func apply(_ penalty: DungeonPenalty, opener: String?, room: Set<HexCoord> = [], previous: RandomDungeon.Room? = nil) {
         guard let game = gameManager?.game else { return }
         let party = game.characters.filter { !$0.absent && !$0.exhausted }
         func targets(_ who: DungeonPenalty.Who) -> [GameCharacter] {
@@ -119,8 +126,20 @@ extension BoardCoordinator {
         }
         switch penalty {
         case .both(let first, let second):
-            apply(first, opener: opener)
-            apply(second, opener: opener)
+            apply(first, opener: opener, room: room, previous: previous)
+            apply(second, opener: opener, room: room, previous: previous)
+        case .upgradeNormalInRoom:
+            let normals = enemies.filter { boardState.piecePositions[$0].map(room.contains) == true && !boardState.eliteStandees.contains($0) }
+            guard let first = normals.first else { break }
+            guard normals.count > 1, !autoResolvePrompts else { makeElite(first); break }
+            Task { @MainActor in
+                let chosen = await chooseFigure(normals, title: "The room's penalty",
+                                                question: "Which normal enemy becomes elite?") ?? first
+                makeElite(chosen)
+                syncPieceVisuals()
+            }
+        case .replaceInPreviousRoom(let elite, let count):
+            if let previous { replaceEnemies(of: previous, elite: elite, count: count) }
         case .conditions(let conditions, let who, let permanent):
             for character in targets(who) {
                 for condition in conditions {
@@ -230,6 +249,41 @@ extension BoardCoordinator {
             let choice = await chooseOption(names, title: characterName(character.id),
                                             question: "The room's penalty: which small item do you consume?") ?? 0
             consume(ready[min(max(0, choice), ready.count - 1)])
+        }
+    }
+
+    /// A normal monster made elite where it stands, keeping the damage it has taken.
+    func makeElite(_ piece: PieceID) {
+        guard case .monster(let name, let standee) = piece, let game = gameManager?.game,
+              let monster = game.monsters.first(where: { $0.name == name }),
+              let entity = monsterEntity(name: name, standee: standee), let stat = monster.stat(for: .elite) else { return }
+        let health = evaluateEntityValue(stat.health ?? .int(0), level: monster.level, characterCount: game.characterCount)
+        let taken = entity.maxHealth - entity.health
+        entity.type = .elite
+        entity.maxHealth = health
+        entity.health = max(1, health - taken)
+        entity.immunities = stat.immunities ?? []
+        boardState.eliteStandees.insert(piece)
+        log("\(self.name(piece)) becomes elite", category: .setup)
+    }
+
+    /// Road's and Encampment's major penalty: enemies of the room left behind set up again — the
+    /// monster card's first such ones (for this many characters) whose number is clear.
+    func replaceEnemies(of room: RandomDungeon.Room, elite: Bool, count: Int) {
+        guard let scenario = gameManager?.game.scenario, let store = gameManager?.editionStore,
+              let card = DungeonCardStore.shared.room(named: room.room, edition: scenario.data.edition),
+              let monsterCard = ScenarioManager.dungeonMonsterCards(edition: scenario.data.edition, editionStore: store)
+                .first(where: { $0.index == room.monsters }) else { return }
+        let characters = gameManager?.game.characterCount ?? 2
+        let placements = BoardBuilder.findPlacements(in: scenarioData?.mapTileData ?? VGBMapTileData(ref: "", doors: [], overlays: [], monsters: [], turns: 0))
+        var placed = 0
+        for entry in monsterCard.rooms?.first?.monster ?? [] where placed < count {
+            guard entry.monsterType(forPlayerCount: characters) == (elite ? .elite : .normal),
+                  let marker = entry.marker, let place = card.numbers[marker],
+                  let tile = placements.first(where: { $0.tile.ref.lowercased() == place.tile.lowercased() }) else { continue }
+            let hex = RandomDungeonMap.global(place.x, place.y, turns: tile.tile.turns, axis: tile.axis)
+            guard boardState.piece(at: hex) == nil else { continue }
+            if spawnMonster(name: entry.name, type: elite ? .elite : .normal, at: hex, origin: .spawned) != nil { placed += 1 }
         }
     }
 }

@@ -156,6 +156,8 @@ M={
  "dungeonConsumingAllowed": ("GlavenGame/Board/BoardCoordinator+Dungeon.swift", "ScenarioPlacements.Effect(on: \"party\", noConsuming: true)", "ScenarioPlacements.Effect(on: \"party\")"),
  "dungeonCardsDiscardedNotLost": ("GlavenGame/Board/BoardCoordinator+Dungeon.swift", "owePenaltyCards(count, by: targets(who), lose: true,", "owePenaltyCards(count, by: targets(who), lose: false,"),
  "dungeonItemsSpentAlways": ("GlavenGame/Board/BoardCoordinator+Dungeon.swift", "            if spend && item.spent {", "            if item.spent || item.consumed {"),
+ "dungeonNoEnemyReplaced": ("GlavenGame/Board/BoardCoordinator+Dungeon.swift", "            if let previous { replaceEnemies(of: previous, elite: elite, count: count) }", "            _ = previous"),
+ "dungeonNoEliteMade": ("GlavenGame/Board/BoardCoordinator+Dungeon.swift", "        boardState.eliteStandees.insert(piece)\n        log(", "        log("),
 }
 # Scenario rules (the mechanisms of placements/gh.json): run against the scenario tests.
 SCENARIO_FILTER=("ScenarioSpecialRuleTests|ScenarioReauditTests|ScenarioEnforcedRuleTests|ScenarioLockTests|ScenarioGoalTests|"

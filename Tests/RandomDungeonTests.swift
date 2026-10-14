@@ -387,8 +387,13 @@ final class RandomDungeonTests: XCTestCase {
             let party = gm.game.characters
             let health = party.map(\.health)
             let hands = party.map(\.handCards.count), lost = party.map(\.lostCards.count), discarded = party.map(\.discardedCards.count)
+            func monsters() -> [PieceID] { coord.boardState.piecePositions.keys.filter { if case .monster = $0 { return true }; return false } }
+            // Road's: the first room cleared, so its enemies can be set up again.
+            if case .replaceInPreviousRoom = penalty { for monster in monsters() { coord.handleDeath(of: monster) } }
+            let firstRoom = Set(coord.boardState.cells.keys)
             let door = try XCTUnwrap(coord.boardState.doors.first { !$0.isOpen })
             coord.openDoor(at: door.coord)
+            let newRoom = Set(coord.boardState.cells.keys).subtracting(firstRoom)
             switch penalty {
             case .conditions(let names, .everyone, _):
                 tested += 1
@@ -406,6 +411,21 @@ final class RandomDungeonTests: XCTestCase {
             case .discardCards(let count, .everyone):
                 tested += 1
                 XCTAssertEqual(party.map(\.discardedCards.count), discarded.map { $0 + count }, "seed \(seed) \(next.room)")
+            case .upgradeNormalInRoom:
+                let card = try XCTUnwrap(try monsterCards().first { $0.index == next.monsters })
+                let elites = (card.rooms?.first?.monster ?? []).filter { $0.monsterType(forPlayerCount: 2) == .elite }.count
+                let normals = (card.rooms?.first?.monster ?? []).filter { $0.monsterType(forPlayerCount: 2) == .normal }.count
+                guard normals > 0 else { continue }
+                tested += 1
+                let eliteHere = monsters().filter { coord.boardState.piecePositions[$0].map(newRoom.contains) == true && coord.boardState.eliteStandees.contains($0) }
+                XCTAssertEqual(eliteHere.count, elites + 1, "seed \(seed) \(next.room): one more elite")
+            case .replaceInPreviousRoom(false, let count):
+                let card = try XCTUnwrap(try monsterCards().first { $0.index == dungeon.first.monsters })
+                let normals = (card.rooms?.first?.monster ?? []).filter { $0.monsterType(forPlayerCount: 2) == .normal }.count
+                guard normals > 0 else { continue }
+                tested += 1
+                let back = monsters().filter { coord.boardState.piecePositions[$0].map(firstRoom.contains) == true }
+                XCTAssertEqual(back.count, min(count, normals), "seed \(seed) \(next.room): enemies set up again in the first room")
             case .curses(let times):
                 tested += 1
                 for character in party { XCTAssertEqual(character.attackModifierDeck.cards.filter { $0.type == .curse }.count, times) }
