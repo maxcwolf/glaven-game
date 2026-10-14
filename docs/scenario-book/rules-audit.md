@@ -12,8 +12,8 @@ means the data and code that enforce the rule were found, and usually a test tha
 that the scenario was played through. Keep it current: when a rule is built, rewrite its row in
 the same commit (see [../rules-work.md](../rules-work.md)).
 
-**447 rules: 438 done, 3 partial, 6 missing.**
-93 of 95 scenarios have every printed rule done. The other 2: #55 (6 missing, 1 partial), #82 (0 missing, 2 partial).
+**447 rules: 440 done, 1 partial, 6 missing.**
+94 of 95 scenarios have every printed rule done. The other is #55 (6 missing, 1 partial): a random dungeon with no map.
 
 Rules that were enforced wrongly, as against not at all, are findings of the engine audit
 ([../audits/2026-10-09-rules-audit.md](../audits/2026-10-09-rules-audit.md), rows S1-…, S2-…),
@@ -758,8 +758,8 @@ order", has the same list as tasks). The rows below say what the game does today
 ### 82 · Burning Mountain
 | Rule (from the book) | Status | Where / what's missing |
 |---|---|---|
-| Goal A: after the chest is looted, the character holding its items ends a turn on (g) and removes one item from the game | partial | placements `carried: [{"name": "artifacts", "treasure": "62", "lostWithHolder": true}]` and `either: [{reach: {marker: "g", holding: "artifacts"}, conclusion: "82-A"}, …]`: whoever looted the chest holds the artifacts, and it is their holder ending a turn on g that wins with Conclusion A's rewards (`CarriedThingTests.testTheArtifactsHolderSacrificesOneOrLosesThemAll`, `ScenarioGoalTests.testEitherOfTwoWays`, `ScenarioReauditTests.testSacrificingOnTheMountainIsConclusionA`). Still missing: no item is removed from the game — the player isn't asked which |
-| Goal B: after the chest is looted, all characters return to an entrance hex before becoming exhausted | partial | `either: […, {escape: {start: true}, conclusion: "82-B"}]`: every unexhausted character on a starting hex as a turn ends wins with Conclusion B's rewards (`testEscapingTheMountainIsConclusionB`); the holder's exhaustion loses the scenario (FAQ; `lostWithHolder`, `testTheArtifactsHolderSacrificesOneOrLosesThemAll`). Another character's exhaustion isn't waited for and doesn't prevent it |
+| Goal A: after the chest is looted, the character holding its items ends a turn on (g) and removes one item from the game | done | placements `carried: [{"name": "artifacts", "treasure": "62", "lostWithHolder": true}]` and `either: [{reach: {marker: "g", holding: "artifacts"}, sacrifices: "62", conclusion: "82-A"}, …]`: whoever looted the chest holds the artifacts; as the holder's turn ends on g, `offerSacrifice` asks which of the chest's items they give up, or to keep both (`chooseOption`; headless, the first) — the item leaves them for good, and only then is that way won, with Conclusion A's rewards. `ScenarioReauditTests.testSacrificingOnTheMountainIsConclusionA`, `testTheHolderChoosesWhichArtifactToSacrifice`; `CarriedThingTests.testTheArtifactsHolderSacrificesOneOrLosesThemAll`, `ScenarioGoalTests.testEitherOfTwoWays` |
+| Goal B: after the chest is looted, all characters return to an entrance hex before becoming exhausted | done | `either: […, {escape: {start: true, all: true}, conclusion: "82-B"}]`: every unexhausted character on a starting hex as a turn ends, and none exhausted anywhere but on one (an exit of either way records who is exhausted on it, `exhaustedOnExit`), wins with Conclusion B's rewards (`testEscapingTheMountainIsConclusionB`, `testEscapingTheMountainNeedsEveryoneBack`); the holder's exhaustion loses the scenario (FAQ; `lostWithHolder`) |
 | If the scenario is lost, the treasure tile is reset (not kept) | done | placements `resetOnLoss: ["62"]` → `settleScenarioEnd(victory: false)` takes items 110/115 back from the looter and removes `gh-82-62` from `game.lootedTreasures`, on abandoning too; `testTheMountainsChestIsResetOnALoss`, `testTheMountainsChestIsResetWhenTheScenarioIsAbandoned` |
 | All doors locked; each elite killed opens one door, in order a, b, c, d, e, f | done | six placements locks with `eliteKills: 1…6` (`k1a–c1a`, `k1a–d1a`, `c1a–i1b`, `b2b–d1a`, `c1a–empty`, `empty–d1a`); `boardState.eliteKills` counted in `handleDeath`; `ScenarioLockTests` covers it |
 
