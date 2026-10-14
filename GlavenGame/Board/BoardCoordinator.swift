@@ -447,6 +447,8 @@ final class BoardCoordinator {
     /// The companions are being set up as the scenario starts (`finishSetup`).
     @ObservationIgnored var settingUpCompanions = false
     @ObservationIgnored var afterStartDiscards: (() -> Void)?
+    /// Cards still owed to a random dungeon room's penalty, after the one being asked.
+    @ObservationIgnored var penaltyCardsOwed: [PendingStartDiscard] = []
 
     /// Non-nil while a character picks a card to play for an item (Ring of Haste).
     var pendingCardPlay: PendingCardPlay?
@@ -1071,6 +1073,7 @@ final class BoardCoordinator {
         pendingRecovery = nil
         pendingStartDiscard = nil
         afterStartDiscards = nil
+        penaltyCardsOwed = []
         settingUpCompanions = false
         pendingCardPlay = nil
         pendingActionChoice = nil

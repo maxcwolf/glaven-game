@@ -10,6 +10,10 @@ extension BoardCoordinator {
         let id = UUID()
         let characterID: String
         let count: Int
+        /// A random dungeon room's penalty, not the scenario's start: the cards are lost (`lose`)
+        /// or discarded as the room opens.
+        var penalty: String? = nil
+        var lose = false
     }
 
     /// How many cards `character` has still to discard before the first round. Nothing else
@@ -44,6 +48,11 @@ extension BoardCoordinator {
               cards.count == pending.count, Set(cards).count == cards.count,
               cards.allSatisfy(character.handCards.contains) else { return }
         pendingStartDiscard = nil
+        if pending.penalty != nil {
+            payPenaltyCards(cards, by: character, lose: pending.lose)
+            askNextPenaltyCards()
+            return
+        }
         makeStartDiscard(cards, by: character)
         let proceed = afterStartDiscards
         afterStartDiscards = nil
@@ -56,5 +65,36 @@ extension BoardCoordinator {
             character.discardedCards.append(character.handCards.remove(at: index))
         }
         log("\(characterName(character.id)) discards \(cards.count) card\(cards.count == 1 ? "" : "s") before the scenario begins", category: .round)
+    }
+
+    // MARK: - Cards a dungeon room's penalty takes (Cabin, Crossroads)
+
+    /// Each character's cards owed to a penalty, asked one character at a time; headless, the
+    /// last cards of the hand go.
+    func owePenaltyCards(_ count: Int, by characters: [GameCharacter], lose: Bool, penalty: String) {
+        for character in characters {
+            let owed = min(count, character.handCards.count)
+            guard owed > 0 else { continue }
+            if autoResolvePrompts {
+                payPenaltyCards(Array(character.handCards.suffix(owed)), by: character, lose: lose)
+            } else {
+                penaltyCardsOwed.append(PendingStartDiscard(characterID: character.id, count: owed, penalty: penalty, lose: lose))
+            }
+        }
+        askNextPenaltyCards()
+    }
+
+    func askNextPenaltyCards() {
+        guard pendingStartDiscard == nil, !penaltyCardsOwed.isEmpty else { return }
+        pendingStartDiscard = penaltyCardsOwed.removeFirst()
+    }
+
+    private func payPenaltyCards(_ cards: [Int], by character: GameCharacter, lose: Bool) {
+        for card in cards {
+            guard let index = character.handCards.firstIndex(of: card) else { continue }
+            let removed = character.handCards.remove(at: index)
+            if lose { character.lostCards.append(removed) } else { character.discardedCards.append(removed) }
+        }
+        log("\(characterName(character.id)) \(lose ? "loses" : "discards") \(cards.count) card\(cards.count == 1 ? "" : "s")", category: .round)
     }
 }

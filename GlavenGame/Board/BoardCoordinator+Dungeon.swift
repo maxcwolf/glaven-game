@@ -163,6 +163,10 @@ extension BoardCoordinator {
         case .enemyRetaliate(let amount, let range, let permanent):
             addDungeonEffect(ScenarioPlacements.Effect(on: "monsters", round: permanent ? nil : game.round,
                                                        retaliate: amount, retaliateRange: range))
+        case .loseCards(let count, let who):
+            owePenaltyCards(count, by: targets(who), lose: true, penalty: "The room's penalty.")
+        case .discardCards(let count, let who):
+            owePenaltyCards(count, by: targets(who), lose: false, penalty: "The room's penalty.")
         case .noConsuming:
             addDungeonEffect(ScenarioPlacements.Effect(on: "party", noConsuming: true))
         case .enemyHealEachTurn(let amount):

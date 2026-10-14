@@ -386,6 +386,7 @@ final class RandomDungeonTests: XCTestCase {
                   let penalty = DungeonPenalty.byRoom[next.room]?.minor else { continue }
             let party = gm.game.characters
             let health = party.map(\.health)
+            let hands = party.map(\.handCards.count), lost = party.map(\.lostCards.count), discarded = party.map(\.discardedCards.count)
             let door = try XCTUnwrap(coord.boardState.doors.first { !$0.isOpen })
             coord.openDoor(at: door.coord)
             switch penalty {
@@ -397,6 +398,14 @@ final class RandomDungeonTests: XCTestCase {
             case .damage(let amount, .everyone):
                 tested += 1
                 XCTAssertEqual(party.map(\.health), health.map { max(0, $0 - amount) }, "seed \(seed) \(next.room)")
+            case .loseCards(let count, .opener):
+                tested += 1
+                XCTAssertEqual(party[0].lostCards.count, lost[0] + count, "seed \(seed) \(next.room)")
+                XCTAssertEqual(party[0].handCards.count, hands[0] - count)
+                XCTAssertEqual(party[1].handCards.count, hands[1], "only the one who opened the door")
+            case .discardCards(let count, .everyone):
+                tested += 1
+                XCTAssertEqual(party.map(\.discardedCards.count), discarded.map { $0 + count }, "seed \(seed) \(next.room)")
             case .curses(let times):
                 tested += 1
                 for character in party { XCTAssertEqual(character.attackModifierDeck.cards.filter { $0.type == .curse }.count, times) }

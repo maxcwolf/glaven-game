@@ -154,6 +154,7 @@ M={
  "dungeonHealNever": ("GlavenGame/Board/BoardCoordinator+Dungeon.swift", "        guard amount > 0 else { return }\n        let healed", "        guard amount > 99 else { return }\n        let healed"),
  "dungeonRangeIgnored": ("GlavenGame/Board/BoardCoordinator+Dungeon.swift", "move: amount, range: amount))", "move: amount))"),
  "dungeonConsumingAllowed": ("GlavenGame/Board/BoardCoordinator+Dungeon.swift", "ScenarioPlacements.Effect(on: \"party\", noConsuming: true)", "ScenarioPlacements.Effect(on: \"party\")"),
+ "dungeonCardsDiscardedNotLost": ("GlavenGame/Board/BoardCoordinator+Dungeon.swift", "owePenaltyCards(count, by: targets(who), lose: true,", "owePenaltyCards(count, by: targets(who), lose: false,"),
 }
 # Scenario rules (the mechanisms of placements/gh.json): run against the scenario tests.
 SCENARIO_FILTER=("ScenarioSpecialRuleTests|ScenarioReauditTests|ScenarioEnforcedRuleTests|ScenarioLockTests|ScenarioGoalTests|"
