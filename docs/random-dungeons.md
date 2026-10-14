@@ -68,18 +68,35 @@ had four mistakes, fixed against the cards: Defiled's forest imp on 1 instead of
 and "nromal" (Scaled), and Horrific's lurker missing from its monster list
 (`testEveryMonsterCardIsWritten`). About one dungeon in two hundred has a room that would lie on a
 room before it however it is turned; the rules don't say what then, and the game draws again
-(`RandomDungeonMap.draw`). Still to do, in order:
+(`RandomDungeonMap.draw`).
 
-1. Offering it in town as "Random Dungeon" (and #55 no longer "No map"). Starting one works: a
-   scenario with a `randomDungeon` rule is drawn as it is set (`ScenarioManager.drawDungeon`,
-   from the decks the rule names), kept on the scenario and in the save
-   (`Scenario.randomDungeon`, `ScenarioSnapshot.randomDungeon`), played as data with a room per
-   drawn room (`RandomDungeon.scenarioData`) and its map built from the draws wherever a map is
-   loaded (`ScenarioManager.map(for:)`). `testTheFirstRoomIsSetUpFromItsCards`,
-   `testOpeningAnExitRevealsTheNextRoom`.
-2. The second exit closed off when one is opened (RD-3); the first room's entrance chosen.
-3. Winning: every enemy dead with the last room revealed; rewards without campaign progress.
-4. Penalties (RD-6), with the difficulty as a choice; treasures' contents (RD-7).
-5. #55: the six-card decks, three −1 cards, the third room's "12" a treasure only a Loot action
-   takes, the goal to loot it.
-6. The simulator playing random dungeons; tests and mutations for each rule.
+Playable (2026-10-14): the Random Dungeon is offered in town, always and again, and doesn't
+progress the campaign (a win keeps experience, gold, the success bonus, battle goals and quest
+progress; nothing is marked completed or unlocked). A scenario with a `randomDungeon` rule is drawn
+as it is set (`ScenarioManager.drawDungeon`, from the decks the rule names), kept on the scenario
+and in the save (`Scenario.randomDungeon`, `ScenarioSnapshot.randomDungeon`), played as data with a
+room per drawn room (`RandomDungeon.scenarioData`), its map built from the draws wherever a map is
+loaded (`ScenarioManager.map(for:)`). The exit not taken is closed off (RD-3,
+`BoardCoordinator+Dungeon`), so the default goal — every enemy dead, every door open — is the
+dungeon's. Treasure tiles hold what their monster card prints (RD-7, `lootDungeonTreasure`; the
+recovery picker can take from the lost pile). The all-scenarios playthrough plays one each seed;
+five seeded veteran games were all won without a violation. Tests: `RandomDungeonTests`
+(ten); mutations `dungeon…` in `scripts/mutate.py` (eight), each noticed.
+
+Still to do, in order:
+
+1. Penalties (RD-6): forty texts (`minor`, `major` on each room card), with the difficulty a
+   choice at setup — none; the suggested (none, the second room's minor, the third's major); up
+   to the major penalty of every room. Some are a moment's harm (damage, conditions, cards lost,
+   items spent, Bless cards for the monsters, elements inert), some last (Shield, Retaliate,
+   Strengthen, +1 Attack/Move/Range for enemies, heal 1 a turn, no consuming elements,
+   permanent conditions), some change the monsters (a normal enemy made elite; "replace" one or
+   two enemies in the previous room). "The character who opened the door" and "the previous
+   room" in the first room: the players choose who; nothing happens.
+2. The first room's entrance chosen by the players when it has two (RD-4; today the first).
+3. The room's title on reveal: the monster card's adjective and the room card's noun ("Mangy
+   Trail").
+4. #55 Foggy Thicket: its six-card decks are already used when it is drawn; still its three −1
+   cards (a start rule in the data — check it applies), the third room's "12" a treasure tile only
+   a Loot action takes (instead of whatever the monster card puts there), the goal to loot it, and
+   adding it to the all-scenarios playthrough.
