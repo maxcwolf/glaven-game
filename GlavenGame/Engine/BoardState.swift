@@ -125,6 +125,8 @@ final class BoardState {
     /// The conclusion section the scenario was won by, where its goal has more than one way
     /// (`ScenarioPlacements.Goal.conclusion`).
     var conclusion: String?
+    /// The item given up on the altar to win (Burning Mountain's artifact), once one is.
+    var sacrificed: String?
 
     /// A character has entered the hex the goal asks someone to reach (`Reach.enter`).
     var goalReached = false
@@ -332,6 +334,10 @@ final class BoardState {
         guard let cell = cells[coord] else { return false }
         return cell.isTrap || cell.isHazard
     }
+
+    /// Hexes the figure whose move is being planned treats as traps though they aren't (Toxic
+    /// Moor's water, to a poisoned character summon). Set only while that plan is made.
+    var avoidedAsTraps: Set<HexCoord> = []
 
     /// Whether a figure can move into this hex (passable + not occupied by enemy).
     /// `allies` determines which pieces are friendly (can pass through but not stop on).

@@ -426,6 +426,8 @@ final class ScenarioGoalTests: XCTestCase {
                 XCTAssertNil(coord.pendingResult, "the artifacts are with the other")
                 stand(sim, 0, on: start[0])
                 stand(sim, 1, on: altar)
+                // As the holder's turn ends there, an artifact is given up (headless: the first).
+                coord.offerSacrifice(by: sim.gm.game.characters[1].id) {}
             }
             coord.checkVictoryDefeat(turnEnded: true)
             XCTAssertEqual(coord.pendingResult, .victory, way)

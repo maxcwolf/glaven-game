@@ -202,6 +202,138 @@ final class SwayTests: XCTestCase {
         XCTAssertEqual(weaver.health, weaver.maxHealth)
     }
 
+    /// A top action of the controlled character's card, made by hand (the first card of the hand, its top replaced).
+    private func controlled(_ sim: ScenarioSimulator, top actions: [ActionModel]) throws -> GameCharacter {
+        let brute = sim.gm.game.characters[0]
+        let hand = sim.hand(of: brute)
+        var leading = try XCTUnwrap(hand.first)
+        leading.actions = actions
+        let second = try XCTUnwrap(hand.dropFirst().first)
+        sim.coord.selectedCardPairs[brute.id] = (top: leading, bottom: second)
+        sim.coord.boardState.turned = [.character(brute.id)]
+        return brute
+    }
+
+    private func said(_ sim: ScenarioSimulator, since lines: Int) -> [String] { sim.coord.turnLog.dropFirst(lines).map(\.message) }
+
+    /// "Then the top action": a Move in it takes them on toward the party, and its attack follows.
+    func testAMoveOnTheTopTakesThemFurther() async throws {
+        let sim = try simulator()
+        let coord = sim.coord
+        let betrayer = try boss(sim)
+        let brute = try controlled(sim, top: [ActionModel(type: .move, value: .int(3)), ActionModel(type: .attack, value: .int(2))])
+        let weaver = sim.gm.game.characters[1]
+        let start = try floor(sim) { (coord.boardState.range(from: $0, to: betrayer.hex) ?? 0) >= 6 }
+        stand(sim, .character(brute.id), on: start)
+        stand(sim, .character(weaver.id), on: try floor(sim) { coord.boardState.range(from: $0, to: start) == 5
+            && coord.boardState.steps(from: $0, to: start) == 5 })
+        weaver.maxHealth = 40
+        weaver.health = 40
+        let lines = coord.turnLog.count
+        await coord.mindControlledTurn(of: brute)
+        let now = try XCTUnwrap(coord.boardState.piecePositions[.character(brute.id)])
+        XCTAssertTrue(coord.boardState.areAdjacent(now, try XCTUnwrap(coord.boardState.piecePositions[.character(weaver.id)])),
+                      "Move 2 and Move 3 bring them beside the Spellweaver")
+        XCTAssertTrue(said(sim, since: lines).contains { $0.hasPrefix("Brute attacks Spellweaver") }, "\(said(sim, since: lines))")
+    }
+
+    /// A Heal with a range goes to the most hurt of themselves and the monsters in reach; a heal
+    /// with none, to themselves.
+    func testAHealOnTheTopHealsTheirNewSide() async throws {
+        let sim = try simulator()
+        let coord = sim.coord
+        let betrayer = try boss(sim)
+        let boss = try XCTUnwrap(coord.entity(for: betrayer.piece))
+        let healRange3 = ActionModel(type: .heal, value: .int(3), subActions: [ActionModel(type: .range, value: .int(3))])
+        let brute = try controlled(sim, top: [healRange3])
+        let weaver = sim.gm.game.characters[1]
+        stand(sim, .character(weaver.id), on: try floor(sim) { (coord.boardState.range(from: $0, to: betrayer.hex) ?? 0) >= 8 })
+        stand(sim, .character(brute.id), on: try floor(sim) { coord.boardState.range(from: $0, to: betrayer.hex) == 2
+            && LineOfSight.hasLOS(from: $0, to: betrayer.hex, board: coord.boardState) })
+        boss.health = boss.maxHealth - 6
+        brute.health = brute.maxHealth - 1
+        weaver.health = weaver.maxHealth - 6
+        await coord.mindControlledTurn(of: brute)
+        XCTAssertEqual(boss.health, boss.maxHealth - 3, "the Betrayer, most hurt and in reach, is healed")
+        XCTAssertEqual(brute.health, brute.maxHealth - 1)
+        XCTAssertEqual(weaver.health, weaver.maxHealth - 6, "never the party")
+
+        _ = try controlled(sim, top: [ActionModel(type: .heal, value: .int(3), subActions: [ActionModel(type: .specialTarget, value: .string("self"))])])
+        await coord.mindControlledTurn(of: brute)
+        XCTAssertEqual(brute.health, brute.maxHealth, "Heal 3, self")
+        XCTAssertEqual(boss.health, boss.maxHealth - 3)
+    }
+
+    /// A Shield or Retaliate is theirs for the round; an infusion is made; a negative condition
+    /// goes on the party and a positive one on themselves; Loot takes the money in reach; a bonus
+    /// that stays with its card isn't performed.
+    func testTheRestOfTheTopAction() async throws {
+        let sim = try simulator()
+        let coord = sim.coord
+        let betrayer = try boss(sim)
+        let brute = try controlled(sim, top: [
+            ActionModel(type: .shield, value: .int(2)),
+            ActionModel(type: .retaliate, value: .int(1)),
+            ActionModel(type: .element, value: .string("fire")),
+            ActionModel(type: .condition, value: .string("poison"), subActions: [ActionModel(type: .range, value: .int(3))]),
+            ActionModel(type: .condition, value: .string("strengthen")),
+            ActionModel(type: .loot, value: .int(1)),
+            ActionModel(type: .card, value: .string("persistent")),
+        ])
+        let weaver = sim.gm.game.characters[1]
+        let start = try floor(sim) { (coord.boardState.range(from: $0, to: betrayer.hex) ?? 0) >= 6 }
+        stand(sim, .character(brute.id), on: start)
+        stand(sim, .character(weaver.id), on: try floor(sim) { coord.boardState.range(from: $0, to: start) == 3
+            && LineOfSight.hasLOS(from: $0, to: start, board: coord.boardState) })
+        let money = sim.gm.game.characters[0].loot
+        let retaliates = brute.retaliate.count
+        let lines = coord.turnLog.count
+        // Money beside every hex the Move 2 could end on.
+        for hex in coord.boardState.cells.keys where (coord.boardState.range(from: hex, to: start) ?? 9) <= 2 && coord.boardState.isPassable(hex) {
+            coord.boardState.placeLoot(at: hex)
+        }
+        await coord.mindControlledTurn(of: brute)
+        XCTAssertEqual(brute.shield?.value?.intValue, 2)
+        XCTAssertEqual(brute.retaliate.count, retaliates + 1)
+        XCTAssertNotEqual(sim.gm.game.elementBoard.first { $0.type == .fire }?.state, .inert, "fire infused")
+        XCTAssertTrue(coord.isConditionActive(.poison, on: .character(weaver.id)), "Poison on the party")
+        XCTAssertFalse(coord.isConditionActive(.poison, on: .character(brute.id)))
+        XCTAssertTrue(brute.entityConditions.contains { $0.name == .strengthen }, "Strengthen on themselves")
+        XCTAssertGreaterThan(brute.loot, money, "money in reach looted")
+        XCTAssertTrue(said(sim, since: lines).contains { $0.contains("isn\u{2019}t performed") }, "the persistent bonus is left: its card is discarded")
+    }
+
+    /// FAQ: "The bosses two abilities can affect invisible characters. They also require LOS."
+    /// Who is out of its sight isn't driven off, drawn in or turned.
+    func testOnlyThoseInItsSightAreMovedOrTurned() async throws {
+        let sim = try simulator()
+        let coord = sim.coord
+        let betrayer = try boss(sim)
+        let brute = sim.gm.game.characters[0], weaver = sim.gm.game.characters[1]
+        let board = coord.boardState
+        let hidden = try floor(sim) { !LineOfSight.hasLOS(from: betrayer.hex, to: $0, board: board) }
+        let seen = try floor(sim) { $0 != hidden && LineOfSight.hasLOS(from: betrayer.hex, to: $0, board: board)
+            && (board.range(from: $0, to: betrayer.hex) ?? 0) >= 3 }
+        stand(sim, .character(brute.id), on: hidden)
+        stand(sim, .character(weaver.id), on: seen)
+        coord.applyCondition(.invisible, to: .character(weaver.id))
+        await coord.driveOff(from: betrayer.piece)
+        XCTAssertEqual(board.piecePositions[.character(brute.id)], hidden, "out of sight: not driven")
+        XCTAssertNotEqual(board.piecePositions[.character(weaver.id)], seen, "in sight, invisible or not: driven off")
+
+        stand(sim, .character(weaver.id), on: seen)
+        let hand = sim.hand(of: brute), other = sim.hand(of: weaver)
+        coord.selectedCardPairs[brute.id] = (top: hand[0], bottom: hand[1])
+        coord.selectedCardPairs[weaver.id] = (top: other[0], bottom: other[1])
+        brute.initiative = 99
+        weaver.initiative = 10
+        await coord.drawInAndTurn(by: betrayer.piece)
+        XCTAssertEqual(board.piecePositions[.character(brute.id)], hidden, "out of sight: not drawn in")
+        XCTAssertTrue(board.areAdjacent(try XCTUnwrap(board.piecePositions[.character(weaver.id)]), betrayer.hex))
+        XCTAssertFalse(board.turned.contains(.character(brute.id)), "the last to act is out of sight")
+        XCTAssertTrue(board.turned.contains(.character(weaver.id)), "the last to act of those it sees")
+    }
+
     /// In a round of play: the Betrayer's second special takes someone still to act, their turn
     /// is played for them, and the control ends with the round.
     func testMindControlInARoundOfPlay() async throws {

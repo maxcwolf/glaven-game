@@ -39,7 +39,7 @@ final class EscortTurnController {
 
             let result = EscortAI.computeTurn(escort: container, entity: entity,
                                               board: coordinator.boardState, gameState: gameManager.game,
-                                              destination: destination(of: container),
+                                              destination: destination(of: container, from: coordinator.boardState.piecePositions[pieceID]),
                                               home: coordinator.boardState.objectiveSites[entity.number]?.coord)
             await executeEscortTurn(result: result, container: container, entity: entity, pieceID: pieceID)
 
@@ -56,8 +56,12 @@ final class EscortTurnController {
 
     /// Where the escort's move heads when its text names a lettered hex — "Move 2 towards the
     /// altar (b)" — and the letter is on the revealed map.
-    func destination(of container: GameObjectiveContainer) -> Set<HexCoord> {
+    func destination(of container: GameObjectiveContainer, from position: HexCoord? = nil) -> Set<HexCoord> {
         guard let coordinator, let store = gameManager?.editionStore else { return [] }
+        if let index = container.objectiveIndex, let scenario = coordinator.scenarioData,
+           let seeks = scenario.placements?.seeks?.first(where: { $0.objective == index }) {
+            return destination(seeking: seeks, in: scenario, from: position)
+        }
         let notes = container.escortActions.filter { $0.type == .move }
             .flatMap { $0.subActions ?? [] }.filter { $0.type == .custom }.compactMap { $0.value?.stringValue }
         var hexes: Set<HexCoord> = []
@@ -73,14 +77,39 @@ final class EscortTurnController {
         return hexes
     }
 
+    /// "Towards the shaman on the D tile": while the tile is unseen, the doors on the way to it;
+    /// then the hexes of the monsters of that type standing on it. With none left there, the
+    /// escort's own hex — it has nowhere to go and stays.
+    private func destination(seeking seeks: ScenarioPlacements.Seeks, in scenario: VGBScenario, from position: HexCoord?) -> Set<HexCoord> {
+        guard let coordinator else { return [] }
+        let board = coordinator.boardState
+        let tile = seeks.tile.lowercased()
+        guard board.visibleRooms.contains(where: { $0.lowercased() == tile }) else {
+            let sites = BoardBuilder.findPlacements(in: scenario.mapTileData).filter { $0.tile.ref.lowercased() == tile }
+                .compactMap { placement in BoardBuilder.cells(of: placement.tile, axis: placement.axis).min().map { (placement.path, $0) } }
+            return Set(doorsToward(sites))
+        }
+        let sought = board.piecePositions.filter { piece, hex in
+            guard case .monster(let name, _) = piece else { return false }
+            return name == seeks.monster && board.cells[hex]?.tileRef.lowercased() == tile
+        }.map(\.value)
+        return sought.isEmpty ? Set([position].compactMap { $0 }) : Set(sought)
+    }
+
     /// The letter is in a room not yet revealed: the closed doors on the way there (walking
     /// into one opens it), or failing that the closed door nearest to it.
     private func doorsToward(_ marker: String) -> [HexCoord] {
         guard let coordinator, let scenario = coordinator.scenarioData else { return [] }
+        return doorsToward(BoardBuilder.markerSites(marker, in: scenario))
+    }
+
+    /// The closed doors on the way to any of `sites` (map paths and hexes), or failing that the
+    /// closed door nearest to the first.
+    private func doorsToward(_ sites: [(path: [Int], coord: HexCoord)]) -> [HexCoord] {
+        guard let coordinator else { return [] }
         let closed = coordinator.boardState.doors.filter {
             !$0.isOpen && !coordinator.isDoorBarred(at: $0.coord) && !coordinator.boardState.isLockedDoor($0.coord)
         }
-        let sites = BoardBuilder.markerSites(marker, in: scenario)
         let onTheWay = closed.filter { door in
             guard let path = door.childPath else { return false }
             return sites.contains { $0.path.starts(with: path) }

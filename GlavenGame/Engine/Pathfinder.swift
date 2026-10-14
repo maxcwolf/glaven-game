@@ -373,6 +373,8 @@ enum Pathfinder {
         /// Closed doors the figure can't open (treated as walls): every one for monsters and
         /// summons, the locked ones for characters.
         let closedDoors: Set<HexCoord>
+        /// Hexes the mover treats as traps though they aren't (`BoardState.avoidedAsTraps`).
+        let avoided: Set<HexCoord>
         /// Wall lines between neighbouring hexes of two tiles: nothing moves across one.
         let walls: Set<HexEdge>
         /// For a character, the hexes a crossing lets it step to from each hex beside one of
@@ -389,6 +391,7 @@ enum Pathfinder {
         init(board: BoardState, start: HexCoord, mode: MoveMode, canOpenDoors: Bool,
              enemies: Set<HexCoord>, allies: Set<HexCoord>, opensLockedDoors: Bool = false) {
             self.cells = board.cells
+            self.avoided = board.avoidedAsTraps
             self.start = start
             self.mode = mode
             self.enemies = enemies
@@ -429,7 +432,7 @@ enum Pathfinder {
                 return Step(cost: 1, negatives: 0)
             case .normal:
                 guard cell.passable, !enemies.contains(hex) else { return nil }
-                return Step(cost: terrainCost(cell), negatives: isNegative(cell) ? 1 : 0)
+                return Step(cost: terrainCost(cell), negatives: isNegative(cell) || avoided.contains(hex) ? 1 : 0)
             }
         }
 
@@ -441,7 +444,7 @@ enum Pathfinder {
                 return Step(cost: 1, negatives: 0)
             case .jump, .normal:
                 guard cell.passable else { return nil }
-                return Step(cost: terrainCost(cell), negatives: isNegative(cell) ? 1 : 0)
+                return Step(cost: terrainCost(cell), negatives: isNegative(cell) || avoided.contains(hex) ? 1 : 0)
             }
         }
     }

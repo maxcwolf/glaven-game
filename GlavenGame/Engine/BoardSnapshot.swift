@@ -30,6 +30,7 @@ struct BoardSnapshot: Codable {
     var savesUsed: [Int: Int]? = nil
     var exhaustedOnExit: [String]? = nil
     var conclusion: String? = nil
+    var sacrificed: String? = nil
     var goalReached: Bool? = nil
     var carriedBy: [String: String]? = nil
     var carriedLying: [String: HexCoord]? = nil
@@ -81,7 +82,7 @@ struct BoardSnapshot: Codable {
             heldMonsterSlots: board.heldMonsterSlots, cycleSteps: board.cycleSteps,
             cleansed: board.cleansed, savesUsed: board.savesUsed,
             exhaustedOnExit: board.exhaustedOnExit,
-            conclusion: board.conclusion, goalReached: board.goalReached,
+            conclusion: board.conclusion, sacrificed: board.sacrificed, goalReached: board.goalReached,
             carriedBy: board.carriedBy, carriedLying: board.carriedLying, carriedGone: board.carriedGone,
             carriedCharge: board.carriedCharge,
             tokenDeck: board.tokenDeck, tokenHexes: board.tokenHexes, tokensLooted: board.tokensLooted,
@@ -122,6 +123,7 @@ struct BoardSnapshot: Codable {
         board.savesUsed = savesUsed ?? [:]
         board.exhaustedOnExit = exhaustedOnExit ?? []
         board.conclusion = conclusion
+        board.sacrificed = sacrificed
         board.goalReached = goalReached ?? false
         board.carriedBy = carriedBy ?? [:]
         board.carriedLying = carriedLying ?? [:]

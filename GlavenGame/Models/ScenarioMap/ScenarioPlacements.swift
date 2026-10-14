@@ -76,6 +76,9 @@ struct ScenarioPlacements: Codable, Equatable {
     /// a starting hex is offered only if the part of its room it stands in — what can be walked
     /// to without leaving the tile — holds a monster.
     var startAmongMonsters: Bool?
+    /// Escorts whose move heads for a monster rather than a lettered hex (#38's Orchid: "Move 3
+    /// towards the shaman on the D tile").
+    var seeks: [Seeks]?
     /// Walls broken down by damage instead of doors that open (#76's hive).
     var walls: Walls?
     /// "Each character discards three ability cards at the start of the scenario as a scenario
@@ -172,6 +175,10 @@ struct ScenarioPlacements: Codable, Equatable {
         /// The conclusion section read when the scenario is won this way ("82-A"): its rewards
         /// are applied with the scenario's own. Set on the alternatives of `either`.
         var conclusion: String?
+        /// The treasure (its number) of whose items the character reaching `reach` gives one up,
+        /// chosen as their turn ends there: won this way only once one is (#82: "remove one of
+        /// those items from the game to complete the scenario").
+        var sacrifices: String?
 
         // MARK: Lost
 
@@ -246,6 +253,9 @@ struct ScenarioPlacements: Codable, Equatable {
         /// A character on an exit hex as a round ends leaves the scenario; it is won when all
         /// have left. Without it, all must stand on exit hexes at once.
         var leave: Bool?
+        /// Every character must get there "before becoming exhausted": one exhausted anywhere
+        /// but on an exit hex makes this way impossible (#82). Without it, the exhausted don't count.
+        var all: Bool?
     }
 
     struct Plates: Codable, Hashable {
@@ -494,6 +504,15 @@ extension ScenarioPlacements {
         let objective: Int
         /// The condition the enemies beside a wall gain as it comes down.
         var condition: String?
+    }
+
+    /// An escort (objective, 1-based) that walks toward the `monster` standing on `tile`: through
+    /// the doors on the way while that tile is unseen, beside the monster once it is, and nowhere
+    /// once no such monster is left there.
+    struct Seeks: Codable, Hashable {
+        let objective: Int
+        let monster: String
+        let tile: String
     }
 
     /// "It cannot enter or pass through door 2" (#67); "The Inox on tile E cannot enter or pass

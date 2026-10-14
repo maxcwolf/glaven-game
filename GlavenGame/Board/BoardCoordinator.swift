@@ -622,12 +622,16 @@ final class BoardCoordinator {
         lootAtEndOfTurn(characterID)
         noteCarriedSpends(after: characterID)
 
-        updateLocks(turnEnded: true)
-        // Rules that wait for where figures stand as a turn ends (every plate held).
-        gameManager?.scenarioRulesManager.evaluateRules(phase: .figureChange)
-        checkVictoryDefeat(turnEnded: true)
-        if scenarioResult == nil {
-            advanceToNextFigure()
+        // (Burning Mountain: the holder on the altar may give up an artifact to win.)
+        offerSacrifice(by: characterID) { [weak self] in
+            guard let self else { return }
+            self.updateLocks(turnEnded: true)
+            // Rules that wait for where figures stand as a turn ends (every plate held).
+            self.gameManager?.scenarioRulesManager.evaluateRules(phase: .figureChange)
+            self.checkVictoryDefeat(turnEnded: true)
+            if self.scenarioResult == nil {
+                self.advanceToNextFigure()
+            }
         }
     }
 
@@ -2249,10 +2253,14 @@ final class BoardCoordinator {
     }
 
     /// Allies of `pieceID` within range and line of sight (optionally including itself).
-    func alliesInRange(of pieceID: PieceID, range: Int, includeSelf: Bool) -> Set<PieceID> {
+    func alliesInRange(of pieceID: PieceID, range: Int, includeSelf: Bool, healing: Bool = false) -> Set<PieceID> {
         guard let pos = boardState.piecePositions[pieceID] else { return [] }
         var allies: Set<PieceID> = includeSelf ? [pieceID] : []
         for (id, coord) in boardState.piecePositions where id != pieceID && areAllies(pieceID, id) {
+            // What is only healed (Toxic Moor's tree: "once revealed it can be healed like any
+            // normal ally, but no other ability can affect it") is no ally to anything else.
+            if objectiveContainer(of: id)?.isSheltered == true,
+               !healing || !(boardState.cells[coord].map { cell in boardState.visibleRooms.contains(cell.tileRef) } ?? false) { continue }
             guard entity(for: id) != nil, boardState.isWithin(max(1, range), from: pos, to: coord),
                   LineOfSight.hasLOS(from: pos, to: coord, board: boardState) else { continue }
             allies.insert(id)
@@ -2474,7 +2482,7 @@ final class BoardCoordinator {
     /// Begin an interactive heal action — the player picks themself or an ally (character or
     /// summon) within range and line of sight (p.25).
     func beginHealAction(pieceID: PieceID, healValue: Int, range: Int, conditions: [ConditionName] = []) {
-        let validTargets = alliesInRange(of: pieceID, range: range, includeSelf: true)
+        let validTargets = alliesInRange(of: pieceID, range: range, includeSelf: true, healing: true)
         pendingHealConditions = conditions
         interactionMode = .selectingHealTarget(pieceID: pieceID, healValue: healValue, validTargets: validTargets)
         let targetHexes = Set(validTargets.compactMap { boardState.piecePositions[$0] })
