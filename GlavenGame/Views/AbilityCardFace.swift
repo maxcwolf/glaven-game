@@ -7,6 +7,9 @@ enum CardStyle: String, CaseIterable {
     /// The app's own drawing of each card: its text plainer, easier to read at a glance.
     case drawn
 
+    /// The style the card preview turns to.
+    var other: CardStyle { self == .scans ? .drawn : .scans }
+
     var label: String {
         switch self {
         case .scans: return "Card Scans"
@@ -70,6 +73,11 @@ struct AbilityCardFace: View {
     static func scan(of card: AbilityModel, edition: String, style: CardStyle) -> PlatformImage? {
         guard style == .scans || CardText.isUnwritten(card), let id = card.cardId else { return nil }
         return ImageLoader.abilityCardImage(edition: edition, cardId: id)
+    }
+
+    /// Whether the card looks different in the two styles: it has a scan, and the data has it whole.
+    static func hasBothStyles(_ card: AbilityModel, edition: String) -> Bool {
+        scan(of: card, edition: edition, style: .scans) != nil && scan(of: card, edition: edition, style: .drawn) == nil
     }
 
     var body: some View {

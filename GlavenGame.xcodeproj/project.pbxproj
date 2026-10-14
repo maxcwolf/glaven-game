@@ -84,6 +84,7 @@
 		50E47414E87590BA5F788F25 /* MonsterAbilityStripView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D2399EDB7F011E68F62A5F2F /* MonsterAbilityStripView.swift */; };
 		52C1E021DEDA110B8DD4391A /* GameRandom.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2D9D8344A9522FB4BC90880C /* GameRandom.swift */; };
 		52DA5D989F9BC0E2A5309318 /* MovePlan.swift in Sources */ = {isa = PBXBuildFile; fileRef = E007CE4699064C661EBFDCB7 /* MovePlan.swift */; };
+		540EA3136B3827F02A44A07A /* CardPreview.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2783DA21FF4B960377F2E29 /* CardPreview.swift */; };
 		547F1633D2989CD74DD578CF /* StartDiscardPicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = E5055BA04711D481FE5F99C2 /* StartDiscardPicker.swift */; };
 		55E82ED1B02F39BE4D6E63DC /* BoardCoordinator+Bonuses.swift in Sources */ = {isa = PBXBuildFile; fileRef = 57AED47A654FB8809E8D584B /* BoardCoordinator+Bonuses.swift */; };
 		56F7F45058EC84B733850E68 /* Images in Resources */ = {isa = PBXBuildFile; fileRef = 61963BCD4E4EB2BCD3E9201C /* Images */; };
@@ -422,6 +423,7 @@
 		B13FA40CD40363DDE52C7D79 /* BoardCoordinator+StartDiscard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "BoardCoordinator+StartDiscard.swift"; sourceTree = "<group>"; };
 		B1ACB336DBBEBE992BE2288A /* SupportedLocale.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SupportedLocale.swift; sourceTree = "<group>"; };
 		B1F121B39DF61999A92908F6 /* CardPool.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CardPool.swift; sourceTree = "<group>"; };
+		B2783DA21FF4B960377F2E29 /* CardPreview.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CardPreview.swift; sourceTree = "<group>"; };
 		B2E660BE81DE1921DF78A167 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		B2F4E62343ADAAC6AFDB7BB3 /* CampaignStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CampaignStore.swift; sourceTree = "<group>"; };
 		B336093B187D6833D7EF5868 /* BattleGoalData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BattleGoalData.swift; sourceTree = "<group>"; };
@@ -885,6 +887,7 @@
 				A74028D5DFEC6A3B6D0C3323 /* BoardTopBar.swift */,
 				972A40BE4DE4A8FA037B3C54 /* BoardView.swift */,
 				2C75B78EAE14DFDBA9E0FEF7 /* CardPlayPicker.swift */,
+				B2783DA21FF4B960377F2E29 /* CardPreview.swift */,
 				4C2B76831C29EEA9CE98F5A8 /* CardSelectionPanel.swift */,
 				EA732C1B11B1FD79F496753D /* DamageChoiceSheet.swift */,
 				BA5C6A163BDEB897E9993360 /* EscortTurnController.swift */,
@@ -1137,6 +1140,7 @@
 				D7CE1CE9C11E696DD3D22EA9 /* CardEnhancing.swift in Sources */,
 				5BE153B9B73E3CBCF97D5578 /* CardPlayPicker.swift in Sources */,
 				5B13B2FCD96C798F2DF93DE9 /* CardPool.swift in Sources */,
+				540EA3136B3827F02A44A07A /* CardPreview.swift in Sources */,
 				264672DD5FA11BF550313E8D /* CardSelectionPanel.swift in Sources */,
 				6564DF603FDAB271D9E5AC23 /* CardText.swift in Sources */,
 				9BF3482C20F2CC41F462F7AC /* CharacterClass.swift in Sources */,

@@ -41,7 +41,7 @@ campaign run between scenarios. 384 commits; a summary by area.
   table rules a group can play by.
 - **Cards you can read**: a setting between the printed card scans and drawn cards that say
   everything a card prints in plain type, and a slider for the size of your cards in hand and in
-  play; Settings opens from the board's menu mid-scenario.
+  play; Settings opens from the board's menu mid-scenario; the full-size card turns to the other style.
 - **The board**: a new layout from the mockup; portrait tokens; wall lines between tiles; attack
   previews and the modifier tray; a turn-order rail; learning mode and an illustrated How to Play;
   sound for what happens on the board; VoiceOver throughout and an 11-point text floor.
@@ -63,7 +63,7 @@ campaign run between scenarios. 384 commits; a summary by area.
 
 - Headless play through the coordinator (`ScenarioSimulator`): every scenario played to its end
   with four seeds and checked for rule violations, and a ninth-level party that wins 53 to 58 of
-  94; 1,732 tests; `scripts/mutate.py`, 439 deliberate rule breaks each caught by a test.
+  94; 1,733 tests; `scripts/mutate.py`, 441 deliberate rule breaks each caught by a test.
 
 ## [1.0.0-beta.2] - 2026-05-29
 

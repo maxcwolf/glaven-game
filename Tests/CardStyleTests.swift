@@ -36,6 +36,19 @@ final class CardStyleTests: XCTestCase {
         XCTAssertNotNil(AbilityCardFace.scan(of: swap, edition: "gh", style: .drawn))
     }
 
+    /// The full-size card turns to the other style: the scan to the drawn card and back; a card
+    /// that looks the same either way (no scan, or not whole in the data) has nothing to turn to.
+    func testTheFullSizeCardTurnsToTheOtherStyle() throws {
+        XCTAssertEqual(CardStyle.scans.other, .drawn)
+        XCTAssertEqual(CardStyle.drawn.other, .scans)
+        XCTAssertTrue(AbilityCardFace.hasBothStyles(trample, edition: "gh"))
+        let swap = try XCTUnwrap(gm.editionStore.deckData(name: "two-mini", edition: "gh")?.abilities.first { $0.name == "Spirit Swap" })
+        XCTAssertFalse(AbilityCardFace.hasBothStyles(swap, edition: "gh"), "an unwritten card has only its scan")
+        var noScan = trample
+        noScan.cardId = 999_999
+        XCTAssertFalse(AbilityCardFace.hasBothStyles(noScan, edition: "gh"), "a card without a scan is only drawn")
+    }
+
     func testTheCardSizeGrowsTheCardAtItsShape() {
         XCTAssertEqual(AbilityCardFace.size(height: 190, scale: 1), CGSize(width: 127, height: 190))
         XCTAssertEqual(AbilityCardFace.size(height: 190, scale: 1.5), CGSize(width: 190, height: 285))
