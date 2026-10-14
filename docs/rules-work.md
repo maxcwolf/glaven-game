@@ -27,8 +27,8 @@ question, how a piece of work is done from start to finish, and what to do next.
 
 ### Work in progress (2026-10-14)
 
-`main` has everything up to merge `3749f84` (the small ones). The work since — the engine
-rules the audit left open — is on `feat/cards-4`, not merged (merging is the owner's call).
+`main` has everything up to merge `dabf4eb` (the engine rules). The work since — the cards —
+is on `feat/cards-4`, not merged (merging is the owner's call).
 The branches:
 
 - **`feat/scenario-rules-3`** (2026-10-12): tests for the three rules no test caught; mutations
@@ -89,8 +89,13 @@ fast-forward):
    with no map, which needs the random dungeon mode built first (`TODO.md`). Group 3, the engine
    rules the audit left open, is done too (2026-10-14): element choices, the player placing an
    area, the rest of negating damage, standees that run out, push and pull around walls, treasure
-   on a replay, and moves made in legs (Feedback Loop). Next is group 4, Cards: its large open
-   item is the Beast Tyrant, who has no bear (N20).
+   on a replay, and moves made in legs (Feedback Loop). Group 4, Cards, is done too
+   (2026-10-14): the Beast Tyrant's bear (N20) — set up beside him, his summon, the performer of
+   his Commands — with Earthen Spikes' and Patch Fur's bonuses for all summoned allies, an
+   attack's "Strengthen self" for its attacker, Frightening Curse's controlled Move 1, Detonation's
+   and Flight of Flame's traps, Impending End and Darkened Skies. Left under Cards: three Beast
+   Tyrant cards with no data and his text bonuses about the bear. Next is group 5, town and
+   campaign (F19, F20, N6, envelopes).
 3. Merging to `main` (`git merge --no-ff -m "merge: …"`, then push) is done when the owner asks.
 
 ## Which document answers what
@@ -219,8 +224,8 @@ ordered like this:
    Front after the choice, N10 the shield order), standees that run out (N11), push and pull
    around walls (A12), treasure on a replay (C11), and a move in legs for Feedback Loop. Left: the
    latent cases no Gloomhaven card triggers (`TODO.md`), and the campaign's F19, F20, N6.
-4. **Next: Cards** — the Beast Tyrant's bear (N20) first — then **town and campaign**, and what
-   isn't Gloomhaven.
+4. **Cards** (done 2026-10-14, but for three Beast Tyrant cards the data leaves empty and his
+   text bonuses about the bear); **next: town and campaign**, then what isn't Gloomhaven.
 
 ## History, briefly
 
