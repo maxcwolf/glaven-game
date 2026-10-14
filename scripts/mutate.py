@@ -91,6 +91,10 @@ M={
  "cracklingAirKeptStillPaid": ("GlavenGame/Board/PlayerTurnController.swift", "        if declinedConsume(index) {\n", "        if false {\n"),
  "cracklingAirTokenOutlivesTheCard": ("GlavenGame/Models/GameCharacter.swift", "        elementBonusesPaid.remove(cardId)\n", ""),
  "cracklingAirTokenNotSaved": ("GlavenGame/Models/Snapshots/SnapshotConversions.swift", "        c.elementBonusesPaid = Set(elementBonusesPaid ?? [])\n", ""),
+ "areaPlacedForThePlayer": ("GlavenGame/Board/BoardCoordinator.swift", "        guard distinct.count > 1, !autoResolvePrompts else { return best }", "        guard false else { return best }"),
+ "areaChoicesRepeat": ("GlavenGame/Board/BoardCoordinator.swift", "for placement in all where !distinct.contains(where: { Set($0.targets) == Set(placement.targets) && covered($0) == covered(placement) }) {", "for placement in all {"),
+ "areaSuggestsTheFewest": ("GlavenGame/Board/BoardCoordinator.swift", "            best == nil || next.targets.count > best!.targets.count ? next : best }) else { return nil }", "            best == nil || next.targets.count < best!.targets.count ? next : best }) else { return nil }"),
+ "areaIgnoresTheChoice": ("GlavenGame/Board/BoardCoordinator.swift", "        return distinct[answer ?? suggested]", "        _ = answer; return distinct[suggested]"),
 }
 # Scenario rules (the mechanisms of placements/gh.json): run against the scenario tests.
 SCENARIO_FILTER=("ScenarioSpecialRuleTests|ScenarioReauditTests|ScenarioEnforcedRuleTests|ScenarioLockTests|ScenarioGoalTests|"

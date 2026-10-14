@@ -2383,6 +2383,37 @@ final class BoardCoordinator {
                                           enemies: Array(enemies), board: boardState, range: range)
     }
 
+    /// Where an area attack aimed at `primary` lies: the player chooses among the placements that
+    /// cover different figures (who is hit, and who else stands in it), the one hitting the most
+    /// suggested; with one such choice, or headless, that one.
+    @MainActor func placeArea(pattern: String, attacker: PieceID, primary: PieceID, range: Int) async -> AoEResolver.Placement? {
+        guard let pos = boardState.piecePositions[attacker] else { return nil }
+        let enemies = boardState.piecePositions.keys.sorted().filter { id in
+            id != attacker && areEnemies(attacker, id) && entity(for: id) != nil && !isConditionActive(.invisible, on: id)
+        }
+        let all = AoEResolver.placements(pattern: pattern, attackerPos: pos, focusTarget: primary,
+                                         enemies: Array(enemies), board: boardState, range: range)
+        func covered(_ placement: AoEResolver.Placement) -> [PieceID] {
+            placement.targetHexes.compactMap { boardState.piece(at: $0) }.filter { $0 != attacker }.sorted()
+        }
+        // One of each: by the enemies hit and the figures covered.
+        var distinct: [AoEResolver.Placement] = []
+        for placement in all where !distinct.contains(where: { Set($0.targets) == Set(placement.targets) && covered($0) == covered(placement) }) {
+            distinct.append(placement)
+        }
+        guard let best = distinct.reduce(nil as AoEResolver.Placement?, { best, next in
+            best == nil || next.targets.count > best!.targets.count ? next : best }) else { return nil }
+        guard distinct.count > 1, !autoResolvePrompts else { return best }
+        let labels = distinct.map { placement -> String in
+            let hit = placement.targets.map(name)
+            let others = covered(placement).filter { !placement.targets.contains($0) }.map(name)
+            return "Hits \(GameText.list(hit))" + (others.isEmpty ? "" : "; also covers \(GameText.list(others))")
+        }
+        let suggested = distinct.firstIndex(of: best) ?? 0
+        let answer = await chooseOption(labels, title: "Place the area", question: "Which way does the area lie?", suggested: suggested)
+        return distinct[answer ?? suggested]
+    }
+
     /// The hexes an area attack aimed at `primary` covers.
     func areaPlacementHexes(pattern: String, attacker: PieceID, primary: PieceID, range: Int) -> Set<HexCoord> {
         guard let pos = boardState.piecePositions[attacker] else { return [] }
@@ -3336,14 +3367,18 @@ final class BoardCoordinator {
                 let range = activePlayerTurn?.currentAttackRange() ?? 1
                 if let pattern = activePlayerTurn?.pendingAreaPattern, !addingTarget {
                     // Area attack: every enemy in the pattern is a separate attack.
-                    let targets = areaTargets(pattern: pattern, attacker: attackerID, primary: piece, range: range)
                     let ranged = !AoEResolver.isMeleePattern(pattern)
-                    let areaHexes = areaPlacementHexes(pattern: pattern, attacker: attackerID, primary: piece, range: range)
                     let areaTexts = activePlayerTurn?.attackTexts ?? []
                     interactionMode = .idle
-                    log("\(name(attackerID))\u{2019}s area attack hits \(targets.count) enem\(targets.count == 1 ? "y" : "ies")", category: .attack)
                     let turn = activePlayerTurn, generation = boardGeneration
                     Task { @MainActor in
+                        // The player places the area (ATK-10): of the ways it can lie over the
+                        // enemy tapped, those that cover different figures are offered.
+                        guard let placement = await self.placeArea(pattern: pattern, attacker: attackerID, primary: piece, range: range),
+                              self.isCurrentBoard(generation) else { return }
+                        let targets = placement.targets
+                        let areaHexes = Set(placement.targetHexes)
+                        self.log("\(self.name(attackerID))\u{2019}s area attack hits \(targets.count) enem\(targets.count == 1 ? "y" : "ies")", category: .attack)
                         for target in targets where self.isOnBoard(target) && self.isOnBoard(attackerID) {
                             guard self.isCurrentBoard(generation) else { return }
                             await self.resolvePlayerAttack(attacker: attackerID, target: target, attackValue: attackValue,
