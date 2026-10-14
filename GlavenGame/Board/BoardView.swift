@@ -1344,41 +1344,10 @@ struct BoardView: View {
             .accessibilityAddTraits(.isButton)
             .overlay {
                 if let previewed = previewedCard(cardId) {
-                    GeometryReader { geo in
-                        AbilityCardFace(card: previewed.card, edition: previewed.character.edition,
-                                        color: Color(hex: previewed.character.color) ?? .blue,
-                                        height: Self.previewCardHeight(in: geo.size), followsCardSize: false,
-                                        labelResolver: labelResolver(for: previewed.character.edition))
-                            .clipShape(RoundedRectangle(cornerRadius: 10))
-                            .padding(12)
-                            .background(
-                                RoundedRectangle(cornerRadius: 16)
-                                    .fill(.black.opacity(0.6))
-                            )
-                            .shadow(color: .black.opacity(0.5), radius: 20)
-                            .overlay(alignment: .topTrailing) {
-                                Button {
-                                    coordinator.dismissCardPreview()
-                                } label: {
-                                    Image(systemName: "xmark")
-                                        .font(BoardTheme.font(size: 12, weight: .bold))
-                                        .foregroundStyle(.white.opacity(0.9))
-                                        .frame(width: 26, height: 26)
-                                        .background(.ultraThinMaterial)
-                                        .clipShape(Circle())
-                                        .shadow(color: .black.opacity(0.3), radius: 4)
-                                        .frame(width: 44, height: 44)
-                                        .contentShape(Rectangle())
-                                }
-                                .accessibilityLabel("Close")
-                                .buttonStyle(.plain)
-                                .keyboardShortcut(.cancelAction)
-                                .padding(4)
-                            }
-                            .accessibilityElement(children: .contain)
-                            .accessibilityLabel(previewed.card.name ?? "Card")
-                            .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    }
+                    CardPreview(card: previewed.card, character: previewed.character,
+                                labelResolver: labelResolver(for: previewed.character.edition),
+                                onClose: { coordinator.dismissCardPreview() })
+                        .id(cardId)   // a new card opens in the players' style
                 } else {
                     VStack(spacing: 12) {
                         Image(systemName: "photo.badge.exclamationmark")
@@ -1392,10 +1361,6 @@ struct BoardView: View {
             }
     }
 
-    /// The previewed card's height: as tall as the space allows with a margin, up to 720 points.
-    static func previewCardHeight(in space: CGSize) -> CGFloat {
-        max(200, min(720, space.height - 80, (space.width - 80) * AbilityCardFace.aspect))
-    }
 
     // MARK: - Helpers
 

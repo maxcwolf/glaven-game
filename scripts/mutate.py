@@ -178,6 +178,8 @@ M={
  "dungeonBriefEveryRoom": ("GlavenGame/Engine/ScenarioBrief.swift", "        return scenario.rooms?.first(where: \\.isInitial)?.monster?.map(\\.name) ?? []", "        return scenario.monsters ?? []"),
  "dungeonRoadEvent": ("GlavenGame/Managers/EventCardManager.swift", "        if scenario.isDungeonVariant { return false }\n", ""),
  "settingsMidGameIgnored": ("GlavenGame/Board/BoardCoordinator.swift", "    func applySettings() {\n        applyAnimationSpeed(gameManager?.settingsManager.animationSpeed ?? 1)\n", "    func applySettings() {\n"),
+ "cardPreviewTurnsNowhere": ("GlavenGame/Views/AbilityCardFace.swift", "    var other: CardStyle { self == .scans ? .drawn : .scans }", "    var other: CardStyle { self }"),
+ "cardPreviewTurnsUnwritten": ("GlavenGame/Views/AbilityCardFace.swift", "        scan(of: card, edition: edition, style: .scans) != nil && scan(of: card, edition: edition, style: .drawn) == nil", "        scan(of: card, edition: edition, style: .scans) != nil"),
 }
 # Scenario rules (the mechanisms of placements/gh.json): run against the scenario tests.
 SCENARIO_FILTER=("ScenarioSpecialRuleTests|ScenarioReauditTests|ScenarioEnforcedRuleTests|ScenarioLockTests|ScenarioGoalTests|"
