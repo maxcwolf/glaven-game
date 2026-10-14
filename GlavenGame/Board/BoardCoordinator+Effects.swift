@@ -64,6 +64,14 @@ extension BoardCoordinator {
         }
     }
 
+    /// "A character summon that has POISON treats water hexes like traps": the water its move is
+    /// planned around, where the scenario says so.
+    func waterAvoided(by pieceID: PieceID) -> Set<HexCoord> {
+        guard case .summon = pieceID, scenarioData?.placements?.water?.hurtsThePoisoned == true,
+              isConditionActive(.poison, on: pieceID) else { return [] }
+        return Set(boardState.cells.keys.filter(isWater))
+    }
+
     /// The damage a figure suffers for ending its turn where it stands, in a scenario whose
     /// water does that.
     func waterDamageAtTurnEnd(for pieceID: PieceID) -> Int? {

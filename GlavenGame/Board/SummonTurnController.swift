@@ -45,9 +45,11 @@ final class SummonTurnController {
             coordinator.sweepDeadFigures()
             guard !summon.dead, coordinator.isOnBoard(pieceID) else { continue }
 
+            coordinator.boardState.avoidedAsTraps = coordinator.waterAvoided(by: pieceID)
             let result = SummonAI.computeTurn(summon: summon, ownerCharacterID: character.id,
                                               board: coordinator.boardState, gameState: gameManager.game,
                                               moveBonus: coordinator.scenarioMoveBonus(of: pieceID))
+            coordinator.boardState.avoidedAsTraps = []
             // What it weighed, for "Why?" on the lines it logs.
             if !result.stunned {
                 coordinator.beginWhy(for: pieceID, candidates: result.focusCandidates, ranged: result.attack?.isRanged ?? false)

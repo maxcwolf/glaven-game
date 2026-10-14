@@ -1430,7 +1430,7 @@ final class PlayerTurnController {
                 if let potent, let character { coordinator.useCharge(potent.cardId, of: character) }
             }
             // "All adjacent allies", "self and all allies", "one adjacent ally": who it heals.
-            if let reach = allyReach(of: action, coordinator: coordinator) {
+            if let reach = allyReach(of: action, coordinator: coordinator, healing: true) {
                 applyPrintedEffects(of: action, coordinator: coordinator)
                 if reach.chooseOne {
                     guard !reach.pieces.isEmpty else {
@@ -1732,14 +1732,14 @@ final class PlayerTurnController {
 
     /// Who a heal, shield or retaliate printed for allies reaches ("alliesAdjacentAffect",
     /// "selfAlliesAffectRange:4", "allyAffectAdjacent"…), or nil when it's the character's own.
-    private func allyReach(of action: ActionModel, coordinator: BoardCoordinator) -> (pieces: [PieceID], chooseOne: Bool)? {
+    private func allyReach(of action: ActionModel, coordinator: BoardCoordinator, healing: Bool = false) -> (pieces: [PieceID], chooseOne: Bool)? {
         guard let spec = action.subActions?.first(where: { $0.type == .specialTarget })?.value?.stringValue.lowercased(),
               spec != "self", spec.contains("all") else { return nil }
         let me = PieceID.character(characterID)
         let withSelf = spec.hasPrefix("self")
         let reach: Int = spec.contains("adjacent") ? 1
             : (spec.split(separator: ":").last.flatMap { Int($0.prefix(while: \.isNumber)) } ?? 99)
-        let allies = coordinator.alliesInRange(of: me, range: reach, includeSelf: false).sorted()
+        let allies = coordinator.alliesInRange(of: me, range: reach, includeSelf: false, healing: healing).sorted()
         if spec.hasPrefix("ally") { return (allies, true) }   // one ally
         return ((withSelf ? [me] : []) + allies, false)
     }

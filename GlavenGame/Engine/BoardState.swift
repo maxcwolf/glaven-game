@@ -330,8 +330,12 @@ final class BoardState {
     /// terrain (monster AI treats these as obstacles unless no other route exists).
     func isNegativeHex(_ coord: HexCoord) -> Bool {
         guard let cell = cells[coord] else { return false }
-        return cell.isTrap || cell.isHazard
+        return cell.isTrap || cell.isHazard || avoidedAsTraps.contains(coord)
     }
+
+    /// Hexes the figure whose move is being planned treats as traps though they aren't (Toxic
+    /// Moor's water, to a poisoned character summon). Set only while that plan is made.
+    var avoidedAsTraps: Set<HexCoord> = []
 
     /// Whether a figure can move into this hex (passable + not occupied by enemy).
     /// `allies` determines which pieces are friendly (can pass through but not stop on).
