@@ -4,6 +4,9 @@ import Foundation
 /// in the tile's own coordinates (as the map data's overlays are). The map data has neither;
 /// these are written by hand into `Resources/ScenarioMaps/placements/<edition>.json`.
 struct ScenarioPlacements: Codable, Equatable {
+    /// A random dungeon's goal treasure (#55): the number of the last room that holds a treasure
+    /// tile instead of what the monster card puts there.
+    var dungeonTreasure: String?
     /// By tile ref ("m1a").
     var tiles: [String: Tile]
     /// Objectives (1-based) the party must keep from harm without their being allies: monsters

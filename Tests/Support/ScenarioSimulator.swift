@@ -668,7 +668,9 @@ final class ScenarioSimulator {
                   let entity = coord.monsterEntity(name: name, standee: standee), entity.type != .boss,
                   let card = gm.monsterManager.currentAbility(for: monster) else { return nil }
             let statRange = monster.stat(for: entity.type)?.range?.intValue ?? 0
-            return PlayLedger.monsterReach(statRange: statRange, card: card.actions ?? [])
+            let reach = PlayLedger.monsterReach(statRange: statRange, card: card.actions ?? [])
+            // A standing effect's +Range (a random dungeon's penalty) widens a ranged attack only.
+            return reach.map { $0 > 1 ? $0 + coord.scenarioRangeBonus(of: attacker) : $0 }
         case .objective:
             return nil
         }

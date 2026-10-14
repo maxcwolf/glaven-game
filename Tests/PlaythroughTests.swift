@@ -53,7 +53,7 @@ final class PlaythroughTests: XCTestCase {
         var runs: [Run] = []
         // Every scenario with a map, and the random dungeon, drawn anew each seed.
         for index in (1...95).map(String.init) + ["rnd"] {
-            guard index == "rnd" || ScenarioMapStore.shared.scenarioMap(for: index) != nil else { continue }
+            guard ["rnd", "55"].contains(index) || ScenarioMapStore.shared.scenarioMap(for: index) != nil else { continue }
             for seed in 1...seeds {
                 // Odd seeds play on Normal, even seeds on Easy (more victories, so the late rooms,
                 // bosses and scenario goals get played too).

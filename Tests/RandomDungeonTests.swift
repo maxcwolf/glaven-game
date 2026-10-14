@@ -569,6 +569,25 @@ final class RandomDungeonTests: XCTestCase {
         XCTAssertEqual(brute.consumedItems, [small.itemKey])
     }
 
+    /// #55: in the third room a treasure tile stands on the "12" in place of what the monster card
+    /// puts there; only a Loot action takes it, and taking it is the goal.
+    func testFoggyThicketsTreasureIsOnTheThirdRoomsTwelve() throws {
+        for seed in UInt64(1)...6 {
+            let sim = try ScenarioSimulator(scenario: "55", options: .init(seed: seed))
+            let coord = sim.coord
+            XCTAssertEqual(coord.scenarioData?.placements?.lootActionOnly, true)
+            XCTAssertEqual(coord.scenarioData?.placements?.goal?.loot, "goal")
+            while let door = coord.boardState.doors.first(where: { !$0.isOpen }) { coord.openDoor(at: door.coord) }
+            let goals = coord.boardState.cells.values.filter { $0.overlay == .treasure && $0.treasureID == BoardCoordinator.goalTreasureID }
+            XCTAssertEqual(goals.count, 1, "seed \(seed): one goal treasure, in the third room")
+            let dungeon = try XCTUnwrap(sim.gm.game.scenario?.randomDungeon)
+            let third = try XCTUnwrap(dungeon.allRooms.first { $0.path.count == 2 && coord.dungeonRoomCard(ofTile: goals.first?.tileRef ?? "")?.name == $0.room.room })
+            let card = try XCTUnwrap(DungeonCardStore.shared.room(named: third.room.room))
+            XCTAssertEqual(coord.cells(ofRoom: card).contains(try XCTUnwrap(goals.first).coord), true)
+            XCTAssertNil(coord.boardState.piece(at: try XCTUnwrap(goals.first).coord), "seed \(seed): nothing else on the 12")
+        }
+    }
+
     // MARK: - Reading the cards
 
     /// Draws each written room card as the game lays it out, its numbers in red and its

@@ -82,11 +82,14 @@ final class ScenarioManager {
         }
         let edition = scenario.data.edition
         let monsterCards = dungeonMonsterCards(edition: edition, editionStore: editionStore)
+        let placements = ScenarioPlacementStore.shared.placements(for: scenario.data.index, edition: edition)
         guard let built = RandomDungeonMap.build(dungeon, room: { DungeonCardStore.shared.room(named: $0, edition: edition) },
-                                                 monsters: { index in monsterCards.first { $0.index == index } })
+                                                 monsters: { index in monsterCards.first { $0.index == index } },
+                                                 goalTreasureOn: placements?.dungeonTreasure)
         else { return nil }
         var map = built.scenario
         map.traps = built.traps
+        map.placements = placements
         return map
     }
 

@@ -158,6 +158,7 @@ M={
  "dungeonItemsSpentAlways": ("GlavenGame/Board/BoardCoordinator+Dungeon.swift", "            if spend && item.spent {", "            if item.spent || item.consumed {"),
  "dungeonNoEnemyReplaced": ("GlavenGame/Board/BoardCoordinator+Dungeon.swift", "            if let previous { replaceEnemies(of: previous, elite: elite, count: count) }", "            _ = previous"),
  "dungeonNoEliteMade": ("GlavenGame/Board/BoardCoordinator+Dungeon.swift", "        boardState.eliteStandees.insert(piece)\n        log(", "        log("),
+ "dungeonGoalTreasureNowhere": ("GlavenGame/Managers/ScenarioManager.swift", "goalTreasureOn: placements?.dungeonTreasure)", "goalTreasureOn: nil)"),
 }
 # Scenario rules (the mechanisms of placements/gh.json): run against the scenario tests.
 SCENARIO_FILTER=("ScenarioSpecialRuleTests|ScenarioReauditTests|ScenarioEnforcedRuleTests|ScenarioLockTests|ScenarioGoalTests|"

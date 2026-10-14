@@ -21,7 +21,8 @@ enum RandomDungeonMap {
 
     static func build(_ dungeon: RandomDungeon,
                       room card: (String) -> DungeonRoomCard?,
-                      monsters: (String) -> ScenarioData?) -> Built? {
+                      monsters: (String) -> ScenarioData?,
+                      goalTreasureOn goalNumber: String? = nil) -> Built? {
         guard let firstCard = card(dungeon.first.room), let firstMonsters = monsters(dungeon.first.monsters) else { return nil }
         var trapKinds: [ScenarioTraps.Kind] = []
         var unplaced: [String] = []
@@ -57,7 +58,14 @@ enum RandomDungeonMap {
                     ref: VGBOverlayRef(type: overlay.type, subType: overlay.subType, id: nil, amount: nil),
                     direction: direction(of: overlay.cells), cells: overlay.cells))
             }
-            let numbered = monsterCard.rooms?.first?.monster ?? []
+            // The last room's goal treasure (#55) takes its number from whatever the card puts there.
+            let goalHere = path.count + 1 == dungeon.depth ? goalNumber : nil
+            if let goalHere, let place = roomCard.numbers[goalHere] {
+                overlays[place.tile, default: []].append(VGBOverlay(
+                    ref: VGBOverlayRef(type: "treasure", subType: "chest", id: BoardCoordinator.goalTreasureID, amount: nil),
+                    direction: "default", cells: [[place.x, place.y]]))
+            }
+            let numbered = (monsterCard.rooms?.first?.monster ?? []).filter { $0.marker != goalHere }
             for monster in numbered {
                 guard let marker = monster.marker, let place = roomCard.numbers[marker] else { continue }
                 func type(_ count: String?) -> String { monster.type ?? count ?? "none" }
@@ -65,7 +73,7 @@ enum RandomDungeonMap {
                     monster: monster.name, initialX: place.x, initialY: place.y,
                     twoPlayer: type(monster.player2), threePlayer: type(monster.player3), fourPlayer: type(monster.player4)))
             }
-            for thing in monsterCard.overlays ?? [] {
+            for thing in monsterCard.overlays ?? [] where thing.marker?.stringValue != goalHere {
                 guard let marker = thing.marker?.stringValue, let place = roomCard.numbers[marker],
                       let ref = overlayRef(thing, card: monsterCard.index, marker: marker) else { continue }
                 overlays[place.tile, default: []].append(VGBOverlay(ref: ref, direction: "default", cells: [[place.x, place.y]]))
