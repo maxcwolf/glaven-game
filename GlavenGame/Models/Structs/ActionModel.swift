@@ -11,6 +11,9 @@ struct SummonValueObject: Codable, Hashable {
     var flying: Bool?
     var level: Int?
     var count: Int?
+    /// The stats the card has an enhancement slot for ("move", "attack", "heal" — its hit
+    /// points — "range").
+    var enhancements: [String]?
 
     /// Convert to `SummonDataModel` for use with `CharacterManager.addSummon`.
     func toSummonData() -> SummonDataModel {

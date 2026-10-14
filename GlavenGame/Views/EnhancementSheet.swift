@@ -217,6 +217,13 @@ struct EnhancementSheet: View {
 
     /// The printed line a slot sits on: "Attack 3", or "Attack 3 · Pierce 2" for a sub-action.
     static func line(_ slot: CardEnhancing.Slot) -> String {
+        // A summon's stat: "Tattered Wolf · Hit Points 4", "… · Move 3".
+        if CardEnhancing.isSummonStat(slot) {
+            let summon = GameText.titleCased(slot.host.summonValueObject?.name ?? "Summon")
+            let value = slot.action.value?.intValue ?? 0
+            let stat = slot.action.type == .heal ? "Hit Points \(value)" : GameText.actionTitle(slot.action)
+            return "\(summon) · \(stat)"
+        }
         var host = slot.host
         host.subActions = nil
         let main = GameText.actionTitle(host)

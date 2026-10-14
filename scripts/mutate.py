@@ -136,6 +136,10 @@ M={
  "envelopeRewardIgnored": ("GlavenGame/Managers/ScenarioManager+Rewards.swift", "        for envelope in rewards.envelopes ?? [] { game.openEnvelope(envelope, how: \"a scenario's reward\") }\n", ""),
  "envelopeQuestIgnored": ("GlavenGame/Managers/CharacterManager.swift", "            if let envelope = quest.openEnvelope {", "            if false, let envelope = quest.openEnvelope {"),
  "envelopeOpenedTwice": ("GlavenGame/Managers/ClassUnlocks.swift", "        guard events.openedEnvelopes.insert(envelope).inserted else { return }", "        events.openedEnvelopes.insert(envelope)"),
+ "summonStatsNotSold": ("GlavenGame/Engine/CardEnhancing.swift", "                for (stat, name) in (summon.enhancements ?? []).enumerated() {", "                for (stat, name) in ([] as [String]).enumerated() {"),
+ "summonStatsPricedAsAbilities": ("GlavenGame/Engine/CardEnhancing.swift", "            isSummon: isSummonStat(slot), edition: edition)", "            isSummon: false, edition: edition)"),
+ "summonStatsNotApplied": ("GlavenGame/Engine/CardEnhancing.swift", "                result[index].summonValueObject = summon\n                continue", "                continue"),
+ "summonMadeFromTheBoxStats": ("GlavenGame/Board/PlayerTurnController.swift", "            if let printed = action.summonValueObject {\n                summonData.health = printed.health", "            if false, let printed = action.summonValueObject {\n                summonData.health = printed.health"),
 }
 # Scenario rules (the mechanisms of placements/gh.json): run against the scenario tests.
 SCENARIO_FILTER=("ScenarioSpecialRuleTests|ScenarioReauditTests|ScenarioEnforcedRuleTests|ScenarioLockTests|ScenarioGoalTests|"

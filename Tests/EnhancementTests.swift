@@ -53,6 +53,40 @@ final class EnhancementTests: XCTestCase {
         XCTAssertEqual(slots[1].host.type, .attack, "a slot on Pierce belongs to the attack")
     }
 
+    /// A summon's stats are slots of their own (GH p.47): +1 Move or Attack for 100 gold, +1 hit
+    /// point or Range for 50, nothing else — and the summon the card makes has them.
+    func testASummonsStatsAreEnhanced() throws {
+        let ally = try card("Relentless Ally", of: "two-mini")   // Tattered Wolf: 4 hit points, Move 3, Attack 2
+        let stats = CardEnhancing.slots(of: ally).filter(CardEnhancing.isSummonStat)
+        XCTAssertEqual(stats.map(EnhancementSheet.line), ["Tattered Wolf · Attack 2", "Tattered Wolf · Move 3", "Tattered Wolf · Hit Points 4"])
+        for slot in stats {
+            XCTAssertEqual(CardEnhancing.options(for: slot, edition: "gh"), [.plus1])
+            XCTAssertEqual(CardEnhancing.cost(.plus1, in: slot, card: ally, enhancements: [], edition: "gh"),
+                           slot.action.type == .heal ? 50 : 100)
+        }
+
+        gm.game.globalAchievements.insert(EnhancementsManager.enhancerAchievement)
+        let tyrant = addCharacter("two-mini", at: HexCoord(5, 5))
+        tyrant.loot = 500
+        let attack = try XCTUnwrap(stats.first { $0.action.type == .attack })
+        let health = try XCTUnwrap(stats.first { $0.action.type == .heal })
+        XCTAssertTrue(enhancer.buy(.plus1, in: attack, card: ally, for: tyrant))
+        XCTAssertTrue(enhancer.buy(.plus1, in: health, card: ally, for: tyrant))
+        XCTAssertEqual(tyrant.loot, 500 - 100 - (50 + 75), "the second on the card costs 75 more")
+
+        let other = try card("Venomous Ally", of: "two-mini")
+        tyrant.handCards = [ally.cardId!, other.cardId!]
+        coord.boardPhase = .execution
+        let turn = PlayerTurnController(characterID: tyrant.id, coordinator: coord, gameManager: gm)
+        coord.activePlayerTurn = turn
+        turn.selectCards(top: ally, bottom: other)
+        turn.executeCurrentAction()   // summon the Tattered Wolf
+        let wolf = try XCTUnwrap(tyrant.summons.last { $0.name == "tattered-wolf" })
+        XCTAssertEqual(wolf.attack.intValue, 3, "Attack 2 + 1")
+        XCTAssertEqual(wolf.maxHealth, 5, "4 hit points + 1")
+        XCTAssertEqual(wolf.movement, 3, "Move as printed")
+    }
+
     private static let elements: [EnhancementAction] = [.fire, .ice, .air, .earth, .light, .dark, .wild]
 
     /// What each kind of line takes (GH p.47): +1 on any line with a number; an element on any

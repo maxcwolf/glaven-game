@@ -2602,9 +2602,16 @@ final class PlayerTurnController {
             return false
         }
 
-        let summonData: SummonDataModel
+        var summonData: SummonDataModel
         if let found = character.characterData?.availableSummons?.first(where: { $0.name == summonName }) {
             summonData = found
+            // The card's own stats, with its enhancements (`CardEnhancing.apply`).
+            if let printed = action.summonValueObject {
+                summonData.health = printed.health
+                if let attack = printed.attack { summonData.attack = attack }
+                if let movement = printed.movement { summonData.movement = movement }
+                if let range = printed.range { summonData.range = range }
+            }
         } else if let embedded = action.summonValueObject {
             summonData = embedded.toSummonData()
         } else {
