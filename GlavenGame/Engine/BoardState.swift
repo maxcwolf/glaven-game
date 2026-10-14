@@ -125,6 +125,8 @@ final class BoardState {
     /// The conclusion section the scenario was won by, where its goal has more than one way
     /// (`ScenarioPlacements.Goal.conclusion`).
     var conclusion: String?
+    /// The item given up on the altar to win (Burning Mountain's artifact), once one is.
+    var sacrificed: String?
 
     /// A character has entered the hex the goal asks someone to reach (`Reach.enter`).
     var goalReached = false

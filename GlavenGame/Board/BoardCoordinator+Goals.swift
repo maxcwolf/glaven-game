@@ -131,9 +131,11 @@ extension BoardCoordinator {
     /// exhausted on an exit hex is remembered, since an escape is complete without them.
     func exhaustionLoss(of character: GameCharacter, at hex: HexCoord?) -> String? {
         guard let goal = scenarioGoal, !boardState.escapedCharacters.contains(character.id) else { return nil }
-        let onExit = goal.escape.map { exit in hex.map(exitHexes(exit).contains) ?? false } ?? false
+        // (An exit of one way of winning counts too: Burning Mountain's entrance.)
+        let exits = ([goal.escape] + (goal.either ?? []).map(\.escape)).compactMap { $0 }
+        let onExit = exits.contains { exit in hex.map(exitHexes(exit).contains) ?? false }
         guard let loss = exhaustionLoss(of: character, onExit: onExit, goal: goal) else {
-            if onExit, goal.escape?.leave != true, !boardState.exhaustedOnExit.contains(character.id) {
+            if onExit, !exits.contains(where: { $0.leave == true }), !boardState.exhaustedOnExit.contains(character.id) {
                 boardState.exhaustedOnExit.append(character.id)
             }
             return nil
@@ -250,6 +252,7 @@ extension BoardCoordinator {
         for id in goal.lootIDs ?? [] {
             guard treasureIsLooted(id) else { return false }
         }
+        if goal.sacrifices != nil, boardState.sacrificed == nil { return false }
         if let arrival = goal.arrive {
             guard objectiveEntities(arrival.objective).filter({ $0.tags.contains(Self.arrivedTag) }).count >= arrival.count
             else { return false }
@@ -283,6 +286,10 @@ extension BoardCoordinator {
             } else {
                 let exits = exitHexes(exit)
                 guard !standing.isEmpty, standing.allSatisfy(exits.contains) else { return false }
+                // "All characters return … before becoming exhausted."
+                if exit.all == true {
+                    guard party.allSatisfy({ !$0.exhausted || boardState.exhaustedOnExit.contains($0.id) }) else { return false }
+                }
             }
         }
         if let plates = goal.occupy {
@@ -336,6 +343,52 @@ extension BoardCoordinator {
     /// What the way a scenario ended changes besides its printed rewards, as the result is
     /// confirmed: won by one of several ways, that way's conclusion is read (its rewards apply);
     /// lost, a treasure the book resets is handed back.
+    /// The items a treasure tile gives ("item:110+115"), as item keys.
+    func treasureItems(_ id: String) -> [String] {
+        guard let gameManager, let edition = gameManager.game.scenario?.data.edition, let number = Int(id),
+              let reward = gameManager.editionStore.treasureReward(index: number, edition: edition) else { return [] }
+        return reward.split(separator: "|").filter { $0.hasPrefix("item:") }
+            .flatMap { $0.dropFirst("item:".count).split(separator: "+").compactMap { Int($0) } }
+            .map { "\(edition)-\($0)" }
+    }
+
+    /// "The character holding its items may end their turn on (g) and remove one of those items
+    /// from the game to complete the scenario": asked as such a turn ends (`Goal.sacrifices` on a
+    /// way of winning), before the goal is judged. The character may keep them all. Headless,
+    /// the first goes.
+    func offerSacrifice(by characterID: String, then go: @escaping () -> Void) {
+        guard let goal = scenarioGoal, boardState.sacrificed == nil,
+              let way = goal.either?.first(where: { $0.sacrifices != nil }), let treasure = way.sacrifices, let reach = way.reach,
+              reach.holding.map({ boardState.carriedBy[$0] == characterID }) ?? true,
+              let hex = boardState.piecePositions[.character(characterID)], isAt(reach, hex),
+              let character = party.first(where: { $0.id == characterID }), !character.exhausted else { return go() }
+        let items = treasureItems(treasure).filter(character.items.contains)
+        guard !items.isEmpty else { return go() }
+        if autoResolvePrompts {
+            sacrifice(items[0], by: character)
+            return go()
+        }
+        let generation = boardGeneration
+        let names = items.map { gameManager?.editionStore.itemData(key: $0)?.name ?? $0 }
+        Task { @MainActor [weak self] in
+            guard let self else { return }
+            let answer = await self.chooseOption(names.map { "Sacrifice \($0)" } + ["Keep them all"], title: "The altar",
+                                                 question: "\(self.characterName(characterID)) may give up one artifact to complete the scenario.",
+                                                 suggested: 0)
+            guard self.isCurrentBoard(generation) else { return }
+            if let answer, answer < items.count { self.sacrifice(items[answer], by: character) }
+            go()
+        }
+    }
+
+    private func sacrifice(_ item: String, by character: GameCharacter) {
+        character.items.removeAll { $0 == item }
+        character.itemsLeftBehind.removeAll { $0 == item }
+        boardState.sacrificed = item
+        let name = gameManager?.editionStore.itemData(key: item)?.name ?? item
+        log("\(characterName(character.id)) sacrifices \(name): it is removed from the game", category: .loot)
+    }
+
     func settleScenarioEnd(victory: Bool) {
         guard let gameManager, let scenario = gameManager.game.scenario else { return }
         if victory {

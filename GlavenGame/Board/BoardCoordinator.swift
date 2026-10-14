@@ -622,12 +622,16 @@ final class BoardCoordinator {
         lootAtEndOfTurn(characterID)
         noteCarriedSpends(after: characterID)
 
-        updateLocks(turnEnded: true)
-        // Rules that wait for where figures stand as a turn ends (every plate held).
-        gameManager?.scenarioRulesManager.evaluateRules(phase: .figureChange)
-        checkVictoryDefeat(turnEnded: true)
-        if scenarioResult == nil {
-            advanceToNextFigure()
+        // (Burning Mountain: the holder on the altar may give up an artifact to win.)
+        offerSacrifice(by: characterID) { [weak self] in
+            guard let self else { return }
+            self.updateLocks(turnEnded: true)
+            // Rules that wait for where figures stand as a turn ends (every plate held).
+            self.gameManager?.scenarioRulesManager.evaluateRules(phase: .figureChange)
+            self.checkVictoryDefeat(turnEnded: true)
+            if self.scenarioResult == nil {
+                self.advanceToNextFigure()
+            }
         }
     }
 

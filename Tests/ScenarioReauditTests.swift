@@ -344,13 +344,104 @@ final class ScenarioReauditTests: XCTestCase {
         let reputation = sim.gm.game.partyReputation, prosperity = sim.gm.game.partyProsperity
         stand(sim, 0, on: try XCTUnwrap(hexes(sim, "g").first))
         sim.coord.checkVictoryDefeat(turnEnded: true)
+        XCTAssertNil(sim.coord.pendingResult, "standing there isn't enough: an artifact must be given up")
+        // The holder's turn ends there: an artifact is given up (headless: the first), and it is won.
+        sim.coord.endCharacterTurn(sim.gm.game.characters[0].id)
+        XCTAssertEqual(sim.coord.boardState.sacrificed, "gh-110")
         XCTAssertEqual(sim.coord.pendingResult, .victory)
         XCTAssertEqual(sim.coord.boardState.conclusion, "82-A")
         sim.coord.scenarioResult = .victory
         sim.coord.confirmScenarioEnd()
         XCTAssertEqual(sim.gm.game.partyReputation, reputation + 1)
         XCTAssertEqual(sim.gm.game.partyProsperity, prosperity)
-        XCTAssertTrue(sim.gm.game.characters[0].items.contains("gh-110"), "won: the treasure is kept")
+        XCTAssertFalse(sim.gm.game.characters[0].items.contains("gh-110"), "the one sacrificed is gone")
+        XCTAssertTrue(sim.gm.game.characters[0].items.contains("gh-115"), "won: the other is kept")
+    }
+
+    /// "The character holding its items may end their turn on (g) and remove one of those items
+    /// from the game": the holder chooses which, or keeps both; no one else is asked, nor the
+    /// holder anywhere else.
+    func testTheHolderChoosesWhichArtifactToSacrifice() async throws {
+        let sim = try simulator("82", auto: false)
+        try lootTheMountainsChest(sim)
+        let coord = sim.coord
+        let brute = sim.gm.game.characters[0], weaver = sim.gm.game.characters[1]
+        let altar = try XCTUnwrap(hexes(sim, "g").first)
+        func offer(_ id: String) async -> Bool {
+            var went = false
+            coord.offerSacrifice(by: id) { went = true }
+            for _ in 0..<50 where !went {
+                if let pending = coord.pendingOptionChoice {
+                    XCTAssertEqual(pending.options, ["Sacrifice \(sim.gm.editionStore.itemData(key: "gh-110")?.name ?? "")",
+                                                     "Sacrifice \(sim.gm.editionStore.itemData(key: "gh-115")?.name ?? "")", "Keep them all"])
+                    return true
+                }
+                await Task.yield()
+            }
+            return false
+        }
+        // Off the altar, or not the holder: nothing is asked.
+        stand(sim, 1, on: altar)
+        let asked = await offer(weaver.id)
+        XCTAssertFalse(asked, "the Spellweaver holds nothing")
+        stand(sim, 0, on: try XCTUnwrap(coord.boardState.startingLocations.first))
+        let askedAway = await offer(brute.id)
+        XCTAssertFalse(askedAway, "the holder away from the altar")
+
+        stand(sim, 1, on: try XCTUnwrap(coord.boardState.startingLocations.last))
+        stand(sim, 0, on: altar)
+        var asking = await offer(brute.id)
+        XCTAssertTrue(asking)
+        coord.resolveOptionChoice(2)
+        for _ in 0..<20 { await Task.yield() }
+        XCTAssertNil(coord.boardState.sacrificed, "kept them all")
+        XCTAssertTrue(brute.items.contains("gh-110") && brute.items.contains("gh-115"))
+        coord.checkVictoryDefeat(turnEnded: true)
+        XCTAssertNil(coord.pendingResult)
+
+        asking = await offer(brute.id)
+        XCTAssertTrue(asking)
+        coord.resolveOptionChoice(1)
+        for _ in 0..<20 { await Task.yield() }
+        XCTAssertEqual(coord.boardState.sacrificed, "gh-115")
+        XCTAssertTrue(brute.items.contains("gh-110"))
+        XCTAssertFalse(brute.items.contains("gh-115"), "removed from the game")
+        coord.checkVictoryDefeat(turnEnded: true)
+        XCTAssertEqual(coord.pendingResult, .victory)
+        XCTAssertEqual(coord.boardState.conclusion, "82-A")
+        let again = await offer(brute.id)
+        XCTAssertFalse(again, "once is enough")
+    }
+
+    /// "All characters return to an entrance hex before becoming exhausted": one exhausted
+    /// elsewhere makes Conclusion B impossible; exhausted on an entrance hex, they have returned.
+    func testEscapingTheMountainNeedsEveryoneBack() throws {
+        let sim = try simulator("82", characters: ["brute", "spellweaver", "tinkerer"])
+        try lootTheMountainsChest(sim)
+        let coord = sim.coord
+        let entrance = coord.boardState.startingLocations
+        let tinkerer = sim.gm.game.characters[2]
+        stand(sim, 0, on: entrance[0])
+        stand(sim, 1, on: entrance[1])
+        let away = try XCTUnwrap(coord.boardState.cells.keys.sorted().first { coord.isEmptyHex($0) && !entrance.contains($0) })
+        stand(sim, 2, on: away)
+        tinkerer.exhausted = true
+        XCTAssertNil(coord.exhaustionLoss(of: tinkerer, at: away), "not the holder: no loss")
+        coord.checkVictoryDefeat(turnEnded: true)
+        XCTAssertNil(coord.pendingResult, "the Tinkerer never got back")
+
+        let back = try simulator("82", characters: ["brute", "spellweaver", "tinkerer"])
+        try lootTheMountainsChest(back)
+        let gate = back.coord.boardState.startingLocations
+        stand(back, 0, on: gate[0])
+        stand(back, 1, on: gate[1])
+        stand(back, 2, on: gate[2])
+        back.gm.game.characters[2].exhausted = true
+        XCTAssertNil(back.coord.exhaustionLoss(of: back.gm.game.characters[2], at: gate[2]))
+        XCTAssertTrue(back.coord.boardState.exhaustedOnExit.contains(back.gm.game.characters[2].id))
+        back.coord.checkVictoryDefeat(turnEnded: true)
+        XCTAssertEqual(back.coord.pendingResult, .victory, "exhausted on the entrance, they had returned")
+        XCTAssertEqual(back.coord.boardState.conclusion, "82-B")
     }
 
     /// Escaping with both artifacts is Conclusion B: −1 reputation, −2 prosperity (which never

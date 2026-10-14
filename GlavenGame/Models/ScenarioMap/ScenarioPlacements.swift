@@ -175,6 +175,10 @@ struct ScenarioPlacements: Codable, Equatable {
         /// The conclusion section read when the scenario is won this way ("82-A"): its rewards
         /// are applied with the scenario's own. Set on the alternatives of `either`.
         var conclusion: String?
+        /// The treasure (its number) of whose items the character reaching `reach` gives one up,
+        /// chosen as their turn ends there: won this way only once one is (#82: "remove one of
+        /// those items from the game to complete the scenario").
+        var sacrifices: String?
 
         // MARK: Lost
 
@@ -249,6 +253,9 @@ struct ScenarioPlacements: Codable, Equatable {
         /// A character on an exit hex as a round ends leaves the scenario; it is won when all
         /// have left. Without it, all must stand on exit hexes at once.
         var leave: Bool?
+        /// Every character must get there "before becoming exhausted": one exhausted anywhere
+        /// but on an exit hex makes this way impossible (#82). Without it, the exhausted don't count.
+        var all: Bool?
     }
 
     struct Plates: Codable, Hashable {
