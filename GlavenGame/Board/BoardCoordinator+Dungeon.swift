@@ -167,6 +167,12 @@ extension BoardCoordinator {
             owePenaltyCards(count, by: targets(who), lose: true, penalty: "The room's penalty.")
         case .discardCards(let count, let who):
             owePenaltyCards(count, by: targets(who), lose: false, penalty: "The room's penalty.")
+        case .spendAllSpendable:
+            for character in party { useUp(character, spend: true, consume: false) }
+        case .consumeAndSpendAll:
+            for character in party { useUp(character, spend: true, consume: true) }
+        case .consumeSmallItem:
+            for character in party { consumeOneSmallItem(of: character) }
         case .noConsuming:
             addDungeonEffect(ScenarioPlacements.Effect(on: "party", noConsuming: true))
         case .enemyHealEachTurn(let amount):
@@ -193,5 +199,37 @@ extension BoardCoordinator {
         guard amount > 0 else { return }
         let healed = heal(pieceID, amount: amount, source: pieceID)
         if healed > 0 { log("\(name(pieceID)) heals \(healed)", category: .heal) }
+    }
+
+    /// Items a penalty uses up: every unused spendable one spent (`spend`), every unused
+    /// consumable one consumed (`consume`).
+    func useUp(_ character: GameCharacter, spend: Bool, consume: Bool) {
+        var used: [String] = []
+        for key in character.carriedItems where !character.spentItems.contains(key) && !character.consumedItems.contains(key) {
+            guard let item = itemData(key) else { continue }
+            if spend && item.spent { character.spentItems.insert(key); used.append(item.name) }
+            if consume && item.consumed { character.consumedItems.insert(key); used.append(item.name) }
+        }
+        if !used.isEmpty { log("\(characterName(character.id)) uses up \(GameText.list(used))", category: .info) }
+    }
+
+    /// Hallway's minor penalty: one small item consumed, the player's choice of those still
+    /// ready (headless, the first).
+    func consumeOneSmallItem(of character: GameCharacter) {
+        let ready = character.carriedItems.filter { key in
+            !character.consumedItems.contains(key) && itemData(key)?.slot == .small
+        }
+        guard !ready.isEmpty else { return }
+        func consume(_ key: String) {
+            character.consumedItems.insert(key)
+            log("\(characterName(character.id)) consumes \(itemData(key)?.name ?? key)", category: .info)
+        }
+        guard ready.count > 1, !autoResolvePrompts else { consume(ready[0]); return }
+        Task { @MainActor in
+            let names = ready.map { itemData($0)?.name ?? $0 }
+            let choice = await chooseOption(names, title: characterName(character.id),
+                                            question: "The room's penalty: which small item do you consume?") ?? 0
+            consume(ready[min(max(0, choice), ready.count - 1)])
+        }
     }
 }

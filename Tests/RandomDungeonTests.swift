@@ -524,6 +524,31 @@ final class RandomDungeonTests: XCTestCase {
         }
     }
 
+    /// Trail's and Hallway's penalties: spendable items spent; one small item consumed; every
+    /// item spent or consumed.
+    func testItemPenaltiesUseItemsUp() throws {
+        let gm = try startDungeon()
+        let coord = gm.boardCoordinator
+        coord.autoResolvePrompts = true
+        let items = gm.editionStore.items(for: "gh")
+        let spendable = try XCTUnwrap(items.first { $0.spent && $0.slot != .small })
+        let small = try XCTUnwrap(items.first { $0.consumed && $0.slot == .small })
+        let brute = try XCTUnwrap(gm.game.characters.first)
+        brute.items = [spendable.itemKey, small.itemKey]
+
+        coord.useUp(brute, spend: true, consume: false)                 // Trail, minor
+        XCTAssertEqual(brute.spentItems, [spendable.itemKey])
+        XCTAssertTrue(brute.consumedItems.isEmpty)
+
+        coord.consumeOneSmallItem(of: brute)                            // Hallway, minor
+        XCTAssertEqual(brute.consumedItems, [small.itemKey])
+
+        brute.spentItems = []; brute.consumedItems = []
+        coord.useUp(brute, spend: true, consume: true)                  // Hallway, major
+        XCTAssertEqual(brute.spentItems, [spendable.itemKey])
+        XCTAssertEqual(brute.consumedItems, [small.itemKey])
+    }
+
     // MARK: - Reading the cards
 
     /// Draws each written room card as the game lays it out, its numbers in red and its
