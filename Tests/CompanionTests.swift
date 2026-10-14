@@ -46,6 +46,9 @@ final class CompanionTests: XCTestCase {
         board.removePiece(foe)
         board.placePiece(foe, at: spot)
         let first = try card(sim, top), second = try card(sim, bottom)
+        // (No miss drawn: the attacks these tests count on land.)
+        let zeros = (0..<20).map { _ in AttackModifier.standard(.plus0) }
+        tyrant(sim).attackModifierDeck = AttackModifierDeck(attackModifiers: zeros, cards: zeros)
         tyrant(sim).handCards = [first.cardId!, second.cardId!]
         coord.boardPhase = .execution
         let turn = PlayerTurnController(characterID: tyrant(sim).id, coordinator: coord, gameManager: sim.gm)
