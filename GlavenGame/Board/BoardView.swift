@@ -1506,7 +1506,8 @@ struct DidNothingNotice: View {
                 try? await Task.sleep(for: .seconds(Self.seconds))
                 if !Task.isCancelled { onDone() }
             }
-            .accessibilityAddTraits(.updatesFrequently)
+            .accessibilityAddTraits(.isButton)
+            .accessibilityHint("Dismisses the note")
             .onAppear { AccessibilityNotification.Announcement(notice.text).post() }
     }
 }
