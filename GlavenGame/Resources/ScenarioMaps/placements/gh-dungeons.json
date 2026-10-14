@@ -1,0 +1,5 @@
+{
+  "rooms": [
+    {"name": "Trail", "card": 547, "tiles": [{"ref": "f1b", "matchTurns": 0}], "entrances": [{"type": "A", "tile": "f1b", "x": 1, "y": 9}], "exits": [{"type": "B", "tile": "f1b", "x": -1, "y": 1}], "numbers": {"1": {"tile": "f1b", "x": 0, "y": 4}, "2": {"tile": "f1b", "x": 0, "y": 3}, "3": {"tile": "f1b", "x": 2, "y": 4}, "4": {"tile": "f1b", "x": 1, "y": 3}, "5": {"tile": "f1b", "x": 0, "y": 6}, "6": {"tile": "f1b", "x": 1, "y": 6}, "7": {"tile": "f1b", "x": 1, "y": 4}, "8": {"tile": "f1b", "x": 2, "y": 2}, "9": {"tile": "f1b", "x": 1, "y": 2}, "10": {"tile": "f1b", "x": 0, "y": 0}, "11": {"tile": "f1b", "x": 1, "y": 5}, "12": {"tile": "f1b", "x": 2, "y": 0}}, "overlays": [{"type": "obstacle", "subType": "boulder-1", "tile": "f1b", "cells": [[0, 2]]}, {"type": "obstacle", "subType": "boulder-1", "tile": "f1b", "cells": [[2, 6]]}], "minor": "All characters spend all spendable items.", "major": "All enemies add +1 Move to all of their moves and +1 Range to all of their attacks."}
+  ]
+}

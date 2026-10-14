@@ -1,0 +1,81 @@
+import Foundation
+
+/// A random dungeon (rulebook pp. 50–51): three rooms, each a room card's map with a monster
+/// card's figures, traps, terrain and treasure on its twelve numbered hexes. The next room is
+/// set up only when its door is opened, through an exit of the type (A or B) the next room's
+/// entrance has: room cards whose entrance doesn't match are discarded from the top of the deck.
+///
+/// The game draws the whole dungeon as the scenario starts — a room behind every exit, since
+/// the party may leave a room by either of two exits — and keeps the draws, so the same map is
+/// built again from a save. Only the rooms the party reaches are ever revealed.
+struct RandomDungeon: Codable, Equatable {
+    /// A drawn room: its room card, its monster card, and the room behind each of its exits.
+    struct Room: Codable, Equatable {
+        /// The room card's name ("Trail").
+        var room: String
+        /// The monster card's index ("554").
+        var monsters: String
+        /// The room behind each exit of the room card, in the card's order; empty in the last room.
+        var next: [Room]
+        /// Which of the room card's entrances the party comes in by (or starts at).
+        var entrance: Int
+    }
+
+    var first: Room
+    /// How many rooms deep the dungeon goes (three).
+    var depth: Int = 3
+
+    /// The rooms on the way from the first, by the exits taken.
+    func room(at path: [Int]) -> Room? {
+        var room = first
+        for index in path {
+            guard index < room.next.count else { return nil }
+            room = room.next[index]
+        }
+        return room
+    }
+
+    // MARK: - Drawing
+
+    /// Draws a dungeon from shuffled decks. `roomCards` and `monsterCards` limit the decks
+    /// (#55 Foggy Thicket uses six of each); nil is the whole deck.
+    static func draw(rooms allRooms: [DungeonRoomCard], monsterCards allMonsters: [String],
+                     roomCards: [String]? = nil, monsterCardsUsed: [String]? = nil,
+                     random: inout GameRandom) -> RandomDungeon? {
+        var roomDeck = allRooms.filter { card in roomCards.map { $0.contains(card.name) } ?? true }
+        var monsterDeck = allMonsters.filter { monsterCardsUsed?.contains($0) ?? true }
+        roomDeck.shuffle(using: &random)
+        monsterDeck.shuffle(using: &random)
+        guard !roomDeck.isEmpty, !monsterDeck.isEmpty else { return nil }
+        var monsterDiscard: [String] = []
+
+        func nextMonsters() -> String {
+            if monsterDeck.isEmpty {
+                monsterDeck = monsterDiscard.shuffled(using: &random)
+                monsterDiscard = []
+            }
+            let card = monsterDeck.removeFirst()
+            monsterDiscard.append(card)
+            return card
+        }
+
+        // Every exit leads somewhere: the rooms behind both exits come from the one deck, so a
+        // room card is never in the dungeon twice.
+        func build(_ card: DungeonRoomCard, entrance: Int, depth: Int) -> Room {
+            var room = Room(room: card.name, monsters: nextMonsters(), next: [], entrance: entrance)
+            guard depth > 1 else { return room }
+            for exit in card.exits {
+                guard let index = roomDeck.firstIndex(where: { $0.entranceTypes.contains(exit.type) }) else { continue }
+                // The cards above it don't match the exit: they are discarded.
+                let next = roomDeck[index]
+                roomDeck.removeFirst(index + 1)
+                let way = next.entrances.firstIndex { $0.type == exit.type } ?? 0
+                room.next.append(build(next, entrance: way, depth: depth - 1))
+            }
+            return room
+        }
+
+        let first = roomDeck.removeFirst()
+        return RandomDungeon(first: build(first, entrance: 0, depth: 3))
+    }
+}

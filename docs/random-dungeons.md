@@ -1,0 +1,73 @@
+# Random dungeons
+
+The random dungeon deck (rulebook pp. 50–51, "Game Variant: Random Dungeon Deck"): instead of a
+scenario from the book, the party plays three rooms, each set up from a **room card** (a map, twelve
+numbered hexes, obstacles, A/B entrances and exits, a minor and a major penalty) and a **monster
+card** (what goes on each number — monsters by player count, traps, terrain, loot, a treasure).
+The next room is set up when its door is opened. The goal is to clear all three rooms. A random
+dungeon doesn't progress the campaign: it gives experience, gold, checkmarks and personal quest
+progress. Scenario #55 Foggy Thicket is one, from six room and six monster cards, with a treasure
+on the third room's "12".
+
+## The rules, as the game reads them
+
+- RD-1 Three rooms; each from the top of the shuffled room and monster decks.
+- RD-2 Exits and entrances are A or B. The next room must have an entrance of the type of the
+  exit used: room cards from the top that don't match are discarded.
+- RD-3 Two exits: the party uses either; the other is closed off. Two entrances: the one matching
+  the exit used (in the first room the party chooses where to start).
+- RD-4 First room: characters start on any empty hex within two hexes of the entrance.
+- RD-5 Entrances and exits are the half-hex at the tile's puzzle connection nearest the arrow.
+- RD-6 Penalties as a room is revealed: suggested none in the first room, the minor penalty of
+  the second, the major penalty of the third; players may raise it up to the major penalty of
+  every room. "The character who opened the door" in the first room: the players choose who;
+  "the previous room" in the first room: nothing happens.
+- RD-7 Treasure tiles hold what the monster card prints (never campaign content); traps do what
+  the card's trap line says (the red damage symbol = a damage trap).
+- RD-8 Running out of an overlay tile: use a comparable one. Standee numbers are random; running
+  out of a monster type, as usual.
+
+## Data
+
+- **Monster cards** are in the edition data: `EditionData/gh/sections/rnd-554.json` … `rnd-573.json`
+  (group `randomMonsterCard`: `rooms[0].monster` by `marker`, `overlays` by `marker` with traps'
+  effects and treasures' contents).
+- **Room cards** are not in any data set. They are written by hand from the cards into
+  `Resources/ScenarioMaps/placements/gh-dungeons.json` (`DungeonRoomCard`, `DungeonCardStore`),
+  in tile coordinates: `tiles` (with `matchTurns`, the turn at which the card draws the tile, and a
+  `join` for a room's second tile), `entrances`/`exits` (type and the half-hex), `numbers`,
+  `overlays`, `minor`, `major`.
+- Reading a card: `TILE_SHEET=f1b TILE_SHEET_TURNS=0 TILE_SHEET_OUT=/tmp/tiles swift test --filter testRenderTileSheet`
+  draws a tile with its coordinates (the ring just off the edge in cyan). Checking a written
+  card: `ROOM_SHEET=all ROOM_SHEET_OUT=/tmp/rooms swift test --filter testRenderRoomSheet` draws each
+  room as the game lays it out with its numbers, entrances and exits. Card images: Worldhaven,
+  `images/random-dungeons/gloomhaven/` (not bundled).
+
+## How it is built
+
+- `RandomDungeon` (Engine): the draws — room card, monster card, the entrance used, and the room
+  behind each exit (both exits of a room, so either can be taken). `RandomDungeon.draw` follows
+  RD-1/RD-2 from one shared pair of decks, so no room card is in a dungeon twice. Kept in the save
+  and built again from it.
+- `RandomDungeonMap.build` (Engine): the dungeon as the map data's tile tree (`VGBScenario`) — the
+  first room is the root; each next room hangs from its exit as a door, turned so it lies on the
+  far side of the door and covers no room before it; a room's second tile joins by a corridor.
+  Monster card figures become map monsters by player count, its things become overlays (coin,
+  chest with id `rnd-<card>-<number>`, trap, terrain), its traps' effects a `ScenarioTraps`; the
+  first room gets starting hexes (RD-4).
+
+## Status (2026-10-14)
+
+Built: the data model and loader, the draw, the map. Being written: the twenty room cards (Trail
+done and checked against its card). Still to do, in order:
+
+1. The rest of the room cards, each checked with `testRenderRoomSheet` against its card.
+2. Starting one: a synthetic scenario (`ScenarioData`: the monsters of every card drawn, a room per
+   drawn room with its monsters) and the map built from the save; offered in town as "Random
+   Dungeon", and for #55 with its decks.
+3. The second exit closed off when one is opened (RD-3); the first room's entrance chosen.
+4. Winning: every enemy dead with the last room revealed; rewards without campaign progress.
+5. Penalties (RD-6), with the difficulty as a choice; treasures' contents (RD-7).
+6. #55: the six-card decks, three −1 cards, the third room's "12" a treasure only a Loot action
+   takes, the goal to loot it.
+7. The simulator playing random dungeons; tests and mutations for each rule.
