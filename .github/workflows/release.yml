@@ -18,7 +18,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
@@ -54,7 +54,7 @@ jobs:
           fi
 
       - name: Upload release notes
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: release-notes
           path: release_notes.md
@@ -64,7 +64,7 @@ jobs:
     runs-on: self-hosted
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Import signing certificate
         env:
@@ -177,7 +177,7 @@ jobs:
           echo "Notarization complete"
 
       - name: Upload DMG
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: dmg
           path: GlavenGame-*.dmg
@@ -194,12 +194,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Download release notes
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: release-notes
 
       - name: Download DMG
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: dmg
 
