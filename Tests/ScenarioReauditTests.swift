@@ -380,10 +380,13 @@ final class ScenarioReauditTests: XCTestCase {
             }
             return false
         }
-        // Off the altar, or not the holder: nothing is asked.
+        // Off the altar, or not the holder: nothing is asked — even of one who has an artifact
+        // of the same kind, but not the chest's.
+        weaver.items.append("gh-115")
         stand(sim, 1, on: altar)
         let asked = await offer(weaver.id)
-        XCTAssertFalse(asked, "the Spellweaver holds nothing")
+        XCTAssertFalse(asked, "the Spellweaver doesn't hold the artifacts")
+        weaver.items.removeAll()
         stand(sim, 0, on: try XCTUnwrap(coord.boardState.startingLocations.first))
         let askedAway = await offer(brute.id)
         XCTAssertFalse(askedAway, "the holder away from the altar")
