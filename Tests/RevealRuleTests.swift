@@ -221,8 +221,15 @@ final class RevealRuleTests: XCTestCase {
         XCTAssertEqual(coord.boardState.doors.filter { halves.contains($0.coord) }.map(\.isOpen), [true, true])
 
         sim = try ScenarioSimulator(scenario: "76", options: .init(seed: 1, autoResolvePrompts: true))
-        coord.openScenarioRooms((game.scenario?.data.rooms ?? []).map(\.roomNumber))   // the whole map, to find two together
-        let walls = coord.boardState.doors
+        // The whole map, to find two together: a wall broken down into each room.
+        for _ in 0..<10 {
+            let shown = Set(coord.boardState.visibleRooms.map { $0.lowercased() })
+            guard let next = coord.boardState.doors.first(where: { !$0.isOpen && !shown.contains($0.childTileRef.lowercased()) }),
+                  let piece = coord.boardState.piece(at: next.coord) else { break }
+            coord.sufferDamage(999, to: piece, killer: .character(game.characters[0].id))
+        }
+        XCTAssertEqual(coord.boardState.visibleRooms.count, 7)
+        let walls = coord.boardState.doors.filter { !$0.isOpen }
         let wall = try XCTUnwrap(walls.first { a in walls.contains { $0.coord != a.coord && a.coord.neighbors.contains($0.coord) } },
                                  "two walls side by side")
         XCTAssertEqual(BoardBuilder.doorHexes(ofTheDoorAt: wall.coord, on: coord.boardState), [wall.coord])

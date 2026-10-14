@@ -199,7 +199,7 @@ extension BoardCoordinator {
     /// judged only as a turn ends (`turnEnded`).
     func goalMet(_ goal: ScenarioPlacements.Goal, turnEnded: Bool = true) -> Bool {
         guard let game = gameManager?.game, let scenario = game.scenario else { return false }
-        let allRoomsRevealed = boardState.doors.allSatisfy(\.isOpen)
+        let allRoomsRevealed = allRoomsRevealed
         let hostile = game.monsters.filter { !MonsterAI.isAllyFaction($0) && goal.spare?.contains($0.name) != true }
 
         for index in goal.destroy ?? [] {

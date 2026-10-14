@@ -12,8 +12,8 @@ means the data and code that enforce the rule were found, and usually a test tha
 that the scenario was played through. Keep it current: when a rule is built, rewrite its row in
 the same commit (see [../rules-work.md](../rules-work.md)).
 
-**447 rules: 425 done, 10 partial, 12 missing.**
-87 of 95 scenarios have every printed rule done. The other 8: #55 (6 missing, 1 partial), #76 (4 missing, 2 partial), #52 (1 missing, 1 partial), #68 (1 missing, 1 partial), #79 (0 missing, 1 partial), #82 (0 missing, 2 partial), #38 (0 missing, 1 partial), #47 (0 missing, 1 partial).
+**447 rules: 434 done, 6 partial, 7 missing.**
+90 of 95 scenarios have every printed rule done. The other 5: #55 (6 missing, 1 partial), #68 (1 missing, 1 partial), #79 (0 missing, 1 partial), #82 (0 missing, 2 partial), #38 (0 missing, 1 partial).
 
 Rules that were enforced wrongly, as against not at all, are findings of the engine audit
 ([../audits/2026-10-09-rules-audit.md](../audits/2026-10-09-rules-audit.md), rows S1-…, S2-…),
@@ -45,13 +45,13 @@ order", has the same list as tasks). The rows below say what the game does today
 - **Bosses.** #21: the altar that shares the Prime Demon's hit points, takes its damage, jumps
   a → f and summons by where it lands. #34: the Elder Drake on three hexes, its Zephyrs and its
   flight between perches. #79: the Betrayer's forced "Move 4" and its mind control.
-- **Walls and obstacles with hit points.** #76's destructible walls (and its three discarded
-  cards, the Stun, summons leaving walls alone), #95's boulders (built 2026-10-13), #52's centre-room obstacles
-  that jumping and flying figures still cross and that don't block sight.
+- **Walls and obstacles with hit points.** All built (2026-10-13): #76's walls broken down by
+  damage (`walls`: their hit points, the Stun, summons leaving them alone, the rooms behind) and
+  its three discarded cards (`discardAtStart`), #95's boulders, #52's centre-room obstacles that
+  nothing jumps, flies over or sees past (`indestructible.solid`).
 - **Small ones.** #38's Orchid heads for the nearest enemy, not the shaman; #68's tree can take a
-  condition given to allies, and a poisoned summon doesn't avoid water; #52's starting hexes
-  aren't limited to sections with monsters; a Push or Pull printed as its own ability ignores
-  immunity (#34, #47).
+  condition given to allies, and a poisoned summon doesn't avoid water. (Built 2026-10-13: #52's
+  starting hexes, `startAmongMonsters`; a Push or Pull chosen by itself honours immunity, #34, #47.)
 - **#55 Foggy Thicket** is a random dungeon with no map: it can't be started at all.
 
 ### 1 · Black Barrow
@@ -422,7 +422,7 @@ order", has the same list as tasks). The rows below say what the game does today
 | Goal: kill the Sightless Eye | done | placements `goal.kill: ["the-sightless-eye"]` |
 | Setup: each character adds 3 Curse cards | done | scenario `rules[0]`: `amAdd` `curse:3` |
 | Section 1: at the end of each round every character and summon still on the J tile suffers 3+L damage | done | placements `rules[0]`: `round: "true"` (round end), `requiredRooms: [2]`, `damage` `3+L` on `characterWithSummon` picked by `tile: "j1a"` → `ScenarioRulesManager` (a character's damage is queued in `ruleDamageDue`, a summon's suffered at once); nothing before door 1 is open; the brief says it (`notes`); `ScenarioSpecialRuleTests.testTheFirstCaveOfTheLairHurtsThoseWhoStay` |
-| Section 1: the Sightless Eye cannot be forced to move or have its position changed | partial | `the-sightless-eye.json` lists `pull`/`push` in `immunities`, and `performPushPull` now returns for a target whose `immunities` hold the push or pull ("can't be pushed"); `ScenarioSpecialRuleTests.testAnImmovableBossIsNotPushed`. A Push or Pull printed as its own ability, made after the attack, goes through `beginStandalonePushPull` → `beginPushPull`, which has no such check (engine audit N17), so that one would still move it |
+| Section 1: the Sightless Eye cannot be forced to move or have its position changed | done | `the-sightless-eye.json` lists `pull`/`push` in `immunities`; `performPushPull` returns for a target whose `immunities` hold the push or pull (`ScenarioSpecialRuleTests.testAnImmovableBossIsNotPushed`), and `forcedMoveSteps` offers no hex for one, so a Push or Pull chosen as an ability of its own moves it no more than an attack's does (2026-10-13, `PerchTests`, mutation `immovableMovedByAChosenPush`) |
 | Boss Special 1: before attacking, summons one Deep Terror — normal (2 characters), elite (3–4) | done | special 1: `summon` deep-terror `player2: normal, player3/4: elite`, then the area attack → `performSummon` → `summonMonster` (adjacent hex, doesn't act this round) |
 | Boss Special 2: before attacking, summons one Deep Terror — normal (2–3), elite (4) | done | special 2: `summon` deep-terror `player2/3: normal, player4: elite`, then the area attack |
 
@@ -468,8 +468,8 @@ order", has the same list as tasks). The rows below say what the game does today
 | Goal: every character loots one treasure tile | done | placements `goal.loot: "each"`; `mayLootGoalTreasure` lets each character loot only one; `goalLooters` tracks who has |
 | Lose: a character is exhausted before looting a treasure tile | done | placements `lostIfExhausted: ["beforeLoot"]` → `exhaustionLoss` |
 | Setup: each character adds 2 Curse cards | done | scenario `rules[0]`: `amAdd` `curse:2` at `R == 1`, `start` → `ScenarioRulesManager.applyAmAdd` (the data's three was corrected to the book's two); `ScenarioSpecialRuleTests.testSetupCardCountsAreTheBooks` |
-| Setup: characters may only start in sections of the center room that contain monsters | missing | unchanged: the four starting hexes of M1a are all offered whatever the character count (`freeStartingHexes` only knows `splitStart`); nothing ties a starting hex to monsters being in its section. Needs the sections written as data |
-| Center-room obstacles cannot be destroyed or moved through in any way, and block line of sight for ranged abilities | partial | can't be destroyed: placements `indestructible.tiles: ["m1a"]` → `isDestructibleObstacle` (`ScenarioReauditTests.testWhatTheScenarioSaysCantBeDestroyedIsnt`). Not enforced: a jumping or flying figure still crosses them as it does any obstacle (`Pathfinder`), and they don't block line of sight (`LineOfSight` counts only walls) |
+| Setup: characters may only start in sections of the center room that contain monsters | done | placements `startAmongMonsters: true` → `freeStartingHexes` offers a starting hex only if its section — the hexes of its tile that can be walked to from it, obstacles in the way (`startsAmongMonsters`) — holds a monster. The boulders cut M1a into four sections with one starting hex each; two characters find monsters in two of them, three in three, four in all (`SolidObstacleTests.testCharactersStartOnlyInSectionsThatHoldMonsters`) |
+| Center-room obstacles cannot be destroyed or moved through in any way, and block line of sight for ranged abilities | done | placements `indestructible: {"tiles": ["m1a"], "solid": true}`: not destroyed (`isDestructibleObstacle`, `ScenarioReauditTests.testWhatTheScenarioSaysCantBeDestroyedIsnt`), and each of the room's 11 obstacle hexes is `HexCell.solid` — `Pathfinder` stops a jump or a flight at it as it does a walk, a flier isn't pushed onto it (`forcedMoveSteps`), and `LineOfSight` treats it as a wall hex. Range is still counted across it: the book makes it block sight, not distance (`SolidObstacleTests`) |
 | Treasure tiles are looted only by a Loot action, or by an adjacent character forgoing a bottom action; never at end of turn | done | placements `lootActionOnly: true` → a goal tile is taken only by a Loot ability (`lootHexes` with `byLootAction`), never by ending a turn on it or walking over it (`ScenarioGoalTests.testGoalTreasureThatNeedsALootAction`); placements `forgo: [{"treasure": true, "bottom": true}]` → "Loot the Treasure" beside the basic Move for a character next to a goal tile who has yet to loot one: the bottom action is given up, its card discarded, the tile looted (`ScenarioSpecialRuleTests.testATreasureBesideACharacterIsLootedForABottomActionGivenUp`) |
 
 ### 53 · Crypt Basement
@@ -693,12 +693,12 @@ order", has the same list as tasks). The rows below say what the game does today
 ### 76 · Harrower Hive
 | Rule (from the book) | Status | Where / what's missing |
 |---|---|---|
-| Goal: reveal all rooms and kill all enemies | partial | no placements entry: the default goal (`checkVictoryDefeat`) needs every enemy dead and every door on the board open. The walls are doors (below), so every wall must be opened, not just one into each room |
-| Setup: each character discards three ability cards (scenario effect) | missing | `76.json` has no `rules` and there is no placements entry; no code discards cards at a scenario's start (it would need a prompt before round 1) |
-| Walls (a): C+(L/2) HP rounded up, destroyed by damage, attacked like an enemy | missing | the map data's 23 `breakable-wall` connectors become ordinary closed doors (`BoardBuilder` records every non-corridor connector as a door): a character opens one by walking into it; no hit points, nothing to attack. It would need doors that are objectives |
-| Summons attack walls only when directly controlled | missing | walls aren't attackable at all |
-| Each tile is a separate room; a destroyed wall reveals the room(s) behind it and becomes a corridor | partial | each tile is its own room and opening a wall-door reveals the tile behind it with its monsters, overlays and onward walls, whichever wall it is entered by (`MapRevealTests.testARoomIsTheSameWhicheverDoorItIsEnteredBy`, `BoardSimulationTests.testOpeningDoorsRevealsWholeMap`) — but the wall is opened by walking into it rather than destroyed, and its hex stays an open door, not a corridor |
-| When a wall is destroyed all enemies adjacent to it gain STUN | missing | no code: opening a wall-door stuns no one |
+| Goal: reveal all rooms and kill all enemies | done | the default goal, read for a scenario with placements `walls`: "every room revealed" is every room of the scenario's data on the map (`everyRoomIsRevealed`), not every connector open — one wall into each room is enough and the others may stand (`WallTests.testTheGoalNeedsEveryRoomNotEveryWall`) |
+| Setup: each character discards three ability cards (scenario effect) | done | placements `discardAtStart: 3` → `BoardCoordinator+StartDiscard`: before anyone chooses cards for the first round each character in turn picks three cards of their hand (`StartDiscardPicker`); they go to the discard pile, so the first rest brings them back. Exactly three, each once, each from the hand; played without prompts the last three of the hand go (`StartDiscardTests`) |
+| Walls (a): C+(L/2) HP rounded up, destroyed by damage, attacked like an enemy | done | placements `walls: {"objective": 1, "condition": "stun"}` → `BoardCoordinator+Walls`: each of the map's 23 `breakable-wall` connectors is shut to everyone (in `lockedDoors`: not opened by walking in, not jumped) and carries one of the scenario's objective "Wall" (`76.json`, health `[C+L/2{$math.ceil}]`), made as the wall comes into sight (`raiseWalls`). It is scenery with hit points — an enemy of the party, immune to conditions, never moved — so a character targets and attacks it like any enemy (`WallTests.testEveryWallInSightHasItsHitPoints`, `testAWallIsNotOpenedByWalkingIntoIt`, `testACharacterAttacksAWallAndASummonLeavesItAlone`, `testTheHiveHasTwentyThreeWalls`) |
+| Summons attack walls only when directly controlled | done | `PlayerSideAI.hostileMonsters` leaves a standing wall (`BoardState.isStandingWall`) out of what a summon — or anything else on the party's side that acts by itself — focuses on and attacks (`testACharacterAttacksAWallAndASummonLeavesItAlone`). No summon in the game is controlled directly yet (the Beast Tyrant's bear, engine audit N20), so none attacks a wall |
+| Each tile is a separate room; a destroyed wall reveals the room(s) behind it and becomes a corridor | done | the wall's objective destroyed, its connector opens and the tile behind it is revealed (`clearObjectiveSite` → `openDoor`); `wallComesDown` then reveals any other tile the wall's hex touches — the wall at the corner of H2a, G2a and B4b has two rooms behind it — leaving the walls between them standing (`testAWallAtTheCornerOfThreeTilesRevealsBothRooms`). The hex is drawn as a corridor from then on, also on a board drawn again, and says so when tapped (`testAWallIsDrawnAsAWallThenAsACorridor`). Found on the way: a wall seen first from its far side (a tile revealed before its parent in the map data) had no hex on the board (`BoardBuilder`, the connector back to the parent) — fixed, `testTheHiveHasTwentyThreeWalls` |
+| When a wall is destroyed all enemies adjacent to it gain STUN | done | `wallComesDown`: after the rooms are revealed, every monster against the party on a hex beside the wall gains the rule's `condition` — those of the room just revealed too; characters and their summons don't (`testAWallBrokenDownRevealsItsRoomAndStunsTheEnemiesBesideIt`) |
 
 ### 77 · Vault of Secrets
 | Rule (from the book) | Status | Where / what's missing |

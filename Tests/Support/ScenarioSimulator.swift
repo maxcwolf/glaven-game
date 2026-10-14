@@ -268,6 +268,10 @@ final class ScenarioSimulator {
             coord.resolveRecovery([])
             return
         }
+        if let pending = coord.pendingStartDiscard, let character = gm.game.characters.first(where: { $0.id == pending.characterID }) {
+            coord.resolveStartDiscard(Array(character.handCards.suffix(pending.count)))
+            return
+        }
         if coord.pendingInitiativeChange != nil {
             coord.resolveInitiativeChange(0)
             return

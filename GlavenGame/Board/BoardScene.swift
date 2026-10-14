@@ -223,6 +223,14 @@ class BoardScene: SKScene {
             if name.contains("trap") && board.cells[overlayCoord]?.isTrap != true { continue }
             if (name.contains("treasure") || name.contains("coin") || name.contains("chest"))
                 && board.cells[overlayCoord]?.overlay != .treasure { continue }
+            // A wall that has been broken down is a corridor.
+            if name.contains(BoardBuilder.breakableWallSubType),
+               board.doors.contains(where: { $0.coord == overlayCoord && $0.isOpen }) {
+                added += placeOverlaySprite(overlay: PositionedOverlay(imageName: Self.corridorOverBrokenWall, col: overlay.col, row: overlay.row,
+                                                                       direction: "", cells: [(overlay.col, overlay.row)]),
+                                            offsetCol: offsetCol, offsetRow: offsetRow)
+                continue
+            }
             added += placeOverlaySprite(overlay: overlay, offsetCol: offsetCol, offsetRow: offsetRow)
         }
         overlaysDrawn.formUnion(visibleCoords)
@@ -437,11 +445,15 @@ class BoardScene: SKScene {
             sprite.zRotation = rotation
             sprite.zPosition = 1
             sprite.name = "overlay_\(cell.0)_\(cell.1)"
+            sprite.userData = ["image": name]
             overlayLayer.addChild(sprite)
             placed.append(sprite)
         }
         return placed
     }
+
+    /// The corridor tile laid where a wall was broken down.
+    static let corridorOverBrokenWall = "corridor-natural-stone-1"
 
     /// Draw a single-hex overlay placed during play (a trap or obstacle from a card).
     func addOverlaySprite(imageName: String, at coord: HexCoord, offsetCol: Int, offsetRow: Int) {
@@ -473,6 +485,11 @@ class BoardScene: SKScene {
     /// Names of the overlay sprites drawn on the board (for tests).
     var overlaySpriteNames: [String] {
         overlayLayer.children.compactMap(\.name)
+    }
+
+    /// The image of the overlay drawn on a hex (for tests).
+    func overlayImageName(at coord: HexCoord) -> String? {
+        overlayLayer.childNode(withName: "overlay_\(coord.col)_\(coord.row)")?.userData?["image"] as? String
     }
 
     /// Remove an overlay sprite at a given hex coordinate (e.g., after a trap triggers).

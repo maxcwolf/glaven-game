@@ -101,6 +101,11 @@ final class SoakDriver {
         if coord.pendingTip != nil { coord.dismissTip(); return }
         if coord.explanation != nil { coord.closeExplanation(); return }
         if coord.pendingRecovery != nil { coord.resolveRecovery([]); return }
+        if let pending = coord.pendingStartDiscard,
+           let character = coord.gameManager?.game.characters.first(where: { $0.id == pending.characterID }) {
+            coord.resolveStartDiscard(Array(character.handCards.suffix(pending.count)))
+            return
+        }
         if coord.pendingInitiativeChange != nil { coord.resolveInitiativeChange(0); return }
         if coord.pendingSufferChoice != nil { coord.resolveSufferChoice(0); return }
         if let pending = coord.pendingAllyChoice { coord.resolveAllyChoice(pending.characterIDs.first); return }

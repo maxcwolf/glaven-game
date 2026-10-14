@@ -441,6 +441,11 @@ final class BoardCoordinator {
     /// Non-nil while a character picks discarded cards to recover (Minor Stamina Potion).
     var pendingRecovery: PendingRecovery?
 
+    /// Cards a character discards before the scenario begins (Harrower Hive), and what goes on
+    /// once every character has.
+    var pendingStartDiscard: PendingStartDiscard?
+    @ObservationIgnored var afterStartDiscards: (() -> Void)?
+
     /// Non-nil while a character picks a card to play for an item (Ring of Haste).
     var pendingCardPlay: PendingCardPlay?
 
@@ -1055,6 +1060,8 @@ final class BoardCoordinator {
         pendingSummonPlacement = nil
         woundDue = []
         pendingRecovery = nil
+        pendingStartDiscard = nil
+        afterStartDiscards = nil
         pendingCardPlay = nil
         pendingActionChoice = nil
         initiativeOffers = []
@@ -1195,7 +1202,12 @@ final class BoardCoordinator {
     /// The starting hexes a character may still take: the free ones — and, where the scenario
     /// has two starting rooms, not those of a room that already holds half the party (rounded up).
     func freeStartingHexes(for characterID: String) -> [HexCoord] {
-        let free = boardState.startingLocations.filter { !boardState.isOccupied($0) }
+        var free = boardState.startingLocations.filter { !boardState.isOccupied($0) }
+        if scenarioData?.placements?.startAmongMonsters == true {
+            // (Were no section to hold a monster, the rule would leave nowhere to start.)
+            let among = free.filter(startsAmongMonsters)
+            if !among.isEmpty { free = among }
+        }
         guard scenarioData?.placements?.splitStart == true, let game = gameManager?.game else { return free }
         let limit = (game.characters.filter { !$0.absent }.count + 1) / 2
         func room(_ hex: HexCoord) -> String? { boardState.cells[hex]?.tileRef.lowercased() }
@@ -1206,11 +1218,33 @@ final class BoardCoordinator {
         return free.filter { hex in room(hex).map { placed[$0, default: 0] < limit } ?? true }
     }
 
+    /// Whether the section a starting hex stands in — the hexes of its tile that can be walked
+    /// to from it, obstacles standing in the way — holds a monster.
+    func startsAmongMonsters(_ start: HexCoord) -> Bool {
+        guard let tile = boardState.cells[start]?.tileRef else { return false }
+        var section: Set<HexCoord> = [start]
+        var frontier = [start]
+        while let hex = frontier.popLast() {
+            for next in boardState.neighbors(of: hex) where !section.contains(next) {
+                guard let cell = boardState.cells[next], cell.tileRef == tile, cell.overlay != .obstacle, cell.overlay != .wall,
+                      cell.overlay != .door else { continue }
+                section.insert(next)
+                frontier.append(next)
+            }
+        }
+        return boardState.piecePositions.contains { piece, hex in
+            guard case .monster = piece else { return false }
+            return section.contains(hex) && side(of: piece) != .party
+        }
+    }
+
     /// Place a character on a starting hex.
     func placeCharacter(characterID: String, at coord: HexCoord) {
         guard freeStartingHexes(for: characterID).contains(coord) else {
             if boardState.startingLocations.contains(coord), !boardState.isOccupied(coord) {
-                log("No more than half the party may start in the same room", category: .setup)
+                log(scenarioData?.placements?.startAmongMonsters == true && !startsAmongMonsters(coord)
+                    ? "Characters start only in the sections of the room that hold monsters"
+                    : "No more than half the party may start in the same room", category: .setup)
             }
             return
         }
@@ -1330,11 +1364,15 @@ final class BoardCoordinator {
             self.sweepDeadFigures()
             if self.scenarioResult != nil { return }
 
-            // No turn is half-played here: save the round so Continue can resume from it.
-            gameManager.checkpointRound()
+            // What the scenario has discarded before it begins is chosen first of all.
+            self.discardAtTheStart { [weak self] in
+                guard let self, let gameManager = self.gameManager else { return }
+                // No turn is half-played here: save the round so Continue can resume from it.
+                gameManager.checkpointRound()
 
-            // Process exhaustion and auto-rests, then find the first character needing manual selection
-            self.advanceToNextCardSelection()
+                // Process exhaustion and auto-rests, then find the first character needing manual selection
+                self.advanceToNextCardSelection()
+            }
         }
     }
 
@@ -1927,7 +1965,7 @@ final class BoardCoordinator {
         let hostile = gameManager.game.monsters.filter { !MonsterAI.isAllyFaction($0) }
         let enemiesHaveAppeared = hostile.contains { !$0.entities.isEmpty }
         let allEnemiesDead = hostile.allSatisfy { monster in monster.off || monster.aliveEntities.isEmpty }
-        let allRoomsRevealed = boardState.doors.allSatisfy { $0.isOpen }
+        let allRoomsRevealed = allRoomsRevealed
         if let written, written.replacesKillAll, !hasOwnWinCondition {
             if goalMet(written, turnEnded: turnEnded) && gameManager.game.round > 0 {
                 let brief = gameManager.game.scenario.map { ScenarioBrief.make(for: $0.data, labels: gameManager.editionStore) }
@@ -2632,7 +2670,8 @@ final class BoardCoordinator {
         }
         let barred = boardState.barredHexes(for: target)
         func open(_ hex: HexCoord) -> Bool {
-            guard let cell = boardState.cells[hex], cell.overlay != .wall, !boardState.isClosedDoor(hex), !barred.contains(hex) else { return false }
+            guard let cell = boardState.cells[hex], cell.overlay != .wall, cell.solid != true, !boardState.isClosedDoor(hex),
+                  !barred.contains(hex) else { return false }
             // (An obstacle the scenario says can't be destroyed stops Heaving Swing too.)
             return cell.passable || (cell.overlay == .obstacle && (flying || (intoObstacles && isDestructibleObstacle(hex))))
         }
@@ -2936,7 +2975,7 @@ final class BoardCoordinator {
     }
 
     /// Set up the room behind a door: its tiles (if not yet laid out), monsters and objectives.
-    private func revealRoom(behind door: DoorInfo, opening: Bool) {
+    func revealRoom(behind door: DoorInfo, opening: Bool) {
         guard let scenario = scenarioData, let gameManager else { return }
         // A door mostly opens in a turn, but a scenario rule may open one as a round starts
         // (Gloomhaven Battlements B's gate, round 9), while cards are being chosen: the phase the
@@ -2977,11 +3016,15 @@ final class BoardCoordinator {
         // Draw the new room into the board as it stands (the grid offset stays put, so nothing
         // already drawn moves), and frame the board so the room is seen.
         boardScene?.revealRooms(from: boardState, scenario: scenario)
+        if opening, door.subType == BoardBuilder.breakableWallSubType { layCorridor(at: door.coord) }
         syncPieceVisuals()
         boardScene?.fitCamera(animated: true)
 
         boardPhase = interrupted
-        log(opening ? "A door opens and a new room is revealed" : "The defenders beyond the wall are roused", category: .door,
+        let brokenWall = opening && door.subType == BoardBuilder.breakableWallSubType && wallRule != nil
+        log(brokenWall ? (rooms.isEmpty ? "The wall comes down" : "The wall comes down and a new room is revealed")
+            : opening ? "A door opens and a new room is revealed"
+            : wallRule != nil ? "The room beside it is revealed too" : "The defenders beyond the wall are roused", category: .door,
             trace: door.childTileRef)
         for piece in placed {
             let id = PieceID.monster(name: piece.name, standee: piece.standee)

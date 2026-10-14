@@ -54,6 +54,12 @@ final class AuditInterfaceRenderTests: XCTestCase {
                                                               hands: cave.coord.savingHands())
         try render(BoardView(coordinator: cave.coord).environment(cave.gm), "save-sheet")
 
+        // The Harrower Hive before its first round: three cards of the hand to discard.
+        let hive = try ScenarioSimulator(scenario: "76", options: .init(characters: ["brute", "spellweaver"], seed: 2))
+        hive.coord.briefPresentation = nil
+        XCTAssertNotNil(hive.coord.pendingStartDiscard)
+        try render(BoardView(coordinator: hive.coord).environment(hive.gm), "start-discard")
+
         // The long-rest sheet, with a potion to use on the rest turn.
         brute.items = ["gh-12"]
         if brute.discardedCards.count < 2 { brute.discardedCards.append(contentsOf: brute.handCards.suffix(2)) }

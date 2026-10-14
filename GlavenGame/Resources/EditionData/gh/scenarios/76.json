@@ -17,6 +17,12 @@
     "living-bones",
     "night-demon"
   ],
+  "objectives": [
+    {
+      "name": "Wall",
+      "health": "[C+L/2{$math.ceil}]"
+    }
+  ],
   "rooms": [
     {
       "roomNumber": 1,

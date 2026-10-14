@@ -155,7 +155,7 @@ extension BoardCoordinator {
 
     /// Draw the padlocks and the pressure plates as they stand.
     func showLocksAndPlates() {
-        boardScene?.showLocks(on: boardState.lockedDoors.filter(boardState.isClosedDoor),
+        boardScene?.showLocks(on: boardState.lockedDoors.filter(boardState.isClosedDoor).subtracting(standingWalls),
                               plates: pressurePlateHexes, offsetCol: offsetCol, offsetRow: offsetRow)
         syncCarriedSprites()
     }
