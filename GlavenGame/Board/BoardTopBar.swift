@@ -7,6 +7,7 @@ struct BoardTopBar: View {
     let coordinator: BoardCoordinator
     @Binding var showSidePanels: Bool
     var onAbandon: () -> Void
+    @State private var showSettings = false
 
     var body: some View {
         HStack(spacing: 10) {
@@ -64,6 +65,11 @@ struct BoardTopBar: View {
                                  set: { gameManager.setLearningMode($0) })) {
                 Label("Learning Mode", systemImage: "lightbulb")
             }
+            Button {
+                showSettings = true
+            } label: {
+                Label("Settings", systemImage: "gearshape")
+            }
             Divider()
             Button {
                 gameManager.saveAndQuitScenario()
@@ -83,6 +89,11 @@ struct BoardTopBar: View {
         .menuStyle(.button)
         .buttonStyle(.plain)
         .accessibilityLabel("Game menu")
+        // Card style and size, text size, sound and the rest, mid-scenario.
+        .sheet(isPresented: $showSettings) {
+            PreferencesSheet()
+        }
+        .onChange(of: gameManager.settingsManager.animationSpeed) { coordinator.applySettings() }
     }
 
     /// The "?": the next tap explains what it lands on.

@@ -41,7 +41,7 @@ campaign run between scenarios. 384 commits; a summary by area.
   table rules a group can play by.
 - **Cards you can read**: a setting between the printed card scans and drawn cards that say
   everything a card prints in plain type, and a slider for the size of your cards in hand and in
-  play.
+  play; Settings opens from the board's menu mid-scenario.
 - **The board**: a new layout from the mockup; portrait tokens; wall lines between tiles; attack
   previews and the modifier tray; a turn-order rail; learning mode and an illustrated How to Play;
   sound for what happens on the board; VoiceOver throughout and an 11-point text floor.
