@@ -546,8 +546,39 @@ final class BoardRulesRegressionTests: XCTestCase {
         turn.setBottomFirst(true)
         turn.executeCurrentAction()
         coord.handleHexTap(HexCoord(6, 3))
+        // The move is made in legs: with movement left, the rest is offered; stopping there ends it.
+        let offered = await waitUntil { if case .selectingMove = self.coord.interactionMode { return true }; return false }
+        XCTAssertTrue(offered, "the rest of the move is offered")
+        coord.stopContinuedMove()
         _ = await waitUntil { turn.currentActionIndex == 1 }
+        XCTAssertEqual(turn.currentActionIndex, 1)
         XCTAssertFalse(bandit.entityConditions.contains { $0.name == .muddle }, "the move didn't end where it started")
+    }
+
+    /// "If you end the movement in the same hex you started in, perform Muddle, all enemies moved
+    /// through": out over the Bandit Guard and back, in two legs of the one Move 4 (Jump).
+    func testFeedbackLoopOutAndBackMuddlesWhoItJumpedOver() async throws {
+        let character = addCharacter("mindthief", at: HexCoord(3, 3))
+        let bandit = addMonster("bandit-guard", at: HexCoord(4, 3))
+        let loop = try card("Feedback Loop", of: "mindthief"), other = try card("Corrupting Embrace", of: "mindthief")
+        character.handCards = [loop.cardId!, other.cardId!]
+        let turn = PlayerTurnController(characterID: character.id, coordinator: coord, gameManager: gm)
+        coord.activePlayerTurn = turn
+        turn.selectCards(top: other, bottom: loop)
+        turn.setBottomFirst(true)
+        turn.executeCurrentAction()
+        coord.handleHexTap(HexCoord(5, 3))   // out: over the Bandit Guard, two of the four
+        let offered = await waitUntil {
+            if case .selectingMove(_, let range, let hexes, _, _) = self.coord.interactionMode { return range == 2 && hexes.contains(HexCoord(3, 3)) }
+            return false
+        }
+        XCTAssertTrue(offered, "the way back is offered with the two left")
+        XCTAssertFalse(bandit.entityConditions.contains { $0.name == .muddle }, "not yet: the move isn't over")
+        coord.handleHexTap(HexCoord(3, 3))   // and back
+        _ = await waitUntil { turn.currentActionIndex == 1 }
+        XCTAssertEqual(coord.boardState.piecePositions[.character(character.id)], HexCoord(3, 3))
+        XCTAssertTrue(bandit.entityConditions.contains { $0.name == .muddle }, "jumped over, out and back")
+        XCTAssertFalse(character.entityConditions.contains { $0.name == .muddle })
     }
 
     /// Regression: a target printed beside a condition (Crippling Offensive's "Immobilize and

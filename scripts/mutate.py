@@ -105,6 +105,8 @@ M={
  "standeesSetUpInMapOrder": ("GlavenGame/Board/BoardCoordinator.swift", "                guard let origin, short.contains(monster.name) else { return open.first }", "                guard let origin, false else { return open.first }"),
  "forcedMovesAsTheCrowFlies": ("GlavenGame/Board/BoardCoordinator.swift", "                return isPush ? there > here : there < here\n", "                return isPush ? step.distance(to: attackerPos) > hex.distance(to: attackerPos) : step.distance(to: attackerPos) < hex.distance(to: attackerPos)\n"),
  "treasureFoundTwice": ("GlavenGame/Board/BoardCoordinator.swift", "        let objectives = placeRevealedObjectives()\n        clearTreasuresLootedBefore()\n", "        let objectives = placeRevealedObjectives()\n"),
+ "loopMoveInOneLeg": ("GlavenGame/Board/BoardCoordinator+Movement.swift", "        if openedDoor || loops, movementLeft > 0,", "        if openedDoor, movementLeft > 0,"),
+ "loopJudgedOnTheLastLeg": ("GlavenGame/Board/BoardCoordinator+Movement.swift", "boardState.piecePositions[pieceID] == (turn.moveStartHex ?? path.first)", "path.first == path.last"),
 }
 # Scenario rules (the mechanisms of placements/gh.json): run against the scenario tests.
 SCENARIO_FILTER=("ScenarioSpecialRuleTests|ScenarioReauditTests|ScenarioEnforcedRuleTests|ScenarioLockTests|ScenarioGoalTests|"

@@ -114,6 +114,8 @@ final class PlayerTurnController {
     /// the move must end where it started for them to apply.
     var movedThroughConditions: [ConditionName] = []
     var movedThroughNeedsLoop = false
+    /// Where the current move began: a move that must end there is made in legs.
+    var moveStartHex: HexCoord?
     /// Text printed inside the current move, done when it ends (Rumbling Advance, Swift Bow).
     var afterMoveTexts: [String] = []
     var usedUpThisTurn: Set<Int> = []
@@ -1327,6 +1329,7 @@ final class PlayerTurnController {
             // Feedback Loop: "If you end the movement in the same hex you started in, perform Muddle,
             // all enemies moved through" printed inside the move.
             movedThroughNeedsLoop = customText(of: action).contains("same hex you started in")
+            moveStartHex = coordinator.boardState.piecePositions[pieceID]
             if (action.subActions ?? []).contains(where: {
                 $0.type == .specialTarget && $0.value?.stringValue.lowercased() == "enemiesmovedthrough" }) {
                 movedThroughConditions = (action.subActions ?? []).compactMap {
