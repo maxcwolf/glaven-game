@@ -306,6 +306,9 @@ final class DoomTests: XCTestCase {
         let stalker = add("angry-face", at: HexCoord(3, 3))
         let near = try [HexCoord(4, 3), HexCoord(5, 3), HexCoord(3, 5)].map { try bandit(at: $0) }
         let far = try bandit(at: HexCoord(8, 3))
+        let zeros = (0..<20).map { _ in AttackModifier.standard(.plus0) }
+        stalker.attackModifierDeck = AttackModifierDeck(attackModifiers: zeros, cards: zeros)
+        for piece in near { (coord.entity(for: piece) as? GameMonsterEntity)?.shield = nil }
         let skies = try turn(stalker, top: 393, bottom: 401)
         XCTAssertTrue(skies.currentSteps.first?.subActions?.contains { $0.type == .specialTarget && $0.value?.stringValue == "enemiesRange:3" } == true,
                       "the text's targets are the attack's")
