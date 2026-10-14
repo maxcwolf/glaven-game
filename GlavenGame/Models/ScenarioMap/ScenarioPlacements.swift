@@ -76,6 +76,9 @@ struct ScenarioPlacements: Codable, Equatable {
     /// a starting hex is offered only if the part of its room it stands in — what can be walked
     /// to without leaving the tile — holds a monster.
     var startAmongMonsters: Bool?
+    /// Escorts whose move heads for a monster rather than a lettered hex (#38's Orchid: "Move 3
+    /// towards the shaman on the D tile").
+    var seeks: [Seeks]?
     /// Walls broken down by damage instead of doors that open (#76's hive).
     var walls: Walls?
     /// "Each character discards three ability cards at the start of the scenario as a scenario
@@ -494,6 +497,15 @@ extension ScenarioPlacements {
         let objective: Int
         /// The condition the enemies beside a wall gain as it comes down.
         var condition: String?
+    }
+
+    /// An escort (objective, 1-based) that walks toward the `monster` standing on `tile`: through
+    /// the doors on the way while that tile is unseen, beside the monster once it is, and nowhere
+    /// once no such monster is left there.
+    struct Seeks: Codable, Hashable {
+        let objective: Int
+        let monster: String
+        let tile: String
     }
 
     /// "It cannot enter or pass through door 2" (#67); "The Inox on tile E cannot enter or pass

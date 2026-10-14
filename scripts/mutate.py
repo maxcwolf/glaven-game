@@ -87,7 +87,7 @@ M={
 }
 # Scenario rules (the mechanisms of placements/gh.json): run against the scenario tests.
 SCENARIO_FILTER=("ScenarioSpecialRuleTests|ScenarioReauditTests|ScenarioEnforcedRuleTests|ScenarioLockTests|ScenarioGoalTests|"
-                 "ScenarioSpawnTests|DemonicRiftTests|BattlementsTests|MonsterTextTests|MonsterSummonTests|CarriedThingTests|DriftTests|RollingBoulderTests|RisingWaterTests|SleepingMonsterTests|BarredDoorTests|BatteryTests|CarrierTests|ThroneTests|PerchTests|SwayTests|WallTests|StartDiscardTests|SolidObstacleTests")
+                 "ScenarioSpawnTests|DemonicRiftTests|BattlementsTests|MonsterTextTests|MonsterSummonTests|CarriedThingTests|DriftTests|RollingBoulderTests|RisingWaterTests|SleepingMonsterTests|BarredDoorTests|BatteryTests|CarrierTests|ThroneTests|PerchTests|SwayTests|WallTests|StartDiscardTests|SolidObstacleTests|OrchidTests|ToxicMoorTests")
 S={
  "factSavedIgnored": ("GlavenGame/Board/BoardCoordinator+Goals.swift", "            guard arrived >= saved else { return false }", "            guard arrived >= 0 * saved else { return false }"),
  "factLockIgnored": ("GlavenGame/Board/BoardCoordinator+Goals.swift", "        if let lock = fact.lock, !boardState.releasedLocks.contains(lock) { return false }", "        if let lock = fact.lock, lock < 0 { return false }"),
@@ -315,6 +315,11 @@ S={
  "everyObstacleIsSolid": ("GlavenGame/Engine/BoardBuilder.swift", "                       rule.tiles?.contains(tileData.ref.lowercased()) == true {\n                        board.cells[coord]?.solid = true", "                       true {\n                        board.cells[coord]?.solid = true"),
  "startInAnySection": ("GlavenGame/Board/BoardCoordinator.swift", "        if scenarioData?.placements?.startAmongMonsters == true {\n            // (Were", "        if false {\n            // (Were"),
  "sectionsRunThroughBoulders": ("GlavenGame/Board/BoardCoordinator.swift", "cell.tileRef == tile, cell.overlay != .obstacle, cell.overlay != .wall,", "cell.tileRef == tile, cell.overlay != .wall,"),
+ "orchidSeeksNearestEnemy": ("GlavenGame/Board/EscortTurnController.swift", "        if let index = container.objectiveIndex, let scenario = coordinator.scenarioData,\n           let seeks", "        if false, let index = container.objectiveIndex, let scenario = coordinator.scenarioData,\n           let seeks"),
+ "orchidSeeksAnyShaman": ("GlavenGame/Board/EscortTurnController.swift", "return name == seeks.monster && board.cells[hex]?.tileRef.lowercased() == tile", "return name == seeks.monster"),
+ "orchidWandersWithTheShamanDead": ("GlavenGame/Board/EscortTurnController.swift", "return sought.isEmpty ? Set([position].compactMap { $0 }) : Set(sought)", "return Set(sought)"),
+ "orchidIgnoresTheDoors": ("GlavenGame/Board/EscortTurnController.swift", "            return Set(doorsToward(sites))\n", "            return []\n"),
+ "escortShufflesBesideItsGoal": ("GlavenGame/Engine/EscortAI.swift", "let taken = Set(board.piecePositions.values).subtracting([position])", "let taken = Set(board.piecePositions.values)"),
  "noOneIsAskedWhoHolds": ("GlavenGame/Board/BoardCoordinator+Carried.swift", "            } else if autoResolvePrompts {\n                give(thing.name, to: first.id, how: \"holds\")", "            } else if true {\n                give(thing.name, to: first.id, how: \"holds\")"),
  "lyingThingNotPickedUp": ("GlavenGame/Board/BoardCoordinator+Carried.swift", "            if let lying = boardState.carriedLying[name] { return hexes.contains(lying) }", "            if boardState.carriedLying[name] != nil { return false }"),
  "anyoneLootsTheQuestTile": ("GlavenGame/Board/BoardCoordinator+Carried.swift", "        return party.first { $0.id == characterID }?.personalQuest == quest", "        return party.first { $0.id == characterID }?.personalQuest == quest || true"),

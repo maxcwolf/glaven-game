@@ -109,7 +109,8 @@ enum EscortAI {
         let others = Set(board.piecePositions.values).subtracting(enemies).subtracting([position])
         // A lettered hex that can't be stood on (an altar, or someone is there) is reached by
         // standing next to it.
-        let taken = Set(board.piecePositions.values)
+        // (His own hex isn't taken: standing beside it already, he is there.)
+        let taken = Set(board.piecePositions.values).subtracting([position])
         let standable: (HexCoord) -> Bool = { board.isPassable($0) && !taken.contains($0) }
         let open = destination.filter(standable)
         let targets = open.isEmpty ? Set(destination.flatMap(board.neighbors(of:)).filter(standable)) : open

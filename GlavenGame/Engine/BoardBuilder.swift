@@ -499,6 +499,9 @@ enum BoardBuilder {
     }
 
     /// The hexes a tile covers on the board, placed by `axis`.
+    static func cells(of tile: VGBMapTileData, axis: TurnAxis?) -> Set<HexCoord> { cellSet(of: tile, axis: axis) }
+
+    /// The hexes a tile covers on the board, placed by `axis`.
     private static func cellSet(of tile: VGBMapTileData, axis: TurnAxis?) -> Set<HexCoord> {
         var cells = Set<HexCoord>()
         for (y, row) in TileGrids.grid(for: tile.ref).enumerated() {
