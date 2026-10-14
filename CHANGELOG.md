@@ -3,6 +3,28 @@
 All notable changes to this project will be documented in this file.
 Format based on [Conventional Commits](https://www.conventionalcommits.org/).
 
+## [1.0.0-beta.4] - 2026-10-14
+
+### Bug Fixes
+
+- The did-nothing note is a button to voiceover by @maxcwolf
+- Learning tips stay clear of the macos title bar and the ipad status bar by @maxcwolf
+- The main menu fills the macos window at once by @maxcwolf
+
+### Documentation
+
+- The counts by @maxcwolf
+- The counts by @maxcwolf
+- Update CHANGELOG.md for v1.0.0-beta.3 by @github-actions[bot]
+
+### Features
+
+- Quit from the home screen on the mac by @maxcwolf
+- An ability that does nothing says why, by the played cards by @maxcwolf
+
+
+**Full Changelog**: [v1.0.0-beta.3...v1.0.0-beta.4](https://github.com/maxcwolf/glaven-game/compare/v1.0.0-beta.3...v1.0.0-beta.4)
+
 ## [1.0.0-beta.3] - 2026-10-14
 
 ### Bug Fixes
