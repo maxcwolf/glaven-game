@@ -224,6 +224,8 @@ final class PlayerTurnController {
     /// The figure performing the step being executed when it isn't the character: the bear, for
     /// a Command half. The character's own items and bonuses don't come with it.
     private(set) var commandedFigure: PieceID?
+    /// Conditions the attack being made gives its own attacker once it is over.
+    private var conditionsAfterAttack: [(piece: PieceID, condition: ConditionName)] = []
     private var bonusesApply: Bool { commandedFigure == nil }
 
     /// Kinds of action a printed half is, from the class tag at its start ("command", "song").
@@ -475,6 +477,10 @@ final class PlayerTurnController {
     func advanceAfterAsyncAction() {
         // A turn that is no longer the board's (the board was left, or the turn ended) stays put.
         guard coordinator?.activePlayerTurn === self else { return }
+        for (piece, condition) in conditionsAfterAttack where coordinator?.isOnBoard(piece) == true {
+            coordinator?.applyCondition(condition, to: piece)
+        }
+        conditionsAfterAttack = []
         if defaultAttackPending {
             defaultAttackPending = false
             awaitingAsync = false
@@ -1389,8 +1395,13 @@ final class PlayerTurnController {
                 && (roomWide ? !coordinator.enemiesInRoom(of: pieceID).isEmpty
                              : !coordinator.targetableEnemies(of: pieceID, range: attackRange(of: action)).isEmpty)
             let bonus = hasTarget ? consumeAugments(of: action) : []
+            // A condition printed for the attacker itself (Energizing Strike: "Strengthen self"),
+            // gained as the attack is made.
+            var ownConditions: [ConditionName] = []
             for sub in (action.subActions ?? []) + bonus {
                 switch sub.type {
+                case .condition where hasSpecialTargetSelf(sub):
+                    if let name = sub.value?.stringValue, let cond = ConditionName(rawValue: name) { ownConditions.append(cond) }
                 case .attack: pendingAttackValue += MonsterAbility.signedValue(sub)
                 case .range:
                     if let r = sub.value?.intValue {
@@ -1508,6 +1519,8 @@ final class PlayerTurnController {
             func applyPerformedEffects() {
                 grantBonusExperience(bonus)
                 applyPrintedEffects(of: action, coordinator: coordinator)
+                // (Once the attack is over: it isn't strengthened by its own Strengthen.)
+                conditionsAfterAttack += ownConditions.map { (pieceID, $0) }
                 if let character { for cardId in actionCharges { coordinator.useCharge(cardId, of: character) } }
             }
 

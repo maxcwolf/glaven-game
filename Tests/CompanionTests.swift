@@ -114,6 +114,40 @@ final class CompanionTests: XCTestCase {
         XCTAssertEqual(tyrant(sim).experience, xp + 1, "the Tyrant's experience")
     }
 
+    /// "Command: Attack 4, Strengthen self" (Energizing Strike): the bear attacks and is
+    /// strengthened — not its target, nor the Tyrant. "Command: Heal 4, self" (Patch Fur) heals
+    /// the bear.
+    func testSelfMeansTheBearOnACommand() async throws {
+        let sim = try simulator()
+        let coord = sim.coord
+        let (turn, bear, foe) = try stage(sim, top: "Energizing Strike", bottom: "Patch Fur")
+        turn.setBottomFirst(false)
+        let bearEntity = try XCTUnwrap(coord.entity(for: bear))
+        turn.executeCurrentAction()
+        guard case .selectingAttackTarget(let attacker, _, _) = coord.interactionMode else { return XCTFail("\(coord.interactionMode)") }
+        XCTAssertEqual(attacker, bear)
+        coord.handlePieceTap(foe)
+        _ = await waitUntil { !turn.isWaiting }
+        XCTAssertTrue(coord.isConditionActive(.strengthen, on: bear) || bearEntity.entityConditions.contains { $0.name == .strengthen },
+                      "the bear is strengthened")
+        XCTAssertFalse(coord.isConditionActive(.strengthen, on: foe), "not its target")
+        XCTAssertFalse(tyrant(sim).entityConditions.contains { $0.name == .strengthen }, "nor the Tyrant")
+        XCTAssertFalse(coord.turnLog.contains { $0.message.hasPrefix("Bear attacks") && $0.message.contains("advantage") },
+                       "its own Strengthen comes after the attack")
+    }
+
+    func testAHealOnACommandIsTheBears() throws {
+        let sim = try simulator()
+        let coord = sim.coord
+        let (turn, bear, _) = try stage(sim, top: "Venomous Ally", bottom: "Patch Fur")
+        let bearEntity = try XCTUnwrap(coord.entity(for: bear))
+        bearEntity.health = bearEntity.maxHealth - 5
+        tyrant(sim).health = tyrant(sim).maxHealth - 2
+        turn.executeCurrentAction()   // Command: Heal 4, self
+        XCTAssertEqual(bearEntity.health, bearEntity.maxHealth - 1, "the bear heals 4")
+        XCTAssertEqual(tyrant(sim).health, tyrant(sim).maxHealth - 2, "not the Tyrant")
+    }
+
     /// With the bear gone, a Command does nothing: no attack, and the half isn't performed.
     func testACommandWithTheBearGoneDoesNothing() throws {
         let sim = try simulator()
