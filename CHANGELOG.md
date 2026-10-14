@@ -138,6 +138,7 @@ Format based on [Conventional Commits](https://www.conventionalcommits.org/).
 
 ### Documentation
 
+- Update CHANGELOG.md for v1.0.0-beta.3 by @github-actions[bot]
 - The counts by @maxcwolf
 - The counts by @maxcwolf
 - The cards and the dungeon brief seen on the ipad, and the counts by @maxcwolf
