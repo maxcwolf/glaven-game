@@ -3007,6 +3007,7 @@ final class BoardCoordinator {
         if let character = creditedCharacter(for: actingPiece) {
             gameManager.scenarioStatsManager.recordDoor(by: character.name)
         }
+        closeOffOtherExits(besides: door)
 
         revealRoom(behind: door, opening: true)
     }

@@ -146,6 +146,7 @@ M={
  "dungeonNumbersMisread": ("GlavenGame/Engine/RandomDungeonMap.swift", "monster: monster.name, initialX: place.x, initialY: place.y,", "monster: monster.name, initialX: place.y, initialY: place.x,"),
  "dungeonProgressesCampaign": ("GlavenGame/Managers/ScenarioManager.swift", "if !data.isDungeonVariant { game.completedScenarios.insert(data.id) }", "game.completedScenarios.insert(data.id)"),
  "dungeonNeverOffered": ("GlavenGame/Managers/ScenarioManager.swift", "if scenario.isDungeonVariant { return true }", "if scenario.isDungeonVariant { return false }"),
+ "dungeonBothExitsStayOpen": ("GlavenGame/Board/BoardCoordinator.swift", "        closeOffOtherExits(besides: door)\n", ""),
 }
 # Scenario rules (the mechanisms of placements/gh.json): run against the scenario tests.
 SCENARIO_FILTER=("ScenarioSpecialRuleTests|ScenarioReauditTests|ScenarioEnforcedRuleTests|ScenarioLockTests|ScenarioGoalTests|"

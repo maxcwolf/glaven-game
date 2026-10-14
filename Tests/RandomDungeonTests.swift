@@ -256,6 +256,29 @@ final class RandomDungeonTests: XCTestCase {
                        "nothing unlocked")
     }
 
+    /// RD-3: of a room's two exits, the one not taken is closed off — no door, no hex — and
+    /// with the third room reached every door there is is open (the goal's "all rooms").
+    func testTheExitNotTakenIsClosedOff() throws {
+        var tested = 0
+        for seed in UInt64(1)...40 {
+            let gm = try startDungeon(seed: seed)
+            let coord = gm.boardCoordinator
+            let dungeon = try XCTUnwrap(gm.game.scenario?.randomDungeon)
+            guard dungeon.first.next.count == 2 else { continue }
+            tested += 1
+            let doors = coord.boardState.doors.filter { !$0.isOpen }
+            XCTAssertEqual(doors.count, 2, "seed \(seed)")
+            coord.openDoor(at: doors[0].coord)
+            XCTAssertNil(coord.boardState.cells[doors[1].coord], "seed \(seed): the other exit is still a hex")
+            XCTAssertFalse(coord.boardState.doors.contains { $0.coord == doors[1].coord }, "seed \(seed)")
+            XCTAssertFalse(coord.allRoomsRevealed, "seed \(seed): the third room is still to come")
+            while let next = coord.boardState.doors.first(where: { !$0.isOpen }) { coord.openDoor(at: next.coord) }
+            XCTAssertEqual(gm.game.scenario?.revealedRooms.count, 3, "seed \(seed)")
+            XCTAssertTrue(coord.allRoomsRevealed, "seed \(seed)")
+        }
+        XCTAssertGreaterThan(tested, 0, "only Tunnel has two exits")
+    }
+
     // MARK: - Reading the cards
 
     /// Draws each written room card as the game lays it out, its numbers in red and its
