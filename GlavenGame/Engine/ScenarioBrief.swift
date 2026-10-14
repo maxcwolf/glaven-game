@@ -45,15 +45,15 @@ struct ScenarioBrief: Equatable {
         let killed = (written?.lostIfKilled ?? []).map { "A \(GameText.monsterName($0, edition: scenario.edition, labels: labels)) is killed." }
         let writtenLosses: [String] = losses + exhaustion + empty + killed + stands
         return ScenarioBrief(
-            title: "#\(scenario.index) \(name)",
+            title: scenario.titled(name),
             goal: written?.text ?? goal(rules.filter { $0.finish == "won" }, edition: scenario.edition, labels: labels),
             defeat: ["Every character is exhausted."] + writtenLosses
                 + rules.filter { $0.finish == "lost" }.map {
                     lossText($0, labels: labels, edition: scenario.edition, objectives: scenario.objectives ?? [])
                 },
             rules: specialRules(scenario, labels: labels),
-            monsters: monsterKeys(scenario.monsters ?? []),
-            map: mapLine(scenario.rooms ?? []),
+            monsters: monsterKeys(firstSeen(scenario)),
+            map: scenario.isRandomDungeon ? dungeonMapLine : mapLine(scenario.rooms ?? []),
             rewards: rewardLines(scenario, labels: labels),
             edition: scenario.edition)
     }
@@ -72,6 +72,15 @@ struct ScenarioBrief: Equatable {
         var seen: Set<String> = []
         return raw.map { MonsterNameSpec($0).name }.filter { seen.insert($0).inserted }
     }
+
+    /// The monsters a player can know of before setting out: all of a scenario's, but a random
+    /// dungeon's rooms are drawn as their doors open, so only its first room's.
+    private static func firstSeen(_ scenario: ScenarioData) -> [String] {
+        guard scenario.isRandomDungeon else { return scenario.monsters ?? [] }
+        return scenario.rooms?.first(where: \.isInitial)?.monster?.map(\.name) ?? []
+    }
+
+    static let dungeonMapLine = "3 rooms, each set up as its door opens"
 
     private static func mapLine(_ rooms: [RoomData]) -> String? {
         guard !rooms.isEmpty else { return nil }

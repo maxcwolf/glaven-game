@@ -166,6 +166,20 @@ final class RandomDungeonTests: XCTestCase {
         return gm
     }
 
+    /// The brief before the board: the dungeon by its name (it has no number), the monsters of
+    /// its first room only (the others are drawn as their doors open), and no tile names.
+    func testTheBriefTellsOnlyWhatTheFirstRoomShows() throws {
+        for seed in UInt64(1)...6 {
+            let gm = try startDungeon(seed: seed)
+            let data = try XCTUnwrap(gm.game.scenario?.data)
+            let brief = ScenarioBrief.make(for: data, labels: gm.editionStore)
+            XCTAssertFalse(brief.title.contains("#"), brief.title)
+            let first = try XCTUnwrap(data.rooms?.first(where: \.isInitial)?.monster)
+            XCTAssertEqual(Set(brief.monsters), Set(first.map { MonsterNameSpec($0.name).name }), "seed \(seed)")
+            XCTAssertEqual(brief.map, ScenarioBrief.dungeonMapLine)
+        }
+    }
+
     /// RD-1, RD-4: the first room is its room card's map with its monster card's monsters for two
     /// characters on their numbers, and the party starts within two hexes of the entrance.
     func testTheFirstRoomIsSetUpFromItsCards() throws {

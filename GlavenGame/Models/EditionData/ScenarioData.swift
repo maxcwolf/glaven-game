@@ -57,6 +57,9 @@ extension ScenarioData {
     var isRandomDungeon: Bool { rules?.contains { $0.randomDungeon != nil } ?? false }
     /// The game variant itself, which doesn't progress the campaign in any way (p.50).
     var isDungeonVariant: Bool { group == "randomDungeon" }
+
+    /// "#1 Black Barrow"; a scenario without a printed number (the Random Dungeon) by its name.
+    func titled(_ name: String) -> String { hideIndex == true ? name : "#\(index) \(name)" }
 }
 
 struct RoomData: Codable, Hashable {
