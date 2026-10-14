@@ -80,7 +80,17 @@ jobs:
           security import /tmp/certificate.p12 -P "$CERT_PASSWORD" -A -t cert -f pkcs12 -k "$KEYCHAIN_PATH"
           security set-key-partition-list -S apple-tool:,apple: -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
           security list-keychain -d user -s "$KEYCHAIN_PATH"
-          IDENTITY=$(security find-identity -v -p codesigning "$KEYCHAIN_PATH" | head -1 | sed 's/.*"\(.*\)".*/\1/')
+          # A DMG outside the App Store is signed with Developer ID Application (an Apple
+          # Distribution identity can't be notarized). Picked by its SHA-1, since two identities
+          # can share a name.
+          IDENTITIES=$(security find-identity -v -p codesigning "$KEYCHAIN_PATH")
+          IDENTITY=$(echo "$IDENTITIES" | grep '"Developer ID Application' | head -1 | awk '{print $2}')
+          if [ -z "$IDENTITY" ]; then
+            echo "::error::DEVELOPER_ID_CERT_BASE64 has no Developer ID Application identity. It holds:"
+            echo "$IDENTITIES"
+            exit 1
+          fi
+          echo "Signing with $(echo "$IDENTITIES" | grep "$IDENTITY" | sed 's/.*"\(.*\)".*/\1/')"
           echo "CODESIGN_IDENTITY=$IDENTITY" >> "$GITHUB_ENV"
           echo "KEYCHAIN_PATH=$KEYCHAIN_PATH" >> "$GITHUB_ENV"
           rm /tmp/certificate.p12
