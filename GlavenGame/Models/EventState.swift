@@ -19,6 +19,11 @@ struct EventState: Codable, Equatable {
     /// whose road event is already resolved: quitting before departure doesn't deal another.
     var departingFor: String?
     var roadEventDoneFor: String?
+    /// The scenario the party has come from without returning to Gloomhaven (CMP-8): on the
+    /// road, nothing of the town is done — no shopping, levelling up, enhancing, donating or city
+    /// event — and the scenario it links to, or the same one tried again, is reached without a
+    /// road event. Nil in Gloomhaven.
+    var onTheRoadFrom: String?
 
     // What the campaign keeps beside the decks (see `CampaignRules`).
 
@@ -54,6 +59,7 @@ struct EventState: Codable, Equatable {
         donatedThisVisit = try c.decodeIfPresent(Set<String>.self, forKey: .donatedThisVisit) ?? []
         departingFor = try c.decodeIfPresent(String.self, forKey: .departingFor)
         roadEventDoneFor = try c.decodeIfPresent(String.self, forKey: .roadEventDoneFor)
+        onTheRoadFrom = try c.decodeIfPresent(String.self, forKey: .onTheRoadFrom)
         achievementCounts = try c.decodeIfPresent([String: Int].self, forKey: .achievementCounts) ?? [:]
         looseItems = try c.decodeIfPresent([String: Int].self, forKey: .looseItems) ?? [:]
         classEnhancements = try c.decodeIfPresent([String: [Enhancement]].self, forKey: .classEnhancements) ?? [:]

@@ -17,7 +17,7 @@ os.makedirs(SCR, exist_ok=True)
 FILTER=("AttackRuleTests|ConditionRuleTests|RoundRuleTests|LootRuleTests|MovementRuleTests|RevealRuleTests|ScenarioEndRuleTests|"
         "ScenarioLevelRuleTests|ForcedMovementTests|RB_|PlayLedgerTests|PlaythroughTests|RestRuleTests|BoardRulesRegressionTests|"
         "JumpFlyMovementTests|HealAndConsumeRuleTests|CombatEffectsTests|TurnFlowTests|E2E|AttackModifier|BoardSimulationTests|MonsterTurnRulesTests|ScenarioFinishEdgeCaseTests|DynamicObstacleTests|FeatureTests|EscortAITests|TeleportTests|HexCoordTests|"
-        "MoneyTokenTests|SetupRulesTests|StandeeLimitTests|TreasureReplayTests|CompanionTests|NestedAbilityCardTests|CollectiveGoldTests|ItemUseRuleTests|ChargedBonusTests|ActionPerformedTests|ScenarioEnforcedRuleTests|ScenarioReauditTests|ModifierDeckRoundEndTests|MoveThenAbilityTests")
+        "MoneyTokenTests|SetupRulesTests|StandeeLimitTests|TreasureReplayTests|CompanionTests|NestedAbilityCardTests|CollectiveGoldTests|TravelOnTests|ItemUseRuleTests|ChargedBonusTests|ActionPerformedTests|ScenarioEnforcedRuleTests|ScenarioReauditTests|ModifierDeckRoundEndTests|MoveThenAbilityTests")
 M={
  "poison0": ("GlavenGame/Engine/CombatResolver.swift", "        if isPoisoned {\n            attackValue += 1\n        }", "        if isPoisoned {\n            attackValue += 0\n        }"),
  "retaliateShielded": ("GlavenGame/Board/BoardCoordinator+Combat.swift", "            await sufferDamageWithMitigation(retaliate, to: attacker,", "            await sufferDamageWithMitigation(max(0, retaliate - self.shield(of: attacker)), to: attacker,"),
@@ -129,6 +129,10 @@ M={
  "collectiveGoldSharedEvenly": ("GlavenGame/Managers/EventCardManager.swift", "        sharing = !choices.goldShares.isEmpty && choices.goldShares.values.reduce(0, +) == collective.gained ? choices.goldShares : nil", "        sharing = nil"),
  "collectiveCostFromTheRichest": ("GlavenGame/Managers/EventCardManager.swift", "        paying = !choices.goldPaid.isEmpty && canPay(choices.goldPaid, total: collective.paid) ? choices.goldPaid : nil", "        paying = nil"),
  "collectiveCostBeyondMeans": ("GlavenGame/Managers/EventCardManager.swift", "            && party.allSatisfy { (shares[$0.id] ?? 0) <= $0.loot && (shares[$0.id] ?? 0) >= 0 }", "            && true"),
+ "roadEventEvenWhenLinked": ("GlavenGame/Managers/EventCardManager.swift", "           from == scenario.id || isLinked(scenario, from: from) { return false }", "           false { return false }"),
+ "travellingOnVisitsTown": ("GlavenGame/Managers/GameManager.swift", "        if returning {\n            // Back to town", "        if true {\n            // Back to town"),
+ "theRoadNeverEnds": ("GlavenGame/Managers/GameManager.swift", "        game.events.roadEventDoneFor = nil\n        game.events.onTheRoadFrom = nil\n", "        game.events.roadEventDoneFor = nil\n"),
+ "noWayBackToTown": ("GlavenGame/Managers/GameManager.swift", "        game.events.onTheRoadFrom = nil\n        game.events.cityEventDue = true\n        saveGame()", "        saveGame()"),
 }
 # Scenario rules (the mechanisms of placements/gh.json): run against the scenario tests.
 SCENARIO_FILTER=("ScenarioSpecialRuleTests|ScenarioReauditTests|ScenarioEnforcedRuleTests|ScenarioLockTests|ScenarioGoalTests|"

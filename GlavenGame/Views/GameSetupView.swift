@@ -158,6 +158,7 @@ struct GameSetupView: View {
             let compact = geo.size.width < 1300
             VStack(spacing: 0) {
                 topBar
+                if let from = onTheRoadFrom { onTheRoadBanner(from) }
                 HStack(alignment: .top, spacing: 16) {
                     partyPanel
                         .frame(width: compact ? 350 : 400)
@@ -329,10 +330,11 @@ struct GameSetupView: View {
             .buttonStyle(.plain)
             .accessibilityLabel("Main menu")
             VStack(alignment: .leading, spacing: 0) {
-                Text(inTown ? "Gloomhaven" : "New Campaign")
+                Text(onTheRoadFrom != nil ? "On the Road" : inTown ? "Gloomhaven" : "New Campaign")
                     .font(BoardTheme.display(24))
                     .foregroundStyle(BoardTheme.text)
-                Text(Self.townSubtitle(scenariosPlayed: gameManager.game.completedScenarios.count, inTown: inTown))
+                Text(Self.townSubtitle(scenariosPlayed: gameManager.game.completedScenarios.count, inTown: inTown,
+                                       onTheRoad: onTheRoadFrom != nil))
                     .font(BoardTheme.font(size: 12, weight: .medium))
                     .foregroundStyle(BoardTheme.secondaryText)
                     .lineLimit(1)
@@ -355,7 +357,7 @@ struct GameSetupView: View {
                 .buttonStyle(.boardPrimaryCompact)
                 .learnable(.cityEvent)
             }
-            if inTown {
+            if inTown, onTheRoadFrom == nil {
                 Button("Sanctuary", systemImage: "sun.max") { if !heldToLearn { showSanctuary = true } }
                     .buttonStyle(.boardQuietCompact)
                     .learnable(.sanctuary)
@@ -373,9 +375,41 @@ struct GameSetupView: View {
 
     /// "Recruit your party and set out", or "In town · 3 scenarios played".
     /// A party back from a lost or abandoned scenario is in town, with nothing won yet.
-    static func townSubtitle(scenariosPlayed: Int, inTown: Bool) -> String {
-        guard scenariosPlayed > 0 else { return inTown ? "In town" : "Recruit your party and set out" }
-        return "In town \u{00B7} \(scenariosPlayed) scenario\(scenariosPlayed == 1 ? "" : "s") played"
+    static func townSubtitle(scenariosPlayed: Int, inTown: Bool, onTheRoad: Bool = false) -> String {
+        let place = onTheRoad ? "Between scenarios" : "In town"
+        guard scenariosPlayed > 0 else { return inTown ? place : "Recruit your party and set out" }
+        return "\(place) \u{00B7} \(scenariosPlayed) scenario\(scenariosPlayed == 1 ? "" : "s") played"
+    }
+
+    /// The scenario the party has come from without returning to Gloomhaven, if it has.
+    private var onTheRoadFrom: ScenarioData? {
+        gameManager.game.events.onTheRoadFrom.flatMap { id in gameManager.editionStore.scenarios(for: edition).first { $0.id == id } }
+    }
+
+    /// On the road (CMP-8): what that means, and the way back to town.
+    private func onTheRoadBanner(_ from: ScenarioData) -> some View {
+        HStack(spacing: 12) {
+            Image(systemName: "signpost.right.fill")
+                .foregroundStyle(BoardTheme.brass)
+            Text(Self.onTheRoadText(from: from))
+                .font(BoardTheme.font(size: 14))
+                .foregroundStyle(BoardTheme.text)
+                .fixedSize(horizontal: false, vertical: true)
+            Spacer(minLength: 8)
+            Button("Return to Gloomhaven", systemImage: "building.columns") { gameManager.returnToGloomhaven() }
+                .buttonStyle(.boardPrimaryCompact)
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 10)
+        .background(BoardTheme.raised)
+        .accessibilityElement(children: .combine)
+    }
+
+    static func onTheRoadText(from: ScenarioData) -> String {
+        let links = (from.links ?? []).map { "#\($0)" }
+        let straight = links.isEmpty ? "#\(from.index) again" : "#\(from.index) again or \(GameText.list(links))"
+        return "On the road from #\(from.index) \(from.name): no shop, levelling up, enhancing or city event. "
+            + "Straight on to \(straight) needs no road event; anywhere else is reached by road."
     }
 
     // MARK: - Party

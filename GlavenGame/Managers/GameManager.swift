@@ -245,6 +245,7 @@ final class GameManager {
         game.events.donatedThisVisit = []   // the party has left town
         game.events.departingFor = nil
         game.events.roadEventDoneFor = nil
+        game.events.onTheRoadFrom = nil
         let effects = game.events.nextScenario
         guard !effects.isEmpty else { return }
         for character in game.activeCharacters {
@@ -428,8 +429,17 @@ final class GameManager {
         boardCoordinator.resumeScenario(scenario: map, board: board)
         return true
     }
+    /// The party on the road goes back to Gloomhaven after all: the town is open, and a city event due.
+    func returnToGloomhaven() {
+        guard game.events.onTheRoadFrom != nil else { return }
+        game.events.onTheRoadFrom = nil
+        game.events.cityEventDue = true
+        saveGame()
+    }
+
     /// Finish the scenario on the board (rewards on a success), leave the board and save.
-    func completeScenario(success: Bool, choices: ScenarioRewardChoices = ScenarioRewardChoices()) {
+    func completeScenario(success: Bool, choices: ScenarioRewardChoices = ScenarioRewardChoices(), returning: Bool = true) {
+        let from = game.scenario?.data.id
         let questReward = success ? game.scenario.flatMap { scenario in
             scenario.data.rewards?.custom.flatMap { editionStore.resolveCustomText($0, edition: scenario.data.edition) }
         } : nil
@@ -439,8 +449,14 @@ final class GameManager {
         departureCheckpoint = nil
         boardCoordinator.exitBoard()
         forgetHistory()   // a finished scenario can't be undone
-        // Back to town: spend gold, level up, pick the next scenario — after a city event.
-        game.events.cityEventDue = true
+        if returning {
+            // Back to town: spend gold, level up, pick the next scenario — after a city event.
+            game.events.cityEventDue = true
+            game.events.onTheRoadFrom = nil
+        } else {
+            // Travelling on (CMP-8): no town this time — straight to the next scenario.
+            game.events.onTheRoadFrom = from
+        }
         appPhase = .gameSetup
         saveGame()
     }

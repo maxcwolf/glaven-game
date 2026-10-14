@@ -111,7 +111,17 @@ final class EventCardManager {
     /// Whether setting out for `scenario` takes a road event.
     func needsRoadEvent(for scenario: ScenarioData) -> Bool {
         if game.tableRules.noFirstRoadEvent, game.completedScenarios.isEmpty { return false }
+        // Straight on from the last scenario, without returning to Gloomhaven: to the scenario it
+        // links to, or the same one tried again, there is no road to travel (CMP-8, FAQ).
+        if let from = game.events.onTheRoadFrom,
+           from == scenario.id || isLinked(scenario, from: from) { return false }
         return scenario.eventType == "road" && game.events.roadEventDoneFor != scenario.id
+    }
+
+    /// Whether `scenario` is one the scenario `from` (an id, "gh-1") links to.
+    func isLinked(_ scenario: ScenarioData, from: String) -> Bool {
+        guard let previous = editionStore.scenarios(for: edition).first(where: { $0.id == from }) else { return false }
+        return (previous.links ?? []).contains(scenario.index)
     }
 
     // MARK: - Outcomes
