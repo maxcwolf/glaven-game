@@ -47,6 +47,16 @@ struct MainMenuView: View {
                     menuButton("Credits", icon: "scroll.fill") {
                         showCredits = true
                     }
+
+                    #if os(macOS)
+                    // On the Mac a game quits from its menu (⌘Q is the app menu's); an iPad app never
+                    // quits itself (Apple's guidelines), the system does.
+                    menuButton("Quit", icon: "power") {
+                        // The campaign was saved on the way here; the settings are saved as the sheet closes, and again now.
+                        gameManager.settingsManager.saveSettings()
+                        NSApplication.shared.terminate(nil)
+                    }
+                    #endif
                 }
                 .frame(width: 300)
                 .padding(.top, 8)
