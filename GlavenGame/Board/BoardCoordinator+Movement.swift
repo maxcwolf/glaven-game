@@ -353,7 +353,8 @@ extension BoardCoordinator {
         guard !hexes.isEmpty else {
             log(token == .destroyObstacle ? "\(name(pieceID)) has no obstacle beside them"
                                           : "\(name(pieceID)) has no empty hex beside them for \(token.name)", category: .info)
-            activePlayerTurn?.abilityDidNothing()
+            activePlayerTurn?.abilityDidNothing(token == .destroyObstacle ? "no obstacle beside you"
+                                                                         : "no empty hex beside you for \(token.name)")
             return false
         }
         interactionMode = .placingToken(pieceID: pieceID, token: token, remaining: count, validHexes: hexes)
@@ -402,7 +403,7 @@ extension BoardCoordinator {
         guard let position = boardState.piecePositions[pieceID],
               let trap = boardState.neighbors(of: position).sorted().first(where: { boardState.cells[$0]?.isTrap == true }) else {
             log("\(name(pieceID)) has no adjacent trap to disarm", category: .info)
-            activePlayerTurn?.abilityDidNothing()
+            activePlayerTurn?.abilityDidNothing("no trap beside you to disarm")
             return
         }
         boardState.removeTrap(at: trap)

@@ -504,7 +504,32 @@ final class PlayerTurnController {
     /// The step being executed could not be performed at all (no target, nothing to loot, no room
     /// for a summon): it doesn't count as performing the half, and what comes with performing
     /// it (XP, infusions) isn't gained.
-    func abilityDidNothing() { stepDidNothing = true }
+    func abilityDidNothing(_ reason: String? = nil) {
+        stepDidNothing = true
+        guard let reason else { return }
+        noticeCount += 1
+        notice = Notice(id: noticeCount, text: Self.noticeText(card: currentCard?.name, reason: reason))
+    }
+
+    /// Why an ability of this turn did nothing, shown by the played cards for a few seconds
+    /// (the log has it too, but is easy to miss).
+    struct Notice: Equatable {
+        let id: Int
+        let text: String
+    }
+    private(set) var notice: Notice?
+    private var noticeCount = 0
+
+    /// "Rock Tunnel: no obstacle beside you".
+    static func noticeText(card: String?, reason: String) -> String {
+        guard let card else { return reason.prefix(1).uppercased() + reason.dropFirst() }
+        return "\(card): \(reason)"
+    }
+
+    /// The notice has been shown long enough (unless a newer one took its place).
+    func clearNotice(_ id: Int) {
+        if notice?.id == id { notice = nil }
+    }
 
     /// Whether a step is one of the half's abilities, rather than what comes with performing
     /// them: experience, an infusion printed on its own, the card's markers.
@@ -1325,7 +1350,7 @@ final class PlayerTurnController {
             guard let bear = coordinator.companionPiece(of: character) else {
                 if Self.isAbilityStep(action) {
                     coordinator.log("\(who)\u{2019}s Command does nothing: the bear is gone", category: .info)
-                    abilityDidNothing()
+                    abilityDidNothing("the bear is gone")
                 }
                 return false
             }
@@ -1336,7 +1361,7 @@ final class PlayerTurnController {
         // player has ended that bonus since the step was placed.
         if let cardId = Self.bonusCard(of: action), let character {
             guard coordinator.chargedBonuses(of: character).contains(where: { $0.cardId == cardId }) else {
-                abilityDidNothing()
+                abilityDidNothing("that bonus has ended")
                 return false
             }
             coordinator.useCharge(cardId, of: character)
@@ -1601,7 +1626,7 @@ final class PlayerTurnController {
                 if reach.chooseOne {
                     guard !reach.pieces.isEmpty else {
                         coordinator.log("\(who) has no ally beside them to heal", category: .heal)
-                        abilityDidNothing()
+                        abilityDidNothing("no ally beside you to heal")
                         return false
                     }
                     coordinator.log("\(who): Heal \(healValue). Choose the ally", category: .heal)
@@ -1685,7 +1710,7 @@ final class PlayerTurnController {
                     for bonus in bonuses { Self.giveRoundBonus(bonus, to: summon) }
                 }
                 coordinator.log("\(who): \(GameText.list(bonuses.map(GameText.actionTitle))) to all summoned allies", category: .condition)
-                if summons.isEmpty { abilityDidNothing() }
+                if summons.isEmpty { abilityDidNothing("you have no summons on the board") }
                 break
             }
             // "Shield 1, self and all adjacent allies", "Retaliate 2, one adjacent ally"…
@@ -1727,12 +1752,14 @@ final class PlayerTurnController {
             lootBonus = 0
             coordinator.log("\(who): Loot \(lootRange)", category: .loot)
             // A Loot with nothing in range can't be performed (FAQ).
-            if !coordinator.collectLootInRange(pieceID: pieceID, range: lootRange) { abilityDidNothing() }
+            if !coordinator.collectLootInRange(pieceID: pieceID, range: lootRange) {
+                abilityDidNothing("nothing to loot within range \(lootRange)")
+            }
 
         case .summon:
             // No empty hex beside the character: nothing is summoned (GH p.26).
             let placing = executeSummon(action, coordinator: coordinator)
-            if !placing { abilityDidNothing() }
+            if !placing { abilityDidNothing("no empty hex beside you for the summon") }
             return placing
 
         case .push, .pull:
@@ -1766,7 +1793,8 @@ final class PlayerTurnController {
             let rewards = (action.subActions ?? []).filter { $0.type != .custom }
             if MonsterAbility.isConsume(action), !rewards.isEmpty, let game = gameManager?.game {
                 guard let used = game.consumeElements(MonsterAbility.elements(of: action)) else {
-                    abilityDidNothing()
+                    let names = GameText.list(MonsterAbility.elements(of: action).map(GameText.elementName))
+                    abilityDidNothing("\(names) isn\u{2019}t there to consume")
                     break
                 }
                 coordinator.log("\(who) consumes \(GameText.list(used.map(GameText.elementName)))", category: .element)
@@ -2073,7 +2101,7 @@ final class PlayerTurnController {
                 }
                 guard character.health < halfRoundedUp else {
                     coordinator.log("\(who) isn't below half their hit points", category: .info)
-                    abilityDidNothing()
+                    abilityDidNothing("you aren\u{2019}t below half your hit points")
                     return false
                 }
                 return executeAction(own, coordinator: coordinator)

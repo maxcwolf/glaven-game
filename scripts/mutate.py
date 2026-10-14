@@ -182,6 +182,7 @@ M={
  "cardPreviewTurnsUnwritten": ("GlavenGame/Views/AbilityCardFace.swift", "        scan(of: card, edition: edition, style: .scans) != nil && scan(of: card, edition: edition, style: .drawn) == nil", "        scan(of: card, edition: edition, style: .scans) != nil"),
  "menuDriftTakesTheWindow": ("GlavenGame/Views/MenuKeyArt.swift", "            guard !reduceMotion else { return }\n            drift = true\n", "            guard !reduceMotion else { return }\n            withAnimation(.easeInOut(duration: Self.driftDuration).repeatForever(autoreverses: true)) { drift = true }\n"),
  "tipUnderTitleBar": ("GlavenGame/Board/LearningViews.swift", "        let top = insets.top + margin, bottom", "        let top = margin, bottom"),
+ "didNothingSilent": ("GlavenGame/Board/PlayerTurnController.swift", "        guard let reason else { return }\n        noticeCount += 1", "        guard let reason, reason.isEmpty else { return }\n        noticeCount += 1"),
 }
 # Scenario rules (the mechanisms of placements/gh.json): run against the scenario tests.
 SCENARIO_FILTER=("ScenarioSpecialRuleTests|ScenarioReauditTests|ScenarioEnforcedRuleTests|ScenarioLockTests|ScenarioGoalTests|"

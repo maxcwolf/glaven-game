@@ -452,6 +452,9 @@ struct BoardView: View {
             HStack(alignment: .center, spacing: 16) {
                 // The two played cards, the half being performed lit
                 VStack(alignment: .leading, spacing: 6) {
+                    if let notice = playerTurn.notice {
+                        DidNothingNotice(notice: notice) { playerTurn.clearNotice(notice.id) }
+                    }
                     Text(character.map { "Played · initiative \($0.initiative)" } ?? "Played")
                         .font(BoardTheme.font(size: 11, weight: .semibold))
                         .foregroundStyle(BoardTheme.secondaryText)
@@ -1476,5 +1479,34 @@ private extension View {
     func reportFrame(_ report: @escaping (CGRect) -> Void) -> some View {
         onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { report($0) }
             .onDisappear { report(.zero) }
+    }
+}
+
+/// Why an ability just did nothing ("Rock Tunnel: no obstacle beside you"), for a few seconds
+/// above the played cards; tapping it dismisses it.
+struct DidNothingNotice: View {
+    let notice: PlayerTurnController.Notice
+    var onDone: () -> Void
+
+    /// How long the note stays.
+    static let seconds: Double = 5
+
+    var body: some View {
+        Label(notice.text, systemImage: "info.circle")
+            .font(BoardTheme.font(size: 13, weight: .semibold))
+            .foregroundStyle(BoardTheme.text)
+            .lineLimit(2)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 6)
+            .background(BoardTheme.raised, in: RoundedRectangle(cornerRadius: BoardTheme.Radius.small))
+            .overlay(RoundedRectangle(cornerRadius: BoardTheme.Radius.small).stroke(BoardTheme.brass.opacity(0.6), lineWidth: 1))
+            .onTapGesture(perform: onDone)
+            .transition(.opacity)
+            .task(id: notice.id) {
+                try? await Task.sleep(for: .seconds(Self.seconds))
+                if !Task.isCancelled { onDone() }
+            }
+            .accessibilityAddTraits(.updatesFrequently)
+            .onAppear { AccessibilityNotification.Announcement(notice.text).post() }
     }
 }

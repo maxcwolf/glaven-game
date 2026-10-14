@@ -2059,7 +2059,7 @@ final class BoardCoordinator {
         if isConditionActive(.immobilize, on: pieceID) {
             log("\(name(pieceID)) is immobilized and can\u{2019}t move", category: .condition)
             interactionMode = .idle
-            activePlayerTurn?.abilityDidNothing()
+            activePlayerTurn?.abilityDidNothing("you\u{2019}re immobilized")
             activePlayerTurn?.advanceAfterAsyncAction()
             return
         }
@@ -2293,12 +2293,12 @@ final class BoardCoordinator {
     func attackAllEnemies(from pieceID: PieceID, within range: Int, exactly: Bool = false) {
         if isConditionActive(.disarm, on: pieceID) {
             log("\(name(pieceID)) is disarmed and can\u{2019}t attack", category: .condition)
-            activePlayerTurn?.abilityDidNothing()
+            activePlayerTurn?.abilityDidNothing("you\u{2019}re disarmed")
             activePlayerTurn?.advanceAfterAsyncAction()
             return
         }
         let targets = enemiesToAttack(from: pieceID, within: range, exactly: exactly)
-        if targets.isEmpty { activePlayerTurn?.abilityDidNothing() }
+        if targets.isEmpty { activePlayerTurn?.abilityDidNothing("no enemy within range \(range)") }
         attackEach(targets, from: pieceID, range: range)
     }
 
@@ -2319,7 +2319,7 @@ final class BoardCoordinator {
         let disarmed = isConditionActive(.disarm, on: pieceID)
         if disarmed { log("\(name(pieceID)) is disarmed and can\u{2019}t attack", category: .condition) }
         let targets = disarmed ? [] : enemiesInRoom(of: pieceID)
-        if targets.isEmpty { activePlayerTurn?.abilityDidNothing() }
+        if targets.isEmpty { activePlayerTurn?.abilityDidNothing(disarmed ? "you\u{2019}re disarmed" : "no enemy in this room") }
         attackEach(targets, from: pieceID, range: 1) { [weak self] in
             guard let self, allyDamage > 0, let pos = self.boardState.piecePositions[pieceID] else { return }
             let room = self.boardState.room(of: pos)
@@ -2364,14 +2364,14 @@ final class BoardCoordinator {
     func attackEnemiesMovedThrough(from pieceID: PieceID, hexes: [HexCoord]) {
         if isConditionActive(.disarm, on: pieceID) {
             log("\(name(pieceID)) is disarmed and can\u{2019}t attack", category: .condition)
-            activePlayerTurn?.abilityDidNothing()
+            activePlayerTurn?.abilityDidNothing("you\u{2019}re disarmed")
             activePlayerTurn?.advanceAfterAsyncAction()
             return
         }
         let targets = enemiesMovedThrough(by: pieceID, hexes: hexes)
         if targets.isEmpty {
             log("\(name(pieceID)) moved through no enemy", category: .attack)
-            activePlayerTurn?.abilityDidNothing()
+            activePlayerTurn?.abilityDidNothing("you moved through no enemy")
         }
         attackEach(targets, from: pieceID, range: 1)
     }
@@ -2457,7 +2457,7 @@ final class BoardCoordinator {
         if isConditionActive(.disarm, on: pieceID) {
             log("\(name(pieceID)) is disarmed and can\u{2019}t attack", category: .condition)
             interactionMode = .idle
-            activePlayerTurn?.abilityDidNothing()
+            activePlayerTurn?.abilityDidNothing("you\u{2019}re disarmed")
             activePlayerTurn?.advanceAfterAsyncAction()
             return false
         }
@@ -2475,7 +2475,7 @@ final class BoardCoordinator {
         if validTargets.isEmpty {
             log("\(name(pieceID)) has no target within range \(range)", category: .attack)
             interactionMode = .idle
-            activePlayerTurn?.abilityDidNothing()
+            activePlayerTurn?.abilityDidNothing("no target within range \(range)")
             activePlayerTurn?.advanceAfterAsyncAction()
             return false
         }
@@ -2520,7 +2520,7 @@ final class BoardCoordinator {
             log("\(name(pieceID)) has no \(onAllies ? "ally" : "target") within range \(range) for \(GameText.conditionName(condition))",
                 category: .condition)
             interactionMode = .idle
-            activePlayerTurn?.abilityDidNothing()
+            activePlayerTurn?.abilityDidNothing("no \(onAllies ? "ally" : "target") within range \(range) for \(GameText.conditionName(condition))")
             if !onAllies { activePlayerTurn?.advanceAfterAsyncAction() }
             return false
         }
@@ -2547,7 +2547,7 @@ final class BoardCoordinator {
         for target in targets.sorted() { applyCondition(condition, to: target, by: pieceID) }
         if targets.isEmpty {
             log("\(name(pieceID)) has no enemy within range \(range) for \(GameText.conditionName(condition))", category: .condition)
-            activePlayerTurn?.abilityDidNothing()
+            activePlayerTurn?.abilityDidNothing("no enemy within range \(range) for \(GameText.conditionName(condition))")
         }
     }
 
@@ -2678,7 +2678,7 @@ final class BoardCoordinator {
             forcedMoveLeft = nil
             if left.chosen.isEmpty {
                 log("\(name(pieceID)) has no enemy within range \(left.range) to \(isPush ? "push" : "pull")", category: .move)
-                activePlayerTurn?.abilityDidNothing()
+                activePlayerTurn?.abilityDidNothing("no enemy within range \(left.range) to \(isPush ? "push" : "pull")")
             }
             activePlayerTurn?.advanceAfterAsyncAction()
             return

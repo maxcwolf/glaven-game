@@ -1136,6 +1136,22 @@ final class BoardRulesRegressionTests: XCTestCase {
         XCTAssertFalse(cragheart.entityConditions.contains { $0.name == .muddle }, "not the Cragheart")
     }
 
+    /// An ability that can do nothing says why, by the played cards (the log alone was easy to
+    /// miss): Rock Tunnel beside traps but no obstacle.
+    func testAnAbilityThatDoesNothingSaysWhy() throws {
+        let cragheart = addCharacter("cragheart", at: HexCoord(3, 3))
+        coord.boardState.placeTrap(at: HexCoord(4, 3), damage: 3)
+        let turn = turn(for: cragheart, top: try card("Rock Tunnel", of: "cragheart"), bottom: try card("Avalanche", of: "cragheart"))
+        turn.executeCurrentAction()
+        XCTAssertEqual(turn.notice?.text, "Rock Tunnel: no obstacle beside you")
+        let id = try XCTUnwrap(turn.notice?.id)
+        turn.clearNotice(id + 1)
+        XCTAssertNotNil(turn.notice, "only its own timer clears it")
+        turn.clearNotice(id)
+        XCTAssertNil(turn.notice)
+        XCTAssertEqual(PlayerTurnController.noticeText(card: nil, reason: "you\u{2019}re disarmed"), "You\u{2019}re disarmed")
+    }
+
     func testRockTunnelDestroysAnAdjacentObstacle() throws {
         let cragheart = addCharacter("cragheart", at: HexCoord(3, 3))
         coord.boardState.placeObstacle(at: HexCoord(4, 3))
