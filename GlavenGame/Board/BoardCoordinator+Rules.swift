@@ -332,7 +332,7 @@ extension BoardCoordinator {
         let piece = PieceID.character(characterID)
         guard amount > 0, !autoResolvePrompts,
               let character = gameManager?.game.characters.first(where: { $0.id == characterID }),
-              !losableHandCards(of: character).isEmpty || character.discardedCards.count >= 2 else {
+              !losableHandCards(of: character).isEmpty || damageDiscardPool(of: character).count >= 2 else {
             sufferDamage(amount, to: piece)
             return false
         }

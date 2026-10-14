@@ -77,6 +77,50 @@ final class ChargedBonusTests: XCTestCase {
         XCTAssertEqual(brute.health, 35, "no shield any more")
     }
 
+    /// FAQ: cards may be lost before defence abilities are used. Losing a card to an attack that
+    /// Warding Strength would only reduce, or that Cold Front would turn aside, leaves their
+    /// charges unmarked (and Cold Front's Retaliate unearned); keeping the cards, they are used.
+    func testLosingCardsFirstKeepsWardingAndColdFrontCharges() async throws {
+        let brute = add("brute", at: HexCoord(3, 3))
+        brute.activeCards = [7]
+        brute.handCards = [1, 2, 3]
+        let piece = try bandit(at: HexCoord(4, 3))
+        brute.health = 50
+        brute.maxHealth = 50
+        coord.autoResolvePrompts = false
+        func strike(_ who: GameCharacter, answer: BoardCoordinator.DamageMitigationChoice) async {
+            let attack = Task { await self.attack(who, from: piece) }
+            let asked = await waitUntil { self.coord.pendingDamage != nil }
+            XCTAssertTrue(asked, "the player is asked")
+            coord.resolvePendingDamage(choice: answer)
+            await attack.value
+        }
+        await strike(brute, answer: .loseHandCard(cardId: 1))
+        XCTAssertEqual(brute.health, 50, "the card took it")
+        XCTAssertNil(brute.bonusChargesUsed[7], "Warding Strength wasn't used")
+        await strike(brute, answer: .takeDamage)
+        XCTAssertEqual(brute.health, 48, "Attack 3, Shield 1")
+        XCTAssertEqual(brute.bonusChargesUsed[7], 1)
+
+        let weaver = add("spellweaver", at: HexCoord(5, 3))
+        weaver.activeCards = [85]
+        weaver.handCards = [61, 62]
+        weaver.health = 6
+        weaver.maxHealth = 6
+        let bandit = try XCTUnwrap(coord.entity(for: piece))
+        coord.boardState.removePiece(piece)
+        coord.boardState.placePiece(piece, at: HexCoord(6, 3))
+        let before = bandit.health
+        await strike(weaver, answer: .loseHandCard(cardId: 61))
+        XCTAssertEqual(weaver.health, 6)
+        XCTAssertNil(weaver.bonusChargesUsed[85], "Cold Front wasn't used")
+        XCTAssertEqual(bandit.health, before, "and its Retaliate wasn't earned")
+        await strike(weaver, answer: .takeDamage)
+        XCTAssertEqual(weaver.health, 6, "Cold Front: no damage")
+        XCTAssertEqual(weaver.bonusChargesUsed[85], 1)
+        XCTAssertEqual(bandit.health, before - 3, "Retaliate 3")
+    }
+
     func testJuggernautNegatesAnyDamageThreeTimes() throws {
         let brute = add("brute", at: HexCoord(3, 3))
         brute.activeCards = [15]

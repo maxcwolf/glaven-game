@@ -98,6 +98,9 @@ M={
  "cardsInPlayNeverLostForDamage": ("GlavenGame/Board/BoardCoordinator+Rules.swift", "        character.discardedCards + character.activeCards.filter { !character.lostWhenRemoved.contains($0) }", "        character.discardedCards"),
  "lostCardsInPlayLostForDamage": ("GlavenGame/Board/BoardCoordinator+Rules.swift", "character.activeCards.filter { !character.lostWhenRemoved.contains($0) }", "character.activeCards"),
  "cardInPlayStaysInPlay": ("GlavenGame/Board/BoardCoordinator+Rules.swift", "                    character.removeFromActiveArea(cardId)\n", ""),
+ "wardingMarkedBeforeTheChoice": ("GlavenGame/Board/BoardCoordinator+Combat.swift", "                armourUsed = []\n                wardUsed = nil\n            }\n        }", "                armourUsed = []\n            }\n        }"),
+ "coldFrontWithoutTheChoice": ("GlavenGame/Board/BoardCoordinator+Combat.swift", "                if await promptDamageMitigation(character: character, damage: result.damage, source: pieceLabel(attacker),\n                                                absorbedBy: name ?? \"A bonus in play\") {", "                if false {"),
+ "wardingNeverMarked": ("GlavenGame/Board/BoardCoordinator+Combat.swift", "            useCharge(wardUsed, of: character)\n", ""),
 }
 # Scenario rules (the mechanisms of placements/gh.json): run against the scenario tests.
 SCENARIO_FILTER=("ScenarioSpecialRuleTests|ScenarioReauditTests|ScenarioEnforcedRuleTests|ScenarioLockTests|ScenarioGoalTests|"
