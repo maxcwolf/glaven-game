@@ -17,7 +17,7 @@ os.makedirs(SCR, exist_ok=True)
 FILTER=("AttackRuleTests|ConditionRuleTests|RoundRuleTests|LootRuleTests|MovementRuleTests|RevealRuleTests|ScenarioEndRuleTests|"
         "ScenarioLevelRuleTests|ForcedMovementTests|RB_|PlayLedgerTests|PlaythroughTests|RestRuleTests|BoardRulesRegressionTests|"
         "JumpFlyMovementTests|HealAndConsumeRuleTests|CombatEffectsTests|TurnFlowTests|E2E|AttackModifier|BoardSimulationTests|MonsterTurnRulesTests|ScenarioFinishEdgeCaseTests|DynamicObstacleTests|FeatureTests|EscortAITests|TeleportTests|HexCoordTests|"
-        "MoneyTokenTests|SetupRulesTests|ItemUseRuleTests|ChargedBonusTests|ActionPerformedTests|ScenarioEnforcedRuleTests|ScenarioReauditTests|ModifierDeckRoundEndTests|MoveThenAbilityTests")
+        "MoneyTokenTests|SetupRulesTests|StandeeLimitTests|ItemUseRuleTests|ChargedBonusTests|ActionPerformedTests|ScenarioEnforcedRuleTests|ScenarioReauditTests|ModifierDeckRoundEndTests|MoveThenAbilityTests")
 M={
  "poison0": ("GlavenGame/Engine/CombatResolver.swift", "        if isPoisoned {\n            attackValue += 1\n        }", "        if isPoisoned {\n            attackValue += 0\n        }"),
  "retaliateShielded": ("GlavenGame/Board/BoardCoordinator+Combat.swift", "            await sufferDamageWithMitigation(retaliate, to: attacker,", "            await sufferDamageWithMitigation(max(0, retaliate - self.shield(of: attacker)), to: attacker,"),
@@ -102,6 +102,7 @@ M={
  "coldFrontWithoutTheChoice": ("GlavenGame/Board/BoardCoordinator+Combat.swift", "                if await promptDamageMitigation(character: character, damage: result.damage, source: pieceLabel(attacker),\n                                                absorbedBy: name ?? \"A bonus in play\") {", "                if false {"),
  "wardingNeverMarked": ("GlavenGame/Board/BoardCoordinator+Combat.swift", "            useCharge(wardUsed, of: character)\n", ""),
  "armourBeforeTheChosenShield": ("GlavenGame/Board/BoardCoordinator+Combat.swift", "        // The other shields and armours are the player's to use or keep — asked first, since the", "        for item in DefenseItem.onDamage where result.damage > 0 && !negated && !preventedByCards && areEnemies(attacker, target)\n            && isChargedArmour(item, wornBy: target) { shield += item.shield; result = resolve(); useChargedArmour(item, wornBy: target) }\n        // The other shields and armours are the player's to use or keep — asked first, since the"),
+ "standeesSetUpInMapOrder": ("GlavenGame/Board/BoardCoordinator.swift", "                guard let origin, short.contains(monster.name) else { return open.first }", "                return open.first"),
 }
 # Scenario rules (the mechanisms of placements/gh.json): run against the scenario tests.
 SCENARIO_FILTER=("ScenarioSpecialRuleTests|ScenarioReauditTests|ScenarioEnforcedRuleTests|ScenarioLockTests|ScenarioGoalTests|"

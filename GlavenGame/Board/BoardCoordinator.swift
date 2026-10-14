@@ -3047,8 +3047,13 @@ final class BoardCoordinator {
         // Everything not yet on the board goes into this room — including monsters of a room a
         // scenario rule opened before its door was reached.
         let hasRoomData = !(gameManager.game.scenario?.data.rooms ?? []).isEmpty
+        // Standees running short, those nearest the character who opened the door come first.
+        let opener = actingPiece.flatMap { piece -> HexCoord? in
+            if case .character = piece { return boardState.piecePositions[piece] }
+            return nil
+        } ?? door.coord
         let placed = placeRevealedMonsters(slots: holdBack(reveal.slots), newEntities: unplacedMonsterEntities(),
-                                           playerCount: playerCount, useMapMonsters: !hasRoomData)
+                                           playerCount: playerCount, useMapMonsters: !hasRoomData, nearestTo: opener)
         let objectives = placeRevealedObjectives()
         readyNewMonsters(placed)
 
@@ -3190,7 +3195,8 @@ final class BoardCoordinator {
     /// monster list is used instead. Returns the pieces placed.
     @discardableResult
     func placeRevealedMonsters(slots: [MonsterSlot], newEntities: [(GameMonster, GameMonsterEntity)],
-                               playerCount: Int, useMapMonsters: Bool = false) -> [(name: String, standee: Int)] {
+                               playerCount: Int, useMapMonsters: Bool = false,
+                               nearestTo origin: HexCoord? = nil) -> [(name: String, standee: Int)] {
         guard gameManager != nil else { return [] }
         var placed: [(name: String, standee: Int)] = []
 
@@ -3215,9 +3221,17 @@ final class BoardCoordinator {
         }
         let anchor = slots.first?.coord ?? boardState.startingLocations.first ?? boardState.cells.keys.min()
 
+        // A type with fewer standees than places (SET-2): its places nearest the character who
+        // revealed the room are filled first, elites before normals (N11).
+        let short = Set(names.filter { name in
+            slots.filter { $0.name == name && $0.type(forPlayerCount: playerCount) != "none" }.count
+                > ordered.filter { $0.0.name == name }.count
+        })
         for (monster, entity) in ordered {
             func pick(_ predicate: (MonsterSlot) -> Bool) -> Int? {
-                slots.indices.first { !used.contains($0) && predicate(slots[$0]) }
+                let open = slots.indices.filter { !used.contains($0) && predicate(slots[$0]) }
+                guard let origin, short.contains(monster.name) else { return open.first }
+                return open.min { (boardState.steps(from: origin, to: slots[$0].coord), $0) < (boardState.steps(from: origin, to: slots[$1].coord), $1) }
             }
             let wanted = entity.type == .elite ? "elite" : "normal"
             let index = pick { $0.name == monster.name && $0.type(forPlayerCount: playerCount) == wanted }
