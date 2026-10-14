@@ -253,13 +253,16 @@ struct BoardView: View {
         }
         // Learning mode: a tip with its spotlight, an explanation, or the "?" outlines.
         .overlayPreferenceValue(LearnAnchorKey.self) { anchors in
-            GeometryReader { geo in
-                let rects = anchors.mapValues { geo[$0] }
-                LearningOverlay(coordinator: coordinator, anchors: rects.filter { $0.key != .board },
-                                boardRect: { boardRect(of: $0, overlayOrigin: geo.frame(in: .global).origin) },
-                                size: geo.size)
+            // The window's bars, read before the overlay reaches under them.
+            GeometryReader { safe in
+                GeometryReader { geo in
+                    let rects = anchors.mapValues { geo[$0] }
+                    LearningOverlay(coordinator: coordinator, anchors: rects.filter { $0.key != .board },
+                                    boardRect: { boardRect(of: $0, overlayOrigin: geo.frame(in: .global).origin) },
+                                    size: geo.size, insets: safe.safeAreaInsets)
+                }
+                .ignoresSafeArea()   // the dimming reaches the screen's edges, and the holes line up
             }
-            .ignoresSafeArea()   // the dimming reaches the screen's edges, and the holes line up
         }
         // How to Play, over everything.
         .overlay {

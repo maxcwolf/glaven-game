@@ -303,6 +303,19 @@ final class LearningModeTests: XCTestCase {
         XCTAssertEqual(middle.x, (1376 - 400) / 2)
     }
 
+    /// Regression: the overlay reaches under the macOS title bar, and a card at the top was
+    /// kept 24 points from the overlay's edge, under the bar. It is kept clear of the bars.
+    func testTheCardStaysClearOfTheWindowsBars() {
+        let screen = CGSize(width: 1376, height: 1032)
+        let bars = EdgeInsets(top: 28, leading: 0, bottom: 20, trailing: 0)
+        let high = LearningOverlay.cardOrigin(width: 400, height: 300, near: CGRect(x: 800, y: 0, width: 300, height: 60),
+                                              in: screen, insets: bars)
+        XCTAssertGreaterThanOrEqual(high.y, 28 + 24, "below the title bar")
+        let low = LearningOverlay.cardOrigin(width: 400, height: 300, near: CGRect(x: 20, y: 950, width: 320, height: 60),
+                                             in: screen, insets: bars)
+        XCTAssertLessThanOrEqual(low.y + 300, screen.height - 20 - 24, "above the bottom bar")
+    }
+
     // MARK: - Drawing them writes nothing
 
     func testTheCardsAndHowToPlayDraw() throws {

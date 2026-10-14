@@ -228,6 +228,9 @@ struct LearningOverlay: View {
     /// Where a figure or hex on the board is, in this overlay's space.
     let boardRect: (LearnSubject) -> CGRect?
     let size: CGSize
+    /// The window's own bars over this overlay (the macOS title bar, the iPad status bar): the
+    /// dimming reaches under them, the cards stay clear of them.
+    var insets = EdgeInsets()
     @State private var cardHeight: CGFloat = 320
 
     var body: some View {
@@ -284,28 +287,32 @@ struct LearningOverlay: View {
 
     /// The card beside `target` where it fits (right, left, below, above), or in the middle.
     private func card<Card: View>(width: CGFloat, near target: CGRect?, @ViewBuilder content: () -> Card) -> some View {
-        let origin = Self.cardOrigin(width: width, height: cardHeight, near: target, in: size)
+        let origin = Self.cardOrigin(width: width, height: cardHeight, near: target, in: size, insets: insets)
         return content()
             .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { cardHeight = $0 }
             .offset(x: origin.x, y: origin.y)
             .transition(.opacity)
     }
 
-    /// Where a card of this size goes beside `target` without covering it or leaving the screen.
-    static func cardOrigin(width: CGFloat, height: CGFloat, near target: CGRect?, in size: CGSize) -> CGPoint {
+    /// Where a card of this size goes beside `target` without covering it or leaving the screen,
+    /// and clear of the window's bars (`insets`).
+    static func cardOrigin(width: CGFloat, height: CGFloat, near target: CGRect?, in size: CGSize,
+                           insets: EdgeInsets = EdgeInsets()) -> CGPoint {
         let margin: CGFloat = 24, gap: CGFloat = 18
-        func clampY(_ y: CGFloat) -> CGFloat { min(max(y, margin), max(margin, size.height - height - margin)) }
-        func clampX(_ x: CGFloat) -> CGFloat { min(max(x, margin), max(margin, size.width - width - margin)) }
+        let top = insets.top + margin, bottom = size.height - insets.bottom - margin
+        let left = insets.leading + margin, right = size.width - insets.trailing - margin
+        func clampY(_ y: CGFloat) -> CGFloat { min(max(y, top), max(top, bottom - height)) }
+        func clampX(_ x: CGFloat) -> CGFloat { min(max(x, left), max(left, right - width)) }
         guard let target else {
-            return CGPoint(x: (size.width - width) / 2, y: clampY((size.height - height) / 2))
+            return CGPoint(x: clampX((size.width - width) / 2), y: clampY((size.height - height) / 2))
         }
-        if target.maxX + gap + width + margin <= size.width {
+        if target.maxX + gap + width <= right {
             return CGPoint(x: target.maxX + gap, y: clampY(target.midY - height / 2))
         }
-        if target.minX - gap - width >= margin {
+        if target.minX - gap - width >= left {
             return CGPoint(x: target.minX - gap - width, y: clampY(target.midY - height / 2))
         }
-        if target.maxY + gap + height + margin <= size.height {
+        if target.maxY + gap + height <= bottom {
             return CGPoint(x: clampX(target.midX - width / 2), y: target.maxY + gap)
         }
         return CGPoint(x: clampX(target.midX - width / 2), y: clampY(target.minY - gap - height))
