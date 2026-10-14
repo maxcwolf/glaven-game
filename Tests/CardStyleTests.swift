@@ -83,6 +83,34 @@ final class CardStyleTests: XCTestCase {
                        "a card already sized to fit (town, the preview) keeps its size")
     }
 
+    /// Where a drawn card's lowest white text ends, as a share of its height.
+    private func lowestText(scale: CGFloat) throws -> CGFloat {
+        let face = AbilityCardFace(card: trample, edition: "gh", height: CardSelectionPanel.cardHeight)
+            .environment(\.cardStyle, .drawn)
+            .environment(\.cardScale, scale)
+        let renderer = ImageRenderer(content: face)
+        renderer.scale = 2
+        let image = try XCTUnwrap(renderer.cgImage)
+        let bitmap = NSBitmapImageRep(cgImage: image)
+        for y in stride(from: bitmap.pixelsHigh - 1, through: 0, by: -1) {
+            for x in 0..<bitmap.pixelsWide {
+                if let c = bitmap.colorAt(x: x, y: y), c.redComponent > 0.85, c.greenComponent > 0.85, c.blueComponent > 0.85 {
+                    return CGFloat(y) / CGFloat(bitmap.pixelsHigh)
+                }
+            }
+        }
+        return 0
+    }
+
+    /// Regression: a crowded half (Trample's bottom) shrank to its smallest type at 100% but not
+    /// at 150%; its type now shrinks by the same share at any card size.
+    func testACrowdedHalfShrinksAlikeAtAnySize() throws {
+        let normal = try lowestText(scale: 1)
+        let large = try lowestText(scale: 1.5)
+        XCTAssertGreaterThan(normal, 0.8, "the half's lines reach down the card")
+        XCTAssertEqual(normal, large, accuracy: 0.04)
+    }
+
     func testACardIsShownInTheChosenStyle() throws {
         let scan = try XCTUnwrap(render(style: .scans, scale: 1).dataProvider?.data) as Data
         let drawn = try XCTUnwrap(render(style: .drawn, scale: 1).dataProvider?.data) as Data

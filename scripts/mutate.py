@@ -171,6 +171,7 @@ M={
  "cardTextNoSummonTraits": ("GlavenGame/Utilities/CardText.swift", "            say(summon.traits, depth: depth + 1)", ""),
  "cardTextXpSlotNotAUse": ("GlavenGame/Utilities/CardText.swift", "if value.hasPrefix(\"slotXp:\") { uses += 1; xpUses", "if value.hasPrefix(\"slotXp:\") { xpUses"),
  "cardTextNoArea": ("GlavenGame/Utilities/CardText.swift", "                lines.append(CardLine(kind: .area(action.value?.stringValue ?? \"\"), text: \"\", depth: depth))", "                break"),
+ "cardHalfViewThatFits": ("GlavenGame/Board/AbilityCardView.swift", "        return FirstThatFits {", "        return ViewThatFits(in: .vertical) {"),
 }
 # Scenario rules (the mechanisms of placements/gh.json): run against the scenario tests.
 SCENARIO_FILTER=("ScenarioSpecialRuleTests|ScenarioReauditTests|ScenarioEnforcedRuleTests|ScenarioLockTests|ScenarioGoalTests|"

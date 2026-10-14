@@ -157,7 +157,7 @@ struct BoardAbilityCardView: View {
 
     private func half(_ actions: [ActionModel]?, lost: Bool) -> some View {
         let lines = CardText.lines(of: actions) { labelResolver?($0) }.lines
-        return ViewThatFits(in: .vertical) {
+        return FirstThatFits {
             ForEach(Self.fits, id: \.self) { fit in
                 halfLines(lines, lost: lost, fit: fit)
             }
@@ -168,12 +168,20 @@ struct BoardAbilityCardView: View {
     }
 
     private func halfLines(_ lines: [CardLine], lost: Bool, fit: CGFloat) -> some View {
-        VStack(alignment: .leading, spacing: scaled(2.5) * fit) {
-            ForEach(Array(lines.enumerated()), id: \.offset) { _, line in
+        // The half's closing marks (XP, persistent, uses) share a row with LOST.
+        let closing = lines.last.flatMap { $0.kind == .badge && $0.depth == 0 ? $0 : nil }
+        let body = closing == nil ? lines : Array(lines.dropLast())
+        return VStack(alignment: .leading, spacing: scaled(2.5) * fit) {
+            ForEach(Array(body.enumerated()), id: \.offset) { _, line in
                 lineView(line, fit: fit)
                     .padding(.leading, CGFloat(line.depth) * scaled(9) * fit)
             }
-            if lost { lostBadge(fit: fit) }
+            if closing != nil || lost {
+                FlowLayout(spacing: scaled(3) * fit) {
+                    if let closing { lineView(closing, fit: fit) }
+                    if lost { lostBadge(fit: fit) }
+                }
+            }
         }
         .padding(.horizontal, scaled(7))
         .padding(.vertical, scaled(5) * fit)
@@ -280,6 +288,24 @@ struct BoardAbilityCardView: View {
         case .push, .pull: return .teal
         case .pierce: return .red.opacity(0.7)
         default: return .white.opacity(0.5)
+        }
+    }
+}
+
+/// The first of its subviews (one half's lines at shrinking type) whose height, measured at the
+/// space's own width, fits the space. The others are laid out of sight, where the half clips them.
+private struct FirstThatFits: Layout {
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        proposal.replacingUnspecifiedDimensions()
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        let width = ProposedViewSize(width: bounds.width, height: nil)
+        let chosen = subviews.indices.first { subviews[$0].sizeThatFits(width).height <= bounds.height }
+            ?? subviews.indices.last
+        for index in subviews.indices {
+            let origin = index == chosen ? bounds.origin : CGPoint(x: bounds.minX - 100_000, y: bounds.minY)
+            subviews[index].place(at: origin, proposal: width)
         }
     }
 }
