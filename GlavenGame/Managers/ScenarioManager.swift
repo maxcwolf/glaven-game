@@ -182,7 +182,7 @@ final class ScenarioManager {
             // Campaign log
             game.campaignLog.append(CampaignLogEntry(
                 type: .scenarioCompleted,
-                message: "Completed #\(data.index) \(data.name)",
+                message: "Completed \(data.titled(data.name))",
                 details: "Round \(game.round)"
             ))
         } else {
@@ -190,7 +190,7 @@ final class ScenarioManager {
             // and money they collected (GH p.47).
             game.campaignLog.append(CampaignLogEntry(
                 type: .scenarioFailed,
-                message: "Failed #\(data.index) \(data.name)",
+                message: "Failed \(data.titled(data.name))",
                 details: "Round \(game.round)"
             ))
         }

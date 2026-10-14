@@ -171,6 +171,13 @@ M={
  "cardTextNoSummonTraits": ("GlavenGame/Utilities/CardText.swift", "            say(summon.traits, depth: depth + 1)", ""),
  "cardTextXpSlotNotAUse": ("GlavenGame/Utilities/CardText.swift", "if value.hasPrefix(\"slotXp:\") { uses += 1; xpUses", "if value.hasPrefix(\"slotXp:\") { xpUses"),
  "cardTextNoArea": ("GlavenGame/Utilities/CardText.swift", "                lines.append(CardLine(kind: .area(action.value?.stringValue ?? \"\"), text: \"\", depth: depth))", "                break"),
+ "cardHalfTakesFirstVariant": ("GlavenGame/Board/AbilityCardView.swift", "subviews[$0].sizeThatFits(width).height <= bounds.height }", "subviews[$0].sizeThatFits(width).height <= bounds.height + 10_000 }"),
+ "cardMarksAlwaysStack": ("GlavenGame/Board/AbilityCardView.swift", "        return total <= (width ?? .infinity)", "        return total < 0"),
+ "cardAreaOwnLine": ("GlavenGame/Board/AbilityCardView.swift", "if case .area(let pattern) = line.kind, let last = rows.last,", "if case .area(let pattern) = line.kind, rows.isEmpty, let last = rows.last,"),
+ "dungeonBriefNumbered": ("GlavenGame/Models/EditionData/ScenarioData.swift", "hideIndex == true ? name :", "hideIndex == nil ? name :"),
+ "dungeonBriefEveryRoom": ("GlavenGame/Engine/ScenarioBrief.swift", "        return scenario.rooms?.first(where: \\.isInitial)?.monster?.map(\\.name) ?? []", "        return scenario.monsters ?? []"),
+ "dungeonRoadEvent": ("GlavenGame/Managers/EventCardManager.swift", "        if scenario.isDungeonVariant { return false }\n", ""),
+ "settingsMidGameIgnored": ("GlavenGame/Board/BoardCoordinator.swift", "    func applySettings() {\n        applyAnimationSpeed(gameManager?.settingsManager.animationSpeed ?? 1)\n", "    func applySettings() {\n"),
 }
 # Scenario rules (the mechanisms of placements/gh.json): run against the scenario tests.
 SCENARIO_FILTER=("ScenarioSpecialRuleTests|ScenarioReauditTests|ScenarioEnforcedRuleTests|ScenarioLockTests|ScenarioGoalTests|"

@@ -107,4 +107,12 @@ Nothing of the variant is left to build. Choices the rules leave open, as the ga
 a room that can't be laid apart from the rooms before it makes the game draw the dungeon again;
 "replace an enemy in the previous room" sets up again the monster card's first such enemy (for the
 party's size) whose number is clear; a penalty's "+1 Range" widens ranged attacks only; the
-success bonus experience is given for a random dungeon won.
+success bonus experience is given for a random dungeon won; no road event comes before one.
+
+Seen on the 11-inch iPad Pro simulator (2026-10-14): setup with its Penalties row, the brief, the
+first room and its starting hexes. The brief now names the dungeon without a number and shows only
+the first room's monsters (it had listed every drawn room's, rooms behind exits never taken
+included). No road event is drawn before a random dungeon (the rules don't say; a road event is for
+travelling to a scenario, and would change gold, reputation and the road deck, while a random dungeon
+"will not progress the campaign in any way"). #55 Foggy Thicket, a scenario of the book, is reached
+by road as usual.

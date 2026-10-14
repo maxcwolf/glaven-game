@@ -1157,6 +1157,12 @@ final class BoardCoordinator {
         syncPieceVisuals()
     }
 
+    /// Apply what the Settings sheet changes that the board holds itself (the animation speed;
+    /// card style and size, text size, theme and sound are read live), for Settings opened mid-game.
+    func applySettings() {
+        applyAnimationSpeed(gameManager?.settingsManager.animationSpeed ?? 1)
+    }
+
     /// Apply the Animation Speed setting (0.5 fast … 2 slow) to the board's animations and to
     /// the pause between automated turns.
     func applyAnimationSpeed(_ speed: Double) {

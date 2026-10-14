@@ -53,6 +53,8 @@ struct AbilityCardFace: View {
     /// (town's card grids, the full-size preview).
     var followsCardSize = true
     var labelResolver: ((String) -> String?)?
+    /// Room kept clear in the drawn card's top-right corner for a button laid over it.
+    var cornerInset: CGFloat = 0
 
     /// Width to height of a card (the scans are 400 × 600).
     static let aspect: CGFloat = 1.5
@@ -81,7 +83,8 @@ struct AbilityCardFace: View {
                 #endif
             } else {
                 BoardAbilityCardView(card: card, characterColor: color, highlight: .none,
-                                     width: size.width, height: size.height, labelResolver: labelResolver)
+                                     width: size.width, height: size.height, labelResolver: labelResolver,
+                                     cornerInset: cornerInset)
             }
         }
         .frame(width: size.width, height: size.height)

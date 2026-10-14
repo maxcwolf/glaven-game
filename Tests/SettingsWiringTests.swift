@@ -29,6 +29,21 @@ final class SettingsWiringTests: XCTestCase {
         XCTAssertEqual(slow.turnDelayNanoseconds, BoardCoordinator.baseTurnDelayNanoseconds * 2)
     }
 
+    /// Settings opened from the board's menu mid-scenario: a new animation speed takes effect on
+    /// the board at once, not only at the next scenario.
+    func testAnimationSpeedChangedMidScenarioTakesEffect() throws {
+        let gm = try SaveAndContinueTestsSupport.manager()
+        gm.characterManager.addCharacter(name: "brute", edition: "gh")
+        gm.characterManager.addCharacter(name: "tinkerer", edition: "gh")
+        gm.startScenarioOnBoard(try XCTUnwrap(gm.editionStore.scenarios(for: "gh").first { $0.index == "1" && $0.solo == nil }))
+        let coord = gm.boardCoordinator
+        XCTAssertEqual(coord.boardScene?.speed, 1)
+        gm.settingsManager.animationSpeed = 2
+        coord.applySettings()
+        XCTAssertEqual(coord.boardScene?.speed, 0.5)
+        XCTAssertEqual(coord.turnDelayNanoseconds, BoardCoordinator.baseTurnDelayNanoseconds * 2)
+    }
+
     func testLaunchStingFollowsTheSoundSettingAndPlaysOnce() {
         XCTAssertTrue(SoundPlayer.shouldPlayLaunchSting(soundEffects: true, alreadyPlayed: false))
         XCTAssertFalse(SoundPlayer.shouldPlayLaunchSting(soundEffects: false, alreadyPlayed: false))

@@ -27,6 +27,9 @@ struct BoardAbilityCardView: View {
     /// Callback to show the full-size card image preview. Nil hides the magnifying glass.
     var onPreview: (() -> Void)?
 
+    /// Room kept clear in the top-right corner for a button laid over the card (the hand's magnifier).
+    var cornerInset: CGFloat = 0
+
     init(
         card: AbilityModel,
         characterColor: Color = .blue,
@@ -36,7 +39,8 @@ struct BoardAbilityCardView: View {
         roleBadge: String? = nil,
         roleBadgeColor: Color = .yellow,
         labelResolver: ((String) -> String?)? = nil,
-        onPreview: (() -> Void)? = nil
+        onPreview: (() -> Void)? = nil,
+        cornerInset: CGFloat = 0
     ) {
         self.card = card
         self.characterColor = characterColor
@@ -47,6 +51,7 @@ struct BoardAbilityCardView: View {
         self.roleBadgeColor = roleBadgeColor
         self.labelResolver = labelResolver
         self.onPreview = onPreview
+        self.cornerInset = cornerInset
     }
 
     var body: some View {
@@ -89,7 +94,7 @@ struct BoardAbilityCardView: View {
                 Spacer(minLength: 0)
             }
             .padding(.leading, scaled(8))
-            .padding(.trailing, onPreview != nil ? scaled(18) : scaled(8))
+            .padding(.trailing, max(cornerInset, onPreview != nil ? scaled(18) : scaled(8)))
             .padding(.vertical, scaled(4))
             .background(characterColor.opacity(0.18))
 
@@ -157,7 +162,7 @@ struct BoardAbilityCardView: View {
 
     private func half(_ actions: [ActionModel]?, lost: Bool) -> some View {
         let lines = CardText.lines(of: actions) { labelResolver?($0) }.lines
-        return ViewThatFits(in: .vertical) {
+        return FirstThatFits {
             ForEach(Self.fits, id: \.self) { fit in
                 halfLines(lines, lost: lost, fit: fit)
             }
@@ -167,17 +172,52 @@ struct BoardAbilityCardView: View {
         .clipped()
     }
 
-    private func halfLines(_ lines: [CardLine], lost: Bool, fit: CGFloat) -> some View {
-        VStack(alignment: .leading, spacing: scaled(2.5) * fit) {
-            ForEach(Array(lines.enumerated()), id: \.offset) { _, line in
-                lineView(line, fit: fit)
-                    .padding(.leading, CGFloat(line.depth) * scaled(9) * fit)
+    /// A line of a half as laid out: an ability with the area it attacks beside it, as printed.
+    struct Row {
+        var line: CardLine
+        var area: String?
+    }
+
+    static func rows(_ lines: [CardLine]) -> [Row] {
+        var rows: [Row] = []
+        for line in lines {
+            if case .area(let pattern) = line.kind, let last = rows.last, last.line.kind == .ability, last.area == nil {
+                rows[rows.count - 1].area = pattern
+            } else {
+                rows.append(Row(line: line))
             }
-            if lost { lostBadge(fit: fit) }
+        }
+        return rows
+    }
+
+    private func halfLines(_ lines: [CardLine], lost: Bool, fit: CGFloat) -> some View {
+        // The half's closing marks (XP, persistent, uses) share a row with LOST when they fit.
+        let closing = lines.last.flatMap { $0.kind == .badge && $0.depth == 0 ? $0 : nil }
+        let rows = Self.rows(closing == nil ? lines : Array(lines.dropLast()))
+        return VStack(alignment: .leading, spacing: scaled(2.5) * fit) {
+            ForEach(Array(rows.enumerated()), id: \.offset) { _, row in
+                HStack(alignment: .center, spacing: scaled(4) * fit) {
+                    lineView(row.line, fit: fit)
+                    if let area = row.area {
+                        Spacer(minLength: 0)
+                        AreaPatternView(pattern: area, radius: scaled(7) * fit)
+                    }
+                }
+                .padding(.leading, CGFloat(row.line.depth) * scaled(9) * fit)
+            }
+            if closing != nil || lost {
+                RowOrColumn(spacing: scaled(3) * fit) { closingMarks(closing, lost: lost, fit: fit) }
+            }
         }
         .padding(.horizontal, scaled(7))
         .padding(.vertical, scaled(5) * fit)
         .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    @ViewBuilder
+    private func closingMarks(_ closing: CardLine?, lost: Bool, fit: CGFloat) -> some View {
+        if let closing { lineView(closing, fit: fit) }
+        if lost { lostBadge(fit: fit) }
     }
 
     @ViewBuilder
@@ -213,8 +253,8 @@ struct BoardAbilityCardView: View {
                 .foregroundStyle(BoardTheme.brass)
                 .padding(.horizontal, size(5))
                 .padding(.vertical, size(1.5))
-                .background(BoardTheme.brass.opacity(0.15), in: Capsule())
                 .fixedSize(horizontal: false, vertical: true)
+                .background(BoardTheme.brass.opacity(0.15), in: RoundedRectangle(cornerRadius: size(6)))
         case .area(let pattern):
             AreaPatternView(pattern: pattern, radius: size(7))
                 .padding(.vertical, size(1))
@@ -280,6 +320,58 @@ struct BoardAbilityCardView: View {
         case .push, .pull: return .teal
         case .pierce: return .red.opacity(0.7)
         default: return .white.opacity(0.5)
+        }
+    }
+}
+
+/// The first of its subviews (one half's lines at shrinking type) whose height, measured at the
+/// space's own width, fits the space. The others are laid out of sight, where the half clips them.
+struct FirstThatFits: Layout {
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        proposal.replacingUnspecifiedDimensions()
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        let width = ProposedViewSize(width: bounds.width, height: nil)
+        let chosen = subviews.indices.first { subviews[$0].sizeThatFits(width).height <= bounds.height }
+            ?? subviews.indices.last
+        for index in subviews.indices {
+            let origin = index == chosen ? bounds.origin : CGPoint(x: bounds.minX - 100_000, y: bounds.minY)
+            subviews[index].place(at: origin, proposal: width)
+        }
+    }
+}
+
+/// Its subviews in a row when they fit the width side by side, else one under another at the
+/// full width (where a long mark wraps).
+struct RowOrColumn: Layout {
+    var spacing: CGFloat
+
+    private func inRow(_ width: CGFloat?, _ subviews: Subviews) -> Bool {
+        let total = subviews.map { $0.sizeThatFits(.unspecified).width }.reduce(0, +)
+            + spacing * CGFloat(max(0, subviews.count - 1))
+        return total <= (width ?? .infinity)
+    }
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        if inRow(proposal.width, subviews) {
+            let sizes = subviews.map { $0.sizeThatFits(.unspecified) }
+            return CGSize(width: sizes.map(\.width).reduce(0, +) + spacing * CGFloat(max(0, sizes.count - 1)),
+                          height: sizes.map(\.height).max() ?? 0)
+        }
+        let sizes = subviews.map { $0.sizeThatFits(ProposedViewSize(width: proposal.width, height: nil)) }
+        return CGSize(width: proposal.width ?? sizes.map(\.width).max() ?? 0,
+                      height: sizes.map(\.height).reduce(0, +) + spacing * CGFloat(max(0, sizes.count - 1)))
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        var point = bounds.origin
+        let row = inRow(bounds.width, subviews)
+        for subview in subviews {
+            let size = row ? subview.sizeThatFits(.unspecified)
+                : subview.sizeThatFits(ProposedViewSize(width: bounds.width, height: nil))
+            subview.place(at: point, proposal: ProposedViewSize(size))
+            if row { point.x += size.width + spacing } else { point.y += size.height + spacing }
         }
     }
 }

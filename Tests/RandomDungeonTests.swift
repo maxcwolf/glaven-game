@@ -166,6 +166,36 @@ final class RandomDungeonTests: XCTestCase {
         return gm
     }
 
+    /// A random dungeon is set out for without a road event: it isn't a scenario on the map and
+    /// doesn't progress the campaign (p.50; the rules don't say, this is the game's reading).
+    /// #55 Foggy Thicket, a scenario of the book, is reached by road as usual.
+    func testNoRoadEventBeforeARandomDungeon() throws {
+        let gm = try SaveAndContinueTestsSupport.manager()
+        gm.game.completedScenarios.insert("gh-1")
+        let scenarios = gm.editionStore.scenarios(for: "gh")
+        let dungeon = try XCTUnwrap(scenarios.first { $0.index == "rnd" })
+        let thicket = try XCTUnwrap(scenarios.first { $0.index == "55" && $0.solo == nil })
+        XCTAssertFalse(gm.eventCardManager.needsRoadEvent(for: dungeon))
+        XCTAssertEqual(gm.eventCardManager.needsRoadEvent(for: thicket), thicket.eventType == "road")
+        XCTAssertEqual(GameSetupView.setOutDetail(hasParty: true, scenario: true, cityEvent: false,
+                                                  roadEvent: gm.eventCardManager.needsRoadEvent(for: dungeon)),
+                       GameSetupView.setOutDetail(hasParty: true, scenario: true, cityEvent: false, roadEvent: false))
+    }
+
+    /// The brief before the board: the dungeon by its name (it has no number), the monsters of
+    /// its first room only (the others are drawn as their doors open), and no tile names.
+    func testTheBriefTellsOnlyWhatTheFirstRoomShows() throws {
+        for seed in UInt64(1)...6 {
+            let gm = try startDungeon(seed: seed)
+            let data = try XCTUnwrap(gm.game.scenario?.data)
+            let brief = ScenarioBrief.make(for: data, labels: gm.editionStore)
+            XCTAssertFalse(brief.title.contains("#"), brief.title)
+            let first = try XCTUnwrap(data.rooms?.first(where: \.isInitial)?.monster)
+            XCTAssertEqual(Set(brief.monsters), Set(first.map { MonsterNameSpec($0.name).name }), "seed \(seed)")
+            XCTAssertEqual(brief.map, ScenarioBrief.dungeonMapLine)
+        }
+    }
+
     /// RD-1, RD-4: the first room is its room card's map with its monster card's monsters for two
     /// characters on their numbers, and the party starts within two hexes of the entrance.
     func testTheFirstRoomIsSetUpFromItsCards() throws {

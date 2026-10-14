@@ -111,6 +111,10 @@ final class EventCardManager {
     /// Whether setting out for `scenario` takes a road event.
     func needsRoadEvent(for scenario: ScenarioData) -> Bool {
         if game.tableRules.noFirstRoadEvent, game.completedScenarios.isEmpty { return false }
+        // A random dungeon is played instead of a scenario and doesn't progress the campaign in
+        // any way (p.50): there is no scenario to travel to, and a road event would change gold,
+        // reputation and the road deck. The rules don't say; this is the game's reading.
+        if scenario.isDungeonVariant { return false }
         // Straight on from the last scenario, without returning to Gloomhaven: to the scenario it
         // links to, or the same one tried again, there is no road to travel (CMP-8, FAQ).
         if let from = game.events.onTheRoadFrom,
