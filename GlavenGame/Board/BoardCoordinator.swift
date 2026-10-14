@@ -2703,9 +2703,13 @@ final class BoardCoordinator {
         // Heaving Swing: "You may push the target into hexes containing obstacles."
         let intoObstacles = isPush && pushesIntoObstacles
         func next(_ hex: HexCoord) -> [HexCoord] {
-            // Never across a wall line between two tiles.
-            (isPush ? hex.pushCandidates(awayFrom: attackerPos) : hex.pullCandidates(toward: attackerPos))
-                .filter { !boardState.isWalled(hex, $0) }
+            // Further and nearer as range is counted, around walls (ATK-7); never across a
+            // wall line between two tiles.
+            let here = boardState.steps(from: hex, to: attackerPos)
+            return boardState.neighbors(of: hex).filter { step in
+                let there = boardState.steps(from: step, to: attackerPos)
+                return isPush ? there > here : there < here
+            }
         }
         let barred = boardState.barredHexes(for: target)
         func open(_ hex: HexCoord) -> Bool {
