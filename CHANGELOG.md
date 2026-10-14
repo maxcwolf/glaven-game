@@ -39,6 +39,9 @@ campaign run between scenarios. 384 commits; a summary by area.
   travelling on to the next scenario without returning to Gloomhaven; collective gold split by
   the players; Envelope X recorded when opened; several campaigns, each saved to its own file;
   table rules a group can play by.
+- **Cards you can read**: a setting between the printed card scans and drawn cards that say
+  everything a card prints in plain type, and a slider for the size of your cards in hand and in
+  play.
 - **The board**: a new layout from the mockup; portrait tokens; wall lines between tiles; attack
   previews and the modifier tray; a turn-order rail; learning mode and an illustrated How to Play;
   sound for what happens on the board; VoiceOver throughout and an 11-point text floor.
@@ -60,7 +63,7 @@ campaign run between scenarios. 384 commits; a summary by area.
 
 - Headless play through the coordinator (`ScenarioSimulator`): every scenario played to its end
   with four seeds and checked for rule violations, and a ninth-level party that wins 53 to 58 of
-  94; 1,710 tests; `scripts/mutate.py`, 422 deliberate rule breaks each caught by a test.
+  94; 1,726 tests; `scripts/mutate.py`, 432 deliberate rule breaks each caught by a test.
 
 ## [1.0.0-beta.2] - 2026-05-29
 

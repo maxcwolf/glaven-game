@@ -1057,7 +1057,7 @@
       "bottomActions": [
         {
           "type": "custom",
-          "value": "%data.custom.gh.three-spears.abilities.229.2%",
+          "value": "%data.custom.gh.three-spears.abilities.229.1%",
           "small": true
         },
         {

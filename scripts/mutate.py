@@ -161,6 +161,16 @@ M={
  "dungeonGoalTreasureNowhere": ("GlavenGame/Managers/ScenarioManager.swift", "goalTreasureOn: placements?.dungeonTreasure)", "goalTreasureOn: nil)"),
  "dungeonFirstRoomSpared": ("GlavenGame/Managers/GameManager.swift", "        if boardCoordinator.boardScene != nil { boardCoordinator.applyFirstRoomPenalty() }\n", ""),
  "dungeonEntranceIgnored": ("GlavenGame/Board/BoardCoordinator+Dungeon.swift", "        let entrance = card.entrances[index]\n", "        let entrance = card.entrances[0]\n"),
+ "cardStyleIgnored": ("GlavenGame/Views/AbilityCardFace.swift", "guard style == .scans || CardText.isUnwritten(card), let id", "guard true || CardText.isUnwritten(card), let id"),
+ "cardUnwrittenDrawn": ("GlavenGame/Views/AbilityCardFace.swift", "guard style == .scans || CardText.isUnwritten(card), let id", "guard style == .scans, let id"),
+ "cardSizeIgnored": ("GlavenGame/Views/AbilityCardFace.swift", "let size = Self.size(height: height, scale: followsCardSize ? scale : 1)", "let size = Self.size(height: height, scale: 1)"),
+ "cardSizeEverywhere": ("GlavenGame/Views/AbilityCardFace.swift", "let size = Self.size(height: height, scale: followsCardSize ? scale : 1)", "let size = Self.size(height: height, scale: scale)"),
+ "cardStyleNotKept": ("GlavenGame/Managers/SettingsManager.swift", "            cardStyle = CardStyle(rawValue: settings.cardStyle) ?? .scans\n", ""),
+ "cardSizeUnclamped": ("GlavenGame/Managers/SettingsManager.swift", "cardScale = min(max(CGFloat(settings.cardScale), Self.cardScaleRange.lowerBound), Self.cardScaleRange.upperBound)", "cardScale = CGFloat(settings.cardScale)"),
+ "cardTextDropsDetails": ("GlavenGame/Utilities/CardText.swift", "                say(subs.filter { sub in !inline.contains(where: { $0.id == sub.id }) }, depth: depth + 1)", "                _ = inline"),
+ "cardTextNoSummonTraits": ("GlavenGame/Utilities/CardText.swift", "            say(summon.traits, depth: depth + 1)", ""),
+ "cardTextXpSlotNotAUse": ("GlavenGame/Utilities/CardText.swift", "if value.hasPrefix(\"slotXp:\") { uses += 1; xpUses", "if value.hasPrefix(\"slotXp:\") { xpUses"),
+ "cardTextNoArea": ("GlavenGame/Utilities/CardText.swift", "                lines.append(CardLine(kind: .area(action.value?.stringValue ?? \"\"), text: \"\", depth: depth))", "                break"),
 }
 # Scenario rules (the mechanisms of placements/gh.json): run against the scenario tests.
 SCENARIO_FILTER=("ScenarioSpecialRuleTests|ScenarioReauditTests|ScenarioEnforcedRuleTests|ScenarioLockTests|ScenarioGoalTests|"

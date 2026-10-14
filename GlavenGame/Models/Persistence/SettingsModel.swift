@@ -29,6 +29,9 @@ final class SettingsModel {
     /// Draw attack modifier cards by hand for every attack, not only the player's own.
     var drawAllModifiers: Bool = false
     var hapticFeedback: Bool = true
+    /// How ability cards are shown (`CardStyle`) and how large.
+    var cardStyle: String = "scans"
+    var cardScale: Double = 1.0
 
     // FH-specific toggles
     var fhPets: Bool = true

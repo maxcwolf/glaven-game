@@ -30,6 +30,11 @@ final class SettingsManager {
     /// for themselves and only the players' own attacks wait for a tap.
     var drawAllModifiers: Bool = false
     var hapticFeedback: Bool = true
+    /// The players' ability cards as the printed scans or as the app draws them.
+    var cardStyle: CardStyle = .scans
+    /// The players' ability cards' size, 1 as designed (`cardScaleRange`).
+    var cardScale: CGFloat = 1.0
+    static let cardScaleRange: ClosedRange<CGFloat> = 0.75...2
 
     // FH-specific toggles
     var fhPets: Bool = true
@@ -82,6 +87,8 @@ final class SettingsManager {
             animationSpeed = settings.animationSpeed
             drawAllModifiers = settings.drawAllModifiers
             hapticFeedback = settings.hapticFeedback
+            cardStyle = CardStyle(rawValue: settings.cardStyle) ?? .scans
+            cardScale = min(max(CGFloat(settings.cardScale), Self.cardScaleRange.lowerBound), Self.cardScaleRange.upperBound)
             fhPets = settings.fhPets
             fhGarden = settings.fhGarden
             fhTrials = settings.fhTrials
@@ -119,6 +126,8 @@ final class SettingsManager {
         settings.animationSpeed = animationSpeed
         settings.drawAllModifiers = drawAllModifiers
         settings.hapticFeedback = hapticFeedback
+        settings.cardStyle = cardStyle.rawValue
+        settings.cardScale = Double(cardScale)
         settings.fhPets = fhPets
         settings.fhGarden = fhGarden
         settings.fhTrials = fhTrials

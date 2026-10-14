@@ -20,6 +20,8 @@ struct PreferencesSheet: View {
     static let sizeStops = [Stop(value: 0.85, name: "Compact"), Stop(value: 1, name: "Default"), Stop(value: 1.15, name: "Large"),
                             Stop(value: 1.3, name: "Extra Large"), Stop(value: 1.5, name: "Maximum")]
 
+    static let cardStyleStops = CardStyle.allCases.enumerated().map { Stop(value: Double($0.offset), name: $0.element.label) }
+
     /// The stop nearest a stored value (older saves may hold values between stops).
     static func nearest(_ value: Double, in stops: [Stop]) -> Stop {
         stops.min { abs($0.value - value) < abs($1.value - value) } ?? stops[0]
@@ -100,6 +102,16 @@ struct PreferencesSheet: View {
                             .background(BoardTheme.raised, in: RoundedRectangle(cornerRadius: BoardTheme.Radius.small))
                             .accessibilityLabel("Preview of the text size")
                     }
+
+                    section("Cards") {
+                        stopsRow(title: "Card style",
+                                 detail: "Your ability cards as the printed cards, or drawn by the app: plainer and easier to read at a glance.",
+                                 stops: Self.cardStyleStops,
+                                 value: Binding(get: { Self.cardStyleStops[CardStyle.allCases.firstIndex(of: settingsManager.cardStyle) ?? 0].value },
+                                                set: { settingsManager.cardStyle = CardStyle.allCases[Int($0)] }))
+                        divider
+                        cardSizeRow
+                    }
                 }
                 .padding(22)
             }
@@ -109,6 +121,64 @@ struct PreferencesSheet: View {
         .onDisappear {
             settingsManager.saveSettings()
         }
+    }
+
+    // MARK: - Cards
+
+    /// "150%".
+    static func percent(_ scale: CGFloat) -> String { "\(Int((scale * 100).rounded()))%" }
+
+    /// The card size: a slider, and a card of the party's (or the Brute's) as it is in the hand.
+    private var cardSizeRow: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(alignment: .firstTextBaseline) {
+                label("Card size", "How large your ability cards are in your hand, as you play them, and when you choose one to lose.")
+                Spacer(minLength: 12)
+                Text(Self.percent(settingsManager.cardScale))
+                    .font(BoardTheme.font(size: 15, weight: .bold))
+                    .monospacedDigit()
+                    .foregroundStyle(BoardTheme.brass)
+            }
+            HStack(spacing: 12) {
+                Slider(value: Binding(get: { Double(settingsManager.cardScale) },
+                                      set: { settingsManager.cardScale = CGFloat($0) }),
+                       in: Double(SettingsManager.cardScaleRange.lowerBound)...Double(SettingsManager.cardScaleRange.upperBound),
+                       step: 0.05) {
+                    Text("Card size")
+                } minimumValueLabel: {
+                    Image(systemName: "rectangle.portrait").font(.caption)
+                } maximumValueLabel: {
+                    Image(systemName: "rectangle.portrait").font(.title2)
+                }
+                .tint(BoardTheme.brass)
+                .accessibilityValue(Self.percent(settingsManager.cardScale))
+                Button("Reset") { settingsManager.cardScale = 1 }
+                    .buttonStyle(.boardQuietCompact)
+                    .disabled(settingsManager.cardScale == 1)
+            }
+            if let sample = sampleCard {
+                AbilityCardFace(card: sample.card, edition: sample.edition, color: sample.color,
+                                height: CardSelectionPanel.cardHeight,
+                                labelResolver: { gameManager.editionStore.resolveCustomText($0, edition: sample.edition) })
+                    .environment(\.cardStyle, settingsManager.cardStyle)
+                    .environment(\.cardScale, settingsManager.cardScale)
+                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                    .frame(maxWidth: .infinity)
+                    .animation(.snappy, value: settingsManager.cardScale)
+                    .accessibilityLabel("Preview of the card size")
+            }
+        }
+    }
+
+    /// A card to show the style and size on: the first party member's first card, else the Brute's.
+    private var sampleCard: (card: AbilityModel, edition: String, color: Color)? {
+        let store = gameManager.editionStore
+        if let character = gameManager.game.characters.first,
+           let card = store.deckData(name: character.characterData?.deck ?? character.name, edition: character.edition)?.abilities.first {
+            return (card, character.edition, Color(hex: character.color) ?? BoardTheme.brass)
+        }
+        guard let card = store.deckData(name: "brute", edition: "gh")?.abilities.first else { return nil }
+        return (card, "gh", BoardTheme.brass)
     }
 
     // MARK: - Pieces

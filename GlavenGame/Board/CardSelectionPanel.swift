@@ -116,8 +116,8 @@ struct CardSelectionPanel: View {
         return Button {
             toggleCardSelection(index)
         } label: {
-            cardFace(card)
-                .frame(height: Self.cardHeight)
+            AbilityCardFace(card: card, edition: character.edition, color: characterColor,
+                            height: Self.cardHeight, labelResolver: labelResolver)
                 .clipShape(RoundedRectangle(cornerRadius: 8))
                 .overlay(RoundedRectangle(cornerRadius: 8).stroke(chosen ? BoardTheme.brass : .clear, lineWidth: 3))
                 .overlay(alignment: .bottom) {
@@ -160,22 +160,9 @@ struct CardSelectionPanel: View {
         .accessibilityHint(isTop ? "Leads: sets your initiative" : (isBtm ? "Second card" : "Choose this card"))
     }
 
+    /// A card's height in the hand at the default card size.
     static let cardHeight: CGFloat = 190
 
-    /// The card's scan, or its text when there's no scan (other editions).
-    @ViewBuilder
-    private func cardFace(_ card: AbilityModel) -> some View {
-        if let id = card.cardId, let image = ImageLoader.abilityCardImage(edition: character.edition, cardId: id) {
-            #if os(macOS)
-            Image(nsImage: image).resizable().aspectRatio(contentMode: .fit)
-            #else
-            Image(uiImage: image).resizable().aspectRatio(contentMode: .fit)
-            #endif
-        } else {
-            BoardAbilityCardView(card: card, characterColor: characterColor, highlight: .none,
-                                 width: 130, height: Self.cardHeight, labelResolver: labelResolver)
-        }
-    }
 
     // MARK: - Selection Logic
 

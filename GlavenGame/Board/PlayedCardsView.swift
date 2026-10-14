@@ -42,8 +42,8 @@ struct PlayedCardsView: View {
 
     /// The card with the half it doesn't give dimmed, and the half being performed ringed.
     private func lit(_ card: AbilityModel, half: Half, active: Bool) -> some View {
-        face(card)
-            .frame(height: Self.cardHeight)
+        AbilityCardFace(card: card, edition: edition, color: characterColor, height: Self.cardHeight,
+                        labelResolver: labelResolver)
             .overlay {
                 // The half this card doesn't give is dimmed; so is all of it once the turn is done.
                 GeometryReader { geo in
@@ -71,20 +71,6 @@ struct PlayedCardsView: View {
     private var done: Bool { turn.phase == .turnComplete || turn.extraPlay?.resumePhase == .turnComplete }
     private func dimsTop(_ half: Half, active: Bool) -> Bool { (done && !active) || half == .bottom }
     private func dimsBottom(_ half: Half, active: Bool) -> Bool { (done && !active) || half == .top }
-
-    @ViewBuilder
-    private func face(_ card: AbilityModel) -> some View {
-        if let id = card.cardId, let image = ImageLoader.abilityCardImage(edition: edition, cardId: id) {
-            #if os(macOS)
-            Image(nsImage: image).resizable().aspectRatio(contentMode: .fit)
-            #else
-            Image(uiImage: image).resizable().aspectRatio(contentMode: .fit)
-            #endif
-        } else {
-            BoardAbilityCardView(card: card, characterColor: characterColor, highlight: .none,
-                                 width: 100, height: Self.cardHeight, labelResolver: labelResolver)
-        }
-    }
 }
 
 /// The turn's quieter choices: swap the cards and pick which half goes first (before acting),

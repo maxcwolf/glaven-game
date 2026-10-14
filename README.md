@@ -30,7 +30,7 @@ The aim is a game that plays exactly as the rulebook, the official FAQ and the s
 - **The campaign** — town with the shop, the Enhancer, the sanctuary, city and road events, travelling on without returning to Gloomhaven, levelling up, perks, personal quests, retirement and class unlocks, battle goals, prosperity, reputation and achievements on the world map; several campaigns, each saved to its own file
 - **Random dungeons** — the random dungeon deck's twenty rooms and twenty monster cards: three rooms drawn by the deck's rules, A and B exits, treasures, and every room's penalties
 - **Table rules and learning** — variants a group can play by, solo play, a learning mode that explains what is happening, undo outside the board
-- **Sound, accessibility and theming** — sound effects for the board, VoiceOver on the board and in the menus, light and dark mode
+- **Sound, accessibility and theming** — sound effects for the board, VoiceOver on the board and in the menus, light and dark mode, the cards as printed scans or drawn in plain type at the size you choose
 
 The data of Frosthaven and Jaws of the Lion is bundled from Gloomhaven Secretariat, but only Gloomhaven can be played.
 

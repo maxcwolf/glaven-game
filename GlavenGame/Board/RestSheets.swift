@@ -67,21 +67,9 @@ private struct RestCard: View {
     var height: CGFloat = 190
 
     var body: some View {
-        Group {
-            if let cardId = card.cardId, let image = ImageLoader.abilityCardImage(edition: character.edition, cardId: cardId) {
-                #if os(macOS)
-                Image(nsImage: image).resizable().aspectRatio(contentMode: .fit)
-                #else
-                Image(uiImage: image).resizable().aspectRatio(contentMode: .fit)
-                #endif
-            } else {
-                BoardAbilityCardView(card: card, characterColor: Color(hex: character.color) ?? .blue,
-                                     highlight: .none, width: height * 0.6, height: height,
-                                     labelResolver: { labels.resolveCustomText($0, edition: character.edition) })
-            }
-        }
-        .frame(height: height)
-        .clipShape(RoundedRectangle(cornerRadius: 8))
+        AbilityCardFace(card: card, edition: character.edition, color: Color(hex: character.color) ?? .blue,
+                        height: height, labelResolver: { labels.resolveCustomText($0, edition: character.edition) })
+            .clipShape(RoundedRectangle(cornerRadius: 8))
     }
 }
 
