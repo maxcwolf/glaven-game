@@ -24,7 +24,12 @@ final class ScenarioManager {
 
     func setScenario(_ scenarioData: ScenarioData) {
         onBeforeMutate?()
+        // A random dungeon (the Random Dungeon, #55) is drawn now and played as its rooms.
+        var scenarioData = scenarioData
+        let dungeon = drawDungeon(for: scenarioData)
+        if let dungeon { scenarioData = Self.dungeonData(base: scenarioData, dungeon: dungeon, editionStore: editionStore) }
         let scenario = Scenario(data: scenarioData)
+        scenario.randomDungeon = dungeon
         game.scenario = scenario
         // Standees are drawn at random as monsters are set up, revealed, spawned and summoned.
         monsterManager.randomStandees = true
@@ -46,6 +51,43 @@ final class ScenarioManager {
                 }
             }
         }
+    }
+
+    // MARK: - Random dungeons
+
+    /// The monster cards of an edition's random dungeon deck.
+    static func dungeonMonsterCards(edition: String, editionStore: EditionDataStore) -> [ScenarioData] {
+        editionStore.sections(for: edition).filter { $0.group == "randomMonsterCard" }
+    }
+
+    /// The dungeon of a scenario with a random dungeon rule, drawn from the decks it names.
+    func drawDungeon(for data: ScenarioData) -> RandomDungeon? {
+        guard let rule = data.rules?.compactMap(\.randomDungeon).first else { return nil }
+        let rooms = DungeonCardStore.shared.rooms(edition: data.edition)
+        let monsterCards = Self.dungeonMonsterCards(edition: data.edition, editionStore: editionStore)
+        return RandomDungeonMap.draw(rooms: rooms, monsterCards: monsterCards, roomCards: rule.dungeonCards,
+                                     monsterCardsUsed: rule.monsterCards, random: &GameRandom.shared)?.0
+    }
+
+    /// The data a drawn dungeon is played as.
+    static func dungeonData(base: ScenarioData, dungeon: RandomDungeon, editionStore: EditionDataStore) -> ScenarioData {
+        dungeon.scenarioData(base: base, rooms: DungeonCardStore.shared.rooms(edition: base.edition),
+                             monsterCards: dungeonMonsterCards(edition: base.edition, editionStore: editionStore))
+    }
+
+    /// The map of a scenario: a random dungeon's built from its draws, else the map data's.
+    static func map(for scenario: Scenario, editionStore: EditionDataStore) -> VGBScenario? {
+        guard let dungeon = scenario.randomDungeon else {
+            return ScenarioMapStore.shared.scenarioMap(for: scenario.data.index)
+        }
+        let edition = scenario.data.edition
+        let monsterCards = dungeonMonsterCards(edition: edition, editionStore: editionStore)
+        guard let built = RandomDungeonMap.build(dungeon, room: { DungeonCardStore.shared.room(named: $0, edition: edition) },
+                                                 monsters: { index in monsterCards.first { $0.index == index } })
+        else { return nil }
+        var map = built.scenario
+        map.traps = built.traps
+        return map
     }
 
     /// Equipped items with a −1 penalty add that many −1 cards to the character's attack modifier

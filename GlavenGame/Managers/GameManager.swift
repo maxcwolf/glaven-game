@@ -224,8 +224,7 @@ final class GameManager {
         guard boardCoordinator.boardScene == nil else { return } // already on board
         scenarioManager.recordStartingTallies()
 
-        let mapStore = ScenarioMapStore.shared
-        guard let vgbScenario = mapStore.scenarioMap(for: scenario.data.index) else { return }
+        guard let vgbScenario = ScenarioManager.map(for: scenario, editionStore: editionStore) else { return }
 
         // A character who hasn't chosen a hand brings the default one from their card pool.
         for character in game.activeCharacters where character.handCards.isEmpty {
@@ -422,7 +421,7 @@ final class GameManager {
     private func resumeScenarioFromCheckpoint() -> Bool {
         guard let checkpoint = roundCheckpoint, let board = checkpoint.boardSnapshot,
               let scenario = game.scenario,
-              let map = ScenarioMapStore.shared.scenarioMap(for: scenario.data.index) else {
+              let map = ScenarioManager.map(for: scenario, editionStore: editionStore) else {
             roundCheckpoint = nil
             return false
         }

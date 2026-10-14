@@ -79,3 +79,44 @@ struct RandomDungeon: Codable, Equatable {
         return RandomDungeon(first: build(first, entrance: 0, depth: 3))
     }
 }
+
+// MARK: - The scenario a dungeon is played as
+
+extension RandomDungeon {
+    /// Every room with its path of exits from the first, first to last.
+    var allRooms: [(path: [Int], room: Room)] {
+        var result: [(path: [Int], room: Room)] = []
+        func walk(_ room: Room, _ path: [Int]) {
+            result.append((path, room))
+            for (index, next) in room.next.enumerated() { walk(next, path + [index]) }
+        }
+        walk(first, [])
+        return result
+    }
+
+    /// The scenario data of the dungeon: `base` (the Random Dungeon, or #55 Foggy Thicket, with
+    /// its rules) with the monsters of every monster card drawn and a room for each drawn room —
+    /// its tile, its monsters by number, the rooms behind its exits — so the board sets up and
+    /// reveals it like any scenario.
+    func scenarioData(base: ScenarioData, rooms cards: [DungeonRoomCard], monsterCards: [ScenarioData]) -> ScenarioData {
+        var data = base
+        let drawn = allRooms
+        var numbers: [[Int]: Int] = [:]
+        for (number, entry) in drawn.enumerated() { numbers[entry.path] = number + 1 }
+        var monsters: [String] = []
+        var rooms: [RoomData] = []
+        for (path, room) in drawn {
+            let card = cards.first { $0.name == room.room }
+            let monsterCard = monsterCards.first { $0.index == room.monsters }
+            for name in monsterCard?.monsters ?? [] where !monsters.contains(name) { monsters.append(name) }
+            let entranceTile = card.flatMap { $0.entrances.indices.contains(room.entrance) ? $0.entrances[room.entrance].tile : $0.tiles.first?.ref }
+            rooms.append(RoomData(
+                roomNumber: numbers[path] ?? 0, ref: entranceTile, initial: path.isEmpty ? true : nil, marker: nil,
+                rooms: room.next.indices.compactMap { numbers[path + [$0]] }, treasures: nil,
+                monster: monsterCard?.rooms?.first?.monster, allies: nil, objectives: nil))
+        }
+        data.monsters = monsters
+        data.rooms = rooms
+        return data
+    }
+}

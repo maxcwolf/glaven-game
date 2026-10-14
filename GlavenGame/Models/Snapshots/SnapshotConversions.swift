@@ -471,17 +471,22 @@ extension Scenario {
             stats: stats,
             partyStats: partyStats,
             pendingFinish: pendingFinish,
-            releasedMonsters: releasedMonsters
+            releasedMonsters: releasedMonsters,
+            randomDungeon: randomDungeon
         )
     }
 }
 
 extension ScenarioSnapshot {
     func toRuntime(editionStore: EditionDataStore) -> Scenario? {
-        guard let scenarioData = editionStore.scenarioData(index: index, edition: edition) else {
+        guard var scenarioData = editionStore.scenarioData(index: index, edition: edition) else {
             return nil
         }
+        if let randomDungeon {
+            scenarioData = ScenarioManager.dungeonData(base: scenarioData, dungeon: randomDungeon, editionStore: editionStore)
+        }
         let scenario = Scenario(data: scenarioData, isCustom: isCustom)
+        scenario.randomDungeon = randomDungeon
         scenario.revealedRooms = revealedRooms
         scenario.additionalSections = additionalSections
         scenario.appliedRules = appliedRules

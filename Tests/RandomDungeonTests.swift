@@ -153,6 +153,94 @@ final class RandomDungeonTests: XCTestCase {
         }
     }
 
+    // MARK: - Playing one
+
+    /// A Random Dungeon set up for a party of two (seeded).
+    private func startDungeon(index: String = "rnd", seed: UInt64 = 7) throws -> GameManager {
+        let gm = try SaveAndContinueTestsSupport.manager()
+        gm.characterManager.addCharacter(name: "brute", edition: "gh")
+        gm.characterManager.addCharacter(name: "spellweaver", edition: "gh")
+        GameRandom.shared = GameRandom(seed: seed)
+        let data = try XCTUnwrap(gm.editionStore.scenarios(for: "gh").first { $0.index == index })
+        gm.startScenarioOnBoard(data)
+        return gm
+    }
+
+    /// RD-1, RD-4: the first room is its room card's map with its monster card's monsters for two
+    /// characters on their numbers, and the party starts within two hexes of the entrance.
+    func testTheFirstRoomIsSetUpFromItsCards() throws {
+        for seed in UInt64(1)...12 { try checkFirstRoom(seed: seed) }
+    }
+
+    private func checkFirstRoom(seed: UInt64) throws {
+        let gm = try startDungeon(seed: seed)
+        let scenario = try XCTUnwrap(gm.game.scenario)
+        let dungeon = try XCTUnwrap(scenario.randomDungeon)
+        let board = gm.boardCoordinator.boardState
+        let card = try XCTUnwrap(DungeonCardStore.shared.room(named: dungeon.first.room))
+        let monsterCard = try XCTUnwrap(try monsterCards().first { $0.index == dungeon.first.monsters })
+        let placements = RandomDungeonMap.tilePlacements(of: card, entranceTile: card.entrances[0].tile, turns: 0, axis: nil)
+        func hex(_ place: DungeonRoomCard.Place) -> HexCoord {
+            let placed = placements.first { $0.ref == place.tile } ?? placements[0]
+            return RandomDungeonMap.global(place.x, place.y, turns: placed.turns, axis: placed.axis)
+        }
+        // Each monster the card has for two characters stands on its number, normal or elite.
+        let expected = (monsterCard.rooms?.first?.monster ?? []).compactMap { entry -> (String, Bool, HexCoord)? in
+            guard let type = entry.monsterType(forPlayerCount: 2), let marker = entry.marker,
+                  let place = card.numbers[marker] else { return nil }
+            return (entry.name, type == .elite, hex(place))
+        }
+        XCTAssertFalse(expected.isEmpty)
+        let standing = board.piecePositions.compactMap { piece, coord -> (String, Bool, HexCoord)? in
+            guard case .monster(let name, _) = piece else { return nil }
+            return (name, board.eliteStandees.contains(piece), coord)
+        }
+        XCTAssertEqual(standing.count, expected.count, "\(dungeon.first.room) with \(monsterCard.name)")
+        for (name, elite, coord) in expected {
+            XCTAssertTrue(standing.contains { $0.0 == name && $0.1 == elite && $0.2 == coord },
+                          "\(elite ? "elite " : "")\(name) should stand on \(coord)")
+        }
+        // Where the party may start: empty hexes within two of the entrance.
+        let entrance = hex(card.entrances[0].place)
+        XCTAssertFalse(board.startingLocations.isEmpty)
+        for start in board.startingLocations {
+            XCTAssertLessThanOrEqual(start.distance(to: entrance), 2)
+            XCTAssertNil(board.piece(at: start))
+        }
+        // The exits are doors, shut.
+        XCTAssertEqual(board.doors.filter { !$0.isOpen }.count, card.exits.count)
+    }
+
+    /// RD-1: opening an exit sets up the room behind it — its monsters on their numbers — and
+    /// the dungeon is three rooms deep.
+    func testOpeningAnExitRevealsTheNextRoom() throws {
+        for seed in UInt64(1)...12 {
+            let gm = try startDungeon(seed: seed)
+            let coord = gm.boardCoordinator
+            let dungeon = try XCTUnwrap(gm.game.scenario?.randomDungeon)
+            var room = dungeon.first
+            for depth in 2...3 {
+                let door = try XCTUnwrap(coord.boardState.doors.first { !$0.isOpen }, "seed \(seed): no door in room \(depth - 1)")
+                let before = Set(coord.boardState.cells.keys)
+                coord.openDoor(at: door.coord)
+                XCTAssertGreaterThan(coord.boardState.cells.count, before.count, "seed \(seed): no room behind the door")
+                let next = try XCTUnwrap(room.next.first { next in
+                    let card = DungeonCardStore.shared.room(named: next.room)
+                    return card?.tiles.contains { tile in coord.boardState.cells.values.contains { $0.tileRef.lowercased() == tile.ref && !before.contains($0.coord) } } == true
+                }, "seed \(seed): the room revealed is none of those drawn")
+                XCTAssertTrue(gm.game.scenario?.revealedRooms.count == depth, "seed \(seed)")
+                room = next
+                // The monsters of the new room stand on it.
+                let newCells = Set(coord.boardState.cells.keys).subtracting(before)
+                let monsters = coord.boardState.piecePositions.filter { if case .monster = $0.key { return newCells.contains($0.value) }; return false }
+                let card = try XCTUnwrap(try monsterCards().first { $0.index == next.monsters })
+                let expected = (card.rooms?.first?.monster ?? []).filter { $0.monsterType(forPlayerCount: 2) != nil }.count
+                XCTAssertEqual(monsters.count, expected, "seed \(seed): \(next.room) with \(card.name)")
+            }
+            XCTAssertTrue(room.next.isEmpty)
+        }
+    }
+
     // MARK: - Reading the cards
 
     /// Draws each written room card as the game lays it out, its numbers in red and its

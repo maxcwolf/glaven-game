@@ -67,6 +67,19 @@ struct RoomData: Codable, Hashable {
 
     var adjacentRooms: [Int] { rooms ?? [] }
 
+    init(roomNumber: Int, ref: String?, initial: Bool?, marker: IntOrString?, rooms: [Int]?,
+         treasures: [IntOrString]?, monster: [MonsterStandeeData]?, allies: [String]?, objectives: [IntOrString]?) {
+        self.roomNumber = roomNumber
+        self.ref = ref
+        self.initial = initial
+        self.marker = marker
+        self.rooms = rooms
+        self.treasures = treasures
+        self.monster = monster
+        self.allies = allies
+        self.objectives = objectives
+    }
+
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         roomNumber = try container.decode(Int.self, forKey: .roomNumber)

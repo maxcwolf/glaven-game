@@ -70,9 +70,13 @@ and "nromal" (Scaled), and Horrific's lurker missing from its monster list
 room before it however it is turned; the rules don't say what then, and the game draws again
 (`RandomDungeonMap.draw`). Still to do, in order:
 
-1. Starting one: a synthetic scenario (`ScenarioData`: the monsters of every card drawn, a room per
-   drawn room with its monsters) and the map built from the save; offered in town as "Random
-   Dungeon", and for #55 with its decks.
+1. Offering it in town as "Random Dungeon" (and #55 no longer "No map"). Starting one works: a
+   scenario with a `randomDungeon` rule is drawn as it is set (`ScenarioManager.drawDungeon`,
+   from the decks the rule names), kept on the scenario and in the save
+   (`Scenario.randomDungeon`, `ScenarioSnapshot.randomDungeon`), played as data with a room per
+   drawn room (`RandomDungeon.scenarioData`) and its map built from the draws wherever a map is
+   loaded (`ScenarioManager.map(for:)`). `testTheFirstRoomIsSetUpFromItsCards`,
+   `testOpeningAnExitRevealsTheNextRoom`.
 2. The second exit closed off when one is opened (RD-3); the first room's entrance chosen.
 3. Winning: every enemy dead with the last room revealed; rewards without campaign progress.
 4. Penalties (RD-6), with the difficulty as a choice; treasures' contents (RD-7).

@@ -21,6 +21,8 @@ final class Scenario {
     /// What each character (by name) and the party did, for battle goals.
     var stats: [String: ScenarioCharacterStats] = [:]
     var partyStats = ScenarioPartyStats()
+    /// A random dungeon's draws (the Random Dungeon, #55): its map and its rooms are built from them.
+    var randomDungeon: RandomDungeon?
 
     init(data: ScenarioData, isCustom: Bool = false) {
         self.data = data
