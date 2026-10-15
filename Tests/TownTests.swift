@@ -491,4 +491,17 @@ extension TownTests {
             }
         }
     }
+
+    /// Regression: on an 11-inch iPad the scenario brief ran past its panel and the rewards line
+    /// was cut in half, with nothing to say there was more. The map banner gives up height to fit
+    /// the brief, down to a floor; a brief that still doesn't fit scrolls.
+    func testTheScenarioBriefFitsByShrinkingItsMap() {
+        let full = GameSetupView.fullBanner, least = GameSetupView.minimumBanner
+        XCTAssertEqual(GameSetupView.bannerHeight(panel: 700, brief: 400), full, "room to spare: the whole map")
+        XCTAssertEqual(GameSetupView.bannerHeight(panel: 560, brief: 400), 148, "a little short: the map gives way")
+        XCTAssertEqual(GameSetupView.bannerHeight(panel: 450, brief: 400), least, "never below the floor")
+        XCTAssertEqual(GameSetupView.bannerHeight(panel: 0, brief: 0), full, "before it's measured")
+        let banner = GameSetupView.bannerHeight(panel: 560, brief: 400)
+        XCTAssertLessThanOrEqual(banner + 12 + 400, 560, "the brief and its map fit the panel")
+    }
 }
