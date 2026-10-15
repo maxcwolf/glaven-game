@@ -22,6 +22,10 @@ jobs:
         with:
           fetch-depth: 0
 
+      # The changelog is committed to main, whichever branches also hold the tag.
+      - name: Switch to main
+        run: git checkout -B main origin/main
+
       - name: Generate release notes
         uses: orhun/git-cliff-action@v4
         with:
@@ -40,18 +44,30 @@ jobs:
           OUTPUT: CHANGELOG.md
           GITHUB_REPO: ${{ github.repository }}
 
+      # A summary written for the release (docs/releases/<tag>.md) is its notes, with a link to
+      # every change since the last tag; without one, the generated list of commits is.
+      - name: Use the written summary
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+          SUMMARY="docs/releases/${TAG}.md"
+          git show "${TAG}:${SUMMARY}" > summary.md 2>/dev/null || exit 0
+          PREVIOUS=$(git describe --tags --abbrev=0 "${TAG}^" 2>/dev/null || true)
+          {
+            cat summary.md
+            echo
+            if [ -n "$PREVIOUS" ]; then
+              echo "**Full changelog:** https://github.com/${GITHUB_REPOSITORY}/compare/${PREVIOUS}...${TAG}"
+            fi
+          } > release_notes.md
+          rm summary.md
+
       - name: Commit CHANGELOG.md
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add CHANGELOG.md
           git commit -m "docs: update CHANGELOG.md for ${GITHUB_REF_NAME}" || echo "No changes to commit"
-          BRANCH=$(git branch -r --contains "${GITHUB_REF_NAME}" | grep -v HEAD | head -1 | sed 's|origin/||' | xargs)
-          if [ -n "$BRANCH" ]; then
-            git push origin HEAD:"$BRANCH"
-          else
-            git push origin HEAD:main
-          fi
+          git push origin HEAD:main
 
       - name: Upload release notes
         uses: actions/upload-artifact@v7
@@ -113,7 +129,7 @@ jobs:
 
       - name: Re-sign app bundle for distribution
         run: |
-          APP_PATH="build/Build/Products/Release/GlavenGame.app"
+          APP_PATH="build/Build/Products/Release/Glaven.app"
 
           # Re-sign with Developer ID, hardened runtime, secure timestamp, and clean entitlements
           codesign --deep --force --verify --verbose \
@@ -130,10 +146,10 @@ jobs:
       - name: Package DMG
         run: |
           TAG="${GITHUB_REF_NAME}"
-          APP_PATH="build/Build/Products/Release/GlavenGame.app"
+          APP_PATH="build/Build/Products/Release/Glaven.app"
 
           if [ ! -d "$APP_PATH" ]; then
-            echo "ERROR: GlavenGame.app not found at $APP_PATH"
+            echo "ERROR: Glaven.app not found at $APP_PATH"
             find build -name "*.app" -type d
             exit 1
           fi
@@ -143,16 +159,16 @@ jobs:
           ln -s /Applications dmg_staging/Applications
 
           hdiutil create \
-            -volname "GlavenGame" \
+            -volname "Glaven" \
             -srcfolder dmg_staging \
             -ov \
             -format UDZO \
-            "GlavenGame-${TAG}.dmg"
+            "Glaven-${TAG}.dmg"
 
       - name: Codesign DMG
         run: |
           TAG="${GITHUB_REF_NAME}"
-          codesign --force --sign "$CODESIGN_IDENTITY" --timestamp "GlavenGame-${TAG}.dmg"
+          codesign --force --sign "$CODESIGN_IDENTITY" --timestamp "Glaven-${TAG}.dmg"
 
       - name: Notarize DMG
         env:
@@ -161,7 +177,7 @@ jobs:
           NOTARIZE_TEAM_ID: ${{ secrets.NOTARIZE_TEAM_ID }}
         run: |
           TAG="${GITHUB_REF_NAME}"
-          DMG="GlavenGame-${TAG}.dmg"
+          DMG="Glaven-${TAG}.dmg"
 
           echo "Submitting $DMG for notarization..."
           xcrun notarytool submit "$DMG" \
@@ -180,7 +196,7 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: dmg
-          path: GlavenGame-*.dmg
+          path: Glaven-*.dmg
 
       - name: Cleanup
         if: always()
@@ -215,7 +231,7 @@ jobs:
           fi
 
           gh release create "$TAG" \
-            GlavenGame-*.dmg \
-            --title "GlavenGame $TAG" \
+            Glaven-*.dmg \
+            --title "$TAG" \
             --notes-file release_notes.md \
             $PRERELEASE
