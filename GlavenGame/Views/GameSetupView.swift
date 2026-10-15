@@ -12,6 +12,9 @@ struct GameSetupView: View {
     @State private var shopCharacter: GameCharacter?
     @State private var itemsCharacter: GameCharacter?
     @State private var showTableRules = false
+    /// The scenario panel's height, and the height of the brief below its map banner.
+    @State private var scenarioPanelHeight: CGFloat = 0
+    @State private var briefHeight: CGFloat = 0
     @State private var enhanceCharacter: GameCharacter?
     @State private var levelUpCharacter: GameCharacter?
     @State private var cardChoiceCharacter: GameCharacter?
@@ -553,7 +556,10 @@ struct GameSetupView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 12) {
                     if let scenario = selectedScenario {
-                        scenarioDetail(scenario)
+                        ScenarioBanner(scenario: scenario, edition: edition,
+                                       height: Self.bannerHeight(panel: scenarioPanelHeight, brief: briefHeight))
+                        VStack(alignment: .leading, spacing: 12) { scenarioDetail(scenario) }
+                            .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { briefHeight = $0 }
                     } else {
                         VStack(spacing: 8) {
                             Image(systemName: "map").font(BoardTheme.font(size: 34)).foregroundStyle(BoardTheme.brass)
@@ -567,6 +573,7 @@ struct GameSetupView: View {
                 }
             }
             .frame(maxHeight: .infinity)
+            .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { scenarioPanelHeight = $0 }
             Rectangle().fill(BoardTheme.border.opacity(0.4)).frame(height: 1)
             settingsRows
             HStack {
@@ -576,10 +583,21 @@ struct GameSetupView: View {
         }
     }
 
+    /// The map banner gives up height (down to `minimumBanner`) so the whole brief fits the
+    /// panel; on an 11-inch iPad a full-height banner pushed the rewards half out of sight, with
+    /// nothing to say there was more. When even the smallest banner can't make room, it scrolls.
+    static let fullBanner: CGFloat = 180
+    static let minimumBanner: CGFloat = 96
+
+    static func bannerHeight(panel: CGFloat, brief: CGFloat, spacing: CGFloat = 12) -> CGFloat {
+        guard panel > 0, brief > 0 else { return fullBanner }
+        return min(fullBanner, max(minimumBanner, (panel - brief - spacing).rounded(.down)))
+    }
+
+    /// What the chosen scenario asks and gives, below its map banner.
     @ViewBuilder
     private func scenarioDetail(_ scenario: ScenarioData) -> some View {
         let brief = ScenarioBrief.make(for: scenario, labels: gameManager.editionStore)
-        ScenarioBanner(scenario: scenario, edition: edition)
         VStack(alignment: .leading, spacing: 2) {
             TownSmallCaps(text: "Next scenario", lit: true)
             Text(brief.title)
