@@ -47,6 +47,11 @@ enum ImageLoader {
         loadImage(subdirectory: "Images", filename: "glaven-logo", ext: "png")
     }
 
+    /// An app icon's art (`AppIconChoice.image`).
+    static func appIcon(_ name: String) -> PlatformImage? {
+        loadImage(subdirectory: "Images/app-icons", filename: name, ext: "png")
+    }
+
     // MARK: - World Map
 
     static func worldMapBase(edition: String) -> PlatformImage? {

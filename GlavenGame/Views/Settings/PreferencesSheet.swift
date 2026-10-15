@@ -90,6 +90,8 @@ struct PreferencesSheet: View {
                                   isOn: Binding(get: { settingsManager.lightMode },
                                                 set: { settingsManager.lightMode = $0 }))
                         divider
+                        appIconRow
+                        divider
                         stopsRow(title: "Text size", detail: "Larger text everywhere, for reading at a distance.",
                                  stops: Self.sizeStops,
                                  value: Binding(get: { Double(settingsManager.uiScale) },
@@ -121,6 +123,58 @@ struct PreferencesSheet: View {
         .onDisappear {
             settingsManager.saveSettings()
         }
+    }
+
+    // MARK: - App icon
+
+    #if os(macOS)
+    static let appIconDetail = "Shown in the Dock while Glaven is open. Finder keeps the crest."
+    #else
+    static let appIconDetail = "Shown on the Home Screen. iPadOS tells you when it changes."
+    #endif
+
+    /// The app icons side by side, the chosen one ringed in brass.
+    private var appIconRow: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            label("App icon", Self.appIconDetail)
+            HStack(alignment: .top, spacing: 14) {
+                ForEach(AppIconChoice.allCases) { choice in
+                    appIconButton(choice)
+                }
+            }
+            .accessibilityElement(children: .contain)
+            .accessibilityLabel("App icon")
+        }
+    }
+
+    private func appIconButton(_ choice: AppIconChoice) -> some View {
+        let isSelected = choice == settingsManager.appIcon
+        let shape = RoundedRectangle(cornerRadius: 60 * 0.2237, style: .continuous)
+        return Button {
+            guard !isSelected else { return }
+            settingsManager.appIcon = choice
+            settingsManager.saveSettings()
+            AppIcon.apply(choice)
+        } label: {
+            VStack(spacing: 6) {
+                BundledImage(choice.image(), size: 60) { shape.fill(BoardTheme.raised) }
+                    .environment(\.uiScale, 1)
+                    .frame(width: 60, height: 60)
+                    .clipShape(shape)
+                    .padding(4)
+                    .overlay(RoundedRectangle(cornerRadius: 60 * 0.2237 + 4, style: .continuous)
+                        .stroke(isSelected ? BoardTheme.brass : Color.clear, lineWidth: 3))
+                Text(choice.label)
+                    .font(BoardTheme.font(size: 12, weight: isSelected ? .bold : .regular))
+                    .foregroundStyle(isSelected ? BoardTheme.brass : BoardTheme.secondaryText)
+                    .lineLimit(1)
+                    .fixedSize()
+            }
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(choice.label)
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 
     // MARK: - Cards
