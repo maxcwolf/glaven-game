@@ -13,7 +13,7 @@ and fail each other.
 ## The suite
 
 ```sh
-swift test                      # 1,741 tests on 2026-10-14, about three minutes after a build
+swift test                      # 1,742 tests on 2026-10-14, about three minutes after a build
 swift test --filter AttackRuleTests
 ```
 
@@ -62,7 +62,7 @@ Other switches: `SIM_FROM`/`SIM_TO` (a range of scenarios), `SIM_PARTY`, `SIM_LE
 ## Proving a test: mutations
 
 `scripts/mutate.py` breaks one rule in the game code and runs the tests that should notice; it
-restores the file with `git checkout`, so commit first. Every fix adds one (445 on 2026-10-14, each
+restores the file with `git checkout`, so commit first. Every fix adds one (446 on 2026-10-14, each
 noticed by a test).
 
 ```sh
