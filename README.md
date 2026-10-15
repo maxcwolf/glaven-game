@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/readme/hero.jpg" alt="Glaven: Gloomhaven, on your Mac" width="100%" />
+  <img src="docs/readme/hero.jpg" alt="Glaven: Gloomhaven, on your iPad and Mac" width="100%" />
 </p>
 
 <p align="center">
