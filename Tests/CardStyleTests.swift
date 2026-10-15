@@ -158,12 +158,14 @@ final class CardStyleTests: XCTestCase {
         let all = gm.editionStore.deckData(name: name, edition: "gh")!.abilities
         let start = Int(ProcessInfo.processInfo.environment["CARD_SHEET_FROM"] ?? "0") ?? 0
         let cards = Array(all.dropFirst(start).prefix(5))
+        let classColor = gm.editionStore.characters(for: "gh").first { $0.name == name }
+            .flatMap { $0.color }.flatMap { Color(hex: $0) } ?? .red
         let sheet = VStack(alignment: .leading, spacing: 16) {
             ForEach([CGFloat(1), 1.5], id: \.self) { scale in
                 ForEach(CardStyle.allCases, id: \.self) { style in
                     HStack(alignment: .top, spacing: 10) {
                         ForEach(cards, id: \.cardId) { card in
-                            AbilityCardFace(card: card, edition: "gh", color: .red, height: CardSelectionPanel.cardHeight,
+                            AbilityCardFace(card: card, edition: "gh", color: classColor, height: CardSelectionPanel.cardHeight,
                                             labelResolver: { self.gm.editionStore.resolveCustomText($0, edition: "gh") })
                                 .clipShape(RoundedRectangle(cornerRadius: 8))
                         }
