@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024" role="img" aria-label="Glaven icon: a times-two attack modifier card">
+<defs>
+<linearGradient id="cr-bg" x1="0" y1="0" x2="0" y2="1">
+<stop offset="0" stop-color="#5a1a1c"/>
+<stop offset="1" stop-color="#1c0708"/>
+</linearGradient>
+<linearGradient id="cr-card" x1="0" y1="0" x2="0" y2="1">
+<stop offset="0" stop-color="#f5ead2"/>
+<stop offset="1" stop-color="#dcc9a2"/>
+</linearGradient>
+<linearGradient id="cr-gold" x1="0" y1="0" x2="0" y2="1">
+<stop offset="0" stop-color="#ffd25e"/>
+<stop offset="1" stop-color="#d08a06"/>
+</linearGradient>
+<pattern id="cr-hex" width="110.85" height="192" patternUnits="userSpaceOnUse" x="-0.4" y="20">
+<path d="M55.43 0L110.85 32V96L55.43 128L0 96V32Z M55.43 128V192" fill="none" stroke="#74282a" stroke-width="3"/>
+</pattern>
+</defs>
+<g id="background">
+<rect width="1024" height="1024" fill="url(#cr-bg)"/>
+</g>
+<g id="pattern">
+<rect width="1024" height="1024" fill="url(#cr-hex)" opacity="0.6"/>
+</g>
+<g transform="rotate(13 512 512)">
+<rect x="340" y="200" width="380" height="560" rx="36" fill="#000000" opacity="0.3" transform="translate(8 16)"/>
+<rect x="340" y="200" width="380" height="560" rx="36" fill="#163331" stroke="#eca610" stroke-width="12"/>
+<rect x="366" y="226" width="328" height="508" rx="22" fill="none" stroke="#eca610" stroke-width="4" opacity="0.5"/>
+<polygon points="530,390 607.9,435 607.9,525 530,570 452.1,525 452.1,435" fill="none" stroke="#eca610" stroke-width="10" stroke-linejoin="round"/>
+<polygon points="530,430 573.3,455 573.3,505 530,530 486.7,505 486.7,455" fill="#eca610" opacity="0.6"/>
+</g>
+<g transform="rotate(-9 500 530)">
+<rect x="300" y="240" width="400" height="580" rx="36" fill="#000000" opacity="0.35" transform="translate(10 18)"/>
+<rect x="300" y="240" width="400" height="580" rx="36" fill="url(#cr-card)" stroke="#2a1a10" stroke-width="14"/>
+<rect x="330" y="270" width="340" height="520" rx="22" fill="none" stroke="#a8844a" stroke-width="5"/>
+<path d="M500 292 L516 312 L500 332 L484 312 Z M500 728 L516 748 L500 768 L484 748 Z" fill="#a8844a"/>
+<circle cx="500" cy="530" r="150" fill="#2a1410" stroke="url(#cr-gold)" stroke-width="14"/>
+<circle cx="500" cy="530" r="124" fill="none" stroke="#eca610" stroke-width="4" opacity="0.45"/>
+<!-- "2×" in Pirata One, as outlines -->
+<path d="M447.7 464.4L447.7 483.7Q447.7 486.4 447.5 487.8Q447.3 489.1 445.9 490.8Q444.6 492.5 441.6 493.5L419.8 501.9L416.8 499.0Q422.5 492.7 422.5 485.6L422.5 461.6Q422.5 460.4 444.7 451.3Q466.8 442.3 470.7 442.3Q474.6 442.3 481.3 451.6Q488.0 461.0 488.0 466.0L488.0 494.8Q488.0 505.9 475.7 528.2Q463.5 550.5 451.3 567.0L439.1 583.8Q462.4 583.4 466.2 583.4Q477.7 583.4 480.3 576.5Q482.6 576.7 483.6 576.7L484.9 576.7L496.6 593.7Q496.0 594.8 494.9 596.5Q493.7 598.3 489.6 601.2Q485.5 604.0 480.7 604.0L421.7 604.0Q417.3 592.7 417.3 584.5Q417.3 581.7 428.6 564.6Q439.9 547.5 451.4 528.7Q462.8 509.9 462.8 503.2L462.8 476.7Q462.8 467.5 461.0 463.8Q459.3 460.1 455.2 460.1Q451.1 460.1 447.7 464.4ZM552.7 517.5L570.1 517.1L573.3 520.2L552.5 541.0L573.5 562.0L569.9 565.6L552.9 564.7L540.7 552.8L528.6 564.9L511.5 565.8L508.0 562.2L529.2 541.0L508.2 520.2L511.3 516.9L528.8 517.5L540.7 529.2Z" fill="url(#cr-gold)"/>
+</g>
+</svg>

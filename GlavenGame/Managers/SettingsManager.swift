@@ -35,6 +35,8 @@ final class SettingsManager {
     /// The players' ability cards' size, 1 as designed (`cardScaleRange`).
     var cardScale: CGFloat = 1.0
     static let cardScaleRange: ClosedRange<CGFloat> = 0.75...2
+    /// The app icon: the crest, or another design (`AppIcon.apply` shows it).
+    var appIcon: AppIconChoice = .crest
 
     // FH-specific toggles
     var fhPets: Bool = true
@@ -89,6 +91,7 @@ final class SettingsManager {
             hapticFeedback = settings.hapticFeedback
             cardStyle = CardStyle(rawValue: settings.cardStyle) ?? .scans
             cardScale = min(max(CGFloat(settings.cardScale), Self.cardScaleRange.lowerBound), Self.cardScaleRange.upperBound)
+            appIcon = AppIconChoice(rawValue: settings.appIcon) ?? .crest
             fhPets = settings.fhPets
             fhGarden = settings.fhGarden
             fhTrials = settings.fhTrials
@@ -128,6 +131,7 @@ final class SettingsManager {
         settings.hapticFeedback = hapticFeedback
         settings.cardStyle = cardStyle.rawValue
         settings.cardScale = Double(cardScale)
+        settings.appIcon = appIcon.rawValue
         settings.fhPets = fhPets
         settings.fhGarden = fhGarden
         settings.fhTrials = fhTrials

@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024" role="img" aria-label="Glaven icon: a shield bearing a gothic G">
+<defs>
+<linearGradient id="cs-bg" x1="0" y1="0" x2="0" y2="1">
+<stop offset="0" stop-color="#1a3d3e"/>
+<stop offset="1" stop-color="#081414"/>
+</linearGradient>
+<pattern id="cs-hex" width="110.85" height="192" patternUnits="userSpaceOnUse" x="-0.4" y="20">
+<path d="M55.43 0L110.85 32V96L55.43 128L0 96V32Z M55.43 128V192" fill="none" stroke="#2c5956" stroke-width="3"/>
+</pattern>
+<linearGradient id="cs-shield" x1="0" y1="0" x2="0" y2="1">
+<stop offset="0" stop-color="#2a5a56"/>
+<stop offset="1" stop-color="#102624"/>
+</linearGradient>
+<linearGradient id="cs-gold" x1="0" y1="0" x2="0" y2="1">
+<stop offset="0" stop-color="#ffd25e"/>
+<stop offset="1" stop-color="#d08a06"/>
+</linearGradient>
+</defs>
+<g id="background">
+<rect width="1024" height="1024" fill="url(#cs-bg)"/>
+</g>
+<g id="pattern">
+<rect width="1024" height="1024" fill="url(#cs-hex)" opacity="0.7"/>
+</g>
+<path d="M512 194 L776 272 L776 520 C776 694 644 806 512 858 C380 806 248 694 248 520 L248 272 Z" fill="#000000" opacity="0.35" transform="translate(0 22)"/>
+<path d="M512 194 L776 272 L776 520 C776 694 644 806 512 858 C380 806 248 694 248 520 L248 272 Z" fill="url(#cs-shield)" stroke="url(#cs-gold)" stroke-width="24" stroke-linejoin="round"/>
+<path d="M512 240 L736 306 L736 520 C736 668 626 764 512 812 C398 764 288 668 288 520 L288 306 Z" fill="none" stroke="#eca610" stroke-width="5" opacity="0.45"/>
+<!-- "G" in Pirata One, as outlines -->
+<path d="M517.7 644.3Q527.9 644.3 538.7 635.7L538.7 566.0Q538.7 533.1 516.6 528.8L516.6 516.9L571.1 486.1Q582.5 491.0 593.3 502.0Q604.1 513.1 604.1 522.8L604.1 643.8Q604.1 648.1 544.9 671.0Q485.8 694.0 472.6 694.0Q459.3 694.0 442.3 670.8Q425.3 647.6 425.3 615.2L425.3 327.9Q425.3 324.1 487.2 301.1Q549.0 278.2 558.2 278.2Q561.4 278.2 565.7 293.9Q570.0 309.5 575.7 331.7Q581.4 353.8 587.6 364.3Q593.8 374.9 611.1 374.9L611.1 385.7Q599.2 391.1 570.9 404.8Q542.5 418.6 540.4 418.6Q532.2 418.6 519.8 374.6Q507.4 330.6 499.9 330.6Q494.4 330.6 490.1 336.0L490.1 604.4Q490.1 644.3 517.7 644.3Z" fill="url(#cs-gold)" stroke="#2a1a06" stroke-width="10" stroke-linejoin="round" paint-order="stroke"/>
+</svg>
