@@ -3,6 +3,24 @@
 All notable changes to this project will be documented in this file.
 Format based on [Conventional Commits](https://www.conventionalcommits.org/).
 
+## [1.0.0] - 2026-10-15
+
+### Documentation
+
+- Update CHANGELOG.md for v1.0.0-beta.4 by @github-actions[bot]
+
+### Features
+
+- A crest app icon, and four others to pick in settings by @maxcwolf
+
+### Merge
+
+- Glaven, the crest icon and four others, releases titled by version with written notes by @maxcwolf
+- A crest app icon, four others to pick in settings, each in light, dark and tinted by @maxcwolf
+
+
+**Full Changelog**: [v1.0.0-beta.4...v1.0.0](https://github.com/maxcwolf/glaven-game/compare/v1.0.0-beta.4...v1.0.0)
+
 ## [1.0.0-beta.4] - 2026-10-14
 
 ### Bug Fixes
