@@ -1,118 +1,98 @@
 <p align="center">
-  <img src="GlavenGame/Resources/Images/glaven-logo.png" alt="GlavenGame" width="180" />
+  <img src="docs/readme/hero.jpg" alt="Glaven: Gloomhaven, on your iPad and Mac" width="100%" />
 </p>
-
-<h1 align="center">GLAVEN GAME</h1>
 
 <p align="center">
-  Digital Gloomhaven board game built with SwiftUI and SpriteKit.<br />
-  Hex-grid scenario maps, automated monster AI, interactive player turns,<br />
-  attack modifier decks, and full combat resolution — all running natively on Apple platforms.
+  <a href="https://github.com/maxcwolf/glaven-game/releases/latest"><b>Download for Mac</b></a>
+  &nbsp;·&nbsp;
+  <a href="#what-you-get">What you get</a>
+  &nbsp;·&nbsp;
+  <a href="#build-it-yourself">Build it yourself</a>
 </p>
+
+<p align="center"><sub>An unofficial, fan-made digital edition of <i>Gloomhaven</i>. Not affiliated with Cephalofair Games.</sub></p>
 
 ---
 
-## What Is This?
+**Glaven is Gloomhaven, the whole campaign, played on your screen.** Set up a party, walk into the Black Barrow, and play it the way the box plays: two ability cards a round, a hand that runs out, and monsters that decide for themselves who to hunt. Glaven runs the monsters, does the bookkeeping, and follows the rulebook, the official FAQ and the scenario book to the letter. All you do is make the choices.
 
-GlavenGame is a digital implementation of Gloomhaven (first edition, base game). Players choose ability cards, move their characters on a hex board and fight, while monsters move, focus and attack on their own by Gloomhaven's AI rules. Between scenarios the party is in town: shopping, levelling up, enhancing cards, reading city and road events, and following the campaign across the world map.
+<p align="center">
+  <img src="docs/readme/numbers.png" alt="95 campaign scenarios, 447 printed scenario rules all enforced, 17 character classes, 40 random dungeon cards" width="100%" />
+</p>
 
-**This isn't GlavenApp** (the companion/helper app). GlavenGame is a playable game with a visual hex board, animated piece movement, and automated combat.
+## On the board
 
-The aim is a game that plays exactly as the rulebook, the official FAQ and the scenario book say. Where that work stands, and how it is done, is in [docs/rules-work.md](docs/rules-work.md).
+<p align="center">
+  <img src="docs/readme/board.jpg" alt="The Spellweaver choosing Fire Orbs and Mana Bolt in a random dungeon, with Inox monsters across the board" width="100%" />
+</p>
 
-## Features
+Choose your two cards from the real cards, scanned from the box, and watch the round play out. Move and attack by tapping hexes and figures, aim area attacks, and push, pull, loot and summon. Monsters flip their ability cards and pick their focus, path and targets by Gloomhaven's AI rules. Not sure why one went for you? With learning mode on, tap **Why?** and it tells you.
 
-- **The 95 campaign scenarios** — every map with its rooms, doors, traps, hazards, obstacles and treasure; each scenario's printed goal, losses and special rules (all 95 complete). The scenario book's rules are tracked rule by rule in [docs/scenario-book/rules-audit.md](docs/scenario-book/rules-audit.md)
-- **Monster AI** — focus, movement and attacks by the rulebook and FAQ, with pathfinding round walls and closed doors, line of sight, areas, jumps and flight; monster ability decks, shared decks, elements, and the bosses' special rules
-- **Player turns** — choose two cards, play a top and a bottom half on the board: moves, attacks, areas you aim, pushes and pulls, loot, summons, persistent bonuses, elements, items, rests and the losing of cards to negate damage
-- **Summons and allies** — summons act on their owner's initiative with the owner's modifier deck; escorts and objectives walk to their goals, captives can be saved
-- **Combat** — attack modifier decks with Bless and Curse, advantage and disadvantage, Shield, Pierce, Retaliate and every condition
-- **The campaign** — town with the shop, the Enhancer, the sanctuary, city and road events, travelling on without returning to Gloomhaven, levelling up, perks, personal quests, retirement and class unlocks, battle goals, prosperity, reputation and achievements on the world map; several campaigns, each saved to its own file
-- **Random dungeons** — the random dungeon deck's twenty rooms and twenty monster cards: three rooms drawn by the deck's rules, A and B exits, treasures, and every room's penalties
-- **Table rules and learning** — variants a group can play by, solo play, a learning mode that explains what is happening, undo outside the board
-- **Sound, accessibility and theming** — sound effects for the board, VoiceOver on the board and in the menus, light and dark mode, the cards as printed scans or drawn in plain type at the size you choose
+<p align="center">
+  <img src="docs/readme/round.png" alt="How a round plays: choose two cards, monsters draw, act in initiative order, the round ends" width="100%" />
+</p>
 
-The data of Frosthaven and Jaws of the Lion is bundled from Gloomhaven Secretariat, but only Gloomhaven can be played.
+- **Every scenario as the book prints it.** Objectives, escorts, pressure plates, locked doors, rising water, rolling boulders, and bosses with their own rules. All 95 campaign scenarios play with every one of their special rules.
+- **Combat that keeps itself honest.** Attack modifier decks with Bless and Curse, advantage, Shield, Pierce, Retaliate and every condition. It also counts line of sight and range around walls, exactly as the FAQ says.
+- **Your choices stay yours.** Lose a card to spare a captive, give up an action to loot, pick the element for an "any element" bonus, decide which shield takes the hit.
 
-## Requirements
+## Cards you can read
 
-- macOS 14+ (Sonoma) or iPadOS 17+
-- Xcode 16+ (the project builds in Swift 5.10 mode)
-- [xcodegen](https://github.com/yonaskolb/XcodeGen) (for Xcode project generation)
+<p align="center">
+  <img src="docs/readme/cards.png" alt="The Brute's Trample as the printed card and as Glaven's drawn card" width="70%" />
+</p>
 
-## Building and Running
+Play with the printed cards, or switch to drawn cards that spell out everything the card says in plain type. Turn a magnified card to see it the other way, and size your hand up when the text is small. You can change both mid-scenario from the game menu.
 
-### Swift Package Manager (command line)
+## Between scenarios
 
-```sh
-swift build
-```
+<p align="center">
+  <img src="docs/readme/town.jpg" alt="Gloomhaven in town: the party, the next scenario's map, monsters and rewards, and the scenarios that are open" width="100%" />
+</p>
 
-### Xcode (recommended for iPad development)
+The campaign carries on in town.
 
-```sh
-# Regenerate the Xcode project from project.yml
-xcodegen generate
+- **In Gloomhaven:** shop at the city's prices, level up with a new card and a perk, and enhance your cards. Visit the Sanctuary, and read city events.
+- **On the road:** take road events, or travel straight on to the next scenario.
+- **Your characters:** follow personal quests, keep battle goals, retire, and unlock new classes.
+- **The world map:** watch it fill in as the party finds new places.
+- **Saves:** keep several campaigns side by side.
 
-# Open in Xcode, select a scheme, pick a simulator, Cmd+R
-open GlavenGame.xcodeproj
-```
+## What you get
 
-The Xcode project is generated by xcodegen and excluded from version control. Run `xcodegen generate` after adding or removing source files.
+- **The full Gloomhaven campaign:** 95 scenarios and 17 classes, each with its own cards and perks.
+- **Random dungeons:** three rooms drawn from the random dungeon deck, set up as you open each door, at the penalty level you choose.
+- **A learning mode:** tips that explain what's happening the first time it happens, an illustrated How to Play, and a **?** that explains anything you tap.
+- **Table rules and solo play:** the variants a group can play by.
+- **Sound, VoiceOver and larger text** throughout, and a choice of app icons.
 
-## Project Structure
+## Download
 
-```
-GlavenGame/
-  GlavenGame.swift             # App entry point
-  ContentView.swift            # Root navigation
-  Board/                       # Board UI and turn execution
-    BoardCoordinator.swift     # Bridges SpriteKit scene ↔ SwiftUI state; the turn loop
-    BoardCoordinator+*.swift   # Rules by subject: combat, movement, goals, locks, effects, bosses…
-    BoardScene.swift           # SpriteKit hex grid rendering and animations
-    BoardView.swift            # SwiftUI overlay (character panel, HUD, turn UI)
-    PlayerTurnController.swift # Interactive player turn execution
-    MonsterTurnController.swift# Automated monster turn execution
-    SummonTurnController.swift # Automated summon turn execution
-  Engine/                      # Game logic and AI (no UI dependencies)
-    MonsterAI.swift            # Gloomhaven monster focus/movement/attack AI
-    SummonAI.swift             # Summon AI (inverted friend/foe monster AI)
-    CombatResolver.swift       # Attack resolution with modifiers and conditions
-    BoardState.swift           # Hex grid state (cells, pieces, doors, walls, overlays)
-    BoardBuilder.swift         # Constructs board from scenario map data
-    Pathfinder.swift           # Hex grid A* pathfinding
-    LineOfSight.swift          # Hex-based line of sight
-    HexCoord.swift / HexCell.swift / PieceID.swift
-  Managers/                    # Game state orchestration (rounds, scenarios, campaign, events)
-  Models/                      # Data models, enums, protocols
-  Views/                       # SwiftUI views (setup, town, menus, dialogs)
-  Utilities/                   # Image loading, fonts, sound, theming
-  Resources/
-    EditionData/{gh,fh,jotl}/  # Bundled JSON game data
-    ScenarioMaps/              # Hex map data for scenarios; placements/ written from the scenario book
-    Fonts/ Images/ Sounds/
-Tests/                         # XCTest suite, scenario simulator, golden transcripts
-docs/                          # Rules work, rulebook checklist, scenario book notes, audits
-scripts/                       # Mutation runner, scenario book helpers
-Package.swift                  # SPM package definition
-project.yml                    # xcodegen project spec
-```
+Get the latest **[Glaven for Mac](https://github.com/maxcwolf/glaven-game/releases/latest)**: open the DMG and drag Glaven to Applications. It's signed and notarized, and runs on macOS 14 Sonoma or later, on Apple silicon and Intel.
 
-## Testing
+Glaven also runs on iPad (iPadOS 17 or later) if you build it yourself.
+
+## Build it yourself
+
+You'll need Xcode 16 and [xcodegen](https://github.com/yonaskolb/XcodeGen).
 
 ```sh
-swift test
+xcodegen generate          # the Xcode project is generated from project.yml
+open GlavenGame.xcodeproj  # pick a Mac or iPad destination, then Run
 ```
 
-The suite plays the rules through the real board on shared fixtures, plays every scenario to its end with a simulated party, and compares seeded games with hand-checked transcripts. [TESTING.md](TESTING.md) says what there is and how to run each part.
+`swift build` and `swift test` work from the command line too.
 
-## Copyright / License
+- **[TESTING.md](TESTING.md):** the test suite. Every scenario is played to its end by a simulated party, and every rule is proved with a test.
+- **[docs/rules-work.md](docs/rules-work.md):** how the rules are checked against the rulebook, the FAQ and the scenario book.
 
-Gloomhaven and all related properties, images and text are owned by [Cephalofair Games](https://cephalofair.com).
+## Credits
 
-Assets/Data used:
+*Gloomhaven* and all related properties, images and text are owned by [Cephalofair Games](https://cephalofair.com). Glaven is an unofficial fan project and isn't endorsed by them. If you enjoy it, [buy the board game](https://cephalofair.com/pages/gloomhaven).
 
-- [Creator Pack by Isaac Childres](https://boardgamegeek.com/thread/1733586/files-creation) CC BY-NC-SA 4.0
+Glaven's code is licensed under the [AGPL-3.0](LICENSE). It is built with these assets and data:
+
+- [Creator Pack by Isaac Childres](https://boardgamegeek.com/thread/1733586/files-creation), CC BY-NC-SA 4.0
 - [Worldhaven](https://github.com/any2cards/worldhaven)
 - [Nerdhaven Images](https://drive.google.com/drive/folders/16wSfzvrSlpbGY8l4eWn8dnHjDUF7A2_e)
 - [X-haven Assistant](https://github.com/Tarmslitaren/FrosthavenAssistant)
