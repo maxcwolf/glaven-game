@@ -290,6 +290,41 @@ final class ChargedBonusTests: XCTestCase {
         XCTAssertNil(brute.bonusChargesUsed[13], "a round bonus has no charges")
     }
 
+    /// Regression: Portable Ballista's bottom half ("During all your attacks this round, ignore
+    /// the Shield values of all your targets") named a text the data didn't have, and did
+    /// nothing. While it is in play the Quartermaster's attacks go through every Shield; once
+    /// the round ends and the card leaves play, Shield counts again.
+    func testPortableBallistaIgnoresShieldsThisRound() async throws {
+        let quartermaster = add("three-spears", at: HexCoord(3, 3))
+        let piece = try bandit(at: HexCoord(4, 3))
+        let target = try XCTUnwrap(coord.entity(for: piece))
+        target.shield = ActionModel(type: .shield, value: .int(3))
+        func hit() async -> Int {
+            let before = target.health
+            await coord.performAttack(attacker: .character(quartermaster.id), target: piece, attack: AttackParameters(value: 4),
+                                      drawCard: { AttackModifier(type: .plus0) })
+            return before - target.health
+        }
+        let plain = await hit()
+        XCTAssertEqual(plain, 1, "without the bonus: 4 against Shield 3")
+
+        // Only its bottom half can be in play (its top half is an attack): the round bonus.
+        quartermaster.activeCards = [229]
+        quartermaster.roundBonusCards = [229]
+        let inPlay = await hit()
+        XCTAssertEqual(inPlay, 4, "every Shield ignored")
+        target.shieldPersistent = ActionModel(type: .shield, value: .int(2))
+        let moreShield = await hit()
+        XCTAssertEqual(moreShield, 4, "however many Shields the target has")
+        quartermaster.activeCards = []
+        quartermaster.roundBonusCards = []
+        let roundOver = await hit()
+        XCTAssertEqual(roundOver, 0, "the round over: 4 against Shield 5")
+        XCTAssertNil(coord.expectedDamage(attacker: .character(quartermaster.id), target: piece),
+                     "no turn: no preview")
+        XCTAssertNil(quartermaster.bonusChargesUsed[229], "a round bonus has no charges")
+    }
+
     func testTrickstersReversalNegatesTheNextDamageOnly() {
         let scoundrel = add("scoundrel", at: HexCoord(3, 3))
         scoundrel.activeCards = [98]

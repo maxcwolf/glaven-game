@@ -89,13 +89,15 @@ enum ChargedBonus: Equatable {
     case advantageAndSeeInvisible
     /// Every attack targeting the character has disadvantage this round (Dancing Shadows, Terror Blade).
     case attackersGainDisadvantage
+    /// The character's attacks ignore their targets' Shield this round (Portable Ballista).
+    case ignoreShieldsThisRound
 
     /// Round bonuses and charge-less persistent cards leave every use in place.
     var isUnlimited: Bool {
         switch self {
         case .roundAttackBonus, .roundAttackBonusWithAdjacentAllies, .experiencePerRetaliate,
              .drawAttacksFromAdjacentAllies, .advantageOncePerTurnVsDoomed, .twoDooms, .roundAttackBonusVsDoomed,
-             .advantageAndSeeInvisible, .attackersGainDisadvantage:
+             .advantageAndSeeInvisible, .attackersGainDisadvantage, .ignoreShieldsThisRound:
             return true
         default: return false
         }
@@ -169,6 +171,7 @@ enum ChargedBonus: Equatable {
         "gh-261": .attackAfterAttackWhileInvisible(value: 2, range: 3), // Black Knives
         "gh-279": .attackAdjacentAfterMoveWhileInvisible(2),            // Claws of the Night
         "gh-283": .advantageAndSeeInvisible,                            // Eyes of the Night
+        "gh-229": .ignoreShieldsThisRound,                              // Portable Ballista
         "gh-267": .attackersGainDisadvantage,                           // Dancing Shadows
         "gh-275": .attackersGainDisadvantage,                           // Terror Blade
         "gh-53": .turnEndAction(ActionModel(type: .custom,                         // Gas Canister
@@ -377,6 +380,12 @@ extension BoardCoordinator {
             return provoker
         }
         return target
+    }
+
+    /// Whether `attacker`'s attacks ignore their targets' Shield this round (Portable Ballista:
+    /// "During all your attacks this round, ignore the Shield values of all your targets").
+    func ignoresShields(_ attacker: PieceID) -> Bool {
+        chargedBonuses(of: attacker).contains { $0.bonus == .ignoreShieldsThisRound }
     }
 
     /// This round's attack bonuses for an attack by `attacker` (its own, and Enhancement Field

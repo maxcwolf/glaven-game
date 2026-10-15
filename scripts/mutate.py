@@ -184,6 +184,7 @@ M={
  "tipUnderTitleBar": ("GlavenGame/Board/LearningViews.swift", "        let top = insets.top + margin, bottom", "        let top = margin, bottom"),
  "didNothingSilent": ("GlavenGame/Board/PlayerTurnController.swift", "        guard let reason else { return }\n        noticeCount += 1", "        guard let reason, reason.isEmpty else { return }\n        noticeCount += 1"),
  "briefMapNeverShrinks": ("GlavenGame/Views/GameSetupView.swift", "        return min(fullBanner, max(minimumBanner, (panel - brief - spacing).rounded(.down)))", "        return fullBanner"),
+ "ballistaShieldsStand": ("GlavenGame/Board/BoardCoordinator+Combat.swift", "        if ignoresShields(attacker) { attack.pierce = Self.pierceThroughAnyShield }", "        _ = attacker"),
 }
 # Scenario rules (the mechanisms of placements/gh.json): run against the scenario tests.
 SCENARIO_FILTER=("ScenarioSpecialRuleTests|ScenarioReauditTests|ScenarioEnforcedRuleTests|ScenarioLockTests|ScenarioGoalTests|"

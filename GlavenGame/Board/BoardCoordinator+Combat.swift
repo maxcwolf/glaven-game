@@ -40,6 +40,9 @@ extension BoardCoordinator {
     /// advantage/disadvantage, shield/pierce, damage (characters may negate it by losing cards),
     /// conditions and push/pull on a surviving target, then retaliate.
     /// Returns true if the target died.
+    /// Pierce past every Shield a figure can have.
+    static let pierceThroughAnyShield = 999
+
     @discardableResult
     @MainActor func performAttack(attacker: PieceID, target aimedAt: PieceID, attack printedAttack: AttackParameters,
                        drawCard: (() -> AttackModifier?)? = nil, from origin: HexCoord? = nil) async -> Bool {
@@ -66,6 +69,9 @@ extension BoardCoordinator {
         attack.pierce += carriedPierce(of: attacker, against: target)
         let isPoisoned = defender.entityConditions.contains { $0.name == .poison && !$0.expired }
         var shield = shield(of: target) + cleansedShield(of: target, against: attacker)
+        // Portable Ballista: this round no Shield of any target stands against the attack, its
+        // items' and charges' included (added below): pierce past them all.
+        if ignoresShields(attacker) { attack.pierce = Self.pierceThroughAnyShield }
         // Retaliate gained for this attack alone (a charge, an item), each with its reach. Whether
         // any retaliate lands is judged after the attack's push or pull (FAQ).
         var gainedRetaliates: [(amount: Int, range: Int)] = []
@@ -429,7 +435,7 @@ extension BoardCoordinator {
         if case .monster(let monsterName, _) = target { value += turn.attackBonusAgainst[monsterName] ?? 0 }
         value = max(0, value + scenarioAttackBonus(of: attacker))
         let poisoned = isConditionActive(.poison, on: target)
-        let shield = max(0, self.shield(of: target) - turn.pendingPierce)
+        let shield = ignoresShields(attacker) ? 0 : max(0, self.shield(of: target) - turn.pendingPierce)
         let ranged = turn.currentAttackRange() > 1
         var disadvantage = (ranged && boardState.areAdjacent(from, to)) || disadvantagedThisRound.contains(target)
             || scenarioGivesDisadvantage(to: attacker)
@@ -473,7 +479,7 @@ extension BoardCoordinator {
         if case .monster(let monsterName, _) = target { value += turn.attackBonusAgainst[monsterName] ?? 0 }
         value = max(0, value + scenarioAttackBonus(of: attacker))
         if isConditionActive(.poison, on: target) { value += 1 }
-        let shield = max(0, self.shield(of: target) - turn.pendingPierce)
+        let shield = ignoresShields(attacker) ? 0 : max(0, self.shield(of: target) - turn.pendingPierce)
         return max(0, value - shield)
     }
 
