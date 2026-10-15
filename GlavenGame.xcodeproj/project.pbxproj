@@ -116,6 +116,7 @@
 		7341D050CFF3F51B1A40A8D0 /* ElementBoardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8255E1A8F1CC6DC84CBFD242 /* ElementBoardView.swift */; };
 		745AD59E9DECF9EC93910417 /* ScenarioPlacements.swift in Sources */ = {isa = PBXBuildFile; fileRef = 16796C8C7F101E3B4B34B0C9 /* ScenarioPlacements.swift */; };
 		75DF0BB6FC95C99A2DB187DC /* CombatResolver.swift in Sources */ = {isa = PBXBuildFile; fileRef = D43BC428DB53E9EC54ECA21C /* CombatResolver.swift */; };
+		777D518F5FCEDBDC30BF5E2A /* AppIcon.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4D0007ABEBC08D1233C78ABF /* AppIcon.swift */; };
 		7BC432AB3D70A08BFC5E87E7 /* WorldMapView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C9ECD4B608FAFAC66D31A536 /* WorldMapView.swift */; };
 		7C88DFDC87A1CDFB3B536929 /* SaveChoiceSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 514591C6FA44DDC7E109E81E /* SaveChoiceSheet.swift */; };
 		7CC59ABF933C68012195E7B3 /* BattleGoals.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0124B0388BD2AA1770320E6B /* BattleGoals.swift */; };
@@ -320,6 +321,7 @@
 		48C2C89D891BD98C87B15AC7 /* CharacterSheetView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CharacterSheetView.swift; sourceTree = "<group>"; };
 		4A36D7C42F715C8F0B91A909 /* EntityProtocol.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EntityProtocol.swift; sourceTree = "<group>"; };
 		4C2B76831C29EEA9CE98F5A8 /* CardSelectionPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CardSelectionPanel.swift; sourceTree = "<group>"; };
+		4D0007ABEBC08D1233C78ABF /* AppIcon.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppIcon.swift; sourceTree = "<group>"; };
 		4D00189AAD6484D20C66CBC0 /* TableRulesSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TableRulesSheet.swift; sourceTree = "<group>"; };
 		4DBBBA8A0B1B9EA99181B37C /* BoardCoordinator+Carry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "BoardCoordinator+Carry.swift"; sourceTree = "<group>"; };
 		4FC83BD5098A9C2BD0316AFD /* DungeonPenalty.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DungeonPenalty.swift; sourceTree = "<group>"; };
@@ -641,6 +643,7 @@
 		45867543A9804613CA71D357 /* Utilities */ = {
 			isa = PBXGroup;
 			children = (
+				4D0007ABEBC08D1233C78ABF /* AppIcon.swift */,
 				A7E2165E5E511B9078052C55 /* BoardSound.swift */,
 				52347FEF6FA67664FBF7BF1A /* BundleHelper.swift */,
 				9E75B3163CCA7DACE5D78815 /* CardText.swift */,
@@ -1075,6 +1078,7 @@
 				348B45E0F8996A22336E276D /* ActionValueType.swift in Sources */,
 				AE36609C9943107272FEE51A /* ActionsManager.swift in Sources */,
 				DA80F59435177C23D8E005E0 /* AoEResolver.swift in Sources */,
+				777D518F5FCEDBDC30BF5E2A /* AppIcon.swift in Sources */,
 				8CB0FFF5B997D068B2D99954 /* AppPhase.swift in Sources */,
 				1BD1F642825D52D6A6F79626 /* AreaPatternView.swift in Sources */,
 				4270F50EFBD54ADD461ECF50 /* AttackModifier.swift in Sources */,
@@ -1314,6 +1318,7 @@
 		35947A46AB75E1BA89B0B592 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				"ASSETCATALOG_COMPILER_ALTERNATE_APPICON_NAMES[sdk=iphone*]" = "AppIcon-HexBlade AppIcon-Spectacles AppIcon-Critical AppIcon-Elements";
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = GlavenGame.entitlements;
 				CODE_SIGN_IDENTITY = "-";
@@ -1413,6 +1418,7 @@
 		E3D7B816082118DB5726A0CD /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				"ASSETCATALOG_COMPILER_ALTERNATE_APPICON_NAMES[sdk=iphone*]" = "AppIcon-HexBlade AppIcon-Spectacles AppIcon-Critical AppIcon-Elements";
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = GlavenGame.entitlements;
 				CODE_SIGN_IDENTITY = "-";

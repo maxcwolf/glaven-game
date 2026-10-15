@@ -51,6 +51,9 @@ targets:
         CURRENT_PROJECT_VERSION: "1"
         INFOPLIST_KEY_CFBundleDisplayName: Glaven
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        # The other app icons a player can pick in Settings (AppIconChoice); iPadOS only, as a
+        # Mac sets its Dock icon from Resources/Images/app-icons instead.
+        "ASSETCATALOG_COMPILER_ALTERNATE_APPICON_NAMES[sdk=iphone*]": "AppIcon-HexBlade AppIcon-Spectacles AppIcon-Critical AppIcon-Elements"
         SWIFT_EMIT_LOC_STRINGS: true
         CODE_SIGN_STYLE: Manual
         CODE_SIGN_ENTITLEMENTS: GlavenGame.entitlements

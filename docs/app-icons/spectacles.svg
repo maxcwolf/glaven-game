@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024" role="img" aria-label="Glaven icon: the mascot's hair, spectacles and bow tie">
+<defs>
+<linearGradient id="sp-bg" x1="0" y1="0" x2="0" y2="1">
+<stop offset="0" stop-color="#33434f"/>
+<stop offset="1" stop-color="#141c24"/>
+</linearGradient>
+<pattern id="sp-hex" width="110.85" height="192" patternUnits="userSpaceOnUse" x="-0.4" y="20">
+<path d="M55.43 0L110.85 32V96L55.43 128L0 96V32Z M55.43 128V192" fill="none" stroke="#3d505d" stroke-width="3"/>
+</pattern>
+<linearGradient id="sp-hair" x1="0" y1="0" x2="0" y2="1">
+<stop offset="0" stop-color="#b6e03a"/>
+<stop offset="1" stop-color="#76a816"/>
+</linearGradient>
+<linearGradient id="sp-bow" x1="0" y1="0" x2="0" y2="1">
+<stop offset="0" stop-color="#6aa4f7"/>
+<stop offset="1" stop-color="#3f78db"/>
+</linearGradient>
+</defs>
+<g id="background">
+<rect width="1024" height="1024" fill="url(#sp-bg)"/>
+</g>
+<g id="pattern">
+<rect width="1024" height="1024" fill="url(#sp-hex)" opacity="0.6"/>
+</g>
+<path d="M296 424 C286 332 328 270 400 245 C385 215 360 200 318 196 C400 166 472 184 506 230 C526 184 576 158 644 166 C612 184 598 204 596 228 C682 238 738 302 730 424 C702 378 656 354 610 362 C574 322 504 312 454 352 C398 346 338 372 296 424 Z" fill="url(#sp-hair)" stroke="#10181f" stroke-width="22" stroke-linejoin="round"/>
+<path d="M380 326 C420 284 482 274 532 290" fill="none" stroke="#d6f27a" stroke-width="14" stroke-linecap="round"/>
+<path d="M566 300 C614 292 660 312 690 350" fill="none" stroke="#d6f27a" stroke-width="12" stroke-linecap="round"/>
+<path d="M266 548 L232 542 M758 548 L792 542" stroke="#10181f" stroke-width="22" stroke-linecap="round"/>
+<path d="M490 540 Q512 518 534 540" fill="none" stroke="#10181f" stroke-width="22" stroke-linecap="round"/>
+<circle cx="380" cy="548" r="112" fill="#eef5f6" stroke="#10181f" stroke-width="26"/>
+<circle cx="644" cy="548" r="112" fill="#eef5f6" stroke="#10181f" stroke-width="26"/>
+<polygon points="352,544 381.4,561 381.4,595 352,612 322.6,595 322.6,561" fill="#eca610" fill-opacity="0.18" stroke="#d99a0c" stroke-width="7" stroke-linejoin="round"/>
+<polygon points="616,544 645.4,561 645.4,595 616,612 586.6,595 586.6,561" fill="#eca610" fill-opacity="0.18" stroke="#d99a0c" stroke-width="7" stroke-linejoin="round"/>
+<path d="M418 474 Q452 492 460 532" fill="none" stroke="#10181f" stroke-width="11" stroke-linecap="round"/>
+<path d="M682 474 Q716 492 724 532" fill="none" stroke="#10181f" stroke-width="11" stroke-linecap="round"/>
+<path d="M512 792 L382 730 Q356 720 356 748 L356 836 Q356 864 382 854 Z" fill="url(#sp-bow)" stroke="#10181f" stroke-width="22" stroke-linejoin="round"/>
+<path d="M512 792 L642 730 Q668 720 668 748 L668 836 Q668 864 642 854 Z" fill="url(#sp-bow)" stroke="#10181f" stroke-width="22" stroke-linejoin="round"/>
+<path d="M400 792 H468 M556 792 H624" stroke="#10181f" stroke-width="11" stroke-linecap="round"/>
+<circle cx="512" cy="792" r="42" fill="url(#sp-bow)" stroke="#10181f" stroke-width="22"/>
+<path d="M494 776 Q504 766 518 768" fill="none" stroke="#a9cbff" stroke-width="8" stroke-linecap="round"/>
+</svg>

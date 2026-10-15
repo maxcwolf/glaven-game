@@ -38,6 +38,9 @@ private struct ScaledContentView: View {
                 GlavenTheme.activeTheme = effectiveTheme
                 SoundPlayer.settingsManager = gameManager.settingsManager
                 SoundPlayer.playGlayvin()
+                #if os(macOS)
+                AppIcon.apply(gameManager.settingsManager.appIcon)   // the Dock forgets it between launches
+                #endif
                 #if DEBUG
                 SoakDriver.startIfAsked(gameManager)   // GLAVEN_SOAK=1: play unattended, measuring
                 #endif

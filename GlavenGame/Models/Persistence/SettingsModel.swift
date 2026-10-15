@@ -32,6 +32,8 @@ final class SettingsModel {
     /// How ability cards are shown (`CardStyle`) and how large.
     var cardStyle: String = "scans"
     var cardScale: Double = 1.0
+    /// The app icon chosen (`AppIconChoice`).
+    var appIcon: String = "crest"
 
     // FH-specific toggles
     var fhPets: Bool = true
